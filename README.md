@@ -47,8 +47,10 @@ The first category queue is:
 ```bash
 npm run init:runtime
 npm run doctor
+npm run env:check
 npm run workflow:check
 npm run orchestrator:once
+npm run orchestrator:rerun-review -- --task-id DATA-001
 npm run orchestrator:status
 npm run tasks:list
 npm run tasks:check
@@ -57,3 +59,10 @@ npm run tasks:check
 ## Safety Posture
 
 This project is designed for trusted private environments, but remote writes are not automatic in the initial workflow. Data-producing agents must create local repair candidates and dry-run plans before any database publish/import action.
+
+Local `.env` may point to the existing `LCA-DATA-AGENT/.env` through `LCA_DATA_AGENT_ENV_FILE`, but this repository keeps remote commit gates off by default. A single-record database smoke test requires all of these to be explicitly true in local `.env` and task policy:
+
+- `FOUNDRY_ENABLE_REMOTE_COMMIT=true`
+- `FOUNDRY_SINGLE_RECORD_COMMIT=true`
+- `FOUNDRY_REMOTE_COMMIT_LIMIT=1`
+- task-level `allow_remote_commit=true`

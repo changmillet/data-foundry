@@ -45,6 +45,42 @@ The task did not move to `tasks/done` because blocking data gates remain open.
 | version bump plan | pass | generated as repair-after-validation plan |
 | dry-run policy | pass | task has `allow_remote_commit=false` |
 
+## Handler Output
+
+| Output | Value |
+| --- | ---: |
+| schema repair candidate datasets | 296 |
+| deterministic schema patches | 854 |
+| schema authoring items still needed | 75 |
+| reference closure candidates | 373 |
+| reference candidates unresolved after local inventory | 365 |
+| reference candidates needing name-match review | 8 |
+| single-record smoke candidate | `02d5be4a-b4e9-4104-92b0-d28e0850f7f1@01.01.002` |
+
+## Single-Record Dry Run
+
+The generated smoke candidate was passed to the existing TianGong CLI in dry-run mode:
+
+```bash
+npm run tiangong -- flow publish-version \
+  --input-file /home/example/projects/tiangong-lca-data-foundry/.foundry/workspaces/DATA-001/outputs/single-record-smoke/flow-publish-dry-run-input.jsonl \
+  --out-dir /home/example/projects/tiangong-lca-data-foundry/.foundry/workspaces/DATA-001/outputs/single-record-smoke/flow-publish-dry-run \
+  --limit 1 \
+  --dry-run \
+  --json
+```
+
+Dry-run result:
+
+| Metric | Value |
+| --- | ---: |
+| total rows | 1 |
+| success | 1 |
+| failure | 0 |
+| operation | `would_update_existing` |
+
+Remote commit remains disabled by local foundry gates.
+
 ## Local Runtime Evidence
 
 Runtime evidence is intentionally ignored by git:
@@ -54,7 +90,10 @@ Runtime evidence is intentionally ignored by git:
 - `.foundry/workspaces/DATA-001/outputs/repair-candidates-plan.json`
 - `.foundry/workspaces/DATA-001/outputs/version-bump-plan.json`
 - `.foundry/workspaces/DATA-001/outputs/dry-run-plan.json`
+- `.foundry/workspaces/DATA-001/outputs/schema-repair-candidates/`
+- `.foundry/workspaces/DATA-001/outputs/reference-closure/`
+- `.foundry/workspaces/DATA-001/outputs/single-record-smoke/`
 
 ## Interpretation
 
-The orchestrator state machine works for the first real electricity task. The data itself is not ready for `done`; the next implementation step is to add a repair-candidate generator for the three schema groups and a reference-closure resolver for the 373 flow references.
+The orchestrator state machine works for the first real electricity task. The data itself is not ready for `done`; schema repair candidates and reference closure candidates are now generated locally, and one flow publish-version dry-run succeeds. The next implementation step is to validate the candidate payloads and then enable one explicitly approved remote commit smoke test.

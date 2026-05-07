@@ -8,14 +8,16 @@ priority: P1
 allow_remote_commit: false
 source: LCA-DATA-AGENT
 claimed_at_utc: 2026-05-07T16:12:36.260Z
-updated_at_utc: 2026-05-07T16:12:36.494Z
+updated_at_utc: 2026-05-07T16:32:34.404Z
 workspace: .foundry/workspaces/DATA-001
-run_count: 1
-completed_run_at_utc: 2026-05-07T16:12:36.494Z
+run_count: 2
+completed_run_at_utc: 2026-05-07T16:32:34.404Z
 result: repair_required
 report: .foundry/workspaces/DATA-001/reports/electricity-system-test.zh-CN.md
 schema_issue_count: 935
 unresolved_reference_count: 373
+schema_candidate_count: 296
+reference_closure_candidate_count: 373
 ---
 
 Start the first category work package for the example-account account.

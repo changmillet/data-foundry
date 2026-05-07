@@ -13,11 +13,14 @@ The v0 orchestrator is filesystem-backed:
 
 ```bash
 npm run orchestrator:once
+npm run orchestrator:rerun-review -- --task-id DATA-001
 npm run orchestrator:run
 npm run orchestrator:status
 ```
 
 `orchestrator:once` is the default test entrypoint. It claims one eligible task, creates `.foundry/workspaces/<task-id>/`, writes machine-readable outputs, and moves the task to `review` or `done` according to gates.
+
+Use `orchestrator:rerun-review -- --task-id <id>` when a task is already in `review` and a new handler needs to append or refresh local evidence.
 
 ## Task File Shape
 

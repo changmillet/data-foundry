@@ -109,3 +109,16 @@ npm run tasks:check
 ```
 
 The first implemented handler is `kind=category-update` plus `category=electricity_system`, which reads the current `LCA-DATA-AGENT` example-account electricity work package and writes local-only evidence under `.foundry/workspaces/<task-id>/`.
+
+## 8. Remote Write Gate
+
+Remote writes are disabled unless every gate below is true:
+
+- local `.env` sets `FOUNDRY_ENABLE_REMOTE_COMMIT=true`
+- local `.env` sets `FOUNDRY_SINGLE_RECORD_COMMIT=true`
+- local `.env` sets `FOUNDRY_REMOTE_COMMIT_LIMIT=1`
+- the task sets `allow_remote_commit=true`
+- the candidate has a version bump plan and dry-run input
+- a dry-run succeeds before commit
+
+For the first database smoke test, use one generated flow candidate from `outputs/single-record-smoke/flow-publish-dry-run-input.jsonl` and run the TianGong CLI with `--limit 1`.

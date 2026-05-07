@@ -16,6 +16,9 @@ const taskDirs = Object.values(taskQueues);
 const foundryDirs = ['.foundry/logs', '.foundry/workspaces', '.foundry/state'];
 const lockPath = path.join(repoRoot, '.foundry/state/orchestrator.lock');
 const statusPath = path.join(repoRoot, '.foundry/state/orchestrator-status.json');
+const defaultLcaRoot = '/home/example/projects/LCA-DATA-AGENT';
+
+loadRuntimeEnv();
 
 function nowIso() {
   return new Date().toISOString();
@@ -36,6 +39,35 @@ function readJson(filePath) {
 
 function writeJson(filePath, data) {
   writeText(filePath, `${JSON.stringify(data, null, 2)}\n`);
+}
+
+function loadEnvFile(filePath, { override = false } = {}) {
+  if (!filePath || !fs.existsSync(filePath)) {
+    return { file: filePath, loaded: false, keys: [] };
+  }
+  const keys = [];
+  for (const rawLine of readText(filePath).split(/\r?\n/u)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+    const index = line.indexOf('=');
+    if (index === -1) continue;
+    const key = line.slice(0, index).trim();
+    let value = line.slice(index + 1).trim();
+    value = value.replace(/^export\s+/u, '');
+    value = value.replace(/^["']|["']$/gu, '');
+    if (override || process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+    keys.push(key);
+  }
+  return { file: filePath, loaded: true, keys };
+}
+
+function loadRuntimeEnv() {
+  const repoEnv = loadEnvFile(path.join(repoRoot, '.env'));
+  const lcaEnvFile = process.env.LCA_DATA_AGENT_ENV_FILE;
+  const lcaEnv = lcaEnvFile ? loadEnvFile(lcaEnvFile) : { file: null, loaded: false, keys: [] };
+  return { repoEnv, lcaEnv };
 }
 
 function splitFrontmatter(text) {
@@ -256,6 +288,33 @@ function doctor() {
   console.log(JSON.stringify(result, null, 2));
 }
 
+function envCheck() {
+  const requiredForRemoteWrites = [
+    'TIANGONG_LCA_API_BASE_URL',
+    'TIANGONG_LCA_API_KEY',
+    'TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY',
+  ];
+  const result = {
+    generated_at_utc: nowIso(),
+    repo_env_exists: fs.existsSync(path.join(repoRoot, '.env')),
+    lca_data_agent_root: process.env.LCA_DATA_AGENT_ROOT || defaultLcaRoot,
+    lca_data_agent_env_file: process.env.LCA_DATA_AGENT_ENV_FILE || null,
+    lca_data_agent_env_file_exists: process.env.LCA_DATA_AGENT_ENV_FILE ? fs.existsSync(process.env.LCA_DATA_AGENT_ENV_FILE) : false,
+    remote_write_policy: {
+      foundry_enable_remote_commit: process.env.FOUNDRY_ENABLE_REMOTE_COMMIT === 'true',
+      foundry_single_record_commit: process.env.FOUNDRY_SINGLE_RECORD_COMMIT === 'true',
+      foundry_remote_commit_limit: Number(process.env.FOUNDRY_REMOTE_COMMIT_LIMIT ?? 1),
+    },
+    required_remote_env: Object.fromEntries(requiredForRemoteWrites.map((key) => [key, Boolean(process.env[key])])),
+    ok_for_dry_run: true,
+    ok_for_single_record_remote_commit:
+      process.env.FOUNDRY_ENABLE_REMOTE_COMMIT === 'true'
+      && process.env.FOUNDRY_SINGLE_RECORD_COMMIT === 'true'
+      && requiredForRemoteWrites.every((key) => Boolean(process.env[key])),
+  };
+  console.log(JSON.stringify(result, null, 2));
+}
+
 function queueCounts() {
   return Object.fromEntries(
     Object.keys(taskQueues).map((queue) => [queue, listTaskFiles({ queue }).length]),
@@ -338,11 +397,11 @@ function findTaskById(taskId) {
   return null;
 }
 
-function pickInboxTask({ taskId } = {}) {
+function pickInboxTask({ taskId, includeReview = false } = {}) {
   if (taskId) {
     const task = findTaskById(taskId);
     if (!task) return null;
-    return task.queue === 'inbox' || task.queue === 'active' ? task : null;
+    return task.queue === 'inbox' || task.queue === 'active' || (includeReview && task.queue === 'review') ? task : null;
   }
   const files = listTaskFiles({ queue: 'inbox' });
   if (files.length === 0) return null;
@@ -464,10 +523,374 @@ function buildMarkdownTable(rows, headers) {
   return [headerLine, divider, ...body].join('\n');
 }
 
+function readJsonOrJsonl(filePath) {
+  const text = readText(filePath).trim();
+  if (!text) return [];
+  if (filePath.endsWith('.jsonl')) {
+    return text.split(/\r?\n/u).filter(Boolean).map((line) => JSON.parse(line));
+  }
+  return readJson(filePath);
+}
+
+function datasetKey(record) {
+  return `${record.table}:${record.id}:${record.version}`;
+}
+
+function deepClone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function parseDatasetPath(pathText) {
+  return pathText.split('.').map((segment) => (/^\d+$/u.test(segment) ? Number(segment) : segment));
+}
+
+function getAtPath(root, pathText) {
+  let current = root;
+  for (const segment of parseDatasetPath(pathText)) {
+    if (current == null) return undefined;
+    current = current[segment];
+  }
+  return current;
+}
+
+function getParentAtPath(root, pathText) {
+  const segments = parseDatasetPath(pathText);
+  const key = segments.pop();
+  let parent = root;
+  for (const segment of segments) {
+    if (parent == null) return { parent: undefined, key };
+    parent = parent[segment];
+  }
+  return { parent, key };
+}
+
+function setAtPath(root, pathText, value) {
+  const { parent, key } = getParentAtPath(root, pathText);
+  if (parent == null || key === undefined) return false;
+  parent[key] = value;
+  return true;
+}
+
+function hasChinese(text) {
+  return /[\u3400-\u9FFF]/u.test(String(text ?? ''));
+}
+
+function compactToLimit(text, limit = 500) {
+  const value = String(text ?? '').replace(/\s+/gu, ' ').trim();
+  if (value.length <= limit) return value;
+  const tags = value.match(/\[[^\]]+\]/gu) ?? [];
+  const tagText = tags.length > 0 ? ` ${tags.join(' ')}` : '';
+  const suffix = ` ...${tagText}`;
+  const headLength = Math.max(0, limit - suffix.length);
+  return `${value.slice(0, headLength).trimEnd()}${suffix}`.slice(0, limit);
+}
+
+function localizedPair(enText, zhText) {
+  return [
+    { '@xml:lang': 'en', '#text': enText },
+    { '@xml:lang': 'zh', '#text': zhText },
+  ];
+}
+
+function splitNameParts(text) {
+  return String(text ?? '').split(/[;；]/u).map((part) => part.trim()).filter(Boolean);
+}
+
+function deriveRequiredLocalizedValue(issue, fieldName) {
+  const enParts = splitNameParts(issue.name_en);
+  const zhParts = splitNameParts(issue.name_zh);
+  if (fieldName === 'treatmentStandardsRoutes' && (enParts[1] || zhParts[1])) {
+    return localizedPair(enParts[1] || 'unspecified treatment or route', zhParts[1] || '未指定处理或路线');
+  }
+  if (fieldName === 'mixAndLocationTypes' && (enParts[2] || zhParts[2])) {
+    return localizedPair(enParts[2] || 'unspecified mix and location', zhParts[2] || '未指定混合与地点');
+  }
+  if (fieldName === 'flowProperties' && (enParts[3] || zhParts[3])) {
+    return localizedPair(enParts[3] || 'unspecified flow property', zhParts[3] || '未指定流属性');
+  }
+  return null;
+}
+
+function incrementVersion(version) {
+  const parts = String(version ?? '').split('.');
+  if (parts.length !== 3 || parts.some((part) => !/^\d+$/u.test(part))) {
+    return null;
+  }
+  const nextPatch = String(Number(parts[2]) + 1).padStart(parts[2].length, '0');
+  return `${parts[0]}.${parts[1]}.${nextPatch}`;
+}
+
+function extractFlowName(row, lang = 'en') {
+  const info = row.json_ordered?.flowDataSet?.flowInformation?.dataSetInformation;
+  const name = info?.name ?? {};
+  const parts = ['baseName', 'treatmentStandardsRoutes', 'mixAndLocationTypes', 'flowProperties']
+    .map((field) => {
+      const value = name[field];
+      if (Array.isArray(value)) {
+        return value.find((item) => item?.['@xml:lang'] === lang)?.['#text'] ?? value[0]?.['#text'];
+      }
+      return value?.['#text'];
+    })
+    .filter(Boolean);
+  return parts.join('; ');
+}
+
+function normalizeName(text) {
+  return String(text ?? '')
+    .toLowerCase()
+    .replace(/\s+/gu, ' ')
+    .replace(/[，,]/gu, ',')
+    .trim();
+}
+
+function loadTargetRows(sourcePaths) {
+  const rowPaths = {
+    flows: sourcePaths.target_flows,
+    processes: sourcePaths.target_processes,
+  };
+  const byKey = new Map();
+  for (const [table, filePath] of Object.entries(rowPaths)) {
+    for (const row of readJsonOrJsonl(filePath)) {
+      byKey.set(`${table}:${row.id}:${row.version}`, { ...row, table, dataset_type: table === 'flows' ? 'flow' : 'process' });
+    }
+  }
+  return byKey;
+}
+
+function makeSchemaRepairCandidates({ task, workspace, sourcePaths, category, schemaIssues }) {
+  const rowsByKey = loadTargetRows(sourcePaths);
+  const grouped = new Map();
+  for (const issue of schemaIssues) {
+    const key = datasetKey(issue);
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push(issue);
+  }
+
+  const outDir = path.join(workspace, 'outputs/schema-repair-candidates');
+  fs.mkdirSync(outDir, { recursive: true });
+  const candidates = [];
+  const skipped = [];
+  for (const [key, issues] of grouped) {
+    const sourceRow = rowsByKey.get(key);
+    if (!sourceRow) {
+      skipped.push({ key, reason: 'source row not found in target integration candidate rows', issue_count: issues.length });
+      continue;
+    }
+    const patchedRow = deepClone(sourceRow);
+    const patches = [];
+    const needsAuthoring = [];
+    for (const issue of issues) {
+      if (issue.message.includes('Too big') && issue.path.endsWith('.#text')) {
+        const original = getAtPath(patchedRow.json_ordered, issue.path);
+        const updated = compactToLimit(original, 500);
+        if (updated !== original && setAtPath(patchedRow.json_ordered, issue.path, updated)) {
+          patches.push({
+            kind: 'string-length',
+            path: issue.path,
+            original_length: String(original ?? '').length,
+            updated_length: updated.length,
+          });
+        }
+        continue;
+      }
+      if (issue.message.includes('@xml:lang') && issue.path.endsWith('.#text')) {
+        const { parent } = getParentAtPath(patchedRow.json_ordered, issue.path);
+        const text = parent?.['#text'];
+        if (parent && issue.message.includes("values starting with 'zh'") && !hasChinese(text)) {
+          const originalLang = parent['@xml:lang'];
+          parent['@xml:lang'] = 'en';
+          patches.push({ kind: 'language-tag', path: issue.path.replace(/\.#text$/u, '.@xml:lang'), original: originalLang, updated: 'en' });
+          continue;
+        }
+        if (parent && issue.message.includes("values starting with 'en'") && hasChinese(text)) {
+          const originalLang = parent['@xml:lang'];
+          parent['@xml:lang'] = 'zh';
+          patches.push({ kind: 'language-tag', path: issue.path.replace(/\.#text$/u, '.@xml:lang'), original: originalLang, updated: 'zh' });
+          continue;
+        }
+      }
+      if (issue.message === 'Required') {
+        const fieldName = String(issue.path).split('.').at(-1);
+        const derived = deriveRequiredLocalizedValue(issue, fieldName);
+        if (derived && setAtPath(patchedRow.json_ordered, issue.path, derived)) {
+          patches.push({ kind: 'required-localized-name-part', path: issue.path, field: fieldName, updated_count: derived.length });
+          continue;
+        }
+        needsAuthoring.push({
+          path: issue.path,
+          message: issue.message,
+          reason: 'required value cannot be safely derived from bilingual flow name parts',
+        });
+      }
+    }
+    if (patches.length === 0 && needsAuthoring.length === 0) {
+      skipped.push({ key, reason: 'no deterministic patch rule matched', issue_count: issues.length });
+      continue;
+    }
+    const proposedVersion = incrementVersion(sourceRow.version);
+    candidates.push({
+      key,
+      id: sourceRow.id,
+      source_version: sourceRow.version,
+      proposed_publish_version: proposedVersion,
+      table: sourceRow.table,
+      dataset_type: sourceRow.dataset_type,
+      state_code: sourceRow.state_code,
+      patch_count: patches.length,
+      needs_authoring_count: needsAuthoring.length,
+      validation_status: 'not_validated',
+      version_policy: 'Keep source row version during repair. Use proposed_publish_version only immediately before publish/import.',
+      patches,
+      needs_authoring: needsAuthoring,
+      patched_row: patchedRow,
+    });
+  }
+
+  const deterministic = candidates.filter((candidate) => candidate.patch_count > 0);
+  const flowSmokeCandidate = deterministic.find((candidate) => candidate.table === 'flows' && candidate.proposed_publish_version);
+  const smokeDir = path.join(workspace, 'outputs/single-record-smoke');
+  fs.mkdirSync(smokeDir, { recursive: true });
+  let smokePlan = null;
+  if (flowSmokeCandidate) {
+    const publishRow = deepClone(flowSmokeCandidate.patched_row);
+    publishRow.version = flowSmokeCandidate.proposed_publish_version;
+    smokePlan = {
+      generated_at_utc: nowIso(),
+      task_id: task.meta.id,
+      candidate_key: flowSmokeCandidate.key,
+      dataset_type: 'flow',
+      id: publishRow.id,
+      source_version: flowSmokeCandidate.source_version,
+      proposed_publish_version: publishRow.version,
+      commit_command: 'npm run tiangong -- flow publish-version --input-file <jsonl> --out-dir <out-dir> --limit 1 --commit',
+      dry_run_command: 'npm run tiangong -- flow publish-version --input-file <jsonl> --out-dir <out-dir> --limit 1 --dry-run',
+      gates: {
+        allow_remote_commit: Boolean(task.meta.allow_remote_commit),
+        foundry_enable_remote_commit: process.env.FOUNDRY_ENABLE_REMOTE_COMMIT === 'true',
+        foundry_single_record_commit: process.env.FOUNDRY_SINGLE_RECORD_COMMIT === 'true',
+        limit_one: Number(process.env.FOUNDRY_REMOTE_COMMIT_LIMIT ?? 1) === 1,
+      },
+      status: 'prepared_dry_run_input_only',
+    };
+    writeText(path.join(smokeDir, 'flow-publish-dry-run-input.jsonl'), `${JSON.stringify(publishRow)}\n`);
+    writeJson(path.join(smokeDir, 'single-record-smoke-plan.json'), smokePlan);
+  }
+
+  const summary = {
+    generated_at_utc: nowIso(),
+    task_id: task.meta.id,
+    category,
+    issue_dataset_count: grouped.size,
+    candidate_count: candidates.length,
+    deterministic_candidate_count: deterministic.length,
+    skipped_count: skipped.length,
+    patch_count: candidates.reduce((sum, candidate) => sum + candidate.patch_count, 0),
+    needs_authoring_count: candidates.reduce((sum, candidate) => sum + candidate.needs_authoring_count, 0),
+    validation_status: 'not_validated',
+    smoke_candidate: smokePlan,
+  };
+  writeJson(path.join(outDir, 'summary.json'), summary);
+  writeText(path.join(outDir, 'candidates.jsonl'), candidates.map((candidate) => JSON.stringify(candidate)).join('\n') + (candidates.length ? '\n' : ''));
+  writeJson(path.join(outDir, 'skipped.json'), skipped);
+  return summary;
+}
+
+function loadFlowInventories(sourcePaths) {
+  const candidates = [
+    ['target_integration_candidate', sourcePaths.target_flows],
+    ['source_power_system', path.join(path.dirname(sourcePaths.target_flows), 'source_power_system.flows.rows.json')],
+    ['source_pv_yunnan', path.join(path.dirname(sourcePaths.target_flows), 'source_pv_yunnan.flows.rows.json')],
+    ['source_wind', path.join(path.dirname(sourcePaths.target_flows), 'source_wind.flows.rows.json')],
+    ['source_accounts', path.join(path.dirname(sourcePaths.target_flows), 'source-accounts.flows.rows.jsonl')],
+  ];
+  const exact = new Map();
+  const anyVersion = new Map();
+  const byName = new Map();
+  for (const [inventory, filePath] of candidates) {
+    if (!fs.existsSync(filePath)) continue;
+    for (const row of readJsonOrJsonl(filePath)) {
+      const role = row.account_role ?? inventory;
+      const entry = {
+        inventory,
+        account_role: role,
+        id: row.id,
+        version: row.version,
+        user_id: row.user_id,
+        state_code: row.state_code,
+        name_en: extractFlowName(row, 'en'),
+        name_zh: extractFlowName(row, 'zh'),
+        row,
+      };
+      const exactKey = `${entry.id}@${entry.version}`;
+      if (!exact.has(exactKey)) exact.set(exactKey, []);
+      exact.get(exactKey).push(entry);
+      if (!anyVersion.has(entry.id)) anyVersion.set(entry.id, []);
+      anyVersion.get(entry.id).push(entry);
+      for (const name of [entry.name_en, entry.name_zh].map(normalizeName).filter(Boolean)) {
+        if (!byName.has(name)) byName.set(name, []);
+        byName.get(name).push(entry);
+      }
+    }
+  }
+  return { exact, anyVersion, byName };
+}
+
+function makeReferenceClosure({ workspace, sourcePaths, category, unresolvedRefs }) {
+  const inventory = loadFlowInventories(sourcePaths);
+  const rows = [];
+  for (const ref of unresolvedRefs) {
+    const exactKey = `${ref.flow_id}@${ref.flow_version}`;
+    const exactMatches = inventory.exact.get(exactKey) ?? [];
+    const anyVersionMatches = inventory.anyVersion.get(ref.flow_id) ?? [];
+    const nameMatches = inventory.byName.get(normalizeName(ref.flow_name)) ?? [];
+    let status = 'unresolved_needs_fetch_or_create';
+    if (exactMatches.length > 0) status = 'exact_inventory_match';
+    else if (anyVersionMatches.length > 0) status = 'any_version_inventory_match';
+    else if (nameMatches.length > 0) status = 'name_match_review';
+    rows.push({
+      ...ref,
+      status,
+      exact_match_count: exactMatches.length,
+      any_version_match_count: anyVersionMatches.length,
+      name_match_count: nameMatches.length,
+      suggested_action:
+        status === 'exact_inventory_match'
+          ? 'mark as externally resolvable or copy/publish canonical flow into integration account if policy requires account-owned closure'
+          : status === 'any_version_inventory_match'
+            ? 'review version drift and either update process reference version or publish/copy required version'
+            : status === 'name_match_review'
+              ? 'manual review required before rewriting by normalized name'
+              : 'query live public/current inventories or create/import missing flow before process reference repair',
+      matches: {
+        exact: exactMatches.slice(0, 5).map(({ row, ...match }) => match),
+        any_version: anyVersionMatches.slice(0, 5).map(({ row, ...match }) => match),
+        name: nameMatches.slice(0, 5).map(({ row, ...match }) => match),
+      },
+    });
+  }
+  const byStatus = Object.fromEntries(countBy(rows, (row) => row.status).map((item) => [item.key, item.count]));
+  const processCount = new Set(rows.map((row) => `${row.process_id}@${row.process_version}`)).size;
+  const outDir = path.join(workspace, 'outputs/reference-closure');
+  fs.mkdirSync(outDir, { recursive: true });
+  const summary = {
+    generated_at_utc: nowIso(),
+    category,
+    total_refs: rows.length,
+    affected_process_count: processCount,
+    status_counts: byStatus,
+    source_inventory_note: 'local source/current inventories only; live public DB lookup is deferred to remote-enabled run',
+  };
+  writeJson(path.join(outDir, 'summary.json'), summary);
+  writeJson(path.join(outDir, 'closure-candidates.json'), rows);
+  writeText(path.join(outDir, 'closure-candidates.jsonl'), rows.map((row) => JSON.stringify(row)).join('\n') + (rows.length ? '\n' : ''));
+  return summary;
+}
+
 function runElectricityCategoryUpdate(task, workspace) {
   const category = task.meta.category;
-  const lcaRoot = process.env.LCA_DATA_AGENT_ROOT || '/home/example/projects/LCA-DATA-AGENT';
+  const lcaRoot = process.env.LCA_DATA_AGENT_ROOT || defaultLcaRoot;
   const artifactRoot = path.join(lcaRoot, 'artifacts/example-account-account-data-governance-20260506');
+  const electricityArtifactRoot = path.join(lcaRoot, 'artifacts/electricity-multi-account-governance-20260505');
   const outputRoot = path.join(artifactRoot, 'outputs');
   const categoryRoot = path.join(outputRoot, 'categories', category);
   const sourcePaths = {
@@ -479,6 +902,8 @@ function runElectricityCategoryUpdate(task, workspace) {
     unresolved_refs: path.join(outputRoot, 'reference-closure/unresolved-process-flow-refs.json'),
     process_source_summary: path.join(outputRoot, 'process-source-review/process-source-summary.json'),
     category_report: path.join(artifactRoot, 'reports/category-electricity-system-workplan.zh-CN.md'),
+    target_flows: path.join(electricityArtifactRoot, 'inputs/target_integration_candidate.flows.rows.json'),
+    target_processes: path.join(electricityArtifactRoot, 'inputs/target_integration_candidate.processes.rows.json'),
   };
   for (const [name, sourcePath] of Object.entries(sourcePaths)) {
     if (!fs.existsSync(sourcePath)) {
@@ -533,11 +958,26 @@ function runElectricityCategoryUpdate(task, workspace) {
   const generalCommentTooLong = schemaIssues.filter((issue) => issue.path.includes('generalComment') && issue.message.includes('Too big'));
   const languageMismatch = schemaIssues.filter((issue) => issue.message.includes('@xml:lang'));
   const missingRequired = schemaIssues.filter((issue) => issue.message === 'Required');
+  const schemaRepairCandidateSummary = makeSchemaRepairCandidates({
+    task,
+    workspace,
+    sourcePaths,
+    category,
+    schemaIssues,
+  });
+  const referenceClosureSummary = makeReferenceClosure({
+    workspace,
+    sourcePaths,
+    category,
+    unresolvedRefs,
+  });
   const repairCandidatePlan = {
     generated_at_utc: nowIso(),
     task_id: task.meta.id,
     category,
     remote_commit_allowed: Boolean(task.meta.allow_remote_commit),
+    generated_payload_candidate_count: schemaRepairCandidateSummary.candidate_count,
+    reference_closure_candidate_count: referenceClosureSummary.total_refs,
     candidates: [
       {
         id: 'schema-general-comment-length',
@@ -656,6 +1096,8 @@ function runElectricityCategoryUpdate(task, workspace) {
     top_schema_issues: schemaTopIssues.slice(0, 10),
     top_unresolved_refs: topRefs.slice(0, 10),
     schema_issue_groups: schemaIssueGroups,
+    schema_repair_candidates: schemaRepairCandidateSummary,
+    reference_closure_candidates: referenceClosureSummary,
     gates,
     verdict: blockingGateCount === 0 ? 'ready_for_human_review' : 'repair_required',
     next_queue: 'review',
@@ -701,7 +1143,13 @@ ${buildMarkdownTable(reportRows, ['指标', '数值'])}
 
 ${repairCandidatePlan.candidates.map((candidate) => `- ${candidate.id}：${candidate.action}`).join('\n')}
 
-## 4. 下一步
+## 4. 新增 Handler 产物
+
+- schema repair candidate payload：${schemaRepairCandidateSummary.candidate_count} 个 dataset candidate，${schemaRepairCandidateSummary.patch_count} 个 deterministic patch，${schemaRepairCandidateSummary.needs_authoring_count} 项仍需语义补写。
+- reference closure：${referenceClosureSummary.total_refs} 条引用候选，状态分布 ${JSON.stringify(referenceClosureSummary.status_counts)}。
+- single-record smoke：${schemaRepairCandidateSummary.smoke_candidate ? `${schemaRepairCandidateSummary.smoke_candidate.id}@${schemaRepairCandidateSummary.smoke_candidate.proposed_publish_version}` : '未找到可用 flow candidate'}。
+
+## 5. 下一步
 
 1. 生成本地 payload repair candidates。
 2. 对 schema 修复候选重新 validation。
@@ -762,6 +1210,8 @@ function runTask(task) {
     report: result.report_path,
     schema_issue_count: result.summary?.schema_issue_count,
     unresolved_reference_count: result.summary?.unresolved_reference_count,
+    schema_candidate_count: result.schema_repair_candidates?.candidate_count,
+    reference_closure_candidate_count: result.reference_closure_candidates?.total_refs,
   });
   return { task: nextTask, result };
 }
@@ -786,7 +1236,7 @@ async function orchestrate(options) {
   try {
     do {
       writeStatus({ state: 'polling', queue_counts: queueCounts(), processed });
-      const picked = pickInboxTask({ taskId: options.taskId });
+      const picked = pickInboxTask({ taskId: options.taskId, includeReview: Boolean(options.includeReview) });
       if (picked) {
         const claimed = claimTask(picked);
         const activeTask = readTaskFile(path.join(repoRoot, taskQueues.active, claimed.fileName));
@@ -831,6 +1281,8 @@ if (command === 'init') {
   tasksCheck();
 } else if (command === 'status') {
   status();
+} else if (command === 'env-check') {
+  envCheck();
 } else if (command === 'orchestrate') {
   orchestrate(options).catch((error) => {
     writeStatus({ state: 'failed', error: error.message, queue_counts: queueCounts() });
@@ -839,6 +1291,6 @@ if (command === 'init') {
     process.exit(1);
   });
 } else {
-  console.log('Usage: node scripts/foundry.mjs init|doctor|workflow-check|tasks-list|tasks-check|status|orchestrate [--once] [--task-id ID] [--interval-ms N] [--max-tasks N]');
+  console.log('Usage: node scripts/foundry.mjs init|doctor|workflow-check|tasks-list|tasks-check|status|env-check|orchestrate [--once] [--task-id ID] [--include-review] [--interval-ms N] [--max-tasks N]');
   process.exit(command === 'help' || command === '--help' || command === '-h' ? 0 : 1);
 }
