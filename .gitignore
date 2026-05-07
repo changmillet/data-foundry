@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+node_modules/
+.foundry/logs/
+.foundry/workspaces/
+.foundry/state/
+artifacts/
+reports/
+tmp/
+*.local
+

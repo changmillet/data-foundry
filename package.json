@@ -1,0 +1,18 @@
+{
+  "name": "tiangong-lca-data-foundry",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Private Symphony-style orchestration project for autonomous TianGong LCA data work.",
+  "scripts": {
+    "init:runtime": "node scripts/foundry.mjs init",
+    "doctor": "node scripts/foundry.mjs doctor",
+    "workflow:check": "node scripts/foundry.mjs workflow-check",
+    "tasks:list": "node scripts/foundry.mjs tasks-list",
+    "tasks:check": "node scripts/foundry.mjs tasks-check"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "license": "UNLICENSED"
+}
