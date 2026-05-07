@@ -8,6 +8,9 @@
     "init:runtime": "node scripts/foundry.mjs init",
     "doctor": "node scripts/foundry.mjs doctor",
     "workflow:check": "node scripts/foundry.mjs workflow-check",
+    "orchestrator:once": "node scripts/foundry.mjs orchestrate --once",
+    "orchestrator:run": "node scripts/foundry.mjs orchestrate",
+    "orchestrator:status": "node scripts/foundry.mjs status",
     "tasks:list": "node scripts/foundry.mjs tasks-list",
     "tasks:check": "node scripts/foundry.mjs tasks-check"
   },

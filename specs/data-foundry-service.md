@@ -65,6 +65,14 @@ For LCA data work, the task tracker starts as filesystem-backed Markdown files. 
 Inbox -> Classified -> WorkspaceReady -> Running -> EvidenceReady -> DryRunReady -> ReviewReady -> Done
 ```
 
+The v0 filesystem implementation materializes the main queue transitions as:
+
+```text
+tasks/inbox -> tasks/active -> tasks/review -> tasks/done
+```
+
+The orchestrator may stop in `tasks/review` when a task has generated evidence but still has open schema, source/numeric, reference, version, or dry-run gates.
+
 Failure states:
 
 - `Needs Evidence`
@@ -90,3 +98,14 @@ A category or task is not complete until:
 - no hidden dashboard-only policy
 - no full autonomous commit to production without explicit policy upgrade
 
+## 7. v0 CLI Surface
+
+```bash
+npm run init:runtime
+npm run orchestrator:once
+npm run orchestrator:run
+npm run orchestrator:status
+npm run tasks:check
+```
+
+The first implemented handler is `kind=category-update` plus `category=electricity_system`, which reads the current `LCA-DATA-AGENT` example-account electricity work package and writes local-only evidence under `.foundry/workspaces/<task-id>/`.

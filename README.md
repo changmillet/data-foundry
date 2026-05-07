@@ -48,6 +48,8 @@ The first category queue is:
 npm run init:runtime
 npm run doctor
 npm run workflow:check
+npm run orchestrator:once
+npm run orchestrator:status
 npm run tasks:list
 npm run tasks:check
 ```

@@ -62,3 +62,10 @@ Operate as a data foundry worker:
 7. Leave machine-readable outputs and a concise report.
 8. If the task uncovers missing data, ambiguous source evidence, or unsafe writes, create follow-up task records instead of guessing.
 
+Filesystem state transitions:
+
+```text
+tasks/inbox/TASK.md -> tasks/active/TASK.md -> tasks/review/TASK.md -> tasks/done/TASK.md
+```
+
+Use `tasks/review` when evidence or repair work is ready but any gate is still open. Use `tasks/done` only when schema, source/numeric, reference closure, version plan, and dry-run/verification gates all pass or are explicitly waived with evidence.
