@@ -16,7 +16,28 @@ const taskDirs = Object.values(taskQueues);
 const foundryDirs = ['.foundry/logs', '.foundry/workspaces', '.foundry/state'];
 const lockPath = path.join(repoRoot, '.foundry/state/orchestrator.lock');
 const statusPath = path.join(repoRoot, '.foundry/state/orchestrator-status.json');
+const defaultProjectsRoot = '/home/example/projects';
+const defaultLcaWorkspaceRoot = path.join(defaultProjectsRoot, 'workspace');
 const defaultLcaRoot = '/home/example/projects/LCA-DATA-AGENT';
+const lcaSkillNames = new Set([
+  'current-account-dataset-review',
+  'embedding-ft',
+  'flow-governance-review',
+  'flow-hybrid-search',
+  'forum-v1-data-toolchain',
+  'lca-publish-executor',
+  'lifecycleinventory-review',
+  'lifecyclemodel-automated-builder',
+  'lifecyclemodel-hybrid-search',
+  'lifecyclemodel-recursive-orchestrator',
+  'lifecyclemodel-resulting-process-builder',
+  'lifecyclemodel-resulting-process-projector',
+  'process-automated-builder',
+  'process-dedup-review',
+  'process-hybrid-search',
+  'process-scope-statistics',
+  'tiangong-lca-remote-ops',
+]);
 
 loadRuntimeEnv();
 
@@ -311,6 +332,220 @@ function envCheck() {
       process.env.FOUNDRY_ENABLE_REMOTE_COMMIT === 'true'
       && process.env.FOUNDRY_SINGLE_RECORD_COMMIT === 'true'
       && requiredForRemoteWrites.every((key) => Boolean(process.env[key])),
+  };
+  console.log(JSON.stringify(result, null, 2));
+}
+
+function configuredRoots() {
+  const projectsRoot = process.env.FOUNDRY_PROJECTS_ROOT || defaultProjectsRoot;
+  const lcaWorkspaceRoot = process.env.FOUNDRY_LCA_WORKSPACE_ROOT || defaultLcaWorkspaceRoot;
+  return {
+    projects_root: projectsRoot,
+    lca_workspace_root: lcaWorkspaceRoot,
+    lca_data_agent_root: process.env.LCA_DATA_AGENT_ROOT || defaultLcaRoot,
+    tiangong_lca_cli_dir:
+      process.env.TIANGONG_LCA_CLI_DIR || path.join(lcaWorkspaceRoot, 'tiangong-lca-cli'),
+    tiangong_lca_skills_root:
+      process.env.TIANGONG_LCA_SKILLS_ROOT || path.join(lcaWorkspaceRoot, 'tiangong-lca-skills'),
+    lca_skills_root: process.env.LCA_SKILLS_ROOT || path.join(projectsRoot, 'lca-skills'),
+    agent_skills_root: process.env.FOUNDRY_AGENT_SKILLS_ROOT || path.join(process.env.HOME || '/home/example', '.agents/skills'),
+    edge_functions_root:
+      process.env.TIANGONG_LCA_EDGE_FUNCTIONS_ROOT
+      || path.join(lcaWorkspaceRoot, 'tiangong-lca-edge-functions'),
+    database_engine_root:
+      process.env.TIANGONG_LCA_DATABASE_ENGINE_ROOT || path.join(lcaWorkspaceRoot, 'database-engine'),
+    domain_embedding_root:
+      process.env.TIANGONG_LCA_DOMAIN_EMBEDDING_ROOT || path.join(lcaWorkspaceRoot, 'lca-domain-embedding'),
+  };
+}
+
+function pathStatus(filePath) {
+  return {
+    path: filePath,
+    exists: Boolean(filePath && fs.existsSync(filePath)),
+  };
+}
+
+function parseGitmodules(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return [];
+  }
+  const entries = [];
+  let current = null;
+  for (const rawLine of readText(filePath).split(/\r?\n/u)) {
+    const line = rawLine.trim();
+    const header = line.match(/^\[submodule "(.+)"\]$/u);
+    if (header) {
+      if (current) entries.push(current);
+      current = { name: header[1] };
+      continue;
+    }
+    if (!current) continue;
+    const match = line.match(/^([A-Za-z0-9_.-]+)\s*=\s*(.+)$/u);
+    if (match) {
+      current[match[1]] = match[2];
+    }
+  }
+  if (current) entries.push(current);
+  return entries;
+}
+
+function safeGitCommit(repoPath) {
+  const gitHeadPath = path.join(repoPath, '.git');
+  const headFilePath = path.join(repoPath, '.git/HEAD');
+  try {
+    if (fs.existsSync(headFilePath)) {
+      const head = readText(headFilePath).trim();
+      if (head.startsWith('ref: ')) {
+        const refPath = path.join(repoPath, '.git', head.slice('ref: '.length));
+        return fs.existsSync(refPath) ? readText(refPath).trim() : null;
+      }
+      return head || null;
+    }
+    if (fs.existsSync(gitHeadPath) && fs.statSync(gitHeadPath).isFile()) {
+      const gitdir = readText(gitHeadPath).trim().replace(/^gitdir:\s*/u, '');
+      const absGitDir = path.resolve(repoPath, gitdir);
+      const headPath = path.join(absGitDir, 'HEAD');
+      if (!fs.existsSync(headPath)) return null;
+      const head = readText(headPath).trim();
+      if (head.startsWith('ref: ')) {
+        const refPath = path.join(absGitDir, head.slice('ref: '.length));
+        return fs.existsSync(refPath) ? readText(refPath).trim() : null;
+      }
+      return head || null;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function listWorkspaceRepos(workspaceRoot) {
+  return parseGitmodules(path.join(workspaceRoot, '.gitmodules')).map((entry) => {
+    const absPath = path.join(workspaceRoot, entry.path ?? '');
+    return {
+      id: entry.name,
+      path: entry.path,
+      abs_path: absPath,
+      url: entry.url ?? null,
+      exists: fs.existsSync(absPath),
+      commit: fs.existsSync(absPath) ? safeGitCommit(absPath) : null,
+    };
+  });
+}
+
+function readSkillMetadata(skillPath) {
+  const text = readText(skillPath);
+  const { frontmatter } = splitFrontmatter(text);
+  const meta = parseFlatFrontmatter(frontmatter);
+  return {
+    name: meta.name || path.basename(path.dirname(skillPath)),
+    description: meta.description || '',
+  };
+}
+
+function listSkills(root, { lcaOnly = false } = {}) {
+  if (!fs.existsSync(root)) {
+    return [];
+  }
+  const rows = [];
+  for (const name of fs.readdirSync(root).sort()) {
+    const skillPath = path.join(root, name, 'SKILL.md');
+    if (!fs.existsSync(skillPath)) continue;
+    const meta = readSkillMetadata(skillPath);
+    if (lcaOnly && !lcaSkillNames.has(String(meta.name))) {
+      continue;
+    }
+    rows.push({
+      name: meta.name,
+      dir: name,
+      description: meta.description,
+      path: skillPath,
+      has_scripts: fs.existsSync(path.join(root, name, 'scripts')),
+      has_references: fs.existsSync(path.join(root, name, 'references')),
+      has_assets: fs.existsSync(path.join(root, name, 'assets')),
+    });
+  }
+  return rows;
+}
+
+function hybridSearchSurfaces(roots) {
+  const edgeBase = path.join(roots.edge_functions_root, 'supabase/functions');
+  const dbBase = path.join(
+    roots.database_engine_root,
+    'supabase/workspace/schemas/public/functions',
+  );
+  return [
+    {
+      corpus: 'flow',
+      skill: 'flow-hybrid-search',
+      cli: 'tiangong search flow --input <file>',
+      edge_function: 'flow_hybrid_search',
+      database_rpc: 'hybrid_search_flows',
+    },
+    {
+      corpus: 'process',
+      skill: 'process-hybrid-search',
+      cli: 'tiangong search process --input <file>',
+      edge_function: 'process_hybrid_search',
+      database_rpc: 'hybrid_search_processes',
+    },
+    {
+      corpus: 'lifecyclemodel',
+      skill: 'lifecyclemodel-hybrid-search',
+      cli: 'tiangong search lifecyclemodel --input <file>',
+      edge_function: 'lifecyclemodel_hybrid_search',
+      database_rpc: 'hybrid_search_lifecyclemodels',
+    },
+  ].map((surface) => ({
+    ...surface,
+    edge_path: path.join(edgeBase, surface.edge_function, 'index.ts'),
+    edge_exists: fs.existsSync(path.join(edgeBase, surface.edge_function, 'index.ts')),
+    rpc_path: path.join(dbBase, surface.database_rpc, 'definition.sql'),
+    rpc_exists: fs.existsSync(path.join(dbBase, surface.database_rpc, 'definition.sql')),
+  }));
+}
+
+function workspaceMap() {
+  const roots = configuredRoots();
+  const workspaceSkills = listSkills(roots.tiangong_lca_skills_root);
+  const siblingSkills = listSkills(roots.lca_skills_root);
+  const installedLcaSkills = listSkills(roots.agent_skills_root, { lcaOnly: true });
+  const result = {
+    generated_at_utc: nowIso(),
+    repo_root: repoRoot,
+    roots: Object.fromEntries(
+      Object.entries(roots).map(([key, value]) => [key, pathStatus(value)]),
+    ),
+    workspace_repos: listWorkspaceRepos(roots.lca_workspace_root),
+    skills: {
+      workspace_source: {
+        root: roots.tiangong_lca_skills_root,
+        exists: fs.existsSync(roots.tiangong_lca_skills_root),
+        count: workspaceSkills.length,
+        skills: workspaceSkills,
+      },
+      sibling_source: {
+        root: roots.lca_skills_root,
+        exists: fs.existsSync(roots.lca_skills_root),
+        count: siblingSkills.length,
+        skills: siblingSkills,
+      },
+      installed_lca_runtime: {
+        root: roots.agent_skills_root,
+        exists: fs.existsSync(roots.agent_skills_root),
+        count: installedLcaSkills.length,
+        skills: installedLcaSkills,
+      },
+    },
+    hybrid_search: {
+      domain_embedding_root: pathStatus(roots.domain_embedding_root),
+      surfaces: hybridSearchSurfaces(roots),
+    },
+    design_docs: [
+      'docs/workspace-project-map.md',
+      'specs/workspace-capability-adapters.md',
+    ],
   };
   console.log(JSON.stringify(result, null, 2));
 }
@@ -1283,6 +1518,8 @@ if (command === 'init') {
   status();
 } else if (command === 'env-check') {
   envCheck();
+} else if (command === 'workspace-map') {
+  workspaceMap();
 } else if (command === 'orchestrate') {
   orchestrate(options).catch((error) => {
     writeStatus({ state: 'failed', error: error.message, queue_counts: queueCounts() });
@@ -1291,6 +1528,6 @@ if (command === 'init') {
     process.exit(1);
   });
 } else {
-  console.log('Usage: node scripts/foundry.mjs init|doctor|workflow-check|tasks-list|tasks-check|status|env-check|orchestrate [--once] [--task-id ID] [--include-review] [--interval-ms N] [--max-tasks N]');
+  console.log('Usage: node scripts/foundry.mjs init|doctor|workflow-check|workspace-map|tasks-list|tasks-check|status|env-check|orchestrate [--once] [--task-id ID] [--include-review] [--interval-ms N] [--max-tasks N]');
   process.exit(command === 'help' || command === '--help' || command === '-h' ? 0 : 1);
 }

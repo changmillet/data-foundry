@@ -7,6 +7,7 @@
   "scripts": {
     "init:runtime": "node scripts/foundry.mjs init",
     "doctor": "node scripts/foundry.mjs doctor",
+    "workspace:map": "node scripts/foundry.mjs workspace-map",
     "env:check": "node scripts/foundry.mjs env-check",
     "workflow:check": "node scripts/foundry.mjs workflow-check",
     "orchestrator:once": "node scripts/foundry.mjs orchestrate --once",

@@ -36,26 +36,36 @@ For LCA data work, the task tracker starts as filesystem-backed Markdown files. 
    - owns polling, eligibility, concurrency, retries, and terminal reconciliation
    - dispatches task workspaces
 
-4. `Workspace Manager`
+4. `Project Registry`
+   - maps the local LCA workspace submodules, sibling checkouts, and installed skill roots
+   - keeps ownership boundaries explicit
+   - records which roots are read-only references and which roots are executable surfaces
+
+5. `Capability Router`
+   - maps a task class to CLI, skill, source-artifact, hybrid-search, schema, Edge Function, or database adapters
+   - prevents hidden direct database writes
+   - emits source manifests for every cross-project invocation
+
+6. `Workspace Manager`
    - creates `.foundry/workspaces/<task-id>`
    - runs lifecycle hooks
    - preserves or cleans workspaces according to terminal state
 
-5. `Data Governance Planner`
+7. `Data Governance Planner`
    - freezes inventory
    - builds category queues
    - maps source evidence, schema issues, reference closure, and version policy
 
-6. `Agent Runner`
+8. `Agent Runner`
    - launches the configured coding/data agent
    - supplies the rendered task prompt
    - streams updates and terminal status
 
-7. `Verification Gate`
+9. `Verification Gate`
    - checks schema, source evidence, reference closure, dry-run output, and version bump plan
    - blocks unsafe commit
 
-8. `Observability`
+10. `Observability`
    - writes structured logs
    - exposes status snapshots for operators
 
@@ -102,6 +112,7 @@ A category or task is not complete until:
 
 ```bash
 npm run init:runtime
+npm run workspace:map
 npm run orchestrator:once
 npm run orchestrator:run
 npm run orchestrator:status
@@ -109,6 +120,8 @@ npm run tasks:check
 ```
 
 The first implemented handler is `kind=category-update` plus `category=electricity_system`, which reads the current `LCA-DATA-AGENT` example-account electricity work package and writes local-only evidence under `.foundry/workspaces/<task-id>/`.
+
+`workspace:map` is the first read-only registry diagnostic. It records the local workspace submodules, LCA skills, installed runtime skills, CLI roots, and hybrid-search surfaces that future handlers should use through adapters.
 
 ## 8. Remote Write Gate
 
@@ -122,3 +135,23 @@ Remote writes are disabled unless every gate below is true:
 - a dry-run succeeds before commit
 
 For the first database smoke test, use one generated flow candidate from `outputs/single-record-smoke/flow-publish-dry-run-input.jsonl` and run the TianGong CLI with `--limit 1`.
+
+## 9. Workspace Capability Design
+
+The foundry must design against the full local LCA workspace, not only the initial `LCA-DATA-AGENT` artifact package.
+
+Authoritative local references:
+
+- `docs/workspace-project-map.md`
+- `specs/workspace-capability-adapters.md`
+- `/home/example/projects/workspace/AGENTS.md`
+- `/home/example/projects/workspace/.docpact/config.yaml`
+- `/home/example/projects/workspace/_docs/reference/workspace-repo-graph.yaml`
+
+Design rule:
+
+- use `tiangong-lca-cli` as the default execution surface
+- use `tiangong-lca-skills` as a thin agent-facing wrapper layer
+- use `tiangong search ...` or the hybrid-search skills for retrieval
+- use Edge Function and database repositories for diagnosis and implementation, not routine foundry runtime shortcuts
+- keep `LCA-DATA-AGENT` as a source-artifact adapter until current-account inventory/export is fully CLI-owned

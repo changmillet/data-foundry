@@ -48,6 +48,12 @@ Operate as a data foundry worker:
 1. Classify the task into one of:
    - account-governance
    - category-update
+   - dataset-inventory
+   - flow-governance
+   - process-build
+   - lifecyclemodel-build
+   - hybrid-retrieval
+   - embedding-maintenance
    - schema-repair
    - source-evidence-review
    - reference-closure
@@ -57,10 +63,17 @@ Operate as a data foundry worker:
 2. Read `AGENTS.md`, this `WORKFLOW.md`, and the relevant specification under `specs/`.
 3. Create or reuse the task workspace under `.foundry/workspaces/{{ issue.identifier }}`.
 4. Freeze inputs before repair.
-5. Keep audit, repair candidates, dry-run, and commit steps separate.
-6. Do not perform remote database writes unless the task explicitly allows commit and all gates pass.
-7. Leave machine-readable outputs and a concise report.
-8. If the task uncovers missing data, ambiguous source evidence, or unsafe writes, create follow-up task records instead of guessing.
+5. If the task needs workspace repositories, LCA skills, CLI commands, hybrid search, or schema/runtime diagnosis, read `docs/workspace-project-map.md` and `specs/workspace-capability-adapters.md`.
+6. Keep audit, repair candidates, dry-run, and commit steps separate.
+7. Use the owning project surface instead of copying business logic into the foundry:
+   - CLI commands through `tiangong-lca-cli`
+   - reusable agent workflows through `tiangong-lca-skills`
+   - hybrid search through search skills or `tiangong search ...`
+   - schema validation through TIDAS SDK/tools
+   - Edge Function or database diagnosis only when the failure belongs there
+8. Do not perform remote database writes unless the task explicitly allows commit and all gates pass.
+9. Leave machine-readable outputs, a source manifest, and a concise report.
+10. If the task uncovers missing data, ambiguous source evidence, missing CLI capability, or unsafe writes, create follow-up task records instead of guessing.
 
 Filesystem state transitions:
 

@@ -20,6 +20,8 @@ Upstream references:
 
 The first domain target is account-level TianGong LCA DATA updates, starting from the `example-account` account governance plan produced in `LCA-DATA-AGENT`.
 
+The design target is broader than that initial package: the foundry must route across the local LCA workspace, including `tiangong-lca-cli`, `tiangong-lca-skills`, hybrid search, Edge Functions, database RPCs, TIDAS validation tooling, and domain embedding assets.
+
 The first category queue is:
 
 1. `electricity_system`
@@ -38,6 +40,7 @@ The first category queue is:
 - `WORKFLOW.md`: Symphony-style runtime contract and agent prompt.
 - `specs/`: project-specific service and task specifications.
 - `docs/`: architecture, policy, and operating design.
+- `docs/workspace-project-map.md`: local workspace project and capability map.
 - `tasks/`: filesystem task queue for the first private version.
 - `scripts/foundry.mjs`: local workflow/task validation utility.
 - `.foundry/`: local-only runtime state, logs, and workspaces.
@@ -47,6 +50,7 @@ The first category queue is:
 ```bash
 npm run init:runtime
 npm run doctor
+npm run workspace:map
 npm run env:check
 npm run workflow:check
 npm run orchestrator:once
