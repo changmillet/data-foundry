@@ -62,7 +62,16 @@ function writeJson(filePath, data) {
   writeText(filePath, `${JSON.stringify(data, null, 2)}\n`);
 }
 
-function loadEnvFile(filePath, { override = false } = {}) {
+function isPlaceholderEnvValue(value) {
+  const normalized = String(value ?? '').trim();
+  return normalized === '' || normalized === 'REPLACE_ME';
+}
+
+function hasUsableEnvValue(key) {
+  return process.env[key] !== undefined && !isPlaceholderEnvValue(process.env[key]);
+}
+
+function loadEnvFile(filePath, { override = false, fillPlaceholders = false } = {}) {
   if (!filePath || !fs.existsSync(filePath)) {
     return { file: filePath, loaded: false, keys: [] };
   }
@@ -76,7 +85,7 @@ function loadEnvFile(filePath, { override = false } = {}) {
     let value = line.slice(index + 1).trim();
     value = value.replace(/^export\s+/u, '');
     value = value.replace(/^["']|["']$/gu, '');
-    if (override || process.env[key] === undefined) {
+    if (override || process.env[key] === undefined || (fillPlaceholders && isPlaceholderEnvValue(process.env[key]))) {
       process.env[key] = value;
     }
     keys.push(key);
@@ -87,7 +96,7 @@ function loadEnvFile(filePath, { override = false } = {}) {
 function loadRuntimeEnv() {
   const repoEnv = loadEnvFile(path.join(repoRoot, '.env'));
   const lcaEnvFile = process.env.LCA_DATA_AGENT_ENV_FILE;
-  const lcaEnv = lcaEnvFile ? loadEnvFile(lcaEnvFile) : { file: null, loaded: false, keys: [] };
+  const lcaEnv = lcaEnvFile ? loadEnvFile(lcaEnvFile, { fillPlaceholders: true }) : { file: null, loaded: false, keys: [] };
   return { repoEnv, lcaEnv };
 }
 
@@ -326,12 +335,12 @@ function envCheck() {
       foundry_single_record_commit: process.env.FOUNDRY_SINGLE_RECORD_COMMIT === 'true',
       foundry_remote_commit_limit: Number(process.env.FOUNDRY_REMOTE_COMMIT_LIMIT ?? 1),
     },
-    required_remote_env: Object.fromEntries(requiredForRemoteWrites.map((key) => [key, Boolean(process.env[key])])),
+    required_remote_env: Object.fromEntries(requiredForRemoteWrites.map((key) => [key, hasUsableEnvValue(key)])),
     ok_for_dry_run: true,
     ok_for_single_record_remote_commit:
       process.env.FOUNDRY_ENABLE_REMOTE_COMMIT === 'true'
       && process.env.FOUNDRY_SINGLE_RECORD_COMMIT === 'true'
-      && requiredForRemoteWrites.every((key) => Boolean(process.env[key])),
+      && requiredForRemoteWrites.every((key) => hasUsableEnvValue(key)),
   };
   console.log(JSON.stringify(result, null, 2));
 }
