@@ -10,13 +10,13 @@ This file is a design input for the foundry. It does not make any sibling reposi
 
 | Role | Default path | Foundry use |
 | --- | --- | --- |
-| Foundry control plane | `/home/example/projects/tiangong-lca-data-foundry` | task queue, policy, workspaces, evidence, orchestration |
-| LCA workspace integration repo | `/home/example/projects/workspace` | submodule graph and integration-state source |
-| Current private data-governance workspace | `/home/example/projects/LCA-DATA-AGENT` | historical tasks, playbooks, promoted inputs, account artifacts |
-| Standalone LCA skills source | `/home/example/projects/lca-skills` | public skill source and skill validation patterns |
-| Installed runtime skills | `/home/example/.agents/skills` | currently callable agent skills, not the source of truth for new skill development |
+| Foundry control plane | current repository root | task queue, policy, workspaces, evidence, orchestration |
+| LCA workspace integration repo | inferred parent workspace, or `FOUNDRY_LCA_WORKSPACE_ROOT` | submodule graph and integration-state source |
+| Current private data-governance workspace | sibling `LCA-DATA-AGENT`, or `LCA_DATA_AGENT_ROOT` | historical tasks, playbooks, promoted inputs, account artifacts |
+| Standalone LCA skills source | sibling `lca-skills`, or `LCA_SKILLS_ROOT` | public skill source and skill validation patterns |
+| Installed runtime skills | `${HOME}/.agents/skills`, or `FOUNDRY_AGENT_SKILLS_ROOT` | currently callable agent skills, not the source of truth for new skill development |
 
-`/home/example/projects/workspace` is the integration graph. The foundry should prefer its submodule paths when a task needs the pinned cross-repo state. Sibling checkouts such as `/home/example/projects/tiangong-cli` and `/home/example/projects/lca-skills` can still be used for development or comparison, but a run manifest must say which root was used.
+The workspace repository is the integration graph. The foundry should prefer its submodule paths when a task needs the pinned cross-repo state. Sibling checkouts such as `tiangong-cli` and `lca-skills` can still be used for development or comparison, but a run manifest must say which root was used.
 
 ## Workspace Submodules
 
@@ -115,4 +115,3 @@ Every cross-project run should preserve:
 - remote-write mode and dry-run status
 - commit hash or submodule pointer when cheap to collect
 - gate status and residual follow-up tasks
-

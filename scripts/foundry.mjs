@@ -16,9 +16,6 @@ const taskDirs = Object.values(taskQueues);
 const foundryDirs = ['.foundry/logs', '.foundry/workspaces', '.foundry/state'];
 const lockPath = path.join(repoRoot, '.foundry/state/orchestrator.lock');
 const statusPath = path.join(repoRoot, '.foundry/state/orchestrator-status.json');
-const defaultProjectsRoot = '/home/example/projects';
-const defaultLcaWorkspaceRoot = path.join(defaultProjectsRoot, 'workspace');
-const defaultLcaRoot = '/home/example/projects/LCA-DATA-AGENT';
 const lcaSkillNames = new Set([
   'current-account-dataset-review',
   'embedding-ft',
@@ -71,6 +68,53 @@ function hasUsableEnvValue(key) {
   return process.env[key] !== undefined && !isPlaceholderEnvValue(process.env[key]);
 }
 
+function envPath(key) {
+  return hasUsableEnvValue(key) ? process.env[key] : null;
+}
+
+function directoryExists(dirPath) {
+  return Boolean(dirPath && fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory());
+}
+
+function looksLikeWorkspaceRoot(dirPath) {
+  return Boolean(dirPath && fs.existsSync(path.join(dirPath, '.gitmodules')));
+}
+
+function inferLcaWorkspaceRoot() {
+  const repoParent = path.dirname(repoRoot);
+  const candidates = [
+    repoParent,
+    path.join(repoParent, 'workspace'),
+    path.join(path.dirname(repoParent), 'workspace'),
+  ];
+  return candidates.find((candidate) => looksLikeWorkspaceRoot(candidate)) || repoParent;
+}
+
+function inferProjectsRoot() {
+  return path.dirname(inferLcaWorkspaceRoot());
+}
+
+function inferLcaDataAgentRoot() {
+  const candidates = [
+    path.join(inferProjectsRoot(), 'LCA-DATA-AGENT'),
+    path.join(path.dirname(repoRoot), 'LCA-DATA-AGENT'),
+  ];
+  return candidates.find((candidate) => directoryExists(candidate)) || candidates[0];
+}
+
+function inferAgentSkillsRoot() {
+  return process.env.HOME ? path.join(process.env.HOME, '.agents/skills') : '';
+}
+
+function inferLcaDataAgentEnvFile() {
+  const explicitEnvFile = envPath('LCA_DATA_AGENT_ENV_FILE');
+  if (explicitEnvFile) {
+    return explicitEnvFile;
+  }
+  const inferredEnvFile = path.join(envPath('LCA_DATA_AGENT_ROOT') || inferLcaDataAgentRoot(), '.env');
+  return fs.existsSync(inferredEnvFile) ? inferredEnvFile : null;
+}
+
 function loadEnvFile(filePath, { override = false, fillPlaceholders = false } = {}) {
   if (!filePath || !fs.existsSync(filePath)) {
     return { file: filePath, loaded: false, keys: [] };
@@ -95,7 +139,7 @@ function loadEnvFile(filePath, { override = false, fillPlaceholders = false } = 
 
 function loadRuntimeEnv() {
   const repoEnv = loadEnvFile(path.join(repoRoot, '.env'));
-  const lcaEnvFile = process.env.LCA_DATA_AGENT_ENV_FILE;
+  const lcaEnvFile = inferLcaDataAgentEnvFile();
   const lcaEnv = lcaEnvFile ? loadEnvFile(lcaEnvFile, { fillPlaceholders: true }) : { file: null, loaded: false, keys: [] };
   return { repoEnv, lcaEnv };
 }
@@ -327,9 +371,9 @@ function envCheck() {
   const result = {
     generated_at_utc: nowIso(),
     repo_env_exists: fs.existsSync(path.join(repoRoot, '.env')),
-    lca_data_agent_root: process.env.LCA_DATA_AGENT_ROOT || defaultLcaRoot,
-    lca_data_agent_env_file: process.env.LCA_DATA_AGENT_ENV_FILE || null,
-    lca_data_agent_env_file_exists: process.env.LCA_DATA_AGENT_ENV_FILE ? fs.existsSync(process.env.LCA_DATA_AGENT_ENV_FILE) : false,
+    lca_data_agent_root: envPath('LCA_DATA_AGENT_ROOT') || inferLcaDataAgentRoot(),
+    lca_data_agent_env_file: inferLcaDataAgentEnvFile(),
+    lca_data_agent_env_file_exists: inferLcaDataAgentEnvFile() ? fs.existsSync(inferLcaDataAgentEnvFile()) : false,
     remote_write_policy: {
       foundry_enable_remote_commit: process.env.FOUNDRY_ENABLE_REMOTE_COMMIT === 'true',
       foundry_single_record_commit: process.env.FOUNDRY_SINGLE_RECORD_COMMIT === 'true',
@@ -346,25 +390,25 @@ function envCheck() {
 }
 
 function configuredRoots() {
-  const projectsRoot = process.env.FOUNDRY_PROJECTS_ROOT || defaultProjectsRoot;
-  const lcaWorkspaceRoot = process.env.FOUNDRY_LCA_WORKSPACE_ROOT || defaultLcaWorkspaceRoot;
+  const lcaWorkspaceRoot = envPath('FOUNDRY_LCA_WORKSPACE_ROOT') || inferLcaWorkspaceRoot();
+  const projectsRoot = envPath('FOUNDRY_PROJECTS_ROOT') || path.dirname(lcaWorkspaceRoot);
   return {
     projects_root: projectsRoot,
     lca_workspace_root: lcaWorkspaceRoot,
-    lca_data_agent_root: process.env.LCA_DATA_AGENT_ROOT || defaultLcaRoot,
+    lca_data_agent_root: envPath('LCA_DATA_AGENT_ROOT') || inferLcaDataAgentRoot(),
     tiangong_lca_cli_dir:
-      process.env.TIANGONG_LCA_CLI_DIR || path.join(lcaWorkspaceRoot, 'tiangong-lca-cli'),
+      envPath('TIANGONG_LCA_CLI_DIR') || path.join(lcaWorkspaceRoot, 'tiangong-lca-cli'),
     tiangong_lca_skills_root:
-      process.env.TIANGONG_LCA_SKILLS_ROOT || path.join(lcaWorkspaceRoot, 'tiangong-lca-skills'),
-    lca_skills_root: process.env.LCA_SKILLS_ROOT || path.join(projectsRoot, 'lca-skills'),
-    agent_skills_root: process.env.FOUNDRY_AGENT_SKILLS_ROOT || path.join(process.env.HOME || '/home/example', '.agents/skills'),
+      envPath('TIANGONG_LCA_SKILLS_ROOT') || path.join(lcaWorkspaceRoot, 'tiangong-lca-skills'),
+    lca_skills_root: envPath('LCA_SKILLS_ROOT') || path.join(projectsRoot, 'lca-skills'),
+    agent_skills_root: envPath('FOUNDRY_AGENT_SKILLS_ROOT') || inferAgentSkillsRoot(),
     edge_functions_root:
-      process.env.TIANGONG_LCA_EDGE_FUNCTIONS_ROOT
+      envPath('TIANGONG_LCA_EDGE_FUNCTIONS_ROOT')
       || path.join(lcaWorkspaceRoot, 'tiangong-lca-edge-functions'),
     database_engine_root:
-      process.env.TIANGONG_LCA_DATABASE_ENGINE_ROOT || path.join(lcaWorkspaceRoot, 'database-engine'),
+      envPath('TIANGONG_LCA_DATABASE_ENGINE_ROOT') || path.join(lcaWorkspaceRoot, 'database-engine'),
     domain_embedding_root:
-      process.env.TIANGONG_LCA_DOMAIN_EMBEDDING_ROOT || path.join(lcaWorkspaceRoot, 'lca-domain-embedding'),
+      envPath('TIANGONG_LCA_DOMAIN_EMBEDDING_ROOT') || path.join(lcaWorkspaceRoot, 'lca-domain-embedding'),
   };
 }
 
@@ -1132,7 +1176,7 @@ function makeReferenceClosure({ workspace, sourcePaths, category, unresolvedRefs
 
 function runElectricityCategoryUpdate(task, workspace) {
   const category = task.meta.category;
-  const lcaRoot = process.env.LCA_DATA_AGENT_ROOT || defaultLcaRoot;
+  const lcaRoot = envPath('LCA_DATA_AGENT_ROOT') || inferLcaDataAgentRoot();
   const artifactRoot = path.join(lcaRoot, 'artifacts/example-account-account-data-governance-20260506');
   const electricityArtifactRoot = path.join(lcaRoot, 'artifacts/electricity-multi-account-governance-20260505');
   const outputRoot = path.join(artifactRoot, 'outputs');

@@ -144,9 +144,9 @@ Authoritative local references:
 
 - `docs/workspace-project-map.md`
 - `specs/workspace-capability-adapters.md`
-- `/home/example/projects/workspace/AGENTS.md`
-- `/home/example/projects/workspace/.docpact/config.yaml`
-- `/home/example/projects/workspace/_docs/reference/workspace-repo-graph.yaml`
+- workspace `AGENTS.md`
+- workspace `.docpact/config.yaml`
+- workspace `_docs/reference/workspace-repo-graph.yaml`
 
 Design rule:
 

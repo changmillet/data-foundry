@@ -69,4 +69,4 @@ The handler now also writes:
 - The first handler consumes existing `LCA-DATA-AGENT` artifact paths. A later version should replace these path assumptions with a source adapter configuration.
 - The local inventories do not guarantee public database completeness. Reference closure can classify local exact/any-version/name matches, while live public lookup remains a remote-enabled step.
 - Hybrid search is intentionally routed through `tiangong search ...` or the search skills. The foundry should use Edge Function and database repositories for diagnosis or implementation work, not as direct hidden runtime calls.
-- The workspace has two relevant skills roots: workspace-pinned `tiangong-lca-skills` and sibling `/home/example/projects/lca-skills`. Every run manifest must record which root was used.
+- The workspace has two relevant skills roots: workspace-pinned `tiangong-lca-skills` and an optional sibling `lca-skills` checkout. Every run manifest must record which root was used.
