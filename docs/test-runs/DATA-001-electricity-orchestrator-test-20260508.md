@@ -10,7 +10,7 @@ npm run orchestrator:once
 
 ## Source Data
 
-- Source workspace: `/home/example/projects/LCA-DATA-AGENT`
+- Source workspace: sibling `LCA-DATA-AGENT` checkout, or `LCA_DATA_AGENT_ROOT`
 - Source category: `electricity_system`
 - Source work package: `artifacts/example-account-account-data-governance-20260506/reports/category-electricity-system-workplan.zh-CN.md`
 
@@ -63,8 +63,8 @@ The generated smoke candidate was passed to the existing TianGong CLI in dry-run
 
 ```bash
 npm run tiangong -- flow publish-version \
-  --input-file /home/example/projects/tiangong-lca-data-foundry/.foundry/workspaces/DATA-001/outputs/single-record-smoke/flow-publish-dry-run-input.jsonl \
-  --out-dir /home/example/projects/tiangong-lca-data-foundry/.foundry/workspaces/DATA-001/outputs/single-record-smoke/flow-publish-dry-run \
+  --input-file .foundry/workspaces/DATA-001/outputs/single-record-smoke/flow-publish-dry-run-input.jsonl \
+  --out-dir .foundry/workspaces/DATA-001/outputs/single-record-smoke/flow-publish-dry-run \
   --limit 1 \
   --dry-run \
   --json

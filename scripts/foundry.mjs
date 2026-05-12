@@ -368,12 +368,15 @@ function envCheck() {
     'TIANGONG_LCA_API_KEY',
     'TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY',
   ];
+  const explicitLcaDataAgentEnvFile = envPath('LCA_DATA_AGENT_ENV_FILE');
+  const lcaDataAgentEnvFile = inferLcaDataAgentEnvFile();
   const result = {
     generated_at_utc: nowIso(),
     repo_env_exists: fs.existsSync(path.join(repoRoot, '.env')),
-    lca_data_agent_root: envPath('LCA_DATA_AGENT_ROOT') || inferLcaDataAgentRoot(),
-    lca_data_agent_env_file: inferLcaDataAgentEnvFile(),
-    lca_data_agent_env_file_exists: inferLcaDataAgentEnvFile() ? fs.existsSync(inferLcaDataAgentEnvFile()) : false,
+    lca_data_agent_env: {
+      source: explicitLcaDataAgentEnvFile ? 'explicit' : (lcaDataAgentEnvFile ? 'auto_discovered' : 'not_found'),
+      exists: Boolean(lcaDataAgentEnvFile && fs.existsSync(lcaDataAgentEnvFile)),
+    },
     remote_write_policy: {
       foundry_enable_remote_commit: process.env.FOUNDRY_ENABLE_REMOTE_COMMIT === 'true',
       foundry_single_record_commit: process.env.FOUNDRY_SINGLE_RECORD_COMMIT === 'true',
