@@ -11,6 +11,7 @@ Humans should mostly manage policy, credentials, and final release posture. Agen
 ## Boundaries
 
 - Do not store API keys, access tokens, `.env`, database dumps, or full private payload exports in git.
+- Do not hard-code a personal account name as reusable task scope. Use `FOUNDRY_ACCOUNT_LABEL` only as an optional, non-secret human display label; credential/session resolution and frozen manifests are authoritative for AI execution.
 - Runtime state belongs under `.foundry/` and is ignored.
 - Source-of-truth task policy belongs in `WORKFLOW.md`.
 - Project-level specifications belong in `specs/`.
@@ -27,9 +28,9 @@ Humans should mostly manage policy, credentials, and final release posture. Agen
 5. If the task is account/category data governance, read `docs/data-governance-loop.md`.
 6. Run `npm run doctor` before trusting local commands.
 
-## Current Design Source
+## Current Private Seed Sources
 
-The project adapts these already proven local workflows:
+The project adapts these already proven local workflows. Their filenames may contain a private operator account label because they are historical source artifacts; do not copy that label into reusable templates or public-facing concepts.
 
 - `LCA-DATA-AGENT/tasks/open/example-account-account-data-governance.md`
 - `LCA-DATA-AGENT/playbooks/example-account-account-data-governance.md`
@@ -39,4 +40,3 @@ The project adapts these already proven local workflows:
 ## Commit Rules
 
 Keep commits small and thematic. Do not commit `.foundry/`, `.env`, logs, workspace clones, or downloaded account payloads.
-

@@ -15,6 +15,12 @@ The foundry is a control plane. It owns task state, workspace isolation, evidenc
 - schema contracts belong in `tidas`, `tidas-sdk`, and `tidas-tools`
 - historical private task evidence can be read from `LCA-DATA-AGENT`
 
+Before implementing any missing capability, classify it with `specs/capability-ownership-rules.json`.
+
+Foundry-local code is appropriate when the feature only coordinates existing commands, writes task-local manifests, or reconciles foundry gates. A development request should be routed to another project when the feature is a reusable command, reusable skill workflow, calculator/runtime behavior, database/Edge Function behavior, or schema semantics.
+
+Shared capability follow-up tasks must include `capability_scope`, `owner_project`, `shared_or_project_specific`, `why_not_foundry_local`, `expected_input_contract`, `expected_output_contract`, `suggested_implementation_location`, and `done_criteria`.
+
 ## 2. Registry Model
 
 The foundry needs a read-only project and capability registry before it can become a general data foundry.
@@ -133,7 +139,7 @@ Every remote write adapter must have:
 
 - dry-run input
 - dry-run result
-- version bump plan
+- state-code-aware mutation plan
 - commit limit
 - post-write verification command
 - rollback or follow-up task note when verification fails
@@ -169,4 +175,3 @@ npm run orchestrator:once
 ```
 
 `workspace:map` is diagnostic. `capabilities:list` should become the machine-readable registry after the first adapters are extracted.
-

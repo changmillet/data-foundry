@@ -54,7 +54,7 @@ For LCA data work, the task tracker starts as filesystem-backed Markdown files. 
 7. `Data Governance Planner`
    - freezes inventory
    - builds category queues
-   - maps source evidence, schema issues, reference closure, and version policy
+   - maps source evidence, schema issues, reference closure, completeness, and state-code-aware mutation policy
 
 8. `Agent Runner`
    - launches the configured coding/data agent
@@ -62,7 +62,7 @@ For LCA data work, the task tracker starts as filesystem-backed Markdown files. 
    - streams updates and terminal status
 
 9. `Verification Gate`
-   - checks schema, source evidence, reference closure, dry-run output, and version bump plan
+   - checks schema, source evidence, reference closure, dry-run output, completeness, and mutation plan
    - blocks unsafe commit
 
 10. `Observability`
@@ -97,8 +97,12 @@ A category or task is not complete until:
 - schema blocking issues are zero
 - P0/P1 source/numeric findings are resolved or waived with evidence
 - account-owned references are closed
-- version bump plan is explicit
+- state-code-aware mutation plan is explicit
+- insert/versioned writes have reasons
+- `state_code=0` repairs prefer update
+- `state_code=100` repairs have a source-review path
 - dry-run output is present
+- completeness snapshot is present
 - remote verification passes after any commit
 
 ## 6. Non-Goals For v0
@@ -119,7 +123,7 @@ npm run orchestrator:status
 npm run tasks:check
 ```
 
-The first implemented handler is `kind=category-update` plus `category=electricity_system`, which reads the current `LCA-DATA-AGENT` example-account electricity work package and writes local-only evidence under `.foundry/workspaces/<task-id>/`.
+The first implemented handler is `kind=category-update` plus `category=electricity_system`, which reads a private `LCA-DATA-AGENT` electricity seed work package and writes local-only evidence under `.foundry/workspaces/<task-id>/`.
 
 `workspace:map` is the first read-only registry diagnostic. It records the local workspace submodules, LCA skills, installed runtime skills, CLI roots, and hybrid-search surfaces that future handlers should use through adapters.
 
@@ -131,7 +135,8 @@ Remote writes are disabled unless every gate below is true:
 - local `.env` sets `FOUNDRY_SINGLE_RECORD_COMMIT=true`
 - local `.env` sets `FOUNDRY_REMOTE_COMMIT_LIMIT=1`
 - the task sets `allow_remote_commit=true`
-- the candidate has a version bump plan and dry-run input
+- the candidate has a state-code-aware mutation plan and dry-run input
+- insert/versioned writes have explicit reasons
 - a dry-run succeeds before commit
 
 For the first database smoke test, use one generated flow candidate from `outputs/single-record-smoke/flow-publish-dry-run-input.jsonl` and run the TianGong CLI with `--limit 1`.

@@ -1,6 +1,6 @@
 ---
 id: DATA-001
-title: "Review and prepare example-account electricity_system category update"
+title: "Review and prepare configured-account electricity_system category update"
 state: Blocked
 kind: category-update
 category: electricity_system
@@ -20,9 +20,9 @@ schema_candidate_count: 296
 reference_closure_candidate_count: 373
 ---
 
-Start the first category work package for the example-account account.
+Start the first category work package for the configured runtime account.
 
-Inputs from the previous workspace:
+Inputs from the previous private workspace. Some source artifact filenames include an operator account label; treat those names as historical source paths, not reusable task scope:
 
 - `LCA-DATA-AGENT/tasks/open/example-account-account-data-governance.md`
 - `LCA-DATA-AGENT/playbooks/example-account-account-data-governance.md`
@@ -38,4 +38,3 @@ Expected output:
 - dry-run plan
 
 Remote commit is not allowed for this task.
-

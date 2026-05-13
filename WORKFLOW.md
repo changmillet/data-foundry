@@ -32,7 +32,14 @@ policy:
   default_write_mode: dry-run
   require_human_for_remote_commit: true
   require_evidence_for_numeric_repair: true
-  require_version_bump_plan: true
+  require_mutation_plan: true
+  require_state_code_write_policy: true
+  prefer_update_for_state_code_0: true
+  require_insert_reason_for_versioned_write: true
+  require_completeness_snapshot: true
+  require_reference_flow_closure_status: true
+  exclude_elementary_flows_from_provider_closure: true
+  require_dry_run_before_remote_write: true
 ---
 
 You are working on a TianGong LCA data task.
@@ -57,23 +64,28 @@ Operate as a data foundry worker:
    - schema-repair
    - source-evidence-review
    - reference-closure
-   - version-bump-plan
+   - mutation-plan
    - publish-dry-run
    - verification
+   - account-repair
+   - capability-development
 2. Read `AGENTS.md`, this `WORKFLOW.md`, and the relevant specification under `specs/`.
 3. Create or reuse the task workspace under `.foundry/workspaces/{{ issue.identifier }}`.
 4. Freeze inputs before repair.
-5. If the task needs workspace repositories, LCA skills, CLI commands, hybrid search, or schema/runtime diagnosis, read `docs/workspace-project-map.md` and `specs/workspace-capability-adapters.md`.
-6. Keep audit, repair candidates, dry-run, and commit steps separate.
-7. Use the owning project surface instead of copying business logic into the foundry:
+5. Treat personal account names as optional runtime display labels, not durable task scope. Read `docs/account-context-policy.md`; use `FOUNDRY_ACCOUNT_LABEL` only for human orientation and rely on credentials/session plus frozen manifests for AI execution.
+6. Put every file in a governed location. Root files are only entrypoints; task seed diagnostics belong under `inputs/diagnostics/`, task records under `tasks/`, runtime outputs under `.foundry/workspaces/<task-id>/`, reusable policy under `docs/`, and executable contracts under `specs/`. Update `docs/file-location-registry.json` whenever a file's location matters for future runs.
+7. If the task needs workspace repositories, LCA skills, CLI commands, hybrid search, or schema/runtime diagnosis, read `docs/workspace-project-map.md` and `specs/workspace-capability-adapters.md`.
+8. Before implementing a missing capability, classify whether it is foundry-specific or shared using `docs/capability-ownership-policy.md` and `specs/capability-ownership-rules.json`. Implement only foundry-owned orchestration locally; create a `capability-development` follow-up for reusable CLI, shared skill, calculator, database, Edge Function, or schema capabilities.
+9. Keep audit, evidence review, repair candidates, mutation plan, dry-run, completeness snapshot, verification, and follow-up tasks separate.
+10. Use the owning project surface instead of copying business logic into the foundry:
    - CLI commands through `tiangong-lca-cli`
    - reusable agent workflows through `tiangong-lca-skills`
    - hybrid search through search skills or `tiangong search ...`
    - schema validation through TIDAS SDK/tools
    - Edge Function or database diagnosis only when the failure belongs there
-8. Do not perform remote database writes unless the task explicitly allows commit and all gates pass.
-9. Leave machine-readable outputs, a source manifest, and a concise report.
-10. If the task uncovers missing data, ambiguous source evidence, missing CLI capability, or unsafe writes, create follow-up task records instead of guessing.
+11. Do not perform remote database writes unless the task explicitly allows commit and all gates pass.
+12. Leave machine-readable outputs, a source manifest, a completeness snapshot, and a concise report.
+13. If the task uncovers missing data, ambiguous source evidence, missing CLI capability, unsafe writes, or unclear file placement, create follow-up task records instead of guessing.
 
 Filesystem state transitions:
 
@@ -81,4 +93,4 @@ Filesystem state transitions:
 tasks/inbox/TASK.md -> tasks/active/TASK.md -> tasks/review/TASK.md -> tasks/done/TASK.md
 ```
 
-Use `tasks/review` when evidence or repair work is ready but any gate is still open. Use `tasks/done` only when schema, source/numeric, reference closure, version plan, and dry-run/verification gates all pass or are explicitly waived with evidence.
+Use `tasks/review` when evidence or repair work is ready but any gate is still open. Use `tasks/done` only when schema, source/numeric, reference closure, mutation plan, dry-run, completeness, and verification gates all pass or are explicitly waived with evidence.

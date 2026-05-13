@@ -42,6 +42,10 @@ The workspace currently coordinates these projects:
 
 The foundry owns orchestration and evidence. It should not copy business logic from these projects into `scripts/foundry.mjs`.
 
+Before implementing a missing capability, classify it with `docs/capability-ownership-policy.md` and `specs/capability-ownership-rules.json`.
+
+Foundry-local work is appropriate when the code only coordinates existing commands, writes task-local manifests, reconciles gates, or checks foundry-owned artifacts. Shared primitive commands belong in `tiangong-lca-cli`; reusable agent workflows belong in `tiangong-lca-skills`; calculator, database, Edge Function, and schema changes belong in their owning runtime repositories.
+
 Default route:
 
 1. Classify a task.

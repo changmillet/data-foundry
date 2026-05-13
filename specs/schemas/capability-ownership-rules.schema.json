@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tiangong-lca.local/foundry/capability-ownership-rules.schema.json",
+  "title": "Foundry Capability Ownership Rules",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "updated_at_utc",
+    "principle",
+    "owners",
+    "decision_rules",
+    "required_follow_up_fields"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": { "type": "integer", "minimum": 1 },
+    "updated_at_utc": { "type": "string" },
+    "principle": { "type": "string" },
+    "owners": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["owner_project", "owns"],
+        "additionalProperties": true,
+        "properties": {
+          "owner_project": { "type": "string" },
+          "owns": { "type": "array", "items": { "type": "string" } },
+          "does_not_own": { "type": "array", "items": { "type": "string" } },
+          "handoff_when": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "decision_rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "route_to", "use_when"],
+        "additionalProperties": true,
+        "properties": {
+          "id": { "type": "string" },
+          "route_to": { "type": "string" },
+          "use_when": { "type": "array", "items": { "type": "string" } },
+          "examples": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "required_follow_up_fields": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

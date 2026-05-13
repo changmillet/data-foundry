@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tiangong-lca.local/foundry/file-location-registry.schema.json",
+  "title": "Foundry File Location Registry",
+  "type": "object",
+  "required": ["schema_version", "updated_at_utc", "entries"],
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": { "type": "integer", "minimum": 1 },
+    "updated_at_utc": { "type": "string" },
+    "policy_doc": { "type": "string" },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "classification",
+          "current_path",
+          "owner",
+          "sensitivity"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "id": { "type": "string" },
+          "status": { "type": "string", "enum": ["active", "moved", "retired"] },
+          "classification": { "type": "string" },
+          "current_path": { "type": "string" },
+          "previous_paths": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "owner": { "type": "string" },
+          "task_id": { "type": "string" },
+          "referenced_by": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "sensitivity": { "type": "string" },
+          "tracked": { "type": "boolean" },
+          "notes": { "type": "string" }
+        }
+      }
+    }
+  }
+}

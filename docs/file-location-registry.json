@@ -1,0 +1,144 @@
+{
+  "$schema": "../specs/schemas/file-location-registry.schema.json",
+  "schema_version": 1,
+  "updated_at_utc": "2026-05-13T07:10:00Z",
+  "policy_doc": "docs/file-organization.md",
+  "entries": [
+    {
+      "id": "lca-compute-20260510-diagnostic-report",
+      "status": "active",
+      "classification": "diagnostic-input",
+      "current_path": "inputs/diagnostics/lca-compute-task-2026-05-10-factorization-not-prepared-singular.md",
+      "previous_paths": [
+        "lca-compute-task-2026-05-10-factorization-not-prepared-singular.md"
+      ],
+      "owner": "tiangong-lca-data-foundry",
+      "task_id": "lca-compute-task-2026-05-10-factorization-not-prepared-singular",
+      "referenced_by": [
+        "tasks/review/lca-compute-task-2026-05-10-factorization-not-prepared-singular.md",
+        "specs/acceptance/lca-compute-repair-20260510.artifacts.json"
+      ],
+      "sensitivity": "sanitized diagnostic; contains task ids, process ids, user id, and aggregate findings; no full private process payload export",
+      "tracked": true,
+      "notes": "Moved from repository root so task seed diagnostics live under inputs/diagnostics."
+    },
+    {
+      "id": "codex-stop-hook-config",
+      "status": "active",
+      "classification": "agent-hook-config",
+      "current_path": ".codex/hooks.json",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "docs/agent-harness-cli-comparison.md",
+        "specs/acceptance/lca-compute-repair-20260510.artifacts.json"
+      ],
+      "sensitivity": "non-sensitive hook configuration",
+      "tracked": true,
+      "notes": "Registers the Codex Stop hook that runs foundry acceptance checks before an agent turn finishes."
+    },
+    {
+      "id": "codex-stop-hook-script",
+      "status": "active",
+      "classification": "agent-hook-script",
+      "current_path": ".codex/hooks/run-foundry-acceptance-check.sh",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        ".codex/hooks.json",
+        "docs/agent-harness-cli-comparison.md",
+        "specs/acceptance/lca-compute-repair-20260510.artifacts.json"
+      ],
+      "sensitivity": "non-sensitive local hook script; writes runtime logs under ignored .foundry/state/",
+      "tracked": true,
+      "notes": "Runs npm run acceptance:check and translates blocking failures into a Codex Stop hook block decision."
+    },
+    {
+      "id": "capability-ownership-policy",
+      "status": "active",
+      "classification": "governance-policy",
+      "current_path": "docs/capability-ownership-policy.md",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "WORKFLOW.md",
+        "docs/workspace-project-map.md",
+        "docs/orchestrator.md",
+        "tasks/README.md",
+        "specs/acceptance/lca-compute-repair-20260510.artifacts.json"
+      ],
+      "sensitivity": "non-sensitive governance policy",
+      "tracked": true,
+      "notes": "Defines how foundry distinguishes local orchestration from shared CLI, skill, runtime, database, Edge, and schema capabilities."
+    },
+    {
+      "id": "capability-ownership-rules",
+      "status": "active",
+      "classification": "machine-readable-governance",
+      "current_path": "specs/capability-ownership-rules.json",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "WORKFLOW.md",
+        "docs/capability-ownership-policy.md",
+        "docs/workspace-project-map.md",
+        "docs/orchestrator.md",
+        "tasks/README.md",
+        "tasks/templates/capability-development-request.md",
+        "specs/acceptance/lca-compute-repair-20260510.artifacts.json"
+      ],
+      "sensitivity": "non-sensitive machine-readable governance rules",
+      "tracked": true,
+      "notes": "Routes missing capabilities to foundry, CLI, skills, calculator, database, Edge Functions, or TIDAS tooling."
+    },
+    {
+      "id": "capability-development-request-template",
+      "status": "active",
+      "classification": "task-template",
+      "current_path": "tasks/templates/capability-development-request.md",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "tasks/README.md",
+        "docs/capability-ownership-policy.md",
+        "specs/acceptance/lca-compute-repair-20260510.artifacts.json"
+      ],
+      "sensitivity": "non-sensitive task template",
+      "tracked": true,
+      "notes": "Template for routing reusable missing capabilities to their owning workspace project with explicit contracts."
+    },
+    {
+      "id": "account-context-policy",
+      "status": "active",
+      "classification": "governance-policy",
+      "current_path": "docs/account-context-policy.md",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "AGENTS.md",
+        "README.md",
+        "docs/data-governance-loop.md",
+        "docs/orchestrator.md",
+        "specs/acceptance/lca-compute-repair-20260510.artifacts.json"
+      ],
+      "sensitivity": "non-sensitive governance policy; references only optional account display labels, not credentials",
+      "tracked": true,
+      "notes": "Defines optional runtime account labels and separates human account hints from AI credential/session authority."
+    },
+    {
+      "id": "env-surface-policy",
+      "status": "active",
+      "classification": "governance-policy",
+      "current_path": "docs/env-surface-policy.md",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        ".env.example",
+        "scripts/foundry.mjs"
+      ],
+      "sensitivity": "non-sensitive governance policy; defines public env example ownership and forbidden adjacent-repo internals",
+      "tracked": true,
+      "notes": "Prevents CLI/test-only or operator-private variables from being promoted into foundry .env.example during automatic runs."
+    }
+  ]
+}

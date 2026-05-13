@@ -1,6 +1,6 @@
 # TianGong LCA Data Foundry
 
-Private project for autonomous TianGong LCA data research, manufacturing, review, repair, and publication workflows.
+Control-plane project for autonomous TianGong LCA data research, manufacturing, review, repair, and publication workflows. It can run in a private operator workspace, but reusable docs, templates, and contracts should stay neutral enough for a future public tool.
 
 The project adapts the OpenAI Symphony pattern to LCA data work:
 
@@ -10,6 +10,7 @@ The project adapts the OpenAI Symphony pattern to LCA data work:
 - category-scoped data governance loops
 - evidence-first process review
 - dry-run and verification gates before database writes
+- state-code-aware mutation plans and completeness snapshots
 
 Upstream references:
 
@@ -18,7 +19,9 @@ Upstream references:
 
 ## Current Scope
 
-The first domain target is account-level TianGong LCA DATA updates, starting from the `example-account` account governance plan produced in `LCA-DATA-AGENT`.
+The first domain target is account-level TianGong LCA DATA updates, starting from a private seed governance package produced in `LCA-DATA-AGENT`.
+
+Personal account names are runtime context, not reusable design concepts. Local operators may set `FOUNDRY_ACCOUNT_LABEL` in `.env` as a non-secret display label, but agents must use the resolved API key/session and frozen manifests as the authority for account scope. See `docs/account-context-policy.md`.
 
 The design target is broader than that initial package: the foundry must route across the local LCA workspace, including `tiangong-lca-cli`, `tiangong-lca-skills`, hybrid search, Edge Functions, database RPCs, TIDAS validation tooling, and domain embedding assets.
 
@@ -40,6 +43,10 @@ The first category queue is:
 - `WORKFLOW.md`: Symphony-style runtime contract and agent prompt.
 - `specs/`: project-specific service and task specifications.
 - `docs/`: architecture, policy, and operating design.
+- `docs/file-location-registry.json`: machine-readable record for moved or important file locations.
+- `docs/account-context-policy.md`: rule for optional local account labels and public-safe account wording.
+- `.codex/hooks.json`: Codex Stop hook registration for foundry acceptance checks.
+- `inputs/`: safe repo-visible task inputs, such as sanitized diagnostic reports.
 - `docs/workspace-project-map.md`: local workspace project and capability map.
 - `tasks/`: filesystem task queue for the first private version.
 - `scripts/foundry.mjs`: local workflow/task validation utility.
@@ -53,8 +60,12 @@ npm run doctor
 npm run workspace:map
 npm run env:check
 npm run workflow:check
+npm run storage:check
 npm run orchestrator:once
 npm run orchestrator:rerun-review -- --task-id DATA-001
+npm run compute-repair:artifacts:check
+npm run compute-repair:probe
+npm run compute-repair:rerun
 npm run orchestrator:status
 npm run tasks:list
 npm run tasks:check
@@ -70,3 +81,7 @@ Local `.env` may point to the existing `LCA-DATA-AGENT/.env` through `LCA_DATA_A
 - `FOUNDRY_SINGLE_RECORD_COMMIT=true`
 - `FOUNDRY_REMOTE_COMMIT_LIMIT=1`
 - task-level `allow_remote_commit=true`
+
+Account-level compute repair tasks must also produce a state-code-aware mutation plan, a dry-run result, and a completeness snapshot before any remote write can be considered.
+
+`compute-repair:probe` writes resumable flow metadata progress under the task workspace so a stuck remote batch has a concrete checkpoint and `error_class`.

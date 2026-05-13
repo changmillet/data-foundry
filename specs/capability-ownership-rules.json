@@ -1,0 +1,178 @@
+{
+  "$schema": "schemas/capability-ownership-rules.schema.json",
+  "schema_version": 1,
+  "updated_at_utc": "2026-05-13T04:35:00Z",
+  "principle": "The foundry owns orchestration and gates. Shared reusable execution capability belongs in the owning workspace project.",
+  "owners": [
+    {
+      "owner_project": "tiangong-lca-data-foundry",
+      "owns": [
+        "task queue and state transitions",
+        "per-task workspace layout",
+        "source manifests and evidence tracking",
+        "mutation-plan policy gates",
+        "dry-run and remote-write gate reconciliation",
+        "artifact acceptance contracts",
+        "file-location registry and stop-hook acceptance loop",
+        "thin adapters around CLI and skill commands"
+      ],
+      "does_not_own": [
+        "business logic for TIDAS parsing or validation",
+        "public LCA command surface implementation",
+        "shared reusable agent workflows",
+        "database RPCs, indexes, triggers, or Edge Function behavior",
+        "calculator factorization or matrix construction internals"
+      ]
+    },
+    {
+      "owner_project": "tiangong-lca-cli",
+      "owns": [
+        "stable command-line interfaces for LCA data operations",
+        "current account dataset inventory/export commands",
+        "process/flow/lifecyclemodel list, validate, dry-run, save, and verify commands",
+        "machine-readable command outputs with explicit --out-dir or --run-dir",
+        "remote-read and dry-run adapters over TianGong APIs"
+      ],
+      "handoff_when": [
+        "more than one repository or task will need the operation",
+        "operation needs authenticated remote API/database access",
+        "operation should be callable outside one foundry workspace",
+        "operation defines a stable input/output contract for data work"
+      ]
+    },
+    {
+      "owner_project": "tiangong-lca-skills",
+      "owns": [
+        "agent-facing repeatable workflows that compose CLI commands",
+        "human-readable workflow playbooks and prompt scaffolds",
+        "thin wrappers that call the canonical CLI",
+        "workflow-specific output organization over reusable CLI surfaces"
+      ],
+      "handoff_when": [
+        "the capability is an agent workflow rather than a primitive command",
+        "the workflow is reusable across foundry, OpenClaw, or other agent runtimes",
+        "the CLI command already exists and needs a repeatable skill wrapper"
+      ]
+    },
+    {
+      "owner_project": "tiangong-lca-calculator",
+      "owns": [
+        "matrix construction",
+        "factorization readiness checks",
+        "compute validation and solver diagnostics"
+      ],
+      "handoff_when": [
+        "the requested capability depends on calculator internals",
+        "verification must prove factorization or solve behavior"
+      ]
+    },
+    {
+      "owner_project": "database-engine",
+      "owns": [
+        "database schema",
+        "RPC definitions",
+        "indexes",
+        "triggers",
+        "row-level security and durable database invariants"
+      ],
+      "handoff_when": [
+        "the blocker is missing or incorrect database schema/RPC/index behavior",
+        "runtime correctness requires database-side enforcement"
+      ]
+    },
+    {
+      "owner_project": "tiangong-lca-edge-functions",
+      "owns": [
+        "Edge Function API behavior",
+        "hybrid-search service wrappers",
+        "remote publish/import API behavior",
+        "auth and API runtime failures at the Edge layer"
+      ],
+      "handoff_when": [
+        "the failure is in an API wrapper rather than CLI orchestration",
+        "remote behavior differs from local CLI expectations"
+      ]
+    },
+    {
+      "owner_project": "tidas-sdk or tidas-tools",
+      "owns": [
+        "schema validation semantics",
+        "TIDAS conversion/export behavior",
+        "SDK schema compatibility and generated validation contracts"
+      ],
+      "handoff_when": [
+        "the requirement changes schema semantics",
+        "a validator result conflicts with current TIDAS contract"
+      ]
+    }
+  ],
+  "decision_rules": [
+    {
+      "id": "foundry-local",
+      "route_to": "tiangong-lca-data-foundry",
+      "use_when": [
+        "the capability only arranges existing commands",
+        "the output is a task-local manifest, report, or gate",
+        "the behavior is specific to this foundry task queue or workspace layout"
+      ],
+      "examples": [
+        "acceptance contract check",
+        "file-location registry check",
+        "state_code-aware mutation-plan gate"
+      ]
+    },
+    {
+      "id": "cli-shared-primitive",
+      "route_to": "tiangong-lca-cli",
+      "use_when": [
+        "the capability is a reusable primitive data operation",
+        "it needs authenticated remote reads or dry-run writes",
+        "it must have a stable argv and JSON output contract"
+      ],
+      "examples": [
+        "dataset inventory --current-user",
+        "reference-flow closure export",
+        "process save-draft --dry-run",
+        "matrix readiness verify command"
+      ]
+    },
+    {
+      "id": "skill-shared-workflow",
+      "route_to": "tiangong-lca-skills",
+      "use_when": [
+        "the capability is an agent-facing workflow",
+        "it composes existing CLI commands and evidence review steps",
+        "it should be installed or reused by multiple agent projects"
+      ],
+      "examples": [
+        "current-account dataset review workflow",
+        "flow-governance review workflow",
+        "process automated builder workflow"
+      ]
+    },
+    {
+      "id": "runtime-owner",
+      "route_to": "owning runtime repo",
+      "use_when": [
+        "the implementation changes calculator, database, Edge Function, or schema behavior",
+        "a foundry adapter would duplicate business logic from that repo"
+      ],
+      "examples": [
+        "calculator factorization verifier",
+        "database RPC for reference closure",
+        "Edge Function hybrid-search behavior",
+        "TIDAS schema validation change"
+      ]
+    }
+  ],
+  "required_follow_up_fields": [
+    "capability_scope",
+    "owner_project",
+    "shared_or_project_specific",
+    "why_not_foundry_local",
+    "expected_input_contract",
+    "expected_output_contract",
+    "suggested_implementation_location",
+    "done_criteria"
+  ]
+}

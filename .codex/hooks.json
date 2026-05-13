@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/run-foundry-acceptance-check.sh\"",
+            "async": false,
+            "timeout": 360,
+            "statusMessage": "Running foundry acceptance checks"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,217 @@
+{
+  "$schema": "../schemas/artifact-contract.schema.json",
+  "id": "lca-compute-repair-20260510-artifacts",
+  "description": "Acceptance artifact contract for the 2026-05-10 account-level compute repair cycle.",
+  "workspace": ".foundry/workspaces/lca-compute-task-2026-05-10-factorization-not-prepared-singular",
+  "trace": "tasks/review/lca-compute-task-2026-05-10-factorization-not-prepared-singular.md",
+  "artifacts": [
+    {
+      "name": "task_record",
+      "path": "tasks/review/lca-compute-task-2026-05-10-factorization-not-prepared-singular.md",
+      "type": "markdown",
+      "required": true,
+      "min_bytes": 500,
+      "tracked": true
+    },
+    {
+      "name": "source_diagnostic",
+      "path": "inputs/diagnostics/lca-compute-task-2026-05-10-factorization-not-prepared-singular.md",
+      "type": "markdown",
+      "required": true,
+      "min_bytes": 500,
+      "tracked": true
+    },
+    {
+      "name": "file_location_registry",
+      "path": "docs/file-location-registry.json",
+      "type": "json",
+      "required": true,
+      "min_bytes": 200,
+      "tracked": true
+    },
+    {
+      "name": "capability_ownership_policy",
+      "path": "docs/capability-ownership-policy.md",
+      "type": "markdown",
+      "required": true,
+      "min_bytes": 500,
+      "tracked": true
+    },
+    {
+      "name": "account_context_policy",
+      "path": "docs/account-context-policy.md",
+      "type": "markdown",
+      "required": true,
+      "min_bytes": 500,
+      "tracked": true
+    },
+    {
+      "name": "capability_ownership_rules",
+      "path": "specs/capability-ownership-rules.json",
+      "type": "json",
+      "required": true,
+      "min_bytes": 500,
+      "tracked": true
+    },
+    {
+      "name": "capability_development_request_template",
+      "path": "tasks/templates/capability-development-request.md",
+      "type": "markdown",
+      "required": true,
+      "min_bytes": 300,
+      "tracked": true
+    },
+    {
+      "name": "codex_stop_hook_config",
+      "path": ".codex/hooks.json",
+      "type": "json",
+      "required": true,
+      "min_bytes": 100,
+      "tracked": true
+    },
+    {
+      "name": "codex_stop_hook_script",
+      "path": ".codex/hooks/run-foundry-acceptance-check.sh",
+      "type": "shell",
+      "required": true,
+      "min_bytes": 500,
+      "tracked": true
+    },
+    {
+      "name": "freeze_manifest",
+      "path": ".foundry/workspaces/lca-compute-task-2026-05-10-factorization-not-prepared-singular/input-freeze/current-account-freeze-manifest.json",
+      "type": "json",
+      "required": true,
+      "min_bytes": 100,
+      "tracked": false
+    },
+    {
+      "name": "reference_flow_closure",
+      "path": ".foundry/workspaces/lca-compute-task-2026-05-10-factorization-not-prepared-singular/audit/reference-flow-closure.json",
+      "type": "json",
+      "required": true,
+      "min_bytes": 100,
+      "tracked": false
+    },
+    {
+      "name": "flow_metadata_fetch_progress",
+      "path": ".foundry/workspaces/lca-compute-task-2026-05-10-factorization-not-prepared-singular/input-freeze/flow-metadata-fetch/progress.jsonl",
+      "type": "jsonl",
+      "required": true,
+      "min_bytes": 20,
+      "tracked": false
+    },
+    {
+      "name": "flow_metadata_fetch_checkpoint",
+      "path": ".foundry/workspaces/lca-compute-task-2026-05-10-factorization-not-prepared-singular/input-freeze/flow-metadata-fetch/checkpoint.json",
+      "type": "json",
+      "required": true,
+      "min_bytes": 100,
+      "tracked": false
+    },
+    {
+      "name": "flow_metadata_fetch_summary",
+      "path": ".foundry/workspaces/lca-compute-task-2026-05-10-factorization-not-prepared-singular/input-freeze/flow-metadata-fetch/summary.json",
+      "type": "json",
+      "required": true,
+      "min_bytes": 100,
+      "tracked": false
+    },
+    {
+      "name": "second_cycle_report",
+      "path": ".foundry/workspaces/lca-compute-task-2026-05-10-factorization-not-prepared-singular/reports/second-cycle-report.md",
+      "type": "markdown",
+      "required": true,
+      "min_bytes": 200,
+      "tracked": false
+    }
+  ],
+  "checks": [
+    {
+      "name": "required_artifacts",
+      "severity": "error"
+    },
+    {
+      "name": "file_location_registry",
+      "severity": "error"
+    },
+    {
+      "name": "json_assertions",
+      "severity": "error",
+      "config": {
+        "assertions": [
+          {
+            "name": "freeze manifest is completed",
+            "file": ".foundry/workspaces/lca-compute-task-2026-05-10-factorization-not-prepared-singular/input-freeze/current-account-freeze-manifest.json",
+            "path": "status",
+            "operator": "equals",
+            "expected": "completed"
+          },
+          {
+            "name": "freeze manifest records elementary exchanges",
+            "file": ".foundry/workspaces/lca-compute-task-2026-05-10-factorization-not-prepared-singular/input-freeze/current-account-freeze-manifest.json",
+            "path": "counts.elementary_flow_exchanges",
+            "operator": "exists"
+          },
+          {
+            "name": "closure records non-elementary denominator",
+            "file": ".foundry/workspaces/lca-compute-task-2026-05-10-factorization-not-prepared-singular/audit/reference-flow-closure.json",
+            "path": "reference_closure_target_exchanges",
+            "operator": "exists"
+          },
+          {
+            "name": "closure excludes elementary flows",
+            "file": ".foundry/workspaces/lca-compute-task-2026-05-10-factorization-not-prepared-singular/audit/reference-flow-closure.json",
+            "path": "status_counts.excluded_elementary_flow",
+            "operator": "exists"
+          },
+          {
+            "name": "verification result records gate failures",
+            "file": ".foundry/workspaces/lca-compute-task-2026-05-10-factorization-not-prepared-singular/reports/verification-result.json",
+            "path": "gate_failures",
+            "operator": "not_empty"
+          },
+          {
+            "name": "Codex Stop hook is registered",
+            "file": ".codex/hooks.json",
+            "path": "hooks.Stop.0.hooks.0.type",
+            "operator": "equals",
+            "expected": "command"
+          },
+          {
+            "name": "Codex Stop hook points to foundry script",
+            "file": ".codex/hooks.json",
+            "path": "hooks.Stop.0.hooks.0.command",
+            "operator": "equals",
+            "expected": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/run-foundry-acceptance-check.sh\""
+          },
+          {
+            "name": "flow metadata fetch has progress status",
+            "file": ".foundry/workspaces/lca-compute-task-2026-05-10-factorization-not-prepared-singular/input-freeze/flow-metadata-fetch/summary.json",
+            "path": "status",
+            "operator": "exists"
+          },
+          {
+            "name": "flow metadata checkpoint records batch count",
+            "file": ".foundry/workspaces/lca-compute-task-2026-05-10-factorization-not-prepared-singular/input-freeze/flow-metadata-fetch/checkpoint.json",
+            "path": "total_batch_count",
+            "operator": "exists"
+          },
+          {
+            "name": "capability ownership rules define decision routes",
+            "file": "specs/capability-ownership-rules.json",
+            "path": "decision_rules",
+            "operator": "not_empty"
+          },
+          {
+            "name": "capability follow-up records owner project",
+            "file": "specs/capability-ownership-rules.json",
+            "path": "required_follow_up_fields",
+            "operator": "includes",
+            "expected": "owner_project"
+          }
+        ]
+      }
+    }
+  ]
+}
