@@ -48,6 +48,7 @@ The first category queue is:
 - `.codex/hooks.json`: Codex Stop hook registration for foundry acceptance checks.
 - `inputs/`: safe repo-visible task inputs, such as sanitized diagnostic reports.
 - `docs/workspace-project-map.md`: local workspace project and capability map.
+- `wiki/`: repo-local Tiangong Wiki knowledge base and source vault.
 - `tasks/`: filesystem task queue for the first private version.
 - `scripts/foundry.mjs`: local workflow/task validation utility.
 - `.foundry/`: local-only runtime state, logs, and workspaces.
@@ -61,6 +62,10 @@ npm run workspace:map
 npm run env:check
 npm run workflow:check
 npm run storage:check
+npm run wiki:build-rulesbook
+npm run wiki:init
+npm run wiki:doctor
+npm run wiki:fts -- "ILCD nomenclature"
 npm run orchestrator:once
 npm run orchestrator:rerun-review -- --task-id DATA-001
 npm run compute-repair:artifacts:check
@@ -70,6 +75,17 @@ npm run orchestrator:status
 npm run tasks:list
 npm run tasks:check
 ```
+
+## Rulesbook Wiki
+
+`wiki/` is the first foundry-local knowledge base. It follows `@biaoo/tiangong-wiki` and imports the `LCA-DATA-AGENT/inputs/Rulesbook` PDFs into:
+
+- source PDFs under `wiki/vault/Rulesbook/`
+- provenance pages under `wiki/pages/source-summaries/`
+- fulltext chunks under `wiki/pages/source-fulltext-chunks/`
+- a concept entry at `wiki/pages/concepts/foundry-rulesbook-wiki.md`
+
+Run `npm run wiki:build-rulesbook` after refreshing the source PDFs, then `npm run wiki:init` or `npm run wiki:sync` to rebuild the local `wiki/index.db`. The database is derived local state and is intentionally ignored by git.
 
 ## Safety Posture
 

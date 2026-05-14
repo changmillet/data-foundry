@@ -30,6 +30,10 @@ const accountRepairWorkspaceDirs = [
 ];
 const lockPath = path.join(repoRoot, '.foundry/state/orchestrator.lock');
 const statusPath = path.join(repoRoot, '.foundry/state/orchestrator-status.json');
+const wikiRoot = path.join(repoRoot, 'wiki');
+const wikiEnvPath = path.join(wikiRoot, '.wiki.env');
+const wikiDbPath = path.join(wikiRoot, 'index.db');
+const wikiConfigPath = path.join(wikiRoot, 'wiki.config.json');
 const lcaSkillNames = new Set([
   'current-account-dataset-review',
   'embedding-ft',
@@ -932,6 +936,7 @@ function doctor() {
     workflow_check: workflowCheck({ exit: false }),
     task_dirs: Object.fromEntries(taskDirs.map((dir) => [dir, fs.existsSync(path.join(repoRoot, dir))])),
     foundry_dirs: Object.fromEntries(foundryDirs.map((dir) => [dir, fs.existsSync(path.join(repoRoot, dir))])),
+    wiki: wikiStatus(),
     lock_exists: fs.existsSync(lockPath),
   };
   console.log(JSON.stringify(result, null, 2));
@@ -961,6 +966,11 @@ function envCheck() {
       foundry_remote_commit_limit: Number(process.env.FOUNDRY_REMOTE_COMMIT_LIMIT ?? 1),
     },
     required_remote_env: Object.fromEntries(requiredForRemoteWrites.map((key) => [key, hasUsableEnvValue(key)])),
+    optional_rulesbook_parser_env: {
+      unstructured_api_base_url: hasUsableEnvValue('UNSTRUCTURED_API_BASE_URL'),
+      unstructured_auth_token: hasUsableEnvValue('UNSTRUCTURED_AUTH_TOKEN'),
+      fallback_parser: 'pypdf page.extract_text',
+    },
     ok_for_dry_run: true,
     ok_for_single_record_remote_commit:
       process.env.FOUNDRY_ENABLE_REMOTE_COMMIT === 'true'
@@ -998,6 +1008,48 @@ function pathStatus(filePath) {
   return {
     path: filePath,
     exists: Boolean(filePath && fs.existsSync(filePath)),
+  };
+}
+
+function countFilesRecursive(dirPath, { extension } = {}) {
+  if (!directoryExists(dirPath)) return 0;
+  let count = 0;
+  for (const name of fs.readdirSync(dirPath)) {
+    const entryPath = path.join(dirPath, name);
+    const entry = fs.statSync(entryPath);
+    if (entry.isDirectory()) {
+      count += countFilesRecursive(entryPath, { extension });
+    } else if (!extension || name.endsWith(extension)) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+function wikiStatus() {
+  const pagesPath = path.join(wikiRoot, 'pages');
+  const vaultPath = path.join(wikiRoot, 'vault');
+  return {
+    root: path.relative(repoRoot, wikiRoot),
+    env_file: pathStatus(wikiEnvPath),
+    config_file: pathStatus(wikiConfigPath),
+    db_file: pathStatus(wikiDbPath),
+    pages: {
+      path: path.relative(repoRoot, pagesPath),
+      exists: directoryExists(pagesPath),
+      markdown_count: countFilesRecursive(pagesPath, { extension: '.md' }),
+    },
+    vault: {
+      path: path.relative(repoRoot, vaultPath),
+      exists: directoryExists(vaultPath),
+      file_count: countFilesRecursive(vaultPath),
+    },
+    commands: {
+      build_rulesbook: 'npm run wiki:build-rulesbook',
+      init_or_sync: 'npm run wiki:init or npm run wiki:sync',
+      query: 'npm run wiki:fts -- "<term>"',
+      doctor: 'npm run wiki:doctor',
+    },
   };
 }
 

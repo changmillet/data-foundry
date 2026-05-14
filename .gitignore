@@ -2,6 +2,8 @@
 .env.*
 !.env.example
 node_modules/
+__pycache__/
+*.pyc
 .foundry/logs/
 .foundry/workspaces/
 .foundry/state/
@@ -9,4 +11,6 @@ artifacts/
 reports/
 tmp/
 *.local
-
+wiki/index.db
+wiki/.queue-artifacts/
+wiki/.daemon/

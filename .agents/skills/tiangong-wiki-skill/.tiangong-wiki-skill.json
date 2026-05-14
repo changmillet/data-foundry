@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skillName": "tiangong-wiki-skill",
+  "sourceKind": "workspace-package",
+  "source": "https://github.com/Biaoo/tiangong-wiki",
+  "sourceCommit": "38b5bcec0a9669d804feb2f3d9c6133611a8a97d",
+  "package": "@biaoo/tiangong-wiki",
+  "packageVersion": "0.3.13",
+  "installedAt": "2026-05-13",
+  "command": "manual copy from verified Biaoo/tiangong-wiki checkout"
+}

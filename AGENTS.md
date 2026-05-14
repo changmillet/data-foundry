@@ -16,6 +16,7 @@ Humans should mostly manage policy, credentials, and final release posture. Agen
 - Source-of-truth task policy belongs in `WORKFLOW.md`.
 - Project-level specifications belong in `specs/`.
 - Reusable operating knowledge belongs in `docs/`.
+- Repo-local background knowledge and imported source corpora belong in `wiki/`.
 - Task queue files belong in `tasks/`.
 - Do not implement raw database writes without an explicit dry-run and verification gate.
 
@@ -25,8 +26,9 @@ Humans should mostly manage policy, credentials, and final release posture. Agen
 2. Read `WORKFLOW.md`.
 3. Read the relevant task file under `tasks/`.
 4. Read `specs/data-foundry-service.md`.
-5. If the task is account/category data governance, read `docs/data-governance-loop.md`.
-6. Run `npm run doctor` before trusting local commands.
+5. If the task needs LCA method background, ILCD naming conventions, or product-carbon-footprint factor database guidance, query `wiki/` first.
+6. If the task is account/category data governance, read `docs/data-governance-loop.md`.
+7. Run `npm run doctor` before trusting local commands.
 
 ## Current Private Seed Sources
 
@@ -36,6 +38,7 @@ The project adapts these already proven local workflows. Their filenames may con
 - `LCA-DATA-AGENT/playbooks/example-account-account-data-governance.md`
 - `LCA-DATA-AGENT/skill-sources/skills/account-data-iterative-governance/SKILL.md`
 - `LCA-DATA-AGENT/wiki/pages/methods/process-source-evidence-numeric-review.md`
+- `wiki/pages/concepts/foundry-rulesbook-wiki.md`
 
 ## Commit Rules
 

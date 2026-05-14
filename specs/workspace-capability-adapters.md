@@ -14,6 +14,7 @@ The foundry is a control plane. It owns task state, workspace isolation, evidenc
 - database RPCs, triggers, and indexes belong in `database-engine`
 - schema contracts belong in `tidas`, `tidas-sdk`, and `tidas-tools`
 - historical private task evidence can be read from `LCA-DATA-AGENT`
+- durable foundry-local source knowledge belongs in `wiki/`
 
 Before implementing any missing capability, classify it with `specs/capability-ownership-rules.json`.
 
@@ -119,6 +120,26 @@ Rules:
 - copy or summarize needed inputs into the task workspace
 - never assume private artifact paths are durable API contracts
 - replace path-specific logic with registry-backed source adapters as the foundry matures
+
+### Wiki Knowledge Adapter
+
+Use for reusable background knowledge and source recovery that should be available before task-specific execution starts.
+
+Rules:
+
+- store source-of-truth pages as Markdown under `wiki/pages/`
+- preserve imported source files under `wiki/vault/`
+- rebuild derived local indexes with `npm run wiki:init` or `npm run wiki:sync`
+- keep `wiki/index.db` out of git
+- query the wiki before LCA rules, ILCD conventions, naming, or product-carbon-footprint factor database decisions
+- cite linked wiki pages or source summaries in task reports when they materially influence a repair or review decision
+
+Required artifacts:
+
+- source summary page
+- fulltext chunk pages when source text is too large for one page
+- source manifest such as `wiki/rulesbook-manifest.json`
+- local wiki command and env-file used for indexing or search
 
 ### Schema Adapter
 
