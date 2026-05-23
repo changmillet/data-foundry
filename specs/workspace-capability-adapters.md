@@ -48,6 +48,11 @@ Minimum capability registry fields:
 - `verification_gate`
 - `source_manifest_requirements`
 
+The current automated LCA production dry-run registry lives at
+`specs/automated-lca-capability-registry.json`. It is intentionally a
+Foundry-local routing contract over shared CLI primitives; it must not duplicate
+the CLI implementation itself.
+
 ## 3. Capability Classes
 
 | Class | Examples | Default write mode |

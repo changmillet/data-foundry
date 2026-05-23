@@ -1,0 +1,85 @@
+{
+  "$schema": "schemas/capability-registry.schema.json",
+  "schema_version": 1,
+  "updated_at_utc": "2026-05-22T12:00:00Z",
+  "purpose": "Machine-readable registry for automated LCA production dry-run capabilities that Foundry may route without owning shared CLI business logic.",
+  "capabilities": [
+    {
+      "id": "cli.process.identity-preflight",
+      "class": "dataset-inventory",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca process identity-preflight",
+      "input_contract": "JSON object with target process and candidate rows",
+      "output_contract": "IdentityPreflightReport plus outputs/identity-decision.json and outputs/identity-candidates.jsonl",
+      "remote_write_mode": "read-only",
+      "verification_gate": "decision must be reuse, update_same_row, version_bump, create_new, block_duplicate, or manual_review",
+      "source_manifest_requirements": ["input path", "candidate source", "CLI command record"]
+    },
+    {
+      "id": "cli.flow.identity-preflight",
+      "class": "dataset-inventory",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca flow identity-preflight",
+      "input_contract": "JSON object with target flow and candidate rows",
+      "output_contract": "IdentityPreflightReport plus outputs/identity-decision.json and outputs/identity-candidates.jsonl",
+      "remote_write_mode": "read-only",
+      "verification_gate": "decision must be reuse, update_same_row, version_bump, create_new, block_duplicate, or manual_review",
+      "source_manifest_requirements": ["input path", "candidate source", "CLI command record"]
+    },
+    {
+      "id": "cli.process.build-plan.validate",
+      "class": "process-build",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca process build-plan validate",
+      "input_contract": "Process BuildPlan JSON with identity decision, evidence manifest, name plan, target geography/technology route, and quantitative reference plan",
+      "output_contract": "BuildPlanGateReport at outputs/build-plan-gate-report.json",
+      "remote_write_mode": "dry-run",
+      "verification_gate": "status passed before process payload materialization or status blocked with explicit blockers",
+      "source_manifest_requirements": ["BuildPlan input path", "EvidenceManifest source ids", "CLI command record"]
+    },
+    {
+      "id": "cli.flow.build-plan.validate",
+      "class": "flow-governance",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca flow build-plan validate",
+      "input_contract": "Flow BuildPlan JSON with identity decision, evidence manifest, name plan, flow type, reference property, and reference unit",
+      "output_contract": "BuildPlanGateReport at outputs/build-plan-gate-report.json",
+      "remote_write_mode": "dry-run",
+      "verification_gate": "status passed before flow payload materialization or status blocked with explicit blockers",
+      "source_manifest_requirements": ["BuildPlan input path", "EvidenceManifest source ids", "CLI command record"]
+    },
+    {
+      "id": "cli.process.build-plan.materialize",
+      "class": "process-build",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca process build-plan materialize",
+      "input_contract": "Process BuildPlan JSON accepted by the validate gate",
+      "output_contract": "BuildPlanGateReport plus outputs/materialized-process.json when not blocked",
+      "remote_write_mode": "dry-run",
+      "verification_gate": "materialized artifact is present only when the BuildPlan gate passes",
+      "source_manifest_requirements": ["BuildPlan input path", "gate report path", "CLI command record"]
+    },
+    {
+      "id": "cli.flow.build-plan.materialize",
+      "class": "flow-governance",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca flow build-plan materialize",
+      "input_contract": "Flow BuildPlan JSON accepted by the validate gate",
+      "output_contract": "BuildPlanGateReport plus outputs/materialized-flow.json when not blocked",
+      "remote_write_mode": "dry-run",
+      "verification_gate": "materialized artifact is present only when the BuildPlan gate passes",
+      "source_manifest_requirements": ["BuildPlan input path", "gate report path", "CLI command record"]
+    },
+    {
+      "id": "foundry.reference-closure.provider-flow-eligibility",
+      "class": "reference-closure",
+      "owner_project": "tiangong-lca-data-foundry",
+      "entrypoint": "node scripts/foundry.mjs sample-scenarios-dry-run",
+      "input_contract": "Sanitized sample scenario row with flow type",
+      "output_contract": "Per-sample provider_closure status in dry-run-report.json",
+      "remote_write_mode": "dry-run",
+      "verification_gate": "Elementary flow samples are skipped for product/provider closure matching",
+      "source_manifest_requirements": ["sample scenario id", "source sample index path"]
+    }
+  ]
+}

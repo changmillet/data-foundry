@@ -71,6 +71,7 @@ npm run orchestrator:rerun-review -- --task-id DATA-001
 npm run compute-repair:artifacts:check
 npm run compute-repair:probe
 npm run compute-repair:rerun
+npm run sample-scenarios:dry-run
 npm run orchestrator:status
 npm run tasks:list
 npm run tasks:check

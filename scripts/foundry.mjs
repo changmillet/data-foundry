@@ -17,6 +17,9 @@ const taskQueues = {
 const taskDirs = Object.values(taskQueues);
 const foundryDirs = ['.foundry/logs', '.foundry/workspaces', '.foundry/state'];
 const computeRepairTaskId = 'lca-compute-task-2026-05-10-factorization-not-prepared-singular';
+const sampleScenarioDryRunTaskId = 'issue-5';
+const sampleScenarioIndexPath = 'inputs/account-sample-scenarios/current-credential-identity-preflight-samples-2026-05-22.md';
+const automatedLcaCapabilityRegistryPath = 'specs/automated-lca-capability-registry.json';
 const accountRepairWorkspaceDirs = [
   'input-freeze',
   'audit',
@@ -2158,7 +2161,11 @@ ${followUp.done_criteria}
 
 function cliBinPath() {
   const roots = configuredRoots();
-  return path.join(roots.tiangong_lca_cli_dir, 'bin/tiangong.js');
+  const candidates = [
+    path.join(roots.tiangong_lca_cli_dir, 'bin/tiangong-lca.js'),
+    path.join(roots.tiangong_lca_cli_dir, 'bin/tiangong.js'),
+  ];
+  return candidates.find(fileExists) || candidates[0];
 }
 
 function cliCwd() {
@@ -2194,7 +2201,21 @@ function classifyErrorMessage(message) {
   return 'unknown_error';
 }
 
-function runTiangongJson(args, { timeoutMs = 600000, cwd = cliCwd() } = {}) {
+function parseJsonStdout(stdout) {
+  try {
+    return { ok: true, json: JSON.parse(stdout || 'null') };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+function runTiangongJson(
+  args,
+  { timeoutMs = 600000, cwd = cliCwd(), allowJsonOnFailure = false } = {},
+) {
   const binPath = cliBinPath();
   if (!fileExists(binPath)) {
     return {
@@ -2222,7 +2243,22 @@ function runTiangongJson(args, { timeoutMs = 600000, cwd = cliCwd() } = {}) {
   const stdout = run.stdout ?? '';
   const stderr = run.stderr ?? '';
   const timedOut = run.error?.code === 'ETIMEDOUT' || /timed out|timeout/iu.test(run.error?.message ?? '');
+  const parsedStdout = parseJsonStdout(stdout);
   if (run.error || run.status !== 0) {
+    if (allowJsonOnFailure && parsedStdout.ok) {
+      return {
+        ok: true,
+        accepted_nonzero_status: true,
+        status: run.status,
+        stdout,
+        stderr,
+        json: parsedStdout.json,
+        command,
+        timeout_ms: timeoutMs,
+        timed_out: timedOut,
+        duration_ms: durationMs,
+      };
+    }
     const message = [run.error?.message, stderr, stdout].filter(Boolean).join('\n');
     return {
       ok: false,
@@ -2237,32 +2273,31 @@ function runTiangongJson(args, { timeoutMs = 600000, cwd = cliCwd() } = {}) {
       duration_ms: durationMs,
     };
   }
-  try {
+  if (parsedStdout.ok) {
     return {
       ok: true,
       status: run.status,
       stdout,
       stderr,
-      json: JSON.parse(stdout),
-      command,
-      timeout_ms: timeoutMs,
-      timed_out: false,
-      duration_ms: durationMs,
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      status: run.status,
-      stdout,
-      stderr,
-      error: error instanceof Error ? error.message : String(error),
-      error_class: 'schema_error',
+      json: parsedStdout.json,
       command,
       timeout_ms: timeoutMs,
       timed_out: false,
       duration_ms: durationMs,
     };
   }
+  return {
+    ok: false,
+    status: run.status,
+    stdout,
+    stderr,
+    error: parsedStdout.error,
+    error_class: 'schema_error',
+    command,
+    timeout_ms: timeoutMs,
+    timed_out: false,
+    duration_ms: durationMs,
+  };
 }
 
 function commandRecord(run) {
@@ -2275,8 +2310,543 @@ function commandRecord(run) {
     error: run.error ?? null,
     timeout_ms: run.timeout_ms ?? null,
     timed_out: Boolean(run.timed_out),
+    accepted_nonzero_status: Boolean(run.accepted_nonzero_status),
     duration_ms: run.duration_ms ?? null,
   };
+}
+
+function repoRelativePath(filePath) {
+  return path.relative(repoRoot, filePath);
+}
+
+function readCapabilityRegistry() {
+  const registryPath = path.join(repoRoot, automatedLcaCapabilityRegistryPath);
+  if (!fileExists(registryPath)) {
+    return { schema_version: 1, capabilities: [] };
+  }
+  return readJson(registryPath);
+}
+
+function capabilityById(registry, id) {
+  return ensureArray(registry.capabilities).find((capability) => capability?.id === id) ?? {
+    id,
+    owner_project: 'unknown',
+    entrypoint: id,
+  };
+}
+
+function stripInlineMarkdown(text) {
+  return stripMarkdownCell(text)
+    .replace(/`([^`]+)`/gu, '$1')
+    .replace(/\s+/gu, ' ')
+    .trim();
+}
+
+function parseDatasetRef(refText) {
+  const [id, version = ''] = String(refText).trim().split('@');
+  return {
+    id: id.trim(),
+    version: version.trim() || null,
+  };
+}
+
+function parseSampleScenarioRows(samplePath) {
+  const text = readText(samplePath);
+  const rows = [];
+  for (const line of text.split(/\r?\n/u)) {
+    if (!/^\|\s*`[^`]+`/u.test(line)) continue;
+    const cells = splitMarkdownRow(line);
+    const sampleId = stripInlineMarkdown(cells[0]);
+    if (!sampleId || sampleId === 'Sample ID') continue;
+    const rowReferenceCell = cells[2] ?? '';
+    const rowReferences = [
+      ...rowReferenceCell.matchAll(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}@[0-9.]+/giu),
+    ].map((match) => parseDatasetRef(match[0]));
+    const stateCodeMatch = String(cells[3] ?? '').match(/-?\d+/u);
+    const safeNameSummary = stripInlineMarkdown(cells[4]);
+    const scenario = stripInlineMarkdown(cells[5]);
+    const futureTestExpectation = stripInlineMarkdown(cells[6]);
+    const dataset = stripInlineMarkdown(cells[1]);
+    const kind = /\bflow\b/iu.test(dataset) ? 'flow' : 'process';
+    rows.push({
+      sample_id: sampleId,
+      kind,
+      dataset,
+      is_group: /\bgroup\b/iu.test(dataset),
+      row_references: rowReferences,
+      state_code: stateCodeMatch ? Number(stateCodeMatch[0]) : null,
+      safe_name_summary: safeNameSummary,
+      scenario,
+      future_test_expectation: futureTestExpectation,
+      source_index_path: repoRelativePath(samplePath),
+    });
+  }
+  return rows;
+}
+
+function sampleCas(sample) {
+  return sample.safe_name_summary.match(/\bCAS\s+([0-9-]+)/iu)?.[1] ?? null;
+}
+
+function sampleGeography(sample, index = 0) {
+  const explicit = sample.safe_name_summary.match(/\{([A-Z]{2})\}/u)?.[1];
+  if (explicit) return explicit;
+  if (/wind/u.test(sample.sample_id)) return index === 1 ? 'EU' : 'CN';
+  if (/electrolyte|fec|basic-violet/u.test(sample.sample_id)) return 'GLO';
+  return 'CN';
+}
+
+function sampleTechnologyRoute(sample, index = 0) {
+  if (/pv/u.test(sample.sample_id)) return 'PV installation';
+  if (/electrolyte/u.test(sample.sample_id)) return 'lithium-ion battery electrolyte production';
+  if (/wind/u.test(sample.sample_id)) {
+    if (index < 0) return 'wind turbine manufacturing route under review';
+    return index === 1 ? 'offshore wind turbine manufacturing' : 'onshore wind turbine manufacturing';
+  }
+  return `${sample.kind} sample route`;
+}
+
+function sampleFlowType(sample) {
+  return /elementary/iu.test(`${sample.sample_id} ${sample.scenario}`)
+    ? 'Elementary flow'
+    : 'Product flow';
+}
+
+function sampleReferenceProperty(sample) {
+  return sample.kind === 'flow' ? 'mass' : null;
+}
+
+function sampleReferenceUnit(sample) {
+  if (sample.kind !== 'flow') return 'unit';
+  return sampleCas(sample) ? 'kg' : 'unit';
+}
+
+function sampleReferenceFlowId(sample) {
+  if (/pv/u.test(sample.sample_id)) return '190f39ca-0ec8-5aab-b2d9-c91fc55ee58d';
+  return `${sample.sample_id}-reference-flow`;
+}
+
+function sampleRow(sample, ref, index = 0) {
+  const base = {
+    id: ref?.id ?? null,
+    version: ref?.version ?? null,
+    state_code: sample.state_code,
+    name: sample.safe_name_summary,
+    sample_id: sample.sample_id,
+    source_scenario: sample.scenario,
+  };
+  if (sample.kind === 'flow') {
+    return {
+      ...base,
+      flow_id: ref?.id ?? null,
+      type_of_dataset: sampleFlowType(sample),
+      cas: sampleCas(sample),
+      flow_property: sampleReferenceProperty(sample),
+      reference_unit: sampleReferenceUnit(sample),
+      geography: sampleGeography(sample, index),
+    };
+  }
+  return {
+    ...base,
+    process_id: ref?.id ?? null,
+    geography: sampleGeography(sample, index),
+    technology_route: sampleTechnologyRoute(sample, index),
+    reference_flow_id: sampleReferenceFlowId(sample),
+  };
+}
+
+function sampleIdentityPreflightInput(sample) {
+  const candidates = sample.row_references.map((ref, index) => sampleRow(sample, ref, index));
+  const target =
+    sample.is_group && sample.kind === 'process'
+      ? sampleRow(sample, null, -1)
+      : deepClone(candidates[0] ?? sampleRow(sample, null, 0));
+  return {
+    target,
+    candidates,
+  };
+}
+
+function sampleBuildPlan(sample, identityDecision) {
+  const evidenceBindings =
+    sample.kind === 'process'
+      ? [
+          'target',
+          'identity_decision.decision',
+          'name_plan.base_name',
+          'target.geography',
+          'target.technology_route',
+          'quantitative_reference_plan.reference_flow_id',
+        ]
+      : [
+          'target',
+          'identity_decision.decision',
+          'name_plan.base_name',
+          'target.flow_type',
+          'flow_property_plan.reference_property',
+          'flow_property_plan.reference_unit',
+        ];
+  const common = {
+    schema_version: 1,
+    kind: sample.kind,
+    ruleset: {
+      id: `${sample.kind}-authoring/strict`,
+      version: '1',
+    },
+    identity_decision: {
+      decision: identityDecision,
+    },
+    evidence_manifest: {
+      sources: [
+        {
+          id: sample.sample_id,
+          type: 'sanitized-sample-scenario',
+          path: sample.source_index_path,
+        },
+      ],
+      field_bindings: evidenceBindings.map((fieldPath) => ({ field_path: fieldPath })),
+    },
+    name_plan: {
+      base_name: sample.safe_name_summary,
+    },
+  };
+  if (sample.kind === 'flow') {
+    return {
+      ...common,
+      target: {
+        flow_type: sampleFlowType(sample),
+      },
+      flow_property_plan: {
+        reference_property: sampleReferenceProperty(sample),
+        reference_unit: sampleReferenceUnit(sample),
+      },
+    };
+  }
+  return {
+    ...common,
+    target: {
+      geography: sampleGeography(sample),
+      technology_route: sampleTechnologyRoute(sample),
+    },
+    quantitative_reference_plan: {
+      reference_flow_id: sampleReferenceFlowId(sample),
+      reference_unit: 'unit',
+    },
+  };
+}
+
+function writeCommandCapture(commandDir, label, run) {
+  fs.mkdirSync(commandDir, { recursive: true });
+  const stdoutPath = path.join(commandDir, `${label}.stdout.txt`);
+  const stderrPath = path.join(commandDir, `${label}.stderr.txt`);
+  const recordPath = path.join(commandDir, `${label}.command.json`);
+  writeText(stdoutPath, run.stdout ?? '');
+  writeText(stderrPath, run.stderr ?? '');
+  writeJson(recordPath, commandRecord(run));
+  return {
+    command_record: repoRelativePath(recordPath),
+    stdout: repoRelativePath(stdoutPath),
+    stderr: repoRelativePath(stderrPath),
+  };
+}
+
+function providerClosureGate(sample) {
+  if (sample.kind !== 'flow') {
+    return {
+      capability_id: 'foundry.reference-closure.provider-flow-eligibility',
+      status: 'not_applicable',
+      reason: 'process samples are checked through process identity and reference-flow build-plan gates',
+    };
+  }
+  if (sampleFlowType(sample) === 'Elementary flow') {
+    return {
+      capability_id: 'foundry.reference-closure.provider-flow-eligibility',
+      status: 'skipped',
+      reason: 'elementary flows are valid exchange references but must be excluded from product-flow provider closure matching',
+    };
+  }
+  return {
+    capability_id: 'foundry.reference-closure.provider-flow-eligibility',
+    status: 'eligible',
+    reason: 'product flow can be considered for product/provider closure matching',
+  };
+}
+
+function capabilityRunRecord(registry, capabilityId, run, artifactPaths = {}) {
+  const capability = capabilityById(registry, capabilityId);
+  return {
+    capability_id: capability.id,
+    class: capability.class ?? null,
+    owner_project: capability.owner_project ?? null,
+    entrypoint: capability.entrypoint ?? null,
+    command: commandRecord(run),
+    artifacts: artifactPaths,
+  };
+}
+
+function renderSampleDryRunMarkdown(report) {
+  const rows = report.samples.map((sample) => ({
+    sample: sample.sample_id,
+    kind: sample.kind,
+    identity: `${sample.identity.status}/${sample.identity.decision}`,
+    build_plan: `${sample.build_plan_validate.status}/${sample.build_plan_validate.next_action}`,
+    provider_closure: sample.provider_closure.status,
+    blocker_count: sample.blocker_count,
+  }));
+  return `# Automated LCA Sample Scenario Dry-Run
+
+Generated: ${report.generated_at_utc}
+
+Task: ${report.task_id}
+
+Source sample index: \`${report.source_sample_index}\`
+
+## Result
+
+- Overall status: \`${report.status}\`
+- Samples: ${report.sample_count}
+- CLI adapter: \`${report.cli_adapter.bin_path}\`
+- Capability registry: \`${report.capability_registry}\`
+
+${buildMarkdownTable(rows, ['sample', 'kind', 'identity', 'build_plan', 'provider_closure', 'blocker_count'])}
+
+## Notes
+
+- All commands ran in dry-run/report-only mode; no remote writes were attempted.
+- Full command stdout/stderr and generated gate artifacts are under \`${report.workspace}\`.
+- Elementary flow samples are intentionally excluded from product-flow/provider closure matching while remaining valid elementary exchange references.
+`;
+}
+
+function runSampleScenariosDryRun(options = {}) {
+  const taskId = String(options.taskId || sampleScenarioDryRunTaskId);
+  const samplePath = resolveRepoPath(options.samples || sampleScenarioIndexPath);
+  const workspace = resolveRepoPath(
+    options.outDir || path.join('.foundry/workspaces', taskId, 'sample-scenario-dry-run'),
+  );
+  const inputFreezeDir = path.join(workspace, 'input-freeze');
+  const reportsDir = path.join(workspace, 'reports');
+  const registry = readCapabilityRegistry();
+  const samples = parseSampleScenarioRows(samplePath);
+  const sourceManifest = {
+    schema_version: 1,
+    generated_at_utc: nowIso(),
+    task_id: taskId,
+    source_sample_index: repoRelativePath(samplePath),
+    privacy: 'sanitized sample rows only; full private payload exports remain under ignored .foundry workspaces',
+    sample_count: samples.length,
+    capability_registry: automatedLcaCapabilityRegistryPath,
+  };
+  writeJson(path.join(inputFreezeDir, 'source-manifest.json'), sourceManifest);
+  writeJson(path.join(inputFreezeDir, 'sample-scenarios.json'), samples);
+
+  const results = [];
+  for (const sample of samples) {
+    const sampleDir = path.join(workspace, 'dry-run', sample.sample_id);
+    const inputDir = path.join(sampleDir, 'inputs');
+    const commandDir = path.join(sampleDir, 'commands');
+    const identityOutDir = path.join(sampleDir, 'identity-preflight');
+    const buildPlanValidateOutDir = path.join(sampleDir, 'build-plan-validate');
+    const buildPlanMaterializeOutDir = path.join(sampleDir, 'build-plan-materialize');
+    const identityInputPath = path.join(inputDir, 'identity-preflight-input.json');
+    const identityInput = sampleIdentityPreflightInput(sample);
+    writeJson(identityInputPath, identityInput);
+    const identityRun = runTiangongJson(
+      [
+        sample.kind,
+        'identity-preflight',
+        '--input',
+        identityInputPath,
+        '--out-dir',
+        identityOutDir,
+        '--json',
+      ],
+      { allowJsonOnFailure: true },
+    );
+    const identityCapture = writeCommandCapture(commandDir, 'identity-preflight', identityRun);
+    const identityReport = identityRun.json ?? {};
+
+    const buildPlanInputPath = path.join(inputDir, 'build-plan.json');
+    const buildPlan = sampleBuildPlan(sample, identityReport.decision ?? 'manual_review');
+    writeJson(buildPlanInputPath, buildPlan);
+    const buildPlanValidateRun = runTiangongJson(
+      [
+        sample.kind,
+        'build-plan',
+        'validate',
+        '--input',
+        buildPlanInputPath,
+        '--out-dir',
+        buildPlanValidateOutDir,
+        '--report-only',
+        '--json',
+      ],
+      { allowJsonOnFailure: true },
+    );
+    const buildValidateCapture = writeCommandCapture(
+      commandDir,
+      'build-plan-validate',
+      buildPlanValidateRun,
+    );
+    const buildValidateReport = buildPlanValidateRun.json ?? {};
+
+    const buildPlanMaterializeRun = runTiangongJson(
+      [
+        sample.kind,
+        'build-plan',
+        'materialize',
+        '--input',
+        buildPlanInputPath,
+        '--out-dir',
+        buildPlanMaterializeOutDir,
+        '--report-only',
+        '--json',
+      ],
+      { allowJsonOnFailure: true },
+    );
+    const buildMaterializeCapture = writeCommandCapture(
+      commandDir,
+      'build-plan-materialize',
+      buildPlanMaterializeRun,
+    );
+    const buildMaterializeReport = buildPlanMaterializeRun.json ?? {};
+    const providerClosure = providerClosureGate(sample);
+    const blockers = [
+      ...ensureArray(identityReport.blockers),
+      ...ensureArray(buildValidateReport.blockers),
+      ...ensureArray(buildMaterializeReport.blockers),
+    ];
+    results.push({
+      sample_id: sample.sample_id,
+      kind: sample.kind,
+      dataset: sample.dataset,
+      scenario: sample.scenario,
+      expectation: sample.future_test_expectation,
+      identity: {
+        status: identityReport.status ?? 'command_failed',
+        decision: identityReport.decision ?? null,
+        next_action: identityReport.next_action ?? null,
+      },
+      build_plan_validate: {
+        status: buildValidateReport.status ?? 'command_failed',
+        next_action: buildValidateReport.next_action ?? null,
+      },
+      build_plan_materialize: {
+        status: buildMaterializeReport.status ?? 'command_failed',
+        next_action: buildMaterializeReport.next_action ?? null,
+      },
+      provider_closure: providerClosure,
+      blocker_count: blockers.length,
+      blockers,
+      capabilities: [
+        capabilityRunRecord(
+          registry,
+          `cli.${sample.kind}.identity-preflight`,
+          identityRun,
+          {
+            input: repoRelativePath(identityInputPath),
+            out_dir: repoRelativePath(identityOutDir),
+            identity_decision: repoRelativePath(
+              path.join(identityOutDir, 'outputs/identity-decision.json'),
+            ),
+            candidates: repoRelativePath(path.join(identityOutDir, 'outputs/identity-candidates.jsonl')),
+            ...identityCapture,
+          },
+        ),
+        capabilityRunRecord(
+          registry,
+          `cli.${sample.kind}.build-plan.validate`,
+          buildPlanValidateRun,
+          {
+            input: repoRelativePath(buildPlanInputPath),
+            out_dir: repoRelativePath(buildPlanValidateOutDir),
+            gate_report: repoRelativePath(
+              path.join(buildPlanValidateOutDir, 'outputs/build-plan-gate-report.json'),
+            ),
+            ...buildValidateCapture,
+          },
+        ),
+        capabilityRunRecord(
+          registry,
+          `cli.${sample.kind}.build-plan.materialize`,
+          buildPlanMaterializeRun,
+          {
+            input: repoRelativePath(buildPlanInputPath),
+            out_dir: repoRelativePath(buildPlanMaterializeOutDir),
+            gate_report: repoRelativePath(
+              path.join(buildPlanMaterializeOutDir, 'outputs/build-plan-gate-report.json'),
+            ),
+            materialized_artifact: repoRelativePath(
+              path.join(
+                buildPlanMaterializeOutDir,
+                `outputs/materialized-${sample.kind}.json`,
+              ),
+            ),
+            ...buildMaterializeCapture,
+          },
+        ),
+      ],
+    });
+  }
+
+  const commandFailures = results.flatMap((sample) =>
+    sample.capabilities.filter((capability) => !capability.command.ok),
+  );
+  const report = {
+    schema_version: 1,
+    generated_at_utc: nowIso(),
+    task_id: taskId,
+    status: commandFailures.length === 0 ? 'completed' : 'completed_with_command_failures',
+    workspace: repoRelativePath(workspace),
+    source_sample_index: repoRelativePath(samplePath),
+    capability_registry: automatedLcaCapabilityRegistryPath,
+    cli_adapter: {
+      bin_path: cliBinPath(),
+      cwd: cliCwd(),
+    },
+    sample_count: results.length,
+    command_failure_count: commandFailures.length,
+    samples: results,
+  };
+  writeJson(path.join(workspace, 'capability-selection.json'), {
+    schema_version: 1,
+    generated_at_utc: report.generated_at_utc,
+    task_id: taskId,
+    registry: automatedLcaCapabilityRegistryPath,
+    selected_capabilities: [
+      'cli.process.identity-preflight',
+      'cli.flow.identity-preflight',
+      'cli.process.build-plan.validate',
+      'cli.flow.build-plan.validate',
+      'cli.process.build-plan.materialize',
+      'cli.flow.build-plan.materialize',
+      'foundry.reference-closure.provider-flow-eligibility',
+    ].map((id) => capabilityById(registry, id)),
+  });
+  writeJson(path.join(workspace, 'dry-run-report.json'), report);
+  writeJson(path.join(workspace, 'completeness-snapshot.json'), {
+    schema_version: 1,
+    generated_at_utc: report.generated_at_utc,
+    task_id: taskId,
+    gates: {
+      source_manifest_written: true,
+      sample_inputs_frozen: true,
+      capability_selection_written: true,
+      identity_preflight_ran_for_all_samples: results.every((sample) =>
+        sample.capabilities.some((capability) => capability.capability_id.endsWith('identity-preflight')),
+      ),
+      build_plan_validate_ran_for_all_samples: results.every((sample) =>
+        sample.capabilities.some((capability) => capability.capability_id.endsWith('build-plan.validate')),
+      ),
+      build_plan_materialize_ran_for_all_samples: results.every((sample) =>
+        sample.capabilities.some((capability) => capability.capability_id.endsWith('build-plan.materialize')),
+      ),
+      no_remote_writes_attempted: true,
+      command_failures: commandFailures.length,
+    },
+  });
+  writeText(path.join(reportsDir, 'sample-scenario-dry-run.md'), renderSampleDryRunMarkdown(report));
+  return report;
 }
 
 function ensureArray(value) {
@@ -4574,6 +5144,9 @@ if (command === 'init') {
 } else if (command === 'compute-repair-probe') {
   const result = computeRepairProbe({ taskId: options.taskId || computeRepairTaskId });
   console.log(JSON.stringify(result, null, 2));
+} else if (command === 'sample-scenarios-dry-run') {
+  const result = runSampleScenariosDryRun(options);
+  console.log(JSON.stringify(result, null, 2));
 } else if (command === 'orchestrate') {
   orchestrate(options).catch((error) => {
     writeStatus({ state: 'failed', error: error.message, queue_counts: queueCounts() });
@@ -4582,6 +5155,6 @@ if (command === 'init') {
     process.exit(1);
   });
 } else {
-  console.log('Usage: node scripts/foundry.mjs init|doctor|workflow-check|workspace-map|tasks-list|tasks-check|storage-check|artifact-contract-check|acceptance-check|status|env-check|compute-repair-probe|orchestrate [--once] [--task-id ID] [--include-review] [--interval-ms N] [--max-tasks N]');
+  console.log('Usage: node scripts/foundry.mjs init|doctor|workflow-check|workspace-map|tasks-list|tasks-check|storage-check|artifact-contract-check|acceptance-check|status|env-check|compute-repair-probe|sample-scenarios-dry-run|orchestrate [--once] [--task-id ID] [--include-review] [--interval-ms N] [--max-tasks N]');
   process.exit(command === 'help' || command === '--help' || command === '-h' ? 0 : 1);
 }

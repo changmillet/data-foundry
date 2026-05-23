@@ -24,6 +24,7 @@
     "compute-repair:probe": "node scripts/foundry.mjs compute-repair-probe --task-id lca-compute-task-2026-05-10-factorization-not-prepared-singular",
     "compute-repair:artifacts:check": "node scripts/foundry.mjs artifact-contract-check --contract specs/acceptance/lca-compute-repair-20260510.artifacts.json",
     "compute-repair:rerun": "node scripts/foundry.mjs orchestrate --once --include-review --task-id lca-compute-task-2026-05-10-factorization-not-prepared-singular",
+    "sample-scenarios:dry-run": "node scripts/foundry.mjs sample-scenarios-dry-run",
     "orchestrator:run": "node scripts/foundry.mjs orchestrate",
     "orchestrator:status": "node scripts/foundry.mjs status",
     "tasks:list": "node scripts/foundry.mjs tasks-list",
