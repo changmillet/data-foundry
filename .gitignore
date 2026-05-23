@@ -5,6 +5,7 @@ node_modules/
 __pycache__/
 *.pyc
 .foundry/logs/
+.foundry/account-profiles/
 .foundry/workspaces/
 .foundry/state/
 artifacts/

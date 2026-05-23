@@ -25,6 +25,33 @@ Agents must not use the display label to decide:
 
 Those decisions must come from credentials, source manifests, task policy, mutation plans, dry-run results, and verification artifacts.
 
+## Parallel Account Profiles
+
+When two local tasks must run against different TianGong accounts in the same checkout, do not switch by commenting and uncommenting `TIANGONG_LCA_API_KEY` in `.env`.
+
+Use ignored account profile files instead:
+
+```text
+.foundry/account-profiles/<profile>.env
+```
+
+Each profile keeps the standard variable names expected by existing CLI and Foundry commands:
+
+```env
+TIANGONG_LCA_API_KEY=...
+TIANGONG_LCA_SESSION_FILE=/Users/<user>/.local/state/tiangong-lca-cli/<profile>-session.json
+FOUNDRY_ACCOUNT_LABEL=<profile>
+FOUNDRY_EXPECTED_USER_ID=<resolved-user-id>
+```
+
+Run commands through:
+
+```bash
+npm run account:run -- <profile> -- <command> [args...]
+```
+
+The wrapper loads the selected profile into the child process using the same `TIANGONG_LCA_*` names, sets `FOUNDRY_ACCOUNT_PROFILE`, and verifies `FOUNDRY_EXPECTED_USER_ID` before running the command unless `--no-auth-check` is passed. This keeps account selection durable in the command and local task metadata instead of relying on chat memory.
+
 ## Private vs Public Surfaces
 
 Private operator runs may set `FOUNDRY_ACCOUNT_LABEL` in local `.env`.
