@@ -38,6 +38,58 @@ function assertProfileName(profile) {
   }
 }
 
+function assertSafeFileStem(value, label) {
+  if (!/^[A-Za-z0-9._-]+$/u.test(value)) {
+    throw new Error(`Invalid ${label}: ${value}`);
+  }
+}
+
+function readThreadAccountGuard(threadId) {
+  if (!threadId) return null;
+  assertSafeFileStem(threadId, 'CODEX_THREAD_ID');
+  const guardPath = path.join(
+    repoRoot,
+    '.foundry',
+    'state',
+    'thread-account-guards',
+    `${threadId}.json`,
+  );
+  if (!fs.existsSync(guardPath)) return null;
+  const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8'));
+  return { guard, guardPath };
+}
+
+function assertThreadAccountGuard({ profile, profileEnv }) {
+  const threadId = String(process.env.CODEX_THREAD_ID ?? '').trim();
+  const threadGuard = readThreadAccountGuard(threadId);
+  if (!threadGuard) return null;
+
+  const { guard, guardPath } = threadGuard;
+  const guardThreadId = String(guard.codex_thread_id ?? '').trim();
+  const guardProfile = String(guard.profile ?? '').trim();
+  const guardExpectedUserId = String(guard.expected_user_id ?? '').trim();
+  const profileExpectedUserId = String(profileEnv.FOUNDRY_EXPECTED_USER_ID ?? '').trim();
+
+  if (guardThreadId && guardThreadId !== threadId) {
+    throw new Error(`Thread account guard ${guardPath} is for ${guardThreadId}, not ${threadId}.`);
+  }
+  if (!guardProfile) {
+    throw new Error(`Thread account guard ${guardPath} is missing profile.`);
+  }
+  if (guardProfile !== profile) {
+    throw new Error(
+      `CODEX_THREAD_ID ${threadId} is locked to profile ${guardProfile}; refused profile ${profile}.`,
+    );
+  }
+  if (guardExpectedUserId && profileExpectedUserId && guardExpectedUserId !== profileExpectedUserId) {
+    throw new Error(
+      `Thread account guard expected user ${guardExpectedUserId}, but profile ${profile} expects ${profileExpectedUserId}.`,
+    );
+  }
+
+  return { threadId, guardPath };
+}
+
 function decodeUserApiKey(apiKey) {
   try {
     const parsed = JSON.parse(Buffer.from(String(apiKey ?? '').trim(), 'base64').toString('utf8'));
@@ -132,10 +184,12 @@ async function main() {
     throw new Error(`Account profile not found: ${profilePath}`);
   }
   const profileEnv = parseEnvFile(profilePath);
+  const threadGuard = assertThreadAccountGuard({ profile, profileEnv });
   const env = {
     ...process.env,
     ...profileEnv,
     FOUNDRY_ACCOUNT_PROFILE: profile,
+    ...(threadGuard ? { FOUNDRY_THREAD_ACCOUNT_GUARD: threadGuard.guardPath } : {}),
   };
   const shouldCheck = !flags.has('--no-auth-check') && env.FOUNDRY_ACCOUNT_PROFILE_SKIP_AUTH_CHECK !== 'true';
   if (shouldCheck) {

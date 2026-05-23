@@ -52,6 +52,36 @@ npm run account:run -- <profile> -- <command> [args...]
 
 The wrapper loads the selected profile into the child process using the same `TIANGONG_LCA_*` names, sets `FOUNDRY_ACCOUNT_PROFILE`, and verifies `FOUNDRY_EXPECTED_USER_ID` before running the command unless `--no-auth-check` is passed. This keeps account selection durable in the command and local task metadata instead of relying on chat memory.
 
+## Codex Thread Guards
+
+When parallel Codex conversations use different account profiles in the same checkout, bind the
+profile to the actual `CODEX_THREAD_ID` instead of relying on chat memory or a generic
+"current conversation" note.
+
+Use an ignored guard file:
+
+```text
+.foundry/state/thread-account-guards/<CODEX_THREAD_ID>.json
+```
+
+Minimum shape:
+
+```json
+{
+  "schema_version": 1,
+  "scope": "codex-thread-runtime-account-guard",
+  "codex_thread_id": "<CODEX_THREAD_ID>",
+  "profile": "<profile>",
+  "expected_user_id": "<resolved-user-id>",
+  "required_command_prefix": "node scripts/with-lca-account.mjs <profile> --"
+}
+```
+
+`scripts/with-lca-account.mjs` reads this file when `CODEX_THREAD_ID` is present. If a guard exists
+for the active thread, the wrapper refuses any different profile before running the child command.
+This makes account selection survive context compaction and prevents cross-talk between two active
+Codex threads in the same repository.
+
 ## Private vs Public Surfaces
 
 Private operator runs may set `FOUNDRY_ACCOUNT_LABEL` in local `.env`.
