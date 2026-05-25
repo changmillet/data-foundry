@@ -43,9 +43,11 @@ The sample set was selected from these query classes:
 | `process-current-draft-pv-cn` | process | `44cb413e-71af-30ac-b73f-f26e8a7925b0@00.00.001` | 0 | `3kWp facade installation, multi-Si, laminated, integrated, at building {CN}` | Current-credential draft process for a PV installation in China. | Process generation must detect the current draft candidate and prefer update/reuse over inserting another canonical duplicate. |
 | `process-visible-published-electrolyte` | process | `78b28ae3-5a27-4a5a-a3c3-10d116744073@01.01.000` | 100 | `Electrolyte, lithium-ion battery` | Published visible chemical process with specific production route metadata. | Process preflight must not overwrite a published row; it should reuse, block, or require an explicit new-version decision. |
 | `process-visible-same-name-wind-turbines` | process group | `a62055c9-887f-4df9-9851-462285418caa@01.01.000`; `62d244e5-5dfd-4c29-a322-44a995426573@01.01.001` | 100 | `Manufacturing of wind turbines` | Same English base name appears on distinct published process rows with different technical/geographic context. | Duplicate checks must not match on name alone; route, geography, technology, and version context must be compared before deciding reuse. |
+| `process-new-grid-loss-cn` | process | - | 0 | `electricity transmission and distribution loss model {CN}` | Synthetic legal-new process scenario with no current candidate rows. | Process identity preflight should return `create_new`; build-plan gates must still require evidence and deterministic materialization before any write. |
 | `flow-current-draft-reference-pv-cn` | flow | `190f39ca-0ec8-5aab-b2d9-c91fc55ee58d@00.00.001` | 0 | `3kWp facade installation, multi-Si, laminated, integrated, at building {CN}` | Current-credential draft flow that can act as a reference-flow candidate for the matching PV process. | Process auto-build must close the reference flow against existing current-account flows before creating a new flow. |
 | `flow-visible-product-fec` | flow | `75782613-d4dc-429b-a477-ab3a7bdfecaf@01.01.000` | 100 | `Fluoroethylene carbonate`; CAS `114435-02-8` | Published product flow with chemical identity, route, and synonym metadata. | Flow preflight should use product-flow identity fields such as base name, CAS, synonyms, route, and flow property; published rows are not draft overwrite targets. |
 | `flow-visible-elementary-basic-violet` | flow | `0ce4c692-7497-41ae-b630-97f9722eee16@03.00.004` | 100 | `basic violet 2`; CAS `8004-87-3` | Published elementary flow selected through the `Elementary flow` filter. | Provider-process closure must exclude elementary flows from product-flow/provider matching while still allowing them as valid elementary exchange references. |
+| `flow-provider-missing-industrial-heat` | flow | - | 0 | `industrial heat, low voltage auxiliary service {CN}` | Synthetic product-flow provider closure failure where no provider process is available in the fixture. | Provider-process closure must produce a blocking missing-provider gate before publish-prep or graph/compute verification can proceed. |
 
 ## Intended Coverage
 
@@ -55,7 +57,9 @@ These samples intentionally cover:
 - published visible rows (`state_code = 100`);
 - process and flow identity preflight;
 - name collision / disambiguation behavior;
+- legal-new identity decisions without current candidates;
 - current-account reference-flow closure;
+- provider closure failure handoff for product flows with no provider process;
 - product-flow versus elementary-flow handling.
 
 When a later test needs full source payloads, re-fetch them from the current credential/session into

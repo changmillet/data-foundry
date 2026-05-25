@@ -19,7 +19,52 @@ const foundryDirs = ['.foundry/logs', '.foundry/workspaces', '.foundry/state'];
 const computeRepairTaskId = 'lca-compute-task-2026-05-10-factorization-not-prepared-singular';
 const sampleScenarioDryRunTaskId = 'issue-5';
 const sampleScenarioIndexPath = 'inputs/account-sample-scenarios/current-credential-identity-preflight-samples-2026-05-22.md';
+const automatedTargetDatasetIndexPath =
+  'inputs/account-sample-scenarios/current-profile-automated-lca-target-datasets-2026-05-23.md';
+const automatedTargetDatasetTranslationsDir = 'inputs/account-sample-scenarios/translations';
+const automatedTargetDatasetSnapshotDir =
+  '.foundry/workspaces/example-account-dataset-selection-2026-05-23';
+const automatedTargetDatasetGateRunTaskId = 'issue-6-automated-lca-target-datasets';
+const automatedPostWriteVerifyTaskId = 'issue-6-automated-lca-post-write-verify';
+const automatedMatrixReadinessVerifyTaskId = 'issue-6-automated-lca-matrix-readiness';
+const currentProfileAccountWideAuditTaskId = 'current-profile-account-wide-audit-2026-05-25';
 const automatedLcaCapabilityRegistryPath = 'specs/automated-lca-capability-registry.json';
+const automatedLcaGoldenFixtureMatrixPath = 'specs/automated-lca-golden-fixtures.json';
+const matrixReadinessFixtureDir = 'inputs/account-sample-scenarios/calculator';
+const defaultMatrixReadinessSamples = [
+  'matrix-readiness-ready',
+  'matrix-readiness-provider-closure-blocked',
+];
+const defaultAutomatedTargetDatasetGateReportPath = path.join(
+  '.foundry/workspaces',
+  automatedTargetDatasetGateRunTaskId,
+  'target-dataset-gate-run/target-dataset-gate-report.json',
+);
+const defaultAutomatedTargetDatasetMutationHandoffPath = path.join(
+  '.foundry/workspaces',
+  automatedTargetDatasetGateRunTaskId,
+  'target-dataset-gate-run/mutation-plan-handoff.json',
+);
+const automatedTargetDatasets = [
+  {
+    sample_id: 'golden-closed-electricity-mix-cn-hb',
+    role: 'current full-chain target-quality candidate',
+    process_rows: 'selected/target-electricity-mix-cn-hb-process.jsonl',
+    flow_rows: 'selected/target-electricity-mix-cn-hb-flow.jsonl',
+  },
+  {
+    sample_id: 'process-quality-hydropower-run-of-river',
+    role: 'process-level quality benchmark and paired-flow repair check',
+    process_rows: 'selected/target-hydropower-process.jsonl',
+    flow_rows: 'selected/target-hydropower-flow.jsonl',
+  },
+  {
+    sample_id: 'semantic-rich-lcd-monitor-repair',
+    role: 'semantic-rich repair target for evidence compression',
+    process_rows: 'selected/target-lcd-process.jsonl',
+    flow_rows: 'selected/target-lcd-flow.jsonl',
+  },
+];
 const accountRepairWorkspaceDirs = [
   'input-freeze',
   'audit',
@@ -110,6 +155,10 @@ function writeText(filePath, text) {
 
 function readJson(filePath) {
   return JSON.parse(readText(filePath));
+}
+
+function readJsonIfExists(filePath) {
+  return fileExists(filePath) ? readJson(filePath) : null;
 }
 
 function writeJson(filePath, data) {
@@ -1002,6 +1051,8 @@ function configuredRoots() {
       || path.join(lcaWorkspaceRoot, 'tiangong-lca-edge-functions'),
     database_engine_root:
       envPath('TIANGONG_LCA_DATABASE_ENGINE_ROOT') || path.join(lcaWorkspaceRoot, 'database-engine'),
+    tiangong_lca_calculator_root:
+      envPath('FOUNDRY_CALCULATOR_ROOT') || path.join(lcaWorkspaceRoot, 'tiangong-lca-calculator'),
     domain_embedding_root:
       envPath('TIANGONG_LCA_DOMAIN_EMBEDDING_ROOT') || path.join(lcaWorkspaceRoot, 'lca-domain-embedding'),
   };
@@ -2558,6 +2609,15 @@ function providerClosureGate(sample) {
       reason: 'process samples are checked through process identity and reference-flow build-plan gates',
     };
   }
+  if (/missing-provider|provider closure failure|no provider/iu.test(
+    `${sample.sample_id} ${sample.scenario} ${sample.future_test_expectation}`,
+  )) {
+    return {
+      capability_id: 'foundry.reference-closure.provider-flow-eligibility',
+      status: 'missing_provider',
+      reason: 'product flow has no provider process in the fixture and must block publish-prep',
+    };
+  }
   if (sampleFlowType(sample) === 'Elementary flow') {
     return {
       capability_id: 'foundry.reference-closure.provider-flow-eligibility',
@@ -2572,6 +2632,18 @@ function providerClosureGate(sample) {
   };
 }
 
+function providerClosureBlockers(providerClosure) {
+  if (!isBlockingGateStatus(providerClosure?.status)) return [];
+  return [
+    {
+      code: 'provider_closure_not_closed',
+      severity: 'blocker',
+      message: providerClosure.reason ?? 'Provider closure gate did not pass.',
+      path: 'provider_closure.status',
+    },
+  ];
+}
+
 function capabilityRunRecord(registry, capabilityId, run, artifactPaths = {}) {
   const capability = capabilityById(registry, capabilityId);
   return {
@@ -2582,6 +2654,2557 @@ function capabilityRunRecord(registry, capabilityId, run, artifactPaths = {}) {
     command: commandRecord(run),
     artifacts: artifactPaths,
   };
+}
+
+function capabilitiesList(options = {}) {
+  const registry = readCapabilityRegistry();
+  const requestedClass = options.class ? String(options.class) : null;
+  const requestedOwner = options.owner ? String(options.owner) : null;
+  const capabilities = ensureArray(registry.capabilities).filter((capability) => {
+    if (requestedClass && capability.class !== requestedClass) return false;
+    if (requestedOwner && capability.owner_project !== requestedOwner) return false;
+    return true;
+  });
+  return {
+    schema_version: registry.schema_version ?? 1,
+    generated_at_utc: nowIso(),
+    registry: automatedLcaCapabilityRegistryPath,
+    source_updated_at_utc: registry.updated_at_utc ?? null,
+    filters: {
+      class: requestedClass,
+      owner_project: requestedOwner,
+    },
+    capability_count: capabilities.length,
+    capabilities,
+  };
+}
+
+const taskKindCapabilityClassRoutes = {
+  'account-governance': [
+    'dataset-inventory',
+    'schema-gate',
+    'process-review',
+    'flow-review',
+    'bilingual-gate',
+    'reference-closure',
+    'publish-prep',
+  ],
+  'account-repair': [
+    'schema-gate',
+    'process-review',
+    'flow-review',
+    'reference-closure',
+    'publish-prep',
+    'graph-verification',
+  ],
+  'category-update': [
+    'dataset-inventory',
+    'schema-gate',
+    'process-review',
+    'flow-review',
+    'reference-closure',
+    'publish-prep',
+  ],
+  'embedding-maintenance': ['embedding-maintenance'],
+  'flow-governance': [
+    'dataset-inventory',
+    'flow-governance',
+    'schema-gate',
+    'flow-review',
+    'bilingual-gate',
+    'reference-closure',
+    'remote-publish',
+  ],
+  'hybrid-retrieval': ['hybrid-search'],
+  'lifecyclemodel-build': ['lifecyclemodel-builder', 'schema-gate', 'publish-prep'],
+  'process-build': [
+    'dataset-inventory',
+    'process-build',
+    'process-authoring-required-fields',
+    'schema-gate',
+    'process-review',
+    'bilingual-gate',
+    'publish-prep',
+  ],
+  'publish-dry-run': ['publish-prep', 'remote-publish'],
+  verification: ['schema-gate', 'reference-closure', 'remote-verification', 'graph-verification'],
+};
+
+const requiredGateCapabilityClassRoutes = {
+  bilingual: ['bilingual-gate'],
+  'build-plan': ['process-build', 'flow-governance'],
+  compute: ['graph-verification'],
+  graph: ['graph-verification'],
+  identity: ['dataset-inventory'],
+  publish: ['publish-prep', 'remote-publish'],
+  reference: ['reference-closure'],
+  'reference-closure': ['reference-closure'],
+  remote: ['remote-verification'],
+  review: ['process-review', 'flow-review'],
+  ruleset: ['process-review', 'flow-review', 'publish-prep', 'remote-publish'],
+  schema: ['schema-gate'],
+  verification: ['schema-gate', 'reference-closure', 'remote-verification', 'graph-verification'],
+};
+
+const missingCapabilityClassOwners = {
+  'embedding-maintenance': 'tiangong-lca-edge-functions / lca-domain-embedding',
+  'graph-verification': 'tiangong-lca-calculator',
+  'hybrid-search': 'tiangong-lca-cli / tiangong-lca-skills / tiangong-lca-edge-functions',
+  'lifecyclemodel-builder': 'tiangong-lca-cli / tiangong-lca-skills',
+  'remote-verification': 'tiangong-lca-edge-functions / database-engine / tiangong-lca-cli',
+};
+
+function normalizedList(value) {
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => normalizedList(item));
+  }
+  return String(value ?? '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function uniqueStrings(values) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function safeRouteToken(value) {
+  return String(value ?? 'unknown')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_.-]+/gu, '-')
+    .replace(/^-+|-+$/gu, '')
+    || 'unknown';
+}
+
+function taskMetaFromRouterOptions(options = {}) {
+  if (options.taskObject) {
+    return {
+      task: options.taskObject,
+      meta: options.taskObject.meta ?? {},
+      sourceTaskPath: options.taskObject.relPath ?? null,
+    };
+  }
+  const taskPath = options.task || options.taskFile;
+  if (taskPath) {
+    const task = readTaskFile(resolveRepoPath(taskPath));
+    return { task, meta: task.meta, sourceTaskPath: task.relPath };
+  }
+  const meta = {
+    id: options.taskId || options.id || `route-${safeRouteToken(options.kind || 'unknown-task')}`,
+    kind: options.kind || options.taskKind || 'unknown',
+    category: options.category ?? null,
+    repo_owner: options.owner || options.repoOwner || null,
+    dataset_type: options.datasetType || options.datasetKind || null,
+    required_gates: options.requiredGates || null,
+  };
+  return { task: null, meta, sourceTaskPath: null };
+}
+
+function normalizeRouteTaskKind(meta) {
+  const kind = String(meta.kind ?? '').trim();
+  const category = String(meta.category ?? '').trim();
+  if (kind) return kind;
+  if (category === 'lca-compute-matrix-readiness') return 'verification';
+  return 'unknown';
+}
+
+function capabilityClassesForGate(gate, datasetType = 'all') {
+  const normalizedGate = String(gate ?? '').trim();
+  const type = String(datasetType ?? 'all').trim();
+  if (normalizedGate === 'build-plan') {
+    if (type === 'process') return ['process-build'];
+    if (type === 'flow') return ['flow-governance'];
+  }
+  if (normalizedGate === 'publish') {
+    if (type === 'process') return ['publish-prep'];
+    if (type === 'flow') return ['remote-publish'];
+  }
+  if (normalizedGate === 'review') {
+    if (type === 'process') return ['process-review'];
+    if (type === 'flow') return ['flow-review'];
+  }
+  if (normalizedGate === 'ruleset') {
+    if (type === 'process') return ['process-review', 'publish-prep'];
+    if (type === 'flow') return ['flow-review', 'remote-publish'];
+  }
+  return requiredGateCapabilityClassRoutes[normalizedGate] ?? [normalizedGate];
+}
+
+function routeClassesForTask(meta, options = {}, datasetType = 'all') {
+  const kind = normalizeRouteTaskKind(meta);
+  const directClasses = normalizedList(options.classes || options.capabilityClasses);
+  const gateNames = uniqueStrings([
+    ...normalizedList(meta.required_gates ?? meta.requiredGates),
+    ...normalizedList(options.requiredGates),
+  ]);
+  const gateClasses = gateNames.flatMap((gate) => capabilityClassesForGate(gate, datasetType));
+  const defaultClasses = taskKindCapabilityClassRoutes[kind] ?? [];
+  return uniqueStrings([...defaultClasses, ...gateClasses, ...directClasses]);
+}
+
+function capabilityMatchesDatasetType(capability, datasetType) {
+  const type = String(datasetType ?? '').trim();
+  if (!type || type === 'all') return true;
+  if (type === 'process' && capability.id.startsWith('cli.flow.')) return false;
+  if (type === 'flow' && capability.id.startsWith('cli.process.')) return false;
+  return true;
+}
+
+function suggestedOwnerForMissingClass(className) {
+  return missingCapabilityClassOwners[className] ?? 'tiangong-lca-data-foundry';
+}
+
+function buildCapabilityRoutePlan(options = {}) {
+  const registry = readCapabilityRegistry();
+  const { meta, sourceTaskPath } = taskMetaFromRouterOptions(options);
+  const taskId = String(meta.id || options.taskId || `route-${safeRouteToken(meta.kind || 'task')}`);
+  const kind = normalizeRouteTaskKind(meta);
+  const datasetType = String(
+    options.datasetType || options.datasetKind || meta.dataset_type || meta.datasetKind || 'all',
+  ).trim() || 'all';
+  const ownerFilter = String(options.owner || options.repoOwner || meta.repo_owner || '').trim();
+  const capabilities = ensureArray(registry.capabilities);
+  const classes = routeClassesForTask(meta, options, datasetType);
+  const selectedCapabilities = capabilities.filter((capability) =>
+    classes.includes(capability.class)
+    && capabilityMatchesDatasetType(capability, datasetType)
+    && (!ownerFilter || capability.owner_project === ownerFilter),
+  );
+  const selectedByClass = new Map();
+  for (const capability of selectedCapabilities) {
+    if (!selectedByClass.has(capability.class)) selectedByClass.set(capability.class, []);
+    selectedByClass.get(capability.class).push(capability);
+  }
+  const routes = classes.map((className) => {
+    const routeCapabilities = selectedByClass.get(className) ?? [];
+    return {
+      class: className,
+      status: routeCapabilities.length > 0 ? 'routed' : 'missing_capability',
+      capability_ids: routeCapabilities.map((capability) => capability.id),
+      owner_projects: uniqueStrings(routeCapabilities.map((capability) => capability.owner_project)),
+      missing_owner_project: routeCapabilities.length > 0 ? null : suggestedOwnerForMissingClass(className),
+    };
+  });
+  const missingCapabilities = routes
+    .filter((route) => route.status === 'missing_capability')
+    .map((route) => ({
+      class: route.class,
+      owner_project: route.missing_owner_project,
+      reason: `No capability with class=${route.class} is registered for kind=${kind}.`,
+      suggested_action: 'Create a capability-development follow-up in the owning repo instead of implementing shared business logic inside Foundry.',
+    }));
+  const adapterWorkspacePlan = selectedCapabilities.map((capability, index) => ({
+    capability_id: capability.id,
+    class: capability.class,
+    owner_project: capability.owner_project,
+    entrypoint: capability.entrypoint,
+    remote_write_mode: capability.remote_write_mode,
+    verification_gate: capability.verification_gate,
+    output_dir: `.foundry/workspaces/${taskId}/adapters/${String(index + 1).padStart(2, '0')}-${safeRouteToken(capability.id)}`,
+  }));
+  const status =
+    classes.length === 0
+      ? 'no_route'
+      : missingCapabilities.length > 0
+        ? 'missing_capabilities'
+        : 'routed';
+  return {
+    schema_version: 1,
+    generated_at_utc: nowIso(),
+    task: {
+      id: taskId,
+      kind,
+      category: meta.category ?? null,
+      source_task_path: sourceTaskPath,
+      dataset_type: datasetType,
+      repo_owner: ownerFilter || null,
+      required_gates: uniqueStrings([
+        ...normalizedList(meta.required_gates ?? meta.requiredGates),
+        ...normalizedList(options.requiredGates),
+      ]),
+    },
+    status,
+    next_action:
+      status === 'routed'
+        ? 'Run selected adapters into their planned output directories and collect gate artifacts.'
+        : status === 'missing_capabilities'
+          ? 'Create or update capability-development follow-ups for missing shared capabilities before autonomous execution.'
+          : 'Add task kind or required gate metadata so Foundry can route the task.',
+    capability_registry: automatedLcaCapabilityRegistryPath,
+    source_registry_updated_at_utc: registry.updated_at_utc ?? null,
+    counts: {
+      required_classes: classes.length,
+      selected_capabilities: selectedCapabilities.length,
+      missing_capabilities: missingCapabilities.length,
+    },
+    required_classes: classes,
+    routes,
+    selected_capabilities: selectedCapabilities,
+    missing_capabilities: missingCapabilities,
+    adapter_workspace_plan: adapterWorkspacePlan,
+  };
+}
+
+function renderCapabilityRoutePlanMarkdown(plan) {
+  const routeRows = plan.routes.map((route) => ({
+    class: route.class,
+    status: route.status,
+    capabilities: route.capability_ids.join(', ') || '-',
+    owner: route.owner_projects.join(', ') || route.missing_owner_project || '-',
+  }));
+  return `# Capability Route Plan
+
+Generated: ${plan.generated_at_utc}
+
+Task: ${plan.task.id}
+
+Kind: \`${plan.task.kind}\`
+
+Status: \`${plan.status}\`
+
+Next action: ${plan.next_action}
+
+## Routes
+
+${buildMarkdownTable(routeRows, ['class', 'status', 'capabilities', 'owner'])}
+`;
+}
+
+function writeCapabilityRoutePlan(plan, outDir) {
+  if (!outDir) return plan;
+  const resolvedOutDir = resolveRepoPath(outDir);
+  const files = {
+    capability_route_plan: repoRelativePath(path.join(resolvedOutDir, 'capability-route-plan.json')),
+    capability_selection: repoRelativePath(path.join(resolvedOutDir, 'capability-selection.json')),
+    report: repoRelativePath(path.join(resolvedOutDir, 'reports/capability-route-plan.md')),
+  };
+  const planWithFiles = { ...plan, files };
+  writeJson(path.join(resolvedOutDir, 'capability-route-plan.json'), planWithFiles);
+  writeJson(path.join(resolvedOutDir, 'capability-selection.json'), {
+    schema_version: 1,
+    generated_at_utc: plan.generated_at_utc,
+    task_id: plan.task.id,
+    registry: automatedLcaCapabilityRegistryPath,
+    selected_capabilities: plan.selected_capabilities,
+    adapter_workspace_plan: plan.adapter_workspace_plan,
+  });
+  writeText(
+    path.join(resolvedOutDir, 'reports/capability-route-plan.md'),
+    renderCapabilityRoutePlanMarkdown(plan),
+  );
+  return planWithFiles;
+}
+
+function runCapabilityRoute(options = {}) {
+  const taskId = options.taskId || options.id || null;
+  const outDir = options.outDir
+    || (taskId ? path.join('.foundry/workspaces', String(taskId), 'capability-route') : null);
+  return writeCapabilityRoutePlan(buildCapabilityRoutePlan(options), outDir);
+}
+
+function capabilityCommandGateStatus(capability) {
+  const command = capability?.command ?? {};
+  if (command.timed_out) return 'command_timed_out';
+  if (!command.ok) return 'command_failed';
+  return 'completed';
+}
+
+function isBlockingGateStatus(status) {
+  return new Set([
+    'blocked',
+    'blocked_matrix_readiness',
+    'block_duplicate',
+    'command_failed',
+    'command_timed_out',
+    'failed',
+    'manual_review',
+    'missing_input',
+    'missing_report',
+    'missing_provider',
+    'verification_failed',
+  ]).has(String(status ?? ''));
+}
+
+function gateIndexRecord({
+  registry,
+  taskId,
+  runKind,
+  sampleId = null,
+  datasetKind = null,
+  capabilityId,
+  status,
+  nextAction = null,
+  blockers = [],
+  qualityGaps = [],
+  artifacts = {},
+  command = null,
+}) {
+  const capability = capabilityById(registry, capabilityId);
+  const gateStatus = status || capabilityCommandGateStatus({ command });
+  return {
+    task_id: taskId,
+    run_kind: runKind,
+    sample_id: sampleId,
+    dataset_kind: datasetKind,
+    capability_id: capability.id,
+    class: capability.class ?? null,
+    owner_project: capability.owner_project ?? null,
+    entrypoint: capability.entrypoint ?? null,
+    status: gateStatus,
+    blocking: isBlockingGateStatus(gateStatus),
+    next_action: nextAction,
+    blockers: ensureArray(blockers),
+    quality_gaps: ensureArray(qualityGaps),
+    command,
+    artifacts,
+  };
+}
+
+function writeGateIndex({ workspace, registry, report, runKind, gates }) {
+  const blockingGates = gates.filter((gate) => gate.blocking);
+  const commandFailures = gates.filter((gate) =>
+    ['command_failed', 'command_timed_out'].includes(gate.status),
+  );
+  const gateIndex = {
+    schema_version: 1,
+    generated_at_utc: report.generated_at_utc,
+    task_id: report.task_id,
+    run_kind: runKind,
+    status: blockingGates.length > 0 ? 'blocked' : 'passed',
+    source_report_status: report.status,
+    workspace: repoRelativePath(workspace),
+    capability_registry: automatedLcaCapabilityRegistryPath,
+    counts: {
+      gates: gates.length,
+      blocking_gates: blockingGates.length,
+      command_failures: commandFailures.length,
+    },
+    gates,
+  };
+  writeJson(path.join(workspace, 'gate-index.json'), gateIndex);
+  return gateIndex;
+}
+
+function writeVerificationHandoff({ workspace, report, runKind, entries }) {
+  const blockingEntries = entries.filter((entry) => entry.blocking);
+  const handoff = {
+    schema_version: 1,
+    generated_at_utc: report.generated_at_utc,
+    task_id: report.task_id,
+    run_kind: runKind,
+    status: blockingEntries.length > 0 ? 'requires_review' : 'clear',
+    autonomous_progression_allowed: blockingEntries.length === 0,
+    remote_write_allowed: false,
+    remote_write_policy: 'disabled unless the task explicitly allows commit and all gates pass',
+    entries,
+  };
+  writeJson(path.join(workspace, 'verification-handoff.json'), handoff);
+  return handoff;
+}
+
+function handoffEntry({
+  state,
+  sampleId = null,
+  datasetKind = null,
+  capabilityId = null,
+  summary,
+  blockers = [],
+  qualityGaps = [],
+  nextAction = null,
+  artifacts = {},
+  blocking = true,
+}) {
+  return {
+    state,
+    sample_id: sampleId,
+    dataset_kind: datasetKind,
+    capability_id: capabilityId,
+    summary,
+    blocking,
+    blockers: ensureArray(blockers),
+    quality_gaps: ensureArray(qualityGaps),
+    next_action: nextAction,
+    artifacts,
+  };
+}
+
+function writeMutationPlanHandoff({ workspace, report, runKind, entries }) {
+  const handoff = {
+    schema_version: 1,
+    generated_at_utc: report.generated_at_utc,
+    task_id: report.task_id,
+    run_kind: runKind,
+    status: entries.some((entry) => entry.status === 'blocked') ? 'blocked' : 'ready_for_review',
+    remote_write_mode: 'no_remote_write',
+    required_before_commit: [
+      'schema gate passed',
+      'review gate passed',
+      'bilingual evidence complete',
+      'remote reference/version verification passed',
+      'publish gate report passed',
+      'explicit human approval for remote writes',
+    ],
+    entries,
+  };
+  writeJson(path.join(workspace, 'mutation-plan-handoff.json'), handoff);
+  return handoff;
+}
+
+function sampleScenarioGateEntries(registry, report) {
+  const gates = [];
+  for (const sample of report.samples) {
+    for (const capability of sample.capabilities) {
+      let status = capabilityCommandGateStatus(capability);
+      let nextAction = null;
+      if (capability.capability_id.endsWith('identity-preflight')) {
+        status = ['manual_review', 'block_duplicate'].includes(sample.identity.decision)
+          ? sample.identity.decision
+          : sample.identity.status;
+        nextAction = sample.identity.next_action;
+      } else if (capability.capability_id.endsWith('build-plan.validate')) {
+        status = sample.build_plan_validate.status;
+        nextAction = sample.build_plan_validate.next_action;
+      } else if (capability.capability_id.endsWith('build-plan.materialize')) {
+        status = sample.build_plan_materialize.status;
+        nextAction = sample.build_plan_materialize.next_action;
+      }
+      gates.push(gateIndexRecord({
+        registry,
+        taskId: report.task_id,
+        runKind: 'sample-scenarios-dry-run',
+        sampleId: sample.sample_id,
+        datasetKind: sample.kind,
+        capabilityId: capability.capability_id,
+        status,
+        nextAction,
+        blockers: sample.blockers,
+        artifacts: capability.artifacts,
+        command: capability.command,
+      }));
+    }
+    gates.push(gateIndexRecord({
+      registry,
+      taskId: report.task_id,
+      runKind: 'sample-scenarios-dry-run',
+      sampleId: sample.sample_id,
+      datasetKind: sample.kind,
+      capabilityId: 'foundry.reference-closure.provider-flow-eligibility',
+      status: sample.provider_closure.status,
+      nextAction: sample.provider_closure.reason,
+      artifacts: {},
+      command: null,
+    }));
+  }
+  return gates;
+}
+
+function sampleScenarioVerificationEntries(report) {
+  const entries = [];
+  for (const sample of report.samples) {
+    if (['manual_review', 'block_duplicate'].includes(sample.identity.decision)) {
+      entries.push(handoffEntry({
+        state: sample.identity.decision,
+        sampleId: sample.sample_id,
+        datasetKind: sample.kind,
+        capabilityId: `cli.${sample.kind}.identity-preflight`,
+        summary: `Identity decision is ${sample.identity.decision}.`,
+        blockers: sample.blockers,
+        nextAction: sample.identity.next_action,
+      }));
+    }
+    for (const capability of sample.capabilities) {
+      if (!capability.command?.ok) {
+        entries.push(handoffEntry({
+          state: 'verification_failed',
+          sampleId: sample.sample_id,
+          datasetKind: sample.kind,
+          capabilityId: capability.capability_id,
+          summary: `${capability.capability_id} command did not complete successfully.`,
+          blockers: sample.blockers,
+          artifacts: capability.artifacts,
+        }));
+      }
+    }
+    if (sample.blocker_count > 0 && !entries.some((entry) => entry.sample_id === sample.sample_id)) {
+      entries.push(handoffEntry({
+        state: 'manual_review',
+        sampleId: sample.sample_id,
+        datasetKind: sample.kind,
+        summary: 'Build-plan dry-run produced blockers that need review before mutation planning.',
+        blockers: sample.blockers,
+      }));
+    }
+  }
+  return entries;
+}
+
+function sampleScenarioMutationEntries(report) {
+  return report.samples.map((sample) => {
+    const materializeCapability = sample.capabilities.find((capability) =>
+      capability.capability_id.endsWith('build-plan.materialize'),
+    );
+    return {
+      sample_id: sample.sample_id,
+      dataset_kind: sample.kind,
+      status: sample.blocker_count > 0 ? 'blocked' : 'candidate_materialized',
+      identity_decision: sample.identity.decision,
+      mutation_source: materializeCapability?.artifacts?.materialized_artifact ?? null,
+      gate_report: materializeCapability?.artifacts?.gate_report ?? null,
+      blockers: sample.blockers,
+      next_action:
+        sample.blocker_count > 0
+          ? 'Resolve blockers before authoring mutation payloads.'
+          : 'Route materialized dry-run payload through schema, review, bilingual, and publish gates.',
+    };
+  });
+}
+
+function targetKindCapabilityStatus(kindResult, capability) {
+  const id = capability.capability_id;
+  if (id.endsWith('complete-required-fields')) {
+    if (Number(kindResult.required_fields?.blocked ?? 0) > 0) return 'blocked';
+    return kindResult.required_fields?.status ?? capabilityCommandGateStatus(capability);
+  }
+  if (id.endsWith('dataset-validate')) {
+    if (Number(kindResult.schema?.invalid ?? 0) > 0) return 'blocked';
+    return kindResult.schema?.status ?? capabilityCommandGateStatus(capability);
+  }
+  if (id.endsWith('.review')) return kindResult.review?.status ?? capabilityCommandGateStatus(capability);
+  if (id.endsWith('bilingual.apply')) {
+    return kindResult.bilingual?.apply_status ?? capabilityCommandGateStatus(capability);
+  }
+  if (id.endsWith('bilingual.validate')) {
+    const blockerCount = Number(kindResult.bilingual?.scan?.blocker_count ?? 0);
+    if (blockerCount > 0 || kindResult.bilingual?.validate_status === 'blocked') return 'blocked';
+    return kindResult.bilingual?.validate_status ?? capabilityCommandGateStatus(capability);
+  }
+  if (id.endsWith('remote-verify')) {
+    if (Number(kindResult.remote_verification?.blocker_count ?? 0) > 0) return 'blocked';
+    return kindResult.remote_verification?.status ?? capabilityCommandGateStatus(capability);
+  }
+  if (id.endsWith('remote-refresh')) {
+    if (Number(kindResult.remote_verification?.blocker_count ?? 0) > 0) return 'blocked';
+    return kindResult.remote_verification?.refresh_status ?? capabilityCommandGateStatus(capability);
+  }
+  return capabilityCommandGateStatus(capability);
+}
+
+function targetDatasetGateEntries(registry, report) {
+  const gates = [];
+  for (const sample of report.samples) {
+    for (const kind of ['process', 'flow']) {
+      const kindResult = sample[kind];
+      if (!kindResult) continue;
+      for (const capability of kindResult.capabilities) {
+        gates.push(gateIndexRecord({
+          registry,
+          taskId: report.task_id,
+          runKind: 'target-datasets-gate-run',
+          sampleId: sample.sample_id,
+          datasetKind: kind,
+          capabilityId: capability.capability_id,
+          status: targetKindCapabilityStatus(kindResult, capability),
+          nextAction: kindResult.status === 'target_quality_ready' ? 'Ready for publish-prep gate.' : null,
+          blockers: kindResult.readiness_blockers,
+          qualityGaps: kindResult.quality_gaps,
+          artifacts: capability.artifacts,
+          command: capability.command,
+        }));
+      }
+    }
+  }
+  return gates;
+}
+
+function targetDatasetVerificationEntries(report) {
+  const entries = [];
+  for (const sample of report.samples) {
+    const commandFailureCount =
+      Number(sample.process?.command_failure_count ?? 0) + Number(sample.flow?.command_failure_count ?? 0);
+    const hasReadinessBlockers = Number(sample.readiness_blocker_count ?? 0) > 0;
+    if (commandFailureCount > 0 || hasReadinessBlockers) {
+      entries.push(handoffEntry({
+        state: 'verification_failed',
+        sampleId: sample.sample_id,
+        summary: 'Target dataset gates have command failures or readiness blockers.',
+        blockers: sample.readiness_blockers,
+        qualityGaps: sample.quality_gaps,
+        nextAction: 'Fix blocking gates before publish-prep.',
+      }));
+    }
+    if (sample.quality_gap_count > 0) {
+      entries.push(handoffEntry({
+        state: 'manual_review',
+        sampleId: sample.sample_id,
+        summary: hasReadinessBlockers
+          ? 'Target dataset has quality gaps in addition to readiness blockers.'
+          : 'Target dataset passed blocking gates but still has quality gaps.',
+        blockers: sample.readiness_blockers,
+        qualityGaps: sample.quality_gaps,
+        nextAction: 'Complete AI transcreation/evidence review and rerun target-datasets gate.',
+      }));
+    }
+    if (sample.target_quality_ready) {
+      entries.push(handoffEntry({
+        state: 'publish_ready',
+        sampleId: sample.sample_id,
+        summary: 'Target dataset is ready for publish-prep gates and explicit human approval.',
+        nextAction: 'Run process publish-build, flow publish-version, and publish run verification gates.',
+        blocking: true,
+      }));
+    }
+  }
+  return entries;
+}
+
+function targetDatasetMutationEntries(report) {
+  return report.samples.map((sample) => ({
+    sample_id: sample.sample_id,
+    status: sample.target_quality_ready ? 'publish_gate_ready' : 'blocked',
+    process_rows:
+      sample.process?.verified_rows_file ??
+      sample.process?.gate_rows_file ??
+      sample.process?.rows_file ??
+      null,
+    flow_rows:
+      sample.flow?.verified_rows_file ??
+      sample.flow?.gate_rows_file ??
+      sample.flow?.rows_file ??
+      null,
+    readiness_blockers: sample.readiness_blockers,
+    quality_gaps: sample.quality_gaps,
+    publish_gate_capabilities: [
+      'cli.process.publish-build',
+      'cli.flow.publish-version',
+      'cli.publish.run',
+    ],
+    next_action: sample.target_quality_ready
+      ? 'Run publish-prep gates and request explicit remote-write approval.'
+      : 'Resolve readiness blockers and quality gaps before publish-prep.',
+  }));
+}
+
+function normalizeSampleFilter(value) {
+  return String(value ?? 'all')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function sampleMatchesFilter(sampleId, filter) {
+  return filter.length === 0 || filter.includes('all') || filter.includes(sampleId);
+}
+
+function postWriteStatusForVerifyRun(run) {
+  if (!run.ok) return 'command_failed';
+  if (Number(run.json?.counts?.blockers ?? 0) > 0) return 'blocked_post_write_verification';
+  if (run.json?.status === 'passed_remote_verification') return 'passed_post_write_verification';
+  return run.json?.status ?? 'completed';
+}
+
+function edgeVerifyRemoteUrl() {
+  return envValue('FOUNDRY_EDGE_VERIFY_REMOTE_URL')
+    || envValue('TIANGONG_LCA_EDGE_VERIFY_REMOTE_URL');
+}
+
+function edgeVerifyRemoteJwt() {
+  return envValue('FOUNDRY_EDGE_VERIFY_REMOTE_JWT')
+    || envValue('TIANGONG_LCA_EDGE_VERIFY_REMOTE_JWT')
+    || envValue('TIANGONG_LCA_ACCESS_TOKEN');
+}
+
+function edgeReferencesFromCliChecks(checks) {
+  return checks
+    .filter((check) => check && typeof check === 'object')
+    .filter((check) => check.table && check.id)
+    .map((check) => {
+      const reference = {
+        table: check.table,
+        id: check.id,
+        version: check.version ?? null,
+        role: check.role === 'root' ? 'root' : 'reference',
+      };
+      if (typeof check.path === 'string' && check.path.trim()) {
+        reference.path = check.path;
+      }
+      return reference;
+    });
+}
+
+async function runEdgeVerifyRemoteRequest({ payload, outDir, requireEdge }) {
+  const requestPath = path.join(outDir, 'edge-verify-request.json');
+  const responsePath = path.join(outDir, 'edge-verify-response.json');
+  writeJson(requestPath, payload);
+
+  const url = edgeVerifyRemoteUrl();
+  const jwt = edgeVerifyRemoteJwt();
+  if (!url || !jwt) {
+    return {
+      status: requireEdge ? 'blocked_edge_not_configured' : 'skipped_not_configured',
+      blocking: Boolean(requireEdge),
+      url_configured: Boolean(url),
+      jwt_configured: Boolean(jwt),
+      request: repoRelativePath(requestPath),
+      response: null,
+      blockers: requireEdge
+        ? ['Edge dataset verify-remote URL/JWT is required but not configured']
+        : [],
+    };
+  }
+
+  const startedAt = Date.now();
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+    const text = await response.text();
+    let json = null;
+    try {
+      json = text ? JSON.parse(text) : null;
+    } catch {
+      json = { raw: text };
+    }
+    writeJson(responsePath, {
+      status: response.status,
+      ok: response.ok,
+      duration_ms: Date.now() - startedAt,
+      body: json,
+    });
+    const blockerCount = Number(json?.data?.counts?.blockers ?? json?.blockers?.length ?? 0);
+    const passed = response.ok && blockerCount === 0;
+    return {
+      status: passed ? 'passed_remote_verification' : 'blocked_remote_verification',
+      blocking: !passed,
+      http_status: response.status,
+      duration_ms: Date.now() - startedAt,
+      request: repoRelativePath(requestPath),
+      response: repoRelativePath(responsePath),
+      blockers: passed
+        ? []
+        : ensureArray(json?.data?.blockers ?? json?.blockers ?? json?.message ?? 'Edge verify-remote call failed'),
+    };
+  } catch (error) {
+    writeJson(responsePath, {
+      status: null,
+      ok: false,
+      duration_ms: Date.now() - startedAt,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return {
+      status: 'edge_request_failed',
+      blocking: true,
+      duration_ms: Date.now() - startedAt,
+      request: repoRelativePath(requestPath),
+      response: repoRelativePath(responsePath),
+      blockers: [error instanceof Error ? error.message : String(error)],
+    };
+  }
+}
+
+async function runPostWriteKindVerification({
+  registry,
+  sampleId,
+  kind,
+  rowsFile,
+  sampleDir,
+  requireEdge,
+}) {
+  const kindDir = path.join(sampleDir, kind);
+  const cliVerifyOutDir = path.join(kindDir, 'cli-verify-remote');
+  const edgeVerifyOutDir = path.join(kindDir, 'edge-verify-remote');
+  if (!rowsFile || !fileExists(resolveRepoPath(rowsFile))) {
+    return {
+      kind,
+      rows_file: maybeRepoRelative(rowsFile),
+      status: 'missing_input',
+      command_failure_count: 0,
+      blocker_count: 1,
+      blockers: [`missing ${kind} rows file for post-write verification`],
+      verification: null,
+      edge_verification: null,
+      capabilities: [],
+    };
+  }
+
+  const verifyRun = runTiangongJson(
+    [
+      'dataset',
+      'verify-remote',
+      '--input',
+      resolveRepoPath(rowsFile),
+      '--out-dir',
+      cliVerifyOutDir,
+      '--root-policy',
+      'existing',
+      '--json',
+    ],
+    { allowJsonOnFailure: true },
+  );
+  const cliCapture = writeCommandCapture(path.join(kindDir, 'commands'), 'cli-verify-remote', verifyRun);
+  const checksPath = verifyRun.json?.files?.checks ? resolveRepoPath(verifyRun.json.files.checks) : null;
+  const cliChecks = checksPath && fileExists(checksPath) ? readJsonOrJsonl(checksPath) : [];
+  const edgePayload = {
+    rootPolicy: 'existing',
+    references: edgeReferencesFromCliChecks(cliChecks),
+  };
+  const edgeVerification = await runEdgeVerifyRemoteRequest({
+    payload: edgePayload,
+    outDir: edgeVerifyOutDir,
+    requireEdge,
+  });
+  const cliBlockers = Number(verifyRun.json?.counts?.blockers ?? (verifyRun.ok ? 0 : 1));
+  const edgeBlockers = edgeVerification.blocking ? ensureArray(edgeVerification.blockers).length || 1 : 0;
+  const blockers = [
+    ...ensureArray(verifyRun.json?.blockers).map((blocker) =>
+      typeof blocker === 'string' ? blocker : blocker.message ?? JSON.stringify(blocker),
+    ),
+    ...ensureArray(edgeVerification.blockers).map((blocker) =>
+      typeof blocker === 'string' ? blocker : blocker.message ?? JSON.stringify(blocker),
+    ),
+  ];
+  const status =
+    !verifyRun.ok
+      ? 'command_failed'
+      : cliBlockers > 0 || edgeBlockers > 0
+        ? 'blocked_post_write_verification'
+        : 'passed_post_write_verification';
+  const capability = targetDatasetCapabilityRecord(registry, `cli.${kind}.remote-verify`, verifyRun, {
+    rows_file: maybeRepoRelative(rowsFile),
+    out_dir: repoRelativePath(cliVerifyOutDir),
+    report: maybeRepoRelative(verifyRun.json?.files?.report),
+    checks: maybeRepoRelative(verifyRun.json?.files?.checks),
+    blockers: maybeRepoRelative(verifyRun.json?.files?.blockers),
+    edge_request: edgeVerification.request,
+    edge_response: edgeVerification.response,
+    ...cliCapture,
+  });
+
+  return {
+    kind,
+    sample_id: sampleId,
+    rows_file: maybeRepoRelative(rowsFile),
+    status,
+    command_failure_count: verifyRun.ok ? 0 : 1,
+    blocker_count: cliBlockers + edgeBlockers,
+    blockers,
+    verification: {
+      status: postWriteStatusForVerifyRun(verifyRun),
+      root_policy: verifyRun.json?.root_policy ?? 'existing',
+      counts: verifyRun.json?.counts ?? null,
+      report: maybeRepoRelative(verifyRun.json?.files?.report),
+      checks: maybeRepoRelative(verifyRun.json?.files?.checks),
+    },
+    edge_verification: edgeVerification,
+    capabilities: [capability],
+  };
+}
+
+function postWriteVerificationEntries(report) {
+  const entries = [];
+  for (const sample of report.samples) {
+    const blockers = [
+      ...ensureArray(sample.process?.blockers),
+      ...ensureArray(sample.flow?.blockers),
+    ];
+    if (sample.status === 'passed_post_write_verification') {
+      entries.push(handoffEntry({
+        state: 'publish_ready',
+        sampleId: sample.sample_id,
+        summary: 'Post-write readback and remote verification passed for process and flow rows.',
+        nextAction: 'Run compute verification and explicit publish policy review before state transition.',
+        artifacts: {
+          report: report.files?.post_write_verification_report ?? null,
+        },
+        blocking: true,
+      }));
+    } else {
+      entries.push(handoffEntry({
+        state: 'verification_failed',
+        sampleId: sample.sample_id,
+        summary: 'Post-write readback or remote verification did not pass.',
+        blockers,
+        nextAction: 'Repair remote visibility/version blockers before publish-ready handoff.',
+      }));
+    }
+  }
+  return entries;
+}
+
+function postWriteGateEntries(registry, report) {
+  const gates = [];
+  for (const sample of report.samples) {
+    for (const kind of ['process', 'flow']) {
+      const kindResult = sample[kind];
+      if (!kindResult) continue;
+      for (const capability of kindResult.capabilities ?? []) {
+        gates.push(gateIndexRecord({
+          registry,
+          taskId: report.task_id,
+          runKind: 'post-write-verify',
+          sampleId: sample.sample_id,
+          datasetKind: kind,
+          capabilityId: capability.capability_id,
+          status: kindResult.status,
+          nextAction:
+            kindResult.status === 'passed_post_write_verification'
+              ? 'Remote row is visible with exact version and closed references.'
+              : 'Resolve post-write verification blockers.',
+          blockers: kindResult.blockers,
+          artifacts: capability.artifacts,
+          command: capability.command,
+        }));
+      }
+    }
+  }
+  return gates;
+}
+
+function postWriteCoverageDelta(report) {
+  return {
+    schema_version: 1,
+    generated_at_utc: report.generated_at_utc,
+    task_id: report.task_id,
+    source_report: report.source_target_report,
+    samples: report.samples.map((sample) => ({
+      sample_id: sample.sample_id,
+      status: sample.status,
+      process: {
+        checked_references: sample.process?.verification?.counts?.checked ?? null,
+        blocker_count: sample.process?.blocker_count ?? null,
+        by_status: sample.process?.verification?.counts?.by_status ?? null,
+      },
+      flow: {
+        checked_references: sample.flow?.verification?.counts?.checked ?? null,
+        blocker_count: sample.flow?.blocker_count ?? null,
+        by_status: sample.flow?.verification?.counts?.by_status ?? null,
+      },
+    })),
+  };
+}
+
+function renderPostWriteVerificationMarkdown(report) {
+  const rows = report.samples.map((sample) => ({
+    sample: sample.sample_id,
+    process: sample.process?.status ?? 'n/a',
+    flow: sample.flow?.status ?? 'n/a',
+    blockers: sample.blocker_count,
+  }));
+  return `# Automated LCA Post-Write Verification
+
+Generated: ${report.generated_at_utc}
+
+Task: ${report.task_id}
+
+Status: \`${report.status}\`
+
+Source target gate: \`${report.source_target_report}\`
+
+## Result
+
+- Samples: ${report.counts.samples}
+- Command failures: ${report.counts.command_failures}
+- Blockers: ${report.counts.blockers}
+- Edge verify mode: \`${report.edge_verify.mode}\`
+
+${buildMarkdownTable(rows, ['sample', 'process', 'flow', 'blockers'])}
+
+## Notes
+
+- This command performs read-only post-write verification with \`dataset verify-remote --root-policy existing\`.
+- Edge verify requests are always written as artifacts; a configured Edge URL/JWT is required only when \`--require-edge\` is true.
+`;
+}
+
+async function runPostWriteVerification(options = {}) {
+  const taskId = String(options.taskId || automatedPostWriteVerifyTaskId);
+  const targetReportPath = resolveRepoPath(options.targetReport || defaultAutomatedTargetDatasetGateReportPath);
+  const mutationPlanPath = resolveRepoPath(options.mutationPlan || options.mutationHandoff || defaultAutomatedTargetDatasetMutationHandoffPath);
+  const workspace = resolveRepoPath(
+    options.outDir || path.join('.foundry/workspaces', taskId, 'post-write-verify'),
+  );
+  const inputFreezeDir = path.join(workspace, 'input-freeze');
+  const reportsDir = path.join(workspace, 'reports');
+  const requireEdge = boolOption(options.requireEdge, false);
+  const sampleFilter = normalizeSampleFilter(options.sample || options.samples || 'all');
+  const registry = readCapabilityRegistry();
+
+  if (!fileExists(targetReportPath)) {
+    throw new Error(`Missing target dataset gate report: ${targetReportPath}`);
+  }
+  if (!fileExists(mutationPlanPath)) {
+    throw new Error(`Missing mutation handoff: ${mutationPlanPath}`);
+  }
+
+  const targetReport = readJson(targetReportPath);
+  const mutationPlan = readJson(mutationPlanPath);
+  const mutationEntries = ensureArray(mutationPlan.entries)
+    .filter((entry) => entry.status === 'publish_gate_ready')
+    .filter((entry) => sampleMatchesFilter(entry.sample_id, sampleFilter));
+
+  writeJson(path.join(inputFreezeDir, 'post-write-verification-inputs.json'), {
+    schema_version: 1,
+    generated_at_utc: nowIso(),
+    task_id: taskId,
+    source_target_report: repoRelativePath(targetReportPath),
+    source_mutation_plan_handoff: repoRelativePath(mutationPlanPath),
+    account_context: accountContext(),
+    require_edge: requireEdge,
+    sample_filter: sampleFilter,
+    entries: mutationEntries,
+  });
+
+  const samples = [];
+  for (const entry of mutationEntries) {
+    const sampleDir = path.join(workspace, 'samples', entry.sample_id);
+    const processResult = await runPostWriteKindVerification({
+      registry,
+      sampleId: entry.sample_id,
+      kind: 'process',
+      rowsFile: entry.process_rows,
+      sampleDir,
+      requireEdge,
+    });
+    const flowResult = await runPostWriteKindVerification({
+      registry,
+      sampleId: entry.sample_id,
+      kind: 'flow',
+      rowsFile: entry.flow_rows,
+      sampleDir,
+      requireEdge,
+    });
+    const blockerCount = Number(processResult.blocker_count ?? 0) + Number(flowResult.blocker_count ?? 0);
+    const commandFailureCount =
+      Number(processResult.command_failure_count ?? 0) + Number(flowResult.command_failure_count ?? 0);
+    samples.push({
+      sample_id: entry.sample_id,
+      source_target_quality_ready:
+        ensureArray(targetReport.samples).find((sample) => sample.sample_id === entry.sample_id)
+          ?.target_quality_ready ?? null,
+      status:
+        blockerCount > 0 || commandFailureCount > 0
+          ? 'blocked_post_write_verification'
+          : 'passed_post_write_verification',
+      command_failure_count: commandFailureCount,
+      blocker_count: blockerCount,
+      process: processResult,
+      flow: flowResult,
+    });
+  }
+
+  const commandFailureCount = samples.reduce((total, sample) => total + sample.command_failure_count, 0);
+  const blockerCount = samples.reduce((total, sample) => total + sample.blocker_count, 0);
+  const report = {
+    schema_version: 1,
+    generated_at_utc: nowIso(),
+    task_id: taskId,
+    run_kind: 'post-write-verify',
+    status:
+      mutationEntries.length === 0
+        ? 'no_publish_ready_entries'
+        : commandFailureCount > 0 || blockerCount > 0
+          ? 'blocked_post_write_verification'
+          : 'passed_post_write_verification',
+    workspace: repoRelativePath(workspace),
+    source_target_report: repoRelativePath(targetReportPath),
+    source_mutation_plan_handoff: repoRelativePath(mutationPlanPath),
+    account_context: accountContext(),
+    edge_verify: {
+      mode: requireEdge ? 'required' : 'best_effort_request_artifact',
+      url_configured: Boolean(edgeVerifyRemoteUrl()),
+      jwt_configured: Boolean(edgeVerifyRemoteJwt()),
+    },
+    counts: {
+      samples: samples.length,
+      publish_ready_entries: mutationEntries.length,
+      command_failures: commandFailureCount,
+      blockers: blockerCount,
+    },
+    samples,
+  };
+  report.files = {
+    post_write_verification_report: repoRelativePath(path.join(workspace, 'post-write-verification-report.json')),
+    gate_index: repoRelativePath(path.join(workspace, 'gate-index.json')),
+    verification_handoff: repoRelativePath(path.join(workspace, 'verification-handoff.json')),
+    coverage_delta: repoRelativePath(path.join(workspace, 'coverage-delta.json')),
+    markdown: repoRelativePath(path.join(reportsDir, 'post-write-verification.md')),
+  };
+
+  writeJson(path.join(workspace, 'post-write-verification-report.json'), report);
+  writeJson(path.join(workspace, 'coverage-delta.json'), postWriteCoverageDelta(report));
+  writeGateIndex({
+    workspace,
+    registry,
+    report,
+    runKind: 'post-write-verify',
+    gates: postWriteGateEntries(registry, report),
+  });
+  writeVerificationHandoff({
+    workspace,
+    report,
+    runKind: 'post-write-verify',
+    entries: postWriteVerificationEntries(report),
+  });
+  writeText(path.join(reportsDir, 'post-write-verification.md'), renderPostWriteVerificationMarkdown(report));
+  return report;
+}
+
+function matrixReadinessCalculatorRoot() {
+  return configuredRoots().tiangong_lca_calculator_root;
+}
+
+function matrixReadinessCommandEnv() {
+  const env = { ...process.env };
+  const pkgConfigCandidates = [
+    '/opt/homebrew/lib/pkgconfig',
+    '/opt/homebrew/opt/suite-sparse/lib/pkgconfig',
+    '/usr/local/lib/pkgconfig',
+    '/usr/local/opt/suite-sparse/lib/pkgconfig',
+  ].filter(directoryExists);
+  const existing = String(env.PKG_CONFIG_PATH ?? '')
+    .split(path.delimiter)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  const pkgConfigPath = uniqueStrings([...pkgConfigCandidates, ...existing]);
+  if (pkgConfigPath.length > 0) {
+    env.PKG_CONFIG_PATH = pkgConfigPath.join(path.delimiter);
+  }
+  return env;
+}
+
+function defaultMatrixReadinessInputPath(sampleId) {
+  return path.join(matrixReadinessFixtureDir, `${sampleId}.input.json`);
+}
+
+function runCalculatorMatrixReadiness({ calculatorRoot, inputPath, reportPath, timeoutMs = 600000 }) {
+  const command = [
+    'cargo',
+    'run',
+    '-p',
+    'solver-worker',
+    '--bin',
+    'matrix_readiness',
+    '--',
+    '--input',
+    inputPath,
+    '--out',
+    reportPath,
+  ];
+  const startedAt = Date.now();
+  const run = spawnSync(command[0], command.slice(1), {
+    cwd: calculatorRoot,
+    env: matrixReadinessCommandEnv(),
+    encoding: 'utf8',
+    timeout: timeoutMs,
+    maxBuffer: 1024 * 1024 * 1024,
+  });
+  const durationMs = Date.now() - startedAt;
+  const stdout = run.stdout ?? '';
+  const stderr = run.stderr ?? '';
+  const timedOut = run.error?.code === 'ETIMEDOUT' || /timed out|timeout/iu.test(run.error?.message ?? '');
+  const ok = !run.error && run.status === 0 && fileExists(reportPath);
+  const message = [run.error?.message, stderr, stdout].filter(Boolean).join('\n');
+  return {
+    ok,
+    status: run.status,
+    stdout,
+    stderr,
+    error: ok ? null : run.error?.message ?? (stderr.trim() || stdout.trim() || 'matrix readiness command failed'),
+    error_class: ok ? null : classifyErrorMessage(message),
+    command,
+    timeout_ms: timeoutMs,
+    timed_out: timedOut,
+    duration_ms: durationMs,
+  };
+}
+
+function matrixReadinessStatus(run, calculatorReport) {
+  if (!run?.ok) return 'command_failed';
+  if (!calculatorReport) return 'missing_report';
+  if (calculatorReport.status === 'passed' && ensureArray(calculatorReport.blockers).length === 0) {
+    return 'passed_matrix_readiness';
+  }
+  return 'blocked_matrix_readiness';
+}
+
+function matrixReadinessCoverageDelta(report) {
+  return {
+    schema_version: 1,
+    generated_at_utc: report.generated_at_utc,
+    task_id: report.task_id,
+    run_kind: report.run_kind,
+    sample_id: report.sample_id,
+    source_input: report.input?.source ?? null,
+    status: report.status,
+    samples: ensureArray(report.samples).map((sample) => ({
+      sample_id: sample.sample_id,
+      status: sample.status,
+      blocker_count: sample.blocker_count,
+      provider_closure: sample.metrics?.provider_closure ?? null,
+      graph_readiness: sample.metrics?.graph_readiness ?? null,
+      compute_stability: sample.metrics?.compute_stability ?? null,
+    })),
+    provider_closure: report.metrics?.provider_closure ?? null,
+    graph_readiness: report.metrics?.graph_readiness ?? null,
+    compute_stability: report.metrics?.compute_stability ?? null,
+  };
+}
+
+function matrixReadinessVerificationEntries(report) {
+  return ensureArray(report.samples?.length ? report.samples : [report]).map((sample) => {
+    if (sample.status === 'passed_matrix_readiness') {
+      return handoffEntry({
+        state: 'publish_ready',
+        sampleId: sample.sample_id,
+        capabilityId: 'calculator.matrix-readiness.verify',
+        summary: 'Calculator provider closure, graph readiness, and compute stability gates passed.',
+        nextAction: 'Continue to explicit publish policy review and state transition gates.',
+        artifacts: {
+          report: sample.files?.matrix_readiness_report ?? report.files?.matrix_readiness_report ?? null,
+          coverage_delta: report.files?.coverage_delta ?? null,
+        },
+        blocking: true,
+      });
+    }
+    return handoffEntry({
+      state: 'verification_failed',
+      sampleId: sample.sample_id,
+      capabilityId: 'calculator.matrix-readiness.verify',
+      summary: 'Calculator matrix readiness gate did not pass.',
+      blockers: sample.blockers,
+      nextAction: sample.next_action || 'Repair provider closure, graph readiness, or compute blockers and rerun matrix readiness.',
+      artifacts: {
+        report: sample.files?.matrix_readiness_report ?? report.files?.matrix_readiness_report ?? null,
+        coverage_delta: report.files?.coverage_delta ?? null,
+      },
+    });
+  });
+}
+
+function matrixReadinessGateEntries(registry, report) {
+  return ensureArray(report.samples?.length ? report.samples : [report]).map((sample) =>
+    gateIndexRecord({
+      registry,
+      taskId: report.task_id,
+      runKind: 'matrix-readiness-verify',
+      sampleId: sample.sample_id,
+      capabilityId: 'calculator.matrix-readiness.verify',
+      status: sample.status,
+      nextAction: sample.next_action,
+      blockers: sample.blockers,
+      qualityGaps: sample.findings,
+      artifacts: sample.capability?.artifacts ?? report.capability?.artifacts ?? {
+        report: sample.files?.matrix_readiness_report ?? report.files?.matrix_readiness_report ?? null,
+        coverage_delta: report.files?.coverage_delta ?? null,
+      },
+      command: sample.capability?.command ?? report.capability?.command ?? null,
+    }),
+  );
+}
+
+function renderMatrixReadinessMarkdown(report) {
+  const rows = ensureArray(report.samples).map((sample) => ({
+    sample: sample.sample_id,
+    status: sample.status,
+    blockers: sample.blocker_count,
+    evidence: sample.provider_evidence_count,
+    next_action: sample.next_action,
+  }));
+  return `# Automated LCA Matrix Readiness Verification
+
+Generated: ${report.generated_at_utc}
+
+Task: ${report.task_id}
+
+Status: \`${report.status}\`
+
+Calculator root: \`${report.calculator.root}\`
+
+## Result
+
+${buildMarkdownTable(rows, ['sample', 'status', 'blockers', 'evidence', 'next_action'])}
+
+## Notes
+
+- This command delegates provider closure, graph readiness, factorization, singular-risk, and negative-LCIA checks to \`tiangong-lca-calculator\`.
+- Foundry only freezes inputs, runs the adapter, records command evidence, and writes gate handoff artifacts.
+`;
+}
+
+function runMatrixReadinessVerificationBatch({ taskId, samples, workspace, options }) {
+  const reportsDir = path.join(workspace, 'reports');
+  const childReports = samples.map((sampleId) =>
+    runMatrixReadinessVerification({
+      ...options,
+      sample: sampleId,
+      outDir: path.join(workspace, 'samples', sampleId),
+    }),
+  );
+  const sampleReports = childReports.map((childReport) => {
+    const sample = deepClone(childReport.samples?.[0] ?? childReport);
+    sample.files = childReport.files ?? {};
+    sample.capability = childReport.capability ?? null;
+    return sample;
+  });
+  const commandFailures = childReports.reduce(
+    (total, childReport) => total + Number(childReport.counts?.command_failures ?? 0),
+    0,
+  );
+  const blockerCount = sampleReports.reduce((total, sample) => total + Number(sample.blocker_count ?? 0), 0);
+  const findingCount = sampleReports.reduce((total, sample) => total + Number(sample.finding_count ?? 0), 0);
+  const providerEvidenceCount = sampleReports.reduce(
+    (total, sample) => total + Number(sample.provider_evidence_count ?? 0),
+    0,
+  );
+  const report = {
+    schema_version: 1,
+    generated_at_utc: nowIso(),
+    task_id: taskId,
+    run_kind: 'matrix-readiness-verify',
+    sample_id: 'multiple',
+    status:
+      commandFailures > 0
+        ? 'command_failed'
+        : blockerCount > 0
+          ? 'blocked_matrix_readiness'
+          : 'passed_matrix_readiness',
+    workspace: repoRelativePath(workspace),
+    input: {
+      source: samples.map((sampleId) => defaultMatrixReadinessInputPath(sampleId)),
+      frozen: childReports.map((childReport) => childReport.input?.frozen ?? null),
+    },
+    calculator: {
+      root: matrixReadinessCalculatorRoot(),
+      pkg_config_path: matrixReadinessCommandEnv().PKG_CONFIG_PATH ?? null,
+    },
+    account_context: accountContext(),
+    counts: {
+      samples: sampleReports.length,
+      command_failures: commandFailures,
+      blockers: blockerCount,
+      findings: findingCount,
+      provider_evidence: providerEvidenceCount,
+    },
+    metrics: null,
+    samples: sampleReports,
+  };
+  report.files = {
+    matrix_readiness_verification_report: repoRelativePath(path.join(workspace, 'matrix-readiness-verification-report.json')),
+    matrix_readiness_report: null,
+    gate_index: repoRelativePath(path.join(workspace, 'gate-index.json')),
+    verification_handoff: repoRelativePath(path.join(workspace, 'verification-handoff.json')),
+    coverage_delta: repoRelativePath(path.join(workspace, 'coverage-delta.json')),
+    markdown: repoRelativePath(path.join(reportsDir, 'matrix-readiness-verification.md')),
+  };
+
+  const registry = readCapabilityRegistry();
+  writeJson(path.join(workspace, 'matrix-readiness-verification-report.json'), report);
+  writeJson(path.join(workspace, 'coverage-delta.json'), matrixReadinessCoverageDelta(report));
+  writeGateIndex({
+    workspace,
+    registry,
+    report,
+    runKind: 'matrix-readiness-verify',
+    gates: matrixReadinessGateEntries(registry, report),
+  });
+  writeVerificationHandoff({
+    workspace,
+    report,
+    runKind: 'matrix-readiness-verify',
+    entries: matrixReadinessVerificationEntries(report),
+  });
+  writeText(path.join(reportsDir, 'matrix-readiness-verification.md'), renderMatrixReadinessMarkdown(report));
+  return report;
+}
+
+function missingMatrixReadinessInputReport({ taskId, sampleId, workspace, inputPath, registry }) {
+  const generatedAt = nowIso();
+  const report = {
+    schema_version: 1,
+    generated_at_utc: generatedAt,
+    task_id: taskId,
+    run_kind: 'matrix-readiness-verify',
+    sample_id: sampleId,
+    status: 'missing_input',
+    workspace: repoRelativePath(workspace),
+    input: {
+      source: maybeRepoRelative(inputPath),
+      frozen: null,
+    },
+    calculator: {
+      root: matrixReadinessCalculatorRoot(),
+    },
+    account_context: accountContext(),
+    counts: {
+      samples: 1,
+      command_failures: 0,
+      blockers: 1,
+      findings: 0,
+      provider_evidence: 0,
+    },
+    metrics: null,
+    samples: [
+      {
+        sample_id: sampleId,
+        status: 'missing_input',
+        blocker_count: 1,
+        finding_count: 0,
+        provider_evidence_count: 0,
+        next_action: 'Create a matrix_readiness_input.v1 artifact or pass --input.',
+        blockers: [`missing matrix readiness input: ${inputPath}`],
+        findings: [],
+        metrics: null,
+      },
+    ],
+  };
+  report.files = {
+    matrix_readiness_verification_report: repoRelativePath(path.join(workspace, 'matrix-readiness-verification-report.json')),
+    matrix_readiness_report: null,
+    gate_index: repoRelativePath(path.join(workspace, 'gate-index.json')),
+    verification_handoff: repoRelativePath(path.join(workspace, 'verification-handoff.json')),
+    coverage_delta: repoRelativePath(path.join(workspace, 'coverage-delta.json')),
+    markdown: repoRelativePath(path.join(workspace, 'reports/matrix-readiness-verification.md')),
+  };
+  writeJson(path.join(workspace, 'matrix-readiness-verification-report.json'), report);
+  writeJson(path.join(workspace, 'coverage-delta.json'), matrixReadinessCoverageDelta(report));
+  writeGateIndex({
+    workspace,
+    registry,
+    report,
+    runKind: 'matrix-readiness-verify',
+    gates: matrixReadinessGateEntries(registry, report),
+  });
+  writeVerificationHandoff({
+    workspace,
+    report,
+    runKind: 'matrix-readiness-verify',
+    entries: matrixReadinessVerificationEntries(report),
+  });
+  writeText(path.join(workspace, 'reports/matrix-readiness-verification.md'), renderMatrixReadinessMarkdown(report));
+  return report;
+}
+
+function stableUuidFromText(text) {
+  const hex = createHash('sha256').update(String(text)).digest('hex');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+}
+
+function datasetRowsFromFile(filePath) {
+  const value = readJsonOrJsonl(filePath);
+  const rows = Array.isArray(value)
+    ? value
+    : Array.isArray(value?.rows)
+      ? value.rows
+      : Array.isArray(value?.data)
+        ? value.data
+        : value && typeof value === 'object'
+          ? [value]
+          : [];
+  return rows.map(normalizeDatasetRowForGraph);
+}
+
+function normalizeDatasetRowForGraph(row) {
+  if (!row || typeof row !== 'object' || Array.isArray(row)) return row;
+  const id = row.id ?? row.process_id ?? row.flow_id ?? row.dataset_id ?? null;
+  const version = row.version ?? row.resolved_version ?? row.requested_version ?? null;
+  return {
+    ...row,
+    ...(id ? { id } : {}),
+    ...(version ? { version } : {}),
+  };
+}
+
+function targetGateRowsPath(result, kind) {
+  const candidates = [
+    result?.verified_rows_file,
+    result?.remote_verification?.refreshed_rows,
+    result?.gate_rows_file,
+    result?.bilingual?.translated_rows,
+    result?.required_fields?.output_rows,
+    result?.rows_file,
+  ];
+  const selected = candidates.find((candidate) => candidate && fileExists(resolveRepoPath(candidate)));
+  if (!selected) {
+    throw new Error(`Target gate report is missing usable ${kind} rows file.`);
+  }
+  return selected;
+}
+
+function statePartition(row) {
+  const stateCode = Number(row?.state_code);
+  return Number.isFinite(stateCode) && stateCode >= 100 ? 'public' : 'private';
+}
+
+function compiledEdgePartition(providerPartition, consumerPartition) {
+  return `${providerPartition}_to_${consumerPartition}`;
+}
+
+function indexByProcessKey(processes) {
+  return new Map(processes.map((processRecord, index) => [processRecord.key, index]));
+}
+
+function targetInputEdges(graph, targetKeys) {
+  return graph.exchanges.filter((exchange) => {
+    const key = `${exchange.process_id}@${exchange.process_version}`;
+    const amount = Number(exchange.amount ?? 1);
+    return targetKeys.has(key)
+      && exchange.flow_id
+      && !exchange.is_elementary_flow
+      && !exchange.is_process_quantitative_reference
+      && String(exchange.direction ?? '').toLowerCase() === 'input'
+      && (!Number.isFinite(amount) || Math.abs(amount) > 0);
+  });
+}
+
+function providerKeysForTargetEdges(graph, targetKeys) {
+  const keys = new Set();
+  for (const edge of targetInputEdges(graph, targetKeys)) {
+    const consumerKey = `${edge.process_id}@${edge.process_version}`;
+    const exactKey = `${edge.flow_id}@${edge.flow_version ?? ''}`;
+    for (const provider of graph.providerByExactFlow.get(exactKey) ?? []) {
+      if (provider.key !== consumerKey) keys.add(provider.key);
+    }
+    for (const provider of graph.providerByFlow.get(edge.flow_id) ?? []) {
+      if (provider.key !== consumerKey) keys.add(provider.key);
+    }
+  }
+  return keys;
+}
+
+function processLocation(processRecord) {
+  const dataset = processDataset(processRecord?.payload ?? processRecord);
+  return asText(
+    dataset.processInformation?.geography?.locationOfOperationSupplyOrProduction?.['@location']
+      ?? dataset.processInformation?.geography?.locationOfOperationSupplyOrProduction?.location
+      ?? processRecord?.location,
+  ) || null;
+}
+
+function processReferenceYear(processRecord) {
+  const dataset = processDataset(processRecord?.payload ?? processRecord);
+  const value = dataset.processInformation?.time?.['common:referenceYear']
+    ?? dataset.processInformation?.time?.referenceYear
+    ?? processRecord?.reference_year;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function processAnnualSupplyOrProductionVolume(processRecord) {
+  const dataset = processDataset(processRecord?.payload ?? processRecord);
+  const value = dataset.modellingAndValidation?.LCIMethodAndAllocation?.annualSupplyOrProductionVolume
+    ?? dataset.modellingAndValidation?.LCIMethod?.annualSupplyOrProductionVolume
+    ?? processRecord?.annual_supply_or_production_volume;
+  const text = asText(value);
+  const match = text.match(/[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?/u);
+  const numeric = match ? Number(match[0]) : Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function providerCandidateRecord(provider, providerIdx) {
+  return {
+    provider_idx: providerIdx,
+    provider_id: provider.id,
+    provider_version: provider.version ?? null,
+    process_name: provider.name || null,
+    location: processLocation(provider),
+    reference_year: processReferenceYear(provider),
+    annual_supply_or_production_volume: processAnnualSupplyOrProductionVolume(provider),
+  };
+}
+
+function providerDecisionRows(decisionsPath) {
+  if (!decisionsPath) return [];
+  const resolved = resolveRepoPath(decisionsPath);
+  if (!fileExists(resolved)) throw new Error(`provider decisions file not found: ${decisionsPath}`);
+  const value = readJsonOrJsonl(resolved);
+  const rows = Array.isArray(value)
+    ? value
+    : Array.isArray(value?.decisions)
+      ? value.decisions
+      : value && typeof value === 'object'
+        ? [value]
+        : [];
+  return rows.filter((row) => row && typeof row === 'object' && !Array.isArray(row));
+}
+
+function providerDecisionIndex(decisions) {
+  const byExactFlow = new Map();
+  const byFlow = new Map();
+  for (const decision of decisions) {
+    const flowId = asText(decision.flow_id);
+    if (!flowId) continue;
+    const flowVersion = asText(decision.flow_version);
+    if (flowVersion) byExactFlow.set(`${flowId}@${flowVersion}`, decision);
+    if (!byFlow.has(flowId)) byFlow.set(flowId, decision);
+  }
+  return { byExactFlow, byFlow };
+}
+
+function providerDecisionForEdge(index, edge) {
+  const exact = index.byExactFlow.get(`${edge.flow_id}@${edge.flow_version ?? ''}`);
+  return exact ?? index.byFlow.get(edge.flow_id) ?? null;
+}
+
+function candidateMatchesDecision(candidate, decision) {
+  if (!decision) return false;
+  const providerId = asText(decision.provider_id);
+  const providerVersion = asText(decision.provider_version);
+  if (providerId && candidate.provider_id !== providerId) return false;
+  if (providerVersion && candidate.provider_version !== providerVersion) return false;
+  return Boolean(providerId || providerVersion);
+}
+
+function visibleProviderScopeRows(workspace, options = {}) {
+  if (options.providerScope !== 'account-visible') {
+    return {
+      rows: [],
+      files: {},
+      commands: {},
+      blockers: [],
+      status: 'not_requested',
+    };
+  }
+  const scopeDir = path.join(workspace, 'input-freeze/provider-scope');
+  const refreshOutDir = path.join(scopeDir, 'process-refresh-references-probe');
+  const commands = {};
+  const blockers = [];
+  const refresh = runTiangongJson([
+    'process',
+    'refresh-references',
+    '--out-dir',
+    refreshOutDir,
+    '--dry-run',
+    '--limit',
+    '1',
+    '--page-size',
+    '1000',
+    '--json',
+  ], { timeoutMs: numberOption(options.remoteTimeoutMs, 120000, { min: 1000 }) });
+  commands.process_refresh_references_probe = commandRecord(refresh);
+  if (!refresh.ok) {
+    blockers.push(refresh.error ?? 'process refresh-references probe failed');
+    return {
+      rows: [],
+      files: { process_refresh_probe: repoRelativePath(refreshOutDir) },
+      commands,
+      blockers,
+      status: 'failed',
+    };
+  }
+
+  const manifestPath = path.join(refreshOutDir, 'inputs/processes.manifest.json');
+  const manifest = fileExists(manifestPath) ? readJson(manifestPath) : null;
+  if (!manifest?.user_id) {
+    blockers.push('process refresh manifest did not expose current user id');
+    return {
+      rows: [],
+      files: { process_refresh_manifest: maybeRepoRelative(manifestPath) },
+      commands,
+      blockers,
+      status: 'failed',
+    };
+  }
+
+  const privateRowsPath = path.join(scopeDir, 'current-user-processes.state-code-0.json');
+  const publicRowsPath = path.join(scopeDir, 'visible-public-processes.state-code-100-199.json');
+  const privateProcesses = runTiangongJson([
+    'process',
+    'list',
+    '--user-id',
+    manifest.user_id,
+    '--state-code',
+    '0',
+    '--all',
+    '--page-size',
+    '1000',
+    '--json',
+  ], { timeoutMs: numberOption(options.remoteTimeoutMs, 120000, { min: 1000 }) });
+  commands.current_user_process_list = commandRecord(privateProcesses);
+
+  const publicStateArgs = [];
+  for (let code = 100; code <= 199; code += 1) publicStateArgs.push('--state-code', String(code));
+  const publicProcesses = runTiangongJson([
+    'process',
+    'list',
+    ...publicStateArgs,
+    '--all',
+    '--page-size',
+    '1000',
+    '--json',
+  ], { timeoutMs: numberOption(options.remoteTimeoutMs, 120000, { min: 1000 }) });
+  commands.visible_public_process_list = commandRecord(publicProcesses);
+
+  if (!privateProcesses.ok || !publicProcesses.ok) {
+    if (!privateProcesses.ok) blockers.push(privateProcesses.error ?? 'current-user process list failed');
+    if (!publicProcesses.ok) blockers.push(publicProcesses.error ?? 'visible-public process list failed');
+    return {
+      rows: [],
+      files: {
+        process_refresh_manifest: maybeRepoRelative(manifestPath),
+      },
+      commands,
+      blockers,
+      status: 'failed',
+    };
+  }
+
+  const privateRows = ensureArray(privateProcesses.json?.rows).map((row) => ({
+    ...row,
+    source_scope: 'current_user_state_code_0',
+  }));
+  const publicRows = ensureArray(publicProcesses.json?.rows).map((row) => ({
+    ...row,
+    source_scope: 'visible_public_state_code_100_199',
+  }));
+  writeJson(privateRowsPath, privateProcesses.json);
+  writeJson(publicRowsPath, publicProcesses.json);
+  return {
+    rows: [...publicRows, ...privateRows],
+    files: {
+      process_refresh_manifest: maybeRepoRelative(manifestPath),
+      current_user_processes: repoRelativePath(privateRowsPath),
+      visible_public_processes: repoRelativePath(publicRowsPath),
+    },
+    commands,
+    blockers,
+    status: 'completed',
+  };
+}
+
+function buildMatrixReadinessInputFromTargetGraph({
+  sample,
+  processRows,
+  flowRows,
+  providerRows,
+  reviewedProviderDecisions = [],
+}) {
+  const targetKeys = new Set(processRows.map((row) => `${row.id}@${row.version}`));
+  const rowsByKey = new Map();
+  for (const row of providerRows) rowsByKey.set(`${row.id}@${row.version}`, row);
+  for (const row of processRows) rowsByKey.set(`${row.id}@${row.version}`, { ...row, source_scope: 'target_sample' });
+  const flowMetadata = makeFlowMetadata(flowRows);
+  const preliminaryGraph = makeProcessGraph([...rowsByKey.values()], flowMetadata);
+  const candidateProviderKeys = providerKeysForTargetEdges(preliminaryGraph, targetKeys);
+  const selectedRows = [...rowsByKey.entries()]
+    .filter(([key]) => targetKeys.has(key) || candidateProviderKeys.has(key))
+    .map(([, row]) => row);
+  const allRows = selectedRows.length > 0 ? selectedRows : [...rowsByKey.values()];
+  const graph = makeProcessGraph(allRows, flowMetadata);
+  const processIndex = indexByProcessKey(graph.processes);
+  const inputEdges = targetInputEdges(graph, targetKeys);
+  const flowIds = uniqueStrings(inputEdges.map((edge) => edge.flow_id).filter(Boolean)).sort();
+  const flowIndex = new Map(flowIds.map((flowId, index) => [flowId, index]));
+  const providerDecisions = [];
+  const technosphereEntries = [];
+  const technosphereEdges = [];
+  let matchedUniqueProvider = 0;
+  let matchedMultiProvider = 0;
+  let matchedMultiResolved = 0;
+  let matchedMultiUnresolved = 0;
+  let unmatchedNoProvider = 0;
+  let aInputEdgesWritten = 0;
+  const reviewedDecisionIndex = providerDecisionIndex(reviewedProviderDecisions);
+
+  for (const edge of inputEdges) {
+    const consumerKey = `${edge.process_id}@${edge.process_version}`;
+    const consumerIdx = processIndex.get(consumerKey);
+    const exactKey = `${edge.flow_id}@${edge.flow_version ?? ''}`;
+    const exactProviders = (graph.providerByExactFlow.get(exactKey) ?? []).filter((provider) => provider.key !== consumerKey);
+    const anyProviders = (graph.providerByFlow.get(edge.flow_id) ?? []).filter((provider) => provider.key !== consumerKey);
+    const candidates = (exactProviders.length > 0 ? exactProviders : anyProviders)
+      .map((provider) => providerCandidateRecord(provider, processIndex.get(provider.key)))
+      .filter((candidate) => Number.isInteger(candidate.provider_idx));
+    const reviewedDecision = providerDecisionForEdge(reviewedDecisionIndex, edge);
+    const reviewedCandidate = reviewedDecision
+      ? candidates.find((candidate) => candidateMatchesDecision(candidate, reviewedDecision))
+      : null;
+    let decisionKind = 'no_provider';
+    let resolutionStrategy = null;
+    let failureReason = 'no_provider_candidates';
+    const allocations = [];
+    if (reviewedDecision && reviewedCandidate && Number.isInteger(consumerIdx)) {
+      decisionKind = 'multi_resolved';
+      resolutionStrategy = 'best_provider_strict';
+      failureReason = null;
+      matchedMultiProvider += candidates.length > 1 ? 1 : 0;
+      matchedMultiResolved += 1;
+      aInputEdgesWritten += 1;
+      allocations.push({ provider_idx: reviewedCandidate.provider_idx, weight: 1 });
+      const amount = Math.abs(Number(edge.amount ?? 1)) || 1;
+      technosphereEntries.push({ row: reviewedCandidate.provider_idx, col: consumerIdx, value: amount });
+      const provider = graph.processes[reviewedCandidate.provider_idx];
+      const providerPartition = statePartition(provider);
+      const consumerProcess = graph.processes[consumerIdx];
+      const consumerPartition = statePartition(consumerProcess);
+      technosphereEdges.push({
+        provider_idx: reviewedCandidate.provider_idx,
+        consumer_idx: consumerIdx,
+        flow_id: edge.flow_id,
+        amount,
+        provider_partition: providerPartition,
+        consumer_partition: consumerPartition,
+        partition: compiledEdgePartition(providerPartition, consumerPartition),
+      });
+    } else if (exactProviders.length === 1 && Number.isInteger(consumerIdx)) {
+      const provider = exactProviders[0];
+      const providerIdx = processIndex.get(provider.key);
+      if (Number.isInteger(providerIdx)) {
+        decisionKind = 'unique_provider';
+        resolutionStrategy = 'unique_provider';
+        failureReason = null;
+        matchedUniqueProvider += 1;
+        aInputEdgesWritten += 1;
+        allocations.push({ provider_idx: providerIdx, weight: 1 });
+        const amount = Math.abs(Number(edge.amount ?? 1)) || 1;
+        technosphereEntries.push({ row: providerIdx, col: consumerIdx, value: amount });
+        const providerPartition = statePartition(provider);
+        const consumerProcess = graph.processes[consumerIdx];
+        const consumerPartition = statePartition(consumerProcess);
+        technosphereEdges.push({
+          provider_idx: providerIdx,
+          consumer_idx: consumerIdx,
+          flow_id: edge.flow_id,
+          amount,
+          provider_partition: providerPartition,
+          consumer_partition: consumerPartition,
+          partition: compiledEdgePartition(providerPartition, consumerPartition),
+        });
+      }
+    } else if (candidates.length > 0) {
+      decisionKind = 'multi_unresolved';
+      failureReason = reviewedDecision ? 'reviewed_provider_not_in_candidate_set' : 'rule_requires_unique_provider';
+      matchedMultiProvider += 1;
+      matchedMultiUnresolved += 1;
+    } else {
+      unmatchedNoProvider += 1;
+    }
+    providerDecisions.push({
+      consumer_idx: Number.isInteger(consumerIdx) ? consumerIdx : -1,
+      flow_id: edge.flow_id,
+      candidate_provider_count: candidates.length,
+      matched_provider_count: decisionKind === 'unique_provider' ? 1 : 0,
+      candidates,
+      decision_kind: decisionKind,
+      resolution_strategy: resolutionStrategy,
+      failure_reason: failureReason,
+      reviewed_decision: reviewedDecision ? {
+        provider_id: asText(reviewedDecision.provider_id) || null,
+        provider_version: asText(reviewedDecision.provider_version) || null,
+        rationale: asText(reviewedDecision.rationale) || null,
+        evidence: asText(reviewedDecision.evidence) || null,
+        reviewer: asText(reviewedDecision.reviewer) || null,
+      } : null,
+      used_equal_fallback: false,
+      volume_fallback_to_one_count: 0,
+      geography_tier: null,
+      supply_region_source: 'unspecified',
+      supply_region_location: null,
+      exchange_location_present: false,
+      allocations,
+    });
+  }
+
+  const inputEdgesTotal = inputEdges.length;
+  const aWritePct = inputEdgesTotal > 0 ? (aInputEdgesWritten / inputEdgesTotal) * 100 : 100;
+  const providerResolvedPct = inputEdgesTotal > 0
+    ? ((matchedUniqueProvider + matchedMultiResolved) / inputEdgesTotal) * 100
+    : 100;
+  const missingReferenceCount = graph.processes.filter((processRecord) => !processRecord.quantitative_reference_internal_id).length;
+  const invalidReferenceCount = graph.processes.filter(
+    (processRecord) => processRecord.quantitative_reference_internal_id && !processRecord.reference_exchange_found,
+  ).length;
+  const mNnz = technosphereEntries.length;
+  const processCount = graph.processes.length;
+  const matrixArea = Math.max(processCount * processCount, 1);
+  const matrixInput = {
+    schema_version: 'matrix_readiness_input.v1',
+    snapshot_id: stableUuidFromText(`target-matrix:${sample.sample_id}:${processRows.map((row) => `${row.id}@${row.version}`).join(',')}`),
+    coverage: {
+      schema_version: 'snapshot_coverage.v2',
+      matching: {
+        input_edges_total: inputEdgesTotal,
+        matched_unique_provider: matchedUniqueProvider,
+        matched_multi_provider: matchedMultiProvider,
+        unmatched_no_provider: unmatchedNoProvider,
+        matched_multi_resolved: matchedMultiResolved,
+        matched_multi_unresolved: matchedMultiUnresolved,
+        matched_multi_fallback_equal: 0,
+        a_input_edges_written: aInputEdgesWritten,
+        a_write_pct: aWritePct,
+        provider_present_resolved_pct: providerResolvedPct,
+        unique_provider_match_pct: providerResolvedPct,
+        any_provider_match_pct: inputEdgesTotal > 0 ? ((matchedUniqueProvider + matchedMultiProvider) / inputEdgesTotal) * 100 : 100,
+      },
+      reference: {
+        process_total: processCount,
+        normalized_process_count: graph.processes.filter((processRecord) => processRecord.reference_exchange_found).length,
+        missing_reference_count: missingReferenceCount,
+        invalid_reference_count: invalidReferenceCount,
+      },
+      allocation: {
+        exchange_total: inputEdgesTotal,
+        allocation_fraction_present_pct: inputEdgesTotal > 0 ? (aInputEdgesWritten / inputEdgesTotal) * 100 : 100,
+        allocation_fraction_missing_count: matchedMultiUnresolved + unmatchedNoProvider,
+        allocation_fraction_invalid_count: 0,
+      },
+      singular_risk: {
+        risk_level: aInputEdgesWritten === inputEdgesTotal ? 'low' : 'high',
+        prefilter_diag_abs_ge_cutoff: 0,
+        postfilter_a_diag_abs_ge_cutoff: 0,
+        m_zero_diagonal_count: 0,
+        m_min_abs_diagonal: processCount > 0 ? 1 : 0,
+      },
+      matrix_scale: {
+        process_count: processCount,
+        flow_count: flowIds.length,
+        impact_count: 0,
+        a_nnz: technosphereEntries.length,
+        b_nnz: 0,
+        c_nnz: 0,
+        m_nnz_estimated: mNnz,
+        m_sparsity_estimated: mNnz / matrixArea,
+      },
+    },
+    payload: {
+      model_version: stableUuidFromText(`target-model:${sample.sample_id}`),
+      process_count: processCount,
+      flow_count: flowIds.length,
+      impact_count: 0,
+      technosphere_entries: technosphereEntries,
+      biosphere_entries: [],
+      characterization_factors: [],
+    },
+    compiled_graph: {
+      processes: graph.processes.map((processRecord, index) => ({
+        process_idx: index,
+        process_id: processRecord.id,
+        process_version: processRecord.version,
+        process_name: processRecord.name || null,
+        model_id: null,
+        location: null,
+        reference_year: null,
+        partition: statePartition(processRecord),
+      })),
+      flows: flowIds.map((flowId, index) => ({
+        flow_idx: index,
+        flow_id: flowId,
+        kind: 'product',
+      })),
+      provider_decisions: providerDecisions,
+      technosphere_edges: technosphereEdges,
+      biosphere_edges: [],
+      reference_stats: {
+        missing_reference: missingReferenceCount,
+        invalid_reference: invalidReferenceCount,
+        normalized_processes: graph.processes.filter((processRecord) => processRecord.reference_exchange_found).length,
+      },
+      allocation_stats: {
+        exchange_total: inputEdgesTotal,
+        fraction_present_count: aInputEdgesWritten,
+        fraction_missing_count: matchedMultiUnresolved + unmatchedNoProvider,
+        fraction_invalid_count: 0,
+      },
+      matching_stats: {
+        input_edges_total: inputEdgesTotal,
+        matched_unique_provider: matchedUniqueProvider,
+        matched_multi_provider: matchedMultiProvider,
+        unmatched_no_provider: unmatchedNoProvider,
+        matched_multi_resolved: matchedMultiResolved,
+        matched_multi_unresolved: matchedMultiUnresolved,
+        matched_multi_fallback_equal: 0,
+        a_input_edges_written: aInputEdgesWritten,
+      },
+    },
+    policy: {
+      min_provider_write_pct: 100,
+      max_unmatched_no_provider: 0,
+      max_multi_unresolved: 0,
+      allow_equal_fallback: false,
+      allow_medium_singular_risk: false,
+      allow_high_singular_risk: false,
+      require_lcia_factors: true,
+      run_factorization: true,
+    },
+  };
+  const summary = {
+    sample_id: sample.sample_id,
+    target_process_count: processRows.length,
+    source_provider_process_count: providerRows.length,
+    candidate_provider_process_count: candidateProviderKeys.size,
+    provider_process_count: Math.max(allRows.length - processRows.length, 0),
+    combined_process_count: allRows.length,
+    target_input_edges: inputEdgesTotal,
+    matched_unique_provider: matchedUniqueProvider,
+    matched_multi_resolved: matchedMultiResolved,
+    matched_multi_unresolved: matchedMultiUnresolved,
+    unmatched_no_provider: unmatchedNoProvider,
+    a_input_edges_written: aInputEdgesWritten,
+    flow_count: flowIds.length,
+  };
+  return { matrixInput, graph, summary };
+}
+
+function buildTargetGateMatrixReadinessInput({ reportPath, sampleId, workspace, options }) {
+  const report = readJson(reportPath);
+  const sample = ensureArray(report.samples).find((item) => item.sample_id === sampleId)
+    ?? ensureArray(report.samples).find((item) => item.target_quality_ready)
+    ?? ensureArray(report.samples)[0];
+  if (!sample) {
+    throw new Error(`Target gate report has no samples: ${reportPath}`);
+  }
+  const inputFreezeDir = path.join(workspace, 'input-freeze');
+  const processRowsPath = targetGateRowsPath(sample.process, 'process');
+  const flowRowsPath = targetGateRowsPath(sample.flow, 'flow');
+  const processRows = datasetRowsFromFile(resolveRepoPath(processRowsPath));
+  const flowRows = datasetRowsFromFile(resolveRepoPath(flowRowsPath));
+  const explicitProviderRows = options.providerRows
+    ? datasetRowsFromFile(resolveRepoPath(options.providerRows))
+    : [];
+  const reviewedProviderDecisions = providerDecisionRows(options.providerDecisions);
+  const visibleScope = visibleProviderScopeRows(workspace, options);
+  const providerRows = [...explicitProviderRows, ...visibleScope.rows];
+  const { matrixInput, graph, summary } = buildMatrixReadinessInputFromTargetGraph({
+    sample,
+    processRows,
+    flowRows,
+    providerRows,
+    reviewedProviderDecisions,
+  });
+  const targetProcessRowsPath = path.join(inputFreezeDir, 'target-process-rows.jsonl');
+  const targetFlowRowsPath = path.join(inputFreezeDir, 'target-flow-rows.jsonl');
+  const providerRowsPath = path.join(inputFreezeDir, 'provider-process-rows.jsonl');
+  const graphPath = path.join(inputFreezeDir, 'target-process-graph.json');
+  const inputPath = path.join(inputFreezeDir, 'matrix-readiness-input.json');
+  writeText(targetProcessRowsPath, jsonLines(processRows));
+  writeText(targetFlowRowsPath, jsonLines(flowRows));
+  writeText(providerRowsPath, jsonLines(providerRows));
+  writeJson(graphPath, {
+    generated_at_utc: nowIso(),
+    sample_id: sample.sample_id,
+    source: {
+      target_gate_report: repoRelativePath(reportPath),
+      process_rows: processRowsPath,
+      flow_rows: flowRowsPath,
+      explicit_provider_rows: maybeRepoRelative(options.providerRows),
+      provider_decisions: maybeRepoRelative(options.providerDecisions),
+      provider_scope: options.providerScope ?? 'target-only',
+    },
+    summary,
+    provider_scope: {
+      status: visibleScope.status,
+      blockers: visibleScope.blockers,
+      files: visibleScope.files,
+      commands: visibleScope.commands,
+    },
+    processes: graph.processes.map(({ payload, ...row }) => row),
+    exchanges: graph.exchanges,
+  });
+  writeJson(inputPath, matrixInput);
+  return {
+    inputPath,
+    sampleId: sample.sample_id,
+    summary: {
+      ...summary,
+      target_gate_report: repoRelativePath(reportPath),
+      process_rows: processRowsPath,
+      flow_rows: flowRowsPath,
+      provider_scope: options.providerScope ?? 'target-only',
+      provider_scope_status: visibleScope.status,
+      provider_scope_blockers: visibleScope.blockers,
+      provider_decisions: maybeRepoRelative(options.providerDecisions),
+      provider_decision_count: reviewedProviderDecisions.length,
+    },
+    files: {
+      target_process_rows: repoRelativePath(targetProcessRowsPath),
+      target_flow_rows: repoRelativePath(targetFlowRowsPath),
+      provider_process_rows: repoRelativePath(providerRowsPath),
+      target_process_graph: repoRelativePath(graphPath),
+      matrix_readiness_input: repoRelativePath(inputPath),
+    },
+  };
+}
+
+function runMatrixReadinessVerification(options = {}) {
+  const taskId = String(options.taskId || automatedMatrixReadinessVerifyTaskId);
+  const targetGateReport = options.targetGateReport || options.fromTargetGate || null;
+  const requestedSamples = normalizeSampleFilter(options.sample || options.fixture || options.sampleId || 'matrix-readiness-ready');
+  const shouldRunBatch = !targetGateReport && !options.input && (requestedSamples.includes('all') || requestedSamples.length > 1);
+  if (shouldRunBatch) {
+    const samples = requestedSamples.includes('all') ? defaultMatrixReadinessSamples : requestedSamples;
+    return runMatrixReadinessVerificationBatch({
+      taskId,
+      samples,
+      workspace: resolveRepoPath(options.outDir || path.join('.foundry/workspaces', taskId, 'matrix-readiness-verify')),
+      options,
+    });
+  }
+  let sampleId = String(options.targetSample || requestedSamples[0] || 'matrix-readiness-ready');
+  const workspace = resolveRepoPath(
+    options.outDir || path.join('.foundry/workspaces', taskId, 'matrix-readiness-verify', sampleId),
+  );
+  let targetInputBuild = null;
+  let inputPath = null;
+  if (targetGateReport) {
+    targetInputBuild = buildTargetGateMatrixReadinessInput({
+      reportPath: resolveRepoPath(targetGateReport),
+      sampleId,
+      workspace,
+      options,
+    });
+    sampleId = targetInputBuild.sampleId;
+    inputPath = targetInputBuild.inputPath;
+  } else {
+    inputPath = resolveRepoPath(options.input || defaultMatrixReadinessInputPath(sampleId));
+  }
+  const inputFreezeDir = path.join(workspace, 'input-freeze');
+  const reportsDir = path.join(workspace, 'reports');
+  const commandsDir = path.join(workspace, 'commands');
+  const registry = readCapabilityRegistry();
+  const calculatorRoot = path.resolve(options.calculatorRoot || matrixReadinessCalculatorRoot());
+  const frozenInputPath = path.join(inputFreezeDir, 'matrix-readiness-input.json');
+  const matrixReportPath = path.join(workspace, 'matrix-readiness-report.json');
+
+  if (!fileExists(inputPath)) {
+    return missingMatrixReadinessInputReport({
+      taskId,
+      sampleId,
+      workspace,
+      inputPath,
+      registry,
+    });
+  }
+  fs.mkdirSync(inputFreezeDir, { recursive: true });
+  if (path.resolve(inputPath) !== path.resolve(frozenInputPath)) {
+    fs.copyFileSync(inputPath, frozenInputPath);
+  }
+
+  const run = runCalculatorMatrixReadiness({
+    calculatorRoot,
+    inputPath: frozenInputPath,
+    reportPath: matrixReportPath,
+    timeoutMs: numberOption(options.timeoutMs, 600000, { min: 1000 }),
+  });
+  const commandCapture = writeCommandCapture(commandsDir, 'calculator-matrix-readiness', run);
+  const calculatorReport = fileExists(matrixReportPath) ? readJson(matrixReportPath) : null;
+  const status = matrixReadinessStatus(run, calculatorReport);
+  const blockers = ensureArray(calculatorReport?.blockers).map((blocker) =>
+    typeof blocker === 'string' ? blocker : blocker.message ?? JSON.stringify(blocker),
+  );
+  if (!run.ok && blockers.length === 0) {
+    blockers.push(run.error ?? 'matrix readiness command failed');
+  }
+  const sample = {
+    sample_id: sampleId,
+    status,
+    blocker_count: blockers.length,
+    finding_count: ensureArray(calculatorReport?.findings).length,
+    provider_evidence_count: ensureArray(calculatorReport?.provider_evidence).length,
+    next_action: calculatorReport?.next_action ?? (run.ok ? 'inspect_matrix_readiness_report' : 'repair_adapter_command_failure'),
+    blockers,
+    findings: ensureArray(calculatorReport?.findings),
+    metrics: calculatorReport?.metrics ?? null,
+    calculator_report_status: calculatorReport?.status ?? null,
+  };
+  const capability = capabilityRunRecord(registry, 'calculator.matrix-readiness.verify', run, {
+    input: repoRelativePath(frozenInputPath),
+    report: maybeRepoRelative(matrixReportPath),
+    ...commandCapture,
+  });
+  const report = {
+    schema_version: 1,
+    generated_at_utc: nowIso(),
+    task_id: taskId,
+    run_kind: 'matrix-readiness-verify',
+    sample_id: sampleId,
+    status,
+    workspace: repoRelativePath(workspace),
+    input: {
+      source: repoRelativePath(inputPath),
+      frozen: repoRelativePath(frozenInputPath),
+      target_gate_matrix_input: targetInputBuild?.summary ?? null,
+    },
+    calculator: {
+      root: calculatorRoot,
+      pkg_config_path: matrixReadinessCommandEnv().PKG_CONFIG_PATH ?? null,
+    },
+    account_context: accountContext(),
+    counts: {
+      samples: 1,
+      command_failures: run.ok ? 0 : 1,
+      blockers: sample.blocker_count,
+      findings: sample.finding_count,
+      provider_evidence: sample.provider_evidence_count,
+    },
+    metrics: calculatorReport?.metrics ?? null,
+    capability,
+    samples: [sample],
+  };
+  report.files = {
+    matrix_readiness_verification_report: repoRelativePath(path.join(workspace, 'matrix-readiness-verification-report.json')),
+    matrix_readiness_report: maybeRepoRelative(matrixReportPath),
+    target_process_graph: targetInputBuild?.files?.target_process_graph ?? null,
+    gate_index: repoRelativePath(path.join(workspace, 'gate-index.json')),
+    verification_handoff: repoRelativePath(path.join(workspace, 'verification-handoff.json')),
+    coverage_delta: repoRelativePath(path.join(workspace, 'coverage-delta.json')),
+    markdown: repoRelativePath(path.join(reportsDir, 'matrix-readiness-verification.md')),
+  };
+
+  writeJson(path.join(workspace, 'matrix-readiness-verification-report.json'), report);
+  writeJson(path.join(workspace, 'coverage-delta.json'), matrixReadinessCoverageDelta(report));
+  writeGateIndex({
+    workspace,
+    registry,
+    report,
+    runKind: 'matrix-readiness-verify',
+    gates: matrixReadinessGateEntries(registry, report),
+  });
+  writeVerificationHandoff({
+    workspace,
+    report,
+    runKind: 'matrix-readiness-verify',
+    entries: matrixReadinessVerificationEntries(report),
+  });
+  writeText(path.join(reportsDir, 'matrix-readiness-verification.md'), renderMatrixReadinessMarkdown(report));
+  return report;
+}
+
+function readGoldenFixtureMatrix(matrixPath = automatedLcaGoldenFixtureMatrixPath) {
+  const resolved = resolveRepoPath(matrixPath);
+  const matrix = readJson(resolved);
+  if (!matrix || typeof matrix !== 'object' || Array.isArray(matrix)) {
+    throw new Error(`Golden fixture matrix must be a JSON object: ${matrixPath}`);
+  }
+  const fixtures = ensureArray(matrix.fixtures);
+  if (fixtures.length === 0) {
+    throw new Error(`Golden fixture matrix has no fixtures: ${matrixPath}`);
+  }
+  return {
+    ...matrix,
+    fixtures,
+    matrix_path: repoRelativePath(resolved),
+  };
+}
+
+function getByDottedPath(value, dottedPath) {
+  return String(dottedPath)
+    .split('.')
+    .filter(Boolean)
+    .reduce((current, part) => {
+      if (current && typeof current === 'object') return current[part];
+      return undefined;
+    }, value);
+}
+
+function optionalJsonReport(reportPath) {
+  if (!reportPath) return { path: null, exists: false, json: null };
+  const paths = String(reportPath)
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  if (paths.length > 1) {
+    const reports = paths.map((entry) => optionalJsonReport(entry));
+    const existingReports = reports.filter((report) => report.json);
+    return {
+      path: reports.map((report) => report.path).join(','),
+      exists: existingReports.length === reports.length,
+      json: existingReports.length > 0
+        ? {
+          schema_version: 1,
+          merged_runtime_reports: reports.map((report) => ({ path: report.path, exists: report.exists })),
+          samples: existingReports.flatMap((report) =>
+            reportSamplesWithContext(report.json),
+          ),
+        }
+        : null,
+    };
+  }
+  const resolved = resolveRepoPath(paths[0]);
+  const exists = fileExists(resolved);
+  const json = exists ? readJson(resolved) : null;
+  return {
+    path: repoRelativePath(resolved),
+    exists,
+    json: json ? withSampleContext(json) : null,
+  };
+}
+
+function reportSamplesWithContext(json) {
+  if (!json) return [];
+  if (!Array.isArray(json.samples) || json.samples.length === 0) return [json];
+  return json.samples.map((sample) => ({
+    ...sample,
+    input: sample.input ?? json.input ?? null,
+    files: sample.files ?? json.files ?? null,
+  }));
+}
+
+function withSampleContext(json) {
+  if (!json || !Array.isArray(json.samples) || json.samples.length === 0) return json;
+  return {
+    ...json,
+    samples: reportSamplesWithContext(json),
+  };
+}
+
+function checkExpectedRuntimeValue(root, check) {
+  const actual = getByDottedPath(root, check.path);
+  if (Object.prototype.hasOwnProperty.call(check, 'equals')) {
+    return { passed: Object.is(actual, check.equals), actual, expected: check.equals };
+  }
+  if (Array.isArray(check.includes)) {
+    const missing = check.includes.filter((item) => !ensureArray(actual).includes(item));
+    return { passed: missing.length === 0, actual, expected: check.includes, missing };
+  }
+  if (Object.prototype.hasOwnProperty.call(check, 'min')) {
+    const numeric = Number(actual);
+    return {
+      passed: Number.isFinite(numeric) && numeric >= Number(check.min),
+      actual,
+      expected: `>= ${check.min}`,
+    };
+  }
+  return { passed: false, actual, expected: 'unsupported expectation shape' };
+}
+
+function evaluateRuntimeCheck(fixture, check, reports) {
+  const report = reports[check.report];
+  if (!report?.json) {
+    return {
+      status: 'not_checked',
+      report: check.report,
+      sample_id: check.sample_id ?? null,
+      path: check.path,
+      reason: report?.path ? `runtime report not found: ${report.path}` : 'runtime report not supplied',
+    };
+  }
+  const root = check.sample_id
+    ? ensureArray(report.json.samples).find((sample) => sample.sample_id === check.sample_id)
+    : report.json;
+  if (!root) {
+    return {
+      status: 'failed',
+      report: check.report,
+      sample_id: check.sample_id ?? null,
+      path: check.path,
+      reason: `sample not found for fixture ${fixture.id}`,
+    };
+  }
+  const result = checkExpectedRuntimeValue(root, check);
+  return {
+    status: result.passed ? 'passed' : 'failed',
+    report: check.report,
+    sample_id: check.sample_id ?? null,
+    path: check.path,
+    expected: result.expected,
+    actual: result.actual,
+    ...(result.missing ? { missing: result.missing } : {}),
+  };
+}
+
+function renderGoldenFixturesMarkdown(report) {
+  const rows = report.fixtures.map((fixture) => ({
+    fixture: fixture.id,
+    classes: fixture.coverage_classes.join(', '),
+    status: fixture.status,
+    checks: fixture.runtime_checks.length,
+  }));
+  return `# Automated LCA Golden Fixture Matrix Check
+
+Generated: ${report.generated_at_utc}
+
+Status: \`${report.status}\`
+
+Matrix: \`${report.matrix_path}\`
+
+## Coverage
+
+- Required classes: ${report.required_coverage_classes.length}
+- Missing classes: ${report.missing_coverage_classes.length}
+- Runtime checks: ${report.counts.runtime_checks}
+- Failed runtime checks: ${report.counts.failed_runtime_checks}
+- Unchecked runtime checks: ${report.counts.unchecked_runtime_checks}
+
+${buildMarkdownTable(rows, ['fixture', 'classes', 'status', 'checks'])}
+`;
+}
+
+function runGoldenFixturesCheck(options = {}) {
+  const matrix = readGoldenFixtureMatrix(options.matrix);
+  const workspace = resolveRepoPath(
+    options.outDir || '.foundry/workspaces/issue-6-automated-lca-target-datasets/golden-fixtures-check',
+  );
+  const reportsDir = path.join(workspace, 'reports');
+  const reports = {
+    sample_scenarios: optionalJsonReport(options.sampleReport),
+    target_datasets: optionalJsonReport(options.targetReport),
+    compute_repair: optionalJsonReport(options.computeReport),
+    post_write: optionalJsonReport(options.postWriteReport),
+    matrix_readiness: optionalJsonReport(options.matrixReadinessReport),
+  };
+  const coveredClasses = new Set();
+  const fixtures = matrix.fixtures.map((fixture) => {
+    const coverageClasses = uniqueStrings(ensureArray(fixture.coverage_classes));
+    for (const coverageClass of coverageClasses) coveredClasses.add(coverageClass);
+    const runtimeChecks = ensureArray(fixture.runtime_checks).map((check) =>
+      evaluateRuntimeCheck(fixture, check, reports),
+    );
+    const failed = runtimeChecks.filter((check) => check.status === 'failed');
+    const unchecked = runtimeChecks.filter((check) => check.status === 'not_checked');
+    const status = failed.length > 0 ? 'failed' : unchecked.length > 0 ? 'not_fully_checked' : 'passed';
+    return {
+      id: fixture.id,
+      title: fixture.title ?? fixture.id,
+      coverage_classes: coverageClasses,
+      source: fixture.source ?? null,
+      status,
+      runtime_checks: runtimeChecks,
+      notes: fixture.notes ?? null,
+    };
+  });
+  const requiredCoverageClasses = uniqueStrings(ensureArray(matrix.required_coverage_classes));
+  const missingCoverageClasses = requiredCoverageClasses.filter(
+    (coverageClass) => !coveredClasses.has(coverageClass),
+  );
+  const runtimeChecks = fixtures.flatMap((fixture) => fixture.runtime_checks);
+  const failedRuntimeChecks = runtimeChecks.filter((check) => check.status === 'failed');
+  const uncheckedRuntimeChecks = runtimeChecks.filter((check) => check.status === 'not_checked');
+  const status =
+    missingCoverageClasses.length > 0 || failedRuntimeChecks.length > 0
+      ? 'failed'
+      : uncheckedRuntimeChecks.length > 0
+        ? 'passed_with_unchecked_runtime_evidence'
+        : 'passed';
+  const report = {
+    schema_version: 1,
+    generated_at_utc: nowIso(),
+    status,
+    matrix_path: matrix.matrix_path,
+    required_coverage_classes: requiredCoverageClasses,
+    missing_coverage_classes: missingCoverageClasses,
+    runtime_reports: Object.fromEntries(
+      Object.entries(reports).map(([key, value]) => [key, { path: value.path, exists: value.exists }]),
+    ),
+    counts: {
+      fixtures: fixtures.length,
+      coverage_classes: coveredClasses.size,
+      runtime_checks: runtimeChecks.length,
+      failed_runtime_checks: failedRuntimeChecks.length,
+      unchecked_runtime_checks: uncheckedRuntimeChecks.length,
+    },
+    fixtures,
+  };
+  report.files = {
+    report: repoRelativePath(path.join(workspace, 'golden-fixtures-check-report.json')),
+    markdown: repoRelativePath(path.join(reportsDir, 'golden-fixtures-check.md')),
+  };
+  writeJson(path.join(workspace, 'golden-fixtures-check-report.json'), report);
+  writeText(path.join(reportsDir, 'golden-fixtures-check.md'), renderGoldenFixturesMarkdown(report));
+  return report;
 }
 
 function renderSampleDryRunMarkdown(report) {
@@ -2616,6 +5239,666 @@ ${buildMarkdownTable(rows, ['sample', 'kind', 'identity', 'build_plan', 'provide
 - Full command stdout/stderr and generated gate artifacts are under \`${report.workspace}\`.
 - Elementary flow samples are intentionally excluded from product-flow/provider closure matching while remaining valid elementary exchange references.
 `;
+}
+
+function maybeRepoRelative(filePath) {
+  if (!filePath) return null;
+  return path.isAbsolute(filePath) ? repoRelativePath(filePath) : filePath;
+}
+
+function targetDatasetRowsCount(filePath) {
+  if (!fileExists(filePath)) return 0;
+  const rows = readJsonOrJsonl(filePath);
+  return Array.isArray(rows) ? rows.length : 1;
+}
+
+function selectAutomatedTargetDatasets(options = {}) {
+  const requested = String(options.sample || options.samples || 'all')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (requested.length === 0 || requested.includes('all')) {
+    return automatedTargetDatasets;
+  }
+  return automatedTargetDatasets.filter((sample) => requested.includes(sample.sample_id));
+}
+
+function targetDatasetTranslationPath(translationsDir, sample, kind) {
+  if (!translationsDir) return null;
+  return path.join(translationsDir, `${sample.sample_id}-${kind}.trans-reviewed.jsonl`);
+}
+
+function targetDatasetCapabilityRecord(registry, capabilityId, run, artifacts = {}) {
+  return capabilityRunRecord(registry, capabilityId, run, artifacts);
+}
+
+function runTargetDatasetKindGates({
+  registry,
+  sample,
+  kind,
+  rowsFile,
+  flowRowsFile = null,
+  sampleDir,
+  translationsDir,
+}) {
+  if (!fileExists(rowsFile)) {
+    return {
+      kind,
+      rows_file: maybeRepoRelative(rowsFile),
+      row_count: 0,
+      status: 'missing_input',
+      command_failure_count: 0,
+      blocker_count: 1,
+      readiness_blockers: [`missing ${kind} rows file`],
+      quality_gaps: [],
+      capabilities: [],
+    };
+  }
+
+  const kindDir = path.join(sampleDir, kind);
+  const commandDir = path.join(kindDir, 'commands');
+  const requiredFieldsOutDir = path.join(kindDir, 'required-fields');
+  const requiredFieldsRowsFile = path.join(requiredFieldsOutDir, `${kind}.required-fields.jsonl`);
+  const schemaOutDir = path.join(kindDir, 'schema');
+  const reviewOutDir = path.join(kindDir, 'review');
+  const bilingualExtractOutDir = path.join(kindDir, 'bilingual-extract');
+  const bilingualApplyOutDir = path.join(kindDir, 'bilingual-apply');
+  const bilingualValidateOutDir = path.join(kindDir, 'bilingual-validate');
+  const remoteRefreshOutDir = path.join(kindDir, 'remote-refresh');
+  const translatedRowsFile = path.join(kindDir, 'translated', `${kind}.translated.jsonl`);
+  const remoteRefreshedRowsFile = path.join(kindDir, 'remote-refreshed', `${kind}.remote-refreshed.jsonl`);
+  const translationReviewPath = targetDatasetTranslationPath(translationsDir, sample, kind);
+  let gateRowsFile = rowsFile;
+  let requiredFieldsRun = null;
+  let requiredFieldsCapture = null;
+
+  if (kind === 'process') {
+    const completeRequiredFieldsArgs = [
+      'process',
+      'complete-required-fields',
+      '--input',
+      rowsFile,
+      '--out',
+      requiredFieldsRowsFile,
+      '--out-dir',
+      requiredFieldsOutDir,
+      '--default-unit',
+      'unit',
+      '--json',
+    ];
+    if (flowRowsFile && fileExists(flowRowsFile)) {
+      completeRequiredFieldsArgs.splice(
+        completeRequiredFieldsArgs.length - 1,
+        0,
+        '--flows',
+        flowRowsFile,
+      );
+    }
+    requiredFieldsRun = runTiangongJson(
+      completeRequiredFieldsArgs,
+      { allowJsonOnFailure: true },
+    );
+    requiredFieldsCapture = writeCommandCapture(
+      commandDir,
+      'process-complete-required-fields',
+      requiredFieldsRun,
+    );
+    if (requiredFieldsRun.ok && requiredFieldsRun.json?.status === 'completed') {
+      gateRowsFile = requiredFieldsRowsFile;
+    }
+  }
+
+  const schemaRun = runTiangongJson(
+    [
+      'dataset',
+      'validate',
+      '--input',
+      gateRowsFile,
+      '--type',
+      kind,
+      '--out-dir',
+      schemaOutDir,
+      '--json',
+    ],
+    { allowJsonOnFailure: true },
+  );
+  const schemaCapture = writeCommandCapture(commandDir, 'schema-validate', schemaRun);
+
+  const reviewRun = runTiangongJson(
+    ['review', kind, '--rows-file', gateRowsFile, '--out-dir', reviewOutDir, '--json'],
+    { allowJsonOnFailure: true },
+  );
+  const reviewCapture = writeCommandCapture(commandDir, 'review', reviewRun);
+
+  const bilingualExtractRun = runTiangongJson(
+    [
+      'dataset',
+      'bilingual',
+      'extract',
+      '--input',
+      gateRowsFile,
+      '--type',
+      kind,
+      '--out-dir',
+      bilingualExtractOutDir,
+      '--json',
+    ],
+    { allowJsonOnFailure: true },
+  );
+  const bilingualExtractCapture = writeCommandCapture(
+    commandDir,
+    'bilingual-extract',
+    bilingualExtractRun,
+  );
+
+  let bilingualApplyRun = null;
+  let bilingualApplyCapture = null;
+  let validateInput = gateRowsFile;
+  const translationEvidenceExpected = Boolean(translationReviewPath && fileExists(translationReviewPath));
+  if (translationEvidenceExpected) {
+    bilingualApplyRun = runTiangongJson(
+      [
+        'dataset',
+        'bilingual',
+        'apply',
+        '--input',
+        gateRowsFile,
+        '--translations',
+        translationReviewPath,
+        '--out',
+        translatedRowsFile,
+        '--out-dir',
+        bilingualApplyOutDir,
+        '--json',
+      ],
+      { allowJsonOnFailure: true },
+    );
+    bilingualApplyCapture = writeCommandCapture(commandDir, 'bilingual-apply', bilingualApplyRun);
+    if (bilingualApplyRun.json?.status === 'completed') {
+      validateInput = translatedRowsFile;
+    }
+  }
+
+  const bilingualValidateRun = runTiangongJson(
+    [
+      'dataset',
+      'bilingual',
+      'validate',
+      '--input',
+      validateInput,
+      '--type',
+      kind,
+      '--out-dir',
+      bilingualValidateOutDir,
+      '--json',
+    ],
+    { allowJsonOnFailure: true },
+  );
+  const bilingualValidateCapture = writeCommandCapture(
+    commandDir,
+    'bilingual-validate',
+    bilingualValidateRun,
+  );
+
+  const remoteRefreshRun = runTiangongJson(
+    [
+      'dataset',
+      'references',
+      'refresh-remote',
+      '--input',
+      validateInput,
+      '--out',
+      remoteRefreshedRowsFile,
+      '--out-dir',
+      remoteRefreshOutDir,
+      '--root-policy',
+      'candidate',
+      '--json',
+    ],
+    { allowJsonOnFailure: true },
+  );
+  const remoteRefreshCapture = writeCommandCapture(commandDir, 'remote-refresh', remoteRefreshRun);
+
+  const schemaInvalid = Number(schemaRun.json?.counts?.invalid ?? 1);
+  const requiredFieldBlockers = Number(requiredFieldsRun?.json?.counts?.blocked ?? 0);
+  const bilingualBlockers = Number(bilingualValidateRun.json?.scan?.blocker_count ?? 0);
+  const bilingualSchemaInvalid = Number(bilingualValidateRun.json?.schema_gate?.invalid ?? 0);
+  const applyBlockers = Number(bilingualApplyRun?.json?.blockers?.length ?? 0);
+  const remoteVerifyBlockers = Number(remoteRefreshRun.json?.counts?.post_refresh_blockers ?? 0);
+  const translationUnitCount = Number(bilingualExtractRun.json?.unit_count ?? 0);
+  const appliedTranslationCount = Number(bilingualApplyRun?.json?.applied_count ?? 0);
+  const commandRuns = [
+    ...(requiredFieldsRun ? [requiredFieldsRun] : []),
+    schemaRun,
+    reviewRun,
+    bilingualExtractRun,
+    ...(bilingualApplyRun ? [bilingualApplyRun] : []),
+    bilingualValidateRun,
+    remoteRefreshRun,
+  ];
+  const commandFailures = commandRuns.filter((run) => !run.ok);
+  const readinessBlockers = [];
+  const qualityGaps = [];
+
+  if (requiredFieldsRun && !requiredFieldsRun.ok) {
+    readinessBlockers.push('process required-field completion command failed');
+  }
+  if (requiredFieldBlockers > 0) {
+    readinessBlockers.push(
+      `process required-field completion has ${requiredFieldBlockers} blocked row(s)`,
+    );
+  }
+  if (schemaInvalid > 0) {
+    readinessBlockers.push(`${kind} schema validation has ${schemaInvalid} invalid row(s)`);
+  }
+  if (!reviewRun.ok) {
+    readinessBlockers.push(`${kind} review command failed`);
+  }
+  if (bilingualBlockers > 0) {
+    readinessBlockers.push(`${kind} bilingual validation has ${bilingualBlockers} blocker(s)`);
+  }
+  if (bilingualValidateRun.json?.status === 'blocked' || bilingualSchemaInvalid > 0) {
+    readinessBlockers.push(
+      `${kind} bilingual validation is blocked with ${bilingualSchemaInvalid} schema-invalid row(s)`,
+    );
+  }
+  if (applyBlockers > 0) {
+    readinessBlockers.push(`${kind} bilingual apply has ${applyBlockers} blocker(s)`);
+  }
+  if (!remoteRefreshRun.ok) {
+    readinessBlockers.push(`${kind} remote reference/version refresh command failed`);
+  }
+  if (remoteVerifyBlockers > 0) {
+    readinessBlockers.push(
+      `${kind} remote reference/version verification has ${remoteVerifyBlockers} blocker(s) after refresh`,
+    );
+  }
+  if (translationEvidenceExpected && appliedTranslationCount !== translationUnitCount) {
+    readinessBlockers.push(
+      `${kind} translation evidence covers ${appliedTranslationCount}/${translationUnitCount} extracted unit(s)`,
+    );
+  }
+  if (!translationEvidenceExpected) {
+    qualityGaps.push(`${kind} reviewed translation file is missing`);
+  }
+  if (!bilingualApplyRun?.json?.files?.translation_evidence) {
+    qualityGaps.push(`${kind} translation-evidence.json is not available`);
+  }
+
+  const status =
+    commandFailures.length > 0
+      ? 'command_failed'
+      : readinessBlockers.length > 0
+        ? 'blocked'
+        : qualityGaps.length > 0
+          ? 'validated_with_quality_gaps'
+          : 'target_quality_ready';
+
+  const capabilities = [
+    ...(requiredFieldsRun
+      ? [
+          targetDatasetCapabilityRecord(
+            registry,
+            'cli.process.complete-required-fields',
+            requiredFieldsRun,
+            {
+              rows_file: maybeRepoRelative(rowsFile),
+              flow_rows_file: maybeRepoRelative(flowRowsFile),
+              completed_rows: maybeRepoRelative(requiredFieldsRun.json?.files?.output_rows),
+              report: maybeRepoRelative(requiredFieldsRun.json?.files?.report),
+              evidence: maybeRepoRelative(requiredFieldsRun.json?.files?.evidence),
+              ...requiredFieldsCapture,
+            },
+          ),
+        ]
+      : []),
+    targetDatasetCapabilityRecord(registry, `cli.${kind}.dataset-validate`, schemaRun, {
+      rows_file: maybeRepoRelative(gateRowsFile),
+      source_rows_file: maybeRepoRelative(rowsFile),
+      out_dir: repoRelativePath(schemaOutDir),
+      report: maybeRepoRelative(schemaRun.json?.files?.report),
+      ...schemaCapture,
+    }),
+    targetDatasetCapabilityRecord(registry, `cli.${kind}.review`, reviewRun, {
+      rows_file: maybeRepoRelative(gateRowsFile),
+      out_dir: repoRelativePath(reviewOutDir),
+      report: maybeRepoRelative(reviewRun.json?.files?.report),
+      ...reviewCapture,
+    }),
+    targetDatasetCapabilityRecord(registry, `cli.${kind}.bilingual.extract`, bilingualExtractRun, {
+      rows_file: maybeRepoRelative(gateRowsFile),
+      out_dir: repoRelativePath(bilingualExtractOutDir),
+      translation_units: maybeRepoRelative(bilingualExtractRun.json?.files?.translation_units),
+      report: maybeRepoRelative(bilingualExtractRun.json?.files?.report),
+      ...bilingualExtractCapture,
+    }),
+    ...(bilingualApplyRun
+      ? [
+          targetDatasetCapabilityRecord(registry, `cli.${kind}.bilingual.apply`, bilingualApplyRun, {
+            rows_file: maybeRepoRelative(gateRowsFile),
+            translations: maybeRepoRelative(translationReviewPath),
+            translated_rows: maybeRepoRelative(bilingualApplyRun.json?.files?.translated_rows),
+            translation_evidence: maybeRepoRelative(
+              bilingualApplyRun.json?.files?.translation_evidence,
+            ),
+            report: maybeRepoRelative(bilingualApplyRun.json?.files?.report),
+            ...bilingualApplyCapture,
+          }),
+        ]
+      : []),
+    targetDatasetCapabilityRecord(registry, `cli.${kind}.bilingual.validate`, bilingualValidateRun, {
+      rows_file: maybeRepoRelative(validateInput),
+      out_dir: repoRelativePath(bilingualValidateOutDir),
+      report: maybeRepoRelative(bilingualValidateRun.json?.files?.report),
+      findings: maybeRepoRelative(bilingualValidateRun.json?.files?.findings),
+      ...bilingualValidateCapture,
+    }),
+    targetDatasetCapabilityRecord(registry, `cli.${kind}.remote-refresh`, remoteRefreshRun, {
+      rows_file: maybeRepoRelative(validateInput),
+      refreshed_rows: maybeRepoRelative(remoteRefreshRun.json?.files?.output_rows),
+      out_dir: repoRelativePath(remoteRefreshOutDir),
+      report: maybeRepoRelative(remoteRefreshRun.json?.files?.report),
+      patches: maybeRepoRelative(remoteRefreshRun.json?.files?.patches),
+      pre_verification_report: maybeRepoRelative(remoteRefreshRun.json?.files?.pre_verification_report),
+      post_verification_report: maybeRepoRelative(remoteRefreshRun.json?.files?.post_verification_report),
+      ...remoteRefreshCapture,
+    }),
+  ];
+
+  return {
+    kind,
+    rows_file: maybeRepoRelative(rowsFile),
+    gate_rows_file: maybeRepoRelative(gateRowsFile),
+    verified_rows_file:
+      remoteRefreshRun.json?.status === 'completed'
+        ? maybeRepoRelative(remoteRefreshRun.json?.files?.output_rows)
+        : maybeRepoRelative(validateInput),
+    row_count: targetDatasetRowsCount(rowsFile),
+    status,
+    command_failure_count: commandFailures.length,
+    blocker_count: readinessBlockers.length,
+    readiness_blockers: readinessBlockers,
+    quality_gaps: qualityGaps,
+    schema: {
+      status: schemaRun.json?.status ?? 'command_failed',
+      valid: schemaRun.json?.counts?.valid ?? null,
+      invalid: schemaRun.json?.counts?.invalid ?? null,
+    },
+    required_fields:
+      kind === 'process'
+        ? {
+            status: requiredFieldsRun?.json?.status ?? (requiredFieldsRun?.ok ? 'completed' : 'not_run'),
+            blocked: requiredFieldsRun?.json?.counts?.blocked ?? null,
+            completed: requiredFieldsRun?.json?.counts?.completed ?? null,
+            existing: requiredFieldsRun?.json?.counts?.existing ?? null,
+            output_rows: maybeRepoRelative(requiredFieldsRun?.json?.files?.output_rows),
+            evidence: maybeRepoRelative(requiredFieldsRun?.json?.files?.evidence),
+          }
+        : null,
+    review: {
+      status: reviewRun.json?.status ?? (reviewRun.ok ? 'completed' : 'command_failed'),
+      report: maybeRepoRelative(reviewRun.json?.files?.report),
+    },
+    bilingual: {
+      translation_unit_count: bilingualExtractRun.json?.unit_count ?? null,
+      applied_translation_count: bilingualApplyRun?.json?.applied_count ?? null,
+      apply_status: bilingualApplyRun?.json?.status ?? 'not_run',
+      validate_status: bilingualValidateRun.json?.status ?? 'command_failed',
+      scan: bilingualValidateRun.json?.scan ?? null,
+      translation_evidence: maybeRepoRelative(bilingualApplyRun?.json?.files?.translation_evidence),
+      reviewed_translation_file: maybeRepoRelative(translationReviewPath),
+    },
+    remote_verification: {
+      status:
+        remoteRefreshRun.json?.status === 'completed'
+          ? 'passed_remote_verification'
+          : remoteRefreshRun.json?.status === 'completed_with_blockers'
+            ? 'blocked_remote_verification'
+            : remoteRefreshRun.ok
+              ? 'completed'
+              : 'command_failed',
+      refresh_status: remoteRefreshRun.json?.status ?? (remoteRefreshRun.ok ? 'completed' : 'command_failed'),
+      blocker_count: remoteRefreshRun.json?.counts?.post_refresh_blockers ?? null,
+      pre_refresh_blockers: remoteRefreshRun.json?.counts?.pre_refresh_blockers ?? null,
+      patched_references: remoteRefreshRun.json?.counts?.patched_references ?? null,
+      refreshed_rows: maybeRepoRelative(remoteRefreshRun.json?.files?.output_rows),
+      report: maybeRepoRelative(remoteRefreshRun.json?.files?.post_verification_report),
+      refresh_report: maybeRepoRelative(remoteRefreshRun.json?.files?.report),
+    },
+    capabilities,
+  };
+}
+
+function renderTargetDatasetGateMarkdown(report) {
+  const rows = report.samples.map((sample) => ({
+    sample: sample.sample_id,
+    process: sample.process?.status ?? 'n/a',
+    flow: sample.flow?.status ?? 'n/a',
+    ready: sample.target_quality_ready,
+    blockers: sample.readiness_blocker_count,
+    gaps: sample.quality_gap_count,
+  }));
+  return `# Automated LCA Target Dataset Gate Run
+
+Generated: ${report.generated_at_utc}
+
+Task: ${report.task_id}
+
+Source index: \`${report.source_index}\`
+
+Snapshot: \`${report.snapshot_dir}\`
+
+## Result
+
+- Overall status: \`${report.status}\`
+- Samples: ${report.sample_count}
+- Command failures: ${report.command_failure_count}
+- Readiness blockers: ${report.readiness_blocker_count}
+- Quality gaps: ${report.quality_gap_count}
+
+${buildMarkdownTable(rows, ['sample', 'process', 'flow', 'ready', 'blockers', 'gaps'])}
+
+## Notes
+
+- This run is local-only and does not write remote TianGong rows.
+- Target-quality readiness requires process required-field completion, schema, review, bilingual validation, remote reference/version verification, and reviewed translation evidence for both process and flow rows.
+- Missing reviewed translation files are reported as quality gaps so the next AI transcreation step can fill them deterministically through \`dataset bilingual apply\`.
+`;
+}
+
+function runAutomatedTargetDatasetsGateRun(options = {}) {
+  const taskId = String(options.taskId || automatedTargetDatasetGateRunTaskId);
+  const sourceIndex = resolveRepoPath(options.index || automatedTargetDatasetIndexPath);
+  const snapshotDir = resolveRepoPath(options.snapshotDir || automatedTargetDatasetSnapshotDir);
+  const translationsDir = resolveRepoPath(
+    options.translationsDir || automatedTargetDatasetTranslationsDir,
+  );
+  const workspace = resolveRepoPath(
+    options.outDir || path.join('.foundry/workspaces', taskId, 'target-dataset-gate-run'),
+  );
+  const inputFreezeDir = path.join(workspace, 'input-freeze');
+  const reportsDir = path.join(workspace, 'reports');
+  const registry = readCapabilityRegistry();
+  const selectedSamples = selectAutomatedTargetDatasets(options);
+  const sampleInputs = selectedSamples.map((sample) => ({
+    ...sample,
+    process_rows_path: path.join(snapshotDir, sample.process_rows),
+    flow_rows_path: path.join(snapshotDir, sample.flow_rows),
+  }));
+
+  writeJson(path.join(inputFreezeDir, 'target-datasets.json'), {
+    schema_version: 1,
+    generated_at_utc: nowIso(),
+    task_id: taskId,
+    source_index: repoRelativePath(sourceIndex),
+    snapshot_dir: repoRelativePath(snapshotDir),
+    translations_dir: maybeRepoRelative(translationsDir),
+    account_context: accountContext(),
+    samples: sampleInputs.map((sample) => ({
+      sample_id: sample.sample_id,
+      role: sample.role,
+      process_rows: maybeRepoRelative(sample.process_rows_path),
+      process_row_count: targetDatasetRowsCount(sample.process_rows_path),
+      flow_rows: maybeRepoRelative(sample.flow_rows_path),
+      flow_row_count: targetDatasetRowsCount(sample.flow_rows_path),
+    })),
+  });
+
+  const results = sampleInputs.map((sample) => {
+    const sampleDir = path.join(workspace, 'gates', sample.sample_id);
+    const processResult = runTargetDatasetKindGates({
+      registry,
+      sample,
+      kind: 'process',
+      rowsFile: sample.process_rows_path,
+      flowRowsFile: sample.flow_rows_path,
+      sampleDir,
+      translationsDir,
+    });
+    const flowResult = runTargetDatasetKindGates({
+      registry,
+      sample,
+      kind: 'flow',
+      rowsFile: sample.flow_rows_path,
+      sampleDir,
+      translationsDir,
+    });
+    const readinessBlockers = [
+      ...ensureArray(processResult.readiness_blockers),
+      ...ensureArray(flowResult.readiness_blockers),
+    ];
+    const qualityGaps = [
+      ...ensureArray(processResult.quality_gaps),
+      ...ensureArray(flowResult.quality_gaps),
+    ];
+    return {
+      sample_id: sample.sample_id,
+      role: sample.role,
+      target_quality_ready: readinessBlockers.length === 0 && qualityGaps.length === 0,
+      readiness_blocker_count: readinessBlockers.length,
+      quality_gap_count: qualityGaps.length,
+      readiness_blockers: readinessBlockers,
+      quality_gaps: qualityGaps,
+      process: processResult,
+      flow: flowResult,
+    };
+  });
+
+  const commandFailureCount = results.reduce(
+    (total, sample) =>
+      total + sample.process.command_failure_count + sample.flow.command_failure_count,
+    0,
+  );
+  const readinessBlockerCount = results.reduce(
+    (total, sample) => total + sample.readiness_blocker_count,
+    0,
+  );
+  const qualityGapCount = results.reduce((total, sample) => total + sample.quality_gap_count, 0);
+  const report = {
+    schema_version: 1,
+    generated_at_utc: nowIso(),
+    task_id: taskId,
+    status:
+      commandFailureCount > 0
+        ? 'completed_with_command_failures'
+        : readinessBlockerCount > 0
+          ? 'completed_with_readiness_blockers'
+          : qualityGapCount > 0
+            ? 'completed_with_quality_gaps'
+            : 'target_quality_ready',
+    workspace: repoRelativePath(workspace),
+    source_index: repoRelativePath(sourceIndex),
+    snapshot_dir: repoRelativePath(snapshotDir),
+    translations_dir: maybeRepoRelative(translationsDir),
+    capability_registry: automatedLcaCapabilityRegistryPath,
+    cli_adapter: {
+      bin_path: cliBinPath(),
+      cwd: cliCwd(),
+    },
+    sample_count: results.length,
+    command_failure_count: commandFailureCount,
+    readiness_blocker_count: readinessBlockerCount,
+    quality_gap_count: qualityGapCount,
+    best_target_quality_dataset:
+      results.find((sample) => sample.target_quality_ready)?.sample_id ?? null,
+    samples: results,
+  };
+  report.files = {
+    target_dataset_gate_report: repoRelativePath(path.join(workspace, 'target-dataset-gate-report.json')),
+    gate_index: repoRelativePath(path.join(workspace, 'gate-index.json')),
+    mutation_plan_handoff: repoRelativePath(path.join(workspace, 'mutation-plan-handoff.json')),
+    verification_handoff: repoRelativePath(path.join(workspace, 'verification-handoff.json')),
+    completeness_snapshot: repoRelativePath(path.join(workspace, 'completeness-snapshot.json')),
+  };
+
+  writeJson(path.join(workspace, 'capability-selection.json'), {
+    schema_version: 1,
+    generated_at_utc: report.generated_at_utc,
+    task_id: taskId,
+    registry: automatedLcaCapabilityRegistryPath,
+    selected_capabilities: [
+      'cli.process.complete-required-fields',
+      'cli.process.dataset-validate',
+      'cli.flow.dataset-validate',
+      'cli.process.review',
+      'cli.flow.review',
+      'cli.process.bilingual.extract',
+      'cli.flow.bilingual.extract',
+      'cli.process.bilingual.apply',
+      'cli.flow.bilingual.apply',
+      'cli.process.bilingual.validate',
+      'cli.flow.bilingual.validate',
+      'cli.process.remote-verify',
+      'cli.flow.remote-verify',
+      'cli.process.remote-refresh',
+      'cli.flow.remote-refresh',
+    ].map((id) => capabilityById(registry, id)),
+  });
+  writeJson(path.join(workspace, 'target-dataset-gate-report.json'), report);
+  writeJson(path.join(workspace, 'completeness-snapshot.json'), {
+    schema_version: 1,
+    generated_at_utc: report.generated_at_utc,
+    task_id: taskId,
+    gates: {
+      source_manifest_written: true,
+      target_dataset_inputs_frozen: true,
+      capability_selection_written: true,
+      process_schema_review_bilingual_ran_for_all_samples: results.every(
+        (sample) => sample.process.status !== 'missing_input',
+      ),
+      flow_schema_review_bilingual_ran_for_all_samples: results.every(
+        (sample) => sample.flow.status !== 'missing_input',
+      ),
+      no_remote_writes_attempted: true,
+      command_failures: commandFailureCount,
+      readiness_blockers: readinessBlockerCount,
+      quality_gaps: qualityGapCount,
+      gate_index_written: true,
+      mutation_plan_handoff_written: true,
+      verification_handoff_written: true,
+    },
+  });
+  writeGateIndex({
+    workspace,
+    registry,
+    report,
+    runKind: 'target-datasets-gate-run',
+    gates: targetDatasetGateEntries(registry, report),
+  });
+  writeMutationPlanHandoff({
+    workspace,
+    report,
+    runKind: 'target-datasets-gate-run',
+    entries: targetDatasetMutationEntries(report),
+  });
+  writeVerificationHandoff({
+    workspace,
+    report,
+    runKind: 'target-datasets-gate-run',
+    entries: targetDatasetVerificationEntries(report),
+  });
+  writeText(path.join(reportsDir, 'target-dataset-gate-run.md'), renderTargetDatasetGateMarkdown(report));
+  return report;
 }
 
 function runSampleScenariosDryRun(options = {}) {
@@ -2715,6 +5998,7 @@ function runSampleScenariosDryRun(options = {}) {
       ...ensureArray(identityReport.blockers),
       ...ensureArray(buildValidateReport.blockers),
       ...ensureArray(buildMaterializeReport.blockers),
+      ...providerClosureBlockers(providerClosure),
     ];
     results.push({
       sample_id: sample.sample_id,
@@ -2808,6 +6092,13 @@ function runSampleScenariosDryRun(options = {}) {
     command_failure_count: commandFailures.length,
     samples: results,
   };
+  report.files = {
+    dry_run_report: repoRelativePath(path.join(workspace, 'dry-run-report.json')),
+    gate_index: repoRelativePath(path.join(workspace, 'gate-index.json')),
+    mutation_plan_handoff: repoRelativePath(path.join(workspace, 'mutation-plan-handoff.json')),
+    verification_handoff: repoRelativePath(path.join(workspace, 'verification-handoff.json')),
+    completeness_snapshot: repoRelativePath(path.join(workspace, 'completeness-snapshot.json')),
+  };
   writeJson(path.join(workspace, 'capability-selection.json'), {
     schema_version: 1,
     generated_at_utc: report.generated_at_utc,
@@ -2843,7 +6134,29 @@ function runSampleScenariosDryRun(options = {}) {
       ),
       no_remote_writes_attempted: true,
       command_failures: commandFailures.length,
+      gate_index_written: true,
+      mutation_plan_handoff_written: true,
+      verification_handoff_written: true,
     },
+  });
+  writeGateIndex({
+    workspace,
+    registry,
+    report,
+    runKind: 'sample-scenarios-dry-run',
+    gates: sampleScenarioGateEntries(registry, report),
+  });
+  writeMutationPlanHandoff({
+    workspace,
+    report,
+    runKind: 'sample-scenarios-dry-run',
+    entries: sampleScenarioMutationEntries(report),
+  });
+  writeVerificationHandoff({
+    workspace,
+    report,
+    runKind: 'sample-scenarios-dry-run',
+    entries: sampleScenarioVerificationEntries(report),
   });
   writeText(path.join(reportsDir, 'sample-scenario-dry-run.md'), renderSampleDryRunMarkdown(report));
   return report;
@@ -3745,6 +7058,830 @@ ${buildMarkdownTable(rows, ['metric', 'value'])}
 
 ${topFailures.length ? buildMarkdownTable(topFailures, ['process', 'exchange', 'flow', 'status']) : 'No failed rows.'}
 `);
+}
+
+function datasetRowId(row, kind) {
+  return asText(row?.id ?? row?.[`${kind}_id`] ?? row?.dataset_id) || null;
+}
+
+function datasetRowVersion(row) {
+  return asText(row?.version ?? row?.resolved_version ?? row?.requested_version) || null;
+}
+
+function datasetRowKey(row, kind) {
+  const id = datasetRowId(row, kind) ?? '<missing-id>';
+  const version = datasetRowVersion(row) ?? '<missing-version>';
+  return `${kind}:${id}@${version}`;
+}
+
+function accountAuditStateCodeSummary(rows) {
+  const counts = {};
+  for (const row of rows) {
+    const key = row?.state_code === null || row?.state_code === undefined
+      ? 'null'
+      : String(row.state_code);
+    counts[key] = (counts[key] ?? 0) + 1;
+  }
+  return counts;
+}
+
+function reportPath(...parts) {
+  return parts.join('/');
+}
+
+function validationInvalidRows(report) {
+  return ensureArray(report?.rows).filter((row) => row?.status === 'invalid' || Number(row?.issue_count ?? 0) > 0);
+}
+
+function bilingualFindings(report) {
+  return ensureArray(report?.scan?.findings);
+}
+
+function flowReviewFindings(reviewDir) {
+  const findingsPath = path.join(reviewDir, 'findings.jsonl');
+  if (!fileExists(findingsPath)) return [];
+  return readJsonOrJsonl(findingsPath).filter((row) => row && typeof row === 'object');
+}
+
+function requiredFieldRowsByStatus(report, status) {
+  return ensureArray(report?.rows).filter((row) => row?.status === status);
+}
+
+function queueEntryBase({ issueType, datasetType, row, source, proposedAction, evidenceStatus, risk = 'medium' }) {
+  const id = datasetRowId(row, datasetType);
+  const version = datasetRowVersion(row);
+  const stateCode = row?.state_code ?? row?.stateCode ?? null;
+  return {
+    queue_id: `${issueType}:${datasetType}:${id ?? 'missing'}@${version ?? 'missing'}`,
+    issue_type: issueType,
+    dataset_type: datasetType,
+    record_id: id,
+    version,
+    current_state_code: stateCode,
+    proposed_action: proposedAction,
+    evidence_status: evidenceStatus,
+    risk,
+    source,
+    preferred_write_if_approved: stateCode === 0 ? 'update_existing_draft' : 'manual_review_or_follow_up',
+    remote_commit_allowed: false,
+  };
+}
+
+function buildAccountWideRepairQueue({
+  processRows,
+  flowRows,
+  processValidation,
+  flowValidation,
+  processRequiredFields,
+  processBilingual,
+  flowBilingual,
+  flowReviewDir,
+  closure,
+  remoteProcessVerification,
+  remoteFlowVerification,
+}) {
+  const entries = [];
+  const sampleCases = [];
+  const rowsByProcessKey = new Map(processRows.map((row) => [datasetRowKey(row, 'process'), row]));
+  const rowsByFlowKey = new Map(flowRows.map((row) => [datasetRowKey(row, 'flow'), row]));
+
+  function pushEntry(entry, { sample = false } = {}) {
+    entries.push(entry);
+    if (sample) sampleCases.push(entry);
+  }
+
+  for (const invalid of validationInvalidRows(processValidation)) {
+    const row = rowsByProcessKey.get(`process:${invalid.id}@${invalid.version}`) ?? invalid;
+    pushEntry({
+      ...queueEntryBase({
+        issueType: 'process_schema_invalid',
+        datasetType: 'process',
+        row,
+        source: {
+          gate: 'dataset validate --type process',
+          report: reportPath('gates/process/schema/outputs/validation-report.json'),
+          issues: ensureArray(invalid.issues).slice(0, 5),
+        },
+        proposedAction: 'repair the process payload field paths named by the schema validator, then rerun schema/review/bilingual gates',
+        evidenceStatus: 'deterministic_schema_issue',
+        risk: 'high',
+      }),
+    }, { sample: sampleCases.filter((entry) => entry.issue_type === 'process_schema_invalid').length < 2 });
+  }
+
+  for (const invalid of validationInvalidRows(flowValidation)) {
+    const row = rowsByFlowKey.get(`flow:${invalid.id}@${invalid.version}`) ?? invalid;
+    pushEntry({
+      ...queueEntryBase({
+        issueType: 'flow_schema_invalid',
+        datasetType: 'flow',
+        row,
+        source: {
+          gate: 'dataset validate --type flow',
+          report: reportPath('gates/flow/schema/outputs/validation-report.json'),
+          issues: ensureArray(invalid.issues).slice(0, 5),
+        },
+        proposedAction: 'repair the flow payload field paths named by the schema validator, then rerun schema/review/bilingual gates',
+        evidenceStatus: 'deterministic_schema_issue',
+        risk: 'high',
+      }),
+    }, { sample: sampleCases.filter((entry) => entry.issue_type === 'flow_schema_invalid').length < 2 });
+  }
+
+  for (const completed of requiredFieldRowsByStatus(processRequiredFields, 'completed')) {
+    const row = rowsByProcessKey.get(`process:${completed.id}@${completed.version}`) ?? completed;
+    pushEntry({
+      ...queueEntryBase({
+        issueType: 'process_required_fields_deterministic_repair',
+        datasetType: 'process',
+        row,
+        source: {
+          gate: 'process complete-required-fields',
+          report: reportPath('repair-candidates/process-required-fields/outputs/process-required-fields-report.json'),
+          completions: ensureArray(completed.completions).slice(0, 10),
+        },
+        proposedAction: 'use the deterministic completed row as a repair candidate, run save-draft dry-run, then readback verification',
+        evidenceStatus: 'deterministic_repair_candidate',
+        risk: 'medium',
+      }),
+      repair_rows_file: reportPath('repair-candidates/processes.required-fields.jsonl'),
+      dry_run_next: 'process save-draft --dry-run',
+    }, { sample: sampleCases.filter((entry) => entry.issue_type === 'process_required_fields_deterministic_repair').length < 2 });
+  }
+
+  for (const blocked of requiredFieldRowsByStatus(processRequiredFields, 'blocked')) {
+    const row = rowsByProcessKey.get(`process:${blocked.id}@${blocked.version}`) ?? blocked;
+    pushEntry({
+      ...queueEntryBase({
+        issueType: 'process_required_fields_blocked',
+        datasetType: 'process',
+        row,
+        source: {
+          gate: 'process complete-required-fields',
+          report: reportPath('repair-candidates/process-required-fields/outputs/process-required-fields-report.json'),
+          issues: ensureArray(blocked.issues).slice(0, 10),
+        },
+        proposedAction: 'collect source evidence or reference-flow context before authoring the missing required field',
+        evidenceStatus: 'blocked_pending_evidence',
+        risk: 'high',
+      }),
+    }, { sample: sampleCases.filter((entry) => entry.issue_type === 'process_required_fields_blocked').length < 2 });
+  }
+
+  for (const finding of bilingualFindings(processBilingual)) {
+    const row = processRows[finding.row_index ?? finding.index] ?? {};
+    pushEntry({
+      ...queueEntryBase({
+        issueType: 'process_bilingual_quality',
+        datasetType: 'process',
+        row,
+        source: {
+          gate: 'dataset bilingual validate --type process',
+          report: reportPath('gates/process/bilingual-validate/outputs/bilingual-validate-report.json'),
+          finding,
+        },
+        proposedAction: 'run Codex/agent reviewed TIDAS bilingual transcreation, apply reviewed translations, and rerun bilingual validate',
+        evidenceStatus: 'agent_transcreation_required',
+        risk: finding.severity === 'blocker' ? 'high' : 'medium',
+      }),
+      field_path: finding.field_path ?? finding.path ?? null,
+    }, { sample: sampleCases.filter((entry) => entry.issue_type === 'process_bilingual_quality').length < 2 });
+  }
+
+  for (const finding of bilingualFindings(flowBilingual)) {
+    const row = flowRows[finding.row_index ?? finding.index] ?? {};
+    pushEntry({
+      ...queueEntryBase({
+        issueType: 'flow_bilingual_quality',
+        datasetType: 'flow',
+        row,
+        source: {
+          gate: 'dataset bilingual validate --type flow',
+          report: reportPath('gates/flow/bilingual-validate/outputs/bilingual-validate-report.json'),
+          finding,
+        },
+        proposedAction: 'run Codex/agent reviewed TIDAS bilingual transcreation, apply reviewed translations, and rerun bilingual validate',
+        evidenceStatus: 'agent_transcreation_required',
+        risk: finding.severity === 'blocker' ? 'high' : 'medium',
+      }),
+      field_path: finding.field_path ?? finding.path ?? null,
+    }, { sample: sampleCases.filter((entry) => entry.issue_type === 'flow_bilingual_quality').length < 2 });
+  }
+
+  for (const finding of flowReviewFindings(flowReviewDir)) {
+    const row = rowsByFlowKey.get(`flow:${finding.flow_id ?? finding.id}@${finding.version ?? finding.flow_version}`) ?? {
+      id: finding.flow_id ?? finding.id,
+      version: finding.version ?? finding.flow_version,
+    };
+    pushEntry({
+      ...queueEntryBase({
+        issueType: 'flow_review_rule_finding',
+        datasetType: 'flow',
+        row,
+        source: {
+          gate: 'review flow',
+          report: reportPath('gates/flow/review/flow_review_report.json'),
+          finding,
+        },
+        proposedAction: 'repair flow identity, type, reference property, classification, or naming according to the flow governance finding',
+        evidenceStatus: 'flow_governance_review_required',
+        risk: finding.severity === 'error' ? 'high' : 'medium',
+      }),
+    }, { sample: sampleCases.filter((entry) => entry.issue_type === 'flow_review_rule_finding').length < 2 });
+  }
+
+  for (const closureRow of ensureArray(closure?.rows).filter((row) => ![
+    'closed',
+    'closed_by_existing_process',
+    'closed_by_proxy',
+    'excluded_elementary_flow',
+    'excluded_by_cutoff',
+    'excluded_by_boundary',
+  ].includes(row.closure_status))) {
+    pushEntry({
+      queue_id: `reference_closure:${closureRow.process_id}@${closureRow.process_version}:${closureRow.exchange_internal_id ?? 'exchange'}:${closureRow.flow_id ?? 'missing-flow'}`,
+      issue_type: 'reference_flow_closure',
+      dataset_type: 'process_exchange',
+      record_id: closureRow.process_id,
+      version: closureRow.process_version,
+      current_state_code: closureRow.process_state_code,
+      exchange_internal_id: closureRow.exchange_internal_id,
+      flow_id: closureRow.flow_id,
+      flow_version: closureRow.flow_version,
+      closure_status: closureRow.closure_status,
+      proposed_action: 'resolve provider process, flow metadata, proxy/cutoff/boundary rationale, or flow version mismatch before compute readiness',
+      evidence_status: 'closure_evidence_required',
+      risk: 'high',
+      source: {
+        gate: 'reference-flow closure',
+        report: reportPath('audit/reference-flow-closure.json'),
+      },
+      preferred_write_if_approved: closureRow.process_state_code === 0 ? 'update_existing_draft_or_provider_link' : 'manual_review_or_follow_up',
+      remote_commit_allowed: false,
+    }, { sample: sampleCases.filter((entry) => entry.issue_type === 'reference_flow_closure').length < 2 });
+  }
+
+  for (const [kind, report] of [['process', remoteProcessVerification], ['flow', remoteFlowVerification]]) {
+    const blockers = ensureArray(report?.blockers ?? report?.checks).filter((item) => item?.status === 'failed' || item?.severity === 'blocker');
+    for (const blocker of blockers.slice(0, 100)) {
+      pushEntry({
+        queue_id: `remote_reference:${kind}:${blocker.id ?? blocker.dataset_id ?? blocker.refObjectId ?? entries.length}`,
+        issue_type: `${kind}_remote_reference_blocker`,
+        dataset_type: kind,
+        record_id: blocker.id ?? blocker.dataset_id ?? null,
+        version: blocker.version ?? null,
+        current_state_code: null,
+        proposed_action: 'refresh reachable reference versions or block write until the referenced remote object is reachable',
+        evidence_status: 'remote_reference_verification_blocker',
+        risk: 'high',
+        source: {
+          gate: 'dataset verify-remote',
+          report: reportPath(`verification/${kind}-remote/outputs/dataset-remote-verify-report.json`),
+          blocker,
+        },
+        remote_commit_allowed: false,
+      }, { sample: sampleCases.filter((entry) => entry.issue_type === `${kind}_remote_reference_blocker`).length < 2 });
+    }
+  }
+
+  return {
+    generated_at_utc: nowIso(),
+    schema_version: 1,
+    status: entries.length ? 'open' : 'empty',
+    count: entries.length,
+    sample_case_count: sampleCases.length,
+    issue_type_counts: Object.fromEntries(countBy(entries, (entry) => entry.issue_type).map((item) => [item.key, item.count])),
+    entries,
+    sample_cases: sampleCases,
+  };
+}
+
+function writeAccountWideAuditMarkdown(filePath, report, repairQueue) {
+  const rows = [
+    { metric: 'process rows', value: report.inventory.process_count },
+    { metric: 'flow rows', value: report.inventory.flow_count },
+    { metric: 'process schema invalid', value: report.gates.process_schema_invalid },
+    { metric: 'flow schema invalid', value: report.gates.flow_schema_invalid },
+    { metric: 'process bilingual findings', value: report.gates.process_bilingual_findings },
+    { metric: 'flow bilingual findings', value: report.gates.flow_bilingual_findings },
+    { metric: 'required-field deterministic repairs', value: report.gates.process_required_field_completed },
+    { metric: 'required-field blockers', value: report.gates.process_required_field_blocked },
+    { metric: 'reference closure failed rows', value: report.graph.reference_closure_failed },
+    { metric: 'repair queue entries', value: repairQueue.count },
+  ];
+  const sampleRows = repairQueue.sample_cases.slice(0, 40).map((entry) => ({
+    issue_type: entry.issue_type,
+    dataset: entry.dataset_type,
+    id: entry.record_id ?? entry.flow_id ?? '',
+    version: entry.version ?? entry.flow_version ?? '',
+    action: entry.proposed_action,
+  }));
+  writeText(filePath, `# Current-Profile Account-Wide Audit and Repair Queue
+
+- generated at: ${report.generated_at_utc}
+- task id: ${report.task_id}
+- status: ${report.status}
+- runtime account authority: ${report.account_context.authority}
+- remote writes performed: no
+
+${buildMarkdownTable(rows, ['metric', 'value'])}
+
+## State Code Counts
+
+### Processes
+
+${buildMarkdownTable(Object.entries(report.inventory.process_state_code_counts).map(([state_code, count]) => ({ state_code, count })), ['state_code', 'count'])}
+
+### Flows
+
+${buildMarkdownTable(Object.entries(report.inventory.flow_state_code_counts).map(([state_code, count]) => ({ state_code, count })), ['state_code', 'count'])}
+
+## Sample Repair Cases
+
+${sampleRows.length ? buildMarkdownTable(sampleRows, ['issue_type', 'dataset', 'id', 'version', 'action']) : 'No repair cases were generated.'}
+
+## Required Next Gates
+
+1. For deterministic process required-field repairs, run \`process save-draft --dry-run\` on the generated rows before any write.
+2. For bilingual quality entries, use agent-reviewed TIDAS transcreation, apply reviewed translations, and rerun bilingual validate.
+3. For reference-closure entries, resolve provider/process/flow metadata or document explicit cutoff, proxy, or boundary rationale before compute readiness.
+4. No remote commit is allowed until mutation plan, dry-run, readback, schema/review/bilingual, and applicable UI/compute verification pass.
+`);
+}
+
+function runAccountWideAudit(options = {}) {
+  const taskId = asText(options.taskId) || currentProfileAccountWideAuditTaskId;
+  const workspace = options.outDir ? resolveRepoPath(options.outDir) : workspaceFor(taskId);
+  ensureAccountRepairWorkspace(workspace);
+  const freezeDir = path.join(workspace, 'input-freeze');
+  const auditDir = path.join(workspace, 'audit');
+  const gatesDir = path.join(workspace, 'gates');
+  const repairDir = path.join(workspace, 'repair-candidates');
+  const mutationDir = path.join(workspace, 'mutation-plan');
+  const verificationDir = path.join(workspace, 'verification');
+  const reportsDir = path.join(workspace, 'reports');
+  for (const dir of [freezeDir, auditDir, gatesDir, repairDir, mutationDir, verificationDir, reportsDir]) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+
+  const timeoutMs = numberOption(options.timeoutMs, 600000, { min: 10000, max: 1800000 });
+  const pageSize = Math.floor(numberOption(options.pageSize, 1000, { min: 1, max: 5000 }));
+  const account = accountContext();
+  const commands = {};
+
+  const refreshOutDir = path.join(freezeDir, 'process-refresh-references-probe');
+  const refresh = runTiangongJson([
+    'process',
+    'refresh-references',
+    '--out-dir',
+    refreshOutDir,
+    '--dry-run',
+    '--limit',
+    '1',
+    '--page-size',
+    String(pageSize),
+    '--json',
+  ], { timeoutMs });
+  commands.process_refresh_references_probe = commandRecord(refresh);
+  const manifestPath = path.join(refreshOutDir, 'inputs/processes.manifest.json');
+  const manifest = readJsonIfExists(manifestPath);
+  if (!refresh.ok || !manifest?.user_id) {
+    const failure = {
+      schema_version: 1,
+      generated_at_utc: nowIso(),
+      task_id: taskId,
+      status: 'failed',
+      error_class: refresh.error_class ?? 'missing_current_user_manifest',
+      account_context: account,
+      commands,
+      files: {
+        workspace: repoRelativePath(workspace),
+        process_refresh_manifest: maybeRepoRelative(manifestPath),
+      },
+    };
+    writeJson(path.join(auditDir, 'account-wide-audit-report.json'), failure);
+    return failure;
+  }
+
+  const processList = runTiangongJson([
+    'process',
+    'list',
+    '--user-id',
+    manifest.user_id,
+    '--all',
+    '--page-size',
+    String(pageSize),
+    '--json',
+  ], { timeoutMs });
+  commands.process_list = commandRecord(processList);
+
+  const flowList = runTiangongJson([
+    'flow',
+    'list',
+    '--user-id',
+    manifest.user_id,
+    '--all',
+    '--page-size',
+    String(pageSize),
+    '--json',
+  ], { timeoutMs });
+  commands.flow_list = commandRecord(flowList);
+
+  if (!processList.ok || !flowList.ok) {
+    const failure = {
+      schema_version: 1,
+      generated_at_utc: nowIso(),
+      task_id: taskId,
+      status: 'failed',
+      error_class: processList.error_class ?? flowList.error_class,
+      account_context: account,
+      current_user_manifest: manifest,
+      commands,
+      files: {
+        workspace: repoRelativePath(workspace),
+      },
+    };
+    writeJson(path.join(auditDir, 'account-wide-audit-report.json'), failure);
+    return failure;
+  }
+
+  const processRows = ensureArray(processList.json?.rows);
+  const flowRows = ensureArray(flowList.json?.rows);
+  const processRowsPath = path.join(freezeDir, 'current-user-processes.rows.jsonl');
+  const flowRowsPath = path.join(freezeDir, 'current-user-flows.rows.jsonl');
+  writeJson(path.join(freezeDir, 'current-user-processes.json'), processList.json);
+  writeJson(path.join(freezeDir, 'current-user-flows.json'), flowList.json);
+  writeText(processRowsPath, jsonLines(processRows));
+  writeText(flowRowsPath, jsonLines(flowRows));
+  writeJson(path.join(freezeDir, 'current-account-freeze-manifest.json'), {
+    schema_version: 1,
+    generated_at_utc: nowIso(),
+    task_id: taskId,
+    status: 'completed',
+    account_context: account,
+    user_id: manifest.user_id,
+    masked_user_email: manifest.masked_user_email ?? null,
+    source: 'remote_current_user_process_and_flow_list',
+    no_remote_write_performed: true,
+    counts: {
+      processes: processRows.length,
+      flows: flowRows.length,
+    },
+    files: {
+      process_rows: repoRelativePath(processRowsPath),
+      flow_rows: repoRelativePath(flowRowsPath),
+    },
+    commands,
+  });
+
+  const processSchemaDir = path.join(gatesDir, 'process/schema');
+  const flowSchemaDir = path.join(gatesDir, 'flow/schema');
+  const processReviewDir = path.join(gatesDir, 'process/review');
+  const flowReviewDir = path.join(gatesDir, 'flow/review');
+  const processBilingualDir = path.join(gatesDir, 'process/bilingual-validate');
+  const flowBilingualDir = path.join(gatesDir, 'flow/bilingual-validate');
+  const processRequiredDir = path.join(repairDir, 'process-required-fields');
+  const processRequiredRowsPath = path.join(repairDir, 'processes.required-fields.jsonl');
+  const emptyCommandResult = {
+    ok: true,
+    status: 0,
+    command: [],
+    stdout: '',
+    stderr: '',
+    json: null,
+    timeout_ms: timeoutMs,
+    duration_ms: 0,
+  };
+
+  const processSchema = runTiangongJson([
+    'dataset', 'validate',
+    '--input', processRowsPath,
+    '--type', 'process',
+    '--out-dir', processSchemaDir,
+    '--json',
+  ], { timeoutMs, allowJsonOnFailure: true });
+  commands.process_schema = commandRecord(processSchema);
+
+  const flowSchema = runTiangongJson([
+    'dataset', 'validate',
+    '--input', flowRowsPath,
+    '--type', 'flow',
+    '--out-dir', flowSchemaDir,
+    '--json',
+  ], { timeoutMs, allowJsonOnFailure: true });
+  commands.flow_schema = commandRecord(flowSchema);
+
+  let processRequired = emptyCommandResult;
+
+  const processReview = processRows.length
+    ? runTiangongJson([
+      'review', 'process',
+      '--rows-file', processRowsPath,
+      '--out-dir', processReviewDir,
+      '--json',
+    ], { timeoutMs, allowJsonOnFailure: true })
+    : emptyCommandResult;
+  commands.process_review = commandRecord(processReview);
+
+  const flowReview = flowRows.length
+    ? runTiangongJson([
+      'review', 'flow',
+      '--rows-file', flowRowsPath,
+      '--out-dir', flowReviewDir,
+      '--json',
+    ], { timeoutMs, allowJsonOnFailure: true })
+    : emptyCommandResult;
+  commands.flow_review = commandRecord(flowReview);
+
+  const processBilingual = processRows.length
+    ? runTiangongJson([
+      'dataset', 'bilingual', 'validate',
+      '--input', processRowsPath,
+      '--type', 'process',
+      '--out-dir', processBilingualDir,
+      '--json',
+    ], { timeoutMs, allowJsonOnFailure: true })
+    : emptyCommandResult;
+  commands.process_bilingual_validate = commandRecord(processBilingual);
+
+  const flowBilingual = flowRows.length
+    ? runTiangongJson([
+      'dataset', 'bilingual', 'validate',
+      '--input', flowRowsPath,
+      '--type', 'flow',
+      '--out-dir', flowBilingualDir,
+      '--json',
+    ], { timeoutMs, allowJsonOnFailure: true })
+    : emptyCommandResult;
+  commands.flow_bilingual_validate = commandRecord(flowBilingual);
+
+  let processRemote = emptyCommandResult;
+  let flowRemote = emptyCommandResult;
+  const remoteVerifyMode = boolOption(options.skipRemoteReferenceVerify, false)
+    ? 'skip'
+    : (asText(options.remoteVerifyMode) || 'skip');
+  const remoteVerifySampleSize = Math.floor(numberOption(options.remoteVerifySampleSize, 50, { min: 1, max: 1000 }));
+  const processRowsForRemoteVerify = remoteVerifyMode === 'sample'
+    ? processRows.slice(0, remoteVerifySampleSize)
+    : processRows;
+  const flowRowsForRemoteVerify = remoteVerifyMode === 'sample'
+    ? flowRows.slice(0, remoteVerifySampleSize)
+    : flowRows;
+  const processRemoteRowsPath = remoteVerifyMode === 'sample'
+    ? path.join(verificationDir, 'process-remote/sample-processes.rows.jsonl')
+    : processRowsPath;
+  const flowRemoteRowsPath = remoteVerifyMode === 'sample'
+    ? path.join(verificationDir, 'flow-remote/sample-flows.rows.jsonl')
+    : flowRowsPath;
+  if (remoteVerifyMode === 'sample') {
+    writeText(processRemoteRowsPath, jsonLines(processRowsForRemoteVerify));
+    writeText(flowRemoteRowsPath, jsonLines(flowRowsForRemoteVerify));
+  }
+  if (remoteVerifyMode !== 'skip') {
+    processRemote = processRowsForRemoteVerify.length
+      ? runTiangongJson([
+        'dataset', 'verify-remote',
+        '--input', processRemoteRowsPath,
+        '--root-policy', 'existing',
+        '--out-dir', path.join(verificationDir, 'process-remote'),
+        '--json',
+      ], { timeoutMs, allowJsonOnFailure: true })
+      : processRemote;
+    flowRemote = flowRowsForRemoteVerify.length
+      ? runTiangongJson([
+        'dataset', 'verify-remote',
+        '--input', flowRemoteRowsPath,
+        '--root-policy', 'existing',
+        '--out-dir', path.join(verificationDir, 'flow-remote'),
+        '--json',
+      ], { timeoutMs, allowJsonOnFailure: true })
+      : flowRemote;
+  }
+  commands.process_remote_verify = commandRecord(processRemote);
+  commands.flow_remote_verify = commandRecord(flowRemote);
+
+  const preliminaryGraph = makeProcessGraph(processRows);
+  const flowMetadataPath = path.join(freezeDir, 'flow-metadata-for-account-process-exchanges.json');
+  const flowMetadataRowsPath = path.join(
+    freezeDir,
+    'flow-metadata-for-account-process-exchanges.rows.jsonl',
+  );
+  const flowMetadata = fetchFlowMetadataForGraph(preliminaryGraph, {
+    outputDir: path.join(freezeDir, 'flow-metadata-fetch'),
+    cachePath: flowMetadataPath,
+    batchSize: numberOption(options.flowMetadataBatchSize, 80, { min: 1, max: 500 }),
+    batchTimeoutMs: numberOption(options.flowMetadataBatchTimeoutMs, 120000, { min: 10000, max: 600000 }),
+    maxBatches: options.flowMetadataMaxBatches,
+    stopOnFailure: boolOption(options.flowMetadataStopOnFailure, true),
+  });
+  writeJson(flowMetadataPath, {
+    generated_at_utc: flowMetadata.generated_at_utc,
+    status: flowMetadata.status,
+    error_class: flowMetadata.error_class,
+    from_cache: flowMetadata.from_cache,
+    limited: flowMetadata.limited,
+    distinct_exchange_flow_ids: flowMetadata.distinct_exchange_flow_ids,
+    fetched_flow_rows: flowMetadata.fetched_flow_rows,
+    matched_distinct_flow_ids: flowMetadata.matched_distinct_flow_ids,
+    missing_distinct_flow_ids: flowMetadata.missing_distinct_flow_ids,
+    missing_flow_ids: flowMetadata.missing_flow_ids,
+    rows: flowMetadata.rows,
+  });
+  writeText(flowMetadataRowsPath, jsonLines(flowMetadata.rows));
+  commands.flow_metadata_for_exchange_flows = {
+    command: 'batched tiangong-lca flow list --id <exchange-flow-id> --all --json',
+    ok: flowMetadata.status === 'completed',
+    status: flowMetadata.status,
+    error_class: flowMetadata.error_class,
+    batch_count: flowMetadata.command_count,
+    total_batch_count: flowMetadata.total_batch_count,
+    completed_batch_count: flowMetadata.completed_batch_count,
+  };
+
+  processRequired = processRows.length
+    ? runTiangongJson(
+        [
+          'process',
+          'complete-required-fields',
+          '--input',
+          processRowsPath,
+          '--flows',
+          flowMetadataRowsPath,
+          '--out',
+          processRequiredRowsPath,
+          '--out-dir',
+          processRequiredDir,
+          '--json',
+        ],
+        { timeoutMs, allowJsonOnFailure: true },
+      )
+    : emptyCommandResult;
+  commands.process_required_fields = commandRecord(processRequired);
+
+  const graph = makeProcessGraph(processRows, flowMetadata.metadata);
+  const closure = summarizeClosure(graph);
+  writeJson(path.join(auditDir, 'process-exchange-flow-graph.json'), {
+    generated_at_utc: nowIso(),
+    task_id: taskId,
+    counts: {
+      processes: graph.processes.length,
+      exchanges: graph.exchanges.length,
+      distinct_exchange_flows: uniqueExchangeFlowIds(graph).length,
+      provider_reference_flows: graph.providerByExactFlow.size,
+    },
+    processes: graph.processes.map(({ payload, ...row }) => row),
+    exchanges: graph.exchanges,
+  });
+  writeJson(path.join(auditDir, 'reference-flow-closure.json'), closure);
+  writeClosureMarkdown(path.join(reportsDir, 'reference-flow-closure.md'), closure);
+
+  const processValidationReport = readJsonIfExists(path.join(processSchemaDir, 'outputs/validation-report.json'));
+  const flowValidationReport = readJsonIfExists(path.join(flowSchemaDir, 'outputs/validation-report.json'));
+  const processRequiredReport = readJsonIfExists(path.join(processRequiredDir, 'outputs/process-required-fields-report.json'));
+  const processBilingualReport = readJsonIfExists(path.join(processBilingualDir, 'outputs/bilingual-validate-report.json'));
+  const flowBilingualReport = readJsonIfExists(path.join(flowBilingualDir, 'outputs/bilingual-validate-report.json'));
+  const processRemoteReport = readJsonIfExists(path.join(verificationDir, 'process-remote/outputs/dataset-remote-verify-report.json'))
+    ?? processRemote.json;
+  const flowRemoteReport = readJsonIfExists(path.join(verificationDir, 'flow-remote/outputs/dataset-remote-verify-report.json'))
+    ?? flowRemote.json;
+
+  const repairQueue = buildAccountWideRepairQueue({
+    processRows,
+    flowRows,
+    processValidation: processValidationReport,
+    flowValidation: flowValidationReport,
+    processRequiredFields: processRequiredReport,
+    processBilingual: processBilingualReport,
+    flowBilingual: flowBilingualReport,
+    flowReviewDir,
+    closure,
+    remoteProcessVerification: processRemoteReport,
+    remoteFlowVerification: flowRemoteReport,
+  });
+  writeJson(path.join(repairDir, 'repair-queue.json'), repairQueue);
+
+  const mutationPlan = {
+    schema_version: 1,
+    generated_at_utc: nowIso(),
+    task_id: taskId,
+    status: repairQueue.count ? 'open' : 'empty',
+    remote_commit_allowed: false,
+    policy: {
+      dry_run_before_remote_write: true,
+      readback_after_write: true,
+      ui_validation_for_user_visible_process_repairs: true,
+      compute_validation_for_process_graph_repairs: true,
+      state_code_0_prefers_update: true,
+      state_code_100_requires_source_review: true,
+    },
+    entries: repairQueue.entries.map((entry) => ({
+      candidate_id: entry.queue_id,
+      record_type: entry.dataset_type,
+      record_id: entry.record_id,
+      version: entry.version,
+      current_state_code: entry.current_state_code,
+      proposed_mutation_type: entry.preferred_write_if_approved === 'update_existing_draft' ? 'update' : 'manual-review',
+      fields_affected: entry.field_path ? [entry.field_path] : [],
+      evidence_references: [entry.source?.report].filter(Boolean),
+      reason: entry.proposed_action,
+      risk_level: entry.risk,
+      dry_run_status: 'not_run',
+      remote_commit_allowed: false,
+      gate_status: {
+        evidence: entry.evidence_status,
+        dry_run: 'not_run',
+        readback: 'not_run',
+        ui_validation: 'not_run',
+        compute_validation: 'not_run',
+      },
+    })),
+  };
+  writeJson(path.join(mutationDir, 'mutation-plan.json'), mutationPlan);
+
+  const report = {
+    schema_version: 1,
+    generated_at_utc: nowIso(),
+    task_id: taskId,
+    status: repairQueue.count ? 'completed_with_repair_queue' : 'completed_no_repair_queue',
+    account_context: account,
+    inventory: {
+      user_id: manifest.user_id,
+      masked_user_email: manifest.masked_user_email ?? null,
+      process_count: processRows.length,
+      flow_count: flowRows.length,
+      process_state_code_counts: accountAuditStateCodeSummary(processRows),
+      flow_state_code_counts: accountAuditStateCodeSummary(flowRows),
+    },
+    gates: {
+      command_failures: Object.values(commands).filter((command) => command && command.ok === false).length,
+      process_schema_invalid: processValidationReport?.counts?.invalid ?? validationInvalidRows(processValidationReport).length,
+      flow_schema_invalid: flowValidationReport?.counts?.invalid ?? validationInvalidRows(flowValidationReport).length,
+      process_required_field_completed: processRequiredReport?.counts?.completed ?? 0,
+      process_required_field_blocked: processRequiredReport?.counts?.blocked ?? 0,
+      process_bilingual_findings: processBilingualReport?.scan?.finding_count ?? bilingualFindings(processBilingualReport).length,
+      flow_bilingual_findings: flowBilingualReport?.scan?.finding_count ?? bilingualFindings(flowBilingualReport).length,
+      flow_review_findings: readJsonIfExists(path.join(flowReviewDir, 'flow_review_report.json'))?.finding_count ?? flowReviewFindings(flowReviewDir).length,
+      remote_process_verify_status: processRemoteReport?.status ?? (processRemote.ok ? 'not_run_or_passed' : 'failed'),
+      remote_flow_verify_status: flowRemoteReport?.status ?? (flowRemote.ok ? 'not_run_or_passed' : 'failed'),
+      remote_reference_verify_mode: remoteVerifyMode,
+      remote_reference_verify_sample_size: remoteVerifyMode === 'sample' ? remoteVerifySampleSize : null,
+    },
+    graph: {
+      process_count: graph.processes.length,
+      exchange_count: graph.exchanges.length,
+      distinct_exchange_flow_count: uniqueExchangeFlowIds(graph).length,
+      reference_closure_target_exchanges: closure.reference_closure_target_exchanges,
+      reference_closure_closed: closure.closed_count,
+      reference_closure_failed: closure.failed_count,
+      reference_closure_status_counts: closure.status_counts,
+      flow_metadata_status: flowMetadata.status,
+      flow_metadata_missing_distinct_flow_ids: flowMetadata.missing_distinct_flow_ids,
+    },
+    repair_queue: {
+      count: repairQueue.count,
+      issue_type_counts: repairQueue.issue_type_counts,
+      sample_case_count: repairQueue.sample_case_count,
+    },
+    files: {
+      workspace: repoRelativePath(workspace),
+      process_rows: repoRelativePath(processRowsPath),
+      flow_rows: repoRelativePath(flowRowsPath),
+      repair_queue: repoRelativePath(path.join(repairDir, 'repair-queue.json')),
+      mutation_plan: repoRelativePath(path.join(mutationDir, 'mutation-plan.json')),
+      markdown_report: repoRelativePath(path.join(reportsDir, 'account-wide-audit.md')),
+    },
+    commands,
+    remote_write_performed: false,
+  };
+  writeJson(path.join(auditDir, 'account-wide-audit-report.json'), report);
+  writeJson(path.join(auditDir, 'completeness-snapshot.json'), {
+    schema_version: 1,
+    generated_at_utc: report.generated_at_utc,
+    task_id: taskId,
+    status: report.status,
+    metrics: {
+      total_processes: processRows.length,
+      total_exchanges: graph.exchanges.length,
+      distinct_exchange_flows: uniqueExchangeFlowIds(graph).length,
+      exchange_flows_covered_by_reference_flow_process: closure.closed_count,
+      missing_reference_flow_processes: closure.status_counts.missing_reference_process ?? 0,
+      ambiguous_flow_matches: closure.status_counts.ambiguous_flow_match ?? 0,
+      missing_or_duplicate_flows: (closure.status_counts.missing_flow ?? 0) + (closure.status_counts.flow_metadata_missing ?? 0),
+      unresolved_mean_value_evidence: null,
+      unresolved_unit_dimension_mismatches: closure.status_counts.unit_mismatch ?? 0,
+      state_code_0_records_updated_or_proposed: mutationPlan.entries.filter((entry) => entry.current_state_code === 0).length,
+      state_code_100_records_requiring_source_review: mutationPlan.entries.filter((entry) => Number(entry.current_state_code) >= 100).length,
+    },
+    matrix_readiness_status: closure.failed_count === 0 ? 'provider_closure_ready_pending_lcia' : 'blocked_by_provider_closure',
+    compute_validation_status: 'not_run',
+    blockers: [
+      ...(closure.failed_count ? [`${closure.failed_count} reference-closure rows are not closed`] : []),
+      'full compute validation requires matrix readiness input and real LCIA characterization factors',
+    ],
+    generated_follow_up_tasks: [],
+  });
+  writeAccountWideAuditMarkdown(path.join(reportsDir, 'account-wide-audit.md'), report, repairQueue);
+  return report;
 }
 
 function computeRepairProbe(options = {}) {
@@ -5010,17 +9147,27 @@ ${repairCandidatePlan.candidates.map((candidate) => `- ${candidate.id}：${candi
 }
 
 function runUnsupportedTask(task, workspace) {
+  const routePlan = writeCapabilityRoutePlan(
+    buildCapabilityRoutePlan({ taskObject: task }),
+    path.join(workspace, 'routing'),
+  );
   const result = {
     generated_at_utc: nowIso(),
     task_id: task.meta.id,
     classification: task.meta.kind,
-    verdict: 'unsupported',
+    verdict: routePlan.status === 'no_route' ? 'unsupported' : 'routed',
     next_queue: 'review',
     next_state: 'Blocked',
-    reason: `No handler is implemented for kind=${task.meta.kind} category=${task.meta.category ?? ''}`,
+    reason: `No executable handler is implemented for kind=${task.meta.kind} category=${task.meta.category ?? ''}; a generic capability route plan was generated.`,
+    route_plan: routePlan.files?.capability_route_plan ?? null,
+    selected_capability_count: routePlan.counts.selected_capabilities,
+    missing_capability_count: routePlan.counts.missing_capabilities,
   };
   writeJson(path.join(workspace, 'outputs/task-result.json'), result);
-  writeText(path.join(workspace, 'reports/unsupported-task.md'), `# Unsupported Task\n\n${result.reason}\n`);
+  writeText(
+    path.join(workspace, 'reports/unsupported-task.md'),
+    `# Unsupported Task\n\n${result.reason}\n\nRoute plan: \`${result.route_plan ?? 'not written'}\`\n`,
+  );
   return result;
 }
 
@@ -5141,11 +9288,31 @@ if (command === 'init') {
   envCheck();
 } else if (command === 'workspace-map') {
   workspaceMap();
+} else if (command === 'capabilities-list') {
+  console.log(JSON.stringify(capabilitiesList(options), null, 2));
+} else if (command === 'route-task') {
+  const result = runCapabilityRoute(options);
+  console.log(JSON.stringify(result, null, 2));
 } else if (command === 'compute-repair-probe') {
   const result = computeRepairProbe({ taskId: options.taskId || computeRepairTaskId });
   console.log(JSON.stringify(result, null, 2));
+} else if (command === 'account-wide-audit-run') {
+  const result = runAccountWideAudit(options);
+  console.log(JSON.stringify(result, null, 2));
 } else if (command === 'sample-scenarios-dry-run') {
   const result = runSampleScenariosDryRun(options);
+  console.log(JSON.stringify(result, null, 2));
+} else if (command === 'target-datasets-gate-run') {
+  const result = runAutomatedTargetDatasetsGateRun(options);
+  console.log(JSON.stringify(result, null, 2));
+} else if (command === 'post-write-verify') {
+  const result = await runPostWriteVerification(options);
+  console.log(JSON.stringify(result, null, 2));
+} else if (command === 'matrix-readiness-verify') {
+  const result = runMatrixReadinessVerification(options);
+  console.log(JSON.stringify(result, null, 2));
+} else if (command === 'golden-fixtures-check') {
+  const result = runGoldenFixturesCheck(options);
   console.log(JSON.stringify(result, null, 2));
 } else if (command === 'orchestrate') {
   orchestrate(options).catch((error) => {
@@ -5155,6 +9322,6 @@ if (command === 'init') {
     process.exit(1);
   });
 } else {
-  console.log('Usage: node scripts/foundry.mjs init|doctor|workflow-check|workspace-map|tasks-list|tasks-check|storage-check|artifact-contract-check|acceptance-check|status|env-check|compute-repair-probe|sample-scenarios-dry-run|orchestrate [--once] [--task-id ID] [--include-review] [--interval-ms N] [--max-tasks N]');
+  console.log('Usage: node scripts/foundry.mjs init|doctor|workflow-check|workspace-map|capabilities-list|route-task|tasks-list|tasks-check|storage-check|artifact-contract-check|acceptance-check|status|env-check|compute-repair-probe|account-wide-audit-run|sample-scenarios-dry-run|target-datasets-gate-run|post-write-verify|matrix-readiness-verify|golden-fixtures-check|orchestrate [--once] [--task-id ID] [--include-review] [--interval-ms N] [--max-tasks N]');
   process.exit(command === 'help' || command === '--help' || command === '-h' ? 0 : 1);
 }

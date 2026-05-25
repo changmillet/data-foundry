@@ -10,6 +10,7 @@ The project adapts the OpenAI Symphony pattern to LCA data work:
 - category-scoped data governance loops
 - evidence-first process review
 - dry-run and verification gates before database writes
+- remote reference/version readback gates before publish-prep
 - state-code-aware mutation plans and completeness snapshots
 
 Upstream references:
@@ -71,7 +72,15 @@ npm run orchestrator:rerun-review -- --task-id DATA-001
 npm run compute-repair:artifacts:check
 npm run compute-repair:probe
 npm run compute-repair:rerun
+npm run account-wide:audit -- --task-id current-profile-account-wide-audit-2026-05-25 --remote-verify-mode skip
 npm run sample-scenarios:dry-run
+npm run target-datasets:gate-run
+npm run post-write:verify
+npm run matrix-readiness:verify -- --sample all
+npm run matrix-readiness:verify -- --target-gate-report .foundry/workspaces/issue-6-automated-lca-target-datasets/target-dataset-gate-run/target-dataset-gate-report.json --target-sample golden-closed-electricity-mix-cn-hb --provider-scope account-visible --provider-decisions inputs/account-sample-scenarios/provider-decisions/golden-closed-electricity-mix-cn-hb.provider-decisions.jsonl
+npm run golden-fixtures:check
+npm run capabilities:list
+npm run task:route
 npm run orchestrator:status
 npm run tasks:list
 npm run tasks:check

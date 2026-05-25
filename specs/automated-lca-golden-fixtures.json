@@ -1,0 +1,330 @@
+{
+  "$schema": "schemas/automated-lca-golden-fixtures.schema.json",
+  "schema_version": 1,
+  "updated_at_utc": "2026-05-23T17:02:16Z",
+  "purpose": "Machine-readable fixture matrix for full Automated LCA Data Production regression coverage. Fixture rows are sanitized references and expected gate states; private full payload snapshots stay under ignored .foundry workspaces.",
+  "required_coverage_classes": [
+    "target_quality",
+    "duplicate_process",
+    "duplicate_flow",
+    "legal_new",
+    "schema_failure",
+    "evidence_missing",
+    "remote_reference_refresh",
+    "post_write_verification",
+    "target_graph_matrix_input",
+    "provider_closure_failure",
+    "compute_failure",
+    "graph_compute_pass",
+    "graph_compute_block"
+  ],
+  "fixtures": [
+    {
+      "id": "golden-closed-electricity-mix-cn-hb",
+      "title": "Full-chain target-quality process plus reference flow",
+      "coverage_classes": ["target_quality", "remote_reference_refresh", "post_write_verification"],
+      "source": "target-datasets-gate-run",
+      "runtime_checks": [
+        {
+          "report": "target_datasets",
+          "sample_id": "golden-closed-electricity-mix-cn-hb",
+          "path": "target_quality_ready",
+          "equals": true
+        },
+        {
+          "report": "target_datasets",
+          "sample_id": "golden-closed-electricity-mix-cn-hb",
+          "path": "readiness_blocker_count",
+          "equals": 0
+        },
+        {
+          "report": "target_datasets",
+          "sample_id": "golden-closed-electricity-mix-cn-hb",
+          "path": "quality_gap_count",
+          "equals": 0
+        },
+        {
+          "report": "target_datasets",
+          "sample_id": "golden-closed-electricity-mix-cn-hb",
+          "path": "process.remote_verification.pre_refresh_blockers",
+          "min": 1
+        },
+        {
+          "report": "target_datasets",
+          "sample_id": "golden-closed-electricity-mix-cn-hb",
+          "path": "process.remote_verification.blocker_count",
+          "equals": 0
+        },
+        {
+          "report": "target_datasets",
+          "sample_id": "golden-closed-electricity-mix-cn-hb",
+          "path": "flow.remote_verification.pre_refresh_blockers",
+          "min": 1
+        },
+        {
+          "report": "target_datasets",
+          "sample_id": "golden-closed-electricity-mix-cn-hb",
+          "path": "flow.remote_verification.blocker_count",
+          "equals": 0
+        },
+        {
+          "report": "post_write",
+          "sample_id": "golden-closed-electricity-mix-cn-hb",
+          "path": "status",
+          "equals": "passed_post_write_verification"
+        },
+        {
+          "report": "post_write",
+          "sample_id": "golden-closed-electricity-mix-cn-hb",
+          "path": "process.blocker_count",
+          "equals": 0
+        },
+        {
+          "report": "post_write",
+          "sample_id": "golden-closed-electricity-mix-cn-hb",
+          "path": "flow.blocker_count",
+          "equals": 0
+        }
+      ],
+      "notes": "Current best quality target: schema, review, bilingual evidence, required fields, remote reference refresh, post-write readback, and reference flow all pass."
+    },
+    {
+      "id": "process-current-draft-pv-cn",
+      "title": "Current-account process duplicate/update path",
+      "coverage_classes": ["duplicate_process"],
+      "source": "sample-scenarios-dry-run",
+      "runtime_checks": [
+        {
+          "report": "sample_scenarios",
+          "sample_id": "process-current-draft-pv-cn",
+          "path": "identity.decision",
+          "equals": "update_same_row"
+        }
+      ],
+      "notes": "A current draft candidate should be updated or reused instead of inserted as a duplicate."
+    },
+    {
+      "id": "flow-visible-product-fec",
+      "title": "Published product-flow duplicate/reuse path",
+      "coverage_classes": ["duplicate_flow"],
+      "source": "sample-scenarios-dry-run",
+      "runtime_checks": [
+        {
+          "report": "sample_scenarios",
+          "sample_id": "flow-visible-product-fec",
+          "path": "identity.decision",
+          "equals": "reuse"
+        }
+      ],
+      "notes": "A valid published product flow should be reused, never overwritten by the foundry."
+    },
+    {
+      "id": "process-new-grid-loss-cn",
+      "title": "Legal new process candidate",
+      "coverage_classes": ["legal_new"],
+      "source": "sample-scenarios-dry-run",
+      "runtime_checks": [
+        {
+          "report": "sample_scenarios",
+          "sample_id": "process-new-grid-loss-cn",
+          "path": "identity.decision",
+          "equals": "create_new"
+        },
+        {
+          "report": "sample_scenarios",
+          "sample_id": "process-new-grid-loss-cn",
+          "path": "blocker_count",
+          "equals": 0
+        }
+      ],
+      "notes": "Synthetic no-candidate row used to ensure the preflight can allow new authoring only after deterministic gates."
+    },
+    {
+      "id": "semantic-rich-lcd-monitor-repair",
+      "title": "Schema failure and evidence-compression target",
+      "coverage_classes": ["schema_failure", "evidence_missing"],
+      "source": "target-datasets-gate-run",
+      "runtime_checks": [
+        {
+          "report": "target_datasets",
+          "sample_id": "semantic-rich-lcd-monitor-repair",
+          "path": "process.status",
+          "equals": "blocked"
+        },
+        {
+          "report": "target_datasets",
+          "sample_id": "semantic-rich-lcd-monitor-repair",
+          "path": "process.schema.invalid",
+          "min": 1
+        },
+        {
+          "report": "target_datasets",
+          "sample_id": "semantic-rich-lcd-monitor-repair",
+          "path": "quality_gap_count",
+          "min": 1
+        }
+      ],
+      "notes": "High-semantic process with overlong exchange comments; should remain blocked until evidence is compressed and translations are reviewed."
+    },
+    {
+      "id": "process-quality-hydropower-run-of-river",
+      "title": "Reference-flow schema failure and missing reviewed translation evidence",
+      "coverage_classes": ["schema_failure", "evidence_missing"],
+      "source": "target-datasets-gate-run",
+      "runtime_checks": [
+        {
+          "report": "target_datasets",
+          "sample_id": "process-quality-hydropower-run-of-river",
+          "path": "flow.status",
+          "equals": "blocked"
+        },
+        {
+          "report": "target_datasets",
+          "sample_id": "process-quality-hydropower-run-of-river",
+          "path": "quality_gap_count",
+          "min": 1
+        }
+      ],
+      "notes": "Process is a quality benchmark, but paired source-specific flow and translation evidence prevent full-chain readiness."
+    },
+    {
+      "id": "flow-provider-missing-industrial-heat",
+      "title": "Provider closure failure handoff",
+      "coverage_classes": ["provider_closure_failure"],
+      "source": "sample-scenarios-dry-run",
+      "runtime_checks": [
+        {
+          "report": "sample_scenarios",
+          "sample_id": "flow-provider-missing-industrial-heat",
+          "path": "provider_closure.status",
+          "equals": "missing_provider"
+        },
+        {
+          "report": "sample_scenarios",
+          "sample_id": "flow-provider-missing-industrial-heat",
+          "path": "blocker_count",
+          "min": 1
+        }
+      ],
+      "notes": "Product flow with no provider process must block publish-prep and later graph/compute verification."
+    },
+    {
+      "id": "golden-closed-electricity-mix-cn-hb-target-graph",
+      "title": "Real target graph matrix input from account-visible providers",
+      "coverage_classes": ["target_graph_matrix_input", "graph_compute_block"],
+      "source": "matrix-readiness-verify",
+      "runtime_checks": [
+        {
+          "report": "matrix_readiness",
+          "sample_id": "golden-closed-electricity-mix-cn-hb",
+          "path": "status",
+          "equals": "blocked_matrix_readiness"
+        },
+        {
+          "report": "matrix_readiness",
+          "sample_id": "golden-closed-electricity-mix-cn-hb",
+          "path": "input.target_gate_matrix_input.provider_scope",
+          "equals": "account-visible"
+        },
+        {
+          "report": "matrix_readiness",
+          "sample_id": "golden-closed-electricity-mix-cn-hb",
+          "path": "input.target_gate_matrix_input.provider_decision_count",
+          "min": 4
+        },
+        {
+          "report": "matrix_readiness",
+          "sample_id": "golden-closed-electricity-mix-cn-hb",
+          "path": "metrics.provider_closure.a_write_pct",
+          "equals": 100
+        },
+        {
+          "report": "matrix_readiness",
+          "sample_id": "golden-closed-electricity-mix-cn-hb",
+          "path": "metrics.compute_stability.factorization_ready",
+          "equals": false
+        }
+      ],
+      "notes": "Real target-quality rows are converted into matrix_readiness_input.v1 using account-visible provider rows and reviewed provider decisions. It must resolve provider closure, then remain blocked until real LCIA characterization factors and factorization-ready compute inputs are available."
+    },
+    {
+      "id": "matrix-readiness-ready",
+      "title": "Calculator graph and compute gate passes on a closed fixture",
+      "coverage_classes": ["graph_compute_pass"],
+      "source": "matrix-readiness-verify",
+      "runtime_checks": [
+        {
+          "report": "matrix_readiness",
+          "sample_id": "matrix-readiness-ready",
+          "path": "status",
+          "equals": "passed_matrix_readiness"
+        },
+        {
+          "report": "matrix_readiness",
+          "sample_id": "matrix-readiness-ready",
+          "path": "blocker_count",
+          "equals": 0
+        },
+        {
+          "report": "matrix_readiness",
+          "sample_id": "matrix-readiness-ready",
+          "path": "provider_evidence_count",
+          "min": 1
+        },
+        {
+          "report": "matrix_readiness",
+          "sample_id": "matrix-readiness-ready",
+          "path": "metrics.compute_stability.factorization_ready",
+          "equals": true
+        }
+      ],
+      "notes": "Sanitized matrix_readiness_input.v1 fixture that proves Foundry can delegate graph/compute verification to calculator and receive a publish-ready gate result."
+    },
+    {
+      "id": "matrix-readiness-provider-closure-blocked",
+      "title": "Calculator graph gate blocks missing provider closure",
+      "coverage_classes": ["graph_compute_block", "provider_closure_failure", "compute_failure"],
+      "source": "matrix-readiness-verify",
+      "runtime_checks": [
+        {
+          "report": "matrix_readiness",
+          "sample_id": "matrix-readiness-provider-closure-blocked",
+          "path": "status",
+          "equals": "blocked_matrix_readiness"
+        },
+        {
+          "report": "matrix_readiness",
+          "sample_id": "matrix-readiness-provider-closure-blocked",
+          "path": "blocker_count",
+          "min": 1
+        },
+        {
+          "report": "matrix_readiness",
+          "sample_id": "matrix-readiness-provider-closure-blocked",
+          "path": "metrics.provider_closure.unmatched_no_provider",
+          "min": 1
+        }
+      ],
+      "notes": "Sanitized matrix_readiness_input.v1 fixture that proves a missing provider cannot be advanced as publish-ready even if schema/readback gates have passed."
+    },
+    {
+      "id": "lca-compute-task-2026-05-10-factorization-not-prepared-singular",
+      "title": "Compute failure repair target",
+      "coverage_classes": ["compute_failure"],
+      "source": "compute-repair-probe",
+      "runtime_checks": [
+        {
+          "report": "compute_repair",
+          "path": "compute_validation_status",
+          "equals": "not_run"
+        },
+        {
+          "report": "compute_repair",
+          "path": "blockers.length",
+          "min": 1
+        }
+      ],
+      "notes": "Existing compute repair fixture documents that matrix readiness and compute validation must not be fabricated when closure gates are unresolved."
+    }
+  ]
+}

@@ -83,6 +83,7 @@ Required manifest:
 - output path
 - exit code
 - stdout/stderr capture path when retained
+- gate-index entry path for each invocation
 
 The foundry must pass explicit `--out-dir` or `--run-dir` for artifact-producing commands.
 
@@ -170,6 +171,19 @@ Every remote write adapter must have:
 - post-write verification command
 - rollback or follow-up task note when verification fails
 
+Remote write planning is represented locally by `mutation-plan-handoff.json`.
+The handoff is not an approval. It records candidate payload locations, the
+publish-prep capabilities that still must run, and the gates required before a
+human can approve a commit.
+
+Every adapter invocation must also be represented in `gate-index.json`. The
+index records the capability id, owning project, command capture, status,
+blocking flag, blockers, quality gaps, and produced artifacts. Any failed,
+blocked, duplicate, or manual-review gate must produce a corresponding
+`verification-handoff.json` entry. A dataset that reaches target quality may
+produce `publish_ready`, but remote writes still remain disabled until explicit
+human approval and publish gates pass.
+
 ## 5. Task Router
 
 The router should map task metadata to one or more capability classes:
@@ -188,6 +202,20 @@ The router should map task metadata to one or more capability classes:
 
 The router can compose multiple adapters, but each adapter must write to a distinct output directory under the task workspace.
 
+The first deterministic router is available as:
+
+```bash
+npm run task:route -- --kind process-build --dataset-type process --required-gates schema,review,bilingual,publish
+npm run task:route -- --task tasks/inbox/example.md --out-dir .foundry/workspaces/example/capability-route
+```
+
+It writes a `capability-route-plan.json` matching
+`specs/schemas/capability-route-plan.schema.json`, a
+`capability-selection.json`, and a markdown route report. Missing shared
+classes such as hybrid search, graph verification, or remote verification are
+reported as capability-development follow-ups rather than implemented inside
+Foundry.
+
 ## 6. v0 Implementation Scope
 
 v0 keeps the existing DATA-001 electricity handler and adds a read-only workspace map command. The next implementation step is to replace hardcoded source paths with registry entries, then split DATA-001 into composable adapter calls.
@@ -197,7 +225,63 @@ Expected v1 commands:
 ```bash
 npm run workspace:map
 npm run capabilities:list
+npm run task:route
+npm run sample-scenarios:dry-run
+npm run target-datasets:gate-run
+npm run post-write:verify
+npm run matrix-readiness:verify -- --sample all
+npm run matrix-readiness:verify -- --target-gate-report .foundry/workspaces/issue-6-automated-lca-target-datasets/target-dataset-gate-run/target-dataset-gate-report.json --target-sample golden-closed-electricity-mix-cn-hb --provider-scope account-visible --provider-decisions inputs/account-sample-scenarios/provider-decisions/golden-closed-electricity-mix-cn-hb.provider-decisions.jsonl
+npm run golden-fixtures:check
 npm run orchestrator:once
 ```
 
-`workspace:map` is diagnostic. `capabilities:list` should become the machine-readable registry after the first adapters are extracted.
+`workspace:map` is diagnostic. `capabilities:list` is the machine-readable
+registry. `task:route` maps task kind, repo owner, dataset type, and required
+gates to registry capabilities before an orchestrator executes adapters.
+`golden-fixtures:check` verifies that the automated LCA production fixture
+matrix still covers target-quality, duplicate, legal-new, schema/evidence,
+remote reference/version verification, provider-closure, and compute-failure
+cases.
+`post-write:verify` reads a target gate report and mutation handoff, reruns
+remote verification with `root-policy existing`, writes Edge verify request
+artifacts, and records the readback result in `gate-index.json`,
+`verification-handoff.json`, and `coverage-delta.json`.
+`matrix-readiness:verify` is the thin Foundry adapter for the calculator-owned
+`matrix_readiness` command. It freezes `matrix_readiness_input.v1`, delegates
+provider closure, graph readiness, singular-risk, negative-LCIA, and
+factorization checks to `tiangong-lca-calculator`, then records the result in
+`matrix-readiness-verification-report.json`, `gate-index.json`,
+`verification-handoff.json`, and `coverage-delta.json`.
+When `--target-gate-report` is supplied, the adapter converts real target gate
+rows into `matrix_readiness_input.v1`. `--provider-scope target-only` checks
+only the target rows and should expose missing providers. `--provider-scope
+account-visible` adds current-user draft rows and visible public rows, filters
+them to candidate provider processes for the target input flows, and can apply a
+reviewed `--provider-decisions` JSON/JSONL file. Foundry validates those
+provider decisions against the candidate set and records the rationale in the
+compiled graph; it does not silently choose among ambiguous providers.
+Zero-amount product inputs are excluded from the provider-closure denominator.
+The target graph can resolve provider closure and still block publish-prep when
+real LCIA characterization factors or factorization-ready compute inputs are
+missing.
+
+Current local gate-producing dry-runs also write these stable artifacts under
+their task workspace:
+
+- `capability-selection.json`
+- `capability-route-plan.json`
+- `gate-index.json`
+- `mutation-plan-handoff.json`
+- `verification-handoff.json`
+- `completeness-snapshot.json`
+
+Target dataset gate runs execute
+`tiangong-lca dataset references refresh-remote` against the translated process
+and flow rows. The CLI first verifies the root dataset id/version plus nested
+TIDAS references, patches refreshable references to the latest reachable remote
+versions, then runs a post-refresh remote verification. References that would
+still fail the product data validator remain blockers before publish-prep.
+Post-write verification uses the refreshed rows from `mutation-plan-handoff.json`
+after a draft/import write has happened. It must use `dataset verify-remote
+--root-policy existing` so the root process/flow itself is required to exist
+with the exact version; a candidate-root pass is not sufficient after write.

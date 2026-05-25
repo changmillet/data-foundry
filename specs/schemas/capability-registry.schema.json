@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tiangong-lca.local/foundry/capability-registry.schema.json",
+  "title": "Foundry Capability Registry",
+  "type": "object",
+  "required": ["schema_version", "capabilities"],
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": { "type": "integer", "minimum": 1 },
+    "updated_at_utc": { "type": "string" },
+    "purpose": { "type": "string" },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "class",
+          "owner_project",
+          "entrypoint",
+          "input_contract",
+          "output_contract",
+          "remote_write_mode",
+          "verification_gate",
+          "source_manifest_requirements"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "id": { "type": "string" },
+          "class": { "type": "string" },
+          "owner_project": { "type": "string" },
+          "entrypoint": { "type": "string" },
+          "input_contract": { "type": "string" },
+          "output_contract": { "type": "string" },
+          "remote_write_mode": { "type": "string" },
+          "verification_gate": { "type": "string" },
+          "source_manifest_requirements": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

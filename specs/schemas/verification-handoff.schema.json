@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tiangong-lca.local/foundry/verification-handoff.schema.json",
+  "title": "Foundry Verification Handoff",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at_utc",
+    "task_id",
+    "run_kind",
+    "status",
+    "autonomous_progression_allowed",
+    "remote_write_allowed",
+    "entries"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": { "type": "integer", "minimum": 1 },
+    "generated_at_utc": { "type": "string" },
+    "task_id": { "type": "string" },
+    "run_kind": { "type": "string" },
+    "status": { "type": "string", "enum": ["clear", "requires_review"] },
+    "autonomous_progression_allowed": { "type": "boolean" },
+    "remote_write_allowed": { "type": "boolean" },
+    "remote_write_policy": { "type": "string" },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["state", "summary", "blocking"],
+        "additionalProperties": true,
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "manual_review",
+              "block_duplicate",
+              "publish_ready",
+              "verification_failed"
+            ]
+          },
+          "sample_id": { "type": ["string", "null"] },
+          "dataset_kind": { "type": ["string", "null"] },
+          "capability_id": { "type": ["string", "null"] },
+          "summary": { "type": "string" },
+          "blocking": { "type": "boolean" },
+          "blockers": { "type": "array" },
+          "quality_gaps": { "type": "array" },
+          "next_action": { "type": ["string", "null"] },
+          "artifacts": { "type": "object" }
+        }
+      }
+    }
+  }
+}

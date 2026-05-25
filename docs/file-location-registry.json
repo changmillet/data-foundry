@@ -1,7 +1,7 @@
 {
   "$schema": "../specs/schemas/file-location-registry.schema.json",
   "schema_version": 1,
-  "updated_at_utc": "2026-05-23T06:50:00Z",
+  "updated_at_utc": "2026-05-24T16:12:24Z",
   "policy_doc": "docs/file-organization.md",
   "entries": [
     {
@@ -141,6 +141,25 @@
       "notes": "Prevents CLI/test-only or operator-private variables from being promoted into foundry .env.example during automatic runs."
     },
     {
+      "id": "current-profile-account-wide-audit-repair-constraints",
+      "status": "active",
+      "classification": "governance-runbook",
+      "current_path": "docs/current-profile-account-wide-audit-repair-constraints.md",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "task_id": "current-profile-account-wide-audit-2026-05-25",
+      "referenced_by": [
+        "WORKFLOW.md",
+        "docs/data-governance-loop.md",
+        "specs/account-level-repair-cycle.md",
+        "scripts/foundry.mjs",
+        "package.json"
+      ],
+      "sensitivity": "non-sensitive governance runbook; contains no credentials and no full private payload export",
+      "tracked": true,
+      "notes": "Defines account-wide process/flow audit, repair queue, write, readback, UI, and compute-validation constraints for the current profile repair program."
+    },
+    {
       "id": "current-credential-identity-preflight-samples-20260522",
       "status": "active",
       "classification": "test-sample-input",
@@ -180,11 +199,12 @@
       "task_id": "issue-5",
       "referenced_by": [
         "specs/workspace-capability-adapters.md",
-        "scripts/foundry.mjs"
+        "scripts/foundry.mjs",
+        "specs/schemas/capability-route-plan.schema.json"
       ],
       "sensitivity": "non-sensitive command and artifact contracts; no credentials or private payloads",
       "tracked": true,
-      "notes": "Routes sample-scenario automated LCA dry-runs to shared CLI identity-preflight/build-plan gates and a foundry-local elementary-flow provider-closure eligibility gate."
+      "notes": "Routes automated LCA tasks to the generic Foundry task router, sample-scenario dry-runs, shared CLI identity-preflight/build-plan/schema/review/bilingual/publish gates, and a foundry-local elementary-flow provider-closure eligibility gate."
     },
     {
       "id": "current-credential-sample-dry-run-summary-20260522",

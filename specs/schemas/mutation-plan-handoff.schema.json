@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tiangong-lca.local/foundry/mutation-plan-handoff.schema.json",
+  "title": "Foundry Mutation Plan Handoff",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at_utc",
+    "task_id",
+    "run_kind",
+    "status",
+    "remote_write_mode",
+    "required_before_commit",
+    "entries"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": { "type": "integer", "minimum": 1 },
+    "generated_at_utc": { "type": "string" },
+    "task_id": { "type": "string" },
+    "run_kind": { "type": "string" },
+    "status": { "type": "string", "enum": ["blocked", "ready_for_review"] },
+    "remote_write_mode": { "type": "string", "enum": ["no_remote_write"] },
+    "required_before_commit": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["sample_id", "status", "next_action"],
+        "additionalProperties": true,
+        "properties": {
+          "sample_id": { "type": "string" },
+          "dataset_kind": { "type": "string" },
+          "status": { "type": "string" },
+          "next_action": { "type": "string" },
+          "blockers": { "type": "array" },
+          "quality_gaps": { "type": "array" }
+        }
+      }
+    }
+  }
+}

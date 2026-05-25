@@ -1,0 +1,150 @@
+{
+  "schema_version": "matrix_readiness_input.v1",
+  "snapshot_id": "55555555-5555-4555-8555-555555555555",
+  "coverage": {
+    "schema_version": "snapshot_coverage.v2",
+    "matching": {
+      "input_edges_total": 1,
+      "matched_unique_provider": 0,
+      "matched_multi_provider": 0,
+      "unmatched_no_provider": 1,
+      "matched_multi_resolved": 0,
+      "matched_multi_unresolved": 0,
+      "matched_multi_fallback_equal": 0,
+      "a_input_edges_written": 0,
+      "a_write_pct": 0,
+      "provider_present_resolved_pct": 0,
+      "unique_provider_match_pct": 0,
+      "any_provider_match_pct": 0
+    },
+    "reference": {
+      "process_total": 2,
+      "normalized_process_count": 2,
+      "missing_reference_count": 0,
+      "invalid_reference_count": 0
+    },
+    "allocation": {
+      "exchange_total": 2,
+      "allocation_fraction_present_pct": 100,
+      "allocation_fraction_missing_count": 0,
+      "allocation_fraction_invalid_count": 0
+    },
+    "singular_risk": {
+      "risk_level": "low",
+      "prefilter_diag_abs_ge_cutoff": 0,
+      "postfilter_a_diag_abs_ge_cutoff": 0,
+      "m_zero_diagonal_count": 0,
+      "m_min_abs_diagonal": 1
+    },
+    "matrix_scale": {
+      "process_count": 2,
+      "flow_count": 1,
+      "impact_count": 1,
+      "a_nnz": 0,
+      "b_nnz": 2,
+      "c_nnz": 1,
+      "m_nnz_estimated": 2,
+      "m_sparsity_estimated": 0.5
+    }
+  },
+  "payload": {
+    "model_version": "55555555-5555-4555-8555-555555555555",
+    "process_count": 2,
+    "flow_count": 1,
+    "impact_count": 1,
+    "technosphere_entries": [],
+    "biosphere_entries": [
+      {
+        "row": 0,
+        "col": 0,
+        "value": 1
+      },
+      {
+        "row": 0,
+        "col": 1,
+        "value": 2
+      }
+    ],
+    "characterization_factors": [
+      {
+        "row": 0,
+        "col": 0,
+        "value": 0.5
+      }
+    ]
+  },
+  "compiled_graph": {
+    "processes": [
+      {
+        "process_idx": 0,
+        "process_id": "66666666-6666-4666-8666-666666666666",
+        "process_version": "01.00.000",
+        "process_name": "missing provider fixture placeholder",
+        "model_id": null,
+        "location": "CN",
+        "reference_year": 2024,
+        "partition": "public"
+      },
+      {
+        "process_idx": 1,
+        "process_id": "77777777-7777-4777-8777-777777777777",
+        "process_version": "01.00.000",
+        "process_name": "consumer with unresolved input",
+        "model_id": null,
+        "location": "CN",
+        "reference_year": 2024,
+        "partition": "private"
+      }
+    ],
+    "flows": [
+      {
+        "flow_idx": 0,
+        "flow_id": "88888888-8888-4888-8888-888888888888",
+        "kind": "product"
+      }
+    ],
+    "provider_decisions": [
+      {
+        "consumer_idx": 1,
+        "flow_id": "88888888-8888-4888-8888-888888888888",
+        "candidate_provider_count": 0,
+        "matched_provider_count": 0,
+        "candidates": [],
+        "decision_kind": "no_provider",
+        "resolution_strategy": null,
+        "failure_reason": "no_provider_candidates",
+        "used_equal_fallback": false,
+        "volume_fallback_to_one_count": 0,
+        "geography_tier": null,
+        "supply_region_source": "consumer_process_location",
+        "supply_region_location": "CN",
+        "exchange_location_present": false,
+        "allocations": []
+      }
+    ],
+    "technosphere_edges": [],
+    "biosphere_edges": [],
+    "reference_stats": {
+      "missing_reference": 0,
+      "invalid_reference": 0,
+      "normalized_processes": 0
+    },
+    "allocation_stats": {
+      "exchange_total": 0,
+      "fraction_present_count": 0,
+      "fraction_missing_count": 0,
+      "fraction_invalid_count": 0
+    },
+    "matching_stats": {
+      "input_edges_total": 0,
+      "matched_unique_provider": 0,
+      "matched_multi_provider": 0,
+      "unmatched_no_provider": 0,
+      "matched_multi_resolved": 0,
+      "matched_multi_unresolved": 0,
+      "matched_multi_fallback_equal": 0,
+      "a_input_edges_written": 0
+    }
+  },
+  "policy": {}
+}

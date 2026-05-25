@@ -10,7 +10,7 @@ account_env_target: current-credentials
 source_report: inputs/diagnostics/lca-compute-task-2026-05-10-factorization-not-prepared-singular.md
 created_at_utc: 2026-05-13T00:00:00Z
 claimed_at_utc: 2026-05-12T17:29:26.708Z
-updated_at_utc: 2026-05-13T05:15:15.729Z
+updated_at_utc: 2026-05-23T15:25:08.855Z
 workspace: .foundry/workspaces/lca-compute-task-2026-05-10-factorization-not-prepared-singular
 run_count: 4
 completed_run_at_utc: 2026-05-13T04:54:23.916Z
@@ -20,19 +20,19 @@ matrix_readiness_status: blocked
 compute_validation_status: not_run
 blocker_count: 6
 follow_up_task_count: 5
-remote_process_count: 5865
-remote_exchange_count: 51000
-closure_passed_count: 28004
-closure_failed_count: 22996
+remote_process_count: 6827
+remote_exchange_count: 52196
+closure_passed_count: 39739
+closure_failed_count: 12457
 repair_candidate_count: 187
 mutation_entry_count: 187
 dry_run_status: blocked
 verification_status: blocked
 online_write_performed: false
-closure_target_count: 39819
-closure_closed_non_elementary_count: 16823
-closure_elementary_excluded_count: 11181
-closure_flow_metadata_missing_count: 2407
+closure_target_count: 40177
+closure_closed_non_elementary_count: 27720
+closure_elementary_excluded_count: 12019
+closure_flow_metadata_missing_count: 936
 ---
 
 ## Problem Summary

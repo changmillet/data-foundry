@@ -1,9 +1,20 @@
 {
   "$schema": "schemas/capability-registry.schema.json",
   "schema_version": 1,
-  "updated_at_utc": "2026-05-22T12:00:00Z",
+  "updated_at_utc": "2026-05-23T17:34:21Z",
   "purpose": "Machine-readable registry for automated LCA production dry-run capabilities that Foundry may route without owning shared CLI business logic.",
   "capabilities": [
+    {
+      "id": "foundry.task.route",
+      "class": "task-router",
+      "owner_project": "tiangong-lca-data-foundry",
+      "entrypoint": "node scripts/foundry.mjs route-task",
+      "input_contract": "Task frontmatter or explicit kind/category/dataset_type/required_gates options",
+      "output_contract": "capability-route-plan.json plus capability-selection.json and route markdown report",
+      "remote_write_mode": "read-only",
+      "verification_gate": "missing_capabilities must be zero before autonomous adapter execution",
+      "source_manifest_requirements": ["task id or task file", "capability registry", "route plan"]
+    },
     {
       "id": "cli.process.identity-preflight",
       "class": "dataset-inventory",
@@ -71,6 +82,248 @@
       "source_manifest_requirements": ["BuildPlan input path", "gate report path", "CLI command record"]
     },
     {
+      "id": "cli.process.complete-required-fields",
+      "class": "process-authoring-required-fields",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca process complete-required-fields",
+      "input_contract": "Process rows as JSON or JSONL, optional sibling flow rows for reference-flow unit inference, and optional row-level authoring evidence or evidenceManifest field bindings",
+      "output_contract": "Completed process rows plus process-required-fields-report.json and process-required-fields-evidence.jsonl",
+      "remote_write_mode": "read-only",
+      "verification_gate": "counts.blocked must be zero and output rows must be used by downstream process validation gates",
+      "source_manifest_requirements": ["rows file path", "completed rows path", "completion report", "field evidence"]
+    },
+    {
+      "id": "cli.process.dataset-validate",
+      "class": "schema-gate",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca dataset validate --type process",
+      "input_contract": "Process rows as JSON or JSONL",
+      "output_contract": "DatasetValidateReport plus split valid/invalid rows under outputs/",
+      "remote_write_mode": "read-only",
+      "verification_gate": "counts.invalid must be zero for target-quality readiness",
+      "source_manifest_requirements": ["rows file path", "CLI command record", "validation report"]
+    },
+    {
+      "id": "cli.flow.dataset-validate",
+      "class": "schema-gate",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca dataset validate --type flow",
+      "input_contract": "Flow rows as JSON or JSONL",
+      "output_contract": "DatasetValidateReport plus split valid/invalid rows under outputs/",
+      "remote_write_mode": "read-only",
+      "verification_gate": "counts.invalid must be zero for target-quality readiness",
+      "source_manifest_requirements": ["rows file path", "CLI command record", "validation report"]
+    },
+    {
+      "id": "cli.process.review",
+      "class": "process-review",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca review process",
+      "input_contract": "Process rows as JSONL or process review materialization input",
+      "output_contract": "ProcessReviewReport plus markdown and JSON review artifacts",
+      "remote_write_mode": "read-only",
+      "verification_gate": "review command must complete before target-quality readiness",
+      "source_manifest_requirements": ["rows file path", "CLI command record", "review report"]
+    },
+    {
+      "id": "cli.flow.review",
+      "class": "flow-review",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca review flow",
+      "input_contract": "Flow rows as JSONL or flow review materialization input",
+      "output_contract": "FlowReviewReport plus rule/LLM finding artifacts",
+      "remote_write_mode": "read-only",
+      "verification_gate": "review command must complete before target-quality readiness",
+      "source_manifest_requirements": ["rows file path", "CLI command record", "review report"]
+    },
+    {
+      "id": "cli.process.bilingual.extract",
+      "class": "bilingual-gate",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca dataset bilingual extract --type process",
+      "input_contract": "Process rows as JSON or JSONL",
+      "output_contract": "trans-units.jsonl and extract-report.json",
+      "remote_write_mode": "read-only",
+      "verification_gate": "translation units must be available for AI transcreation review",
+      "source_manifest_requirements": ["rows file path", "translation unit path", "CLI command record"]
+    },
+    {
+      "id": "cli.flow.bilingual.extract",
+      "class": "bilingual-gate",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca dataset bilingual extract --type flow",
+      "input_contract": "Flow rows as JSON or JSONL",
+      "output_contract": "trans-units.jsonl and extract-report.json",
+      "remote_write_mode": "read-only",
+      "verification_gate": "translation units must be available for AI transcreation review",
+      "source_manifest_requirements": ["rows file path", "translation unit path", "CLI command record"]
+    },
+    {
+      "id": "cli.process.bilingual.apply",
+      "class": "bilingual-gate",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca dataset bilingual apply",
+      "input_contract": "Process rows plus reviewed translation JSONL",
+      "output_contract": "translated rows, translation-evidence.json, and bilingual-apply-report.json",
+      "remote_write_mode": "read-only",
+      "verification_gate": "apply report status must be completed and translation evidence must exist",
+      "source_manifest_requirements": ["rows file path", "reviewed translation file", "translation evidence", "CLI command record"]
+    },
+    {
+      "id": "cli.flow.bilingual.apply",
+      "class": "bilingual-gate",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca dataset bilingual apply",
+      "input_contract": "Flow rows plus reviewed translation JSONL",
+      "output_contract": "translated rows, translation-evidence.json, and bilingual-apply-report.json",
+      "remote_write_mode": "read-only",
+      "verification_gate": "apply report status must be completed and translation evidence must exist",
+      "source_manifest_requirements": ["rows file path", "reviewed translation file", "translation evidence", "CLI command record"]
+    },
+    {
+      "id": "cli.process.bilingual.validate",
+      "class": "bilingual-gate",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca dataset bilingual validate --type process",
+      "input_contract": "Process rows as JSON or JSONL",
+      "output_contract": "bilingual validate report, findings JSONL, schema gate, and process review artifacts",
+      "remote_write_mode": "read-only",
+      "verification_gate": "status must be completed and scan.blocker_count must be zero",
+      "source_manifest_requirements": ["rows file path", "findings path", "CLI command record"]
+    },
+    {
+      "id": "cli.flow.bilingual.validate",
+      "class": "bilingual-gate",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca dataset bilingual validate --type flow",
+      "input_contract": "Flow rows as JSON or JSONL",
+      "output_contract": "bilingual validate report, findings JSONL, schema gate, and flow review artifacts",
+      "remote_write_mode": "read-only",
+      "verification_gate": "status must be completed and scan.blocker_count must be zero",
+      "source_manifest_requirements": ["rows file path", "findings path", "CLI command record"]
+    },
+    {
+      "id": "cli.process.remote-verify",
+      "class": "remote-verification",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca dataset verify-remote",
+      "input_contract": "Process rows as JSON or JSONL with root dataset id/version and TIDAS references",
+      "output_contract": "remote-verification-report.json, remote-verification.jsonl, and blockers.jsonl",
+      "remote_write_mode": "read-only",
+      "verification_gate": "counts.blockers must be zero before publish-prep or remote write approval",
+      "source_manifest_requirements": ["rows file path", "remote verification report", "CLI command record"]
+    },
+    {
+      "id": "cli.flow.remote-verify",
+      "class": "remote-verification",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca dataset verify-remote",
+      "input_contract": "Flow rows as JSON or JSONL with root dataset id/version and TIDAS references",
+      "output_contract": "remote-verification-report.json, remote-verification.jsonl, and blockers.jsonl",
+      "remote_write_mode": "read-only",
+      "verification_gate": "counts.blockers must be zero before publish-prep or remote write approval",
+      "source_manifest_requirements": ["rows file path", "remote verification report", "CLI command record"]
+    },
+    {
+      "id": "cli.process.remote-refresh",
+      "class": "remote-verification",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca dataset references refresh-remote",
+      "input_contract": "Process rows as JSON or JSONL after schema/review/bilingual gates",
+      "output_contract": "refreshed process rows, remote-refresh-report.json, patch JSONL, and pre/post remote verification reports",
+      "remote_write_mode": "read-only",
+      "verification_gate": "post_refresh_blockers must be zero and refreshed rows must be used by publish-prep",
+      "source_manifest_requirements": ["rows file path", "refreshed rows path", "remote refresh report", "CLI command record"]
+    },
+    {
+      "id": "cli.flow.remote-refresh",
+      "class": "remote-verification",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca dataset references refresh-remote",
+      "input_contract": "Flow rows as JSON or JSONL after schema/review/bilingual gates",
+      "output_contract": "refreshed flow rows, remote-refresh-report.json, patch JSONL, and pre/post remote verification reports",
+      "remote_write_mode": "read-only",
+      "verification_gate": "post_refresh_blockers must be zero and refreshed rows must be used by publish-prep",
+      "source_manifest_requirements": ["rows file path", "refreshed rows path", "remote refresh report", "CLI command record"]
+    },
+    {
+      "id": "foundry.post-write.verify-coordination",
+      "class": "remote-verification",
+      "owner_project": "tiangong-lca-data-foundry",
+      "entrypoint": "node scripts/foundry.mjs post-write-verify",
+      "input_contract": "target-dataset-gate-report.json plus mutation-plan-handoff.json with publish_gate_ready entries",
+      "output_contract": "post-write-verification-report.json, gate-index.json, verification-handoff.json, coverage-delta.json, and Edge verify request artifacts",
+      "remote_write_mode": "read-only",
+      "verification_gate": "post-write process and flow remote verification blockers must be zero before publish-ready handoff",
+      "source_manifest_requirements": ["target gate report", "mutation handoff", "post-write verification report", "CLI command records"]
+    },
+    {
+      "id": "edge.dataset.verify-remote",
+      "class": "remote-verification",
+      "owner_project": "tiangong-lca-edge-functions",
+      "entrypoint": "app_dataset_verify_remote",
+      "input_contract": "rootPolicy plus table/id/version/role/path reference list generated from verified rows",
+      "output_contract": "Edge command response with checks, blockers, state_code, user_id, modified_at, and optional payload hash verification",
+      "remote_write_mode": "read-only",
+      "verification_gate": "Edge readback blockers must be zero when the Edge endpoint is configured or explicitly required",
+      "source_manifest_requirements": ["edge verify request JSON", "edge verify response JSON or skipped-not-configured record"]
+    },
+    {
+      "id": "calculator.matrix-readiness.verify",
+      "class": "graph-verification",
+      "owner_project": "tiangong-lca-calculator",
+      "entrypoint": "cargo run -p solver-worker --bin matrix_readiness",
+      "input_contract": "matrix_readiness_input.v1 JSON with snapshot coverage, sparse payload, optional compiled graph/provider evidence, policy, or a target-dataset-gate-report plus account-visible provider rows and reviewed provider decisions that Foundry converts into matrix input",
+      "output_contract": "matrix_readiness_report.v1 JSON plus Foundry matrix-readiness-verification-report.json, target-process-graph.json when target rows are used, gate-index.json, verification-handoff.json, coverage-delta.json, and command capture",
+      "remote_write_mode": "read-only",
+      "verification_gate": "report.status must be passed, blockers must be empty, provider closure must meet policy, graph readiness must be closed, and compute stability must be factorization-ready before publish-prep",
+      "source_manifest_requirements": ["matrix readiness input or target gate report", "provider scope manifest when account-visible providers are requested", "reviewed provider decisions when ambiguous providers are resolved", "calculator command capture", "matrix readiness report", "Foundry verification handoff"]
+    },
+    {
+      "id": "cli.process.publish-build",
+      "class": "publish-prep",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca process publish-build",
+      "input_contract": "Canonical process payload rows plus explicit out-dir and publish intent metadata",
+      "output_contract": "Publish bundle/request/intent plus reports/process-publish-schema-gate.json",
+      "remote_write_mode": "dry-run",
+      "verification_gate": "process_schema_gate.blocker_count must be zero before any publish run can consume the bundle",
+      "source_manifest_requirements": ["canonical process payload path", "schema gate report", "CLI command record"]
+    },
+    {
+      "id": "cli.flow.publish-version",
+      "class": "remote-publish",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca flow publish-version",
+      "input_contract": "Flow payload JSONL plus explicit out-dir, dry-run/commit mode, and commit limit",
+      "output_contract": "flow-publish-version-gate-report.json plus success/failure JSONL publish attempt records",
+      "remote_write_mode": "explicit approval only",
+      "verification_gate": "flow_gate.blocker_count must be zero and commit mode must be explicitly approved before remote mutation",
+      "source_manifest_requirements": ["flow payload path", "flow schema gate report", "CLI command record"]
+    },
+    {
+      "id": "cli.flow.publish-reviewed-data",
+      "class": "remote-publish",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca flow publish-reviewed-data",
+      "input_contract": "Reviewed flow rows prepared by dataset gates",
+      "output_contract": "Delegated flow publish-version outputs including flow-publish-version-gate-report.json",
+      "remote_write_mode": "explicit approval only",
+      "verification_gate": "delegated flow_gate.blocker_count must be zero and commit mode must be explicitly approved",
+      "source_manifest_requirements": ["reviewed flow rows path", "delegated flow gate report", "CLI command record"]
+    },
+    {
+      "id": "cli.publish.run",
+      "class": "publish-prep",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca publish run",
+      "input_contract": "Publish request/bundle with process and flow payload references",
+      "output_contract": "publish-report.json plus verification-report.json",
+      "remote_write_mode": "explicit approval only",
+      "verification_gate": "verification.blocker_count must be zero, no deferred/failed step remains, and commit requires explicit approval",
+      "source_manifest_requirements": ["publish request path", "verification-report.json", "CLI command record"]
+    },
+    {
       "id": "foundry.reference-closure.provider-flow-eligibility",
       "class": "reference-closure",
       "owner_project": "tiangong-lca-data-foundry",
@@ -80,6 +333,17 @@
       "remote_write_mode": "dry-run",
       "verification_gate": "Elementary flow samples are skipped for product/provider closure matching",
       "source_manifest_requirements": ["sample scenario id", "source sample index path"]
+    },
+    {
+      "id": "foundry.golden-fixtures.check",
+      "class": "test-fixture-governance",
+      "owner_project": "tiangong-lca-data-foundry",
+      "entrypoint": "node scripts/foundry.mjs golden-fixtures-check",
+      "input_contract": "specs/automated-lca-golden-fixtures.json plus optional sample, target-dataset, and compute runtime reports",
+      "output_contract": "golden-fixtures-check-report.json plus markdown fixture coverage report",
+      "remote_write_mode": "read-only",
+      "verification_gate": "required fixture coverage classes must be present and runtime checks must pass when reports are supplied",
+      "source_manifest_requirements": ["fixture matrix", "sample dry-run report", "target dataset gate report", "compute completeness snapshot"]
     }
   ]
 }
