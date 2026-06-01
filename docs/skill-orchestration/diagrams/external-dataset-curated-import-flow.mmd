@@ -1,0 +1,103 @@
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif", "primaryColor": "#eef6ff", "primaryBorderColor": "#386fa4", "primaryTextColor": "#14213d", "secondaryColor": "#f8fafc", "secondaryBorderColor": "#64748b", "lineColor": "#475569", "tertiaryColor": "#fff7ed", "tertiaryBorderColor": "#c2410c"}, "flowchart": {"curve": "basis", "htmlLabels": true, "nodeSpacing": 58, "rankSpacing": 48}} }%%
+flowchart TD
+  Legend["图例<br/>蓝色=Foundry 本地编排/证据<br/>紫色=CLI / deterministic primitive<br/>绿色=Codex 语义研制<br/>青色=数据库 / search index / remote IO<br/>黄色=门禁判断"]
+
+  A(["用户短指令<br/>导入 / 写入外部 LCA 数据包"])
+  B["Foundry router<br/>加载 profile、constraints、account context<br/>创建/恢复 workspace 与 checkpoint ledger"]
+  C{"输入是否已经结构化<br/>TIDAS / ILCD rows?"}
+  U["Codex source-evidence authoring<br/>从 PDF、网页、报告、截图、表格抽取事实<br/>产出 draft TIDAS rows + citations"]
+
+  S1["Foundry artifact<br/>source manifest、checksum、source label、version、unpack dir"]
+  S2["CLI / tool<br/>tidas-tools import-lca<br/>产出 normalized rows、ILCD、mapping.csv、conversion report"]
+  S3["CLI QA<br/>tiangong-lca dataset validate<br/>exchange direction、source trace、mapping completeness"]
+  QB["CLI queue build<br/>tiangong-lca dataset curation-queue build<br/>输入 support、flow、process、external-flow-ref rows"]
+  Q["Queue artifacts<br/>manifest、tasks.jsonl、locks、blockers<br/>entities/*/input.jsonl、closure.json、entity-run-plan.json"]
+
+  subgraph ActionPattern["每个 curation-queue next 返回 action 的执行模式"]
+    direction TB
+    N["CLI dispatcher<br/>curation-queue next --entity-type support|flow|process<br/>返回 action_manifest、executor、input/output artifacts"]
+    E{"executor 是什么?"}
+    CLIAct["CLI action<br/>按返回命令原样执行<br/>extract / apply / validate / lookup / preflight / refresh / schema-review"]
+    CodexAct["Codex semantic action<br/>只处理 CLI 明确交给 Codex 的语义内容<br/>name split、classification decision、candidate choice、translation draft、evidence-backed fields"]
+    Prov["Codex outputs<br/>draft JSONL + *.provenance.json<br/>必须匹配 action_id、input hash、artifact_lineage"]
+    CLIGate["CLI validate/apply gate<br/>name-plan validate/apply<br/>bilingual apply/validate<br/>schema/review/name-quality gates"]
+    Checkpoint["Entity checkpoint<br/>记录 inputs/outputs hashes、commands/skills、gate status、blockers"]
+
+    N --> E
+    E -- "deterministic CLI" --> CLIAct --> Checkpoint
+    E -- "child skill / semantic" --> CodexAct --> Prov --> CLIGate --> Checkpoint
+  end
+
+  subgraph EntityOrder["Entity queue run-to-completion order"]
+    direction TB
+    Support["4 Support loop<br/>CLI: next support、name-plan/bilingual extract-apply-validate、support validation/catalog<br/>Codex: source/contact/unitgroup/flowproperty 名称、标题、翻译、证据选择<br/>DB/index: 优先复用 public/canonical support refs"]
+    SupportDone{"support complete?"}
+    Flow["5 Flow loop<br/>CLI: next flow、UUID/version lookup、identity-preflight、build-plan、name-quality、schema/review<br/>Codex: 候选复用判断、分类、四段式 name、双语转译、provenance reason<br/>DB/index: exact lookup、hybrid/search candidates、public/account flow visibility"]
+    FlowDone{"flow complete?"}
+    Catalog["Authority catalog<br/>finalized support rows + finalized owned flows + public/external flow refs<br/>process 后续只能消费这个 catalog"]
+    Process["6 Process closure loop<br/>CLI: next process、references refresh-remote、materialize refs、complete-required-fields、identity-preflight、schema/review<br/>Codex: exchange evidence repair、reference year、annual supply、prose translation、waiver reasoning<br/>DB/index: remote refs、visible support/flow rows、readback inputs"]
+    ProcessDone{"process complete?"}
+
+    Support --> SupportDone
+    SupportDone -- "否" --> Support
+    SupportDone -- "是" --> Flow
+    Flow --> FlowDone
+    FlowDone -- "否" --> Flow
+    FlowDone -- "是" --> Catalog --> Process
+    Process --> ProcessDone
+    ProcessDone -- "否" --> Process
+  end
+
+  IDX["数据库 / index 能力<br/>UUID/version exact lookup<br/>full-text / hybrid / embedding search<br/>public 与 account 可见性<br/>remote reference resolution<br/>remote write + readback diff"]
+
+  MR["Foundry mapping/report<br/>合并 conversion mapping、curation deltas、bilingual evidence、reference rewrites、publish/readback reports"]
+  Guard["CLI final-answer guard<br/>tiangong-lca dataset curation-queue guard --json"]
+  GG{"blocked 且有 runnable next_action?"}
+  Verify["CLI prewrite evidence gate<br/>tiangong-lca dataset curation-queue verify<br/>校验所有 owned entity 的 name-plan / bilingual / lineage artifacts"]
+  GV{"verify passed?"}
+  RW["CLI remote write<br/>official paths only<br/>publish-support、publish run、flow/process publish<br/>dry-run first，guarded commit"]
+  RB["CLI + DB readback verify<br/>dataset verify-remote / current-account review<br/>root rows + referenced rows resolve remotely<br/>diff final rows and accepted mapping differences"]
+  Done(["Done<br/>checkpoints passed/waived<br/>write reports + readback reports + follow-ups preserved"])
+
+  Block["Stop and preserve blocker<br/>missing profile/account/source、conversion blocker、next blocked、manual_review、gate blocker、remote partial failure"]
+  Fix["Closed-loop regression<br/>若是 CLI / SDK / tidas-tools / skill / profile 缺陷<br/>修 owning repo，rebuild local tool，fresh downstream run"]
+
+  A --> B --> C
+  C -- "否" --> U --> QB
+  C -- "是" --> S1 --> S2 --> S3 --> QB
+  S3 -- "blocking defect" --> Block
+  QB --> Q --> Support
+
+  Support -. "每个 returned action" .-> N
+  Flow -. "每个 returned action" .-> N
+  Process -. "每个 returned action" .-> N
+  Flow -. "candidate retrieval / identity" .-> IDX
+  Process -. "refs / readback context" .-> IDX
+
+  ProcessDone -- "是" --> MR --> Guard --> GG
+  GG -- "是：回到返回的 scope" --> Support
+  GG -- "否" --> Verify --> GV
+  GV -- "blocked 但 next ready" --> Support
+  GV -- "blocked 且无 runnable action" --> Block
+  GV -- "passed" --> RW --> RB --> Done
+
+  RW -. "commit through platform / DB" .-> IDX
+  RB -. "readback and diff" .-> IDX
+  Block -- "reusable defect" --> Fix --> QB
+
+  classDef foundry fill:#eef6ff,stroke:#386fa4,color:#14213d;
+  classDef cli fill:#f3e8ff,stroke:#7e22ce,color:#1f2937;
+  classDef codex fill:#dcfce7,stroke:#15803d,color:#111827;
+  classDef db fill:#ccfbf1,stroke:#0f766e,color:#111827;
+  classDef artifact fill:#f8fafc,stroke:#64748b,color:#111827;
+  classDef gate fill:#fff3cd,stroke:#b7791f,color:#1f2937;
+  classDef stop fill:#fde2e2,stroke:#b91c1c,color:#111827;
+  classDef done fill:#e6ffed,stroke:#2f855a,color:#111827;
+
+  class A,B,S1,Q,MR,Legend artifact;
+  class S2,S3,QB,N,CLIAct,CLIGate,Guard,Verify,RW,RB cli;
+  class U,CodexAct,Prov codex;
+  class IDX db;
+  class C,E,SupportDone,FlowDone,ProcessDone,GG,GV gate;
+  class Block stop;
+  class Done done;

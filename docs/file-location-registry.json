@@ -1,7 +1,7 @@
 {
   "$schema": "../specs/schemas/file-location-registry.schema.json",
   "schema_version": 1,
-  "updated_at_utc": "2026-05-24T16:12:24Z",
+  "updated_at_utc": "2026-05-29T16:12:33Z",
   "policy_doc": "docs/file-organization.md",
   "entries": [
     {
@@ -158,6 +158,54 @@
       "sensitivity": "non-sensitive governance runbook; contains no credentials and no full private payload export",
       "tracked": true,
       "notes": "Defines account-wide process/flow audit, repair queue, write, readback, UI, and compute-validation constraints for the current profile repair program."
+    },
+    {
+      "id": "dataset-authoring-skill-architecture",
+      "status": "active",
+      "classification": "skill-orchestration-design",
+      "current_path": "docs/skill-orchestration/dataset-authoring-skill-architecture.md",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "docs/capability-ownership-policy.md",
+        "docs/orchestrator.md",
+        "docs/import-profiles/bafu/profile.md",
+        "specs/automated-lca-capability-registry.json"
+      ],
+      "sensitivity": "non-sensitive architecture design; contains no credentials and no private dataset payloads",
+      "tracked": true,
+      "notes": "Defines the target layering where Foundry routes to a top-level dataset authoring skill, the top-level skill composes reusable child skills, and child skills call public CLI commands."
+    },
+    {
+      "id": "bafu-external-dataset-import-profile",
+      "status": "active",
+      "classification": "import-profile",
+      "current_path": "docs/import-profiles/bafu/profile.md",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "task_id": "bafu-full-import",
+      "referenced_by": [
+        "WORKFLOW.md",
+        "docs/skill-orchestration/dataset-authoring-skill-architecture.md"
+      ],
+      "sensitivity": "non-sensitive BAFU import profile; excludes runtime account ids, thread guards, credentials, and full private payload exports",
+      "tracked": true,
+      "notes": "Durable Foundry-facing BAFU import profile for the resumable source-intake to readback-verify workflow. Runtime task outputs and account guard details stay under ignored .foundry/workspaces/."
+    },
+    {
+      "id": "bafu-tidas-import-constraints",
+      "status": "active",
+      "classification": "import-constraints",
+      "current_path": "docs/import-profiles/bafu/constraints.md",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "task_id": "bafu-full-import",
+      "referenced_by": [
+        "docs/import-profiles/bafu/profile.md"
+      ],
+      "sensitivity": "non-sensitive BAFU-specific import rules; excludes runtime account ids, thread guards, credentials, and full private payload exports",
+      "tracked": true,
+      "notes": "Cleaned durable constraints migrated from the BAFU runtime workspace. Runtime-specific account guards, absolute workspace paths, and full payload evidence remain runtime-only and are intentionally not registered as previous_paths."
     },
     {
       "id": "current-credential-identity-preflight-samples-20260522",

@@ -52,10 +52,22 @@ Body:
 
 Operate as a data foundry worker:
 
+Fast-path routing runs before generic discovery:
+
+- If the task mentions `external-dataset-curated-import`, BAFU/FOEN, or writing/updating/importing BAFU data into the BAFU account, classify it as `external-dataset-curated-import`.
+- For BAFU, load `docs/import-profiles/bafu/profile.md`, `docs/import-profiles/bafu/constraints.md`, `docs/skill-orchestration/entity-level-curated-import-queue.md`, and the sibling skill `../tiangong-lca-skills/external-dataset-curated-import/SKILL.md` when available.
+- If the task has structured TIDAS/ILCD rows or an existing curation queue, resume through `tiangong-lca dataset curation-queue next` before editing any row. The returned action and action manifest are the execution contract for the turn. For import/write/update requests, keep running `next` until the requested support, flow, and process scopes are complete; a single returned action is not a completed run. Same-name files without matching action lineage, or `artifact_class: recovered` files, are not formal completion artifacts.
+- If the task starts from unstructured source material only, classify it as `source-evidence-dataset-development` first, produce structured draft rows with source evidence, then enter `external-dataset-curated-import`.
+- If the task says to use latest local CLI changes, run `npm install` in `../tiangong-lca-cli` when dependency files changed or installed packages are stale, then run `npm run build` before invoking `bin/tiangong-lca.js`; alternatively use `node --import tsx src/main.ts ...` for source-level diagnostics.
+- If the task is a follow-up after a failed BAFU import run, treat it as a closed-loop regression cycle: repair the owning CLI/SDK/tidas-tools/skill/profile defect, rebuild affected tools, create a fresh downstream run using the durable BAFU profile, and execute the queue until the first real blocker or until remote write/readback is complete. Do not reuse stale success or failure reports as the new result.
+- Do not begin a known BAFU structured import by broad `rg` searches, old `.foundry` report inspection, or ad hoc command discovery. Use those only when the required fast-path files or returned CLI commands are missing or failing.
+- A previous `run-status.md`, remote write report, or readback report is not proof that the current curation evidence gate passes. Current write permission must come from `tiangong-lca dataset curation-queue verify`.
+
 1. Classify the task into one of:
    - account-governance
    - category-update
    - dataset-inventory
+   - external-dataset-curated-import
    - flow-governance
    - process-build
    - lifecyclemodel-build
@@ -69,7 +81,8 @@ Operate as a data foundry worker:
    - verification
    - account-repair
    - capability-development
-2. Read `AGENTS.md`, this `WORKFLOW.md`, and the relevant specification under `specs/`.
+   - source-evidence-dataset-development
+2. Read `AGENTS.md`, this `WORKFLOW.md`, and the relevant specification under `specs/`. For fast-path imports, prefer the narrower profile/constraints/skill files listed above before generic specifications.
 3. If the task needs LCA rules, ILCD guidance, naming conventions, or product-carbon-footprint factor database background, query the repo wiki first with `npm run wiki:fts -- "<term>"`, then read the linked Markdown pages.
 4. Create or reuse the task workspace under `.foundry/workspaces/{{ issue.identifier }}`.
 5. Freeze inputs before repair.
@@ -84,9 +97,16 @@ Operate as a data foundry worker:
    - hybrid search through search skills or `tiangong search ...`
    - schema validation through TIDAS SDK/tools
    - Edge Function or database diagnosis only when the failure belongs there
-12. Do not perform remote database writes unless the task explicitly allows commit and all gates pass.
-13. Leave machine-readable outputs, a source manifest, a completeness snapshot, and a concise report.
-14. If the task uncovers missing data, ambiguous source evidence, missing CLI capability, unsafe writes, or unclear file placement, create follow-up task records instead of guessing.
+12. For `external-dataset-curated-import`, execute entity work through the queue:
+   - `tiangong-lca dataset curation-queue next --queue-dir .foundry/workspaces/<task-id>/curation-queue --entity-type <support|flow|process> --limit 1 --out-dir .foundry/workspaces/<task-id>/execution-next`
+   - run only the returned CLI command or child skill action, preserving returned action manifests and required `*.provenance.json` artifacts
+   - call `curation-queue next` again after the action completes, repeating until status is `complete` for the requested support/flow/process scopes
+   - before any final response or remote write, run `tiangong-lca dataset curation-queue guard --queue-dir .foundry/workspaces/<task-id>/curation-queue --out-dir .foundry/workspaces/<task-id>/prewrite-evidence-gate --json`; if it returns blocked with a runnable `next_action`, continue instead of stopping
+   - run `tiangong-lca dataset curation-queue verify --queue-dir .foundry/workspaces/<task-id>/curation-queue --out-dir .foundry/workspaces/<task-id>/prewrite-evidence-gate` before any formal write
+   - if `verify` is blocked while any `next` scope is still `ready`, continue the queue instead of treating the run as terminally blocked
+13. Do not perform remote database writes unless the task explicitly allows commit and all gates pass.
+14. Leave machine-readable outputs, a source manifest, a completeness snapshot, and a concise report.
+15. If the task uncovers missing data, ambiguous source evidence, missing CLI capability, unsafe writes, or unclear file placement, create follow-up task records instead of guessing.
 
 Filesystem state transitions:
 
