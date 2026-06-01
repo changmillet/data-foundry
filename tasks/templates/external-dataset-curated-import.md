@@ -19,6 +19,6 @@ Convert the source package through the CLI/tools lane, validate generated TIDAS 
 - tidas-tools conversion report
 - schema validation
 - review
-- bilingual validation when text fields are generated or repaired
+- source-language completeness and placeholder scan
 - reference closure
 - publish/import dry run

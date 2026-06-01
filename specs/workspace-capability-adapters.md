@@ -14,7 +14,7 @@ The machine-readable registry is `specs/automated-lca-capability-registry.json`.
 | `source-evidence-review` | Plan and record public/source evidence review for field-level facts. |
 | `schema-gate` | Validate generated TIDAS rows. |
 | `process-review` / `flow-review` | Run target-type review gates. |
-| `bilingual-gate` | Extract, apply, and validate bilingual fields. |
+| `bilingual-gate` | Extract, apply, and validate bilingual fields after source-language database import. |
 | `reference-closure` | Refresh or verify local references before publish preparation. |
 | `publish-prep` | Prepare local publish/import bundles without remote commit. |
 | `remote-verification` | Read back remote rows when a task explicitly reaches that stage. |
@@ -30,3 +30,5 @@ npm run task:route -- --kind source-evidence-dataset-development --dataset-type 
 ```
 
 Missing classes must be resolved in the owning project. Add Foundry-local code only for task routing, manifests, reports, and policy checks.
+
+Import lanes must not require `bilingual-gate` before database import. Use contract context, schema, review, reference, dry-run, and verification gates for source-language rows, then route multilingual completion separately after import.

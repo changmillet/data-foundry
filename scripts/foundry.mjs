@@ -21,7 +21,6 @@ const sampleScenarioDryRunTaskId = 'issue-5';
 const sampleScenarioIndexPath = 'inputs/account-sample-scenarios/current-credential-identity-preflight-samples-2026-05-22.md';
 const automatedTargetDatasetIndexPath =
   'inputs/account-sample-scenarios/current-profile-automated-lca-target-datasets-2026-05-23.md';
-const automatedTargetDatasetTranslationsDir = 'inputs/account-sample-scenarios/translations';
 const automatedTargetDatasetSnapshotDir =
   '.foundry/workspaces/example-account-dataset-selection-2026-05-23';
 const automatedTargetDatasetGateRunTaskId = 'issue-6-automated-lca-target-datasets';
@@ -2703,7 +2702,6 @@ const taskKindCapabilityClassRoutes = {
     'schema-gate',
     'process-review',
     'flow-review',
-    'bilingual-gate',
     'reference-closure',
     'publish-prep',
     'remote-verification',
@@ -2715,7 +2713,6 @@ const taskKindCapabilityClassRoutes = {
     'schema-gate',
     'process-review',
     'flow-review',
-    'bilingual-gate',
   ],
   'category-update': [
     'dataset-inventory',
@@ -3296,7 +3293,7 @@ function sampleScenarioMutationEntries(report) {
       next_action:
         sample.blocker_count > 0
           ? 'Resolve blockers before authoring mutation payloads.'
-          : 'Route materialized dry-run payload through schema, review, bilingual, and publish gates.',
+          : 'Route materialized dry-run payload through schema, review, reference, and publish gates.',
     };
   });
 }
@@ -5304,11 +5301,6 @@ function selectAutomatedTargetDatasets(options = {}) {
   return automatedTargetDatasets.filter((sample) => requested.includes(sample.sample_id));
 }
 
-function targetDatasetTranslationPath(translationsDir, sample, kind) {
-  if (!translationsDir) return null;
-  return path.join(translationsDir, `${sample.sample_id}-${kind}.trans-reviewed.jsonl`);
-}
-
 function targetDatasetCapabilityRecord(registry, capabilityId, run, artifacts = {}) {
   return capabilityRunRecord(registry, capabilityId, run, artifacts);
 }
@@ -5320,7 +5312,6 @@ function runTargetDatasetKindGates({
   rowsFile,
   flowRowsFile = null,
   sampleDir,
-  translationsDir,
 }) {
   if (!fileExists(rowsFile)) {
     return {
@@ -5342,13 +5333,8 @@ function runTargetDatasetKindGates({
   const requiredFieldsRowsFile = path.join(requiredFieldsOutDir, `${kind}.required-fields.jsonl`);
   const schemaOutDir = path.join(kindDir, 'schema');
   const reviewOutDir = path.join(kindDir, 'review');
-  const bilingualExtractOutDir = path.join(kindDir, 'bilingual-extract');
-  const bilingualApplyOutDir = path.join(kindDir, 'bilingual-apply');
-  const bilingualValidateOutDir = path.join(kindDir, 'bilingual-validate');
   const remoteRefreshOutDir = path.join(kindDir, 'remote-refresh');
-  const translatedRowsFile = path.join(kindDir, 'translated', `${kind}.translated.jsonl`);
   const remoteRefreshedRowsFile = path.join(kindDir, 'remote-refreshed', `${kind}.remote-refreshed.jsonl`);
-  const translationReviewPath = targetDatasetTranslationPath(translationsDir, sample, kind);
   let gateRowsFile = rowsFile;
   let requiredFieldsRun = null;
   let requiredFieldsCapture = null;
@@ -5411,83 +5397,13 @@ function runTargetDatasetKindGates({
   );
   const reviewCapture = writeCommandCapture(commandDir, 'review', reviewRun);
 
-  const bilingualExtractRun = runTiangongJson(
-    [
-      'dataset',
-      'bilingual',
-      'extract',
-      '--input',
-      gateRowsFile,
-      '--type',
-      kind,
-      '--out-dir',
-      bilingualExtractOutDir,
-      '--json',
-    ],
-    { allowJsonOnFailure: true },
-  );
-  const bilingualExtractCapture = writeCommandCapture(
-    commandDir,
-    'bilingual-extract',
-    bilingualExtractRun,
-  );
-
-  let bilingualApplyRun = null;
-  let bilingualApplyCapture = null;
-  let validateInput = gateRowsFile;
-  const translationEvidenceExpected = Boolean(translationReviewPath && fileExists(translationReviewPath));
-  if (translationEvidenceExpected) {
-    bilingualApplyRun = runTiangongJson(
-      [
-        'dataset',
-        'bilingual',
-        'apply',
-        '--input',
-        gateRowsFile,
-        '--translations',
-        translationReviewPath,
-        '--out',
-        translatedRowsFile,
-        '--out-dir',
-        bilingualApplyOutDir,
-        '--json',
-      ],
-      { allowJsonOnFailure: true },
-    );
-    bilingualApplyCapture = writeCommandCapture(commandDir, 'bilingual-apply', bilingualApplyRun);
-    if (bilingualApplyRun.json?.status === 'completed') {
-      validateInput = translatedRowsFile;
-    }
-  }
-
-  const bilingualValidateRun = runTiangongJson(
-    [
-      'dataset',
-      'bilingual',
-      'validate',
-      '--input',
-      validateInput,
-      '--type',
-      kind,
-      '--out-dir',
-      bilingualValidateOutDir,
-      '--json',
-    ],
-    { allowJsonOnFailure: true },
-  );
-  const bilingualValidateCapture = writeCommandCapture(
-    commandDir,
-    'bilingual-validate',
-    bilingualValidateRun,
-  );
-
   const remoteRefreshRun = runTiangongJson(
     [
       'dataset',
       'references',
       'refresh-remote',
       '--input',
-      validateInput,
+      gateRowsFile,
       '--out',
       remoteRefreshedRowsFile,
       '--out-dir',
@@ -5502,19 +5418,11 @@ function runTargetDatasetKindGates({
 
   const schemaInvalid = Number(schemaRun.json?.counts?.invalid ?? 1);
   const requiredFieldBlockers = Number(requiredFieldsRun?.json?.counts?.blocked ?? 0);
-  const bilingualBlockers = Number(bilingualValidateRun.json?.scan?.blocker_count ?? 0);
-  const bilingualSchemaInvalid = Number(bilingualValidateRun.json?.schema_gate?.invalid ?? 0);
-  const applyBlockers = Number(bilingualApplyRun?.json?.blockers?.length ?? 0);
   const remoteVerifyBlockers = Number(remoteRefreshRun.json?.counts?.post_refresh_blockers ?? 0);
-  const translationUnitCount = Number(bilingualExtractRun.json?.unit_count ?? 0);
-  const appliedTranslationCount = Number(bilingualApplyRun?.json?.applied_count ?? 0);
   const commandRuns = [
     ...(requiredFieldsRun ? [requiredFieldsRun] : []),
     schemaRun,
     reviewRun,
-    bilingualExtractRun,
-    ...(bilingualApplyRun ? [bilingualApplyRun] : []),
-    bilingualValidateRun,
     remoteRefreshRun,
   ];
   const commandFailures = commandRuns.filter((run) => !run.ok);
@@ -5535,17 +5443,6 @@ function runTargetDatasetKindGates({
   if (!reviewRun.ok) {
     readinessBlockers.push(`${kind} review command failed`);
   }
-  if (bilingualBlockers > 0) {
-    readinessBlockers.push(`${kind} bilingual validation has ${bilingualBlockers} blocker(s)`);
-  }
-  if (bilingualValidateRun.json?.status === 'blocked' || bilingualSchemaInvalid > 0) {
-    readinessBlockers.push(
-      `${kind} bilingual validation is blocked with ${bilingualSchemaInvalid} schema-invalid row(s)`,
-    );
-  }
-  if (applyBlockers > 0) {
-    readinessBlockers.push(`${kind} bilingual apply has ${applyBlockers} blocker(s)`);
-  }
   if (!remoteRefreshRun.ok) {
     readinessBlockers.push(`${kind} remote reference/version refresh command failed`);
   }
@@ -5553,17 +5450,6 @@ function runTargetDatasetKindGates({
     readinessBlockers.push(
       `${kind} remote reference/version verification has ${remoteVerifyBlockers} blocker(s) after refresh`,
     );
-  }
-  if (translationEvidenceExpected && appliedTranslationCount !== translationUnitCount) {
-    readinessBlockers.push(
-      `${kind} translation evidence covers ${appliedTranslationCount}/${translationUnitCount} extracted unit(s)`,
-    );
-  }
-  if (!translationEvidenceExpected) {
-    qualityGaps.push(`${kind} reviewed translation file is missing`);
-  }
-  if (!bilingualApplyRun?.json?.files?.translation_evidence) {
-    qualityGaps.push(`${kind} translation-evidence.json is not available`);
   }
 
   const status =
@@ -5606,36 +5492,8 @@ function runTargetDatasetKindGates({
       report: maybeRepoRelative(reviewRun.json?.files?.report),
       ...reviewCapture,
     }),
-    targetDatasetCapabilityRecord(registry, `cli.${kind}.bilingual.extract`, bilingualExtractRun, {
-      rows_file: maybeRepoRelative(gateRowsFile),
-      out_dir: repoRelativePath(bilingualExtractOutDir),
-      translation_units: maybeRepoRelative(bilingualExtractRun.json?.files?.translation_units),
-      report: maybeRepoRelative(bilingualExtractRun.json?.files?.report),
-      ...bilingualExtractCapture,
-    }),
-    ...(bilingualApplyRun
-      ? [
-          targetDatasetCapabilityRecord(registry, `cli.${kind}.bilingual.apply`, bilingualApplyRun, {
-            rows_file: maybeRepoRelative(gateRowsFile),
-            translations: maybeRepoRelative(translationReviewPath),
-            translated_rows: maybeRepoRelative(bilingualApplyRun.json?.files?.translated_rows),
-            translation_evidence: maybeRepoRelative(
-              bilingualApplyRun.json?.files?.translation_evidence,
-            ),
-            report: maybeRepoRelative(bilingualApplyRun.json?.files?.report),
-            ...bilingualApplyCapture,
-          }),
-        ]
-      : []),
-    targetDatasetCapabilityRecord(registry, `cli.${kind}.bilingual.validate`, bilingualValidateRun, {
-      rows_file: maybeRepoRelative(validateInput),
-      out_dir: repoRelativePath(bilingualValidateOutDir),
-      report: maybeRepoRelative(bilingualValidateRun.json?.files?.report),
-      findings: maybeRepoRelative(bilingualValidateRun.json?.files?.findings),
-      ...bilingualValidateCapture,
-    }),
     targetDatasetCapabilityRecord(registry, `cli.${kind}.remote-refresh`, remoteRefreshRun, {
-      rows_file: maybeRepoRelative(validateInput),
+      rows_file: maybeRepoRelative(gateRowsFile),
       refreshed_rows: maybeRepoRelative(remoteRefreshRun.json?.files?.output_rows),
       out_dir: repoRelativePath(remoteRefreshOutDir),
       report: maybeRepoRelative(remoteRefreshRun.json?.files?.report),
@@ -5653,7 +5511,7 @@ function runTargetDatasetKindGates({
     verified_rows_file:
       remoteRefreshRun.json?.status === 'completed'
         ? maybeRepoRelative(remoteRefreshRun.json?.files?.output_rows)
-        : maybeRepoRelative(validateInput),
+        : maybeRepoRelative(gateRowsFile),
     row_count: targetDatasetRowsCount(rowsFile),
     status,
     command_failure_count: commandFailures.length,
@@ -5681,13 +5539,9 @@ function runTargetDatasetKindGates({
       report: maybeRepoRelative(reviewRun.json?.files?.report),
     },
     bilingual: {
-      translation_unit_count: bilingualExtractRun.json?.unit_count ?? null,
-      applied_translation_count: bilingualApplyRun?.json?.applied_count ?? null,
-      apply_status: bilingualApplyRun?.json?.status ?? 'not_run',
-      validate_status: bilingualValidateRun.json?.status ?? 'command_failed',
-      scan: bilingualValidateRun.json?.scan ?? null,
-      translation_evidence: maybeRepoRelative(bilingualApplyRun?.json?.files?.translation_evidence),
-      reviewed_translation_file: maybeRepoRelative(translationReviewPath),
+      status: 'not_run_before_import',
+      reason:
+        'Target import gates intentionally keep source-language rows only; multilingual completion runs after database import.',
     },
     remote_verification: {
       status:
@@ -5742,8 +5596,8 @@ ${buildMarkdownTable(rows, ['sample', 'process', 'flow', 'ready', 'blockers', 'g
 ## Notes
 
 - This run is local-only and does not write remote TianGong rows.
-- Target-quality readiness requires process required-field completion, schema, review, bilingual validation, remote reference/version verification, and reviewed translation evidence for both process and flow rows.
-- Missing reviewed translation files are reported as quality gaps so the next AI transcreation step can fill them deterministically through \`dataset bilingual apply\`.
+- Target-quality readiness requires process required-field completion, schema, review, and remote reference/version verification for source-language process and flow rows.
+- Multilingual completion is intentionally deferred until after database import.
 `;
 }
 
@@ -5751,9 +5605,6 @@ function runAutomatedTargetDatasetsGateRun(options = {}) {
   const taskId = String(options.taskId || automatedTargetDatasetGateRunTaskId);
   const sourceIndex = resolveRepoPath(options.index || automatedTargetDatasetIndexPath);
   const snapshotDir = resolveRepoPath(options.snapshotDir || automatedTargetDatasetSnapshotDir);
-  const translationsDir = resolveRepoPath(
-    options.translationsDir || automatedTargetDatasetTranslationsDir,
-  );
   const workspace = resolveRepoPath(
     options.outDir || path.join('.foundry/workspaces', taskId, 'target-dataset-gate-run'),
   );
@@ -5773,7 +5624,6 @@ function runAutomatedTargetDatasetsGateRun(options = {}) {
     task_id: taskId,
     source_index: repoRelativePath(sourceIndex),
     snapshot_dir: repoRelativePath(snapshotDir),
-    translations_dir: maybeRepoRelative(translationsDir),
     account_context: accountContext(),
     samples: sampleInputs.map((sample) => ({
       sample_id: sample.sample_id,
@@ -5794,7 +5644,6 @@ function runAutomatedTargetDatasetsGateRun(options = {}) {
       rowsFile: sample.process_rows_path,
       flowRowsFile: sample.flow_rows_path,
       sampleDir,
-      translationsDir,
     });
     const flowResult = runTargetDatasetKindGates({
       registry,
@@ -5802,7 +5651,6 @@ function runAutomatedTargetDatasetsGateRun(options = {}) {
       kind: 'flow',
       rowsFile: sample.flow_rows_path,
       sampleDir,
-      translationsDir,
     });
     const readinessBlockers = [
       ...ensureArray(processResult.readiness_blockers),
@@ -5850,7 +5698,6 @@ function runAutomatedTargetDatasetsGateRun(options = {}) {
     workspace: repoRelativePath(workspace),
     source_index: repoRelativePath(sourceIndex),
     snapshot_dir: repoRelativePath(snapshotDir),
-    translations_dir: maybeRepoRelative(translationsDir),
     capability_registry: automatedLcaCapabilityRegistryPath,
     cli_adapter: {
       bin_path: cliBinPath(),
@@ -5883,12 +5730,6 @@ function runAutomatedTargetDatasetsGateRun(options = {}) {
       'cli.flow.dataset-validate',
       'cli.process.review',
       'cli.flow.review',
-      'cli.process.bilingual.extract',
-      'cli.flow.bilingual.extract',
-      'cli.process.bilingual.apply',
-      'cli.flow.bilingual.apply',
-      'cli.process.bilingual.validate',
-      'cli.flow.bilingual.validate',
       'cli.process.remote-verify',
       'cli.flow.remote-verify',
       'cli.process.remote-refresh',
@@ -5904,10 +5745,10 @@ function runAutomatedTargetDatasetsGateRun(options = {}) {
       source_manifest_written: true,
       target_dataset_inputs_frozen: true,
       capability_selection_written: true,
-      process_schema_review_bilingual_ran_for_all_samples: results.every(
+      process_source_language_gates_ran_for_all_samples: results.every(
         (sample) => sample.process.status !== 'missing_input',
       ),
-      flow_schema_review_bilingual_ran_for_all_samples: results.every(
+      flow_source_language_gates_ran_for_all_samples: results.every(
         (sample) => sample.flow.status !== 'missing_input',
       ),
       no_remote_writes_attempted: true,

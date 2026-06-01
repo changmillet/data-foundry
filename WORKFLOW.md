@@ -57,8 +57,9 @@ Fast-path routing runs before generic discovery:
 - If the task starts from a packaged LCA dataset format that `tidas-tools` can convert, classify it as `external-dataset-curated-import`.
 - If the task starts from PDF, Excel, screenshots, web pages, free text, or other unstructured source material, classify it as `source-evidence-dataset-development`.
 - Before AI authoring, repair, or conversion-gap analysis for a target TIDAS type, create a contract context pack with `tiangong-lca dataset context-pack --type <type> --profile ai-import --out-dir <workspace>/context/<type> --json`.
-- For packaged LCA imports, prefer deterministic conversion through the CLI/tidas-tools surface, then run schema, review, bilingual, reference, dry-run, and verification gates. AI should repair conversion gaps, not replace a supported converter.
+- For packaged LCA imports, prefer deterministic conversion through the CLI/tidas-tools surface, then run schema, review, reference, dry-run, and verification gates on source-language rows. AI should repair conversion gaps with the TIDAS contract context, not replace a supported converter.
 - For PDF/Excel/source-document authoring, extract source evidence first, then use the target TIDAS contract context pack to generate candidate rows. Candidate rows must pass the same schema and publication gates as converted rows.
+- Do not generate or apply extra multilingual text before database import. The import lane keeps only the source/original language; bilingual completion runs after DB import as a separate workflow.
 - If the task says to use latest local CLI changes, run `npm install` in `../tiangong-lca-cli` when dependency files changed or installed packages are stale, then run `npm run build` before invoking `bin/tiangong-lca.js`; alternatively use `node --import tsx src/main.ts ...` for source-level diagnostics.
 - Do not treat historical runtime reports, stale `.foundry` artifacts, or prior write/readback reports as proof for the current task. Current readiness must come from the current workspace's contract manifest, validation reports, mutation plan, dry-run report, and verification artifacts.
 
@@ -100,14 +101,14 @@ Fast-path routing runs before generic discovery:
    - detect or record the source package format
    - convert through the CLI/tidas-tools surface when the format is supported
    - write a source manifest with source package path, converter command, conversion report, mapping file, and contract context manifest for each target TIDAS type
-   - run `tiangong-lca dataset validate` for generated process/flow/lifecyclemodel rows before review or publish-prep
+   - run `tiangong-lca dataset validate` for generated source-language process/flow/lifecyclemodel rows before review or publish-prep
    - if a converter gap or schema blocker remains, create repair candidates with the relevant TIDAS contract context pack and rerun validation
 13. For `source-evidence-dataset-development`, use the document authoring lane:
    - extract source text/tables/evidence into governed artifacts
    - create contract context packs for the target TIDAS types
    - generate candidate rows with source provenance and unresolved-assumption fields
    - route invalid rows into a repair queue; do not allow invalid rows into mutation plans
-   - promote valid rows into the same gate sequence used by converted package imports
+   - promote valid source-language rows into the same gate sequence used by converted package imports
 14. Do not perform remote database writes unless the task explicitly allows commit and all gates pass.
 15. Leave machine-readable outputs, a source manifest, a completeness snapshot, and a concise report.
 16. If the task uncovers missing data, ambiguous source evidence, missing CLI capability, unsafe writes, or unclear file placement, create follow-up task records instead of guessing.
