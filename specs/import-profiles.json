@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "updated_at_utc": "2026-06-02T00:00:00Z",
+  "default_profile": "generic",
+  "profiles": {
+    "generic": {
+      "id": "generic",
+      "description": "Default import profile for external datasets. It adds no dataset-specific waivers and relies on schema, QA, curation, cleanup, dry-run, and verification gates.",
+      "docs": [],
+      "waived_qa_codes_by_type": {},
+      "waiver_reasons": {}
+    },
+    "bafu": {
+      "id": "bafu",
+      "description": "BAFU / FOEN import profile for BAFU 2025 ecoSpold1 converted TIDAS rows.",
+      "docs": [
+        "docs/import-profiles/bafu/profile.md",
+        "docs/import-profiles/bafu/constraints.md"
+      ],
+      "waived_qa_codes_by_type": {
+        "process": [
+          "process_material_balance_deviation"
+        ]
+      },
+      "waiver_reasons": {
+        "process_material_balance_deviation": "BAFU profile treats process_material_balance_deviation as a source-data QA observation, not a remote-write blocker. Other schema, placeholder, reference, unit, required-field, and trace blockers remain blocking."
+      }
+    }
+  }
+}

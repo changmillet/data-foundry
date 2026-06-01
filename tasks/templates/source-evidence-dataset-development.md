@@ -11,7 +11,7 @@ source_document: inputs/source-documents/<document-note>.md
 
 ## Goal
 
-Extract evidence from the source document, give AI the target TIDAS context pack, produce candidate rows, and route blockers into repair/review artifacts.
+Extract evidence from the source document, give AI the target TIDAS context pack, produce candidate rows, and route blockers into curation artifacts.
 
 ## Required Gates
 
@@ -19,5 +19,6 @@ Extract evidence from the source document, give AI the target TIDAS context pack
 - source extraction report
 - field-level evidence review
 - schema validation
-- review
+- deterministic QA
+- Foundry dataset curation gate
 - source-language completeness and placeholder scan

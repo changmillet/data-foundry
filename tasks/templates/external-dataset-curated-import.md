@@ -18,7 +18,9 @@ Convert the source package through the CLI/tools lane, validate generated TIDAS 
 - contract context pack
 - tidas-tools conversion report
 - schema validation
-- review
+- deterministic QA
+- Foundry dataset curation gate
 - source-language completeness and placeholder scan
+- curation cleanup and revalidation
 - reference closure
 - publish/import dry run

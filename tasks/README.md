@@ -1,12 +1,11 @@
 # Task Queue
 
-The first tracker adapter is filesystem-backed. Tasks describe import work; reusable conversion, authoring, validation, and review behavior belongs in the CLI, skills, SDK, tools, or database-owned projects.
+The first tracker adapter is filesystem-backed. Tasks describe import work; reusable conversion, authoring, validation, QA, skill, and database behavior belongs in the CLI, skills, SDK, tools, or database-owned projects.
 
 ## Directories
 
 - `inbox/`: new tasks
 - `active/`: claimed or currently running tasks
-- `review/`: completed by agent and awaiting release gate
 - `done/`: terminal tasks
 - `templates/`: reusable task skeletons, not part of the queue
 
@@ -19,8 +18,8 @@ Use `source-evidence-dataset-development` for PDF, Excel, web exports, screensho
 ## Routing
 
 ```bash
-npm run task:route -- --kind external-dataset-curated-import --dataset-type process --required-gates contract,schema
-npm run task:route -- --kind source-evidence-dataset-development --dataset-type process --required-gates context,schema
+npm run task:route -- --kind external-dataset-curated-import --dataset-type process --required-gates contract,schema,qa,curation
+npm run task:route -- --kind source-evidence-dataset-development --dataset-type process --required-gates context,schema,qa,curation
 ```
 
 Use `templates/capability-development-request.md` when a task needs a missing reusable capability in another workspace project.

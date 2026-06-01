@@ -1,7 +1,7 @@
 {
   "$schema": "../specs/schemas/file-location-registry.schema.json",
   "schema_version": 1,
-  "updated_at_utc": "2026-06-01T00:00:00Z",
+  "updated_at_utc": "2026-06-02T00:00:00Z",
   "policy_doc": "docs/file-organization.md",
   "entries": [
     {
@@ -43,7 +43,6 @@
       "referenced_by": [
         "WORKFLOW.md",
         "docs/workspace-project-map.md",
-        "docs/orchestrator.md",
         "tasks/README.md"
       ],
       "sensitivity": "non-sensitive governance policy",
@@ -61,7 +60,6 @@
         "WORKFLOW.md",
         "docs/capability-ownership-policy.md",
         "docs/workspace-project-map.md",
-        "docs/orchestrator.md",
         "tasks/README.md",
         "tasks/templates/capability-development-request.md"
       ],
@@ -78,12 +76,28 @@
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
         "specs/workspace-capability-adapters.md",
-        "scripts/foundry.mjs",
-        "specs/schemas/capability-route-plan.schema.json"
+        "scripts/foundry.mjs"
       ],
       "sensitivity": "non-sensitive command and artifact contracts; no credentials or private payloads",
       "tracked": true,
       "notes": "Routes data import and source-document authoring work to SDK-backed CLI contracts and shared gates."
+    },
+    {
+      "id": "import-profiles",
+      "status": "active",
+      "classification": "machine-readable-import-profile-registry",
+      "current_path": "specs/import-profiles.json",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "README.md",
+        "scripts/lib/import-curation.mjs",
+        "docs/import-profiles/bafu/profile.md",
+        "docs/import-profiles/bafu/constraints.md"
+      ],
+      "sensitivity": "non-sensitive profile routing and waiver metadata",
+      "tracked": true,
+      "notes": "Keeps dataset-specific profile docs and QA waivers out of Foundry code."
     },
     {
       "id": "dataset-authoring-skill-architecture",
@@ -94,7 +108,6 @@
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
         "docs/capability-ownership-policy.md",
-        "docs/orchestrator.md",
         "specs/automated-lca-capability-registry.json"
       ],
       "sensitivity": "non-sensitive architecture design; contains no credentials and no private dataset payloads",

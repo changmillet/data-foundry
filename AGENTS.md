@@ -1,44 +1,26 @@
 # AGENTS.md - TianGong LCA Data Foundry
 
-This repository is the orchestration layer for autonomous TianGong LCA data import and TIDAS authoring work.
+This repository is the local control plane for external LCA data import and TIDAS authoring work.
 
 ## Mission
 
-Build an AI-operable data foundry that can receive external LCA packages or source documents, choose the right import lane, produce evidence-backed TIDAS data, and continue iterating until the task reaches a verified terminal state.
-
-Humans should mostly manage policy, credentials, and final release posture. Agents should manage source intake, contract-context collection, conversion or authoring artifacts, review, repair candidates, dry-run plans, verification, and work logs.
+Receive external LCA packages or source documents, choose the correct import lane, collect SDK-backed TIDAS contract context, produce evidence-backed TIDAS rows, and keep iterating until the task has current validation, curation, dry-run, and verification evidence.
 
 ## Boundaries
 
-- Do not store API keys, access tokens, `.env`, database dumps, or full private payload exports in git.
-- Do not hard-code a personal account name as reusable task scope. Use `FOUNDRY_ACCOUNT_LABEL` only as an optional, non-secret human display label; credential/session resolution and frozen manifests are authoritative for AI execution.
-- Runtime state belongs under `.foundry/` and is ignored.
-- Source-of-truth task policy belongs in `WORKFLOW.md`.
-- Project-level specifications belong in `specs/`.
-- Reusable operating knowledge belongs in `docs/`.
-- Task queue files belong in `tasks/`.
-- Do not implement raw database writes without an explicit dry-run and verification gate.
+- Do not store API keys, tokens, `.env`, database dumps, or full private payload exports in git.
+- Runtime state belongs under ignored `.foundry/`.
+- Foundry owns task routing, local manifests, import profiles, curation packages, cleanup reports, and policy checks.
+- Foundry does not own TIDAS schemas/YAML, package converters, dataset validators, deterministic QA engines, reusable skills, or remote write semantics.
+- Import-ready rows are source-language rows. Do not add bilingual completion as a pre-import gate.
+- Do not implement direct database writes in Foundry.
 
 ## Default Operating Order
 
-1. Read this file.
-2. Read `WORKFLOW.md`.
-3. Apply the fast-path routing rules below before broad repository search.
-4. Read the relevant task file under `tasks/`, when the task came from the file queue.
-5. Read `specs/data-foundry-service.md`, unless a fast path below gives a narrower required-doc list.
-6. If the task is data import or source-document authoring, read `specs/workspace-capability-adapters.md` and the matching task template under `tasks/templates/`.
-7. Run `npm run doctor` before trusting local commands. Treat it as a local health check, not as the way to discover the workflow.
-
-## Fast Path: Data Import Production
-
-Use this path before generic task discovery when the user asks to import, update, author, write, or verify LCA data from external source material.
-
-There are two primary lanes:
-
-- `external-dataset-curated-import`: packaged LCA data that can be converted through `tidas-tools` or a CLI wrapper.
-- `source-evidence-dataset-development`: PDF, Excel, web page, image, free text, or other source material that must be authored into TIDAS candidate rows.
-
-For both lanes, fetch the target TIDAS contract before AI authoring or repair:
+1. Read this file and `WORKFLOW.md`.
+2. Run `npm run doctor` before trusting local Foundry commands.
+3. Classify the task as `external-dataset-curated-import` or `source-evidence-dataset-development`.
+4. Get the target TIDAS contract context through the sibling CLI:
 
 ```bash
 tiangong-lca dataset context-pack \
@@ -48,16 +30,13 @@ tiangong-lca dataset context-pack \
   --json
 ```
 
-When the task says to use the latest local CLI, make sure the sibling `../tiangong-lca-cli` install and build are fresh before invoking `bin/tiangong-lca.js`: run `npm install` if `package.json` / `package-lock.json` changed or dependency versions are stale, then run `npm run build` after local source changes, or use the source entrypoint `node --import tsx src/main.ts ...` for diagnostics. Do not silently use stale `node_modules/` or `dist/` artifacts.
-
-For packaged LCA imports, use deterministic conversion first. AI may repair conversion gaps or schema blockers with the contract context pack, but it must not replace a converter for formats already supported by `tidas-tools`.
-
-For PDF/Excel/source-document authoring, extract evidence first, then generate candidate rows with the contract context pack. Candidate rows must pass schema validation before they can enter mutation planning.
-
-Import-ready rows are source-language rows. Do not generate extra multilingual text before database import; additional language completion, if ever requested, is outside the import gate.
-
-Do not present old runtime reports, stale `.foundry` artifacts, or prior write/readback reports as current proof. Current proof must come from the task workspace's contract manifest, validation reports, mutation plan, dry-run report, and verification artifacts.
+5. For packaged datasets, convert with `tiangong-lca dataset import-lca convert` or `tidas-tools`; do not replace supported converters with AI.
+6. Run `tiangong-lca dataset validate` and `tiangong-lca qa <type>` on converted or authored rows.
+7. Run `npm run dataset:curation-gate` with the rows, schema report, QA report, profile, and full contract context files.
+8. Use Codex/skills to produce structured patches or build plans only for curation blockers. Revalidate after applying deterministic changes.
+9. Run `npm run dataset:curation-cleanup` after source trace has been captured in authoring packages and before remote write planning.
+10. Do not treat historical `.foundry` artifacts as proof for a current task.
 
 ## Commit Rules
 
-Keep commits small and thematic. Do not commit `.foundry/`, `.env`, logs, workspace clones, or downloaded account payloads.
+Keep commits small and thematic. Do not commit `.foundry/`, `.env`, logs, source packages under `tmp/`, workspace clones, credentials, or downloaded private payloads.

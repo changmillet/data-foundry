@@ -11,13 +11,15 @@ Remote database writes are blocked unless:
 - the task explicitly permits commit
 - the workflow policy permits commit
 - schema validation passes
-- source evidence review passes
+- deterministic QA and Foundry curation pass
+- source evidence is present for authored fields
 - reference closure passes
+- curation cleanup has run and cleaned rows were revalidated
 - state-code-aware mutation plan exists
 - insert/versioned writes have explicit reasons
 - state_code=100 rows have source-review records instead of direct overwrite
 - a dry-run artifact exists
-- matrix readiness or the configured verification gate passes
+- the configured remote/readback verification gate passes
 
 For `state_code=0`, ordinary account-owned working-data repair should use update-first semantics. For missing or ambiguous `state_code`, stop at dry-run and create a follow-up task.
 

@@ -54,7 +54,7 @@ The queue directory is the durable contract:
 - `entities/<kind>/<id>__<version>/entity-run-plan.json`: the mandatory per-entity stage plan and workspace layout.
 - `entities/<kind>/<id>__<version>/checkpoints/`: stage checkpoints written by the runner.
 
-Each entity work directory also reserves the same durable surfaces used by a successful single-process run: `rows/`, `references/`, `qa/`, `review/`, `remote/`, and `reports/`.
+Each entity work directory also reserves the same durable surfaces used by a successful single-process run: `rows/`, `references/`, `qa/`, `curation/`, `remote/`, and `reports/`.
 
 ## Process Closure Execution
 

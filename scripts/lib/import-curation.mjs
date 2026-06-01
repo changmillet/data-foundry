@@ -7,26 +7,17 @@ const datasetTypePlural = {
   flow: 'flows',
   lifecyclemodel: 'lifecyclemodels',
 };
-
-const importProfiles = {
-  generic: {
-    id: 'generic',
-    docs: [],
-    waivedQaCodesByType: {},
-    waiverReasons: {},
-  },
-  bafu: {
-    id: 'bafu',
-    docs: [
-      'docs/import-profiles/bafu/profile.md',
-      'docs/import-profiles/bafu/constraints.md',
-    ],
-    waivedQaCodesByType: {
-      process: ['process_material_balance_deviation'],
-    },
-    waiverReasons: {
-      process_material_balance_deviation:
-        'BAFU profile treats process_material_balance_deviation as QA observation, not remote-write blocker.',
+const defaultProfilesFile = 'specs/import-profiles.json';
+const fallbackProfiles = {
+  schema_version: 1,
+  default_profile: 'generic',
+  profiles: {
+    generic: {
+      id: 'generic',
+      description: 'Default profile with no dataset-specific waivers.',
+      docs: [],
+      waived_qa_codes_by_type: {},
+      waiver_reasons: {},
     },
   },
 };
@@ -52,6 +43,10 @@ function writeText(filePath, text) {
 
 function readJson(filePath) {
   return JSON.parse(readText(filePath));
+}
+
+function readJsonIfExists(filePath) {
+  return fileExists(filePath) ? readJson(filePath) : null;
 }
 
 function writeJson(filePath, data) {
@@ -92,6 +87,12 @@ function readRows(filePath) {
   if (Array.isArray(parsed?.flows)) return parsed.flows;
   if (Array.isArray(parsed?.lifecyclemodels)) return parsed.lifecyclemodels;
   return [parsed];
+}
+
+function optionList(value) {
+  if (Array.isArray(value)) return value.flatMap((item) => optionList(item));
+  if (value === undefined || value === null || value === '') return [];
+  return String(value).split(',').map((item) => item.trim()).filter(Boolean);
 }
 
 function jsonLines(rows) {
@@ -352,8 +353,64 @@ function stripImportTraceMetadata(value) {
   return removed;
 }
 
-function profileFor(profileId) {
-  return importProfiles[profileId] ?? importProfiles.generic;
+function normalizeProfile(rawProfile, profileId) {
+  const profile = rawProfile && typeof rawProfile === 'object' ? rawProfile : {};
+  return {
+    id: String(profile.id ?? profileId ?? 'generic'),
+    description: profile.description ?? '',
+    docs: ensureArray(profile.docs),
+    waivedQaCodesByType: profile.waivedQaCodesByType ?? profile.waived_qa_codes_by_type ?? {},
+    waiverReasons: profile.waiverReasons ?? profile.waiver_reasons ?? {},
+  };
+}
+
+function readProfilesConfig(repoRoot, profilesFile = defaultProfilesFile) {
+  const resolved = resolveRepoPath(repoRoot, profilesFile);
+  return readJsonIfExists(resolved) ?? fallbackProfiles;
+}
+
+function profileFor(repoRoot, profileId, options = {}) {
+  const config = readProfilesConfig(repoRoot, options.profilesFile);
+  const requestedId = String(profileId || config.default_profile || 'generic').trim().toLowerCase();
+  const profiles = config.profiles ?? {};
+  const selected = profiles[requestedId] ?? profiles.generic ?? fallbackProfiles.profiles.generic;
+  const profile = normalizeProfile(selected, requestedId);
+  const extraDocs = optionList(options.profileDoc ?? options.profileDocs);
+  const extraWaivers = optionList(options.waiveQa ?? options.waiveQaCode ?? options.waivedQaCode);
+  return {
+    ...profile,
+    docs: [...profile.docs, ...extraDocs],
+    waivedQaCodesByType: {
+      ...profile.waivedQaCodesByType,
+      ...(extraWaivers.length > 0
+        ? { [datasetTypeFromOptions(options)]: [
+            ...ensureArray(profile.waivedQaCodesByType?.[datasetTypeFromOptions(options)]),
+            ...extraWaivers,
+          ] }
+        : {}),
+    },
+  };
+}
+
+export function listImportProfiles({ repoRoot, options = {} } = {}) {
+  const config = readProfilesConfig(repoRoot, options.profilesFile);
+  const profiles = Object.fromEntries(
+    Object.entries(config.profiles ?? {}).map(([id, profile]) => {
+      const normalized = normalizeProfile(profile, id);
+      return [id, {
+        id: normalized.id,
+        description: normalized.description,
+        docs: normalized.docs,
+        waived_qa_codes_by_type: normalized.waivedQaCodesByType,
+      }];
+    }),
+  );
+  return {
+    schema_version: config.schema_version ?? 1,
+    profiles_file: options.profilesFile ?? defaultProfilesFile,
+    default_profile: config.default_profile ?? 'generic',
+    profiles,
+  };
 }
 
 function datasetTypeFromOptions(options, forcedType = null) {
@@ -369,19 +426,15 @@ function datasetTypeFromOptions(options, forcedType = null) {
 export function runDatasetCurationGate({
   repoRoot,
   options = {},
-  forcedType = null,
-  legacyProcessNames = false,
 } = {}) {
-  const datasetType = datasetTypeFromOptions(options, forcedType);
+  const datasetType = datasetTypeFromOptions(options);
   const rowsFile = resolveRepoPath(repoRoot, options.rowsFile || options.input);
   const schemaReportPath = resolveRepoPath(repoRoot, options.schemaReport);
   const qaReportPath = resolveRepoPath(repoRoot, options.qaReport);
-  const defaultOut = legacyProcessNames
-    ? '.foundry/workspaces/process-curation-gate'
-    : `.foundry/workspaces/${datasetType}-dataset-curation-gate`;
+  const defaultOut = `.foundry/workspaces/${datasetType}-dataset-curation-gate`;
   const outDir = resolveRepoPath(repoRoot, options.outDir || defaultOut);
   const profileId = String(options.profile || 'generic').trim().toLowerCase();
-  const profile = profileFor(profileId);
+  const profile = profileFor(repoRoot, profileId, options);
   if (!rowsFile || !fileExists(rowsFile)) {
     throw new Error('--rows-file is required and must point to a JSON/JSONL dataset row file.');
   }
@@ -554,12 +607,8 @@ export function runDatasetCurationGate({
     report.processes = entityReports;
   }
   fs.mkdirSync(outDir, { recursive: true });
-  const reportFileName = legacyProcessNames
-    ? 'process-curation-gate-report.json'
-    : 'dataset-curation-gate-report.json';
-  const entitiesFileName = legacyProcessNames
-    ? 'process-curation-gate-processes.jsonl'
-    : `${datasetType}-curation-gate-entities.jsonl`;
+  const reportFileName = 'dataset-curation-gate-report.json';
+  const entitiesFileName = `${datasetType}-curation-gate-entities.jsonl`;
   const reportPath = path.join(outDir, reportFileName);
   const jsonlPath = path.join(outDir, entitiesFileName);
   writeJson(reportPath, report);
@@ -578,14 +627,10 @@ export function runDatasetCurationGate({
 export function runDatasetCurationCleanup({
   repoRoot,
   options = {},
-  forcedType = null,
-  legacyProcessNames = false,
 } = {}) {
-  const datasetType = datasetTypeFromOptions(options, forcedType);
+  const datasetType = datasetTypeFromOptions(options);
   const rowsFile = resolveRepoPath(repoRoot, options.rowsFile || options.input);
-  const defaultOut = legacyProcessNames
-    ? '.foundry/workspaces/process-curation-cleanup'
-    : `.foundry/workspaces/${datasetType}-dataset-curation-cleanup`;
+  const defaultOut = `.foundry/workspaces/${datasetType}-dataset-curation-cleanup`;
   const outDir = resolveRepoPath(repoRoot, options.outDir || defaultOut);
   const defaultOutFile = path.join(outDir, `${datasetTypePlural[datasetType]}.cleaned.jsonl`);
   const outFile = resolveRepoPath(repoRoot, options.outFile) || defaultOutFile;
@@ -618,9 +663,7 @@ export function runDatasetCurationCleanup({
       preserves_payload_semantics: true,
     },
   };
-  const reportFileName = legacyProcessNames
-    ? 'process-curation-cleanup-report.json'
-    : 'dataset-curation-cleanup-report.json';
+  const reportFileName = 'dataset-curation-cleanup-report.json';
   const reportPath = path.join(outDir, reportFileName);
   writeJson(reportPath, report);
   return {

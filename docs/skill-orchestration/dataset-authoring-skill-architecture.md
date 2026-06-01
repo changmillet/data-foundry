@@ -7,7 +7,6 @@ owner: tiangong-lca-data-foundry
 lastReviewedAt: 2026-05-29
 related:
   - docs/capability-ownership-policy.md
-  - docs/orchestrator.md
   - docs/workspace-project-map.md
   - specs/automated-lca-capability-registry.json
 ---

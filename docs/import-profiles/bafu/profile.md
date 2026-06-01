@@ -10,7 +10,7 @@ owner: tiangong-lca-data-foundry
 
 This profile defines the durable orchestration contract for converting the BAFU source package into TianGong-ready ILCD/TIDAS data and writing it into the approved BAFU account. It is the Foundry-facing profile for the workflow; task-local files under `.foundry/workspaces/` are runtime artifacts, not the source of truth for the workflow.
 
-BAFU-specific data curation rules live in `docs/import-profiles/bafu/constraints.md`. The orchestrator must lock the constraints snapshot before generating mutation plans, remote write requests, or final mapping reports.
+BAFU-specific data curation rules live in `docs/import-profiles/bafu/constraints.md`. The Foundry task workspace must lock the constraints snapshot before generating mutation plans, remote write requests, or final mapping reports.
 
 ## Execution Layers
 
@@ -98,7 +98,7 @@ Each checkpoint must include:
 - remote-write mode, if relevant.
 - residual blockers and follow-up task hints.
 
-Allowed checkpoint statuses are `pending`, `running`, `passed`, `failed`, and `waived`. A waiver must include explicit evidence and reviewer intent. On restart, the orchestrator resumes from the first stage whose checkpoint is absent, failed, running-stale, waived-with-expired-inputs, or whose input hashes no longer match. If any upstream stage is invalidated, all downstream stages must be treated as invalid until rerun.
+Allowed checkpoint statuses are `pending`, `running`, `passed`, `failed`, and `waived`. A waiver must include explicit evidence and reviewer intent. On restart, the Foundry run resumes from the first stage whose checkpoint is absent, failed, running-stale, waived-with-expired-inputs, or whose input hashes no longer match. If any upstream stage is invalidated, all downstream stages must be treated as invalid until rerun.
 
 ## Prewrite Evidence Gate
 
