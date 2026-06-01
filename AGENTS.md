@@ -52,9 +52,11 @@ tiangong-lca dataset context-pack \
 
 When the task says to use the latest local CLI, make sure the sibling `../tiangong-lca-cli` install and build are fresh before invoking `bin/tiangong-lca.js`: run `npm install` if `package.json` / `package-lock.json` changed or dependency versions are stale, then run `npm run build` after local source changes, or use the source entrypoint `node --import tsx src/main.ts ...` for diagnostics. Do not silently use stale `node_modules/` or `dist/` artifacts.
 
-For packaged LCA imports, use deterministic conversion first. AI may repair conversion gaps or schema blockers, but it must not replace a converter for formats already supported by `tidas-tools`.
+For packaged LCA imports, use deterministic conversion first. AI may repair conversion gaps or schema blockers with the contract context pack, but it must not replace a converter for formats already supported by `tidas-tools`.
 
 For PDF/Excel/source-document authoring, extract evidence first, then generate candidate rows with the contract context pack. Candidate rows must pass schema validation before they can enter mutation planning.
+
+Import-ready rows are source-language rows. Do not run bilingual extract/apply/validate or generate extra multilingual text before database import; multilingual completion is a separate post-import workflow.
 
 Do not present old runtime reports, stale `.foundry` artifacts, or prior write/readback reports as current proof. Current proof must come from the task workspace's contract manifest, validation reports, mutation plan, dry-run report, and verification artifacts.
 

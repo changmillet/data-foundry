@@ -20,4 +20,4 @@ Extract evidence from the source document, give AI the target TIDAS context pack
 - field-level evidence review
 - schema validation
 - review
-- bilingual validation when text fields are generated or repaired
+- source-language completeness and placeholder scan
