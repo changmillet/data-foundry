@@ -1,7 +1,7 @@
 {
   "$schema": "../specs/schemas/file-location-registry.schema.json",
   "schema_version": 1,
-  "updated_at_utc": "2026-05-29T16:12:33Z",
+  "updated_at_utc": "2026-06-01T06:32:27Z",
   "policy_doc": "docs/file-organization.md",
   "entries": [
     {
@@ -158,6 +158,22 @@
       "sensitivity": "non-sensitive governance runbook; contains no credentials and no full private payload export",
       "tracked": true,
       "notes": "Defines account-wide process/flow audit, repair queue, write, readback, UI, and compute-validation constraints for the current profile repair program."
+    },
+    {
+      "id": "countable-product-functional-unit-design",
+      "status": "active",
+      "classification": "design",
+      "current_path": "docs/countable-product-functional-unit-design.md",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "task_id": "current-profile-account-wide-audit-2026-05-25",
+      "referenced_by": [
+        "docs/current-profile-account-wide-audit-repair-constraints.md",
+        "scripts/foundry.mjs"
+      ],
+      "sensitivity": "non-sensitive design note; contains public PEF references and sanitized LCD process/flow identifiers only",
+      "tracked": true,
+      "notes": "Defines how countable durable products separate item/pair product reference flows from mass evidence and service-normalized functional units."
     },
     {
       "id": "dataset-authoring-skill-architecture",

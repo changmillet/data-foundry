@@ -17,6 +17,7 @@ whenToUpdate:
 checkPaths:
   - WORKFLOW.md
   - docs/account-context-policy.md
+  - docs/countable-product-functional-unit-design.md
   - docs/data-governance-loop.md
   - specs/account-level-repair-cycle.md
   - specs/workspace-capability-adapters.md
@@ -148,6 +149,7 @@ reference-flow closure 当前分布：
 - readback: schema、process review、bilingual、remote verify 二次 gate 均通过；readback process review 仍为物料输入 1.020 kg、输出 1.020 kg、delta 0。
 - UI validation: 已在真实 Chrome `Millet` profile 下进入 TianGong LCA Data Platform 过程编辑器并点击 `Data Check`，结果显示 `Data check successfully!`；随后 readback 显示 process `rule_verification=true`、远端 `modified_at=2026-05-25T04:10:10.771684+00:00`，且 `extracted_text` 旧值检查未再命中旧机械件质量或占位符。
 - UI validation repair note: 首次 UI `Data Check` 失败不是 LCD process 字段本身，而是递归引用的 electricity flow `3d76981f-964a-4865-b588-0e067a2a1163@01.01.003` 仍指向过期 source/contact 版本。修复该 flow 后，source `9ba3ac1e-6797-4cc0-afd5-1b8f7bf28c6a` 已刷新到 `03.00.003`，contact `339fec5b-cded-4b4e-9579-5e32597bb15e` 已刷新到 `01.00.006`，contact `f4b4c314-8c4c-4c83-968f-5b3c7724f6a8` 已刷新到 `01.00.001`。
+- modelling caveat: 进一步检查 output/reference flow 后，该 LCD 样例当前主 output flow 使用 `Mass` flow property，output amount 是 `1 kg`，因此它是 `mass_normalized_production_fixture`。如果目标是“1 台 LCD 显示器提供显示功能”的专家级数据，必须按 `docs/countable-product-functional-unit-design.md` 重新建模为 item-based reference flow，并用产品质量、BOM 和服务寿命证据做缩放；在此之前不能把该条宣称为 countable-product functional exemplar。
 
 已跑通的第二个样例是 elementary flow `0058b495-c311-4dc5-81ff-e7cb3b778fc8@00.00.001` 的 schema + flow governance + bilingual repair：
 
@@ -171,6 +173,10 @@ reference-flow closure 当前分布：
 UI 验证约束：真实浏览器页面的账号必须与 CLI runtime profile 一致。2026-05-25 曾发现一个 Chrome 窗口登录态与 example-account runtime profile 不一致，搜索 example-account LCD process UUID 返回“暂无数据”，该结果不能计为 UI validation。后续改用 Chrome `Millet` profile 后，页面可见 example-account 目标 LCD process，过程编辑器 `Data Check` 已通过。因此 UI gate 必须记录：Chrome profile、平台内显示账号、目标 UUID/version、点击的校验动作、UI 返回消息，以及校验后的 remote readback `rule_verification`。
 
 递归引用约束：过程编辑器的 `Data Check` 会检查 process 直接引用及其递归引用的数据集版本。若 process 本身 schema/review/remote verify 已通过但 UI 仍报“数据集不存在 / 当前版本号小于已发布版本号”，必须检查被引用 flow/source/contact 的递归版本，而不是只修 process JSON。修复顺序为：定位 UI 报错 UUID/version -> 查找直接或递归引用来源 -> 刷新到当前可见 latest published version -> dry-run + remote verify -> commit -> readback -> 重跑 UI `Data Check`。
+
+Unit-of-analysis 约束：每条自动研制数据必须在生成 process/flow payload 前先固定 functional unit、reference flow、reference unit、declared unit 是否适用和 scaling evidence。该语义决策由 skill / Codex workflow 完成，早于 reference flow reuse/create、process quantitative reference、exchange scaling、年产量补全和 compute normalization；CLI 不另做行业判断器，只在既有 build-plan validate / process review / flow review 中检查 artifact 是否存在、字段是否完整、最终 payload 是否与 artifact 一致。缺失时应阻断生成，而不是先生成 schema 可过的数据。
+
+离散耐用品约束：服装、鞋、显示器、家电、家具等 countable durable products 不能默认用 `kg` 作为专家级产品功能基准。若目标是产品功能或 PEF/PCR 式比较，应拆成两层：物理 reference flow 使用 `Number of items` / `Number of pairs` 等计数属性，产品质量/BOM 作为 supporting property 或 exchange evidence；功能单位在 process/model metadata 中记录服务、质量等级、寿命和使用次数。只有数据集明确声明为 `1 kg of product` 的 mass-normalized production 时，`Mass` qref 才可作为最终 reference flow。相关规则见 `docs/countable-product-functional-unit-design.md`。
 
 ## 写回策略
 
