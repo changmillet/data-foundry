@@ -82,7 +82,7 @@ The latest checked-out `tiangong-lca-skills` already has reusable skills that sh
 | `tidas-bilingual-transcreation`                                               | Child skill for semantic bilingual transcreation over CLI extract/apply/validate artifacts.                                                                                   |
 | `flow-governance-review`                                                      | Current flow child skill. It already wraps flow identity preflight, build-plan, review, repair, publish-version, and publish-reviewed-data commands.                          |
 | `process-automated-builder`                                                   | Current process child skill. It already wraps process identity preflight, evidence search, build-plan, required-field completion, bilingual handoff, and publish preparation. |
-| `current-account-dataset-review`                                              | Current multi-type dataset validation, reference refresh, lifecyclemodel save/graph, and remote verify child skill.                                                           |
+| `tidas-data-import`                                                           | Top-level CLI orchestration skill for package conversion and source-document authoring lanes.                                                                                 |
 | `lca-publish-executor`                                                        | Current unified publish request facade over `tiangong-lca publish run`.                                                                                                       |
 | `tiangong-lca-remote-ops`                                                     | Process-focused remote maintenance and verification wrapper. Use only where process-specific remote maintenance is required.                                                  |
 | `flow-hybrid-search`, `process-hybrid-search`, `lifecyclemodel-hybrid-search` | Retrieval helpers only. They produce candidates; they do not decide authoring or mapping.                                                                                     |
@@ -99,7 +99,7 @@ The current gap is not a broad CLI gap. The remaining work should be framed narr
 4. Add only the missing shared primitives if a real run requires them:
    - final mapping merge into one `mapping.csv` / JSONL contract;
    - structured source-package flow usage analysis for unused/intermediate/non-intermediate/elementary flow classification;
-   - current-account dataset inventory or scope expansion if the run needs account-wide frozen snapshots.
+   - dataset visibility or remote verification expansion if a run needs target-scope readback beyond existing CLI commands.
 
 These gaps should be implemented in `tiangong-lca-cli` first when deterministic, then exposed through thin skills. They should not be reintroduced as Foundry-local dataset scripts.
 
@@ -164,7 +164,7 @@ Default stages:
 | 6. Process authoring                                 | `process-automated-builder` plus dataset/process commands                                       | `process identity-preflight`, `process complete-required-fields`, `dataset references refresh-remote`, `dataset bilingual`, review gates. |
 | 7. Mapping/report                                    | future `dataset-mapping`                                                                        | Merge conversion mapping, bilingual evidence, reference changes, write/readback reports.                                                  |
 | 8. Remote write                                      | `lca-publish-executor`, `dataset publish-support`, flow/process publish commands | Official CLI/platform write paths only. No direct table writes.                                                                           |
-| 9. Readback verify                                   | `current-account-dataset-review`                                                                | `dataset verify-remote`, targeted row fetch/verification, accepted-difference report.                                                     |
+| 9. Readback verify                                   | CLI/remote verification child skill                                                             | `dataset verify-remote`, targeted row fetch/verification, accepted-difference report.                                                     |
 
 The top-level skill must not hand-edit entity rows directly. It prepares structured requests, invokes child skills or public CLI commands, records checkpoints, and stops when gates fail.
 
@@ -275,7 +275,7 @@ Publish gaps should become CLI tasks when the missing entity set cannot be writt
 
 ### Dataset Readback Verify
 
-Use `current-account-dataset-review verify-remote` or direct `tiangong-lca dataset verify-remote` through a child skill.
+Use `tiangong-lca dataset verify-remote` directly or through a child skill.
 
 Responsibilities:
 
@@ -308,7 +308,7 @@ On restart, the top-level skill resumes from the first missing, failed, stale, o
 
 1. Create `external-dataset-curated-import` in `tiangong-lca-skills` as the top-level orchestration skill.
 2. Have Foundry route structured import tasks to that skill instead of calling dataset adapters or CLI commands directly.
-3. Reuse existing child skills first: `tidas-bilingual-transcreation`, `flow-governance-review`, `process-automated-builder`, `current-account-dataset-review`, and `lca-publish-executor`.
+3. Reuse existing child skills first: `tidas-contract-context`, `tidas-data-import`, `tidas-bilingual-transcreation`, `flow-governance-review`, `process-automated-builder`, and `lca-publish-executor`.
 4. Add aliases or new child skills only where naming or scope prevents clear composition.
 5. Add missing deterministic primitives in `tiangong-lca-cli` before exposing them in skills.
 6. Add `source-evidence-dataset-development` after the structured-import top-level skill has one successful pilot and the child-skill contracts are stable.

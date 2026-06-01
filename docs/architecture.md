@@ -36,8 +36,8 @@
    - CLI, skill, source-artifact, hybrid-search, schema, and publish adapters
 
 7. Data layer
-   - inventory
-   - category plan
+   - source package manifests
+   - source document extraction outputs
    - schema/source/reference outputs
    - dry-run and verification artifacts
 
@@ -76,7 +76,6 @@ The foundry should call the owning workspace surface instead of absorbing implem
 - `tiangong-lca-edge-functions`: Edge Function runtime, including hybrid search and embedding jobs
 - `database-engine`: database RPCs, triggers, vector indexes, and schema governance
 - `tidas`, `tidas-sdk`, `tidas-tools`: schema and validation contracts
-- `LCA-DATA-AGENT`: read-only source artifacts and historical playbooks until equivalent CLI inventory/export exists
 - `wiki/`: foundry-local background knowledge, source summaries, and indexed Rulesbook chunks
 
 See `docs/workspace-project-map.md` and `specs/workspace-capability-adapters.md` for the routing contract.

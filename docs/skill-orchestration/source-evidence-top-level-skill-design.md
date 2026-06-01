@@ -281,7 +281,7 @@ Gate：
 
 子 skill / CLI：
 
-- `current-account-dataset-review` 做 remote visibility / verify；
+- `tiangong-lca dataset verify-remote` 做 remote visibility / verify；
 - `tidas-bilingual-transcreation` 做双语；
 - CLI schema/review/verify 命令做确定性 gate。
 
@@ -453,7 +453,7 @@ Gate：
 
 子 skill / CLI：
 
-- `current-account-dataset-review verify-remote`；
+- `tiangong-lca dataset verify-remote`；
 - `tiangong-lca dataset verify-remote`；
 - 需要时用 entity-specific get/list 命令冻结 readback snapshot。
 
@@ -478,7 +478,7 @@ Gate：
 - Flow authoring: `flow-governance-review`，必要时 `flow-hybrid-search` 只做 candidate retrieval。
 - Process authoring: `process-automated-builder`。
 - Bilingual fields: `tidas-bilingual-transcreation`。
-- Reference refresh / remote verify: `current-account-dataset-review`。
+- Reference refresh / remote verify: `tiangong-lca dataset references refresh-remote` and `tiangong-lca dataset verify-remote`。
 - Publish facade: `lca-publish-executor`。
 - Lifecycle model: `lifecyclemodel-recursive-orchestrator` / `lifecyclemodel-automated-builder` only when entity plan requires product-system graph。
 

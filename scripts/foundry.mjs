@@ -774,7 +774,7 @@ function makeContinuationPrompt(report) {
 }
 
 function artifactContractCheck({ contractPath, exit = true } = {}) {
-  const contractRelPath = contractPath || 'specs/acceptance/lca-compute-repair-20260510.artifacts.json';
+  const contractRelPath = contractPath || 'specs/acceptance/import-task.artifacts.json';
   const contractAbsPath = resolveRepoPath(contractRelPath);
   const checks = [];
   const errors = [];
@@ -2697,6 +2697,26 @@ const taskKindCapabilityClassRoutes = {
     'publish-prep',
     'graph-verification',
   ],
+  'external-dataset-curated-import': [
+    'tidas-contract-context',
+    'external-lca-package-conversion',
+    'schema-gate',
+    'process-review',
+    'flow-review',
+    'bilingual-gate',
+    'reference-closure',
+    'publish-prep',
+    'remote-verification',
+  ],
+  'source-evidence-dataset-development': [
+    'tidas-contract-context',
+    'source-document-authoring',
+    'source-evidence-review',
+    'schema-gate',
+    'process-review',
+    'flow-review',
+    'bilingual-gate',
+  ],
   'category-update': [
     'dataset-inventory',
     'schema-gate',
@@ -2733,9 +2753,13 @@ const taskKindCapabilityClassRoutes = {
 const requiredGateCapabilityClassRoutes = {
   bilingual: ['bilingual-gate'],
   'build-plan': ['process-build', 'flow-governance'],
+  contract: ['tidas-contract-context'],
+  context: ['tidas-contract-context'],
+  conversion: ['external-lca-package-conversion'],
   compute: ['graph-verification'],
   graph: ['graph-verification'],
   identity: ['dataset-inventory'],
+  import: ['external-lca-package-conversion'],
   publish: ['publish-prep', 'remote-publish'],
   reference: ['reference-closure'],
   'reference-closure': ['reference-closure'],
@@ -2743,15 +2767,19 @@ const requiredGateCapabilityClassRoutes = {
   review: ['process-review', 'flow-review'],
   ruleset: ['process-review', 'flow-review', 'publish-prep', 'remote-publish'],
   schema: ['schema-gate'],
+  source: ['source-document-authoring', 'source-evidence-review'],
   verification: ['schema-gate', 'reference-closure', 'remote-verification', 'graph-verification'],
 };
 
 const missingCapabilityClassOwners = {
   'embedding-maintenance': 'tiangong-lca-edge-functions / lca-domain-embedding',
+  'external-lca-package-conversion': 'tiangong-lca-cli / tidas-tools',
   'graph-verification': 'tiangong-lca-calculator',
   'hybrid-search': 'tiangong-lca-cli / tiangong-lca-skills / tiangong-lca-edge-functions',
   'lifecyclemodel-builder': 'tiangong-lca-cli / tiangong-lca-skills',
   'remote-verification': 'tiangong-lca-edge-functions / database-engine / tiangong-lca-cli',
+  'source-document-authoring': 'tiangong-lca-cli / tiangong-lca-skills',
+  'source-evidence-review': 'tiangong-lca-cli / tiangong-lca-skills',
 };
 
 function normalizedList(value) {
@@ -2840,7 +2868,20 @@ function routeClassesForTask(meta, options = {}, datasetType = 'all') {
   ]);
   const gateClasses = gateNames.flatMap((gate) => capabilityClassesForGate(gate, datasetType));
   const defaultClasses = taskKindCapabilityClassRoutes[kind] ?? [];
-  return uniqueStrings([...defaultClasses, ...gateClasses, ...directClasses]);
+  return uniqueStrings([...defaultClasses, ...gateClasses, ...directClasses])
+    .filter((className) => capabilityClassMatchesDatasetType(className, datasetType));
+}
+
+function capabilityClassMatchesDatasetType(className, datasetType) {
+  const type = String(datasetType ?? '').trim();
+  if (!type || type === 'all') return true;
+  if (type === 'process' && ['flow-governance', 'flow-review', 'remote-publish'].includes(className)) {
+    return false;
+  }
+  if (type === 'flow' && ['process-build', 'process-review', 'process-authoring-required-fields'].includes(className)) {
+    return false;
+  }
+  return true;
 }
 
 function capabilityMatchesDatasetType(capability, datasetType) {
@@ -9171,15 +9212,44 @@ function runUnsupportedTask(task, workspace) {
   return result;
 }
 
+function runCapabilityRoutedTask(task, workspace) {
+  const routePlan = writeCapabilityRoutePlan(
+    buildCapabilityRoutePlan({ taskObject: task }),
+    path.join(workspace, 'routing'),
+  );
+  const hasMissingCapabilities = routePlan.counts.missing_capabilities > 0;
+  const result = {
+    generated_at_utc: nowIso(),
+    task_id: task.meta.id,
+    classification: task.meta.kind,
+    verdict: routePlan.status,
+    next_queue: 'review',
+    next_state: hasMissingCapabilities ? 'Blocked' : 'ReviewReady',
+    reason: hasMissingCapabilities
+      ? 'Capability route plan has missing classes; create capability-development follow-ups before adapter execution.'
+      : 'Capability route plan is ready; run selected adapters into their planned output directories and collect gate artifacts.',
+    route_plan: routePlan.files?.capability_route_plan ?? null,
+    selected_capability_count: routePlan.counts.selected_capabilities,
+    missing_capability_count: routePlan.counts.missing_capabilities,
+  };
+  writeJson(path.join(workspace, 'outputs/task-result.json'), result);
+  writeText(
+    path.join(workspace, 'reports/capability-routed-task.md'),
+    `# Capability Routed Task\n\n${result.reason}\n\nRoute plan: \`${result.route_plan ?? 'not written'}\`\n`,
+  );
+  return result;
+}
+
 function runTask(task) {
   const workspace = ensureWorkspace(task);
   appendTaskLog(workspace, 'task.start', { task_id: task.meta.id, kind: task.meta.kind, category: task.meta.category });
   renderTaskPrompt(task, workspace);
   let result;
-  if (task.meta.kind === 'category-update' && task.meta.category === 'electricity_system') {
-    result = runElectricityCategoryUpdate(task, workspace);
-  } else if (task.meta.kind === 'account-repair' || task.meta.category === 'lca-compute-matrix-readiness') {
-    result = runAccountComputeRepair(task, workspace);
+  if (
+    task.meta.kind === 'external-dataset-curated-import' ||
+    task.meta.kind === 'source-evidence-dataset-development'
+  ) {
+    result = runCapabilityRoutedTask(task, workspace);
   } else {
     result = runUnsupportedTask(task, workspace);
   }
@@ -9293,26 +9363,8 @@ if (command === 'init') {
 } else if (command === 'route-task') {
   const result = runCapabilityRoute(options);
   console.log(JSON.stringify(result, null, 2));
-} else if (command === 'compute-repair-probe') {
-  const result = computeRepairProbe({ taskId: options.taskId || computeRepairTaskId });
-  console.log(JSON.stringify(result, null, 2));
-} else if (command === 'account-wide-audit-run') {
-  const result = runAccountWideAudit(options);
-  console.log(JSON.stringify(result, null, 2));
-} else if (command === 'sample-scenarios-dry-run') {
-  const result = runSampleScenariosDryRun(options);
-  console.log(JSON.stringify(result, null, 2));
-} else if (command === 'target-datasets-gate-run') {
-  const result = runAutomatedTargetDatasetsGateRun(options);
-  console.log(JSON.stringify(result, null, 2));
 } else if (command === 'post-write-verify') {
   const result = await runPostWriteVerification(options);
-  console.log(JSON.stringify(result, null, 2));
-} else if (command === 'matrix-readiness-verify') {
-  const result = runMatrixReadinessVerification(options);
-  console.log(JSON.stringify(result, null, 2));
-} else if (command === 'golden-fixtures-check') {
-  const result = runGoldenFixturesCheck(options);
   console.log(JSON.stringify(result, null, 2));
 } else if (command === 'orchestrate') {
   orchestrate(options).catch((error) => {
@@ -9322,6 +9374,6 @@ if (command === 'init') {
     process.exit(1);
   });
 } else {
-  console.log('Usage: node scripts/foundry.mjs init|doctor|workflow-check|workspace-map|capabilities-list|route-task|tasks-list|tasks-check|storage-check|artifact-contract-check|acceptance-check|status|env-check|compute-repair-probe|account-wide-audit-run|sample-scenarios-dry-run|target-datasets-gate-run|post-write-verify|matrix-readiness-verify|golden-fixtures-check|orchestrate [--once] [--task-id ID] [--include-review] [--interval-ms N] [--max-tasks N]');
+  console.log('Usage: node scripts/foundry.mjs init|doctor|workflow-check|workspace-map|capabilities-list|route-task|tasks-list|tasks-check|storage-check|artifact-contract-check|acceptance-check|status|env-check|post-write-verify|orchestrate [--once] [--task-id ID] [--include-review] [--interval-ms N] [--max-tasks N]');
   process.exit(command === 'help' || command === '--help' || command === '-h' ? 0 : 1);
 }

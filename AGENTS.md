@@ -1,12 +1,12 @@
 # AGENTS.md - TianGong LCA Data Foundry
 
-This repository is the private orchestration layer for autonomous TianGong LCA data work.
+This repository is the orchestration layer for autonomous TianGong LCA data import and TIDAS authoring work.
 
 ## Mission
 
-Build an AI-operable data foundry that can receive data tasks, judge the task type, run the right data-governance workflow, produce evidence, and continue iterating until the task reaches a verified terminal state.
+Build an AI-operable data foundry that can receive external LCA packages or source documents, choose the right import lane, produce evidence-backed TIDAS data, and continue iterating until the task reaches a verified terminal state.
 
-Humans should mostly manage policy, credentials, and final release posture. Agents should manage inventory, review, repair candidates, dry-run plans, verification, and work logs.
+Humans should mostly manage policy, credentials, and final release posture. Agents should manage source intake, contract-context collection, conversion or authoring artifacts, review, repair candidates, dry-run plans, verification, and work logs.
 
 ## Boundaries
 
@@ -28,64 +28,35 @@ Humans should mostly manage policy, credentials, and final release posture. Agen
 4. Read the relevant task file under `tasks/`, when the task came from the file queue.
 5. Read `specs/data-foundry-service.md`, unless a fast path below gives a narrower required-doc list.
 6. If the task needs LCA method background, ILCD naming conventions, or product-carbon-footprint factor database guidance, query `wiki/` first.
-7. If the task is account/category data governance, read `docs/data-governance-loop.md`.
+7. If the task is data import or source-document authoring, read `specs/workspace-capability-adapters.md` and the matching task template under `tasks/templates/`.
 8. Run `npm run doctor` before trusting local commands. Treat it as a local health check, not as the way to discover the workflow.
 
-## Fast Path: Structured External Dataset Imports
+## Fast Path: Data Import Production
 
-Use this path before generic task discovery when the user asks to import, update, rerun, write, or verify a structured external dataset package. Trigger phrases include:
+Use this path before generic task discovery when the user asks to import, update, author, write, or verify LCA data from external source material.
 
-- `external-dataset-curated-import`
-- `BAFU`, `bafu`, `FOEN`, or `Swiss Federal Administration - Federal Office for the Environment`
-- "write/import/update BAFU data/account", "把 BAFU 数据写入数据库", "写入 bafu 账号", or "随机选择 ... 条 bafu 数据"
-- EcoSpold/ILCD/TIDAS package import requests that already have normalized rows or a known import profile
+There are two primary lanes:
 
-For the BAFU import fast path, do not start by searching the repository for commands or rereading old runtime reports. Load these durable entrypoints first:
+- `external-dataset-curated-import`: packaged LCA data that can be converted through `tidas-tools` or a CLI wrapper.
+- `source-evidence-dataset-development`: PDF, Excel, web page, image, free text, or other source material that must be authored into TIDAS candidate rows.
 
-1. `docs/import-profiles/bafu/profile.md`
-2. `docs/import-profiles/bafu/constraints.md`
-3. `docs/skill-orchestration/entity-level-curated-import-queue.md`
-4. The sibling workspace skill `../tiangong-lca-skills/external-dataset-curated-import/SKILL.md`, when available
-5. `docs/workspace-project-map.md` only if a project root or command path is missing
-
-When the task says to use the latest local CLI, make sure the sibling `../tiangong-lca-cli` install and build are fresh before invoking `bin/tiangong-lca.js`: run `npm install` if `package.json` / `package-lock.json` changed or dependency versions are stale, then run `npm run build` after local source changes, or use the source entrypoint `node --import tsx src/main.ts ...` for diagnostics. Do not silently use stale `node_modules/` or `dist/` artifacts.
-
-If a BAFU import run uncovers a reusable CLI, SDK, tidas-tools, skill, or profile defect, fix it in the owning sibling repository, rebuild the affected local tool, and then start a fresh downstream regression run from the same durable BAFU profile. The regression must use the latest local code, not stale task-local scripts or old reports. Record the first remaining blocker with the exact entity task, command, input artifact, and validation report; if there is no blocker, continue the queue through remote write and readback verify.
-
-If structured rows and a curation queue already exist, every worker must ask the queue for the next action before changing rows:
+For both lanes, fetch the target TIDAS contract before AI authoring or repair:
 
 ```bash
-tiangong-lca dataset curation-queue next \
-  --queue-dir .foundry/workspaces/<task-id>/curation-queue \
-  --entity-type <support|flow|process> \
-  --limit 1 \
-  --out-dir .foundry/workspaces/<task-id>/execution-next
-```
-
-Execute only the returned action, including its `action_manifest` / `--action-manifest` and provenance arguments, then call `curation-queue next` again. For import/write/update requests, repeat this loop until support, flow, and process scopes return `status=complete`; one returned action is not a completed import. Do not synthesize draft/apply/report files with task-local scripts: formal artifacts must carry action lineage for the current queue task, and recovered/debug backfills cannot satisfy prewrite. Use `curation-queue verify` as the prewrite evidence gate after entity actions are complete; do not use old `run-status.md`, remote write success reports, or task-local finalizers as proof that current required artifacts exist. If `verify` is blocked while any `next` scope is still `ready`, continue the queue instead of stopping.
-
-Before any final response to a BAFU import/write request, run:
-
-```bash
-tiangong-lca dataset curation-queue guard \
-  --queue-dir .foundry/workspaces/<task-id>/curation-queue \
-  --out-dir .foundry/workspaces/<task-id>/prewrite-evidence-gate \
+tiangong-lca dataset context-pack \
+  --type <process|flow|source|contact|unitgroup|flowproperty|lifecyclemodel> \
+  --profile ai-import \
+  --out-dir .foundry/workspaces/<task-id>/context/<type> \
   --json
 ```
 
-If guard returns non-zero or `status=blocked`, do not present the run as complete and do not stop merely with a status report when it shows a runnable `next_action`. Continue that action or keep the automation/goal active for the next continuation.
+When the task says to use the latest local CLI, make sure the sibling `../tiangong-lca-cli` install and build are fresh before invoking `bin/tiangong-lca.js`: run `npm install` if `package.json` / `package-lock.json` changed or dependency versions are stale, then run `npm run build` after local source changes, or use the source entrypoint `node --import tsx src/main.ts ...` for diagnostics. Do not silently use stale `node_modules/` or `dist/` artifacts.
 
-If the input is still unstructured source material such as a PDF, report, screenshot, web page, free text, or arbitrary spreadsheet, do not use the curation queue yet. First run a source-evidence or draft-dataset authoring workflow to create structured TIDAS rows, then enter this fast path.
+For packaged LCA imports, use deterministic conversion first. AI may repair conversion gaps or schema blockers, but it must not replace a converter for formats already supported by `tidas-tools`.
 
-## Current Private Seed Sources
+For PDF/Excel/source-document authoring, extract evidence first, then generate candidate rows with the contract context pack. Candidate rows must pass schema validation before they can enter mutation planning.
 
-The project adapts these already proven local workflows. Their filenames may contain a private operator account label because they are historical source artifacts; do not copy that label into reusable templates or public-facing concepts.
-
-- `LCA-DATA-AGENT/tasks/open/example-account-account-data-governance.md`
-- `LCA-DATA-AGENT/playbooks/example-account-account-data-governance.md`
-- `LCA-DATA-AGENT/skill-sources/skills/account-data-iterative-governance/SKILL.md`
-- `LCA-DATA-AGENT/wiki/pages/methods/process-source-evidence-numeric-review.md`
-- `wiki/pages/concepts/foundry-rulesbook-wiki.md`
+Do not present old runtime reports, stale `.foundry` artifacts, or prior write/readback reports as current proof. Current proof must come from the task workspace's contract manifest, validation reports, mutation plan, dry-run report, and verification artifacts.
 
 ## Commit Rules
 

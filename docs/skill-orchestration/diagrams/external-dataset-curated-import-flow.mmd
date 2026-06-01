@@ -56,7 +56,7 @@ flowchart TD
   Verify["CLI prewrite evidence gate<br/>tiangong-lca dataset curation-queue verify<br/>校验所有 owned entity 的 name-plan / bilingual / lineage artifacts"]
   GV{"verify passed?"}
   RW["CLI remote write<br/>official paths only<br/>publish-support、publish run、flow/process publish<br/>dry-run first，guarded commit"]
-  RB["CLI + DB readback verify<br/>dataset verify-remote / current-account review<br/>root rows + referenced rows resolve remotely<br/>diff final rows and accepted mapping differences"]
+  RB["CLI + DB readback verify<br/>dataset verify-remote<br/>root rows + referenced rows resolve remotely<br/>diff final rows and accepted mapping differences"]
   Done(["Done<br/>checkpoints passed/waived<br/>write reports + readback reports + follow-ups preserved"])
 
   Block["Stop and preserve blocker<br/>missing profile/account/source、conversion blocker、next blocked、manual_review、gate blocker、remote partial failure"]

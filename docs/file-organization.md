@@ -50,6 +50,5 @@ Current repo-native commands:
 
 ```bash
 npm run storage:check
-npm run compute-repair:artifacts:check
 npm run acceptance:check
 ```

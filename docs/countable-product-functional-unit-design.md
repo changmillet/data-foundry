@@ -15,8 +15,7 @@ whenToUpdate:
   - when CLI gates start enforcing countable-product reference-flow rules
   - when a countable-product target-quality exemplar is written and verified
 checkPaths:
-  - docs/current-profile-account-wide-audit-repair-constraints.md
-  - specs/account-level-repair-cycle.md
+  - specs/data-foundry-service.md
   - scripts/foundry.mjs
   - ../tiangong-lca-cli/src/**
   - ../tiangong-lca-data/tiangong_lca_data/external_docs/pef_method.pdf

@@ -1,7 +1,7 @@
 {
   "$schema": "schemas/capability-registry.schema.json",
   "schema_version": 1,
-  "updated_at_utc": "2026-05-23T17:34:21Z",
+  "updated_at_utc": "2026-06-01T00:00:00Z",
   "purpose": "Machine-readable registry for automated LCA production dry-run capabilities that Foundry may route without owning shared CLI business logic.",
   "capabilities": [
     {
@@ -14,6 +14,72 @@
       "remote_write_mode": "read-only",
       "verification_gate": "missing_capabilities must be zero before autonomous adapter execution",
       "source_manifest_requirements": ["task id or task file", "capability registry", "route plan"]
+    },
+    {
+      "id": "cli.dataset.contract-context",
+      "class": "tidas-contract-context",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca dataset context-pack",
+      "input_contract": "Target TIDAS dataset type plus requested context includes: schema, methodology, and/or ruleset",
+      "output_contract": "contract-report.json, contract-manifest.json, schema.json, methodology.yaml when available, runtime-ruleset.json when available, ai-context.json, and ai-context.md under outputs/",
+      "remote_write_mode": "read-only",
+      "verification_gate": "contract-manifest must include the requested artifact hashes before AI authoring or conversion repair consumes the context",
+      "source_manifest_requirements": ["target TIDAS type", "CLI command record", "contract manifest", "schema hash", "methodology hash when available"]
+    },
+    {
+      "id": "cli.dataset.contract-get",
+      "class": "tidas-contract-context",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca dataset contract get",
+      "input_contract": "Target TIDAS dataset type plus requested context includes: schema, methodology, and/or ruleset",
+      "output_contract": "contract-report.json, contract-manifest.json, schema.json, methodology.yaml when available, and runtime-ruleset.json when available under outputs/",
+      "remote_write_mode": "read-only",
+      "verification_gate": "contract-manifest must identify the SDK-backed contract artifacts and hashes",
+      "source_manifest_requirements": ["target TIDAS type", "CLI command record", "contract manifest"]
+    },
+    {
+      "id": "cli.dataset.import-lca.convert",
+      "class": "external-lca-package-conversion",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca dataset import-lca convert",
+      "input_contract": "Supported external LCA source package, explicit output directory, source format detection mode, and target format tidas/ilcd/both",
+      "output_contract": "import-lca-report.json, conversion-report.json, mapping.csv when not detect-only, generated tidas/ package when target includes TIDAS, and generated ilcd/ package when target includes ILCD",
+      "remote_write_mode": "read-only",
+      "verification_gate": "converter exit code must be zero and conversion report validation for generated TIDAS output must pass before downstream schema gates consume rows",
+      "source_manifest_requirements": ["source package path", "converter command record", "conversion report", "mapping file when generated", "target contract manifests"]
+    },
+    {
+      "id": "cli.dataset.author",
+      "class": "source-document-authoring",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca dataset author",
+      "input_contract": "PDF, Excel, image, markdown, or other source document plus target TIDAS types and an output directory",
+      "output_contract": "authoring-report.json, source-extract.json, and context/<type>/ contract context packs for each target type",
+      "remote_write_mode": "read-only",
+      "verification_gate": "source extract and target contract manifests must exist before candidate row generation or repair begins",
+      "source_manifest_requirements": ["source file path", "author command record", "source extract", "target contract manifests"]
+    },
+    {
+      "id": "cli.dataset.evidence-search.plan",
+      "class": "source-evidence-review",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca dataset evidence-search plan",
+      "input_contract": "Field-level evidence question, target field context, preferred domains, required terms, and search budget",
+      "output_contract": "evidence-search-plan.json with query matrix, evidence policy, and stop conditions under outputs/",
+      "remote_write_mode": "read-only",
+      "verification_gate": "plan must identify field scope, required evidence, source policy, and bounded query budget before public-source search runs",
+      "source_manifest_requirements": ["evidence question", "target field path when known", "search plan", "budget"]
+    },
+    {
+      "id": "cli.dataset.evidence-search.run",
+      "class": "source-evidence-review",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca dataset evidence-search run",
+      "input_contract": "Evidence-search request plus normalized search results or a provider URL",
+      "output_contract": "evidence-search-report.json, evidence-search-results.jsonl, and evidence-search-declaration.json when evidence is absent or partial under outputs/",
+      "remote_write_mode": "read-only",
+      "verification_gate": "completed_no_sufficient_evidence and completed_with_partial_evidence must block invented field values and create explicit review assumptions",
+      "source_manifest_requirements": ["evidence request", "search results source", "evidence report", "declaration when generated"]
     },
     {
       "id": "cli.process.identity-preflight",
@@ -269,17 +335,6 @@
       "source_manifest_requirements": ["edge verify request JSON", "edge verify response JSON or skipped-not-configured record"]
     },
     {
-      "id": "calculator.matrix-readiness.verify",
-      "class": "graph-verification",
-      "owner_project": "tiangong-lca-calculator",
-      "entrypoint": "cargo run -p solver-worker --bin matrix_readiness",
-      "input_contract": "matrix_readiness_input.v1 JSON with snapshot coverage, sparse payload, optional compiled graph/provider evidence, policy, or a target-dataset-gate-report plus account-visible provider rows and reviewed provider decisions that Foundry converts into matrix input",
-      "output_contract": "matrix_readiness_report.v1 JSON plus Foundry matrix-readiness-verification-report.json, target-process-graph.json when target rows are used, gate-index.json, verification-handoff.json, coverage-delta.json, and command capture",
-      "remote_write_mode": "read-only",
-      "verification_gate": "report.status must be passed, blockers must be empty, provider closure must meet policy, graph readiness must be closed, and compute stability must be factorization-ready before publish-prep",
-      "source_manifest_requirements": ["matrix readiness input or target gate report", "provider scope manifest when account-visible providers are requested", "reviewed provider decisions when ambiguous providers are resolved", "calculator command capture", "matrix readiness report", "Foundry verification handoff"]
-    },
-    {
       "id": "cli.process.publish-build",
       "class": "publish-prep",
       "owner_project": "tiangong-lca-cli",
@@ -324,26 +379,15 @@
       "source_manifest_requirements": ["publish request path", "verification-report.json", "CLI command record"]
     },
     {
-      "id": "foundry.reference-closure.provider-flow-eligibility",
+      "id": "cli.dataset.references.refresh-remote",
       "class": "reference-closure",
-      "owner_project": "tiangong-lca-data-foundry",
-      "entrypoint": "node scripts/foundry.mjs sample-scenarios-dry-run",
-      "input_contract": "Sanitized sample scenario row with flow type",
-      "output_contract": "Per-sample provider_closure status in dry-run-report.json",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca dataset references refresh-remote",
+      "input_contract": "Local process or lifecyclemodel rows as JSON/JSONL plus explicit output file and artifact directory",
+      "output_contract": "patched rows, rewrite plan, remote refresh report, pre/post remote verification artifacts, and summary under outputs/",
       "remote_write_mode": "dry-run",
-      "verification_gate": "Elementary flow samples are skipped for product/provider closure matching",
-      "source_manifest_requirements": ["sample scenario id", "source sample index path"]
-    },
-    {
-      "id": "foundry.golden-fixtures.check",
-      "class": "test-fixture-governance",
-      "owner_project": "tiangong-lca-data-foundry",
-      "entrypoint": "node scripts/foundry.mjs golden-fixtures-check",
-      "input_contract": "specs/automated-lca-golden-fixtures.json plus optional sample, target-dataset, and compute runtime reports",
-      "output_contract": "golden-fixtures-check-report.json plus markdown fixture coverage report",
-      "remote_write_mode": "read-only",
-      "verification_gate": "required fixture coverage classes must be present and runtime checks must pass when reports are supplied",
-      "source_manifest_requirements": ["fixture matrix", "sample dry-run report", "target dataset gate report", "compute completeness snapshot"]
+      "verification_gate": "remote refresh report must leave no unresolved reachable reference version updates before publish preparation",
+      "source_manifest_requirements": ["rows file path", "patched rows path", "rewrite plan", "remote refresh report", "verification reports"]
     }
   ]
 }
