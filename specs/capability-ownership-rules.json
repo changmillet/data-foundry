@@ -11,7 +11,8 @@
         "capability route plans",
         "workspace manifests",
         "source package/document intake records",
-        "artifact and policy checks"
+        "artifact and policy checks",
+        "profile-aware dataset curation package assembly"
       ],
       "does_not_own": [
         "TIDAS schema definitions",
@@ -44,7 +45,7 @@
         "dataset contract/context CLI surface",
         "dataset import and source authoring commands",
         "schema validation",
-        "review, bilingual, reference, publish, and verification commands"
+        "QA, reference, publish, and verification commands"
       ]
     },
     {
@@ -97,7 +98,8 @@
       ],
       "examples": [
         "route-task",
-        "capability registry update"
+        "capability registry update",
+        "dataset-curation-gate"
       ]
     }
   ],

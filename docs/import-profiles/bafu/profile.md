@@ -20,7 +20,7 @@ The BAFU import must be executed through the normal Foundry stack:
 Foundry task / user entry
   -> Foundry task router and workspace state machine
     -> top-level external dataset curated import skill
-      -> specialized skills for conversion, bilingual transcreation, flow governance, process governance, publish, and verification
+      -> specialized skills for conversion, flow governance, process governance, publish, and verification
         -> tiangong-lca-cli, tidas-tools, search, validation, and publish commands
 ```
 
@@ -44,7 +44,7 @@ tiangong-lca dataset curation-queue next \
   --out-dir .foundry/workspaces/<task-id>/execution-next
 ```
 
-The returned action is the execution contract for that turn. A worker may run the returned CLI command or invoke the returned child skill with the returned input/output artifacts, then it must call `curation-queue next` again. The returned action manifest and its hashes are part of the contract: source-name drafts, bilingual drafts, apply evidence, and validation reports must carry matching artifact lineage for the current queue task. For import, update, write, or rerun requests, this loop continues until the requested support, flow, and process scopes all return `status=complete`. Workers must not choose arbitrary process batches, select "already clean" rows, or author final names/translations/classifications through task-local scripts. Same-name files and recovered/debug backfills are not publishable completion evidence. This is the execution-time control; the prewrite evidence gate is only the final backstop.
+The returned action is the execution contract for that turn. A worker may run the returned CLI command or invoke the returned child skill with the returned input/output artifacts, then it must call `curation-queue next` again. The returned action manifest and its hashes are part of the contract: source-name drafts, apply evidence, and validation reports must carry matching artifact lineage for the current queue task. For import, update, write, or rerun requests, this loop continues until the requested support, flow, and process scopes all return `status=complete`. Workers must not choose arbitrary process batches, select "already clean" rows, or author final names/classifications through task-local scripts. Same-name files and recovered/debug backfills are not publishable completion evidence. This is the execution-time control; the prewrite evidence gate is only the final backstop.
 
 If `curation-queue verify` is `blocked` while any `curation-queue next` scope still returns `status=ready`, the correct action is to continue the queue, not to stop the run or report a final blocker. Stop only when `next` itself is blocked, when there is no runnable next action but verify remains blocked, or when another profile gate requires human input.
 
@@ -110,7 +110,7 @@ tiangong-lca dataset curation-queue verify \
   --out-dir .foundry/workspaces/<task-id>/prewrite-evidence-gate
 ```
 
-The gate report must be `passed` and referenced by the stage 8 checkpoint. It must check action lineage for the current queue task, not only artifact filenames. It is not enough for a runtime script to write `checkpoints/*.json` or for `dataset bilingual validate`, schema validation, name-quality validation, remote dry-run, or readback verification to pass afterward. Those gates validate rows; they do not prove that the required entity closure, name-plan authoring, and Codex bilingual transcreation steps actually happened.
+The gate report must be `passed` and referenced by the stage 8 checkpoint. It must check action lineage for the current queue task, not only artifact filenames. It is not enough for a runtime script to write `checkpoints/*.json` or for schema validation, name-quality validation, remote dry-run, or readback verification to pass afterward. Those gates validate rows; they do not prove that the required entity closure and name-plan authoring steps actually happened.
 
 If the gate is blocked, do not publish. Resume the missing support/flow/process entity tasks from their queue work directories and regenerate the affected stage checkpoints. Task-local report finalizers may summarize completed gates, but they must not synthesize passed checkpoints without the child artifacts named by the prewrite evidence gate.
 
@@ -121,9 +121,9 @@ If the gate is blocked, do not publish. Resume the missing support/flow/process 
 | 1 | Source intake | Freeze source package identity. | source manifest with zip path, checksum, source URL/evidence, package version, extraction directory, and license/source notes. | checksum and extraction manifest present; source identity is unambiguous. |
 | 2 | Normalize | Convert source formats into working ILCD/TIDAS artifacts. | TIDAS JSON, ILCD output, mapping CSV, conversion report, and command manifest. | `tidas-tools import-lca` completed; outputs exist; conversion report has no blocking failure. |
 | 3 | Conversion QA | Check conversion quality before curation. | QA report for exchange direction, EcoSpold trace, schema validation, and mapping completeness. | exchange direction and trace are usable; schema/mapping blockers are zero or explicitly recorded for repair. |
-| 4 | Support curation | Curate contact, source, compliance system, unit group, and flow property records first. | support rows, support mapping, bilingual evidence, validation report, and reuse/new-create decisions. | all required support refs resolve; TianGong public support records are reused when suitable; BAFU-specific records have evidence. |
-| 5 | Flow curation | Curate all referenced flows before process curation. | flow rows with public-flow matching, classification, name split, bilingual text, property/unit refs, provenance, and validation reports. | every process-referenced flow has `curated_pass`; elementary flows use TianGong public flows unless recorded as approved BAFU private exceptions. |
-| 6 | Process curation | Curate processes against finalized support and flow refs. | process rows with refreshed global refs, exchanges, reference year, annual supply/production, review/source/contact, bilingual text, provenance, and validation reports. | all process refs point to finalized support/flow rows; required fields are filled with traceable evidence; schema and semantic gates pass, except profile-declared review-code waivers recorded in the checkpoint. |
+| 4 | Support curation | Curate contact, source, compliance system, unit group, and flow property records first. | source-language support rows, support mapping, validation report, and reuse/new-create decisions. | all required support refs resolve; TianGong public support records are reused when suitable; BAFU-specific records have evidence. |
+| 5 | Flow curation | Curate all referenced flows before process curation. | source-language flow rows with public-flow matching, classification, name split, property/unit refs, provenance, and validation reports. | every process-referenced flow has `curated_pass`; elementary flows use TianGong public flows unless recorded as approved BAFU private exceptions. |
+| 6 | Process curation | Curate processes against finalized support and flow refs. | source-language process rows with refreshed global refs, exchanges, reference year, annual supply/production, review/source/contact, provenance, and validation reports. | all process refs point to finalized support/flow rows; required fields are filled with traceable evidence; schema and semantic gates pass, except profile-declared QA-code waivers recorded in the checkpoint. |
 | 7 | Mapping/report | Record every material difference from source to final TianGong TIDAS payload. | final `mapping.csv`, methodology report, unresolved issue reports, and principles-new-add file if new rules were discovered. | mapping covers source ids, final ids, field-level changed values, reuse decisions, and unresolved exceptions. |
 | 8 | Remote write | Commit approved rows to the formal BAFU account. | prewrite evidence gate report, `dataset publish-support` report for source/contact/unitgroup/flowproperty rows, flow/process publish/upsert/update reports, retry reports, and duration metrics. | `dataset curation-queue verify` passed for the committed scope; write uses official account-guarded CLI/platform paths only; no direct table writes; failures are isolated for targeted retry. |
 | 9 | Readback verify | Verify the remote account state after commit. | remote readback snapshots, diff report against stage 7 outputs, final write status, and final verification summary. | every committed row is found remotely and matches the intended final payload or has a documented accepted difference. |
@@ -144,21 +144,21 @@ Check conversion artifacts before any data curation. Known BAFU conversion risks
 
 ### 4. Support Curation
 
-Support records are upstream dependencies. Curate them before flows and processes so later global references are materialized from approved support records, not retranslated or regenerated inside each process.
+Support records are upstream dependencies. Curate them before flows and processes so later global references are materialized from approved support records, not regenerated inside each process.
 
 ### 5. Flow Curation
 
-Flow curation must include identity matching, classification, name-part construction, bilingual transcreation, flow property/unit group selection, and provenance. Flow classification must use the TianGong/TIDAS taxonomy selected through curation; source classifications must be preserved as provenance, not copied as final target taxonomy when they are not valid TianGong classifications.
+Flow curation must include identity matching, classification, source-language name-part construction, flow property/unit group selection, and provenance. Flow classification must use the TianGong/TIDAS taxonomy selected through curation; source classifications must be preserved as provenance, not copied as final target taxonomy when they are not valid TianGong classifications.
 
 ### 6. Process Curation
 
 Process curation must consume finalized flow and support records. It must refresh global references before validation instead of failing late on stale refs. Required process fields such as reference year and annual supply/production must be filled from traceable source evidence or an explicitly documented package-level fallback rule.
 
-Profile-specific review waivers are allowed only when named in `docs/import-profiles/bafu/constraints.md` and recorded with evidence in the stage checkpoint. For BAFU, `process_material_balance_deviation` is an account-level QA observation rather than a remote-write blocker; all other process review blockers remain blocking unless the constraints file is explicitly updated.
+CLI process/flow/lifecyclemodel QA is a deterministic QA report, not the profile policy decision point. Foundry owns dataset curation, AI authoring packages, deterministic prewrite cleanup of import-only trace metadata via `node scripts/foundry.mjs dataset-curation-cleanup --type <process|flow|lifecyclemodel>`, waiver decisions, and the final prewrite status. The curation gate should pass the SDK-backed schema and methodology YAML text into each authoring package through `--schema-file`, `--yaml-file`, `--contract-context`, or `--context-dir` when those artifacts are available. Profile-specific QA waivers are allowed only when named in `docs/import-profiles/bafu/constraints.md` and recorded with evidence in the stage checkpoint. For BAFU, `process_material_balance_deviation` is an account-level QA observation rather than a remote-write blocker; all other QA findings or schema issues remain action items unless the constraints file is explicitly updated.
 
 ### 7. Mapping And Report
 
-The final mapping must combine format conversion mapping and TianGong curation mapping. It must show where final TianGong TIDAS payloads differ from the source-derived TIDAS artifacts, including ids, versions, refs, names, classifications, bilingual text, support refs, and documented exceptions.
+The final mapping must combine format conversion mapping and TianGong curation mapping. It must show where final TianGong TIDAS payloads differ from the source-derived TIDAS artifacts, including ids, versions, refs, source-language names, classifications, support refs, and documented exceptions.
 
 ### 8. Remote Write
 

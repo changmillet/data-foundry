@@ -13,7 +13,7 @@ related:
 
 # Entity-Level Curated Import Queue
 
-Structured external imports should not curate a whole package as one large batch. A package-sized batch makes translation context inconsistent, lets process workers rewrite shared flow text, and makes a partial failure hard to resume.
+Structured external imports should not curate a whole package as one large batch. A package-sized batch makes source-name context inconsistent, lets process workers rewrite shared flow text, and makes a partial failure hard to resume.
 
 The execution unit is an entity task: one support record, one flow, or one process closure. A process closure includes the process row and dependency references, but it does not own shared flow or support rows.
 
@@ -54,7 +54,7 @@ The queue directory is the durable contract:
 - `entities/<kind>/<id>__<version>/entity-run-plan.json`: the mandatory per-entity stage plan and workspace layout.
 - `entities/<kind>/<id>__<version>/checkpoints/`: stage checkpoints written by the runner.
 
-Each entity work directory also reserves the same durable surfaces used by a successful single-process run: `rows/`, `references/`, `qa/`, `review/`, `bilingual/`, `remote/`, and `reports/`.
+Each entity work directory also reserves the same durable surfaces used by a successful single-process run: `rows/`, `references/`, `qa/`, `review/`, `remote/`, and `reports/`.
 
 ## Process Closure Execution
 
@@ -63,19 +63,19 @@ A process task is not a "process JSON row only" task. It is a process closure ta
 1. Read `entity-run-plan.json` and acquire the task lock.
 2. Confirm support and flow dependency task checkpoints are passed.
 3. Build or refresh the process-local authority catalog from finalized support rows, finalized BAFU-owned flow rows, and public/external flow refs.
-4. Materialize process references from that authority catalog. Referenced flow display text is composed from finalized flow `name` subfields, not translated inside the process.
-5. Run process required-field completion, exchange evidence repair, year and annual-supply evidence repair, name normalization, bilingual transcreation, schema validation, profile review gates, and mapping/report output.
+4. Materialize process references from that authority catalog. Referenced flow display text is composed from finalized flow `name` subfields, not rewritten inside the process.
+5. Run process required-field completion, exchange evidence repair, year and annual-supply evidence repair, source-language name normalization, schema validation, profile QA gates, and mapping/report output.
 6. Run official guarded remote dry-run/commit and readback diff for this process scope.
 7. Mark the entity checkpoint passed only after its stage checkpoints, mapping, remote write report, and readback report exist or have explicit profile-backed waivers.
 
-If a process run needs a local field repair, the repair happens inside that process entity workspace and then the full entity gates are rerun. A package-wide bilingual warning batch is not a valid substitute for the process closure workflow.
+If a process run needs a local field repair, the repair happens inside that process entity workspace and then the full entity gates are rerun. A package-wide warning batch is not a valid substitute for the process closure workflow.
 
 ## Hard Order
 
 1. Support tasks: contacts, sources, unit groups, flow properties, data-format sources, compliance references.
-2. Flow tasks: exact lookup, semantic candidate search when needed, classification, name normalization, bilingual, property/unit links, provenance, schema/review gates.
-3. Process tasks: finalized flow refs, exchange repair, required fields, reference year, annual supply/production, contact/source/review refs, bilingual, schema/review gates.
-4. Mapping/report: merge conversion mapping, curation deltas, bilingual evidence, reference rewrites, write reports, readback reports.
+2. Flow tasks: exact lookup, semantic candidate search when needed, classification, source-language name normalization, property/unit links, provenance, schema/QA gates.
+3. Process tasks: finalized flow refs, exchange repair, required fields, reference year, annual supply/production, contact/source/review refs, schema/QA gates.
+4. Mapping/report: merge conversion mapping, curation deltas, source-language evidence, reference rewrites, write reports, readback reports.
 5. Remote write: official CLI/platform paths only.
 6. Readback verify: remote rows and referenced rows must resolve and match accepted mapping differences.
 
@@ -93,11 +93,11 @@ For BAFU-style process batches, the practical pattern is:
 - several agents process flow tasks once the support catalog is available;
 - up to five agents process process closures once flow/support dependencies are finalized, with one isolated `entities/processes/<id>__<version>/` workspace per process.
 
-Each agent runs the complete child-skill workflow for its owned entity. It should not switch into a lighter "last-function-only" mode because a previous task happened to work on classification, translation, or reference refresh.
+Each agent runs the complete child-skill workflow for its owned entity. It should not switch into a lighter "last-function-only" mode because a previous task happened to work on classification, name normalization, or reference refresh.
 
 ## Reference Text Rule
 
-Global references are authored once and reused. A process task materializes referenced flow/contact/source/unit/flow-property display text from the authority catalog. It must not independently translate `referenceToFlowDataSet/common:shortDescription` or reconstruct flow names from process context.
+Global references are authored once and reused. A process task materializes referenced flow/contact/source/unit/flow-property display text from the authority catalog. It must not independently reconstruct `referenceToFlowDataSet/common:shortDescription` or flow names from process context.
 
 ## Resume Rule
 

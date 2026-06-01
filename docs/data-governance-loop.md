@@ -3,7 +3,7 @@
 Foundry now centers on importing external source material into TIDAS data.
 
 ```text
-source intake -> contract context -> conversion or source extraction -> AI repair/authoring -> schema/review gates -> dry-run publish/import -> verification / follow-up
+source intake -> contract context -> conversion or source extraction -> AI repair/authoring -> schema/QA gates -> dry-run publish/import -> verification / follow-up
 ```
 
 ## Inputs
@@ -19,7 +19,7 @@ source intake -> contract context -> conversion or source extraction -> AI repai
 - contract context manifest
 - conversion report or source extraction report
 - candidate TIDAS rows
-- validation and review findings
+- validation and QA findings
 - repair queue or explicit blocker report
 - mutation/publish dry-run plan
 - completeness snapshot
@@ -43,4 +43,4 @@ Keep unresolved assumptions explicit. Do not silently convert weak evidence into
 
 ### Validation
 
-Candidate rows must pass TIDAS schema validation, semantic review, bilingual checks when relevant, reference closure, and dry-run publish/import gates before they can be considered ready.
+Candidate rows must pass TIDAS schema validation, semantic QA, reference closure, and dry-run publish/import gates before they can be considered ready.

@@ -14,6 +14,3 @@ artifacts/
 reports/
 tmp/
 *.local
-wiki/index.db
-wiki/.queue-artifacts/
-wiki/.daemon/

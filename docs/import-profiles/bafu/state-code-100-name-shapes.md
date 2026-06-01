@@ -35,13 +35,13 @@ Observed row counts visible from the account:
 Authoring implications:
 
 - Flow, process, and lifecycle model rows use the structured four-part name plan: `baseName`, `treatmentStandardsRoutes`, `mixAndLocationTypes`, and optional `functionalUnitFlowProperties`.
-- Source rows should not be forced into four-part names. The source display identity is `common:shortName`; source description/comment fields are bilingual descriptive fields handled after name-plan.
-- Contact rows use `common:name` and `common:shortName`. Address, central contact point, and contact description are bilingual fields, not name-plan fields.
+- Source rows should not be forced into four-part names. The source display identity is `common:shortName`; source description/comment fields remain source-language descriptive fields.
+- Contact rows use `common:name` and `common:shortName`. Address, central contact point, and contact description remain source-language descriptive fields, not name-plan fields.
 - Unit group rows use `common:name`.
 - Flow property rows use `common:name`; the schema key is `flowPropertiesInformation`, plural.
 - LCIA method rows have no visible public sample in this account; use the TIDAS schema shape until a public example is available.
 
 Workflow implication:
 
-- `tiangong-lca dataset name-plan extract/apply/validate` must be run before bilingual transcreation for owned support rows as well as flow/process/lifecyclemodel rows.
+- `tiangong-lca dataset name-plan extract/apply/validate` must be run for owned support rows as well as flow/process/lifecyclemodel rows.
 - Support-row drafts must return only the fields listed by each unit's `target_name_fields`; they must not invent flow/process `baseName` or route/mix fields.

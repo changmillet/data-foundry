@@ -8,7 +8,7 @@ The project adapts the OpenAI Symphony pattern to LCA data work:
 - per-task isolated workspaces
 - repo-owned `WORKFLOW.md` policy
 - packaged LCA import and source-document authoring lanes
-- evidence-first process review
+- evidence-first process QA
 - dry-run and verification gates before database writes
 - remote reference/version readback gates before publish-prep
 - state-code-aware mutation plans and completeness snapshots
@@ -41,7 +41,6 @@ The foundry must route across the local LCA workspace, including `tiangong-lca-c
 - `.codex/hooks.json`: Codex Stop hook registration for foundry acceptance checks.
 - `inputs/`: safe repo-visible task inputs, such as source package manifests and document evidence notes.
 - `docs/workspace-project-map.md`: local workspace project and capability map.
-- `wiki/`: repo-local Tiangong Wiki knowledge base and source vault.
 - `tasks/`: filesystem task queue and reusable import task templates.
 - `scripts/foundry.mjs`: local workflow/task validation utility.
 - `.foundry/`: local-only runtime state, logs, and workspaces.
@@ -55,25 +54,17 @@ npm run workspace:map
 npm run env:check
 npm run workflow:check
 npm run storage:check
-npm run wiki:build-rulesbook
-npm run wiki:init
-npm run wiki:doctor
-npm run wiki:fts -- "ILCD nomenclature"
 npm run capabilities:list -- --class tidas-contract-context
 npm run task:route -- --kind external-dataset-curated-import --required-gates contract,schema
 npm run task:route -- --kind source-evidence-dataset-development --required-gates context,schema
+npm run dataset:curation-gate -- --type process --rows-file ./rows/processes.jsonl --schema-report ./schema/report.json --qa-report ./qa/process-qa-report.json --schema-file ./contract/schema.json --yaml-file ./contract/methodology.yaml --profile bafu
+npm run dataset:curation-cleanup -- --type process --rows-file ./rows/processes.jsonl --out-file ./rows/processes.cleaned.jsonl
 npm run orchestrator:once
 npm run post-write:verify
 npm run orchestrator:status
 npm run tasks:list
 npm run tasks:check
 ```
-
-## Rulesbook Wiki
-
-`wiki/` is the foundry-local knowledge base. It follows `@biaoo/tiangong-wiki` and stores source summaries plus full-text chunks that agents can query before authoring or repairing TIDAS data.
-
-Run `npm run wiki:init` or `npm run wiki:sync` to rebuild the local `wiki/index.db`. The database is derived local state and is intentionally ignored by git.
 
 ## Safety Posture
 

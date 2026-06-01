@@ -16,7 +16,6 @@ Humans should mostly manage policy, credentials, and final release posture. Agen
 - Source-of-truth task policy belongs in `WORKFLOW.md`.
 - Project-level specifications belong in `specs/`.
 - Reusable operating knowledge belongs in `docs/`.
-- Repo-local background knowledge and imported source corpora belong in `wiki/`.
 - Task queue files belong in `tasks/`.
 - Do not implement raw database writes without an explicit dry-run and verification gate.
 
@@ -27,9 +26,8 @@ Humans should mostly manage policy, credentials, and final release posture. Agen
 3. Apply the fast-path routing rules below before broad repository search.
 4. Read the relevant task file under `tasks/`, when the task came from the file queue.
 5. Read `specs/data-foundry-service.md`, unless a fast path below gives a narrower required-doc list.
-6. If the task needs LCA method background, ILCD naming conventions, or product-carbon-footprint factor database guidance, query `wiki/` first.
-7. If the task is data import or source-document authoring, read `specs/workspace-capability-adapters.md` and the matching task template under `tasks/templates/`.
-8. Run `npm run doctor` before trusting local commands. Treat it as a local health check, not as the way to discover the workflow.
+6. If the task is data import or source-document authoring, read `specs/workspace-capability-adapters.md` and the matching task template under `tasks/templates/`.
+7. Run `npm run doctor` before trusting local commands. Treat it as a local health check, not as the way to discover the workflow.
 
 ## Fast Path: Data Import Production
 
@@ -56,7 +54,7 @@ For packaged LCA imports, use deterministic conversion first. AI may repair conv
 
 For PDF/Excel/source-document authoring, extract evidence first, then generate candidate rows with the contract context pack. Candidate rows must pass schema validation before they can enter mutation planning.
 
-Import-ready rows are source-language rows. Do not run bilingual extract/apply/validate or generate extra multilingual text before database import; multilingual completion is a separate post-import workflow.
+Import-ready rows are source-language rows. Do not generate extra multilingual text before database import; additional language completion, if ever requested, is outside the import gate.
 
 Do not present old runtime reports, stale `.foundry` artifacts, or prior write/readback reports as current proof. Current proof must come from the task workspace's contract manifest, validation reports, mutation plan, dry-run report, and verification artifacts.
 

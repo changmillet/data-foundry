@@ -23,25 +23,19 @@
    - concurrency
    - retry and reconciliation
 
-5. Knowledge layer
-   - repo-local Tiangong Wiki
-   - Rulesbook source PDFs
-   - source summaries and fulltext chunks
-   - derived local FTS index
-
-6. Execution layer
+5. Execution layer
    - per-task workspace
    - hooks
    - agent app-server or CLI subprocess
    - CLI, skill, source-artifact, hybrid-search, schema, and publish adapters
 
-7. Data layer
+6. Data layer
    - source package manifests
    - source document extraction outputs
    - schema/source/reference outputs
    - dry-run and verification artifacts
 
-8. Observability layer
+7. Observability layer
    - structured logs
    - status snapshots
    - task reports
@@ -53,7 +47,6 @@ The v0 runtime is intentionally small:
 - filesystem task queue
 - workflow/task validation script
 - read-only workspace map diagnostic
-- repo-local wiki diagnostic
 - no persistent database
 - no remote commit by default
 
@@ -76,6 +69,5 @@ The foundry should call the owning workspace surface instead of absorbing implem
 - `tiangong-lca-edge-functions`: Edge Function runtime, including hybrid search and embedding jobs
 - `database-engine`: database RPCs, triggers, vector indexes, and schema governance
 - `tidas`, `tidas-sdk`, `tidas-tools`: schema and validation contracts
-- `wiki/`: foundry-local background knowledge, source summaries, and indexed Rulesbook chunks
 
 See `docs/workspace-project-map.md` and `specs/workspace-capability-adapters.md` for the routing contract.

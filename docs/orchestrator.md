@@ -13,9 +13,9 @@ npm run orchestrator:status
 
 ## Supported Lanes
 
-`external-dataset-curated-import` is for packaged LCA datasets. The orchestrator must select contract-context, converter, schema, review, bilingual, reference, publish-prep, and verification capabilities.
+`external-dataset-curated-import` is for packaged LCA datasets. The orchestrator must select contract-context, converter, schema, QA, reference, publish-prep, and verification capabilities.
 
-`source-evidence-dataset-development` is for PDF, Excel, web exports, screenshots, and free text. The orchestrator must select contract-context, source-document authoring, evidence review, schema, review, and bilingual capabilities.
+`source-evidence-dataset-development` is for PDF, Excel, web exports, screenshots, and free text. The orchestrator must select contract-context, source-document authoring, evidence review, schema, and QA capabilities.
 
 ## Missing Capability Rule
 

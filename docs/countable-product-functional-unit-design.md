@@ -26,7 +26,7 @@ checkPaths:
 
 ## 背景
 
-当前 LCD monitor repair 样例已经通过 schema、review、bilingual、remote reference、readback 和真实 UI `Data Check`。但进一步检查后发现，该 process 的主产品 output flow `0f14f2f1-768f-44cd-b5d7-b81ecbe1a9b8@01.01.000` 使用的 flow property 是 `Mass`，output amount 是 `1`。这等价于“1 kg 成品显示器制造”，不是“1 台 LCD 显示器提供显示功能”。
+当前 LCD monitor repair 样例已经通过 schema、QA、remote reference、readback 和真实 UI `Data Check`。但进一步检查后发现，该 process 的主产品 output flow `0f14f2f1-768f-44cd-b5d7-b81ecbe1a9b8@01.01.000` 使用的 flow property 是 `Mass`，output amount 是 `1`。这等价于“1 kg 成品显示器制造”，不是“1 台 LCD 显示器提供显示功能”。
 
 这两种模型都可能合法，但不能混用：
 
@@ -182,8 +182,8 @@ BuildPlan 必须包含：
 这个 artifact 是 skill/agent 语义判断、source review、process/flow materialization 和 compute readiness 之间的契约。实现边界应保持简单：
 
 - skill / Codex workflow 负责语义判断：读取 source evidence、PEF/PCR、行业语境、目标数据用途，决定 functional unit、reference flow、reference unit 和 scaling evidence。
-- CLI 不应另做一套行业判断器；CLI 只在既有 `build-plan validate`、`process review`、`flow review` 或 dataset gate 中检查 artifact 是否存在、字段是否完整、最终 payload 是否与 artifact 一致。
-- review 是复核层，不是首次决策层。若生成前缺少 `unit_of_analysis`，skill 应停止；若生成后 payload 背离 artifact，现有 review/gate 应报 blocker。
+- CLI 不应另做一套行业判断器；CLI 只在既有 `build-plan validate`、`process QA`、`flow QA` 或 dataset gate 中检查 artifact 是否存在、字段是否完整、最终 payload 是否与 artifact 一致。
+- QA 是复核层，不是首次决策层。若生成前缺少 `unit_of_analysis`，skill 应停止；若生成后 payload 背离 artifact，现有 QA/gate 应报 blocker。
 
 允许的决策状态至少包括：
 

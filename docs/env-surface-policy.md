@@ -22,7 +22,7 @@ Only document variables that meet at least one of these conditions:
 Allowed families:
 
 - `FOUNDRY_*` for foundry-owned gates, paths, labels, and observability controls;
-- public `TIANGONG_LCA_API_*`, session, review LLM, KB search, and unstructured-document runtime keys used by CLI-backed workflows;
+- public `TIANGONG_LCA_API_*`, session, QA LLM, KB search, and unstructured-document runtime keys used by CLI-backed workflows;
 - `LCA_DATA_AGENT_*`, `TIANGONG_LCA_CLI_DIR`, `TIANGONG_LCA_SKILLS_ROOT`, and `LCA_SKILLS_ROOT` path indirection keys.
 
 ## Forbidden Variables

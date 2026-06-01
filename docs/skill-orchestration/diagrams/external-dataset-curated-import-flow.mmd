@@ -18,9 +18,9 @@ flowchart TD
     N["CLI dispatcher<br/>curation-queue next --entity-type support|flow|process<br/>返回 action_manifest、executor、input/output artifacts"]
     E{"executor 是什么?"}
     CLIAct["CLI action<br/>按返回命令原样执行<br/>extract / apply / validate / lookup / preflight / refresh / schema-review"]
-    CodexAct["Codex semantic action<br/>只处理 CLI 明确交给 Codex 的语义内容<br/>name split、classification decision、candidate choice、translation draft、evidence-backed fields"]
+    CodexAct["Codex semantic action<br/>只处理 CLI 明确交给 Codex 的语义内容<br/>name split、classification decision、candidate choice、evidence-backed fields"]
     Prov["Codex outputs<br/>draft JSONL + *.provenance.json<br/>必须匹配 action_id、input hash、artifact_lineage"]
-    CLIGate["CLI validate/apply gate<br/>name-plan validate/apply<br/>bilingual apply/validate<br/>schema/review/name-quality gates"]
+    CLIGate["CLI validate/apply gate<br/>name-plan validate/apply<br/>schema/QA/name-quality gates"]
     Checkpoint["Entity checkpoint<br/>记录 inputs/outputs hashes、commands/skills、gate status、blockers"]
 
     N --> E
@@ -30,12 +30,12 @@ flowchart TD
 
   subgraph EntityOrder["Entity queue run-to-completion order"]
     direction TB
-    Support["4 Support loop<br/>CLI: next support、name-plan/bilingual extract-apply-validate、support validation/catalog<br/>Codex: source/contact/unitgroup/flowproperty 名称、标题、翻译、证据选择<br/>DB/index: 优先复用 public/canonical support refs"]
+    Support["4 Support loop<br/>CLI: next support、name-plan extract-apply-validate、support validation/catalog<br/>Codex: source/contact/unitgroup/flowproperty 名称、标题、证据选择<br/>DB/index: 优先复用 public/canonical support refs"]
     SupportDone{"support complete?"}
-    Flow["5 Flow loop<br/>CLI: next flow、UUID/version lookup、identity-preflight、build-plan、name-quality、schema/review<br/>Codex: 候选复用判断、分类、四段式 name、双语转译、provenance reason<br/>DB/index: exact lookup、hybrid/search candidates、public/account flow visibility"]
+    Flow["5 Flow loop<br/>CLI: next flow、UUID/version lookup、identity-preflight、build-plan、name-quality、schema/QA<br/>Codex: 候选复用判断、分类、source-language 四段式 name、provenance reason<br/>DB/index: exact lookup、hybrid/search candidates、public/account flow visibility"]
     FlowDone{"flow complete?"}
     Catalog["Authority catalog<br/>finalized support rows + finalized owned flows + public/external flow refs<br/>process 后续只能消费这个 catalog"]
-    Process["6 Process closure loop<br/>CLI: next process、references refresh-remote、materialize refs、complete-required-fields、identity-preflight、schema/review<br/>Codex: exchange evidence repair、reference year、annual supply、prose translation、waiver reasoning<br/>DB/index: remote refs、visible support/flow rows、readback inputs"]
+    Process["6 Process closure loop<br/>CLI: next process、references refresh-remote、materialize refs、complete-required-fields、identity-preflight、schema/QA<br/>Codex: exchange evidence repair、reference year、annual supply、source-language prose、waiver reasoning<br/>DB/index: remote refs、visible support/flow rows、readback inputs"]
     ProcessDone{"process complete?"}
 
     Support --> SupportDone
@@ -50,10 +50,10 @@ flowchart TD
 
   IDX["数据库 / index 能力<br/>UUID/version exact lookup<br/>full-text / hybrid / embedding search<br/>public 与 account 可见性<br/>remote reference resolution<br/>remote write + readback diff"]
 
-  MR["Foundry mapping/report<br/>合并 conversion mapping、curation deltas、bilingual evidence、reference rewrites、publish/readback reports"]
+  MR["Foundry mapping/report<br/>合并 conversion mapping、curation deltas、source-language evidence、reference rewrites、publish/readback reports"]
   Guard["CLI final-answer guard<br/>tiangong-lca dataset curation-queue guard --json"]
   GG{"blocked 且有 runnable next_action?"}
-  Verify["CLI prewrite evidence gate<br/>tiangong-lca dataset curation-queue verify<br/>校验所有 owned entity 的 name-plan / bilingual / lineage artifacts"]
+  Verify["CLI prewrite evidence gate<br/>tiangong-lca dataset curation-queue verify<br/>校验所有 owned entity 的 name-plan / lineage artifacts"]
   GV{"verify passed?"}
   RW["CLI remote write<br/>official paths only<br/>publish-support、publish run、flow/process publish<br/>dry-run first，guarded commit"]
   RB["CLI + DB readback verify<br/>dataset verify-remote<br/>root rows + referenced rows resolve remotely<br/>diff final rows and accepted mapping differences"]

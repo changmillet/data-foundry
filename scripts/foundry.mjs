@@ -5,6 +5,10 @@ import process from 'node:process';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import {
+  runDatasetCurationCleanup,
+  runDatasetCurationGate,
+} from './lib/import-curation.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const workflowPath = path.join(repoRoot, 'WORKFLOW.md');
@@ -77,10 +81,6 @@ const accountRepairWorkspaceDirs = [
 ];
 const lockPath = path.join(repoRoot, '.foundry/state/orchestrator.lock');
 const statusPath = path.join(repoRoot, '.foundry/state/orchestrator-status.json');
-const wikiRoot = path.join(repoRoot, 'wiki');
-const wikiEnvPath = path.join(wikiRoot, '.wiki.env');
-const wikiDbPath = path.join(wikiRoot, 'index.db');
-const wikiConfigPath = path.join(wikiRoot, 'wiki.config.json');
 const lcaSkillNames = new Set([
   'current-account-dataset-review',
   'embedding-ft',
@@ -987,7 +987,6 @@ function doctor() {
     workflow_check: workflowCheck({ exit: false }),
     task_dirs: Object.fromEntries(taskDirs.map((dir) => [dir, fs.existsSync(path.join(repoRoot, dir))])),
     foundry_dirs: Object.fromEntries(foundryDirs.map((dir) => [dir, fs.existsSync(path.join(repoRoot, dir))])),
-    wiki: wikiStatus(),
     lock_exists: fs.existsSync(lockPath),
   };
   console.log(JSON.stringify(result, null, 2));
@@ -1061,48 +1060,6 @@ function pathStatus(filePath) {
   return {
     path: filePath,
     exists: Boolean(filePath && fs.existsSync(filePath)),
-  };
-}
-
-function countFilesRecursive(dirPath, { extension } = {}) {
-  if (!directoryExists(dirPath)) return 0;
-  let count = 0;
-  for (const name of fs.readdirSync(dirPath)) {
-    const entryPath = path.join(dirPath, name);
-    const entry = fs.statSync(entryPath);
-    if (entry.isDirectory()) {
-      count += countFilesRecursive(entryPath, { extension });
-    } else if (!extension || name.endsWith(extension)) {
-      count += 1;
-    }
-  }
-  return count;
-}
-
-function wikiStatus() {
-  const pagesPath = path.join(wikiRoot, 'pages');
-  const vaultPath = path.join(wikiRoot, 'vault');
-  return {
-    root: path.relative(repoRoot, wikiRoot),
-    env_file: pathStatus(wikiEnvPath),
-    config_file: pathStatus(wikiConfigPath),
-    db_file: pathStatus(wikiDbPath),
-    pages: {
-      path: path.relative(repoRoot, pagesPath),
-      exists: directoryExists(pagesPath),
-      markdown_count: countFilesRecursive(pagesPath, { extension: '.md' }),
-    },
-    vault: {
-      path: path.relative(repoRoot, vaultPath),
-      exists: directoryExists(vaultPath),
-      file_count: countFilesRecursive(vaultPath),
-    },
-    commands: {
-      build_rulesbook: 'npm run wiki:build-rulesbook',
-      init_or_sync: 'npm run wiki:init or npm run wiki:sync',
-      query: 'npm run wiki:fts -- "<term>"',
-      doctor: 'npm run wiki:doctor',
-    },
   };
 }
 
@@ -1517,6 +1474,32 @@ function readJsonOrJsonl(filePath) {
   return readJson(filePath);
 }
 
+function datasetCurationGate(options = {}) {
+  return runDatasetCurationGate({ repoRoot, options });
+}
+
+function processCurationGate(options = {}) {
+  return runDatasetCurationGate({
+    repoRoot,
+    options,
+    forcedType: 'process',
+    legacyProcessNames: true,
+  });
+}
+
+function datasetCurationCleanup(options = {}) {
+  return runDatasetCurationCleanup({ repoRoot, options });
+}
+
+function processCurationCleanup(options = {}) {
+  return runDatasetCurationCleanup({
+    repoRoot,
+    options,
+    forcedType: 'process',
+    legacyProcessNames: true,
+  });
+}
+
 function datasetKey(record) {
   return `${record.table}:${record.id}:${record.version}`;
 }
@@ -1704,7 +1687,7 @@ function makeSchemaRepairCandidates({ task, workspace, sourcePaths, category, sc
         needsAuthoring.push({
           path: issue.path,
           message: issue.message,
-          reason: 'required value cannot be safely derived from bilingual flow name parts',
+          reason: 'required value cannot be safely derived from source flow name parts',
         });
       }
     }
@@ -2682,16 +2665,17 @@ const taskKindCapabilityClassRoutes = {
   'account-governance': [
     'dataset-inventory',
     'schema-gate',
-    'process-review',
-    'flow-review',
-    'bilingual-gate',
+    'process-qa',
+    'dataset-curation',
+    'flow-qa',
     'reference-closure',
     'publish-prep',
   ],
   'account-repair': [
     'schema-gate',
-    'process-review',
-    'flow-review',
+    'process-qa',
+    'dataset-curation',
+    'flow-qa',
     'reference-closure',
     'publish-prep',
     'graph-verification',
@@ -2700,8 +2684,9 @@ const taskKindCapabilityClassRoutes = {
     'tidas-contract-context',
     'external-lca-package-conversion',
     'schema-gate',
-    'process-review',
-    'flow-review',
+    'process-qa',
+    'dataset-curation',
+    'flow-qa',
     'reference-closure',
     'publish-prep',
     'remote-verification',
@@ -2711,14 +2696,16 @@ const taskKindCapabilityClassRoutes = {
     'source-document-authoring',
     'source-evidence-review',
     'schema-gate',
-    'process-review',
-    'flow-review',
+    'process-qa',
+    'dataset-curation',
+    'flow-qa',
   ],
   'category-update': [
     'dataset-inventory',
     'schema-gate',
-    'process-review',
-    'flow-review',
+    'process-qa',
+    'dataset-curation',
+    'flow-qa',
     'reference-closure',
     'publish-prep',
   ],
@@ -2727,8 +2714,7 @@ const taskKindCapabilityClassRoutes = {
     'dataset-inventory',
     'flow-governance',
     'schema-gate',
-    'flow-review',
-    'bilingual-gate',
+    'flow-qa',
     'reference-closure',
     'remote-publish',
   ],
@@ -2739,8 +2725,8 @@ const taskKindCapabilityClassRoutes = {
     'process-build',
     'process-authoring-required-fields',
     'schema-gate',
-    'process-review',
-    'bilingual-gate',
+    'process-qa',
+    'dataset-curation',
     'publish-prep',
   ],
   'publish-dry-run': ['publish-prep', 'remote-publish'],
@@ -2748,11 +2734,11 @@ const taskKindCapabilityClassRoutes = {
 };
 
 const requiredGateCapabilityClassRoutes = {
-  bilingual: ['bilingual-gate'],
   'build-plan': ['process-build', 'flow-governance'],
   contract: ['tidas-contract-context'],
   context: ['tidas-contract-context'],
   conversion: ['external-lca-package-conversion'],
+  curation: ['dataset-curation'],
   compute: ['graph-verification'],
   graph: ['graph-verification'],
   identity: ['dataset-inventory'],
@@ -2761,12 +2747,13 @@ const requiredGateCapabilityClassRoutes = {
   reference: ['reference-closure'],
   'reference-closure': ['reference-closure'],
   remote: ['remote-verification'],
-  review: ['process-review', 'flow-review'],
-  ruleset: ['process-review', 'flow-review', 'publish-prep', 'remote-publish'],
+  qa: ['process-qa', 'flow-qa', 'lifecyclemodel-qa'],
+  ruleset: ['process-qa', 'flow-qa', 'lifecyclemodel-qa', 'dataset-curation', 'publish-prep', 'remote-publish'],
   schema: ['schema-gate'],
   source: ['source-document-authoring', 'source-evidence-review'],
   verification: ['schema-gate', 'reference-closure', 'remote-verification', 'graph-verification'],
 };
+const retiredRequiredGateNames = new Set(['bi' + 'lingual']);
 
 const missingCapabilityClassOwners = {
   'embedding-maintenance': 'tiangong-lca-edge-functions / lca-domain-embedding',
@@ -2774,6 +2761,7 @@ const missingCapabilityClassOwners = {
   'graph-verification': 'tiangong-lca-calculator',
   'hybrid-search': 'tiangong-lca-cli / tiangong-lca-skills / tiangong-lca-edge-functions',
   'lifecyclemodel-builder': 'tiangong-lca-cli / tiangong-lca-skills',
+  'lifecyclemodel-qa': 'tiangong-lca-cli',
   'remote-verification': 'tiangong-lca-edge-functions / database-engine / tiangong-lca-cli',
   'source-document-authoring': 'tiangong-lca-cli / tiangong-lca-skills',
   'source-evidence-review': 'tiangong-lca-cli / tiangong-lca-skills',
@@ -2837,6 +2825,7 @@ function normalizeRouteTaskKind(meta) {
 function capabilityClassesForGate(gate, datasetType = 'all') {
   const normalizedGate = String(gate ?? '').trim();
   const type = String(datasetType ?? 'all').trim();
+  if (retiredRequiredGateNames.has(normalizedGate)) return [];
   if (normalizedGate === 'build-plan') {
     if (type === 'process') return ['process-build'];
     if (type === 'flow') return ['flow-governance'];
@@ -2845,13 +2834,15 @@ function capabilityClassesForGate(gate, datasetType = 'all') {
     if (type === 'process') return ['publish-prep'];
     if (type === 'flow') return ['remote-publish'];
   }
-  if (normalizedGate === 'review') {
-    if (type === 'process') return ['process-review'];
-    if (type === 'flow') return ['flow-review'];
+  if (normalizedGate === 'qa') {
+    if (type === 'process') return ['process-qa'];
+    if (type === 'flow') return ['flow-qa'];
+    if (type === 'lifecyclemodel') return ['lifecyclemodel-qa'];
   }
   if (normalizedGate === 'ruleset') {
-    if (type === 'process') return ['process-review', 'publish-prep'];
-    if (type === 'flow') return ['flow-review', 'remote-publish'];
+    if (type === 'process') return ['process-qa', 'dataset-curation', 'publish-prep'];
+    if (type === 'flow') return ['flow-qa', 'dataset-curation', 'remote-publish'];
+    if (type === 'lifecyclemodel') return ['lifecyclemodel-qa', 'dataset-curation', 'publish-prep'];
   }
   return requiredGateCapabilityClassRoutes[normalizedGate] ?? [normalizedGate];
 }
@@ -2872,10 +2863,13 @@ function routeClassesForTask(meta, options = {}, datasetType = 'all') {
 function capabilityClassMatchesDatasetType(className, datasetType) {
   const type = String(datasetType ?? '').trim();
   if (!type || type === 'all') return true;
-  if (type === 'process' && ['flow-governance', 'flow-review', 'remote-publish'].includes(className)) {
+  if (type === 'process' && ['flow-governance', 'flow-qa', 'lifecyclemodel-qa', 'remote-publish'].includes(className)) {
     return false;
   }
-  if (type === 'flow' && ['process-build', 'process-review', 'process-authoring-required-fields'].includes(className)) {
+  if (type === 'flow' && ['process-build', 'process-qa', 'process-curation', 'process-authoring-required-fields', 'lifecyclemodel-qa', 'lifecyclemodel-builder'].includes(className)) {
+    return false;
+  }
+  if (type === 'lifecyclemodel' && ['process-build', 'process-qa', 'process-curation', 'process-authoring-required-fields', 'flow-governance', 'flow-qa', 'remote-publish'].includes(className)) {
     return false;
   }
   return true;
@@ -2885,7 +2879,11 @@ function capabilityMatchesDatasetType(capability, datasetType) {
   const type = String(datasetType ?? '').trim();
   if (!type || type === 'all') return true;
   if (type === 'process' && capability.id.startsWith('cli.flow.')) return false;
+  if (type === 'process' && capability.id.startsWith('cli.lifecyclemodel.')) return false;
   if (type === 'flow' && capability.id.startsWith('cli.process.')) return false;
+  if (type === 'flow' && capability.id.startsWith('cli.lifecyclemodel.')) return false;
+  if (type === 'lifecyclemodel' && capability.id.startsWith('cli.process.')) return false;
+  if (type === 'lifecyclemodel' && capability.id.startsWith('cli.flow.')) return false;
   return true;
 }
 
@@ -3177,8 +3175,7 @@ function writeMutationPlanHandoff({ workspace, report, runKind, entries }) {
     remote_write_mode: 'no_remote_write',
     required_before_commit: [
       'schema gate passed',
-      'review gate passed',
-      'bilingual evidence complete',
+      'QA gate passed',
       'remote reference/version verification passed',
       'publish gate report passed',
       'explicit human approval for remote writes',
@@ -3293,7 +3290,7 @@ function sampleScenarioMutationEntries(report) {
       next_action:
         sample.blocker_count > 0
           ? 'Resolve blockers before authoring mutation payloads.'
-          : 'Route materialized dry-run payload through schema, review, reference, and publish gates.',
+          : 'Route materialized dry-run payload through schema, QA, reference, and publish gates.',
     };
   });
 }
@@ -3308,15 +3305,7 @@ function targetKindCapabilityStatus(kindResult, capability) {
     if (Number(kindResult.schema?.invalid ?? 0) > 0) return 'blocked';
     return kindResult.schema?.status ?? capabilityCommandGateStatus(capability);
   }
-  if (id.endsWith('.review')) return kindResult.review?.status ?? capabilityCommandGateStatus(capability);
-  if (id.endsWith('bilingual.apply')) {
-    return kindResult.bilingual?.apply_status ?? capabilityCommandGateStatus(capability);
-  }
-  if (id.endsWith('bilingual.validate')) {
-    const blockerCount = Number(kindResult.bilingual?.scan?.blocker_count ?? 0);
-    if (blockerCount > 0 || kindResult.bilingual?.validate_status === 'blocked') return 'blocked';
-    return kindResult.bilingual?.validate_status ?? capabilityCommandGateStatus(capability);
-  }
+  if (id.endsWith('.qa')) return kindResult.qa?.status ?? capabilityCommandGateStatus(capability);
   if (id.endsWith('remote-verify')) {
     if (Number(kindResult.remote_verification?.blocker_count ?? 0) > 0) return 'blocked';
     return kindResult.remote_verification?.status ?? capabilityCommandGateStatus(capability);
@@ -3380,7 +3369,7 @@ function targetDatasetVerificationEntries(report) {
           : 'Target dataset passed blocking gates but still has quality gaps.',
         blockers: sample.readiness_blockers,
         qualityGaps: sample.quality_gaps,
-        nextAction: 'Complete AI transcreation/evidence review and rerun target-datasets gate.',
+        nextAction: 'Complete AI evidence review and rerun target-datasets gate.',
       }));
     }
     if (sample.target_quality_ready) {
@@ -4262,7 +4251,6 @@ function targetGateRowsPath(result, kind) {
     result?.verified_rows_file,
     result?.remote_verification?.refreshed_rows,
     result?.gate_rows_file,
-    result?.bilingual?.translated_rows,
     result?.required_fields?.output_rows,
     result?.rows_file,
   ];
@@ -5332,7 +5320,7 @@ function runTargetDatasetKindGates({
   const requiredFieldsOutDir = path.join(kindDir, 'required-fields');
   const requiredFieldsRowsFile = path.join(requiredFieldsOutDir, `${kind}.required-fields.jsonl`);
   const schemaOutDir = path.join(kindDir, 'schema');
-  const reviewOutDir = path.join(kindDir, 'review');
+  const qaOutDir = path.join(kindDir, 'qa');
   const remoteRefreshOutDir = path.join(kindDir, 'remote-refresh');
   const remoteRefreshedRowsFile = path.join(kindDir, 'remote-refreshed', `${kind}.remote-refreshed.jsonl`);
   let gateRowsFile = rowsFile;
@@ -5391,11 +5379,11 @@ function runTargetDatasetKindGates({
   );
   const schemaCapture = writeCommandCapture(commandDir, 'schema-validate', schemaRun);
 
-  const reviewRun = runTiangongJson(
-    ['review', kind, '--rows-file', gateRowsFile, '--out-dir', reviewOutDir, '--json'],
+  const qaRun = runTiangongJson(
+    ['qa', kind, '--rows-file', gateRowsFile, '--out-dir', qaOutDir, '--json'],
     { allowJsonOnFailure: true },
   );
-  const reviewCapture = writeCommandCapture(commandDir, 'review', reviewRun);
+  const qaCapture = writeCommandCapture(commandDir, 'qa', qaRun);
 
   const remoteRefreshRun = runTiangongJson(
     [
@@ -5422,7 +5410,7 @@ function runTargetDatasetKindGates({
   const commandRuns = [
     ...(requiredFieldsRun ? [requiredFieldsRun] : []),
     schemaRun,
-    reviewRun,
+    qaRun,
     remoteRefreshRun,
   ];
   const commandFailures = commandRuns.filter((run) => !run.ok);
@@ -5440,8 +5428,8 @@ function runTargetDatasetKindGates({
   if (schemaInvalid > 0) {
     readinessBlockers.push(`${kind} schema validation has ${schemaInvalid} invalid row(s)`);
   }
-  if (!reviewRun.ok) {
-    readinessBlockers.push(`${kind} review command failed`);
+  if (!qaRun.ok) {
+    readinessBlockers.push(`${kind} QA command failed`);
   }
   if (!remoteRefreshRun.ok) {
     readinessBlockers.push(`${kind} remote reference/version refresh command failed`);
@@ -5486,11 +5474,11 @@ function runTargetDatasetKindGates({
       report: maybeRepoRelative(schemaRun.json?.files?.report),
       ...schemaCapture,
     }),
-    targetDatasetCapabilityRecord(registry, `cli.${kind}.review`, reviewRun, {
+    targetDatasetCapabilityRecord(registry, `cli.${kind}.qa`, qaRun, {
       rows_file: maybeRepoRelative(gateRowsFile),
-      out_dir: repoRelativePath(reviewOutDir),
-      report: maybeRepoRelative(reviewRun.json?.files?.report),
-      ...reviewCapture,
+      out_dir: repoRelativePath(qaOutDir),
+      report: maybeRepoRelative(qaRun.json?.files?.report),
+      ...qaCapture,
     }),
     targetDatasetCapabilityRecord(registry, `cli.${kind}.remote-refresh`, remoteRefreshRun, {
       rows_file: maybeRepoRelative(gateRowsFile),
@@ -5534,14 +5522,14 @@ function runTargetDatasetKindGates({
             evidence: maybeRepoRelative(requiredFieldsRun?.json?.files?.evidence),
           }
         : null,
-    review: {
-      status: reviewRun.json?.status ?? (reviewRun.ok ? 'completed' : 'command_failed'),
-      report: maybeRepoRelative(reviewRun.json?.files?.report),
+    qa: {
+      status: qaRun.json?.status ?? (qaRun.ok ? 'completed' : 'command_failed'),
+      report: maybeRepoRelative(qaRun.json?.files?.report),
     },
-    bilingual: {
+    post_import_language_completion: {
       status: 'not_run_before_import',
       reason:
-        'Target import gates intentionally keep source-language rows only; multilingual completion runs after database import.',
+        'Target import gates intentionally keep source-language rows only; additional language completion runs after database import.',
     },
     remote_verification: {
       status:
@@ -5596,8 +5584,8 @@ ${buildMarkdownTable(rows, ['sample', 'process', 'flow', 'ready', 'blockers', 'g
 ## Notes
 
 - This run is local-only and does not write remote TianGong rows.
-- Target-quality readiness requires process required-field completion, schema, review, and remote reference/version verification for source-language process and flow rows.
-- Multilingual completion is intentionally deferred until after database import.
+- Target-quality readiness requires process required-field completion, schema, QA, and remote reference/version verification for source-language process and flow rows.
+- Additional language completion is intentionally deferred until after database import.
 `;
 }
 
@@ -5728,8 +5716,8 @@ function runAutomatedTargetDatasetsGateRun(options = {}) {
       'cli.process.complete-required-fields',
       'cli.process.dataset-validate',
       'cli.flow.dataset-validate',
-      'cli.process.review',
-      'cli.flow.review',
+      'cli.process.qa',
+      'cli.flow.qa',
       'cli.process.remote-verify',
       'cli.flow.remote-verify',
       'cli.process.remote-refresh',
@@ -6975,12 +6963,8 @@ function validationInvalidRows(report) {
   return ensureArray(report?.rows).filter((row) => row?.status === 'invalid' || Number(row?.issue_count ?? 0) > 0);
 }
 
-function bilingualFindings(report) {
-  return ensureArray(report?.scan?.findings);
-}
-
-function flowReviewFindings(reviewDir) {
-  const findingsPath = path.join(reviewDir, 'findings.jsonl');
+function flowQaFindings(qaDir) {
+  const findingsPath = path.join(qaDir, 'findings.jsonl');
   if (!fileExists(findingsPath)) return [];
   return readJsonOrJsonl(findingsPath).filter((row) => row && typeof row === 'object');
 }
@@ -7015,9 +6999,7 @@ function buildAccountWideRepairQueue({
   processValidation,
   flowValidation,
   processRequiredFields,
-  processBilingual,
-  flowBilingual,
-  flowReviewDir,
+  flowQaDir,
   closure,
   remoteProcessVerification,
   remoteFlowVerification,
@@ -7044,7 +7026,7 @@ function buildAccountWideRepairQueue({
           report: reportPath('gates/process/schema/outputs/validation-report.json'),
           issues: ensureArray(invalid.issues).slice(0, 5),
         },
-        proposedAction: 'repair the process payload field paths named by the schema validator, then rerun schema/review/bilingual gates',
+        proposedAction: 'repair the process payload field paths named by the schema validator, then rerun schema/QA/reference gates',
         evidenceStatus: 'deterministic_schema_issue',
         risk: 'high',
       }),
@@ -7063,7 +7045,7 @@ function buildAccountWideRepairQueue({
           report: reportPath('gates/flow/schema/outputs/validation-report.json'),
           issues: ensureArray(invalid.issues).slice(0, 5),
         },
-        proposedAction: 'repair the flow payload field paths named by the schema validator, then rerun schema/review/bilingual gates',
+        proposedAction: 'repair the flow payload field paths named by the schema validator, then rerun schema/QA/reference gates',
         evidenceStatus: 'deterministic_schema_issue',
         risk: 'high',
       }),
@@ -7110,66 +7092,26 @@ function buildAccountWideRepairQueue({
     }, { sample: sampleCases.filter((entry) => entry.issue_type === 'process_required_fields_blocked').length < 2 });
   }
 
-  for (const finding of bilingualFindings(processBilingual)) {
-    const row = processRows[finding.row_index ?? finding.index] ?? {};
-    pushEntry({
-      ...queueEntryBase({
-        issueType: 'process_bilingual_quality',
-        datasetType: 'process',
-        row,
-        source: {
-          gate: 'dataset bilingual validate --type process',
-          report: reportPath('gates/process/bilingual-validate/outputs/bilingual-validate-report.json'),
-          finding,
-        },
-        proposedAction: 'run Codex/agent reviewed TIDAS bilingual transcreation, apply reviewed translations, and rerun bilingual validate',
-        evidenceStatus: 'agent_transcreation_required',
-        risk: finding.severity === 'blocker' ? 'high' : 'medium',
-      }),
-      field_path: finding.field_path ?? finding.path ?? null,
-    }, { sample: sampleCases.filter((entry) => entry.issue_type === 'process_bilingual_quality').length < 2 });
-  }
-
-  for (const finding of bilingualFindings(flowBilingual)) {
-    const row = flowRows[finding.row_index ?? finding.index] ?? {};
-    pushEntry({
-      ...queueEntryBase({
-        issueType: 'flow_bilingual_quality',
-        datasetType: 'flow',
-        row,
-        source: {
-          gate: 'dataset bilingual validate --type flow',
-          report: reportPath('gates/flow/bilingual-validate/outputs/bilingual-validate-report.json'),
-          finding,
-        },
-        proposedAction: 'run Codex/agent reviewed TIDAS bilingual transcreation, apply reviewed translations, and rerun bilingual validate',
-        evidenceStatus: 'agent_transcreation_required',
-        risk: finding.severity === 'blocker' ? 'high' : 'medium',
-      }),
-      field_path: finding.field_path ?? finding.path ?? null,
-    }, { sample: sampleCases.filter((entry) => entry.issue_type === 'flow_bilingual_quality').length < 2 });
-  }
-
-  for (const finding of flowReviewFindings(flowReviewDir)) {
+  for (const finding of flowQaFindings(flowQaDir)) {
     const row = rowsByFlowKey.get(`flow:${finding.flow_id ?? finding.id}@${finding.version ?? finding.flow_version}`) ?? {
       id: finding.flow_id ?? finding.id,
       version: finding.version ?? finding.flow_version,
     };
     pushEntry({
       ...queueEntryBase({
-        issueType: 'flow_review_rule_finding',
+        issueType: 'flow_qa_rule_finding',
         datasetType: 'flow',
         row,
         source: {
-          gate: 'review flow',
-          report: reportPath('gates/flow/review/flow_review_report.json'),
+          gate: 'qa flow',
+          report: reportPath('gates/flow/qa/flow_qa_report.json'),
           finding,
         },
         proposedAction: 'repair flow identity, type, reference property, classification, or naming according to the flow governance finding',
-        evidenceStatus: 'flow_governance_review_required',
+        evidenceStatus: 'flow_governance_qa_required',
         risk: finding.severity === 'error' ? 'high' : 'medium',
       }),
-    }, { sample: sampleCases.filter((entry) => entry.issue_type === 'flow_review_rule_finding').length < 2 });
+    }, { sample: sampleCases.filter((entry) => entry.issue_type === 'flow_qa_rule_finding').length < 2 });
   }
 
   for (const closureRow of ensureArray(closure?.rows).filter((row) => ![
@@ -7244,8 +7186,6 @@ function writeAccountWideAuditMarkdown(filePath, report, repairQueue) {
     { metric: 'flow rows', value: report.inventory.flow_count },
     { metric: 'process schema invalid', value: report.gates.process_schema_invalid },
     { metric: 'flow schema invalid', value: report.gates.flow_schema_invalid },
-    { metric: 'process bilingual findings', value: report.gates.process_bilingual_findings },
-    { metric: 'flow bilingual findings', value: report.gates.flow_bilingual_findings },
     { metric: 'required-field deterministic repairs', value: report.gates.process_required_field_completed },
     { metric: 'required-field blockers', value: report.gates.process_required_field_blocked },
     { metric: 'reference closure failed rows', value: report.graph.reference_closure_failed },
@@ -7285,9 +7225,8 @@ ${sampleRows.length ? buildMarkdownTable(sampleRows, ['issue_type', 'dataset', '
 ## Required Next Gates
 
 1. For deterministic process required-field repairs, run \`process save-draft --dry-run\` on the generated rows before any write.
-2. For bilingual quality entries, use agent-reviewed TIDAS transcreation, apply reviewed translations, and rerun bilingual validate.
-3. For reference-closure entries, resolve provider/process/flow metadata or document explicit cutoff, proxy, or boundary rationale before compute readiness.
-4. No remote commit is allowed until mutation plan, dry-run, readback, schema/review/bilingual, and applicable UI/compute verification pass.
+2. For reference-closure entries, resolve provider/process/flow metadata or document explicit cutoff, proxy, or boundary rationale before compute readiness.
+3. No remote commit is allowed until mutation plan, dry-run, readback, schema/QA, and applicable UI/compute verification pass.
 `);
 }
 
@@ -7418,10 +7357,8 @@ function runAccountWideAudit(options = {}) {
 
   const processSchemaDir = path.join(gatesDir, 'process/schema');
   const flowSchemaDir = path.join(gatesDir, 'flow/schema');
-  const processReviewDir = path.join(gatesDir, 'process/review');
-  const flowReviewDir = path.join(gatesDir, 'flow/review');
-  const processBilingualDir = path.join(gatesDir, 'process/bilingual-validate');
-  const flowBilingualDir = path.join(gatesDir, 'flow/bilingual-validate');
+  const processQaDir = path.join(gatesDir, 'process/qa');
+  const flowQaDir = path.join(gatesDir, 'flow/qa');
   const processRequiredDir = path.join(repairDir, 'process-required-fields');
   const processRequiredRowsPath = path.join(repairDir, 'processes.required-fields.jsonl');
   const emptyCommandResult = {
@@ -7455,47 +7392,25 @@ function runAccountWideAudit(options = {}) {
 
   let processRequired = emptyCommandResult;
 
-  const processReview = processRows.length
+  const processQa = processRows.length
     ? runTiangongJson([
-      'review', 'process',
+      'qa', 'process',
       '--rows-file', processRowsPath,
-      '--out-dir', processReviewDir,
+      '--out-dir', processQaDir,
       '--json',
     ], { timeoutMs, allowJsonOnFailure: true })
     : emptyCommandResult;
-  commands.process_review = commandRecord(processReview);
+  commands.process_qa = commandRecord(processQa);
 
-  const flowReview = flowRows.length
+  const flowQa = flowRows.length
     ? runTiangongJson([
-      'review', 'flow',
+      'qa', 'flow',
       '--rows-file', flowRowsPath,
-      '--out-dir', flowReviewDir,
+      '--out-dir', flowQaDir,
       '--json',
     ], { timeoutMs, allowJsonOnFailure: true })
     : emptyCommandResult;
-  commands.flow_review = commandRecord(flowReview);
-
-  const processBilingual = processRows.length
-    ? runTiangongJson([
-      'dataset', 'bilingual', 'validate',
-      '--input', processRowsPath,
-      '--type', 'process',
-      '--out-dir', processBilingualDir,
-      '--json',
-    ], { timeoutMs, allowJsonOnFailure: true })
-    : emptyCommandResult;
-  commands.process_bilingual_validate = commandRecord(processBilingual);
-
-  const flowBilingual = flowRows.length
-    ? runTiangongJson([
-      'dataset', 'bilingual', 'validate',
-      '--input', flowRowsPath,
-      '--type', 'flow',
-      '--out-dir', flowBilingualDir,
-      '--json',
-    ], { timeoutMs, allowJsonOnFailure: true })
-    : emptyCommandResult;
-  commands.flow_bilingual_validate = commandRecord(flowBilingual);
+  commands.flow_qa = commandRecord(flowQa);
 
   let processRemote = emptyCommandResult;
   let flowRemote = emptyCommandResult;
@@ -7620,8 +7535,6 @@ function runAccountWideAudit(options = {}) {
   const processValidationReport = readJsonIfExists(path.join(processSchemaDir, 'outputs/validation-report.json'));
   const flowValidationReport = readJsonIfExists(path.join(flowSchemaDir, 'outputs/validation-report.json'));
   const processRequiredReport = readJsonIfExists(path.join(processRequiredDir, 'outputs/process-required-fields-report.json'));
-  const processBilingualReport = readJsonIfExists(path.join(processBilingualDir, 'outputs/bilingual-validate-report.json'));
-  const flowBilingualReport = readJsonIfExists(path.join(flowBilingualDir, 'outputs/bilingual-validate-report.json'));
   const processRemoteReport = readJsonIfExists(path.join(verificationDir, 'process-remote/outputs/dataset-remote-verify-report.json'))
     ?? processRemote.json;
   const flowRemoteReport = readJsonIfExists(path.join(verificationDir, 'flow-remote/outputs/dataset-remote-verify-report.json'))
@@ -7633,9 +7546,7 @@ function runAccountWideAudit(options = {}) {
     processValidation: processValidationReport,
     flowValidation: flowValidationReport,
     processRequiredFields: processRequiredReport,
-    processBilingual: processBilingualReport,
-    flowBilingual: flowBilingualReport,
-    flowReviewDir,
+    flowQaDir,
     closure,
     remoteProcessVerification: processRemoteReport,
     remoteFlowVerification: flowRemoteReport,
@@ -7700,9 +7611,7 @@ function runAccountWideAudit(options = {}) {
       flow_schema_invalid: flowValidationReport?.counts?.invalid ?? validationInvalidRows(flowValidationReport).length,
       process_required_field_completed: processRequiredReport?.counts?.completed ?? 0,
       process_required_field_blocked: processRequiredReport?.counts?.blocked ?? 0,
-      process_bilingual_findings: processBilingualReport?.scan?.finding_count ?? bilingualFindings(processBilingualReport).length,
-      flow_bilingual_findings: flowBilingualReport?.scan?.finding_count ?? bilingualFindings(flowBilingualReport).length,
-      flow_review_findings: readJsonIfExists(path.join(flowReviewDir, 'flow_review_report.json'))?.finding_count ?? flowReviewFindings(flowReviewDir).length,
+      flow_qa_findings: readJsonIfExists(path.join(flowQaDir, 'flow_qa_report.json'))?.finding_count ?? flowQaFindings(flowQaDir).length,
       remote_process_verify_status: processRemoteReport?.status ?? (processRemote.ok ? 'not_run_or_passed' : 'failed'),
       remote_flow_verify_status: flowRemoteReport?.status ?? (flowRemote.ok ? 'not_run_or_passed' : 'failed'),
       remote_reference_verify_mode: remoteVerifyMode,
@@ -9207,6 +9116,18 @@ if (command === 'init') {
 } else if (command === 'post-write-verify') {
   const result = await runPostWriteVerification(options);
   console.log(JSON.stringify(result, null, 2));
+} else if (command === 'dataset-curation-gate') {
+  const result = datasetCurationGate(options);
+  console.log(JSON.stringify(result, null, 2));
+} else if (command === 'dataset-curation-cleanup') {
+  const result = datasetCurationCleanup(options);
+  console.log(JSON.stringify(result, null, 2));
+} else if (command === 'process-curation-gate') {
+  const result = processCurationGate(options);
+  console.log(JSON.stringify(result, null, 2));
+} else if (command === 'process-curation-cleanup') {
+  const result = processCurationCleanup(options);
+  console.log(JSON.stringify(result, null, 2));
 } else if (command === 'orchestrate') {
   orchestrate(options).catch((error) => {
     writeStatus({ state: 'failed', error: error.message, queue_counts: queueCounts() });
@@ -9215,6 +9136,6 @@ if (command === 'init') {
     process.exit(1);
   });
 } else {
-  console.log('Usage: node scripts/foundry.mjs init|doctor|workflow-check|workspace-map|capabilities-list|route-task|tasks-list|tasks-check|storage-check|artifact-contract-check|acceptance-check|status|env-check|post-write-verify|orchestrate [--once] [--task-id ID] [--include-review] [--interval-ms N] [--max-tasks N]');
+  console.log('Usage: node scripts/foundry.mjs init|doctor|workflow-check|workspace-map|capabilities-list|route-task|tasks-list|tasks-check|storage-check|artifact-contract-check|acceptance-check|status|env-check|post-write-verify|dataset-curation-gate|dataset-curation-cleanup|process-curation-gate|process-curation-cleanup|orchestrate [--once] [--task-id ID] [--include-review] [--interval-ms N] [--max-tasks N]');
   process.exit(command === 'help' || command === '--help' || command === '-h' ? 0 : 1);
 }

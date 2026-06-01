@@ -29,7 +29,7 @@ Foundry task / user entry
         -> public tiangong-lca-cli, tidas-tools, search, validation, publish commands
 ```
 
-Foundry 负责工作区、任务状态、账号/profile、source/evidence 冻结、checkpoint 恢复和缺口登记。Top-level skill 负责阶段顺序、输入是否足够、调用哪些子 skill、何时停止。子 skill 负责 flow/process/support 等可复用实体工作流。CLI 负责确定性执行、schema/review、引用刷新、远端写入和回读验证。
+Foundry 负责工作区、任务状态、账号/profile、source/evidence 冻结、checkpoint 恢复和缺口登记。Top-level skill 负责阶段顺序、输入是否足够、调用哪些子 skill、何时停止。子 skill 负责 flow/process/support 等可复用实体工作流。CLI 负责确定性执行、schema/QA、引用刷新、远端写入和回读验证。
 
 ## 与结构化导入的区别
 
@@ -250,7 +250,7 @@ Gate：
 子 skill / CLI：
 
 - `process-automated-builder` 的 `evidence-search plan/run`；
-- 必要时使用 Foundry wiki/source corpus；
+- 必要时使用项目文档、输入证据和外部来源上下文；
 - 需要确定性 artifact 时通过 `tiangong-lca dataset evidence-search plan/run`。
 
 输出：
@@ -277,13 +277,12 @@ Gate：
 - 已有 TianGong/public support 优先复用；
 - 新建 support 必须有 source evidence；
 - flow property / unit group 必须说明量纲、reference unit 和换算；
-- bilingual 字段使用 `tidas-bilingual-transcreation`。
+- source-language descriptive fields have evidence-backed content.
 
 子 skill / CLI：
 
 - `tiangong-lca dataset verify-remote` 做 remote visibility / verify；
-- `tidas-bilingual-transcreation` 做双语；
-- CLI schema/review/verify 命令做确定性 gate。
+- CLI schema/QA/verify 命令做确定性 gate。
 
 输出：
 
@@ -308,7 +307,7 @@ Gate：
 2. exact UUID/version lookup；
 3. public/account semantic candidate search；
 4. reuse/update/create/exception 决策；
-5. classification、name parts、property/unit、bilingual、provenance；
+5. classification、name parts、property/unit、provenance；
 6. identity preflight、build-plan validate/materialize。
 
 子 skill / CLI：
@@ -317,7 +316,6 @@ Gate：
 - `flow-hybrid-search` 只作为候选生成器；
 - `tiangong-lca flow identity-preflight`；
 - `tiangong-lca flow build-plan validate/materialize`；
-- `tiangong-lca dataset bilingual extract/apply/validate`。
 
 输出：
 
@@ -348,7 +346,7 @@ Gate：
 - data sources treatment and representativeness；
 - annual supply/production volume 或 evidence-backed absence/proxy；
 - source/contact/compliance/data format refs；
-- bilingual fields。
+- source-language descriptive fields。
 
 子 skill / CLI：
 
@@ -357,7 +355,6 @@ Gate：
 - `tiangong-lca process build-plan validate/materialize`；
 - `tiangong-lca process complete-required-fields`；
 - `tiangong-lca dataset references refresh-remote`；
-- `tidas-bilingual-transcreation`。
 
 输出：
 
@@ -372,29 +369,29 @@ Gate：
 - unit_of_analysis decision 是 automatic-ready 或 declared-unit-ready；
 - 所有 critical values 有 evidence/proxy/waiver；
 - reference flow 和 exchange refs 指向 finalized flow；
-- schema、required fields、bilingual 和 semantic review 通过。
+- schema、required fields 和 semantic QA 通过。
 
-### 7. Process review and readback preflight
+### 7. Process QA and readback preflight
 
-目标：在写入前做本地 review、远端引用可达性和前端等价语义检查。
+目标：在写入前做本地 QA、远端引用可达性和前端等价语义检查。
 
 输出：
 
-- `review/process-review-report.json`
-- `review/reference-closure-report.json`
-- `review/frontend-equivalence-report.json`，如适用；
-- `review/blockers.json`
-- checkpoint `07-process-review.json`
+- `qa/process-qa-report.json`
+- `qa/reference-closure-report.json`
+- `qa/frontend-equivalence-report.json`，如适用；
+- `qa/blockers.json`
+- checkpoint `07-process-qa.json`
 
 Gate：
 
-- review blockers 为零，或有 profile-declared waiver；
+- QA blockers 为零，或有 profile-declared waiver；
 - remote-visible refs 可达；
 - 没有 placeholder、trace-only、本地路径、unsupported language mixed text。
 
 ### 8. Mapping and provenance
 
-目标：把 seed、证据、support/flow/process 决策、字段值、引用重写和 review 结果合并成最终可审计记录。
+目标：把 seed、证据、support/flow/process 决策、字段值、引用重写和 QA 结果合并成最终可审计记录。
 
 输出：
 
@@ -477,7 +474,6 @@ Gate：
 - Evidence search and process evidence fields: `process-automated-builder` evidence-search mode。
 - Flow authoring: `flow-governance-review`，必要时 `flow-hybrid-search` 只做 candidate retrieval。
 - Process authoring: `process-automated-builder`。
-- Bilingual fields: `tidas-bilingual-transcreation`。
 - Reference refresh / remote verify: `tiangong-lca dataset references refresh-remote` and `tiangong-lca dataset verify-remote`。
 - Publish facade: `lca-publish-executor`。
 - Lifecycle model: `lifecyclemodel-recursive-orchestrator` / `lifecyclemodel-automated-builder` only when entity plan requires product-system graph。
@@ -494,7 +490,7 @@ Gate：
 - scope、functional unit、system boundary 或 target entity plan 冲突；
 - support/flow/process identity preflight 返回 block_duplicate 或 unresolved manual_review；
 - flow/process build plan 缺少 evidence-backed unit、amount、direction、reference year 或 required refs；
-- schema、bilingual、review、reference closure、remote verify 有 blocker；
+- schema、QA、reference closure、remote verify 有 blocker；
 - remote write partial failure 需要 targeted retry；
 - 任何阶段需要 Foundry-local 脚本替代本应属于 CLI 的确定性能力。
 

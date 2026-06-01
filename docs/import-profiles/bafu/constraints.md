@@ -25,8 +25,8 @@ related:
 - 不得把 tidas-tools 的初始转换结果原样写入。初始结果中存在 `TIDAS_IMPORT_PLACEHOLDER`、trace-only 字段、方向字段异常、单位/属性未标准化等问题。
 - 这个原则同时适用于 TIDAS JSON 和 ILCD 文件包。ILCD 是交换/交付格式，不等于数据库写入计划；写入 TianGong 时不能因为 ILCD 包里有某个 contact、source、flow property、unit group、flow 或 process 文件，就直接新建对应数据库记录。
 - 对 ILCD 包执行数据库写入前，也必须先做 TianGong 侧实体解析：已有记录优先复用；同 UUID/version 的私有记录使用 update/upsert；只有确认没有合适既有记录且符合对应数据集规范时才允许新建。
-- 完整转入前必须完成：源数据依据整理、流匹配、单位/属性标准化、中英转译、必填字段补齐、review YAML 质量门禁、SDK/schema 验证、前端等价验证、远端回读验证。
-- schema 验证只能证明结构基本符合，不足以证明业务字段完整。例如“年供应量或生产量”结构存在但语义为空时仍可能通过 schema，因此必须加 review 和前端校验口径。
+- 完整转入前必须完成：源数据依据整理、流匹配、单位/属性标准化、源语言名称整理、必填字段补齐、QA YAML 质量门禁、SDK/schema 验证、前端等价验证、远端回读验证。
+- schema 验证只能证明结构基本符合，不足以证明业务字段完整。例如“年供应量或生产量”结构存在但语义为空时仍可能通过 schema，因此必须加 QA 和前端校验口径。
 - 任何补齐或替换都必须有来源：EcoSpold1 原字段、`mapping.csv`、转换报告、TIDAS/ILCD 规范、TianGong 数据库检索结果、已有公开 flow/property/unit group 记录、或明确的人工判断记录。
 
 ## 工作流触发和 Prewrite Evidence Gate
@@ -34,7 +34,7 @@ related:
 - BAFU 导入不能只把运行目录、checkpoint 文件或最终状态报告命名为 `external-dataset-curated-import`。必须实际执行 `external-dataset-curated-import` top-level skill 编排的 entity closure 流程，并保留子 skill / CLI evidence。
 - `curation-queue next` 只适用于已经进入结构化 TIDAS/ILCD entity row 的研制阶段。若输入仍是 PDF、网页、报告、截图、自由文本、任意表格等非结构化资料，必须先走上游 source-evidence / draft-dataset authoring：抽取事实、记录引用、明确假设、形成 draft TIDAS rows，然后才允许 build curation queue。
 - Codex 可以在新 profile 或非结构化来源阶段先梳理 run-level plan，但这个 plan 必须落成 profile constraints、source manifest、queue tasks、entity-run-plan、checkpoint 和 CLI/skill 命令后再执行。执行期不能让每个 worker 临场自由决定“这次怎么处理”，否则会回到不稳定批处理和本地脚本拼接的问题。
-- CLI 的职责是稳定状态机、artifact contract、门禁和恢复点；Codex 的语义能力只在明确的 child skill 步骤中使用，例如 name-plan、bilingual transcreation、分类判断、证据支持的字段补齐。不得用 CLI 代替 Codex 做语义研制，也不得绕过 CLI 让 Codex 直接写最终 row。
+- CLI 的职责是稳定状态机、artifact contract、门禁和恢复点；Codex 的语义能力只在明确的 child skill 步骤中使用，例如 name-plan、分类判断、证据支持的字段补齐。不得用 CLI 代替 Codex 做语义研制，也不得绕过 CLI 让 Codex 直接写最终 row。
 - 队列建立后，每个执行 worker 在修改任何 row 之前都必须先运行：
   - `tiangong-lca dataset curation-queue next --queue-dir .foundry/workspaces/<task-id>/curation-queue --entity-type <support|flow|process> --limit 1 --out-dir .foundry/workspaces/<task-id>/execution-next`
 - worker 只能执行 `curation-queue next` 返回的 `next_tasks[].action`：若返回 CLI command，就按该命令执行；若返回 child skill，就按返回的 `skill`、`input_artifact`、`output_artifacts` 执行。完成后再次调用 `curation-queue next`。对导入、更新、写入、重跑类任务，必须持续循环，直到请求范围内的 support、flow、process scope 都返回 `status=complete`；只执行第一条 support / flow / process action 不能视为完成。
@@ -48,12 +48,7 @@ related:
   - `name-plan-evidence.json`
   - `name-plan-apply-report.json`
   - `name-plan-validate-report.json`
-  - `trans-units.jsonl`
-  - Codex-authored `trans-draft.jsonl`
-  - `translation-evidence.json`
-  - `bilingual-apply-report.json`
-  - `bilingual-validate-report.json`
-- 只存在 `bilingual validate`、schema validate、name-quality validate、remote dry-run、readback verify 或由 finalizer 汇总生成的 `checkpoints/*.json`，不能证明完整流程已经执行。尤其不得用 Foundry-local hardcoded rule / regex / glossary 脚本直接生成 `name.*`、分类或中文译文后再让验证通过。
+- 只存在 schema validate、name-quality validate、remote dry-run、readback verify 或由 finalizer 汇总生成的 `checkpoints/*.json`，不能证明完整流程已经执行。尤其不得用 Foundry-local hardcoded rule / regex / glossary 脚本直接生成 `name.*` 或分类后再让验证通过。
 - 任务本地脚本可以做选择、组装输入、汇总报告和生成 human-readable status；可复用的研制逻辑必须进入 skill 或 CLI。任何直接生成最终语义字段的本地脚本都只能作为临时实验，不能作为 BAFU 正式导入依据。
 
 ## Compliance 与 DataSet Format 约束
@@ -64,8 +59,8 @@ related:
   - version：`20.20.002`
   - type：`source data set`
   - shortDescription：`ILCD Data Network - Entry-level`
-- `ILCD Entry-level` 声明适用于转入并修复后的 TIDAS 目标数据集，不是 BAFU 原始 EcoSpold1 包自带的声明。必须在 provenance / `common:other` 中明确记录：BAFU EcoSpold1 source did not declare an ILCD compliance system; TianGong LCA transformed, completed, normalised, bilingualised, validated, and published the datasets under the BAFU account, and the resulting TIDAS datasets meet ILCD Entry-level / TianGong import-readiness requirements.
-- 只有完成 schema、review YAML、前端等价校验、引用闭包检查和远端回读验证后，才允许把 `common:approvalOfOverallCompliance` 写为 `Fully compliant`。在 dry-run 或修复未完成阶段不得提前写成 fully compliant。
+- `ILCD Entry-level` 声明适用于转入并修复后的 TIDAS 目标数据集，不是 BAFU 原始 EcoSpold1 包自带的声明。必须在 provenance / `common:other` 中明确记录：BAFU EcoSpold1 source did not declare an ILCD compliance system; TianGong LCA transformed, completed, normalised, validated, and published the datasets under the BAFU account, and the resulting TIDAS datasets meet ILCD Entry-level / TianGong import-readiness requirements.
+- 只有完成 schema、QA YAML、前端等价校验、引用闭包检查和远端回读验证后，才允许把 `common:approvalOfOverallCompliance` 写为 `Fully compliant`。在 dry-run 或修复未完成阶段不得提前写成 fully compliant。
 - 不得因为 TIDAS/ILCD schema 中存在 `complianceDeclarations`，就新建 BAFU 私有的 compliance system source。合规声明引用的是目标数据集按哪个合规体系被声明和评审，不是源 EcoSpold1 包自然具备的元数据。
 - 若 TianGong public canonical 的 `ILCD Data Network - Entry-level` compliance source 不存在或不可引用，应阻塞写入并先补公共支撑对象，不得在 BAFU 账号下临时新建占位 compliance system。
 - `referenceToDataSetFormat` 同样应优先引用 TianGong 公共库已有的 canonical data format source，例如平台标准的 TIDAS/ILCD format 记录；不得把转换包生成的临时 source 当作 BAFU-owned source 写入。
@@ -83,7 +78,7 @@ related:
      - 若 UUID 命中但 type、属性、单位或语义明显不一致，应作为数据冲突进入人工/规则化判定，不能静默复用。
   2. 结构化语义检索：
      - 只有在 UUID/version 未命中、或 UUID 命中但经核对不可复用时，才进入语义检索。
-     - 语义检索必须使用结构化字段和双语/同义词扩展，而不是只用源英文完整名称。检索字段至少包括 base name、treatment/technology、mix type、location/geography、flow properties、classification、flow type、reference property/unit、CAS/chemical formula（若存在）、market/plant/grid/to-user 等上下文。
+     - 语义检索必须使用结构化字段、源语言名称和同义词扩展，而不是只用源英文完整名称。检索字段至少包括 base name、treatment/technology、mix type、location/geography、flow properties、classification、flow type、reference property/unit、CAS/chemical formula（若存在）、market/plant/grid/to-user 等上下文。
      - 语义检索结果必须打分并记录证据：为什么复用、为什么不复用、哪个字段不匹配、是否需要新建 BAFU flow。
      - 若语义检索发现公共库已有高置信候选，应优先复用公共库；只有没有合适公共/账号内候选时，才允许保留 BAFU 源 UUID 按 TIDAS flow 规范新建。
 - Product / waste / intermediate flow：
@@ -119,7 +114,7 @@ related:
 ### 电力 Flow 语义检索补充
 
 - 电力类 product flow 是上述两阶段检索的一个典型场景。必须先按 UUID/version 检索；若 UUID 未命中或不可复用，再做结构化语义检索。不能只用 BAFU/EcoSpold1 英文源名做 exact match 检索，也不能因为 `Electricity, low voltage, at grid {CH}` 这类英文检索没有命中 exact candidate，就判定 TianGong 公共库没有对应 flow。
-- 写入前必须做 TIDAS 结构化双语检索和打分，至少包括：
+- 写入前必须做 TIDAS 结构化语义检索和打分，至少包括：
   - `Electricity` / `alternating current` / `交流电`；
   - `electricity mix` / `电力混合`；
   - `consumption mix` / `消费组合`；
@@ -133,14 +128,14 @@ related:
 - 上述公共库候选只是候选，不是对所有 BAFU electricity exchange 的自动映射。最终复用必须同时比较电压等级、消费/生产混合语义、grid/to-user/plant 语义、地理范围、flow type、flow property、reference unit 和 source context。
 - 已明确：TianGong 公共库中部分 energy / electricity flow 因历史上缺少 Energy / Amount-in-kWh 等单位支撑，沿用了 `Net calorific value` 作为 flow property。对 BAFU 导入而言，这个属性口径差异本身不再作为复用公共电力 flow 的硬性否决条件；应记录为 TianGong 公共库 legacy support / 待公共库升级事项。
 - 复用公共电力 flow 时，仍必须核对 flow identity 语义：电压等级、消费/生产混合、grid/to-user/plant 边界、地理范围、flow type、source context 和数量单位换算。只有 `Net calorific value` 这一项不一致时，不应因此新建 BAFU 私有 electricity flow。
-- 电力 flow 匹配脚本必须扩大候选检索范围，不能只取英文源名 top 10。建议先用源名检索，再用结构化中英同义词二次检索，并输出候选打分证据；未复用公共库 flow 时，必须说明是地理/电压/语义/属性不匹配，而不是简单写“数据库没有”。
+- 电力 flow 匹配脚本必须扩大候选检索范围，不能只取英文源名 top 10。建议先用源名检索，再用结构化同义词二次检索，并输出候选打分证据；未复用公共库 flow 时，必须说明是地理/电压/语义/属性不匹配，而不是简单写“数据库没有”。
 - 电力 flow 的 mutation manifest 不得只写 `uuid_not_found_semantic_no_suitable_candidate` 作为最终理由。对每个未复用公共库的电力 flow，必须附候选评估表，至少列出已知公共候选 UUID/version、名称组件、电压等级、消费/生产语义、地理范围、flow property/reference unit、可复用结论和拒绝理由。
 - 对 `Electricity, low voltage, production ENTSO-E, at grid {ENTSO-E}` 这类源 flow，若当前公共库只有 `交流电; 电力混合; 消费组合，到用户; <1kV/1-35kV/35-330kV` 等 consumption mix 候选，不能自动映射；但也不能直接新建并结束。必须明确判断：
   - `production ENTSO-E` 与 `consumption mix, to user` 是否代表不同 supply-chain boundary；
   - `ENTSO-E` 地理范围是否可接受映射到 `GLO`、`RER`、`CN` 或其他公共候选；
   - `low voltage` 是否应映射到 `<1kV`；
   - 公共候选使用 `Net calorific value` 是否只是 TianGong 公共库 energy/unit support 的 legacy 表达；若其它语义字段匹配，不得仅因该属性名称拒绝复用。
-- 若检索过程只使用英文源名、没有覆盖 `交流电` / `电力混合` / `消费组合` 等中文候选，或候选结果主要是 unrelated plant-specific electricity，则该次检索证据不足；不得把该结果作为“新建 BAFU electricity flow”的充分依据，必须补做结构化双语检索后再写入或更新。
+- 若检索过程只使用英文源名、没有覆盖同义词和平台已有候选名称，或候选结果主要是 unrelated plant-specific electricity，则该次检索证据不足；不得把该结果作为“新建 BAFU electricity flow”的充分依据，必须补做结构化语义检索后再写入或更新。
 
 ## 中间流与非中间流约束
 
@@ -179,7 +174,7 @@ related:
 - 被保留的 BAFU property / unit group 必须是正式数据集：
   - 使用 BAFU / FOEN canonical contact 作为 ownership；
   - 在 provenance 中说明 TianGong LCA 完成转换、字段补齐、flow reference 修复、验证和 BAFU 账号发布；
-  - 包含中英文名称、classification、reference unit group / unit、source 引用、平台 canonical compliance/data format 引用、版本和 permanent URI；
+  - 包含 source-language 名称、classification、reference unit group / unit、source 引用、平台 canonical compliance/data format 引用、版本和 permanent URI；
   - 不得保留 placeholder、trace-only 文本、本地路径或 `Amount in <unit>` 以外无法解释的临时描述。
 - 被保留的 BAFU property / unit group 必须只写入实际被 BAFU flow 引用的最小集合。未被 flow 引用的 BAFU support records 不得写入；历史残留的未引用 support records 只列入待人工删除清单，不由导入脚本或自动流程执行删除。
 - 历史评估依据来自 BAFU runtime workspaces，包括 flow property handling note 和 flow property / unit group support assessment。长期规则以本文为准；runtime artifact 只作为历史证据，不作为未来运行的唯一入口。
@@ -193,7 +188,6 @@ related:
   - 使用多语言数组结构，实际文本写在 `#text`。
   - 文本必须以真实数值和空格开头，并显式表达年化单位，例如 `1.0 Item(s)/year ...`、`3.6 MJ/year ...` 或 `3.6 MJ/年 ...`。只写“参考流描述”不能通过新版 SDK/schema。
   - 如果源数据没有独立年度市场供应量，不能编造市场量；应以 EcoSpold1 quantitative reference 的参考流数量作为有来源的年化代表生产量，并明确说明“来源未另行声明独立的年度市场供应量”。
-  - 中文文本中，`integrated` 在建筑光伏语境下应转译为“建筑一体化”，例如“建筑一体化光伏立面安装系统”，不是泛化成“集成”。
 - 时间字段也必须做语义清洗，不能只满足 schema：
   - `common:referenceYear` 中的 `9999`、`0`、`0000`、空字符串、`Not defined`、`Unknown` 等值均视为占位/哨兵值，不得正式写入数据库。
   - 若 EcoSpold1 的 `startDate` / `endDate` 为空，仅有 `dataValidForEntirePeriod=true`，不得把转换器生成的 `9999` 保留下来，也不得把 `9999` 写入 `timeRepresentativenessDescription`。
@@ -220,51 +214,36 @@ related:
   - WWWAddress：`https://www.bafu.admin.ch/en/contact-en`
 - 上述联系人信息来源为 FOEN / BAFU 官方 contact page。后续批量导入前应再次核对官方网页；若官方联系信息变更，应更新 contact dataset 并记录来源日期。
 - BAFU 导入包里的 commissioner、ownership，以及没有更具体来源人的 BAFU source/contact 引用，应统一指向上述 canonical BAFU / FOEN contact，不得保留临时导入联系人名称。
-- TianGong LCA 在本批数据中承担转换、字段补齐、flow reference 修复、双语转译、验证和数据库发布处理工作，但不应因此被写成 BAFU 源数据的 commissioner 或 owner。
-- TianGong 的处理角色应记录在 `administrativeInformation.dataEntryBy.common:other` 或等价 provenance 字段中，例如说明 TianGong LCA prepared the TIDAS conversion, bilingual field completion, flow-reference repair, validation, and database publication under the BAFU account。若以后引入单独的 TianGong contact，可在 `dataEntryBy.referenceToPersonOrEntityEnteringTheData` 中引用 TianGong contact，但不得替代 BAFU / FOEN 的 source ownership / commissioner attribution。
+- TianGong LCA 在本批数据中承担转换、字段补齐、flow reference 修复、验证和数据库发布处理工作，但不应因此被写成 BAFU 源数据的 commissioner 或 owner。
+- TianGong 的处理角色应记录在 `administrativeInformation.dataEntryBy.common:other` 或等价 provenance 字段中，例如说明 TianGong LCA prepared the TIDAS conversion, source-language field completion, flow-reference repair, validation, and database publication under the BAFU account。若以后引入单独的 TianGong contact，可在 `dataEntryBy.referenceToPersonOrEntityEnteringTheData` 中引用 TianGong contact，但不得替代 BAFU / FOEN 的 source ownership / commissioner attribution。
 
-## 中英内容约束
+## 源语言内容约束
 
-- 中英文内容都要有。
+- BAFU 导入行应保持源语言内容。不得在数据库导入前生成额外多语言文本，也不得把缺少中文作为导入 blocker。
 - 不使用机器翻译 API，也不通过给某个 LLM key 的方式批量机翻。
-- 采用 `tidas-bilingual-transcreation` skill + `tiangong-lca dataset bilingual extract/apply/validate` CLI 流程处理所有中英双语字段：
-  - `extract` 必须从待写入的 flow / process / lifecycle model 行文件中抽取所有 LangText translation units；
-  - Codex 只在 `outputs/trans-units.jsonl`、其中的 `translate_prompt`、字段组上下文和来源证据基础上生成 `trans-draft.jsonl`，不能用脚本词表、正则替换或“包含中文即通过”的规则代替专业转译；
-  - `apply` 必须生成 translated rows 和 `translation-evidence.json`；
-  - `validate` 必须通过 mixed-language / placeholder scan、schema gate 和 review gate；
-  - 正式写入只能使用经过 CLI apply 且 validate 通过的 row 文件；建议命名为 `*.bilingual-applied.jsonl`，不能把 `trans-draft.jsonl` 当作可写入的数据集行文件。
-- `translate_prompt` 是面向 Codex 语义转译的指令字段；`transcreation_prompt` / `review_prompt` 只作为兼容别名。任何 checkpoint 不能把仅由本地字典、规则拼接、正则替换或分词替换生成的中文视为通过。
-- 对 dataset `name` 这类结构化字段，必须把同一 `name` 组内的 `baseName`、`treatmentStandardsRoutes`、`mixAndLocationTypes`、`functionalUnitFlowProperties` 一起作为上下文进入转译判断；输出仍按对应 `field_path` 写回单个字段。
-- 双语字段包括但不限于 dataset name/baseName、treatment/route、mix/location、synonyms、general comment、technology / time / geography descriptions、exchange comments、source citations、compliance/data-format descriptions、contact/source descriptions，以及任何 TIDAS/ILCD LangText 结构。不得只处理名称字段。
-- 支撑数据集也必须使用同一套 name-plan 和 bilingual evidence 流程，不能回退到脚本词表翻译。当前 `tiangong-lca dataset name-plan` 已支持 `source`、`contact`、`unitgroup`、`flowproperty` 和 `lciamethod` 的 profile-defined name/display fields；随后再用 `tidas-bilingual-transcreation` 生成 Codex draft translation evidence，并输出对应的 `trans-draft.jsonl`、CLI-applied row 文件、`translation-evidence.json` 和 validate report。
-- 本批 support publish 输入必须使用：
-  - `rows/flowproperties.materialized.bilingual-applied.jsonl`
-  - `rows/unitgroups.source.bilingual-applied.jsonl`
-  - `bilingual/support/translation-evidence.json`
-  - `bilingual/support/validate/support-bilingual-validate-report.json`
+- 对 dataset `name` 这类结构化字段，必须把同一 `name` 组内的 `baseName`、`treatmentStandardsRoutes`、`mixAndLocationTypes`、`functionalUnitFlowProperties` 一起作为上下文进入 source-language name-plan 判断；输出仍按对应 `field_path` 写回单个字段。
+- 支撑数据集也必须使用同一套 source-language name-plan evidence 流程，不能回退到脚本词表翻译或正则拼接。当前 `tiangong-lca dataset name-plan` 已支持 `source`、`contact`、`unitgroup`、`flowproperty` 和 `lciamethod` 的 profile-defined name/display fields。
 - 远端写入 source/contact/unitgroup/flowproperty support rows 必须使用 `tiangong-lca dataset publish-support --commit --curation-queue-dir <queue>`，且该命令的 schema validation、curation lineage gate 和平台 dataset command 写入报告都必须保留到 stage 8 checkpoint；不得再用 Foundry-local support publish 脚本或直接表写。
-- 已经通过旧脚本规则替换写入 BAFU 账号的 flow 必须列入 `flows-needing-bilingual-update.csv`，后续通过正式 update/upsert_current_version 路径用 CLI bilingual apply/validate 后的 payload 覆盖修正；不得直接表写。
-- 保留 LCA、TIDAS、ILCD、EcoSpold、化学式、CAS、标准号、UUID、单位、地理代码和技术边界等专业语义。若无法凭来源证据确定译法，应形成 `manual_review` blocker，而不是生成猜测译文。
-- 若源数据没有单独声明地理或供应场景字段，中文溯源说明可使用：`源数据未另行声明地理或供应场景字段；相关信息保留在流名称、地理代码和分类中。` 但该句只能写入 generalComment、mapping、translation evidence 或其他 provenance 字段，不得写入 `name.mixAndLocationTypes` 或任何 `name.*` 字段。`name.mixAndLocationTypes` 必须是可得性/地点/组合类型的名称片段，例如 `工厂端 {RER}`、`电网端 {ENTSO-E}`、`用户端 {CH}`、`生产组合，瑞士 {CH}`；无法从证据拆出时应形成 review blocker。
+- 保留 LCA、TIDAS、ILCD、EcoSpold、化学式、CAS、标准号、UUID、单位、地理代码和技术边界等专业语义。若无法凭来源证据确定 source-language 字段内容，应形成 `manual_review` blocker，而不是生成猜测文本。
+- 若源数据没有单独声明地理或供应场景字段，只能在 generalComment、mapping 或其他 provenance 字段说明，不得写入 `name.mixAndLocationTypes` 或任何 `name.*` 字段。`name.mixAndLocationTypes` 必须是可得性/地点/组合类型的名称片段，例如 `at plant {RER}`、`at grid {ENTSO-E}`、`at user {CH}`、`production mix, Switzerland {CH}`；无法从证据拆出时应形成 review blocker。
 - process 正文中的通用字段缺失、补齐或代表性说明应使用“源数据”而不是反复写 “EcoSpold1”，例如 `源数据未声明...`、`基于源数据定量参考流...`、`源数据的 startDate/endDate...`。但用于溯源的具体证据必须保留原始格式名，例如 exchange generalComment 中的 `Source EcoSpold1 exchange number`、源包未声明 ILCD compliance system 的 dataEntryBy provenance、以及明确说明由 EcoSpold1 转换的 intended application。
 - process / flow / lifecycle model 的 `name` 子字段是名称片段，不是 provenance 或字段缺失说明，不得写入 `源数据未声明...`、`no separate ... was declared...` 这类句子。若源数据未单独给出某个 name 子字段，应从源全名、分类、地理代码、技术描述和来源字段中做可辩护拆分；仍无法确定时形成 review blocker，或在非 name 的 provenance 字段说明，不得用说明句占位。
 - 所有 `name.*` LangText 中不得出现 `xx` / `xxx` / `XX` 等源数据标记或导入标记，不得出现 `TIDAS_IMPORT_PLACEHOLDER`、trace-only 文本、本地路径，也不得出现中文分号 `；` 或英文分号 `;`。TIDAS/ILCD name 子字段应使用逗号分隔的技术短语，不能使用分号连接说明句。
-- `name` / name-like display 字段必须先使用 `tidas-name-plan-authoring` skill + `tiangong-lca dataset name-plan extract/validate/apply` 流程生成 source-language `name_plan`，再进入 `tidas-bilingual-transcreation`。不能靠穷举词表、简单正则替换或 Foundry-local 字典脚本完成：
+- `name` / name-like display 字段必须先使用 `tidas-name-plan-authoring` skill + `tiangong-lca dataset name-plan extract/validate/apply` 流程生成 source-language `name_plan`。不能靠穷举词表、简单正则替换或 Foundry-local 字典脚本完成：
   - `extract` 产出 `outputs/name-plan-units.jsonl`，每个 unit 必须包含 `source_full_name`、当前 name 四段、字段定义、分类/地理/技术/flow property/unit 等上下文，以及 `name_plan_prompt`；
   - Codex 只基于 `name_plan_prompt` 和来源证据生成 `name-plan-draft.jsonl`；
   - `validate` 必须阻断分号、`xx/xxx`、trace-only、provenance 说明句和字段缺失说明句；
   - `apply` 必须生成 name-planned rows 和 `outputs/name-plan-evidence.json`；
-  - 后续 bilingual extract/apply/validate 必须以 name-planned rows 为输入。
   - 对 support rows，`source_full_name` 不拆成 flow/process 四段；draft 只能填写该 unit 的 `target_name_fields`。根据 BAFU 账号可见 `state_code=100` 开放数据形态，字段口径如下：source 用 `sourceInformation.dataSetInformation.common:shortName`；contact 用 `contactInformation.dataSetInformation.common:name` 和 `common:shortName`；unit group 用 `unitGroupInformation.dataSetInformation.common:name`；flow property 用 `flowPropertiesInformation.dataSetInformation.common:name`；LCIA method 使用 schema 定义的 `LCIAMethodInformation.dataSetInformation.common:name` 和需要时的 `common:shortName`。
   - `baseName`：只保留核心产品/废物流/服务/过程名称和必要的基本加工层级；去除前缀 `xx` / `xxx`，并尽量不要混入地点可得性、市场/生产组合、地理代码、路线说明或功能单位属性。
   - `treatmentStandardsRoutes`：放处理方式、标准、质量等级、用途、生产路线、原料/educt、primary / secondary 等技术限定；例如废弃物去向或处理路线若是过程/流的技术路线，应放在此字段。
   - `mixAndLocationTypes`：放 production mix / consumption mix / market mix、location type of availability、origin / destination、`at plant` / `at user` / `at grid` / `to consumer` / `at regional storage` 等可得性和地点类型信息；`工厂端 {KR}` / `at plant {KR}` 这类内容应优先拆入此字段，同时地理代码仍应写入 geography/location 或等价结构。
   - process 的 `functionalUnitFlowProperties` / flow 的 `flowProperties`：放定量限定属性，例如浓度、含水率、能量含量、U 值、功率、单位相关的产品/过程属性等；非限定性的 CAS、公式、同义词不放在 name 子字段。
-- 为了可回写和审计，源数据原始完整 name 必须保存在 mapping/provenance/translation evidence 中；不得为了回写便利而把未拆分的完整源名原样保留在 `baseName` 并在其他 name 字段重复补充。若复用 TianGong 公共库已有 flow/process 的 canonical name，可保留公共库 canonical name，同时在 mapping 中记录 BAFU 源名与 canonical name 的差异。
+- 为了可回写和审计，源数据原始完整 name 必须保存在 mapping/provenance 中；不得为了回写便利而把未拆分的完整源名原样保留在 `baseName` 并在其他 name 字段重复补充。若复用 TianGong 公共库已有 flow/process 的 canonical name，可保留公共库 canonical name，同时在 mapping 中记录 BAFU 源名与 canonical name 的差异。
 
-## Review 与验证门禁
+## QA 与验证门禁
 
-- process 的 review YAML 是质量门禁，不只是附属报告。必须至少检查：
+- process 的 QA YAML 是质量门禁，不只是附属报告。必须至少检查：
   - 必填字段是否结构和语义都完整；
   - 是否仍有 placeholder、trace-only 文本、本地路径；
   - flow 引用是否真实存在；
@@ -275,10 +254,11 @@ related:
   - reference flow、单位、flow property 是否一致；
   - 年供应量或生产量是否能通过前端口径。
 - BAFU 账号级物料平衡处理口径：
+  - CLI process QA 只产出 deterministic QA metrics/findings；Foundry 的 process curation gate 才负责 profile policy、AI authoring package、import-only trace cleanup、waiver 和最终 prewrite 状态。
   - 对写入 BAFU TianGong 账号的 BAFU 数据，`process_material_balance_deviation` 不作为 remote write blocker。该规则适用于本账号后续所有 BAFU 导入、更新和批量修复任务。
-  - 物料平衡仍应由 review 工具计算并写入 review report、mapping/report 或 QA artifact，作为源数据特征和后续人工分析信息；但不得因为 `raw material input != product + by-product + waste` 阻塞 schema 已通过、引用已验证、必填字段已补齐、双语已通过的 BAFU 数据写入。
-  - 该豁免只覆盖物料平衡偏差本身，不覆盖 exchange amount 缺失、单位换算缺失、exchangeDirection 错误、flow 引用不可解析、reference unit/property 不一致、trace/placeholder 残留、年供应量缺失、双语校验失败或其他 review/schema/frontend-equivalent blocker。
-  - 执行时必须在 stage 6 checkpoint、mapping/report 和 remote write manifest 中记录 `process_material_balance_deviation` 已按 BAFU account policy waived，并保留偏差数值、review report 路径和采用该账号级规则的约束文件快照。
+  - 物料平衡仍应由 QA 工具计算并写入 QA report、mapping/report 或 QA artifact，作为源数据特征和后续人工分析信息；但不得因为 `raw material input != product + by-product + waste` 阻塞 schema 已通过、引用已验证、必填字段已补齐的 BAFU 数据写入。
+  - 该豁免只覆盖物料平衡偏差本身，不覆盖 exchange amount 缺失、单位换算缺失、exchangeDirection 错误、flow 引用不可解析、reference unit/property 不一致、trace/placeholder 残留、年供应量缺失或其他 QA/schema/frontend-equivalent blocker。
+  - 执行时必须在 stage 6 checkpoint、mapping/report 和 remote write manifest 中记录 `process_material_balance_deviation` 已按 BAFU account policy waived，并保留偏差数值、QA report 路径和采用该账号级规则的约束文件快照。
 - 完整写入流程需要远端回读验证：写入后按 BAFU profile 重新读取 process/flow/contact/source 等记录，确认实际数据库内容与本地计划一致。
 - 对已经存在于数据库的 BAFU 记录应使用 update/upsert_current_version 类路径，不应重复创建同一数据集。
 
@@ -306,7 +286,7 @@ related:
   5. dry-run 报告；
   6. commit 报告；
   7. 远端 after snapshot；
-  8. schema/review/frontend-equivalent/readback 验证报告。
+  8. schema/QA/frontend-equivalent/readback 验证报告。
 - 所有远端写入必须幂等：
   - 同 UUID/version 已存在于 BAFU 账号时使用 update/upsert_current_version；
   - 不得重复 create 同一 UUID/version；
@@ -341,12 +321,11 @@ related:
 - 完整导入必须输出 source-to-target mapping CSV/JSON。mapping 是审计、回滚、LCIA 后续补齐、公共库迁移和远端回读 diff 的依据，不是可选报告。
 - mapping 至少覆盖：
   - source package / source dataset / normalized TIDAS / final TianGong dataset 的 id 和 version；
-  - contact、source、compliance system、data set format、unit group、flow property、flow、process、exchange、classification、bilingual text、unit conversion、reference year、annual supply/production volume；
+  - contact、source、compliance system、data set format、unit group、flow property、flow、process、exchange、classification、source-language text、unit conversion、reference year、annual supply/production volume；
   - reuse / update / upsert / create / skip / exception / delete-candidate 等动作；
   - source value、normalized value、final value、change reason、evidence、confidence 或 decision status；
   - checkpoint stage、rule snapshot hash、command/report path、review status 和 residual blockers。
 - 对 flow classification，mapping 必须记录 `source_classification`、`selected_tidas_classification`、`classification_basis`、`candidate_categories`、`decision_status`。
 - 对 elementary flow，mapping 必须区分 public canonical reuse、forced candidate、BAFU-owned elementary exception 和 unresolved blocker；BAFU-owned elementary exception 必须记录 LCIA characterization pending。
 - 对 support records，mapping 必须说明 public canonical reuse 与 BAFU source-specific support 保留理由；未被引用的 support 只能进入待人工删除清单。
-- 对 bilingual 字段，mapping 或 translation evidence 必须能追溯 source text、context fields、target language、translated text、transcreation decision 和 validate report。
 - 执行顺序、checkpoint 和中断恢复机制不在本文重复维护；必须按 `docs/import-profiles/bafu/profile.md` 的九阶段 workflow 执行。

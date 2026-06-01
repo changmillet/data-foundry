@@ -1,9 +1,0 @@
-{
-  "version": 1,
-  "skillName": "document-granular-decompose",
-  "sourceKind": "curated-parser",
-  "source": "https://github.com/tiangong-ai/skills",
-  "installedAt": "2026-05-13T23:32:14+08:00",
-  "baselineHash": "bf14dc05fe80a27c5658b8983ffed2e0f450d39d661f1e958c38c8ca0a4977b8",
-  "command": "npx -y skills add https://github.com/tiangong-ai/skills --skill document-granular-decompose -a codex -y"
-}

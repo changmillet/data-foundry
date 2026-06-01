@@ -22,7 +22,7 @@ Foundry does not own:
 - TIDAS schemas, YAML methodology, or runtime rulesets;
 - source package converters;
 - AI authoring implementation;
-- dataset validators and review engines;
+- dataset validators and QA engines;
 - database write semantics.
 
 Those capabilities belong in `tidas-sdk`, `tidas-tools`, `tiangong-lca-cli`, `tiangong-lca-skills`, Edge Functions, database, or calculator projects.
@@ -34,7 +34,7 @@ Every import task should produce:
 - contract context manifest for each target TIDAS type;
 - source package or source document manifest;
 - conversion report or source extraction report;
-- validation and review reports;
+- validation and QA reports;
 - repair queue or explicit blocker report when validation fails;
 - dry-run publish/import plan before any remote write;
 - verification/readback artifacts when remote writes are explicitly allowed.
