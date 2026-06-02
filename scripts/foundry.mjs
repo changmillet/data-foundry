@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
@@ -44,6 +45,7 @@ const envExampleAllowedKeys = new Set([
   'TIANGONG_LCA_REVIEW_LLM_BASE_URL',
   'TIANGONG_LCA_REVIEW_LLM_API_KEY',
   'TIANGONG_LCA_REVIEW_LLM_MODEL',
+  'TIANGONG_LCA_CLI_BIN',
   'TIANGONG_LCA_CLI_DIR',
   'TIANGONG_LCA_SKILLS_ROOT',
 ]);
@@ -379,6 +381,89 @@ function unique(values) {
   return [...new Set(values.filter(Boolean))];
 }
 
+function appendOption(args, flag, value) {
+  if (value === undefined || value === null || value === false || value === '') return;
+  args.push(flag, String(value));
+}
+
+function appendRepeatedOptions(args, flag, values) {
+  for (const value of normalizedList(values)) {
+    appendOption(args, flag, value);
+  }
+}
+
+function runDatasetCurationQueueBuild(options) {
+  if (options.help) {
+    return {
+      schema_version: 1,
+      status: 'help',
+      command: 'dataset-curation-queue-build',
+      wraps: 'tiangong-lca dataset curation-queue build',
+      usage: [
+        'node scripts/foundry.mjs dataset-curation-queue-build --processes <processes.jsonl> --out-dir <queue-dir>',
+        'npm run dataset:curation-queue:build -- --processes ./rows/processes.jsonl --flows ./rows/flows.jsonl --support ./rows/sources.jsonl --out-dir ./curation-queue',
+      ],
+      foundry_wrapper: {
+        exit_code: 0,
+        owner: 'tiangong-lca-cli',
+      },
+    };
+  }
+  const processes = options.processes || options.processesFile || options.processRows;
+  const outDir = options.outDir || '.foundry/workspaces/dataset-curation-queue';
+  const cliArgs = ['dataset', 'curation-queue', 'build', '--json'];
+  appendOption(cliArgs, '--processes', processes);
+  appendOption(cliArgs, '--flows', options.flows || options.flowsFile || options.flowRows);
+  appendRepeatedOptions(cliArgs, '--support', options.support || options.supportFile || options.supportRows);
+  appendRepeatedOptions(
+    cliArgs,
+    '--external-flow-ref',
+    options.externalFlowRef || options.externalFlowRefs,
+  );
+  appendRepeatedOptions(
+    cliArgs,
+    '--exclude-process-id',
+    options.excludeProcessId || options.excludeProcessIds,
+  );
+  appendOption(cliArgs, '--process-limit', options.processLimit);
+  appendOption(cliArgs, '--out-dir', outDir);
+
+  const cliBin = process.env.TIANGONG_LCA_CLI_BIN || 'tiangong-lca';
+  const result = spawnSync(cliBin, cliArgs, {
+    cwd: repoRoot,
+    env: process.env,
+    encoding: 'utf8',
+  });
+  const exitCode = typeof result.status === 'number' ? result.status : 1;
+  let report;
+  try {
+    report = JSON.parse(result.stdout || '{}');
+  } catch {
+    throw new Error(
+      [
+        'tiangong-lca dataset curation-queue build did not emit JSON.',
+        result.stdout ? `stdout:\n${result.stdout}` : '',
+        result.stderr ? `stderr:\n${result.stderr}` : '',
+      ]
+        .filter(Boolean)
+        .join('\n'),
+    );
+  }
+  if (result.error) {
+    throw result.error;
+  }
+  return {
+    ...report,
+    foundry_wrapper: {
+      command: cliBin,
+      args: cliArgs,
+      exit_code: exitCode,
+      stderr: result.stderr || '',
+      owner: 'tiangong-lca-cli',
+    },
+  };
+}
+
 const taskKindRoutes = {
   'external-dataset-curated-import': [
     'tidas-contract-context',
@@ -581,6 +666,7 @@ function usage() {
       'route-task',
       'tasks-list',
       'tasks-check',
+      'dataset-curation-queue-build',
       'dataset-curation-gate',
       'dataset-curation-cleanup',
     ],
@@ -641,9 +727,13 @@ async function main() {
       result = tasksCheck();
       exitCode = result.ok ? 0 : 1;
       break;
+    case 'dataset-curation-queue-build':
+      result = runDatasetCurationQueueBuild(options);
+      exitCode = result.foundry_wrapper.exit_code;
+      break;
     case 'dataset-curation-gate':
       result = runDatasetCurationGate({ repoRoot, options });
-      exitCode = result.status === 'ready' || result.status === 'ready_with_profile_waivers' ? 0 : 1;
+      exitCode = ['help', 'ready', 'ready_with_profile_waivers'].includes(result.status) ? 0 : 1;
       break;
     case 'dataset-curation-cleanup':
       result = runDatasetCurationCleanup({ repoRoot, options });

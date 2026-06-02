@@ -324,6 +324,132 @@ function readContextFiles(repoRoot, entries) {
   return { files, missing };
 }
 
+function readCurationQueueContext(repoRoot, options) {
+  const queueDirOption = options.queueDir ?? options.curationQueueDir;
+  const queueDir = resolveRepoPath(repoRoot, queueDirOption);
+  if (!queueDirOption) return null;
+  if (!directoryExists(queueDir)) {
+    throw new Error(`--queue-dir must point to an existing curation queue directory: ${queueDirOption}`);
+  }
+  const manifestPath = path.join(queueDir, 'outputs', 'curation-queue-manifest.json');
+  if (!fileExists(manifestPath)) {
+    throw new Error(`--queue-dir is missing outputs/curation-queue-manifest.json: ${queueDirOption}`);
+  }
+  const manifest = readJson(manifestPath);
+  const tasks = ensureArray(manifest.tasks).filter((task) => task && typeof task === 'object');
+  return {
+    queueDir,
+    manifestPath,
+    manifest,
+    tasks,
+    tasksById: new Map(tasks.map((task) => [String(task.task_id ?? ''), task])),
+  };
+}
+
+function queueFilePath(repoRoot, queueContext, fileRef) {
+  return resolveArtifactPath(repoRoot, fileRef, queueContext.queueDir);
+}
+
+function queueFileRelativePath(repoRoot, queueContext, fileRef) {
+  const resolved = queueFilePath(repoRoot, queueContext, fileRef);
+  return resolved ? repoRelativePath(repoRoot, resolved) : null;
+}
+
+function summarizeQueueTask(repoRoot, queueContext, task) {
+  if (!task) return null;
+  return {
+    schema_version: task.schema_version ?? 1,
+    entity_type: task.entity_type ?? null,
+    task_id: task.task_id ?? null,
+    entity_id: task.entity_id ?? null,
+    version: task.version ?? null,
+    lock_key: task.lock_key ?? null,
+    depends_on: ensureArray(task.depends_on),
+    input_rows_file: queueFileRelativePath(repoRoot, queueContext, task.input_rows_file),
+    closure_file: queueFileRelativePath(repoRoot, queueContext, task.closure_file),
+    run_plan_file: queueFileRelativePath(repoRoot, queueContext, task.run_plan_file),
+  };
+}
+
+function readQueueTaskRows(repoRoot, queueContext, task) {
+  const inputRowsPath = queueFilePath(repoRoot, queueContext, task?.input_rows_file);
+  return fileExists(inputRowsPath) ? readRows(inputRowsPath) : [];
+}
+
+function findQueueTask(queueContext, datasetType, identity) {
+  if (!queueContext || datasetType === 'lifecyclemodel') return null;
+  const exact = queueContext.tasks.find(
+    (task) =>
+      task.entity_type === datasetType &&
+      task.entity_id === identity.id &&
+      task.version === identity.version,
+  );
+  if (exact) return exact;
+  return queueContext.tasks.find(
+    (task) => task.entity_type === datasetType && task.entity_id === identity.id,
+  ) ?? null;
+}
+
+function buildQueueAuthoringContext(repoRoot, queueContext, datasetType, identity) {
+  if (!queueContext) return null;
+  const base = {
+    queue_dir: repoRelativePath(repoRoot, queueContext.queueDir),
+    manifest_file: repoRelativePath(repoRoot, queueContext.manifestPath),
+    queue_status: queueContext.manifest.status ?? null,
+    queue_counts: queueContext.manifest.counts ?? null,
+  };
+  if (datasetType === 'lifecyclemodel') {
+    return {
+      ...base,
+      status: 'not_applicable',
+      reason: 'curation queue currently attaches entity closure for flow and process rows.',
+    };
+  }
+
+  const task = findQueueTask(queueContext, datasetType, identity);
+  if (!task) {
+    return {
+      ...base,
+      status: 'missing_task',
+      entity_type: datasetType,
+      entity_id: identity.id,
+      version: identity.version,
+    };
+  }
+
+  const closurePath = queueFilePath(repoRoot, queueContext, task.closure_file);
+  const closure = readJsonIfExists(closurePath);
+  const dependencyRows = ensureArray(closure?.dependencies?.local_tasks).map((dependency) => {
+    const dependencyTask = queueContext.tasksById.get(String(dependency.task_id ?? ''));
+    return {
+      ref: dependency.ref ?? null,
+      ref_path: dependency.ref_path ?? null,
+      task: summarizeQueueTask(repoRoot, queueContext, dependencyTask),
+      input_rows: readQueueTaskRows(repoRoot, queueContext, dependencyTask),
+    };
+  });
+  const supportRows = queueContext.tasks
+    .filter((candidate) => candidate.entity_type === 'support')
+    .map((supportTask) => ({
+      task: summarizeQueueTask(repoRoot, queueContext, supportTask),
+      input_rows: readQueueTaskRows(repoRoot, queueContext, supportTask),
+    }));
+
+  return {
+    ...base,
+    status: 'attached',
+    task: summarizeQueueTask(repoRoot, queueContext, task),
+    closure_file: closurePath ? repoRelativePath(repoRoot, closurePath) : null,
+    closure,
+    dependency_rows: dependencyRows,
+    support_rows: supportRows,
+    notes: [
+      'dependency_rows are local flow/support closure inputs for this entity task.',
+      'AI output must still be a structured patch or build plan; database writes are not allowed from this package.',
+    ],
+  };
+}
+
 function stripImportTraceMetadata(value) {
   let removed = 0;
   const visit = (node) => {
@@ -428,6 +554,22 @@ export function runDatasetCurationGate({
   options = {},
 } = {}) {
   const datasetType = datasetTypeFromOptions(options);
+  if (options.help) {
+    return {
+      schema_version: 2,
+      status: 'help',
+      command: 'dataset-curation-gate',
+      usage: [
+        'node scripts/foundry.mjs dataset-curation-gate --type process --rows-file <rows.jsonl> --schema-report <dataset-validate-report.json> --qa-report <qa-report.json> --queue-dir <curation-queue-dir>',
+        'npm run dataset:curation-gate -- --type process --rows-file ./rows/processes.jsonl --schema-report ./schema/report.json --qa-report ./qa/report.json --schema-file ./context/schema.json --yaml-file ./context/methodology.yaml --queue-dir ./curation-queue',
+      ],
+      context: {
+        queue_dir: 'optional but required by the Foundry import workflow after queue build',
+        ai_authoring_package:
+          'includes source row, schema/QA blockers, contract/profile context, queue task, closure, dependency rows, and support rows when --queue-dir is provided',
+      },
+    };
+  }
   const rowsFile = resolveRepoPath(repoRoot, options.rowsFile || options.input);
   const schemaReportPath = resolveRepoPath(repoRoot, options.schemaReport);
   const qaReportPath = resolveRepoPath(repoRoot, options.qaReport);
@@ -454,6 +596,7 @@ export function runDatasetCurationGate({
     ...collectExplicitContextFiles(options),
     ...collectContextDirFiles(repoRoot, options.contextDir),
   ]);
+  const queueContext = readCurationQueueContext(repoRoot, options);
   const waivedQaCodes = new Set(profile.waivedQaCodesByType?.[datasetType] ?? []);
   const schemaRowsById = new Map(
     ensureArray(schemaReport.rows).map((row) => [String(row.id ?? row.dataset_id ?? ''), row]),
@@ -469,6 +612,12 @@ export function runDatasetCurationGate({
   const packageDir = path.join(outDir, 'ai-authoring-packages');
   const entityReports = rows.map((row, index) => {
     const identity = datasetIdentity(row, index, datasetType);
+    const curationQueueContext = buildQueueAuthoringContext(
+      repoRoot,
+      queueContext,
+      datasetType,
+      identity,
+    );
     const schemaRow = schemaRowsById.get(identity.id) ?? null;
     const schemaIssues = ensureArray(schemaRow?.issues);
     const entityQaFindings = qaFindingsById.get(identity.id) ?? [];
@@ -489,7 +638,25 @@ export function runDatasetCurationGate({
       ...schemaActionItems.filter((item) => item.ai_required),
       ...qaActionItems,
     ];
-    const deterministicCleanupItems = schemaActionItems.filter((item) => !item.ai_required);
+    const queueGateItems = curationQueueContext?.status === 'missing_task'
+      ? [
+          {
+            source: 'curation_queue',
+            code: 'curation_queue_task_missing',
+            path: null,
+            message: 'No matching curation queue task was found for this entity.',
+            action_kind: 'queue_rebuild',
+            required_owner: 'foundry_deterministic_queue_build',
+            ai_required: false,
+            instruction:
+              'Rebuild the curation queue with this entity included before AI authoring or remote write planning.',
+          },
+        ]
+      : [];
+    const deterministicCleanupItems = [
+      ...schemaActionItems.filter((item) => !item.ai_required),
+      ...queueGateItems,
+    ];
     const blockingItemCount = actionItems.length + deterministicCleanupItems.length;
     const status = actionItems.length > 0
       ? 'needs_foundry_ai_authoring'
@@ -524,6 +691,7 @@ export function runDatasetCurationGate({
       })),
       action_items: actionItems,
       deterministic_cleanup_items: deterministicCleanupItems,
+      curation_queue_context: curationQueueContext,
       source_row: row,
       entity_payload: identity.payload,
       output_contract: {
@@ -588,6 +756,14 @@ export function runDatasetCurationGate({
     context: {
       profile_files: profileContext.files.map((file) => file.path),
       contract_context_files: contractContext.files.map((file) => file.path),
+      curation_queue: queueContext
+        ? {
+            queue_dir: repoRelativePath(repoRoot, queueContext.queueDir),
+            manifest_file: repoRelativePath(repoRoot, queueContext.manifestPath),
+            status: queueContext.manifest.status ?? null,
+            counts: queueContext.manifest.counts ?? null,
+          }
+        : null,
       missing_context_files: [
         ...profileContext.missing,
         ...contractContext.missing,

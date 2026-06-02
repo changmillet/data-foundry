@@ -14,7 +14,7 @@ The machine-readable registry is `specs/automated-lca-capability-registry.json`.
 | `source-evidence-review` | Plan and record public/source evidence for field-level facts. |
 | `schema-gate` | Validate generated TIDAS rows. |
 | `process-qa` / `flow-qa` / `lifecyclemodel-qa` | Run target-type deterministic QA gates. |
-| `dataset-curation` | Build profile-aware AI authoring packages from rows, schema reports, QA reports, and optional full SDK schema/YAML context. |
+| `dataset-curation` | Build entity-level import queues, then build profile-aware AI authoring packages from rows, schema reports, QA reports, and optional full SDK schema/YAML context. |
 | `reference-closure` | Refresh or verify local references before publish preparation. |
 | `publish-prep` | Prepare local publish/import bundles without remote commit. |
 | `remote-verification` | Read back remote rows when a task explicitly reaches that stage. |
@@ -26,6 +26,7 @@ npm run capabilities:list -- --class tidas-contract-context
 npm run capabilities:list -- --class external-lca-package-conversion
 npm run capabilities:list -- --class source-document-authoring
 npm run task:route -- --kind external-dataset-curated-import --dataset-type process --required-gates contract,schema,qa,curation
+npm run dataset:curation-queue:build -- --processes ./rows/processes.jsonl --flows ./rows/flows.jsonl --support ./rows/sources.jsonl --out-dir ./curation-queue
 npm run dataset:curation-gate -- --type process --rows-file ./rows/processes.jsonl --schema-report ./schema/report.json --qa-report ./qa/process-qa-report.json --schema-file ./contract/schema.json --yaml-file ./contract/methodology.yaml --profile bafu
 npm run task:route -- --kind source-evidence-dataset-development --dataset-type process --required-gates context,schema,qa,curation
 ```

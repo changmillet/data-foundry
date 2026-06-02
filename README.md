@@ -28,6 +28,12 @@ npm run task:route -- --kind external-dataset-curated-import --dataset-type proc
 Use the generic curation commands for every supported TIDAS type:
 
 ```bash
+npm run dataset:curation-queue:build -- \
+  --processes ./rows/processes.jsonl \
+  --flows ./rows/flows.jsonl \
+  --support ./rows/sources.jsonl \
+  --out-dir ./curation-queue
+
 npm run dataset:curation-gate -- \
   --type process \
   --rows-file ./rows/processes.jsonl \
@@ -36,6 +42,7 @@ npm run dataset:curation-gate -- \
   --schema-file ./context/process/schema.json \
   --yaml-file ./context/process/methodology.yaml \
   --ruleset-file ./context/process/runtime-ruleset.json \
+  --queue-dir ./curation-queue \
   --profile bafu
 
 npm run dataset:curation-cleanup -- \
@@ -43,6 +50,8 @@ npm run dataset:curation-cleanup -- \
   --rows-file ./rows/processes.jsonl \
   --out-file ./rows/processes.cleaned.jsonl
 ```
+
+`dataset:curation-queue:build` is a thin wrapper over `tiangong-lca dataset curation-queue build`; set `TIANGONG_LCA_CLI_BIN` only when a local sibling CLI checkout should be used for validation.
 
 `--profile generic` is the default. Dataset-specific behavior is configured in `specs/import-profiles.json`; BAFU is one profile, not a special code path.
 

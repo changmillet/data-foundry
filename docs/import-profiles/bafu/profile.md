@@ -74,9 +74,10 @@ When a BAFU import attempt exposes a reusable defect in the CLI, SDK, tidas-tool
 
 1. Fix the defect in the owning repository and rebuild the affected local tool before invoking it from Foundry.
 2. Start a fresh downstream workspace from this BAFU profile and the current normalized/source manifest selected by the user.
-3. Run `curation-queue next` through support, flow, and process scopes until the requested scope returns `complete`, or stop at the first blocker whose `next` action cannot proceed.
-4. If blocked, report the exact entity task, command, input artifact, output artifact, validation report, and owning repository defect. Do not summarize a prewrite gate with remaining runnable `next` actions as the final blocker.
-5. If not blocked, run prewrite verify, formal BAFU account write, and readback verify.
+3. Build a fresh entity queue with `npm run dataset:curation-queue:build` / `tiangong-lca dataset curation-queue build`, using the current support, flow, process, and external-flow-ref row files.
+4. Run `curation-queue next` through support, flow, and process scopes until the requested scope returns `complete`, or stop at the first blocker whose `next` action cannot proceed.
+5. If blocked, report the exact entity task, command, input artifact, output artifact, validation report, and owning repository defect. Do not summarize a prewrite gate with remaining runnable `next` actions as the final blocker.
+6. If not blocked, run prewrite verify, formal BAFU account write, and readback verify.
 
 This lets a user start from a short instruction such as `把 BAFU 数据写入数据库`; the durable profile, constraints, account guard, queue, and checkpoints carry the detailed workflow.
 
@@ -154,7 +155,7 @@ Flow curation must include identity matching, classification, source-language na
 
 Process curation must consume finalized flow and support records. It must refresh global references before validation instead of failing late on stale refs. Required process fields such as reference year and annual supply/production must be filled from traceable source evidence or an explicitly documented package-level fallback rule.
 
-CLI process/flow/lifecyclemodel QA is a deterministic QA report, not the profile policy decision point. Foundry owns dataset curation, AI authoring packages, deterministic prewrite cleanup of import-only trace metadata via `node scripts/foundry.mjs dataset-curation-cleanup --type <process|flow|lifecyclemodel>`, waiver decisions, and the final prewrite status. The curation gate should pass the SDK-backed schema and methodology YAML text into each authoring package through `--schema-file`, `--yaml-file`, `--contract-context`, or `--context-dir` when those artifacts are available. Profile-specific QA waivers are allowed only when named in `docs/import-profiles/bafu/constraints.md` and recorded with evidence in the stage checkpoint. For BAFU, `process_material_balance_deviation` is an account-level QA observation rather than a remote-write blocker; all other QA findings or schema issues remain action items unless the constraints file is explicitly updated.
+CLI process/flow/lifecyclemodel QA is a deterministic QA report, not the profile policy decision point. Foundry owns dataset curation, AI authoring packages, deterministic prewrite cleanup of import-only trace metadata via `node scripts/foundry.mjs dataset-curation-cleanup --type <process|flow|lifecyclemodel>`, waiver decisions, and the final prewrite status. The curation gate should pass the SDK-backed schema and methodology YAML text into each authoring package through `--schema-file`, `--yaml-file`, `--contract-context`, or `--context-dir` when those artifacts are available, and should attach the entity queue task, closure, dependency rows, and support rows through `--queue-dir`. Profile-specific QA waivers are allowed only when named in `docs/import-profiles/bafu/constraints.md` and recorded with evidence in the stage checkpoint. For BAFU, `process_material_balance_deviation` is an account-level QA observation rather than a remote-write blocker; all other QA findings or schema issues remain action items unless the constraints file is explicitly updated.
 
 ### 7. Mapping And Report
 

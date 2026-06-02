@@ -51,7 +51,20 @@ tiangong-lca dataset context-pack \
 5. For source-document authoring, extract source evidence first and keep unresolved assumptions explicit.
 6. Validate generated rows with `tiangong-lca dataset validate --type <type>`.
 7. Run deterministic QA with `tiangong-lca qa <type>`.
-8. Run Foundry curation:
+8. Build the entity-level import curation queue:
+
+```bash
+npm run dataset:curation-queue:build -- \
+  --processes <process-rows.jsonl> \
+  --flows <flow-rows.jsonl> \
+  --support <source-or-contact-or-unitgroup-or-flowproperty-rows.jsonl> \
+  --external-flow-ref <external-flow-ref-rows.jsonl> \
+  --out-dir .foundry/workspaces/<task-id>/curation-queue
+```
+
+The queue build is a Foundry wrapper around `tiangong-lca dataset curation-queue build`. It writes task, lock, blocker, closure, input, and run-plan artifacts; it does not run AI or write the database.
+
+9. Run Foundry curation:
 
 ```bash
 npm run dataset:curation-gate -- \
@@ -62,12 +75,13 @@ npm run dataset:curation-gate -- \
   --schema-file <context/schema.json> \
   --yaml-file <context/methodology.yaml> \
   --ruleset-file <context/runtime-ruleset.json> \
+  --queue-dir .foundry/workspaces/<task-id>/curation-queue \
   --profile <generic|bafu|custom-profile-id>
 ```
 
-9. If curation is blocked, Codex/skills should output structured patches or build plans. Do not write the database directly from AI output.
-10. Apply patches through deterministic CLI/SDK paths, then rerun schema, QA, and curation.
-11. Run cleanup after source trace has been captured in authoring packages:
+10. If curation is blocked, Codex/skills should output structured patches or build plans. Do not write the database directly from AI output.
+11. Apply patches through deterministic CLI/SDK paths, then rerun schema, QA, queue build when references changed, and curation.
+12. Run cleanup after source trace has been captured in authoring packages:
 
 ```bash
 npm run dataset:curation-cleanup -- \
@@ -76,7 +90,7 @@ npm run dataset:curation-cleanup -- \
   --out-file <cleaned-rows.jsonl>
 ```
 
-12. Revalidate cleaned rows before dry-run/publish planning.
-13. Remote writes require explicit task permission, dry-run evidence, verification evidence, and human approval.
+13. Revalidate cleaned rows before dry-run/publish planning.
+14. Remote writes require explicit task permission, dry-run evidence, verification evidence, and human approval.
 
 Rows remain source-language before import. Bilingual completion is a separate post-import task only when requested.

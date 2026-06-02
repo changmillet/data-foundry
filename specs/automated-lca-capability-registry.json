@@ -137,6 +137,17 @@
       "source_manifest_requirements": ["run directory", "CLI command record", "QA report"]
     },
     {
+      "id": "foundry.dataset.curation-queue-build",
+      "class": "dataset-curation",
+      "owner_project": "tiangong-lca-data-foundry",
+      "entrypoint": "node scripts/foundry.mjs dataset-curation-queue-build",
+      "input_contract": "Process rows, optional local flow rows, optional support rows, optional external flow references, and output directory.",
+      "output_contract": "CLI-owned curation queue artifacts: curation-queue-manifest.json, curation-queue-tasks.jsonl, curation-queue-locks.json, curation-queue-blockers.jsonl, and per-entity input/closure/run-plan files.",
+      "remote_write_mode": "read-only",
+      "verification_gate": "curation-queue-blockers.jsonl must be empty before AI authoring can claim a complete dependency closure or before remote write planning.",
+      "source_manifest_requirements": ["process rows path", "flow rows path when available", "support rows paths", "external flow ref paths", "CLI command record", "curation queue manifest"]
+    },
+    {
       "id": "foundry.dataset.curation-gate",
       "class": "dataset-curation",
       "owner_project": "tiangong-lca-data-foundry",

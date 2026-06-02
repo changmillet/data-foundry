@@ -16,6 +16,7 @@
     "workflow:check": "node scripts/foundry.mjs workflow-check",
     "storage:check": "node scripts/foundry.mjs storage-check",
     "acceptance:check": "node scripts/foundry.mjs acceptance-check",
+    "dataset:curation-queue:build": "node scripts/foundry.mjs dataset-curation-queue-build",
     "dataset:curation-gate": "node scripts/foundry.mjs dataset-curation-gate",
     "dataset:curation-cleanup": "node scripts/foundry.mjs dataset-curation-cleanup",
     "tasks:list": "node scripts/foundry.mjs tasks-list",
