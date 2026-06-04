@@ -38,6 +38,8 @@ tiangong-lca dataset context-pack \
 10. Run `npm run dataset:curation-cleanup` after source trace has been captured in authoring packages and before remote write planning.
 11. Do not treat historical `.foundry` artifacts as proof for a current task.
 
+`annualSupplyOrProductionVolume` is schema-required. If source data does not provide a real annual volume, Foundry must use the deterministic `9999 missing-data-sentinel/year` placeholder, not `common:other` deferral. The sentinel is deliberately non-physical and searchable; database-side curation owns replacing it later.
+
 ## Commit Rules
 
 Keep commits small and thematic. Do not commit `.foundry/`, `.env`, logs, source packages under `tmp/`, workspace clones, credentials, or downloaded private payloads.

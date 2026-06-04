@@ -7603,7 +7603,7 @@ test("curation gate maps process QA functional unit findings to concrete TIDAS p
   }
 });
 
-test("annual supply deferral preserves source treatment while removing invalid annual field", () => {
+test("annual supply schema issues route to deterministic missing-data sentinel cleanup", () => {
   fs.rmSync(annualSupplyFixtureRoot, { recursive: true, force: true });
   const processId = "eeeeeeee-ffff-4000-8111-222222222222";
   const rowsFile = path.join(
@@ -7683,319 +7683,62 @@ test("annual supply deferral preserves source treatment while removing invalid a
       rel(path.join(annualSupplyFixtureRoot, "curation-gate")),
     ]);
     assert.equal(gate.code, 1);
-    assert.equal(gate.json.counts.action_items, 2);
-
-    const task = runFoundry([
-      "dataset-authoring-task-build",
-      "--curation-gate-report",
-      gate.json.files.report,
-      "--out-dir",
-      rel(path.join(annualSupplyFixtureRoot, "authoring-tasks")),
-    ]);
-    assert.equal(task.code, 0);
-    const annualActionItems = task.json.tasks[0].action_items;
-    assert.equal(annualActionItems.length, 2);
-    const actionItem = annualActionItems.find(
-      (item) => item.code === "annual_supply_or_production_volume_invalid",
+    assert.equal(gate.json.status, "blocked_needs_foundry_deterministic_cleanup");
+    assert.equal(gate.json.counts.action_items, 0);
+    assert.equal(gate.json.counts.deterministic_cleanup_items, 3);
+    assert.equal(
+      gate.json.processes[0].status,
+      "needs_foundry_deterministic_cleanup",
     );
-    const formatActionItem = annualActionItems.find(
-      (item) => item.code === "invalid_format",
+    const authoringPackage = readJson(
+      path.join(repoRoot, gate.json.processes[0].authoring_package),
     );
-    for (const item of annualActionItems) {
-      assert.deepEqual(item.allowed_resolution_modes, [
-        "evidence_backed_completion",
-        "deferred_to_common_other",
-      ]);
-      assert.equal(item.common_other_deferral_allowed, true);
-      assert.equal(
-        item.deferral_cleanup_path,
-        "processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume",
+    const annualCleanupItems =
+      authoringPackage.deterministic_cleanup_items.filter(
+        (item) => item.action_kind === "annual_supply_sentinel_completion",
       );
-    }
-    const annualActionClosures = annualActionItems.map((item) => ({
-      code: item.code,
-      path: item.path,
-    }));
+    assert.equal(annualCleanupItems.length, 2);
+    assert.deepEqual(
+      annualCleanupItems.map((item) => item.sentinel_value),
+      ["9999 missing-data-sentinel/year", "9999 missing-data-sentinel/year"],
+    );
 
-    const outputPatchFile = path.join(
-      repoRoot,
-      task.json.tasks[0].files.output_patch_file,
-    );
-    const authoringPackageFile = path.join(
-      repoRoot,
-      task.json.tasks[0].files.authoring_package,
-    );
-    const traceEntryFor = (item) => ({
-      status: "unresolved_deferred",
-      action_item_code: item.code,
-      blocked_path: item.path,
-      reason:
-        "The source row does not provide annualized supply or production volume evidence.",
-      evidence: {
-        source: "source_row",
-        source_path:
-          "/Users/example/imports/BAFU-2025 Version 2 - ecoSpold1.zip:LCI ecoSpold version2 Files/process_fixture.xml",
-        quote_or_trace:
-          "dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume.#text = Not specified",
-      },
-      next_action:
-        "Curate an annual market volume from a source that explicitly reports an annualized quantity before publishing an upgraded row.",
-    });
-    const traceOperationFor = (traceEntries, closes = annualActionClosures) => ({
-      op: "add",
-      path: "/processDataSet/processInformation/dataSetInformation/common:other",
-      value: {
-        "tiangongfoundry:unresolvedTrace": traceEntries,
-      },
-      basis:
-        "No annualized quantity is present in the converted source row, so the unresolved gap is preserved as structured trace instead of a fake value.",
-      evidence: {
-        source: "authoring_package.source_row",
-        quote_or_trace:
-          "annualSupplyOrProductionVolume contains only the source placeholder 'Not specified'.",
-      },
-      resolution: {
-        mode: "deferred_to_common_other",
-        used_context_kinds: fullContextKinds,
-        summary:
-          "Defer missing annualized production volume while preserving evidence.",
-      },
-      closes_action_items: closes,
-    });
-    const traceOperation = traceOperationFor([traceEntryFor(actionItem)], [
+    const cleanup = runFoundry([
+      "dataset-curation-cleanup",
+      "--type",
+      "process",
+      "--rows-file",
+      rel(rowsFile),
+      "--out-dir",
+      rel(path.join(annualSupplyFixtureRoot, "cleanup")),
+    ]);
+    assert.equal(cleanup.code, 0);
+    assert.equal(cleanup.json.status, "completed");
+    assert.equal(cleanup.json.counts.annual_supply_missing_data_sentinels, 1);
+    const cleaned = readJsonLines(
+      path.join(repoRoot, cleanup.json.files.cleaned_rows),
+    )[0];
+    assert.deepEqual(
+      cleaned.processDataSet.modellingAndValidation
+        .dataSourcesTreatmentAndRepresentativeness
+        .annualSupplyOrProductionVolume,
       {
-        code: actionItem.code,
-        path: actionItem.path,
+        "@xml:lang": "en",
+        "#text": "9999 missing-data-sentinel/year",
       },
-    ]);
-    const patchWithoutCleanup = {
-      schema_version: 1,
-      kind: "tiangong_foundry_dataset_patch",
-      patch_status: "completed",
-      patch_sets: [
-        {
-          dataset_id: processId,
-          version: "00.00.001",
-          authoring_package: path.basename(authoringPackageFile),
-          operations: [traceOperation],
-        },
-      ],
-    };
-    writeJson(outputPatchFile, patchWithoutCleanup);
-    const blockedCollect = runFoundry([
-      "dataset-authoring-patch-collect",
-      "--task-manifest",
-      task.json.files.manifest,
-      "--out-dir",
-      rel(path.join(annualSupplyFixtureRoot, "authoring-patches-blocked")),
-    ]);
-    assert.equal(blockedCollect.code, 1);
-    assert.equal(blockedCollect.json.status, "blocked");
-    assert.equal(
-      blockerCodes(blockedCollect.json).has(
-        "patch_deferred_annual_supply_cleanup_missing",
-      ),
-      true,
     );
-
-    const cleanupOperation = (closes = annualActionClosures) => ({
-      op: "remove",
-      path: "/processDataSet/modellingAndValidation/dataSourcesTreatmentAndRepresentativeness/annualSupplyOrProductionVolume",
-      basis:
-        "The annualSupplyOrProductionVolume field is optional in the SDK schema and cannot remain with an invalid placeholder value.",
-      evidence: {
-        source: "schema",
-        quote_or_trace:
-          "annualSupplyOrProductionVolume requires an annualized value when present.",
-      },
-      resolution: {
-        mode: "evidence_backed_completion",
-        used_context_kinds: fullContextKinds,
-        summary:
-          "Remove the optional invalid annual volume field before deferring the annual volume gap.",
-      },
-      closes_action_items: closes,
-    });
-    const patchWithIncompleteTraceClosure = {
-      ...patchWithoutCleanup,
-      patch_sets: [
-        {
-          ...patchWithoutCleanup.patch_sets[0],
-          operations: [
-            cleanupOperation(),
-            traceOperationFor([traceEntryFor(actionItem)]),
-          ],
-        },
-      ],
-    };
-    writeJson(outputPatchFile, patchWithIncompleteTraceClosure);
-    const incompleteTraceCollect = runFoundry([
-      "dataset-authoring-patch-collect",
-      "--task-manifest",
-      task.json.files.manifest,
-      "--out-dir",
-      rel(path.join(annualSupplyFixtureRoot, "authoring-patches-incomplete-trace")),
-    ]);
-    assert.equal(incompleteTraceCollect.code, 1);
-    assert.equal(incompleteTraceCollect.json.status, "blocked");
     assert.equal(
-      blockerCodes(incompleteTraceCollect.json).has(
-        "patch_deferred_trace_action_item_untraced",
-      ),
-      true,
-    );
-
-    const patchWithUnclosedCleanup = {
-      ...patchWithoutCleanup,
-      patch_sets: [
-        {
-          ...patchWithoutCleanup.patch_sets[0],
-          operations: [
-            cleanupOperation([]),
-            traceOperation,
-          ],
-        },
+      cleaned.processDataSet.processInformation.dataSetInformation[
+        "common:other"
       ],
-    };
-    writeJson(outputPatchFile, patchWithUnclosedCleanup);
-    const unclosedCleanupCollect = runFoundry([
-      "dataset-authoring-patch-collect",
-      "--task-manifest",
-      task.json.files.manifest,
-      "--out-dir",
-      rel(
-        path.join(
-          annualSupplyFixtureRoot,
-          "authoring-patches-unclosed-cleanup",
-        ),
-      ),
-    ]);
-    assert.equal(unclosedCleanupCollect.code, 1);
-    assert.equal(unclosedCleanupCollect.json.status, "blocked");
-    assert.equal(
-      blockerCodes(unclosedCleanupCollect.json).has(
-        "patch_action_item_closure_missing_full_context",
-      ),
-      true,
+      undefined,
     );
-
-    const validPatch = {
-      ...patchWithoutCleanup,
-      patch_sets: [
-        {
-          ...patchWithoutCleanup.patch_sets[0],
-          operations: [
-            cleanupOperation(),
-            traceOperationFor([
-              traceEntryFor(formatActionItem),
-              traceEntryFor(actionItem),
-            ]),
-          ],
-        },
-      ],
-    };
-    writeJson(outputPatchFile, validPatch);
-    const collect = runFoundry([
-      "dataset-authoring-patch-collect",
-      "--task-manifest",
-      task.json.files.manifest,
-      "--out-dir",
-      rel(path.join(annualSupplyFixtureRoot, "authoring-patches")),
-    ]);
-    assert.equal(collect.code, 0);
-    assert.equal(collect.json.status, "ready_for_patch_apply");
-
-    if (siblingCliBuildAvailable()) {
-      const patchedRows = path.join(
-        annualSupplyFixtureRoot,
-        "rows",
-        "processes.patched.jsonl",
-      );
-      const apply = runFoundry([
-        "dataset-patch-apply",
-        "--input",
-        rel(rowsFile),
-        "--patch",
-        collect.json.files.batch_patch,
-        "--out",
-        rel(patchedRows),
-        "--out-dir",
-        rel(path.join(annualSupplyFixtureRoot, "patch-apply")),
-        "--authoring-package-dir",
-        rel(path.dirname(authoringPackageFile)),
-        "--require-authoring-package",
-        "--require-action-item-closure",
-      ]);
-      assert.equal(apply.code, 0);
-      assert.equal(apply.json.status, "completed");
-      const patched = readJsonLines(patchedRows)[0];
-      assert.equal(
-        patched.processDataSet.modellingAndValidation
-          .dataSourcesTreatmentAndRepresentativeness
-          .annualSupplyOrProductionVolume,
-        undefined,
-      );
-      assert.deepEqual(
-        patched.processDataSet.modellingAndValidation
-          .dataSourcesTreatmentAndRepresentativeness.referenceToDataSource,
-        {
-          "@type": "source data set",
-          "@refObjectId": "11111111-2222-4333-8444-555555555555",
-        },
-      );
-      assert.deepEqual(
-        new Set(
-          patched.processDataSet.processInformation.dataSetInformation[
-            "common:other"
-          ]["tiangongfoundry:unresolvedTrace"].map(
-            (entry) => entry.action_item_code,
-          ),
-        ),
-        new Set(["invalid_format", "annual_supply_or_production_volume_invalid"]),
-      );
-      const cleanup = runFoundry([
-        "dataset-curation-cleanup",
-        "--type",
-        "process",
-        "--rows-file",
-        rel(patchedRows),
-        "--out-dir",
-        rel(path.join(annualSupplyFixtureRoot, "cleanup")),
-      ]);
-      assert.equal(cleanup.code, 0);
-      assert.equal(cleanup.json.status, "completed");
-      assert.equal(cleanup.json.counts.added_foundry_trace_namespaces, 1);
-      assert.equal(
-        cleanup.json.counts.redacted_foundry_trace_evidence_locators,
-        2,
-      );
-      const cleaned = readJsonLines(
-        path.join(repoRoot, cleanup.json.files.cleaned_rows),
-      )[0];
-      assert.equal(
-        cleaned.processDataSet.processInformation.dataSetInformation[
-          "common:other"
-        ]["@xmlns:tiangongfoundry"],
-        "https://tiangong-lca.dev/foundry/import-curation/1",
-      );
-      for (const trace of cleaned.processDataSet.processInformation
-        .dataSetInformation["common:other"][
-        "tiangongfoundry:unresolvedTrace"
-      ]) {
-        assert.equal(trace.evidence.source_path, undefined);
-        assert.match(trace.evidence.source_locator_sha256, /^[a-f0-9]{64}$/u);
-        assert.equal(
-          trace.evidence.source_locator_status,
-          "redacted_before_remote_write",
-        );
-      }
-    }
   } finally {
     fs.rmSync(annualSupplyFixtureRoot, { recursive: true, force: true });
   }
 });
 
-test("curation cleanup defers placeholder annual supply without AI round trip", () => {
+test("curation cleanup fills placeholder annual supply with searchable sentinel", () => {
   const root = path.join(
     repoRoot,
     "tmp",
@@ -8018,27 +7761,26 @@ test("curation cleanup defers placeholder annual supply without AI round trip", 
     ]);
     assert.equal(cleanup.code, 0);
     assert.equal(cleanup.json.status, "completed");
-    assert.equal(cleanup.json.counts.deferred_annual_supply_placeholders, 1);
+    assert.equal(cleanup.json.counts.annual_supply_missing_data_sentinels, 1);
 
     const cleaned = readJsonLines(
       path.join(repoRoot, cleanup.json.files.cleaned_rows),
     )[0];
-    assert.equal(
+    assert.deepEqual(
       cleaned.processDataSet.modellingAndValidation
         .dataSourcesTreatmentAndRepresentativeness
         .annualSupplyOrProductionVolume,
-      undefined,
+      {
+        "@xml:lang": "en",
+        "#text": "9999 missing-data-sentinel/year",
+      },
     );
-    const traces =
+    assert.equal(
       cleaned.processDataSet.processInformation.dataSetInformation[
         "common:other"
-      ]["tiangongfoundry:unresolvedTrace"];
-    assert.equal(traces.length, 1);
-    assert.equal(
-      traces[0].action_item_code,
-      "annual_supply_or_production_volume_invalid",
+      ],
+      undefined,
     );
-    assert.equal(traces[0].evidence.source, "foundry_deterministic_cleanup");
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

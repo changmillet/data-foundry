@@ -210,7 +210,7 @@ Classification and location queue decisions should not be encoded as patch opera
 
 - do not use `common:other` as a substitute for mandatory schema fields; schema-required values need evidence-backed values or must remain blocked;
 - if the action item's allowed modes include `deferred_to_common_other`, write `common:other.tiangongfoundry:unresolvedTrace` with `status`, `action_item_code`, `blocked_path`, `reason`, structured `evidence`, and `next_action`, then close only the action item it truly resolves. Evidence must include source plus quote/trace/path/citation pointer;
-- if `annualSupplyOrProductionVolume` lacks annualized source evidence and is deferred, also remove `/processDataSet/modellingAndValidation/dataSourcesTreatmentAndRepresentativeness`; that optional container cannot retain an invalid placeholder;
+- do not defer `annualSupplyOrProductionVolume` to `common:other`; when annual source evidence is missing, Foundry deterministic cleanup writes `9999 missing-data-sentinel/year`, an intentionally non-physical searchable sentinel that later database-side curation owns replacing;
 - if source completeness is being accepted as source-faithful, write `common:other.tiangongfoundry:sourceExchangeCompleteness` with an accepted `status`, structured source trace `evidence`, and `resolution.mode=source_trace_verified`. Evidence must include source plus quote/trace/path/citation pointer;
 - if a mandatory schema/review blocker cannot be resolved, leave the task blocked by not writing a fake value, and record the blocker in a local note next to the task.
 

@@ -34,6 +34,10 @@ function writeJsonLines(filePath, rows) {
   );
 }
 
+function readJson(filePath) {
+  return JSON.parse(fs.readFileSync(filePath, "utf8"));
+}
+
 function readJsonLines(filePath) {
   return fs
     .readFileSync(filePath, "utf8")
@@ -201,7 +205,10 @@ test("classification decision task and apply route AI choices through CLI classi
     assert.equal(task.counts.blockers, 0);
     assert.equal(task.counts.attached_input_rows, 2);
     assert.equal(task.contract_context_files[0].kind, "schema");
-    assert.match(task.contract_context_files[1].text, /process:/u);
+    const sharedBundle = readJson(
+      path.join(repoRoot, task.files.shared_context_bundle),
+    );
+    assert.match(sharedBundle.files[1].text, /process:/u);
     assert.equal(task.classification_queue_rows.length, 2);
     assert.equal(
       task.attached_input_rows[0].payload.processDataSet.processInformation

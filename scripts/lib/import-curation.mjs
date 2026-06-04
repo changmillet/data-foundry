@@ -446,10 +446,7 @@ function readQaFindings(repoRoot, qaReport, qaReportPath, datasetType) {
 
 const annualSupplyFieldPath =
   "processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume";
-const annualSupplyFieldPointer =
-  "/processDataSet/modellingAndValidation/dataSourcesTreatmentAndRepresentativeness/annualSupplyOrProductionVolume";
-const annualSupplyUnresolvedTracePath =
-  "processDataSet.processInformation.dataSetInformation.common:other.tiangongfoundry:unresolvedTrace";
+const annualSupplyMissingDataSentinelText = "9999 missing-data-sentinel/year";
 const tidasSchemaSearchRoots = [
   ["tiangong-lca-cli", "assets", "tidas-schemas"],
   ["tidas-tools", "src", "tidas_tools", "tidas", "schemas"],
@@ -483,7 +480,7 @@ function schemaIssueInstruction(issue) {
   const code = String(issue?.code ?? "");
   const issuePath = String(issue?.path ?? "");
   if (isAnnualSupplyTarget(code, issuePath)) {
-    return "Use source evidence or an explicitly documented profile fallback to write annualSupplyOrProductionVolume as a real annualized quantity with unit, for example '<number> <unit>/year'. Do not copy the reference flow description or invent an annual value. If no annualized source evidence exists, remove the invalid annualSupplyOrProductionVolume field and add an evidence-backed unresolvedTrace under common:other instead of leaving an invalid placeholder.";
+    return `Use source evidence or an explicitly documented profile fallback to write annualSupplyOrProductionVolume as a real annualized quantity with unit, for example '<number> <unit>/year'. If no annualized source evidence exists, Foundry deterministic cleanup must write the intentionally non-physical sentinel '${annualSupplyMissingDataSentinelText}' so database-side follow-up can bulk-locate and replace it later.`;
   }
   if (code === "invalid_format") {
     return "Use the SDK schema and methodology YAML for this field to replace the invalid value with a schema-valid source-backed value.";
@@ -503,12 +500,23 @@ function schemaIssueCurationAction(issue) {
     instruction: schemaIssueInstruction(issue),
     ...(annualSupplyIssue
       ? {
-          common_other_deferral_allowed: true,
-          deferral_cleanup_path: annualSupplyFieldPath,
-          deferral_trace_path: annualSupplyUnresolvedTracePath,
+          sentinel_completion_allowed: true,
+          sentinel_cleanup_path: annualSupplyFieldPath,
+          sentinel_value: annualSupplyMissingDataSentinelText,
+          sentinel_policy:
+            "The 9999 missing-data sentinel is intentionally non-physical and easy to bulk-query; later database-side curation owns replacing it with real annual volume evidence.",
         }
       : {}),
   };
+  if (annualSupplyIssue) {
+    return {
+      ...base,
+      action_kind: "annual_supply_sentinel_completion",
+      required_owner: "foundry_deterministic_cleanup",
+      ai_required: false,
+      instruction: schemaIssueInstruction(issue),
+    };
+  }
   if (issuePath.includes("common:other.tidasimport:sourceTrace")) {
     return {
       ...base,
@@ -2727,7 +2735,7 @@ function buildPatchTemplate(packagePayload, packagePath) {
       "Do not remove authoring_package; strict Foundry apply uses it for package lineage and action-item closure.",
       "Do not use common:other as a substitute for mandatory schema fields. Only action items whose allowed_resolution_modes include deferred_to_common_other may be deferred.",
       "For deferred_to_common_other, add tiangongfoundry:unresolvedTrace under common:other with status, action_item_code, blocked_path, reason, structured evidence, and next_action. Evidence must include source plus quote_or_trace/source_path/field_path/citation.",
-      "For annualSupplyOrProductionVolume without annualized source evidence, deferred_to_common_other must also remove /processDataSet/modellingAndValidation/dataSourcesTreatmentAndRepresentativeness/annualSupplyOrProductionVolume because that optional field cannot retain an invalid placeholder.",
+      `Do not defer annualSupplyOrProductionVolume to common:other. When source annual volume evidence is missing, Foundry deterministic cleanup writes '${annualSupplyMissingDataSentinelText}' so the required schema field remains present and later database-side curation can bulk-locate it.`,
       "For source_trace_verified, add tiangongfoundry:sourceExchangeCompleteness under common:other with accepted status and structured source trace evidence. Evidence must include source plus quote_or_trace/source_path/field_path/citation.",
     ],
     patch_sets: [
@@ -3165,7 +3173,7 @@ The patch must:
 - preserve source-language content; do not add extra language variants unless the source evidence supports them
 - do not use \`common:other\` as a substitute for mandatory schema fields; schema-required values need evidence-backed values or must remain blocked
 - if a value cannot be inferred safely and the action item's allowed modes include \`deferred_to_common_other\`, add \`common:other.tiangongfoundry:unresolvedTrace\` with \`status\`, \`action_item_code\`, \`blocked_path\`, \`reason\`, structured \`evidence\`, and \`next_action\`; evidence must include source plus quote/trace/path/citation pointer
-- for \`annualSupplyOrProductionVolume\` without annualized source evidence, a deferred patch must also remove \`${annualSupplyFieldPointer}\` because the optional field cannot retain an invalid placeholder
+- do not defer \`annualSupplyOrProductionVolume\` to \`common:other\`; if source annual volume evidence is missing, Foundry deterministic cleanup writes \`${annualSupplyMissingDataSentinelText}\` into the required field for later database-side curation
 - if source exchange completeness is being accepted as source-faithful, use \`resolution.mode=source_trace_verified\` and add \`common:other.tiangongfoundry:sourceExchangeCompleteness\` with accepted \`status\` and structured source trace evidence; evidence must include source plus quote/trace/path/citation pointer
 
 ## Deterministic Apply
@@ -4216,14 +4224,6 @@ function operationClosesAnnualSupplyTarget(operation) {
   });
 }
 
-function patchSetRemovesAnnualSupplyInvalidField(operations) {
-  return ensureArray(operations).some(
-    (operation) =>
-      asText(operation?.op) === "remove" &&
-      asText(operation?.path) === annualSupplyFieldPointer,
-  );
-}
-
 function categoryEntries(repoRoot, schemaFile) {
   const schema = loadTidasSchema(repoRoot, schemaFile);
   const entries = ensureArray(schema?.oneOf)
@@ -4583,15 +4583,12 @@ function validateCollectedPatchSet({
       operationResolutionMode(operation) === "deferred_to_common_other" &&
       operationClosesAnnualSupplyTarget(operation),
   );
-  if (
-    deferredAnnualSupply &&
-    !patchSetRemovesAnnualSupplyInvalidField(nonTestOperations)
-  ) {
+  if (deferredAnnualSupply) {
     blockers.push({
-      code: "patch_deferred_annual_supply_cleanup_missing",
+      code: "patch_deferred_annual_supply_not_allowed",
       message:
-        "Annual supply may be deferred to common:other only when the patch also removes the invalid annualSupplyOrProductionVolume field.",
-      required_remove_path: annualSupplyFieldPointer,
+        "annualSupplyOrProductionVolume is schema-required and must not be deferred to common:other; use Foundry deterministic cleanup to write the searchable 9999 missing-data sentinel when source evidence is missing.",
+      sentinel_value: annualSupplyMissingDataSentinelText,
       patch_file: patchLocation,
       patch_set_index: patchSetIndex,
       entity,
@@ -5298,70 +5295,31 @@ function isPlaceholderAnnualSupplyValue(value) {
   const text = annualSupplyTextValue(value);
   return (
     !text ||
+    /^9999$/u.test(text) ||
     /^not\s+specified\.?$/iu.test(text) ||
     /^not\s+declared\s+in\s+source\s+package\.?$/iu.test(text)
   );
 }
 
-function ensureCommonOther(dataSetInfo) {
-  if (!dataSetInfo || typeof dataSetInfo !== "object") return null;
-  const current = dataSetInfo["common:other"];
-  if (current && typeof current === "object" && !Array.isArray(current)) {
-    return current;
-  }
-  dataSetInfo["common:other"] = {};
-  return dataSetInfo["common:other"];
-}
-
-function appendAnnualSupplyPlaceholderTrace(row, datasetType, rowIndex, originalValue) {
-  const payload = unwrapDatasetPayload(row, datasetType);
-  const root = datasetRoot(payload, datasetType);
-  const info = dataSetInformation(root, datasetType);
-  const commonOther = ensureCommonOther(info);
-  if (!commonOther) return false;
-  commonOther["@xmlns:tiangongfoundry"] =
-    commonOther["@xmlns:tiangongfoundry"] ?? foundryTraceNamespace;
-  const traceEntry = {
-    status: "unresolved_deferred",
-    action_item_code: "annual_supply_or_production_volume_invalid",
-    blocked_path: annualSupplyFieldPath,
-    reason:
-      "The source row contains only a placeholder, not an annualized supply or production volume.",
-    evidence: {
-      source: "foundry_deterministic_cleanup",
-      field_path: annualSupplyFieldPath,
-      quote_or_trace: `annualSupplyOrProductionVolume.#text = ${annualSupplyTextValue(originalValue) || "<empty>"}`,
-    },
-    next_action:
-      "Curate an annualized supply or production volume from a source that explicitly reports a numeric annual quantity before publishing an upgraded row.",
+function annualSupplySentinelValue() {
+  return {
+    "@xml:lang": "en",
+    "#text": annualSupplyMissingDataSentinelText,
   };
-  const key = "tiangongfoundry:unresolvedTrace";
-  const current = commonOther[key];
-  if (current === undefined) {
-    commonOther[key] = [traceEntry];
-  } else if (Array.isArray(current)) {
-    current.push(traceEntry);
-  } else {
-    commonOther[key] = [current, traceEntry];
-  }
-  return true;
 }
 
-function removePlaceholderAnnualSupply(row, datasetType, rowIndex) {
+function applyAnnualSupplyMissingDataSentinel(row, datasetType) {
   if (datasetType !== "process") return false;
   const payload = unwrapDatasetPayload(row, datasetType);
   const root = datasetRoot(payload, datasetType);
   const dataSources =
     root?.modellingAndValidation?.dataSourcesTreatmentAndRepresentativeness;
   if (!dataSources || typeof dataSources !== "object") return false;
-  if (!Object.hasOwn(dataSources, "annualSupplyOrProductionVolume")) {
+  const current = dataSources.annualSupplyOrProductionVolume;
+  if (current !== undefined && !isPlaceholderAnnualSupplyValue(current)) {
     return false;
   }
-  const current = dataSources.annualSupplyOrProductionVolume;
-  if (!isPlaceholderAnnualSupplyValue(current)) return false;
-  const original = JSON.parse(JSON.stringify(current ?? null));
-  delete dataSources.annualSupplyOrProductionVolume;
-  appendAnnualSupplyPlaceholderTrace(row, datasetType, rowIndex, original);
+  dataSources.annualSupplyOrProductionVolume = annualSupplySentinelValue();
   return true;
 }
 
@@ -6367,11 +6325,11 @@ export function runDatasetCurationCleanup({ repoRoot, options = {} } = {}) {
   let normalizedDateTimeValues = 0;
   let addedFoundryTraceNamespaces = 0;
   let redactedFoundryTraceEvidenceLocators = 0;
-  let deferredAnnualSupplyPlaceholders = 0;
+  let annualSupplyMissingDataSentinels = 0;
   const cleanedRows = rows.map((row, rowIndex) => {
     const cleaned = JSON.parse(JSON.stringify(row));
-    if (removePlaceholderAnnualSupply(cleaned, datasetType, rowIndex)) {
-      deferredAnnualSupplyPlaceholders += 1;
+    if (applyAnnualSupplyMissingDataSentinel(cleaned, datasetType, rowIndex)) {
+      annualSupplyMissingDataSentinels += 1;
     }
     normalizedDateTimeValues += normalizeDateTimeMetadata(cleaned);
     const traceResult = externalizeImportTraceMetadata(cleaned);
@@ -6399,7 +6357,7 @@ export function runDatasetCurationCleanup({ repoRoot, options = {} } = {}) {
         redactedFoundryTraceEvidenceLocators,
       added_foundry_trace_namespaces: addedFoundryTraceNamespaces,
       normalized_datetime_values: normalizedDateTimeValues,
-      deferred_annual_supply_placeholders: deferredAnnualSupplyPlaceholders,
+      annual_supply_missing_data_sentinels: annualSupplyMissingDataSentinels,
     },
     policy: {
       purpose:
@@ -6414,7 +6372,7 @@ export function runDatasetCurationCleanup({ repoRoot, options = {} } = {}) {
       datetime_policy:
         "TIDAS/ILCD dateTime values with timezone offsets are normalized to UTC Z form.",
       annual_supply_placeholder_policy:
-        "annualSupplyOrProductionVolume is optional. Placeholder values such as 'Not specified' are removed before SDK validation and retained as tiangongfoundry:unresolvedTrace for later evidence-backed curation.",
+        `annualSupplyOrProductionVolume is schema-required. If source evidence is missing or converted as a placeholder such as 'Not specified', Foundry writes '${annualSupplyMissingDataSentinelText}' so the row remains importable and later database-side curation can bulk-locate the intentionally non-physical sentinel.`,
     },
   };
   const reportFileName = "dataset-curation-cleanup-report.json";
