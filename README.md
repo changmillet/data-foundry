@@ -70,7 +70,7 @@ tiangong-lca dataset curation-queue verify \
   --type process \
   --json
 
-npm run legacy:dataset:curation-gate -- \
+node scripts/foundry.mjs dataset-curation-gate \
   --type process \
   --rows-file ./rows/processes.jsonl \
   --schema-report ./schema/report.json \
@@ -85,7 +85,7 @@ npm run legacy:dataset:curation-gate -- \
   --profile bafu
 ```
 
-Foundry no longer exposes `dataset:*` npm scripts as its primary API. Queue state belongs to `tiangong-lca dataset curation-queue build/next/verify`; conversion, validation, QA, remote write, and readback verification also belong to CLI-owned commands. `legacy:dataset:*` scripts remain only as a migration bridge for Foundry-specific curation packages and gate aggregation while those pieces move to their owning CLI/skill surfaces.
+Foundry does not expose dataset npm script aliases. Queue state belongs to `tiangong-lca dataset curation-queue build/next/verify`; conversion, validation, QA, remote write/delete/redo, and readback verification belong to CLI-owned commands and checked-in skills. Foundry-local dataset commands are policy and artifact helpers only: curation packages, mutation manifests, commit handoff plans, closeout checks, and task completion reports.
 
 `annualSupplyOrProductionVolume` remains a required process field. When source data does not provide it, Foundry uses the deterministic `9999 missing-data-sentinel/year` value rather than AI trace deferral. The sentinel is intentionally non-physical and easy to bulk search so later database-side curation can replace it; that replacement is outside Foundry's import task.
 
@@ -94,6 +94,8 @@ Foundry no longer exposes `dataset:*` npm scripts as its primary API. Queue stat
 ## Runtime Skills
 
 Foundry-local skills under `.agents/skills` are for Foundry orchestration only. Fast-moving source-evidence skills are resolved at runtime with `npx skills` and are not vendored into this repository.
+
+For deleting, retiring, repairing, or redoing rows from a bad import under current-user RLS, route to the checked-in `tiangong-lca-skills` `$dataset-rls-maintenance` workflow and the CLI-owned `tiangong-lca dataset maintenance plan/apply/verify` surface. Do not add Foundry-local Supabase delete or redo commands.
 
 For SCI literature evidence, use the latest remote `tiangong-kb-sci-search` skill from `https://github.com/tiangong-ai/skills`:
 

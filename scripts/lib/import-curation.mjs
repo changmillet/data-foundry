@@ -4948,7 +4948,7 @@ export function runDatasetAuthoringPatchCollect({
       command: "dataset-authoring-patch-collect",
       usage: [
         "node scripts/foundry.mjs dataset-authoring-patch-collect --task-manifest <authoring-task-manifest.json>",
-        "npm run dataset:authoring-patch:collect -- --task-manifest ./authoring-tasks/authoring-task-manifest.json",
+        "node scripts/foundry.mjs dataset-authoring-patch-collect --task-manifest ./authoring-tasks/authoring-task-manifest.json",
       ],
       purpose:
         "Collect per-task AI patch outputs into one batch patch file and block if any task output is missing or structurally invalid. This command is local-only and never writes the database.",
@@ -5135,7 +5135,7 @@ export function runDatasetAuthoringTaskBuild({ repoRoot, options = {} } = {}) {
       usage: [
         "node scripts/foundry.mjs dataset-authoring-task-build --authoring-package <package.json> --out-dir <task-dir>",
         "node scripts/foundry.mjs dataset-authoring-task-build --curation-gate-report <dataset-curation-gate-report.json> --out-dir <tasks-dir> [--shared-context-cache-dir <cache-dir>]",
-        "npm run dataset:authoring-task:build -- --package ./curation-gate/ai-authoring-packages/process-<uuid>.authoring-package.json --out-dir ./authoring-task",
+        "node scripts/foundry.mjs dataset-authoring-task-build --package ./curation-gate/ai-authoring-packages/process-<uuid>.authoring-package.json --out-dir ./authoring-task",
       ],
       purpose:
         "Build Codex/skill-facing authoring tasks and strict patch templates from Foundry AI authoring packages. This command is local-only and never writes the database.",
@@ -5613,7 +5613,7 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
       command: "dataset-curation-gate",
       usage: [
         "node scripts/foundry.mjs dataset-curation-gate --type process --rows-file <rows.jsonl> --schema-report <dataset-validate-report.json> --qa-report <qa-report.json> --queue-dir <curation-queue-dir> --classification-queue <classification-authoring-queue.jsonl> --location-queue <location-authoring-queue.jsonl>",
-        "npm run dataset:curation-gate -- --type process --rows-file ./rows/processes.jsonl --schema-report ./schema/report.json --qa-report ./qa/report.json --schema-file ./context/schema.json --yaml-file ./context/methodology.yaml --queue-dir ./curation-queue --classification-queue ./classification-authoring-queue.jsonl --location-queue ./location-authoring-queue.jsonl --identity-preflight-index ./identity-preflight-requests/identity-preflight-requests.jsonl",
+        "node scripts/foundry.mjs dataset-curation-gate --type process --rows-file ./rows/processes.jsonl --schema-report ./schema/report.json --qa-report ./qa/report.json --schema-file ./context/schema.json --yaml-file ./context/methodology.yaml --queue-dir ./curation-queue --classification-queue ./classification-authoring-queue.jsonl --location-queue ./location-authoring-queue.jsonl --identity-preflight-index ./identity-preflight-requests/identity-preflight-requests.jsonl",
       ],
       context: {
         queue_dir:
@@ -5625,7 +5625,7 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
         identity_preflight_index:
           "optional JSONL from dataset-bundle-sample-rows; attached to authoring packages with read-only hybrid-search request/result evidence for process and flow reuse decisions",
         require_identity_preflight:
-          "legacy explicit hard-gate flag; full-context process/flow profiles now require identity-preflight result artifacts for current entities and process dependencies automatically",
+          "explicit hard-gate flag for profiles that require identity-preflight result artifacts for current entities and process dependencies",
         ai_authoring_package:
           "includes source row, schema/QA blockers, contract/profile context, queue task, closure, dependency rows, and support rows when --queue-dir is provided",
       },
@@ -8253,7 +8253,7 @@ function curationGateContextHasKind(curationGateArtifact, kind) {
     curationGateArtifact?.value?.context?.contract_context_file_details,
   );
   if (details.some((file) => asText(file?.kind) === kind)) return true;
-  const legacyPaths = ensureArray(
+  const contextPaths = ensureArray(
     curationGateArtifact?.value?.context?.contract_context_files,
   );
   const expectedFileByKind = {
@@ -8264,7 +8264,7 @@ function curationGateContextHasKind(curationGateArtifact, kind) {
   const expected = expectedFileByKind[kind];
   return Boolean(
     expected &&
-    legacyPaths.some((filePath) =>
+    contextPaths.some((filePath) =>
       String(filePath ?? "")
         .toLowerCase()
         .includes(expected),
@@ -8285,10 +8285,10 @@ function curationGateContextHasPattern(curationGateArtifact, pattern) {
   ) {
     return true;
   }
-  const legacyPaths = ensureArray(
+  const contextPaths = ensureArray(
     curationGateArtifact?.value?.context?.contract_context_files,
   );
-  return legacyPaths.some((filePath) =>
+  return contextPaths.some((filePath) =>
     String(filePath ?? "")
       .toLowerCase()
       .includes(pattern.toLowerCase()),

@@ -16,7 +16,7 @@ Use this skill as the Foundry-local entrypoint for end-to-end external data impo
 - Use SDK/CLI artifacts for schema, YAML, rulesets, conversion, validation, deterministic QA, dry-run, commit, and remote verification.
 - Use `$foundry-tidas-authoring` only for AI semantic repair from Foundry authoring tasks. For identity, classification, and location blockers, AI writes structured decision files; for other field gaps, AI writes structured patch files. AI never writes database rows.
 - AI-authored rows can enter the remote-write chain only after AI semantic evidence proves the AI used the full SDK schema, methodology YAML, runtime ruleset, source row, entity payload, profile context, and queue/dependency context. Identity fixes prove this with `identity-decisions-apply`; classification fixes prove this with `classification-decisions-apply`; location fixes prove this with `location-decisions-apply`; other field fixes prove this with authoring patch evidence.
-- For process/flow full-context imports, run every generated identity-preflight request through `dataset-identity-preflight-run` before AI authoring, then pass the same index to curation/finalize with `--identity-preflight-index`. Full-context process/flow profiles require this evidence automatically; `--require-identity-preflight` is still accepted as an explicit legacy hard-gate flag. Foundry-generated requests should carry a compact fielded `query` for Edge hybrid search plus local-only `remote_candidate_search.profile_hints` for source-derived target profile facts. The AI package must include completed current/dependency identity-preflight evidence from `process_hybrid_search` / `flow_hybrid_search`, especially for elementary flows that must reuse existing database rows instead of being newly authored.
+- For process/flow full-context imports, run every generated identity-preflight request through `dataset-identity-preflight-run` before AI authoring, then pass the same index to curation/finalize with `--identity-preflight-index`. Full-context process/flow profiles require this evidence automatically; `--require-identity-preflight` may be used as an explicit hard-gate flag when a profile wants fail-fast behavior. Foundry-generated requests should carry a compact fielded `query` for Edge hybrid search plus local-only `remote_candidate_search.profile_hints` for source-derived target profile facts. The AI package must include completed current/dependency identity-preflight evidence from `process_hybrid_search` / `flow_hybrid_search`, especially for elementary flows that must reuse existing database rows instead of being newly authored.
 - After `dataset-curation-gate`, run `dataset-authoring-plan` before hand-authoring decisions or patches. Treat the plan as the current worklist for missing task builds, AI decisions/patches, deterministic apply, and post-authoring finalize readiness.
 - Import-ready rows are source-language rows. Bilingual completion is a separate post-import task.
 - Never continue to commit from stale historical `.foundry` artifacts. Every gate must point to the exact current final rows file.
@@ -119,10 +119,10 @@ tiangong-lca dataset curation-queue next \
 Before the next curation gate for process/flow imports, audit then run the generated identity-preflight request index. The audit is read-only and proves the exact Edge request body contains a complete fielded `query` with no placeholder/source-format noise; Edge ignores local-only `profile_hints`. The runner is also read-only; `blocked` and `needs_review` identity findings are retained as evidence rather than treated as tool failures:
 
 ```bash
-npm run legacy:dataset:identity-preflight-query:audit -- \
+node scripts/foundry.mjs dataset-identity-preflight-query-audit \
   --index .foundry/workspaces/<task-id>/identity-preflight-requests/identity-preflight-requests.jsonl \
   --out-dir .foundry/workspaces/<task-id>/identity-preflight-query-audit
-npm run legacy:dataset:identity-preflight:run -- \
+node scripts/foundry.mjs dataset-identity-preflight-run \
   --index .foundry/workspaces/<task-id>/identity-preflight-requests/identity-preflight-requests.jsonl \
   --out-dir .foundry/workspaces/<task-id>/identity-preflight-run \
   --only-pending
@@ -133,18 +133,18 @@ If the gate later reports `identity_preflight_index_required`, `identity_preflig
 If field patches or deterministic cleanup change the current process/flow rows after the original full preflight index was built, do not replace the full index with a small current-only index. Rebuild and rerun identity preflight for the exact patched rows, passing the original full index as `--source-index` so source trace context is retained, then merge the refreshed current rows into the original full index so dependency evidence remains available:
 
 ```bash
-npm run legacy:dataset:identity-preflight-requests:build -- \
+node scripts/foundry.mjs dataset-identity-preflight-requests-build \
   --type process \
   --rows-file .foundry/workspaces/<task-id>/rows/processes.patched.jsonl \
   --source-index .foundry/workspaces/<task-id>/identity-preflight-requests/identity-preflight-requests.jsonl \
   --out-dir .foundry/workspaces/<task-id>/identity-preflight-refresh
-npm run legacy:dataset:identity-preflight-query:audit -- \
+node scripts/foundry.mjs dataset-identity-preflight-query-audit \
   --index .foundry/workspaces/<task-id>/identity-preflight-refresh/identity-preflight-requests/identity-preflight-requests.jsonl \
   --out-dir .foundry/workspaces/<task-id>/identity-preflight-refresh-query-audit
-npm run legacy:dataset:identity-preflight:run -- \
+node scripts/foundry.mjs dataset-identity-preflight-run \
   --index .foundry/workspaces/<task-id>/identity-preflight-refresh/identity-preflight-requests/identity-preflight-requests.jsonl \
   --out-dir .foundry/workspaces/<task-id>/identity-preflight-refresh-run
-npm run legacy:dataset:identity-preflight-index:merge -- \
+node scripts/foundry.mjs dataset-identity-preflight-index-merge \
   --base-index .foundry/workspaces/<task-id>/identity-preflight-requests/identity-preflight-requests.jsonl \
   --update-index .foundry/workspaces/<task-id>/identity-preflight-refresh/identity-preflight-requests/identity-preflight-requests.jsonl \
   --out-dir .foundry/workspaces/<task-id>/identity-preflight-index-merge
@@ -153,7 +153,7 @@ npm run legacy:dataset:identity-preflight-index:merge -- \
 8. Run the Foundry curation gate with schema, QA, profile, queue, identity-preflight evidence, and full contract context:
 
 ```bash
-npm run legacy:dataset:curation-gate -- \
+node scripts/foundry.mjs dataset-curation-gate \
   --type process \
   --rows-file .foundry/workspaces/<task-id>/rows/processes.jsonl \
   --schema-report .foundry/workspaces/<task-id>/schema/process/outputs/validation-report.json \
@@ -173,11 +173,11 @@ npm run legacy:dataset:curation-gate -- \
 9. If curation blocks on identity manual-review action items, build AI identity decision tasks and apply completed decisions through the Foundry wrapper:
 
 ```bash
-npm run legacy:dataset:identity-decision-task:build -- \
+node scripts/foundry.mjs dataset-identity-decision-task-build \
   --curation-gate-report .foundry/workspaces/<task-id>/curation-gate/dataset-curation-gate-report.json \
   --out-dir .foundry/workspaces/<task-id>/identity-decision-task
 
-npm run legacy:dataset:identity-decisions:apply -- \
+node scripts/foundry.mjs dataset-identity-decisions-apply \
   --type <flow|process> \
   --rows-file .foundry/workspaces/<task-id>/rows/<type>.jsonl \
   --decisions .foundry/workspaces/<task-id>/identity-decision-task/identity-decisions.jsonl \
@@ -190,7 +190,7 @@ Use the generated `files.output_rows` as the next rows file before rerunning sch
 10. If curation blocks on classification queue rows, build AI classification decision tasks and apply completed decisions through the CLI wrapper:
 
 ```bash
-npm run legacy:dataset:classification-decision-task:build -- \
+node scripts/foundry.mjs dataset-classification-decision-task-build \
   --classification-queue .foundry/workspaces/<task-id>/classification-authoring-queue.jsonl \
   --schema-file .foundry/workspaces/<task-id>/context/<type>/outputs/schema.json \
   --yaml-file .foundry/workspaces/<task-id>/context/<type>/outputs/methodology.yaml \
@@ -206,7 +206,7 @@ npm run legacy:dataset:classification-decision-task:build -- \
   --location-schema ../tiangong-lca-cli/assets/tidas-schemas/tidas_locations_category.json \
   --out-dir .foundry/workspaces/<task-id>/classification-decision-task
 
-npm run legacy:dataset:classification-decisions:apply -- \
+node scripts/foundry.mjs dataset-classification-decisions-apply \
   --classification-queue .foundry/workspaces/<task-id>/classification-authoring-queue.jsonl \
   --decisions .foundry/workspaces/<task-id>/classification-decision-task/classification-decisions.jsonl \
   --decision-task .foundry/workspaces/<task-id>/classification-decision-task/classification-decision-task.json \
@@ -220,7 +220,7 @@ For large imports, split this task with `--dataset-type`, `--bundle-id`/`--proce
 11. If curation blocks on location queue rows, build AI location decision tasks and apply completed decisions through the CLI wrapper:
 
 ```bash
-npm run legacy:dataset:location-decision-task:build -- \
+node scripts/foundry.mjs dataset-location-decision-task-build \
   --location-queue .foundry/workspaces/<task-id>/location-authoring-queue.jsonl \
   --identity-preflight-index .foundry/workspaces/<task-id>/identity-preflight-requests/identity-preflight-requests.jsonl \
   --require-identity-preflight \
@@ -238,7 +238,7 @@ npm run legacy:dataset:location-decision-task:build -- \
   --location-schema ../tiangong-lca-cli/assets/tidas-schemas/tidas_locations_category.json \
   --out-dir .foundry/workspaces/<task-id>/location-decision-task
 
-npm run legacy:dataset:location-decisions:apply -- \
+node scripts/foundry.mjs dataset-location-decisions-apply \
   --location-queue .foundry/workspaces/<task-id>/location-authoring-queue.jsonl \
   --decisions .foundry/workspaces/<task-id>/location-decision-task/location-decisions.jsonl \
   --decision-task .foundry/workspaces/<task-id>/location-decision-task/location-decision-task.json \
@@ -252,7 +252,7 @@ For large imports, split this task with `--dataset-type`, `--bundle-id`/`--proce
 12. For non-identity/non-classification/non-location curation blockers, build AI authoring tasks and use `$foundry-tidas-authoring`:
 
 ```bash
-npm run legacy:dataset:authoring-task:build -- \
+node scripts/foundry.mjs dataset-authoring-task-build \
   --curation-gate-report .foundry/workspaces/<task-id>/curation-gate/dataset-curation-gate-report.json \
   --shared-context-cache-dir .foundry/workspaces/<task-id>/shared-context-cache \
   --out-dir .foundry/workspaces/<task-id>/authoring-tasks
@@ -263,10 +263,10 @@ npm run legacy:dataset:authoring-task:build -- \
 Skip this step when `authoring-task-manifest.json` reports `status=ready_no_action_items` and `batch_patch_contract.status=not_required_no_patch_action_items`; in that case only decision workflows were needed for the current scope.
 
 ```bash
-npm run legacy:dataset:authoring-patch:collect -- \
+node scripts/foundry.mjs dataset-authoring-patch-collect \
   --task-manifest .foundry/workspaces/<task-id>/authoring-tasks/authoring-task-manifest.json
 
-npm run legacy:dataset:patch:apply -- \
+node scripts/foundry.mjs dataset-patch-apply \
   --input .foundry/workspaces/<task-id>/rows/<type>.jsonl \
   --patch .foundry/workspaces/<task-id>/authoring-tasks/ai-patches.batch.json \
   --out .foundry/workspaces/<task-id>/rows/<type>.patched.jsonl \
@@ -281,7 +281,7 @@ npm run legacy:dataset:patch:apply -- \
 15. For process, flow, and lifecyclemodel rows, run the post-AI prewrite finalize command. It reruns cleanup, SDK validation, deterministic QA, `tiangong-lca dataset classification audit --type location` for schema-derived location-code fields against `tidas_locations_category.json`, post-authoring curation gate, type-specific dry-run (`process save-draft --dry-run`, `flow publish-version --dry-run`, or `lifecyclemodel save-draft --dry-run`), optional remote reference verification, and mutation manifest generation on one exact rows-file scope:
 
 ```bash
-npm run legacy:dataset:post-authoring-finalize -- \
+node scripts/foundry.mjs dataset-post-authoring-finalize \
   --type <process|flow|lifecyclemodel> \
   --rows-file .foundry/workspaces/<task-id>/rows/<type>.patched.jsonl \
   --out-dir .foundry/workspaces/<task-id>/post-authoring-finalize \
@@ -304,7 +304,7 @@ Add `--patch-collect-report ... --require-patch-collect-report --patch-apply-rep
 16. Inspect or regenerate the explicit commit handoff plan. It is read-only and must report `ready_for_explicit_commit` before any database write:
 
 ```bash
-npm run legacy:dataset:commit-handoff-plan -- \
+node scripts/foundry.mjs dataset-commit-handoff-plan \
   --finalize-report .foundry/workspaces/<task-id>/post-authoring-finalize/dataset-post-authoring-finalize-report.json \
   --state-code <expected-state-code>
 ```
@@ -314,7 +314,7 @@ npm run legacy:dataset:commit-handoff-plan -- \
 19. Close the import only after Foundry verifies the commit and readback artifacts:
 
 ```bash
-npm run legacy:dataset:post-write-closeout -- \
+node scripts/foundry.mjs dataset-post-write-closeout \
   --handoff-plan .foundry/workspaces/<task-id>/post-authoring-finalize/commit-handoff/dataset-commit-handoff-plan.json \
   --commit-report .foundry/workspaces/<task-id>/post-authoring-finalize/commit/<type-command>/outputs/<summary-or-report>.json \
   --post-write-verify-report .foundry/workspaces/<task-id>/post-authoring-finalize/commit-handoff/post-write-verify/outputs/remote-verification-report.json \
@@ -326,7 +326,7 @@ npm run legacy:dataset:post-write-closeout -- \
 20. For a task with one or more committed scopes, write the task-level completion report from every closeout:
 
 ```bash
-npm run legacy:dataset:import-completion-report -- \
+node scripts/foundry.mjs dataset-import-completion-report \
   --task-dir .foundry/workspaces/<task-id> \
   --require-type process \
   --out-dir .foundry/workspaces/<task-id>/import-completion

@@ -43,7 +43,8 @@ Foundry does not own:
 - shared agent workflow skills;
 - database RPC/schema/index behavior;
 - Edge Function API behavior;
-- TIDAS schema semantics.
+- TIDAS schema semantics;
+- user RLS-scoped dataset delete, retirement, redo, or repair execution.
 
 ## Decision Rule
 
@@ -54,6 +55,8 @@ Use this order before adding code:
 3. If the change is a reusable agent workflow that composes CLI commands, create a development request for `tiangong-lca-skills`.
 4. If the change is a fast-moving external source-evidence retrieval workflow, consume it as a runtime `npx skills` dependency and record the resolved ref instead of copying it into Foundry.
 5. If the change depends on database, Edge Function, converter, SDK, or schema internals, route it to that owning repo.
+
+Bad-import cleanup and redo must be routed to `tiangong-lca dataset maintenance plan/apply/verify` plus the `$dataset-rls-maintenance` skill. Foundry may store the maintenance scope, plan, and verification reports in the task workspace, but must not own direct delete logic, service-role access, or broad current-account cleanup filters.
 
 When unsure, keep the foundry implementation as a thin adapter or stub, stop at dry-run/curation, and create a follow-up task with an explicit `owner_project`.
 

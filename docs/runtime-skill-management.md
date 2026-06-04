@@ -3,7 +3,23 @@ title: Runtime Skill Management
 docType: contract
 scope: skill-orchestration
 status: active
+authoritative: true
 owner: tiangong-lca-data-foundry
+language: en
+whenToUse:
+  - when resolving runtime skills for Foundry source-evidence or maintenance tasks
+  - when deciding whether to vendor, pin, update, or record external skills
+whenToUpdate:
+  - when runtime skill ownership, update, or recording policy changes
+  - when Foundry adds or removes top-level shared workflow skill routes
+checkPaths:
+  - docs/runtime-skill-management.md
+  - README.md
+  - AGENTS.md
+  - package.json
+  - .agents/skills/**
+lastReviewedAt: 2026-06-04
+lastReviewedCommit: 0fc91c903b375a013a5d5f912db957132f5fe18f
 related:
   - AGENTS.md
   - WORKFLOW.md
@@ -120,3 +136,4 @@ If an operator installs the skill locally, `.agents/skills/tiangong-kb-*/` and `
 - Treat search results as evidence candidates until they are captured in the evidence dossier with field-level support and limitations.
 - Keep Foundry code free of copied retrieval logic from external skill repositories.
 - Do not let a runtime skill write database rows. Source-evidence skills may retrieve and summarize evidence; Foundry and CLI gates still own row authoring, curation, dry-run, commit handoff, and readback verification.
+- For bad-import cleanup or redo under current-user RLS, use the checked-in `$dataset-rls-maintenance` workflow from `tiangong-lca-skills`. It may orchestrate CLI maintenance artifacts, but it must not add direct database CRUD or RLS bypass behavior.

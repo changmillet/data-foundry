@@ -3,7 +3,23 @@ title: Foundry Task Contracts
 docType: contract
 scope: task-ledger
 status: active
+authoritative: true
 owner: tiangong-lca-data-foundry
+language: en
+whenToUse:
+  - when creating or validating Foundry task workspace artifacts
+  - when deciding what belongs in foundry-job, source, seed, checkpoint, or artifact ledgers
+whenToUpdate:
+  - when Foundry task, workspace, checkpoint, or artifact contracts change
+  - when new lanes or owner route fields become required
+checkPaths:
+  - docs/foundry-task-contracts.md
+  - AGENTS.md
+  - WORKFLOW.md
+  - specs/import-profiles.json
+  - tasks/**
+lastReviewedAt: 2026-06-04
+lastReviewedCommit: 0fc91c903b375a013a5d5f912db957132f5fe18f
 related:
   - AGENTS.md
   - WORKFLOW.md
