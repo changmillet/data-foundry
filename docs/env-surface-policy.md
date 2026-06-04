@@ -23,6 +23,8 @@ Allowed families:
 
 - `FOUNDRY_*` for foundry-owned gates, paths, labels, and observability controls;
 - public `TIANGONG_LCA_API_*`, session, QA LLM, KB search, and unstructured-document runtime keys used by CLI-backed workflows;
+- `TIANGONG_AI_*` keys used by runtime-installed Tiangong AI KB skills such as `tiangong-kb-sci-search`;
+- `UNSTRUCTURED_*` aliases used by the Foundry-local `$document-granular-decompose` skill;
 - `LCA_DATA_AGENT_*`, `TIANGONG_LCA_CLI_BIN`, `TIANGONG_LCA_CLI_DIR`, `TIANGONG_LCA_SKILLS_ROOT`, and `LCA_SKILLS_ROOT` path indirection keys.
 
 ## Forbidden Variables

@@ -106,6 +106,21 @@ git ls-remote https://github.com/tiangong-ai/skills.git refs/heads/main
 
 For GitHub URL sources, do not use `<repo>@<skill>` syntax. Use the repository URL plus `--skill tiangong-kb-sci-search`.
 
+## Environment Matrix
+
+Runtime skills use the same `.env` file as Foundry. Keep `.env.example` as the public key inventory and keep real values only in local `.env`.
+
+| Skill | Required env | Optional env | Notes |
+| --- | --- | --- | --- |
+| `$dataset-rls-maintenance` | `TIANGONG_LCA_API_BASE_URL`, `TIANGONG_LCA_API_KEY`, `TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY` when remote snapshot/apply/verify is needed | `TIANGONG_LCA_SESSION_FILE`, `TIANGONG_LCA_DISABLE_SESSION_CACHE`, `TIANGONG_LCA_FORCE_REAUTH`, `FOUNDRY_ACCOUNT_LABEL`, `FOUNDRY_ENABLE_REMOTE_COMMIT`, `FOUNDRY_SINGLE_RECORD_COMMIT`, `FOUNDRY_REMOTE_COMMIT_LIMIT` | No skill-private Supabase env. The skill must use CLI-owned current-user RLS paths and Foundry commit gates. |
+| `$external-dataset-curated-import`, `$foundry-tidas-import`, `$foundry-tidas-authoring` | no extra env for local conversion/curation beyond a working CLI checkout | `TIANGONG_LCA_CLI_BIN`, `TIANGONG_LCA_CLI_DIR`, `TIANGONG_LCA_SKILLS_ROOT`, `FOUNDRY_AGENT_SKILLS_ROOT`, current-user LCA account env for remote readback/write handoff | Packaged import conversion, validation, QA, and curation are mostly local; remote stages require the LCA account block above. |
+| `$source-evidence-dataset-development` | source-dependent | `TIANGONG_AI_APIKEY`, `TIANGONG_AI_API_BASE_URL`, `TIANGONG_AI_CLI`, `TIANGONG_AI_CLI_BIN`, `TIANGONG_LCA_KB_SEARCH_API_BASE_URL`, `TIANGONG_LCA_KB_SEARCH_API_KEY`, `TIANGONG_LCA_KB_SEARCH_REGION` | SCI literature uses `$tiangong-kb-sci-search`; LCA CLI evidence-search helpers use the `TIANGONG_LCA_KB_SEARCH_*` family. |
+| `$tiangong-kb-sci-search` | `TIANGONG_AI_APIKEY` unless `api_key` or `sci_api_key` is passed in the wrapper JSON | `TIANGONG_AI_API_BASE_URL`, `TIANGONG_AI_CLI`, `TIANGONG_AI_CLI_BIN` | Searches only the `sci` source through `@tiangong-ai/cli`; record the upstream skill ref in task artifacts. |
+| `$document-granular-decompose` | `UNSTRUCTURED_API_BASE_URL`, `UNSTRUCTURED_AUTH_TOKEN` | `UNSTRUCTURED_PROVIDER`, `UNSTRUCTURED_MODEL` | The CLI document-authoring path uses `TIANGONG_LCA_UNSTRUCTURED_*`; local `.env` should keep the `UNSTRUCTURED_*` aliases in sync for this skill. |
+| CLI QA with LLM review | none unless `--enable-llm` is used | `TIANGONG_LCA_REVIEW_LLM_BASE_URL`, `TIANGONG_LCA_REVIEW_LLM_API_KEY`, `TIANGONG_LCA_REVIEW_LLM_MODEL` | Deterministic QA does not need these keys. |
+
+Foundry Node commands load the repository `.env` automatically. Direct skill shell/Python wrappers do not all do that. When invoking a wrapper directly, either export the needed variables in the shell first or use the wrapper's `env_file` option when it supports one. `$tiangong-kb-sci-search` supports `env_file`; `$document-granular-decompose` reads only process environment variables.
+
 ## Task Artifact Contract
 
 Each `source-evidence-dataset-development` workspace that uses runtime skills should write:

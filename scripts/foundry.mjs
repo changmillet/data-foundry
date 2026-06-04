@@ -43,6 +43,10 @@ const envExampleAllowedKeys = new Set([
   "TIANGONG_LCA_SESSION_FILE",
   "TIANGONG_LCA_DISABLE_SESSION_CACHE",
   "TIANGONG_LCA_FORCE_REAUTH",
+  "TIANGONG_AI_API_BASE_URL",
+  "TIANGONG_AI_APIKEY",
+  "TIANGONG_AI_CLI",
+  "TIANGONG_AI_CLI_BIN",
   "TIANGONG_LCA_KB_SEARCH_API_BASE_URL",
   "TIANGONG_LCA_KB_SEARCH_API_KEY",
   "TIANGONG_LCA_KB_SEARCH_REGION",
@@ -52,6 +56,10 @@ const envExampleAllowedKeys = new Set([
   "TIANGONG_LCA_UNSTRUCTURED_MODEL",
   "TIANGONG_LCA_UNSTRUCTURED_CHUNK_TYPE",
   "TIANGONG_LCA_UNSTRUCTURED_RETURN_TXT",
+  "UNSTRUCTURED_API_BASE_URL",
+  "UNSTRUCTURED_AUTH_TOKEN",
+  "UNSTRUCTURED_PROVIDER",
+  "UNSTRUCTURED_MODEL",
   "TIANGONG_LCA_REVIEW_LLM_BASE_URL",
   "TIANGONG_LCA_REVIEW_LLM_API_KEY",
   "TIANGONG_LCA_REVIEW_LLM_MODEL",
@@ -1869,7 +1877,7 @@ function envExampleSurfaceCheck() {
         `.env.example:${row.line}: ${row.key} is not in the Foundry env surface allowlist.`,
       );
     }
-    const secretLike = /(?:API_KEY|TOKEN|PASSWORD|SECRET|JWT)$/u.test(row.key);
+    const secretLike = /(?:API_KEY|APIKEY|TOKEN|PASSWORD|SECRET|JWT)$/u.test(row.key);
     const allowedPublicKey =
       row.key === "TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY";
     if (secretLike && !allowedPublicKey && !isPlaceholderEnvValue(row.value)) {
