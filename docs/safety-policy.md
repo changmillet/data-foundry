@@ -31,6 +31,7 @@ Remote database writes are blocked unless:
 - post-authoring Foundry curation gate passes on the exact final rows and references a deterministic QA report for those rows
 - state-code-aware mutation plan exists
 - Foundry `dataset-mutation-manifest` is `ready_for_remote_write` for the exact write scope
+- blocked mutation manifests must not export executable rows in `*.write-candidates.jsonl`; planned-but-blocked rows belong only in `*.blocked-write-candidates.jsonl`
 - when `common:other.tiangongfoundry:unresolvedTrace` or `sourceExchangeCompleteness` entries exist, the mutation manifest exports them as JSONL follow-up queues for later database-side curation
 - mutation-manifest evidence reports point to the exact write rows: schema and remote verification `input_path` match the rows file, cleanup `cleaned_rows_file` matches the rows file, and AI patch apply output chains into cleanup input when AI patching was used
 - `dataset-commit-handoff-plan` reports `ready_for_explicit_commit` for the exact finalize report, mutation manifest, final rows file, target user id, and expected state_code

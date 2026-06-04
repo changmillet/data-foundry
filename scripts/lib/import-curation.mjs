@@ -11564,11 +11564,12 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
         : null,
   };
 
-  for (const entry of writeRows.values()) {
+  const writeEntries = [...writeRows.values()];
+  for (const entry of writeEntries) {
     entry.identity.sourceRowsFile = repoRelativePath(repoRoot, rowsFile);
   }
 
-  const writeItems = [...writeRows.values()].map(({ row, identity, index }) => {
+  const writeItems = writeEntries.map(({ row, identity, index }) => {
     const itemDatasetType = identity.dataset_type || datasetType;
     const key = identityKey(identity);
     return buildWriteCandidateItem({
@@ -11624,6 +11625,21 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
       : writeItems.length > 0
         ? "ready_for_remote_write"
         : "ready_reference_only";
+  const readyWriteRows =
+    status === "ready_for_remote_write"
+      ? writeEntries
+          .filter((entry, index) => {
+            const item = writeItems[index];
+            return (
+              item?.decision === "write_or_update" &&
+              item.blockers.length === 0
+            );
+          })
+          .map((entry) => entry.row)
+      : [];
+  const blockedWriteRows = writeEntries
+    .filter((entry, index) => writeItems[index]?.blockers.length > 0)
+    .map((entry) => entry.row);
   const report = {
     schema_version: 1,
     generated_at_utc: nowIso(),
@@ -11769,7 +11785,9 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
       scope_blockers: evidenceScopeBlockers,
     },
     counts: {
-      write_candidates: writeItems.length,
+      write_candidates: readyWriteRows.length,
+      planned_write_candidates: writeItems.length,
+      blocked_write_candidates: blockedWriteRows.length,
       reference_reuse: referenceItems.filter(
         (item) => item.decision === "reuse_existing_reference",
       ).length,
@@ -11814,6 +11832,10 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
     outDir,
     `${datasetTypePlural[datasetType]}.write-candidates.jsonl`,
   );
+  const blockedWriteRowsPath = path.join(
+    outDir,
+    `${datasetTypePlural[datasetType]}.blocked-write-candidates.jsonl`,
+  );
   const referenceRowsPath = path.join(
     outDir,
     `${datasetTypePlural[datasetType]}.reference-reuse.jsonl`,
@@ -11839,6 +11861,7 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
     report: repoRelativePath(repoRoot, reportPath),
     items: repoRelativePath(repoRoot, itemsPath),
     write_candidates: repoRelativePath(repoRoot, writeRowsPath),
+    blocked_write_candidates: repoRelativePath(repoRoot, blockedWriteRowsPath),
     reference_reuse: repoRelativePath(repoRoot, referenceRowsPath),
     unresolved_traces: repoRelativePath(repoRoot, unresolvedTracesPath),
     unresolved_exchange_traces: repoRelativePath(
@@ -11864,7 +11887,8 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
   };
   writeJson(reportPath, { ...report, files });
   writeText(itemsPath, jsonLines(items));
-  writeText(writeRowsPath, jsonLines(rows));
+  writeText(writeRowsPath, jsonLines(readyWriteRows));
+  writeText(blockedWriteRowsPath, jsonLines(blockedWriteRows));
   writeText(referenceRowsPath, jsonLines(referenceRows));
   writeText(unresolvedTracesPath, jsonLines(unresolvedTraceItems));
   writeText(unresolvedExchangeTracesPath, jsonLines(unresolvedExchangeTraceItems));

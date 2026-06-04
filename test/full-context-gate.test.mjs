@@ -3660,6 +3660,19 @@ test("mutation manifest blocks elementary flow write candidates", () => {
       true,
     );
     assert.equal(manifest.json.items[0].decision, "blocked");
+    assert.equal(manifest.json.counts.write_candidates, 0);
+    assert.equal(manifest.json.counts.planned_write_candidates, 1);
+    assert.equal(manifest.json.counts.blocked_write_candidates, 1);
+    assert.deepEqual(
+      readJsonLines(path.join(repoRoot, manifest.json.files.write_candidates)),
+      [],
+    );
+    assert.equal(
+      readJsonLines(
+        path.join(repoRoot, manifest.json.files.blocked_write_candidates),
+      )[0].flowDataSet.flowInformation.dataSetInformation["common:UUID"],
+      flowId,
+    );
   } finally {
     fs.rmSync(elementaryFlowManifestFixtureRoot, {
       recursive: true,
@@ -3791,7 +3804,9 @@ test("identity duplicate flow decisions become reference reuse rows before mutat
     ]);
     assert.equal(manifest.code, 1);
     assert.equal(manifest.json.status, "blocked");
-    assert.equal(manifest.json.counts.write_candidates, 1);
+    assert.equal(manifest.json.counts.write_candidates, 0);
+    assert.equal(manifest.json.counts.planned_write_candidates, 1);
+    assert.equal(manifest.json.counts.blocked_write_candidates, 1);
     assert.equal(manifest.json.counts.reference_reuse, 1);
     assert.equal(manifest.json.counts.identity_reference_rewrites, 1);
     assert.equal(manifest.json.counts.identity_reference_reuse_rows, 1);
@@ -4133,7 +4148,9 @@ test("AI identity decisions apply split flow rows into writes and reference reus
       "--out-dir",
       rel(path.join(root, "mutation-manifest")),
     ]);
-    assert.equal(manifest.json.counts.write_candidates, 1);
+    assert.equal(manifest.json.counts.write_candidates, 0);
+    assert.equal(manifest.json.counts.planned_write_candidates, 1);
+    assert.equal(manifest.json.counts.blocked_write_candidates, 1);
     assert.equal(manifest.json.counts.reference_reuse, 1);
     assert.equal(manifest.json.counts.identity_reference_rewrites, 1);
     assert.equal(manifest.json.counts.identity_reference_reuse_rows, 1);
