@@ -4,6 +4,7 @@ title: Import packaged LCA dataset into TIDAS
 state: Todo
 kind: external-dataset-curated-import
 dataset_type: process
+profile: generic
 priority: P1
 allow_remote_commit: false
 source_package: inputs/source-packages/<package-manifest-or-note>.md

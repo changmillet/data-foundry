@@ -425,7 +425,7 @@ Gate：
 子 skill / CLI：
 
 - `lca-publish-executor` for `tiangong-lca publish run` bundles；
-- `tiangong-lca dataset publish-support` for source/contact/unitgroup/flowproperty support rows；
+- `tiangong-lca dataset publish-support` for writable source/contact support rows; unitgroup/flowproperty refs are selected from existing canonical database rows；
 - `tiangong-lca flow publish-reviewed-data` / `flow publish-version`；
 - process/source/lifecyclemodel entity-specific publish/save-draft commands；
 

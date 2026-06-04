@@ -33,10 +33,12 @@ tiangong-lca dataset context-pack \
 5. For packaged datasets, convert with `tiangong-lca dataset import-lca convert` or `tidas-tools`; do not replace supported converters with AI.
 6. Run `tiangong-lca dataset validate` and `tiangong-lca qa <type>` on converted or authored rows.
 7. Build the entity-level queue with `npm run dataset:curation-queue:build` so support, flow, and process work has stable task, lock, blocker, closure, and run-plan artifacts.
-8. Run `npm run dataset:curation-gate` with the rows, schema report, QA report, profile, and full contract context files.
-9. Use Codex/skills to produce structured patches or build plans only for curation blockers. Revalidate after applying deterministic changes.
+8. Run `npm run dataset:curation-gate` with the rows, schema report, QA report, profile, full contract context files, and any generated classification/location authoring queues.
+9. Use `$foundry-tidas-import` as the Foundry-local orchestration entrypoint for external package or source-document imports. Use `$foundry-tidas-authoring` only after curation-gate authoring tasks, classification decision tasks, or location decision tasks exist and only to produce structured evidence-backed decisions or patches for curation blockers. Apply classification decisions with `dataset-classification-decisions-apply`, apply location decisions with `dataset-location-decisions-apply`, collect field patches with `dataset-authoring-patch-collect`, then after deterministic apply rerun SDK validation, deterministic QA, and the Foundry curation gate on the final rows before mutation manifest.
 10. Run `npm run dataset:curation-cleanup` after source trace has been captured in authoring packages and before remote write planning.
 11. Do not treat historical `.foundry` artifacts as proof for a current task.
+
+`annualSupplyOrProductionVolume` is schema-required. If source data does not provide a real annual volume, Foundry must use the deterministic `9999 missing-data-sentinel/year` placeholder, not `common:other` deferral. The sentinel is deliberately non-physical and searchable; database-side curation owns replacing it later.
 
 ## Commit Rules
 

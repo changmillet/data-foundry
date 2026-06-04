@@ -1,0 +1,2126 @@
+{
+  "schema_version": 1,
+  "generated_at_utc": "2026-06-03T06:19:52.985Z",
+  "source": {
+    "table_state_code": 100,
+    "policy": "Flow Properties and Unit Groups are read-only support choices for Foundry imports; import rows must reference existing canonical DB rows instead of creating My Data support rows."
+  },
+  "flow_properties": [
+    {
+      "id": "01846770-4cfe-4a25-8ad9-919d8d378345",
+      "version": "03.00.004",
+      "state_code": 100,
+      "name": "Number of items | 物品数量",
+      "short_description": "Number of items | 物品数量",
+      "classification": "Technical flow properties",
+      "reference_unit_group": {
+        "id": "5beb6eed-33a9-47b8-9ede-1dfe8f679159",
+        "version": "",
+        "short_description": "Units of pieces"
+      }
+    },
+    {
+      "id": "02f11c31-4bb8-41de-81fb-fb479f361eb9",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Iodine content | 碘含量",
+      "short_description": "Iodine content | 碘含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "037f9009-8b06-470d-a190-21448f7921c7",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Lead content | 铅含量",
+      "short_description": "Lead content | 铅含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "078ecf46-26d6-47e3-8128-fcced884d1cd",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Germanium content | 锗含量",
+      "short_description": "Germanium content | 锗含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "085af809-5dc6-4920-aaa1-4ac493ae4af8",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Nitrogen content (mass) | 氮含量（质量）",
+      "short_description": "Nitrogen content (mass) | 氮含量（质量）",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "0ab79a5f-7fd7-4d5d-be55-559292c958d3",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Copper content | 铜含量",
+      "short_description": "Copper content | 铜含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "0ac18236-1ef4-4d67-95c0-4aebfec7f470",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Cerium content | 铈含量",
+      "short_description": "Cerium content | 铈含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "0b12d18f-0c7c-44da-8c52-dc3278f917c7",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Ytterbium content | 镱含量",
+      "short_description": "Ytterbium content | 镱含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "0bb4f3ac-2944-4263-8587-ea6eac2d24ac",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Rhenium content | 铼含量",
+      "short_description": "Rhenium content | 铼含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "118f2a40-50ec-457c-aa60-9bc6b6af9931",
+      "version": "27.00.000",
+      "state_code": 100,
+      "name": "mass*distance | 质量*距离",
+      "short_description": "mass*distance | 质量*距离",
+      "classification": "Technical flow properties",
+      "reference_unit_group": {
+        "id": "3620148f-c5db-48ce-9065-a10092089aca",
+        "version": "29.00.000",
+        "short_description": "Unit of kg*km | 质量*距离 单位组"
+      }
+    },
+    {
+      "id": "11f31f00-f6fa-4ef0-a9e3-5bd37199dd20",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Tin content | 锡含量",
+      "short_description": "Tin content | 锡含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "16764bbb-d1ea-4eb4-9911-13f0ecd3dfad",
+      "version": "01.01.000",
+      "state_code": 100,
+      "name": "sej | 太阳能值",
+      "short_description": "sej | 太阳能值",
+      "classification": "Technical flow properties",
+      "reference_unit_group": {
+        "id": "f25260a8-f7b3-425b-877a-3b0b00287bd3",
+        "version": "01.01.000",
+        "short_description": "sej | 太阳能焦耳"
+      }
+    },
+    {
+      "id": "184c9c12-32fb-4252-a484-9952928b8473",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Indium content | 铟含量",
+      "short_description": "Indium content | 铟含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "1d85ab50-ed1e-4421-b3b8-c5197d858a0d",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Argon content (mass) | 氩含量（质量）",
+      "short_description": "Argon content (mass) | 氩含量（质量）",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "1e6e8252-dae9-4b4a-866c-c6c3a5e810a1",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Thulium content | 铥含量",
+      "short_description": "Thulium content | 铥含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "24a07e87-aa12-4f9c-8c40-580e9bf7a2f2",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Zirconium content | 锆含量",
+      "short_description": "Zirconium content | 锆含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "25c2946d-2b1f-4245-b2aa-80c037912665",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Thorium content | 钍含量",
+      "short_description": "Thorium content | 钍含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "2651cd57-1c24-4b8e-856b-ddb63a3b267e",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Mercury content | 汞含量",
+      "short_description": "Mercury content | 汞含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "282882cf-a5e5-4170-82dd-8e84da2724d2",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Titanium content | 钛含量",
+      "short_description": "Titanium content | 钛含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "2e4695ff-d6a5-42c2-9816-6dbd6c859707",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Radium content | 镭含量",
+      "short_description": "Radium content | 镭含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "2ea4d465-87e3-4f85-81a0-2bd661639f4e",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Yttrium content | 钇含量",
+      "short_description": "Yttrium content | 钇含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "33cf4d9a-bcbf-4fe4-926b-38f2c3e36278",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Tantalum content | 钽含量",
+      "short_description": "Tantalum content | 钽含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "341fd786-b2ad-4552-a762-5eafcab45dee",
+      "version": "01.00.003",
+      "state_code": 100,
+      "name": "Moles | 摩尔",
+      "short_description": "Moles | 摩尔",
+      "classification": "Other flow properties",
+      "reference_unit_group": {
+        "id": "f170abd3-f010-45f4-8e7c-9871a5c0421b",
+        "version": "03.00.000",
+        "short_description": "Units of mole"
+      }
+    },
+    {
+      "id": "3da87ad0-733e-4ca9-b234-75ef52ca2a2d",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Holmium content | 钬含量",
+      "short_description": "Holmium content | 钬含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "435e1d0e-e36e-4d4a-9cd1-7fd2c135da61",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Antimony content | 锑含量",
+      "short_description": "Antimony content | 锑含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "441238a3-ba09-46ec-b35b-c30cfba746d1",
+      "version": "02.00.003",
+      "state_code": 100,
+      "name": "Volume*time | 体积*时间",
+      "short_description": "Volume*time | 体积*时间",
+      "classification": "Technical flow properties",
+      "reference_unit_group": {
+        "id": "93a60a57-a3c8-23da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of volume*time"
+      }
+    },
+    {
+      "id": "476dbccb-c1e5-4cdb-aa14-f4ef627c45ec",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Fluorine content (mass) | 氟含量（质量）",
+      "short_description": "Fluorine content (mass) | 氟含量（质量）",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "52dcf2ff-c0f6-417f-a957-788688d67b86",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Recycled content (mass) | 再生含量（质量）",
+      "short_description": "Recycled content (mass) | 再生含量（质量）",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "585d3441-af58-49c9-a5c2-1d1e5b63f8d5",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Comparative Toxic Unit for ecosystems (CTUe) | 生态系统比较毒性单位（CTUe）",
+      "short_description": "Comparative Toxic Unit for ecosystems (CTUe) | 生态系统比较毒性单位（CTUe）",
+      "classification": "Other flow properties",
+      "reference_unit_group": {
+        "id": "5beb6eed-33a9-47b8-9ede-1dfe8f679159",
+        "version": "",
+        "short_description": "Units of items"
+      }
+    },
+    {
+      "id": "5a2556bf-a9ec-4720-9253-d40f1de3c2b8",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Manganese content | 锰含量",
+      "short_description": "Manganese content | 锰含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "5c39e9a9-4bb5-42cd-b519-0db3a940a575",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Ruthenium content | 钌含量",
+      "short_description": "Ruthenium content | 钌含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "5db5be2d-8df6-432b-ab3d-ffde49d3fe7f",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Barium content | 钡含量",
+      "short_description": "Barium content | 钡含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "607a33e0-28ed-42f8-ac8c-66f0c9700e56",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Silicon content | 硅含量",
+      "short_description": "Silicon content | 硅含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "61ec59a5-3816-4e5a-88c7-acf8a8b33d41",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Silver content | 银含量",
+      "short_description": "Silver content | 银含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "62e503ce-544a-4599-b2ad-bcea15a7bf20",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Carbon content (biogenic) | 碳含量（生物质）",
+      "short_description": "Carbon content (biogenic) | 碳含量（生物质）",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "64b8e725-b0ba-4837-abb9-62dc0e7b9f6f",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Carbon content (fossil) | 化石碳含量",
+      "short_description": "Carbon content (fossil) | 化石碳含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "6827435e-8ad9-44c1-b0b4-b26f321957b1",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Potassium content | 钾含量",
+      "short_description": "Potassium content | 钾含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "697fbcb6-b516-4c2f-a78e-5ec2ffaec4b3",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Caesium content | 铯含量",
+      "short_description": "Caesium content | 铯含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "699b6a73-e8d5-4755-8d1d-b70de4b9efdd",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Phosphorus content | 磷含量",
+      "short_description": "Phosphorus content | 磷含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "71fc82ec-9eb9-424a-bc45-053a844c8af9",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Selenium content | 硒含量",
+      "short_description": "Selenium content | 硒含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "74f8559d-44a4-409f-9316-a185882a496c",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Radon content | 氡含量",
+      "short_description": "Radon content | 氡含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "76d611d0-a0a5-43d5-b391-a4e7ec463052",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Calcium content | 钙含量",
+      "short_description": "Calcium content | 钙含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "77f40806-2c54-4050-97d3-d1b61eb4b0c9",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Boron content | 硼含量",
+      "short_description": "Boron content | 硼含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "78b712c9-7f07-467f-b085-efee6067871b",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Osmium content | 锇含量",
+      "short_description": "Osmium content | 锇含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "7c367337-54f2-4fe9-8ee3-3f42681b0792",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Zinc content | 锌含量",
+      "short_description": "Zinc content | 锌含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "7cc6f031-f747-49e0-9600-ce2a2fe5657e",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Vanadium content | 钒含量",
+      "short_description": "Vanadium content | 钒含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "7eb51190-01f0-40a0-801d-b5c588272314",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Krypton content (mass) | 氪含量（质量）",
+      "short_description": "Krypton content (mass) | 氪含量（质量）",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "7eb6e3cb-0c12-4216-99b5-2032906d42ca",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Lanthanum content | 镧含量",
+      "short_description": "Lanthanum content | 镧含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "7ec8d70e-4ffc-4024-86b7-6141cc0a2bf5",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Water content (mass) | 水含量（质量）",
+      "short_description": "Water content (mass) | 水含量（质量）",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "825ef2f3-f706-4c47-8f8d-ee9ddbab3b43",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Tungsten content | 钨含量",
+      "short_description": "Tungsten content | 钨含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "827934c0-561e-402c-82f2-f04765d180e5",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Bismuth content | 铋含量",
+      "short_description": "Bismuth content | 铋含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "83040211-0076-4862-b172-79ce62b71187",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Beryllium content | 铍含量",
+      "short_description": "Beryllium content | 铍含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "838aaa23-0117-11db-92e3-0800200c9a66",
+      "version": "03.00.000",
+      "state_code": 100,
+      "name": "Length | 长度",
+      "short_description": "Length | 长度",
+      "classification": "Technical flow properties",
+      "reference_unit_group": {
+        "id": "838aaa22-0117-11db-92e3-0800200c9a66",
+        "version": "",
+        "short_description": "Units of length"
+      }
+    },
+    {
+      "id": "83c2eede-677e-43ec-98c8-1d801c7f1774",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Xenon content | 氙含量",
+      "short_description": "Xenon content | 氙含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "85aa9476-64fb-4c86-bc01-0c656b479cb8",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Lithium content | 锂含量",
+      "short_description": "Lithium content | 锂含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "92f2d417-544a-4fd1-bde7-25967ef93586",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Molybdenum content | 钼含量",
+      "short_description": "Molybdenum content | 钼含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "935e0cbe-3369-4537-8019-4157cf929304",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Terbium content | 铽含量",
+      "short_description": "Terbium content | 铽含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "93a60a56-a3c8-11da-a746-0800200b9a66",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Mass | Masse | 质量",
+      "short_description": "Mass | Masse | 质量",
+      "classification": "Technical flow properties",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "93a60a56-a3c8-11da-a746-0800200c9a66",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Net calorific value | 净热值, 低位热值",
+      "short_description": "Net calorific value | 净热值, 低位热值",
+      "classification": "Technical flow properties",
+      "reference_unit_group": {
+        "id": "93a60a57-a3c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of energy"
+      }
+    },
+    {
+      "id": "93a60a56-a3c8-14da-a746-0800200c9a66",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Gross calorific value | 总热值, 高位热值",
+      "short_description": "Gross calorific value | 总热值, 高位热值",
+      "classification": "Technical flow properties",
+      "reference_unit_group": {
+        "id": "93a60a57-a3c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of energy"
+      }
+    },
+    {
+      "id": "93a60a56-a3c8-17da-a746-0800200c9a66",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Radioactivity | 放射性",
+      "short_description": "Radioactivity | 放射性",
+      "classification": "Technical flow properties",
+      "reference_unit_group": {
+        "id": "93a60a57-a3c8-16da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of frequency"
+      }
+    },
+    {
+      "id": "93a60a56-a3c8-19da-a746-0800200c9a66",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Area | 面积",
+      "short_description": "Area | 面积",
+      "classification": "Technical flow properties",
+      "reference_unit_group": {
+        "id": "93a60a57-a3c8-18da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of area"
+      }
+    },
+    {
+      "id": "93a60a56-a3c8-21da-a746-0800200c9a66",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Area*time | 面积*时间",
+      "short_description": "Area*time | 面积*时间",
+      "classification": "Technical flow properties",
+      "reference_unit_group": {
+        "id": "93a60a57-a3c8-20da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of area*time"
+      }
+    },
+    {
+      "id": "93a60a56-a3c8-22da-a746-0800200c9a66",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Volume | 体积",
+      "short_description": "Volume | 体积",
+      "classification": "Technical flow properties",
+      "reference_unit_group": {
+        "id": "93a60a57-a3c8-12da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of volume"
+      }
+    },
+    {
+      "id": "984505b9-8536-4e31-a312-0d1a3788f009",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Chlorine content (mass) | 氯含量（质量）",
+      "short_description": "Chlorine content (mass) | 氯含量（质量）",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "98eec5a0-44db-411a-a502-95139090bc61",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Iridium content | 铱含量",
+      "short_description": "Iridium content | 铱含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "9bb58775-7ba8-41a7-8818-f75af4f5fe39",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Platinum content | 铂含量",
+      "short_description": "Platinum content | 铂含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "a0f29f45-108a-4aef-8a66-aef07ed34913",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Iron content | 铁含量",
+      "short_description": "Iron content | 铁含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "a5278d68-2936-477b-b9de-7ad2d66422ec",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Strontium content | 锶含量",
+      "short_description": "Strontium content | 锶含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "aaa95528-e05d-4eb4-85ff-a5445b580dcc",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Oxygen content (mass) | 氧含量（质量）",
+      "short_description": "Oxygen content (mass) | 氧含量（质量）",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "ab654e01-766b-411b-8902-cd6a9c40e55e",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Palladium content | 钯含量",
+      "short_description": "Palladium content | 钯含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "ac557972-7563-49fb-8461-29a4fe8600b7",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Gallium content | 镓含量",
+      "short_description": "Gallium content | 镓含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "b1192e5a-4a70-4fd7-89a2-6b798c7ed3a7",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Cobalt content | 钴含量",
+      "short_description": "Cobalt content | 钴含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "b1dd578a-f16a-4eaa-ae08-442aa2a1a2de",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Helium content (mass) | 氦含量（质量）",
+      "short_description": "Helium content (mass) | 氦含量（质量）",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "b3f0f892-c5a3-4c66-a432-c09e3d1e9bd6",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Mass*time | 质量*时间",
+      "short_description": "Mass*time | 质量*时间",
+      "classification": "Technical flow properties",
+      "reference_unit_group": {
+        "id": "59f191d6-5dd3-4553-af88-1a32accfe308",
+        "version": "",
+        "short_description": "Units of mass*time"
+      }
+    },
+    {
+      "id": "b539c404-ce19-43fb-ba14-6a1bdd46d8be",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Praseodym content | 镨含量",
+      "short_description": "Praseodym content | 镨含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "b7be6dba-97f0-42f6-b173-e2c6b042fbe7",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Sulfur content | 硫含量",
+      "short_description": "Sulfur content | 硫含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "b8a29b5f-1e7e-4f15-881f-e802e42551eb",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Thallium content | 铊含量",
+      "short_description": "Thallium content | 铊含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "b8ef5a2b-ed75-4497-a061-1ecbbd79a380",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Uranium content | 铀含量",
+      "short_description": "Uranium content | 铀含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "bd9b36ca-8240-464a-bba0-01c5210a5b66",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Magnesium content | 镁含量",
+      "short_description": "Magnesium content | 镁含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "c2a5d679-93be-44a1-b82f-da986e622ab9",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Europium content | 铕含量",
+      "short_description": "Europium content | 铕含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "cefa9508-86b9-4fad-824e-bbf9d6fdd6f9",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Arsenic content | 砷含量",
+      "short_description": "Arsenic content | 砷含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "d07d61ac-df46-4e74-bd49-3260c7b5fb89",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Proactinium content | 镤含量",
+      "short_description": "Proactinium content | 镤含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "d4f76a48-d1c9-4c49-a46e-b61feb974ac4",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Bromine content | 溴含量",
+      "short_description": "Bromine content | 溴含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "d55035e1-5a9a-44c5-88ce-d20086ab7148",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Neodymium content | 钕含量",
+      "short_description": "Neodymium content | 钕含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "d58f03c0-feab-4e47-aef6-4394aecc72dd",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Lutetium content | 镥含量",
+      "short_description": "Lutetium content | 镥含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "d6b6a36c-58b3-48c7-b723-392a6df4754f",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Aluminium content | 铝含量",
+      "short_description": "Aluminium content | 铝含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "d703ed04-22ca-4151-85ae-da1fcf54df68",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Niobium content | 铌含量",
+      "short_description": "Niobium content | 铌含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "d7882bb5-cb4e-4ef6-84d8-1e1b75de022c",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Neon content (mass) | 氖含量（质量）",
+      "short_description": "Neon content (mass) | 氖含量（质量）",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "dccec68c-c1c9-42e4-9fa9-42dbb943082d",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Cadmium content | 镉含量",
+      "short_description": "Cadmium content | 镉含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "dd77d131-c2ee-4d5a-b5d3-f7aa981ae305",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Scandium content | 钪含量",
+      "short_description": "Scandium content | 钪含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "df8a690d-6631-4c7b-bcc6-72205182dd0a",
+      "version": "01.01.000",
+      "state_code": 100,
+      "name": "Mass",
+      "short_description": "Mass",
+      "classification": "Other flow properties",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "03.00.003",
+        "short_description": "Units of mass | Masseeinheiten | 质量"
+      }
+    },
+    {
+      "id": "e02ff80b-c3f1-4d9d-b33a-f8c3001c70b8",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Rhodium content | 铑含量",
+      "short_description": "Rhodium content | 铑含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "e1b01126-0456-41b5-a29a-d6bd5095b64b",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Sodium content | 钠含量",
+      "short_description": "Sodium content | 钠含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "e4225227-7855-41ce-ba57-a5314fdcdcf1",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Gadolinium content | 钆含量",
+      "short_description": "Gadolinium content | 钆含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "e57088b8-0313-45c4-b791-6fdfbb59a142",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Samarium content | 钐含量",
+      "short_description": "Samarium content | 钐含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "e8b9419c-c36e-445f-a3a9-ace79156ac30",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Erbium content | 铒含量",
+      "short_description": "Erbium content | 铒含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "f18a0b1c-59ec-4c76-ae20-bc6c522547b3",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Tellurium content | 碲含量",
+      "short_description": "Tellurium content | 碲含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "f2149ae0-b105-4299-b1f1-cf1fd1577867",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Chromium content | 铬含量",
+      "short_description": "Chromium content | 铬含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "f33b22c4-e0e7-4fa6-ae2b-246ecb0a16eb",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Nickel content | 镍含量",
+      "short_description": "Nickel content | 镍含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "f3e1017d-1aa3-4763-b563-9494858e1ec7",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Hydrogen content (mass) | 氢含量（质量）",
+      "short_description": "Hydrogen content (mass) | 氢含量（质量）",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "f65d356a-d702-4d79-850e-dd68b47bbcd9",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Comparative Toxic Unit for human (CTUh) | 人类比较毒性单位（CTUh）",
+      "short_description": "Comparative Toxic Unit for human (CTUh) | 人类比较毒性单位（CTUh）",
+      "classification": "Other flow properties",
+      "reference_unit_group": {
+        "id": "5beb6eed-33a9-47b8-9ede-1dfe8f679159",
+        "version": "",
+        "short_description": "Units of items"
+      }
+    },
+    {
+      "id": "fa48378a-140a-4a0a-bf23-2bd64eac7c7c",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Methane content (volume) | 甲烷含量（体积）",
+      "short_description": "Methane content (volume) | 甲烷含量（体积）",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a3c8-12da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of volume"
+      }
+    },
+    {
+      "id": "fa94ba11-2720-441d-b432-a2774f3ab1ad",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Gold content | 金含量",
+      "short_description": "Gold content | 金含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    },
+    {
+      "id": "fec15e58-109a-4775-bc6f-72ca0b9b3cee",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Carbon content | 碳含量",
+      "short_description": "Carbon content | 碳含量",
+      "classification": "Chemical composition of flows",
+      "reference_unit_group": {
+        "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+        "version": "",
+        "short_description": "Units of mass"
+      }
+    }
+  ],
+  "unit_groups": [
+    {
+      "id": "03cc996d-7177-4738-aa32-1572a5172ccc",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Unit of currency | 货币",
+      "short_description": "Unit of currency | 货币",
+      "classification": "Economic unit groups",
+      "reference_unit": "0",
+      "units": [
+        {
+          "internal_id": "0",
+          "name": "EUR",
+          "mean_value": "1"
+        },
+        {
+          "internal_id": "1",
+          "name": "$",
+          "mean_value": "1.1573037276"
+        },
+        {
+          "internal_id": "2",
+          "name": "DM",
+          "mean_value": "1.95583"
+        },
+        {
+          "internal_id": "3",
+          "name": "sFr",
+          "mean_value": "1.6617122846"
+        },
+        {
+          "internal_id": "4",
+          "name": "Yen",
+          "mean_value": "100"
+        }
+      ]
+    },
+    {
+      "id": "3620148f-c5db-48ce-9065-a10092089aca",
+      "version": "29.00.000",
+      "state_code": 100,
+      "name": "Unit of kg*km | 质量*距离",
+      "short_description": "Unit of kg*km | 质量*距离",
+      "classification": "Technical unit groups",
+      "reference_unit": "0",
+      "units": [
+        {
+          "internal_id": "0",
+          "name": "kg*km",
+          "mean_value": "1"
+        },
+        {
+          "internal_id": "1",
+          "name": "t*km",
+          "mean_value": "1000"
+        }
+      ]
+    },
+    {
+      "id": "59f191d6-5dd3-4553-af88-1a32accfe308",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Units of mass*time | 质量*时间",
+      "short_description": "Units of mass*time | 质量*时间",
+      "classification": "Technical unit groups",
+      "reference_unit": "0",
+      "units": [
+        {
+          "internal_id": "0",
+          "name": "kg*a",
+          "mean_value": "1.0"
+        },
+        {
+          "internal_id": "1",
+          "name": "t*a",
+          "mean_value": "1000.0"
+        },
+        {
+          "internal_id": "2",
+          "name": "kg*d",
+          "mean_value": "0.002739726"
+        },
+        {
+          "internal_id": "3",
+          "name": "t*d",
+          "mean_value": "2.739726"
+        }
+      ]
+    },
+    {
+      "id": "5beb6eed-33a9-47b8-9ede-1dfe8f679159",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Units of items | 数量",
+      "short_description": "Units of items | 数量",
+      "classification": "Technical unit groups",
+      "reference_unit": "0",
+      "units": [
+        {
+          "internal_id": "0",
+          "name": "Item(s)",
+          "mean_value": "1.0"
+        },
+        {
+          "internal_id": "1",
+          "name": "Dozen(s)",
+          "mean_value": "12.0"
+        }
+      ]
+    },
+    {
+      "id": "838aaa22-0117-11db-92e3-0800200c9a66",
+      "version": "03.00.000",
+      "state_code": 100,
+      "name": "Units of length | 长度",
+      "short_description": "Units of length | 长度",
+      "classification": "Technical unit groups",
+      "reference_unit": "0",
+      "units": [
+        {
+          "internal_id": "0",
+          "name": "m",
+          "mean_value": "1.0"
+        },
+        {
+          "internal_id": "1",
+          "name": "km",
+          "mean_value": "1000.0"
+        },
+        {
+          "internal_id": "2",
+          "name": "cm",
+          "mean_value": "0.01"
+        },
+        {
+          "internal_id": "3",
+          "name": "mm",
+          "mean_value": "0.0010"
+        },
+        {
+          "internal_id": "4",
+          "name": "ft",
+          "mean_value": "0.3048"
+        },
+        {
+          "internal_id": "5",
+          "name": "mi",
+          "mean_value": "1609.347"
+        },
+        {
+          "internal_id": "6",
+          "name": "in",
+          "mean_value": "0.0254"
+        },
+        {
+          "internal_id": "7",
+          "name": "u",
+          "mean_value": "1.0E-6"
+        },
+        {
+          "internal_id": "8",
+          "name": "nmi",
+          "mean_value": "1852.0"
+        },
+        {
+          "internal_id": "9",
+          "name": "yd",
+          "mean_value": "0.9144"
+        }
+      ]
+    },
+    {
+      "id": "93a60a57-a3c8-11da-a746-0800200c9a66",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Units of energy | 能量",
+      "short_description": "Units of energy | 能量",
+      "classification": "Technical unit groups",
+      "reference_unit": "0",
+      "units": [
+        {
+          "internal_id": "0",
+          "name": "MJ",
+          "mean_value": "1.0"
+        },
+        {
+          "internal_id": "1",
+          "name": "kWh",
+          "mean_value": "3.6"
+        },
+        {
+          "internal_id": "2",
+          "name": "TOE",
+          "mean_value": "41868.0"
+        },
+        {
+          "internal_id": "3",
+          "name": "J",
+          "mean_value": "1.0E-6"
+        },
+        {
+          "internal_id": "4",
+          "name": "kcal",
+          "mean_value": "0.0041867"
+        },
+        {
+          "internal_id": "5",
+          "name": "btu",
+          "mean_value": "0.001055056"
+        },
+        {
+          "internal_id": "6",
+          "name": "MWh",
+          "mean_value": "3600.0"
+        },
+        {
+          "internal_id": "7",
+          "name": "TCE",
+          "mean_value": "29307.6"
+        },
+        {
+          "internal_id": "8",
+          "name": "GJ",
+          "mean_value": "1000.0"
+        }
+      ]
+    },
+    {
+      "id": "93a60a57-a3c8-12da-a746-0800200c9a66",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Units of volume | 体积",
+      "short_description": "Units of volume | 体积",
+      "classification": "Technical unit groups",
+      "reference_unit": "0",
+      "units": [
+        {
+          "internal_id": "0",
+          "name": "m3",
+          "mean_value": "1.0"
+        },
+        {
+          "internal_id": "1",
+          "name": "l",
+          "mean_value": "0.0010"
+        },
+        {
+          "internal_id": "2",
+          "name": "gal (US dry)",
+          "mean_value": "0.00440488377086"
+        },
+        {
+          "internal_id": "3",
+          "name": "gal (US liq)",
+          "mean_value": "0.003785412"
+        },
+        {
+          "internal_id": "4",
+          "name": "cu ft",
+          "mean_value": "0.028316846592"
+        },
+        {
+          "internal_id": "5",
+          "name": "fl oz (Imp)",
+          "mean_value": "2.84130625E-5"
+        },
+        {
+          "internal_id": "6",
+          "name": "US fl oz",
+          "mean_value": "2.95735295625E-5"
+        },
+        {
+          "internal_id": "7",
+          "name": "pt (Imp)",
+          "mean_value": "5.6826125E-4"
+        },
+        {
+          "internal_id": "8",
+          "name": "pt (US fl)",
+          "mean_value": "4.73176473E-4"
+        },
+        {
+          "internal_id": "9",
+          "name": "pt (US dry)",
+          "mean_value": "5.506104713575E-4"
+        },
+        {
+          "internal_id": "10",
+          "name": "gal (US fl)",
+          "mean_value": "0.003785411784"
+        },
+        {
+          "internal_id": "11",
+          "name": "gal (Imp)",
+          "mean_value": "0.00454609"
+        },
+        {
+          "internal_id": "12",
+          "name": "bsh (US)",
+          "mean_value": "0.03523907017"
+        },
+        {
+          "internal_id": "13",
+          "name": "bsh (Imp)",
+          "mean_value": "0.03636872"
+        },
+        {
+          "internal_id": "14",
+          "name": "ml",
+          "mean_value": "1.0E-6"
+        },
+        {
+          "internal_id": "15",
+          "name": "ul",
+          "mean_value": "1.0E-9"
+        },
+        {
+          "internal_id": "16",
+          "name": "bbl",
+          "mean_value": "0.158987294928"
+        },
+        {
+          "internal_id": "17",
+          "name": "bl (US beer)",
+          "mean_value": "0.1173477"
+        },
+        {
+          "internal_id": "18",
+          "name": "bl (US fl)",
+          "mean_value": "0.119240471196"
+        },
+        {
+          "internal_id": "19",
+          "name": "bl (Imp)",
+          "mean_value": "0.16365924"
+        },
+        {
+          "internal_id": "20",
+          "name": "bl (US dry)",
+          "mean_value": "0.115628198985075"
+        }
+      ]
+    },
+    {
+      "id": "93a60a57-a3c8-16da-a746-0800200c9a66",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Units of radioactivity | 辐射",
+      "short_description": "Units of radioactivity | 辐射",
+      "classification": "Technical unit groups",
+      "reference_unit": "0",
+      "units": [
+        {
+          "internal_id": "0",
+          "name": "kBq",
+          "mean_value": "1.0"
+        },
+        {
+          "internal_id": "1",
+          "name": "Bq",
+          "mean_value": "0.0010"
+        },
+        {
+          "internal_id": "2",
+          "name": "Ci",
+          "mean_value": "3.7E7"
+        },
+        {
+          "internal_id": "3",
+          "name": "Rutherford",
+          "mean_value": "1000.0"
+        }
+      ]
+    },
+    {
+      "id": "93a60a57-a3c8-18da-a746-0800200c9a66",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Units of area | 面积",
+      "short_description": "Units of area | 面积",
+      "classification": "Technical unit groups",
+      "reference_unit": "0",
+      "units": [
+        {
+          "internal_id": "0",
+          "name": "m2",
+          "mean_value": "1.0"
+        },
+        {
+          "internal_id": "1",
+          "name": "km2",
+          "mean_value": "1000000.0"
+        },
+        {
+          "internal_id": "2",
+          "name": "ha",
+          "mean_value": "10000.0"
+        },
+        {
+          "internal_id": "3",
+          "name": "ft2",
+          "mean_value": "0.09290304"
+        },
+        {
+          "internal_id": "4",
+          "name": "mi2",
+          "mean_value": "2589988.11"
+        },
+        {
+          "internal_id": "5",
+          "name": "ac",
+          "mean_value": "4046.856"
+        },
+        {
+          "internal_id": "6",
+          "name": "yd2",
+          "mean_value": "0.83612736"
+        },
+        {
+          "internal_id": "7",
+          "name": "a",
+          "mean_value": "100.0"
+        },
+        {
+          "internal_id": "8",
+          "name": "cm2",
+          "mean_value": "1.0E-4"
+        },
+        {
+          "internal_id": "9",
+          "name": "nmi2",
+          "mean_value": "3429904.0"
+        }
+      ]
+    },
+    {
+      "id": "93a60a57-a3c8-20da-a746-0800200c9a66",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Units of area*time | 面积*时间",
+      "short_description": "Units of area*time | 面积*时间",
+      "classification": "Technical unit groups",
+      "reference_unit": "0",
+      "units": [
+        {
+          "internal_id": "0",
+          "name": "m2*a",
+          "mean_value": "1.0"
+        },
+        {
+          "internal_id": "1",
+          "name": "km2*a",
+          "mean_value": "1000000.0"
+        },
+        {
+          "internal_id": "2",
+          "name": "ha*a",
+          "mean_value": "10000.0"
+        },
+        {
+          "internal_id": "3",
+          "name": "ft2*a",
+          "mean_value": "0.09290304"
+        },
+        {
+          "internal_id": "4",
+          "name": "mi2*a",
+          "mean_value": "2589988.1"
+        },
+        {
+          "internal_id": "5",
+          "name": "m2*d",
+          "mean_value": "0.002739726"
+        }
+      ]
+    },
+    {
+      "id": "93a60a57-a3c8-23da-a746-0800200c9a66",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Units of volume*time | 体积*时间",
+      "short_description": "Units of volume*time | 体积*时间",
+      "classification": "Technical unit groups",
+      "reference_unit": "0",
+      "units": [
+        {
+          "internal_id": "0",
+          "name": "m3*a",
+          "mean_value": "1"
+        },
+        {
+          "internal_id": "1",
+          "name": "l*a",
+          "mean_value": "0.001"
+        }
+      ]
+    },
+    {
+      "id": "93a60a57-a4c8-11da-a746-0800200c9a66",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Units of mass | Masseeinheiten | 质量",
+      "short_description": "Units of mass | Masseeinheiten | 质量",
+      "classification": "Technical unit groups",
+      "reference_unit": "0",
+      "units": [
+        {
+          "internal_id": "0",
+          "name": "kg",
+          "mean_value": "1.0"
+        },
+        {
+          "internal_id": "1",
+          "name": "t",
+          "mean_value": "1000.0"
+        },
+        {
+          "internal_id": "2",
+          "name": "lb av",
+          "mean_value": "0.45359237"
+        },
+        {
+          "internal_id": "3",
+          "name": "Mg",
+          "mean_value": "1000.0"
+        },
+        {
+          "internal_id": "4",
+          "name": "kt",
+          "mean_value": "2.0E-4"
+        },
+        {
+          "internal_id": "5",
+          "name": "oz av",
+          "mean_value": "0.028349523125"
+        },
+        {
+          "internal_id": "6",
+          "name": "oz t",
+          "mean_value": "0.0311034768"
+        },
+        {
+          "internal_id": "7",
+          "name": "sh tn",
+          "mean_value": "907.18474"
+        },
+        {
+          "internal_id": "8",
+          "name": "long tn",
+          "mean_value": "1016.0469088"
+        },
+        {
+          "internal_id": "9",
+          "name": "g",
+          "mean_value": "0.0010"
+        },
+        {
+          "internal_id": "10",
+          "name": "mg",
+          "mean_value": "1.0E-6"
+        },
+        {
+          "internal_id": "11",
+          "name": "ug",
+          "mean_value": "1.0E-9"
+        },
+        {
+          "internal_id": "12",
+          "name": "ng",
+          "mean_value": "1.0E-12"
+        },
+        {
+          "internal_id": "13",
+          "name": "pg",
+          "mean_value": "1.0E-15"
+        }
+      ]
+    },
+    {
+      "id": "f170abd3-f010-45f4-8e7c-9871a5c0421b",
+      "version": "03.00.003",
+      "state_code": 100,
+      "name": "Units of mole | 摩尔",
+      "short_description": "Units of mole | 摩尔",
+      "classification": "Technical unit groups",
+      "reference_unit": "0",
+      "units": [
+        {
+          "internal_id": "0",
+          "name": "mol",
+          "mean_value": "1.0"
+        }
+      ]
+    },
+    {
+      "id": "f25260a8-f7b3-425b-877a-3b0b00287bd3",
+      "version": "01.01.000",
+      "state_code": 100,
+      "name": "sej | 太阳能焦耳",
+      "short_description": "sej | 太阳能焦耳",
+      "classification": "Other unit groups",
+      "reference_unit": "0",
+      "units": [
+        {
+          "internal_id": "0",
+          "name": "sej",
+          "mean_value": "1"
+        }
+      ]
+    }
+  ],
+  "flow_property_mappings": [
+    {
+      "source_units": [
+        "kg",
+        "g",
+        "mg",
+        "ug",
+        "t",
+        "kt",
+        "mg"
+      ],
+      "canonical_flow_property_id": "93a60a56-a3c8-11da-a746-0800200b9a66",
+      "reason": "Mass units must reuse the public canonical Mass flow property."
+    },
+    {
+      "source_units": [
+        "p",
+        "item",
+        "items",
+        "item(s)",
+        "dozen(s)"
+      ],
+      "canonical_flow_property_id": "01846770-4cfe-4a25-8ad9-919d8d378345",
+      "reason": "Countable-item units must reuse the public canonical Number of items flow property."
+    },
+    {
+      "source_units": [
+        "m",
+        "km",
+        "cm",
+        "mm",
+        "ft",
+        "mi",
+        "in",
+        "yd"
+      ],
+      "canonical_flow_property_id": "838aaa23-0117-11db-92e3-0800200c9a66",
+      "reason": "Length units must reuse the public canonical Length flow property."
+    },
+    {
+      "source_units": [
+        "mj",
+        "kwh",
+        "j",
+        "gj",
+        "mwh",
+        "toe",
+        "kcal",
+        "btu",
+        "tce"
+      ],
+      "canonical_flow_property_id": "93a60a56-a3c8-11da-a746-0800200c9a66",
+      "reason": "Energy units currently reuse the public canonical Net calorific value support row; this is the existing platform canonical available to imports.",
+      "legacy_support_note": "The public library does not yet expose a generic Energy flow property; do not create an account-local replacement."
+    },
+    {
+      "source_units": [
+        "m3",
+        "nm3",
+        "l",
+        "cuft"
+      ],
+      "canonical_flow_property_id": "93a60a56-a3c8-22da-a746-0800200c9a66",
+      "reason": "Volume units must reuse the public canonical Volume flow property."
+    },
+    {
+      "source_units": [
+        "m2",
+        "km2",
+        "ha",
+        "ft2",
+        "mi2",
+        "cm2"
+      ],
+      "canonical_flow_property_id": "93a60a56-a3c8-19da-a746-0800200c9a66",
+      "reason": "Area units must reuse the public canonical Area flow property."
+    },
+    {
+      "source_units": [
+        "m2a",
+        "m2*a",
+        "km2*a",
+        "ha*a",
+        "ft2*a",
+        "mi2*a",
+        "m2*d"
+      ],
+      "canonical_flow_property_id": "93a60a56-a3c8-21da-a746-0800200c9a66",
+      "reason": "Area*time units must reuse the public canonical Area*time flow property."
+    },
+    {
+      "source_units": [
+        "kbq",
+        "bq",
+        "ci",
+        "rutherford"
+      ],
+      "canonical_flow_property_id": "93a60a56-a3c8-17da-a746-0800200c9a66",
+      "reason": "Radioactivity units must reuse the public canonical Radioactivity flow property."
+    },
+    {
+      "source_units": [
+        "tkm",
+        "t*km",
+        "kg*km"
+      ],
+      "canonical_flow_property_id": "118f2a40-50ec-457c-aa60-9bc6b6af9931",
+      "reason": "Mass*distance units must reuse the public canonical mass*distance flow property."
+    },
+    {
+      "source_units": [
+        "m3a",
+        "m3*a",
+        "l*a"
+      ],
+      "canonical_flow_property_id": "441238a3-ba09-46ec-b35b-c30cfba746d1",
+      "reason": "Volume*time units must reuse the public canonical Volume*time flow property."
+    },
+    {
+      "source_units": [
+        "mol"
+      ],
+      "canonical_flow_property_id": "341fd786-b2ad-4552-a762-5eafcab45dee",
+      "reason": "Mole units must reuse the public canonical Moles flow property."
+    },
+    {
+      "source_units": [
+        "kg*a",
+        "t*a",
+        "kg*d",
+        "t*d",
+        "kga",
+        "ta",
+        "kgd",
+        "td"
+      ],
+      "canonical_flow_property_id": "b3f0f892-c5a3-4c66-a432-c09e3d1e9bd6",
+      "reason": "Mass*time units must reuse the public canonical Mass*time flow property."
+    }
+  ]
+}
