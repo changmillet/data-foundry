@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "managed_with": "skills",
+  "skill_root": ".agents/skills",
+  "skills_cli_package": "skills@latest",
+  "default_agent": "*",
+  "local_project_skills": [
+    {
+      "name": "document-granular-decompose",
+      "owner": "tiangong-lca-data-foundry",
+      "path": ".agents/skills/document-granular-decompose",
+      "tracked": true,
+      "purpose": "Foundry-local document fulltext extraction wrapper for source-document tasks."
+    },
+    {
+      "name": "foundry-tidas-authoring",
+      "owner": "tiangong-lca-data-foundry",
+      "path": ".agents/skills/foundry-tidas-authoring",
+      "tracked": true,
+      "purpose": "Foundry-local curation package and AI patch orchestration."
+    },
+    {
+      "name": "foundry-tidas-import",
+      "owner": "tiangong-lca-data-foundry",
+      "path": ".agents/skills/foundry-tidas-import",
+      "tracked": true,
+      "purpose": "Foundry-local end-to-end import orchestration."
+    }
+  ],
+  "package_commands": {
+    "list_installed": "npx --yes skills@latest list --json",
+    "update_project": "npx --yes skills@latest update --project --yes",
+    "restore_from_lock": "npx --yes skills@latest experimental_install",
+    "install_all_shared_runtime": "npx --yes skills@latest add ../tiangong-lca-skills --skill external-dataset-curated-import source-evidence-dataset-development dataset-rls-maintenance --agent '*' --yes --full-depth && npx --yes skills@latest add https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --agent '*' --yes --full-depth"
+  },
+  "shared_runtime_skills": [
+    {
+      "name": "external-dataset-curated-import",
+      "source": "../tiangong-lca-skills",
+      "source_type": "local-git",
+      "agent": "*",
+      "full_depth": true,
+      "install_command": "npx --yes skills@latest add ../tiangong-lca-skills --skill external-dataset-curated-import --agent '*' --yes --full-depth",
+      "update_policy": "use current sibling checkout; update the sibling repo first when latest shared workflow instructions are needed",
+      "required_for": [
+        "external-dataset-curated-import"
+      ]
+    },
+    {
+      "name": "source-evidence-dataset-development",
+      "source": "../tiangong-lca-skills",
+      "source_type": "local-git",
+      "agent": "*",
+      "full_depth": true,
+      "install_command": "npx --yes skills@latest add ../tiangong-lca-skills --skill source-evidence-dataset-development --agent '*' --yes --full-depth",
+      "update_policy": "use current sibling checkout; update the sibling repo first when latest shared workflow instructions are needed",
+      "required_for": [
+        "source-evidence-dataset-development"
+      ]
+    },
+    {
+      "name": "dataset-rls-maintenance",
+      "source": "../tiangong-lca-skills",
+      "source_type": "local-git",
+      "agent": "*",
+      "full_depth": true,
+      "install_command": "npx --yes skills@latest add ../tiangong-lca-skills --skill dataset-rls-maintenance --agent '*' --yes --full-depth",
+      "update_policy": "use current sibling checkout; update the sibling repo first when latest shared workflow instructions are needed",
+      "required_for": [
+        "bad-import-cleanup",
+        "redo-import"
+      ]
+    },
+    {
+      "name": "tiangong-kb-sci-search",
+      "source": "https://github.com/tiangong-ai/skills",
+      "source_type": "github",
+      "source_ref": "refs/heads/main",
+      "agent": "*",
+      "full_depth": true,
+      "install_command": "npx --yes skills@latest add https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --agent '*' --yes --full-depth",
+      "use_command": "npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --full-depth",
+      "update_policy": "floating latest from upstream main before source-evidence SCI retrieval",
+      "evidence_channel": "sci",
+      "required_for": [
+        "source-evidence-dataset-development"
+      ],
+      "output_artifacts": [
+        "evidence/sources.jsonl",
+        "evidence/field-evidence.jsonl"
+      ]
+    }
+  ]
+}

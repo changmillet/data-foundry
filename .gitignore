@@ -10,6 +10,11 @@ __pycache__/
 .foundry/state/
 .foundry/h5py-venv/
 .docpact/runs/
+# Runtime-installed shared skills. Foundry-owned local skills under .agents/skills
+# stay tracked by name; do not ignore the whole skill root.
+.agents/skills/external-dataset-curated-import/
+.agents/skills/source-evidence-dataset-development/
+.agents/skills/dataset-rls-maintenance/
 .agents/skills/tiangong-kb-*/
 skills-lock.json
 artifacts/

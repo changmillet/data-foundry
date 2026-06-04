@@ -41,14 +41,15 @@ Receive external LCA packages or source documents, choose the correct import lan
 - Runtime state belongs under ignored `.foundry/`.
 - Foundry owns task routing, local manifests, import profiles, curation packages, cleanup reports, and policy checks.
 - Foundry does not own TIDAS schemas/YAML, package converters, dataset validators, deterministic QA engines, reusable skills, or remote write semantics.
-- External source-evidence research skills, including `tiangong-kb-sci-search`, are resolved with `npx skills` at runtime. Do not vendor them into `.agents/skills` or commit their `skills-lock.json` entries unless the task explicitly changes to a pinned reproducibility policy.
+- `.agents/skills` is the single project-visible skill root. Foundry-owned local skills listed in `.agents/shared-skills.json` are tracked with this repository. Shared/runtime skills listed in the same config may also be installed there, but their directories and `skills-lock.json` stay untracked unless a task explicitly changes to a pinned reproducibility policy.
+- External source-evidence research skills, including `tiangong-kb-sci-search`, are installed or read through the npm `skills` package (`npx --yes skills@latest ...`) at runtime before use. Do not copy their retrieval logic into Foundry.
 - Import-ready rows are source-language rows. Do not add bilingual completion as a pre-import gate.
 - Do not implement direct database writes in Foundry.
 
 ## Default Operating Order
 
 1. Read this file and `WORKFLOW.md`.
-2. For source-evidence work, read `docs/runtime-skill-management.md` before evidence retrieval.
+2. For source-evidence or shared-skill work, read `docs/runtime-skill-management.md` before evidence retrieval.
 3. Run `npm run doctor` before trusting local Foundry commands.
 4. Classify the task as `external-dataset-curated-import` or `source-evidence-dataset-development`.
 5. Get the target TIDAS contract context through the sibling CLI:
@@ -62,7 +63,7 @@ tiangong-lca dataset context-pack \
 ```
 
 6. For packaged datasets, convert with `tiangong-lca dataset import-lca convert` or `tidas-tools`; do not replace supported converters with AI. Keep per-process bundle generation enabled so `process-bundles/index.json` and one dependency subdirectory per converted process are available for curation.
-7. For SCI literature evidence in source-evidence tasks, resolve the latest remote skill with `npm run skills:source-evidence:use:sci`, record the upstream ref and command in `.foundry/workspaces/<task-id>/runtime-skills/runtime-skill-resolution.json`, then capture retrieved papers as evidence candidates before field-level extraction.
+7. Before using shared skills, run `npm run skills:install:shared` when configured runtime skills may be missing or stale, and `npm run skills:update` for already installed project skills. For SCI literature evidence in source-evidence tasks, read the latest remote skill with `npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --full-depth`, record the upstream ref from `git ls-remote https://github.com/tiangong-ai/skills.git refs/heads/main`, then capture retrieved papers as evidence candidates before field-level extraction.
 8. Run `tiangong-lca dataset validate` and `tiangong-lca qa <type>` on converted or authored rows.
 9. Build and drive the entity-level queue with `tiangong-lca dataset curation-queue build/next/verify` so support, flow, and process work has stable task, lock, blocker, closure, and run-plan artifacts owned by the CLI state machine.
 10. Run `node scripts/foundry.mjs dataset-curation-gate` with the rows, schema report, QA report, profile, full contract context files, and any generated classification/location authoring queues.

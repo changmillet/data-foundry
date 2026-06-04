@@ -305,7 +305,7 @@ On restart, the top-level skill resumes from the first missing, failed, stale, o
 3. Foundry routes structured import and source-evidence tasks to those skills and CLI commands instead of expanding its public `dataset:*` command surface.
 4. Existing child skills remain the first reuse targets: `tidas-contract-context`, `tidas-data-import`, `flow-governance-review`, `process-automated-builder`, and `lca-publish-executor`.
 5. New child aliases should be added only where naming or scope blocks clear composition.
-6. Source-evidence research dependencies use runtime `npx skills` resolution records instead of vendoring external skill repositories into Foundry.
+6. Source-evidence research dependencies use `.agents/shared-skills.json` plus the npm `skills` package and runtime `npx skills` resolution records instead of committing external skill repositories as Foundry-owned code.
 7. Remaining Foundry-local dataset wrappers are migration shims until equivalent CLI/skill owner surfaces exist.
 
 ## Retired Local-Adapter Assumption

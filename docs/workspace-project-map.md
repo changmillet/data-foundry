@@ -31,7 +31,7 @@ Foundry should route reusable work to the owning repository instead of copying i
 | Source package conversion | `tidas-tools` and `tiangong-lca-cli` | `tiangong-lca dataset import-lca convert` |
 | Entity curation queue state | `tiangong-lca-cli` | `tiangong-lca dataset curation-queue build/next/verify` |
 | PDF/Excel/source extraction and authoring setup | `tiangong-lca-cli` and `tiangong-lca-skills` | `tiangong-lca dataset author`, `$tidas-data-import` |
-| SCI literature evidence retrieval for source-evidence tasks | `tiangong-ai/skills` | `npx skills use https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --full-depth` |
+| SCI literature evidence retrieval for source-evidence tasks | `tiangong-ai/skills` | `npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --full-depth`; install/update with the npm `skills` package |
 | Agent workflow instructions | `tiangong-lca-skills` | `$tidas-contract-context`, `$tidas-data-import` |
 | Schema validation and QA gates | `tiangong-lca-cli` | `dataset validate`, `qa` |
 | Remote readback and publish prep | `tiangong-lca-cli`, Edge Functions, database | `dataset verify-remote`, `publish run`, Edge verification |

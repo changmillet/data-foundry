@@ -44,7 +44,8 @@ npm run doctor
 npm run workflow:check
 npm run storage:check
 npm run acceptance:check
-npm run skills:source-evidence:use:sci
+npm run skills:install:shared
+npm run skills:list
 npm run workspace:map
 npm run capabilities:list -- --class tidas-contract-context
 npm run profiles:list
@@ -93,29 +94,46 @@ Foundry does not expose dataset npm script aliases. Queue state belongs to `tian
 
 ## Runtime Skills
 
-Foundry-local skills under `.agents/skills` are for Foundry orchestration only. Fast-moving source-evidence skills are resolved at runtime with `npx skills` and are not vendored into this repository.
+`.agents/skills` is the single project-visible skill root. Foundry-local skills are tracked there by git; shared/runtime skills are also installed there when needed, but their names are managed by `.agents/shared-skills.json` and their installed directories remain ignored unless a task explicitly chooses pinned reproducibility.
+
+Use the npm `skills` package before a task needs shared skills:
+
+```bash
+npm run skills:install:shared
+npm run skills:update
+npm run skills:list
+```
 
 For deleting, retiring, repairing, or redoing rows from a bad import under current-user RLS, route to the checked-in `tiangong-lca-skills` `$dataset-rls-maintenance` workflow and the CLI-owned `tiangong-lca dataset maintenance plan/apply/verify` surface. Do not add Foundry-local Supabase delete or redo commands.
 
 For SCI literature evidence, use the latest remote `tiangong-kb-sci-search` skill from `https://github.com/tiangong-ai/skills`:
 
 ```bash
-npm run skills:source-evidence:use:sci
+npx --yes skills@latest use https://github.com/tiangong-ai/skills \
+  --skill tiangong-kb-sci-search \
+  --full-depth
+
+git ls-remote https://github.com/tiangong-ai/skills.git refs/heads/main
 ```
 
 Persistent local installs are optional operator state:
 
 ```bash
-npm run skills:source-evidence:install:sci
+npx --yes skills@latest add https://github.com/tiangong-ai/skills \
+  --skill tiangong-kb-sci-search \
+  --agent '*' \
+  --yes \
+  --full-depth
 npm run skills:update
 ```
 
-If installed locally, `.agents/skills/tiangong-kb-*/` and `skills-lock.json` remain ignored by default. Source-evidence tasks should instead record the resolved upstream ref, `npx skills` command, and evidence artifacts under `.foundry/workspaces/<task-id>/runtime-skills/`.
+Installed shared runtime skills such as `.agents/skills/tiangong-kb-sci-search/`, `.agents/skills/external-dataset-curated-import/`, and `skills-lock.json` remain ignored by default. Source-evidence tasks should record the resolved upstream ref, `npx skills` command, and evidence artifacts under `.foundry/workspaces/<task-id>/runtime-skills/`.
 
 ## Repository Shape
 
 - `scripts/foundry.mjs`: small Foundry command surface.
 - `scripts/lib/import-curation.mjs`: generic dataset curation/cleanup implementation.
+- `.agents/shared-skills.json`: configured Foundry-local and shared runtime skills that may appear under `.agents/skills`.
 - `specs/automated-lca-capability-registry.json`: capability routing registry.
 - `specs/import-profiles.json`: data-driven import profiles.
 - `docs/foundry-task-contracts.md`: minimal task, source, seed, checkpoint, and artifact ledger contracts.

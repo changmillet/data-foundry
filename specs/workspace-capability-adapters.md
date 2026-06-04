@@ -15,7 +15,7 @@ The local `$foundry-tidas-import` skill is the Foundry orchestration entrypoint 
 | `external-lca-package-conversion`              | Convert supported packaged LCA data through CLI/tidas-tools.                                                                                                                                                                                                     |
 | `source-document-authoring`                    | Extract source documents and prepare target context packs for AI authoring.                                                                                                                                                                                      |
 | `source-evidence-review`                       | Plan and record public/source evidence for field-level facts.                                                                                                                                                                                                    |
-| `source-evidence-runtime-skill`                | Resolve floating external research skills, such as SCI literature retrieval, without vendoring them into Foundry.                                                                                                                                                 |
+| `source-evidence-runtime-skill`                | Resolve floating external research skills, such as SCI literature retrieval, as ignored runtime installs/read prompts plus task-level resolution records.                                                                                                         |
 | `schema-gate`                                  | Validate generated TIDAS rows.                                                                                                                                                                                                                                   |
 | `process-qa` / `flow-qa` / `lifecyclemodel-qa` | Run target-type deterministic QA gates.                                                                                                                                                                                                                          |
 | `dataset-curation`                             | Build entity-level import queues, build profile-aware AI authoring packages from rows/schema/QA/context, generate Codex/skill authoring tasks, collect AI patch outputs, and deterministically apply AI-authored structured patches before cleanup/revalidation. |
@@ -31,7 +31,7 @@ npm run capabilities:list -- --class external-lca-package-conversion
 npm run capabilities:list -- --class source-document-authoring
 npm run capabilities:list -- --class source-evidence-runtime-skill
 npm run task:route -- --kind external-dataset-curated-import --dataset-type process --required-gates contract,schema,qa,curation
-npm run skills:source-evidence:use:sci
+npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --full-depth
 tiangong-lca dataset curation-queue build --processes ./rows/processes.jsonl --flows ./rows/flows.jsonl --support ./rows/sources.jsonl --out-dir ./curation-queue
 tiangong-lca dataset curation-queue next --queue-dir ./curation-queue --json
 tiangong-lca dataset curation-queue verify --queue-dir ./curation-queue --type process --json
@@ -48,7 +48,7 @@ npm run task:route -- --kind source-evidence-dataset-development --dataset-type 
 
 Missing classes must be resolved in the owning project. Add Foundry-local code only for task routing, manifests, reports, and policy checks.
 
-Runtime source-evidence skills are resolved through `npx skills` and treated as external evidence channels. Foundry may record their resolution and outputs, but should not copy their `SKILL.md`, scripts, or lockfile into the repository unless a task explicitly chooses pinned reproducibility over latest-source behavior.
+Runtime source-evidence skills are resolved through the npm `skills` package and treated as external evidence channels. Foundry may install them under `.agents/skills` for local agent access and record their resolution and outputs, but should not commit their `SKILL.md`, scripts, or lockfile unless a task explicitly chooses pinned reproducibility over latest-source behavior.
 
 Import lanes must not require bilingual completion before database import. Use contract context, schema, QA, curation, cleanup, reference, dry-run, and verification gates for source-language rows, then route multilingual completion separately after import if a later task explicitly asks for it.
 

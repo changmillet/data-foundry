@@ -17,6 +17,7 @@ checkPaths:
   - README.md
   - AGENTS.md
   - package.json
+  - .agents/shared-skills.json
   - .agents/skills/**
 lastReviewedAt: 2026-06-04
 lastReviewedCommit: 0fc91c903b375a013a5d5f912db957132f5fe18f
@@ -31,17 +32,17 @@ related:
 
 Foundry treats skills as execution surfaces, not as a place to copy reusable business logic.
 
-Project-owned Foundry skills may live under `.agents/skills` when they only orchestrate Foundry task state, manifests, curation packages, or deterministic gates. External fast-moving retrieval and research skills must be resolved at runtime with `npx skills`, then recorded as task evidence. Do not vendor those external skills into this repository.
+`.agents/skills` is the single project-visible skill root. Project-owned Foundry skills live there and are tracked by git. Shared or public runtime skills may also be installed into the same directory so agents can read them locally, but installation and update must use the npm `skills` package. `.agents/shared-skills.json` is a command inventory and ownership record, not a custom skill manager. Runtime-installed shared skill directories are ignored by git, and each source-evidence run records the resolved upstream ref as task evidence.
 
 ## Skill Classes
 
 | Class | Source | Storage rule | Update rule |
 | --- | --- | --- | --- |
-| Foundry-local orchestration skills | this repository | tracked under `.agents/skills` | changed through normal Foundry PRs |
-| TianGong LCA shared skills | `tiangong-lca-skills` | preferably consumed from the shared repo or installed by operator choice | update with `npx skills update` when installed |
-| Source-evidence research skills | external skill repos such as `tiangong-ai/skills` | runtime only; ignored if installed locally | resolve latest before each source-evidence run |
+| Foundry-local orchestration skills | this repository | tracked under `.agents/skills` and listed in `.agents/shared-skills.json` | changed through normal Foundry PRs |
+| TianGong LCA shared skills | sibling `tiangong-lca-skills` | installed into `.agents/skills` by `npx --yes skills@latest add`; ignored in this repo | update the sibling checkout, then run `npm run skills:install:shared` or `npm run skills:update` |
+| Source-evidence research skills | external skill repos such as `tiangong-ai/skills` | installed or read into `.agents/skills` runtime state; ignored in this repo | resolve latest before each source-evidence run |
 
-The external source-evidence class is intentionally floating. Reproducibility is kept by task artifacts that record the resolved repository ref, command, retrieved evidence, and timestamps, not by committing a copied skill version to Foundry.
+Runtime skill names must not collide with Foundry-local skill names. The external source-evidence class is intentionally floating. Reproducibility is kept by task artifacts that record the resolved repository ref, command, retrieved evidence, and timestamps, not by committing a copied skill version to Foundry.
 
 ## Required SCI Evidence Skill
 
@@ -55,13 +56,31 @@ This skill is for the `sci` source channel. It must not be treated as a report, 
 
 ## Runtime Commands
 
-List available remote skills:
+Install or refresh configured shared runtime skills into `.agents/skills`:
+
+```bash
+npm run skills:install:shared
+```
+
+Update locally installed project skills:
+
+```bash
+npm run skills:update
+```
+
+Inspect local project skill state:
+
+```bash
+npm run skills:list
+```
+
+List available remote SCI skills:
 
 ```bash
 npx --yes skills@latest add https://github.com/tiangong-ai/skills --list --full-depth
 ```
 
-Read and use the latest SCI skill instructions for the current agent turn without installing them into the project:
+Read and use the latest SCI skill instructions for the current agent turn:
 
 ```bash
 npx --yes skills@latest use https://github.com/tiangong-ai/skills \
@@ -69,7 +88,7 @@ npx --yes skills@latest use https://github.com/tiangong-ai/skills \
   --full-depth
 ```
 
-Install the SCI skill into the local checkout only when an operator wants a persistent local runtime copy:
+Install only the SCI skill into the local checkout:
 
 ```bash
 npx --yes skills@latest add https://github.com/tiangong-ai/skills \
@@ -77,18 +96,6 @@ npx --yes skills@latest add https://github.com/tiangong-ai/skills \
   --agent '*' \
   --yes \
   --full-depth
-```
-
-Update locally installed project skills before a source-evidence run:
-
-```bash
-npx --yes skills@latest update --project --yes
-```
-
-Inspect local project skill state:
-
-```bash
-npx --yes skills@latest list --json
 ```
 
 Confirm the latest upstream ref when a task needs an audit trail:
@@ -117,8 +124,10 @@ Minimum fields:
   "source_ref": "refs/heads/main",
   "resolved_commit": "<git-ls-remote-sha>",
   "skill_name": "tiangong-kb-sci-search",
-  "resolution_command": "npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --full-depth",
+  "install_command": "npx --yes skills@latest add https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --agent '*' --yes --full-depth",
+  "use_command": "npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --full-depth",
   "evidence_channel": "sci",
+  "local_install_path": ".agents/skills/tiangong-kb-sci-search",
   "output_artifacts": [
     "evidence/sources.jsonl",
     "evidence/field-evidence.jsonl"
@@ -126,10 +135,12 @@ Minimum fields:
 }
 ```
 
-If an operator installs the skill locally, `.agents/skills/tiangong-kb-*/` and `skills-lock.json` remain local runtime state by default. Commit them only when the task deliberately changes from a floating-latest policy to a pinned reproducibility policy, and record that decision in the relevant issue or design document.
+If an operator installs shared/runtime skills locally, `.agents/skills/tiangong-kb-*/`, `.agents/skills/external-dataset-curated-import/`, `.agents/skills/source-evidence-dataset-development/`, `.agents/skills/dataset-rls-maintenance/`, and `skills-lock.json` remain local runtime state by default. Commit them only when the task deliberately changes from a floating-latest policy to a pinned reproducibility policy, and record that decision in the relevant issue or design document.
 
 ## Agent Rules
 
+- Run `npm run skills:install:shared` when configured shared/runtime skills may be missing or stale.
+- Run `npm run skills:update` to refresh already installed project skills.
 - Resolve latest external source-evidence skills before SCI evidence retrieval.
 - Read the current remote skill instructions in the same session before relying on them.
 - Record the resolved upstream commit and command in the task workspace.

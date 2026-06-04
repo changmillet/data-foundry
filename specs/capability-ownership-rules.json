@@ -108,7 +108,7 @@
         "the task needs fast-moving Tiangong KB research workflows such as SCI literature evidence retrieval"
       ],
       "examples": [
-        "npx skills use https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --full-depth"
+        "npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --full-depth"
       ]
     },
     {

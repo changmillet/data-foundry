@@ -179,7 +179,7 @@ Then the skill may create a `clarified_seed` and first run source discovery. It 
 
 ## Runtime Skill Resolution
 
-Source-evidence retrieval may need fast-moving research skills that are not owned by Foundry. These skills are runtime dependencies, resolved with `npx skills`, not checked into `.agents/skills`.
+Source-evidence retrieval may need fast-moving research skills that are not owned by Foundry. These skills are runtime dependencies, configured in `.agents/shared-skills.json`, installed or read through the npm `skills` package, and left untracked under `.agents/skills` unless a task explicitly chooses pinned reproducibility.
 
 For SCI paper and academic journal evidence, the required runtime skill is:
 
@@ -191,7 +191,7 @@ evidence channel: sci
 
 Before SCI retrieval, the top-level skill must:
 
-1. Resolve or read the latest remote skill instructions with `npm run skills:source-evidence:use:sci`.
+1. Resolve or read the latest remote skill instructions with `npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --full-depth`.
 2. Record the upstream `refs/heads/main` commit from `git ls-remote https://github.com/tiangong-ai/skills.git refs/heads/main`.
 3. Write `.foundry/workspaces/<task-id>/runtime-skills/runtime-skill-resolution.json`.
 4. Keep SCI evidence separate from report, patent, standard, official, or web-page evidence channels.

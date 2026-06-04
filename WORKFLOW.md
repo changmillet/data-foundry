@@ -72,7 +72,7 @@ tiangong-lca dataset context-pack \
 ```
 
 4. For packaged imports, convert with `tiangong-lca dataset import-lca convert` or `tidas-tools`.
-5. For source-document authoring, extract source evidence first and keep unresolved assumptions explicit. For SCI paper or scientific journal evidence, resolve the latest `tiangong-kb-sci-search` skill from `https://github.com/tiangong-ai/skills` with `npx skills` before retrieval, then write `.foundry/workspaces/<task-id>/runtime-skills/runtime-skill-resolution.json` with the resolved upstream ref, command, skill name, and evidence channel. Do not commit the remote skill into `.agents/skills`.
+5. For source-document authoring, extract source evidence first and keep unresolved assumptions explicit. For SCI paper or scientific journal evidence, resolve the latest `tiangong-kb-sci-search` skill from `https://github.com/tiangong-ai/skills` with `npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --full-depth` before retrieval, then write `.foundry/workspaces/<task-id>/runtime-skills/runtime-skill-resolution.json` with the `npx skills` command, the `git ls-remote https://github.com/tiangong-ai/skills.git refs/heads/main` commit, skill name, timestamp, and evidence channel. Runtime-installed shared skills may live under `.agents/skills`, but their directories and `skills-lock.json` stay untracked unless the task explicitly chooses pinned reproducibility.
 6. Validate generated rows with `tiangong-lca dataset validate --type <type>`.
 7. Run deterministic QA with `tiangong-lca qa <type>`.
 8. Build the entity-level import curation queue:

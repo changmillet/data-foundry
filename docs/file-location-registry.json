@@ -131,7 +131,24 @@
       ],
       "sensitivity": "non-sensitive runtime skill dependency policy; contains no credentials and no private evidence payloads",
       "tracked": true,
-      "notes": "Defines how Foundry resolves floating external source-evidence skills with npx skills without vendoring them into the repository."
+      "notes": "Defines how Foundry resolves floating external source-evidence skills with the npm skills package while keeping runtime-installed shared skills untracked by default."
+    },
+    {
+      "id": "shared-skills-config",
+      "status": "active",
+      "classification": "skill-runtime-config",
+      "current_path": ".agents/shared-skills.json",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "AGENTS.md",
+        "README.md",
+        "docs/runtime-skill-management.md",
+        "package.json"
+      ],
+      "sensitivity": "non-sensitive skill source and update policy config; contains no credentials",
+      "tracked": true,
+      "notes": "Lists Foundry-owned tracked skills, shared/runtime skills that may be installed into the same .agents/skills root, and the direct npm skills package commands used to manage them."
     },
     {
       "id": "foundry-task-contracts",
