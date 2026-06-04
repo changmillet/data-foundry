@@ -14,6 +14,12 @@ import {
   runDatasetCurationGate,
   runDatasetMutationManifest,
 } from "./lib/import-curation.mjs";
+import {
+  exitCodeForCommand,
+  usage,
+} from "./lib/foundry-command-registry.mjs";
+import { parseArgs, parseScalar } from "./lib/foundry-args.mjs";
+import { defaultCanonicalFlowPropertyMappings } from "./lib/canonical-support-mappings.mjs";
 
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -582,51 +588,12 @@ function findFilesByName(startDir, fileName, maxDepth = 8) {
   return found.sort();
 }
 
-function parseScalar(value) {
-  const text = String(value ?? "").trim();
-  if (text === "true") return true;
-  if (text === "false") return false;
-  if (/^-?\d+$/u.test(text)) return Number(text);
-  return text.replace(/^["']|["']$/gu, "");
-}
-
 function asText(value) {
   if (value === undefined || value === null) return "";
   if (typeof value === "string") return value.trim();
   if (typeof value === "number" || typeof value === "boolean")
     return String(value);
   return "";
-}
-
-function parseArgs(argv) {
-  const options = { _: [] };
-  for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index];
-    if (!arg.startsWith("--")) {
-      options._.push(arg);
-      continue;
-    }
-    const [rawKey, inlineValue] = arg.slice(2).split("=", 2);
-    const key = rawKey.replace(/-([a-z])/gu, (_, letter) =>
-      letter.toUpperCase(),
-    );
-    const value = inlineValue ?? argv[index + 1];
-    if (inlineValue === undefined && value && !String(value).startsWith("--")) {
-      index += 1;
-    }
-    const parsed =
-      inlineValue !== undefined || (value && !String(value).startsWith("--"))
-        ? parseScalar(value)
-        : true;
-    if (Object.hasOwn(options, key)) {
-      options[key] = Array.isArray(options[key])
-        ? [...options[key], parsed]
-        : [options[key], parsed];
-    } else {
-      options[key] = parsed;
-    }
-  }
-  return options;
 }
 
 function splitFrontmatter(text) {
@@ -8809,80 +8776,6 @@ function normalizeSupportKey(value) {
     .replace(/\./gu, "");
 }
 
-function defaultCanonicalFlowPropertyMappings() {
-  return [
-    {
-      source_units: ["kg", "g", "mg", "ug", "t", "kt", "mg"],
-      canonical_flow_property_id: "93a60a56-a3c8-11da-a746-0800200b9a66",
-      reason: "Mass units must reuse the public canonical Mass flow property.",
-    },
-    {
-      source_units: ["p", "item", "items", "item(s)", "dozen(s)"],
-      canonical_flow_property_id: "01846770-4cfe-4a25-8ad9-919d8d378345",
-      reason:
-        "Countable-item units must reuse the public canonical Number of items flow property.",
-    },
-    {
-      source_units: ["m", "km", "cm", "mm", "ft", "mi", "in", "yd"],
-      canonical_flow_property_id: "838aaa23-0117-11db-92e3-0800200c9a66",
-      reason: "Length units must reuse the public canonical Length flow property.",
-    },
-    {
-      source_units: ["mj", "kwh", "j", "gj", "mwh", "toe", "kcal", "btu", "tce"],
-      canonical_flow_property_id: "93a60a56-a3c8-11da-a746-0800200c9a66",
-      reason:
-        "Energy units currently reuse the public canonical Net calorific value support row; this is the existing platform canonical available to imports.",
-      legacy_support_note:
-        "The public library does not yet expose a generic Energy flow property; do not create an account-local replacement.",
-    },
-    {
-      source_units: ["m3", "nm3", "l", "cuft"],
-      canonical_flow_property_id: "93a60a56-a3c8-22da-a746-0800200c9a66",
-      reason: "Volume units must reuse the public canonical Volume flow property.",
-    },
-    {
-      source_units: ["m2", "km2", "ha", "ft2", "mi2", "cm2"],
-      canonical_flow_property_id: "93a60a56-a3c8-19da-a746-0800200c9a66",
-      reason: "Area units must reuse the public canonical Area flow property.",
-    },
-    {
-      source_units: ["m2a", "m2*a", "km2*a", "ha*a", "ft2*a", "mi2*a", "m2*d"],
-      canonical_flow_property_id: "93a60a56-a3c8-21da-a746-0800200c9a66",
-      reason:
-        "Area*time units must reuse the public canonical Area*time flow property.",
-    },
-    {
-      source_units: ["kbq", "bq", "ci", "rutherford"],
-      canonical_flow_property_id: "93a60a56-a3c8-17da-a746-0800200c9a66",
-      reason:
-        "Radioactivity units must reuse the public canonical Radioactivity flow property.",
-    },
-    {
-      source_units: ["tkm", "t*km", "kg*km"],
-      canonical_flow_property_id: "118f2a40-50ec-457c-aa60-9bc6b6af9931",
-      reason:
-        "Mass*distance units must reuse the public canonical mass*distance flow property.",
-    },
-    {
-      source_units: ["m3a", "m3*a", "l*a"],
-      canonical_flow_property_id: "441238a3-ba09-46ec-b35b-c30cfba746d1",
-      reason:
-        "Volume*time units must reuse the public canonical Volume*time flow property.",
-    },
-    {
-      source_units: ["mol"],
-      canonical_flow_property_id: "341fd786-b2ad-4552-a762-5eafcab45dee",
-      reason: "Mole units must reuse the public canonical Moles flow property.",
-    },
-    {
-      source_units: ["kg*a", "t*a", "kg*d", "t*d", "kga", "ta", "kgd", "td"],
-      canonical_flow_property_id: "b3f0f892-c5a3-4c66-a432-c09e3d1e9bd6",
-      reason:
-        "Mass*time units must reuse the public canonical Mass*time flow property.",
-    },
-  ];
-}
-
 function canonicalSupportCachePath(options = {}) {
   return resolveRepoPath(
     options.canonicalSupportCache ||
@@ -15511,63 +15404,10 @@ function printJson(value) {
   console.log(JSON.stringify(value, null, 2));
 }
 
-function usage() {
-  const publicCommands = [
-    "init",
-    "doctor",
-    "env-check",
-    "workflow-check",
-    "storage-check",
-    "acceptance-check",
-    "workspace-map",
-    "capabilities-list",
-    "profiles-list",
-    "route-task",
-    "tasks-list",
-    "tasks-check",
-    "task-complete",
-  ];
-  const datasetPolicyCommands = [
-    "dataset-curation-queue-build",
-    "dataset-curation-gate",
-    "dataset-authoring-plan",
-    "dataset-authoring-task-build",
-    "dataset-authoring-patch-collect",
-    "dataset-identity-decision-task-build",
-    "dataset-classification-decision-task-build",
-    "dataset-classification-decisions-apply",
-    "dataset-location-decision-task-build",
-    "dataset-location-decisions-apply",
-    "dataset-curation-cleanup",
-    "dataset-patch-apply",
-    "dataset-support-cache-refresh",
-    "dataset-bundle-sample-rows",
-    "dataset-identity-preflight-requests-build",
-    "dataset-identity-preflight-query-audit",
-    "dataset-identity-preflight-run",
-    "dataset-identity-preflight-index-merge",
-    "dataset-identity-reference-rewrites-apply",
-    "dataset-identity-decisions-apply",
-    "dataset-post-authoring-finalize",
-    "dataset-commit-handoff-plan",
-    "dataset-post-write-closeout",
-    "dataset-import-completion-report",
-    "dataset-mutation-manifest",
-  ];
-  return {
-    public_commands: publicCommands,
-    dataset_policy_commands: datasetPolicyCommands,
-    commands: [...publicCommands, ...datasetPolicyCommands],
-    ownership_note:
-      "Foundry public surface is task/profile/workspace/gate control. Foundry dataset commands are policy and artifact helpers only; durable conversion, queue state, validation, QA, database write/delete/redo, and readback behavior belongs in tiangong-lca CLI or checked-in skills.",
-  };
-}
-
 async function main() {
   const [command = "help", ...rest] = process.argv.slice(2);
   const options = parseArgs(rest);
   let result;
-  let exitCode = 0;
   switch (command) {
     case "help":
     case "--help":
@@ -15579,28 +15419,18 @@ async function main() {
       break;
     case "doctor":
       result = doctor();
-      exitCode =
-        result.workflow_check.ok &&
-        result.storage_check.ok &&
-        result.env_example_surface.ok
-          ? 0
-          : 1;
       break;
     case "env-check":
       result = envCheck();
-      exitCode = result.env_example_surface.ok ? 0 : 1;
       break;
     case "workflow-check":
       result = workflowCheck();
-      exitCode = result.ok ? 0 : 1;
       break;
     case "storage-check":
       result = storageCheck();
-      exitCode = result.ok ? 0 : 1;
       break;
     case "acceptance-check":
       result = acceptanceCheck();
-      exitCode = result.status === "passed" ? 0 : 1;
       break;
     case "workspace-map":
       result = workspaceMap();
@@ -15613,182 +15443,97 @@ async function main() {
       break;
     case "route-task":
       result = writeRoutePlan(buildRoutePlan(options), options.outDir);
-      exitCode = result.status === "missing_capabilities" ? 1 : 0;
       break;
     case "tasks-list":
       result = tasksList();
       break;
     case "tasks-check":
       result = tasksCheck();
-      exitCode = result.ok ? 0 : 1;
       break;
     case "task-complete":
       result = runTaskComplete(options);
-      exitCode = ["help", "ready", "completed"].includes(result.status) ? 0 : 1;
       break;
     case "dataset-curation-queue-build":
       result = runDatasetCurationQueueBuild(options);
-      exitCode = result.foundry_wrapper.exit_code;
       break;
     case "dataset-curation-gate":
       result = runDatasetCurationGate({ repoRoot, options });
-      exitCode = ["help", "ready", "ready_with_profile_waivers"].includes(
-        result.status,
-      )
-        ? 0
-        : 1;
       break;
     case "dataset-authoring-plan":
       result = runDatasetAuthoringPlan(options);
-      exitCode = 0;
       break;
     case "dataset-authoring-task-build":
       result = runDatasetAuthoringTaskBuild({ repoRoot, options });
-      exitCode = [
-        "help",
-        "ready_for_ai_authoring",
-        "ready_for_ai_authoring_batch",
-        "ready_no_action_items",
-      ].includes(result.status)
-        ? 0
-        : 1;
       break;
     case "dataset-authoring-patch-collect":
       result = runDatasetAuthoringPatchCollect({ repoRoot, options });
-      exitCode = ["help", "ready_for_patch_apply"].includes(result.status)
-        ? 0
-        : 1;
       break;
     case "dataset-identity-decision-task-build":
       result = runDatasetIdentityDecisionTaskBuild(options);
-      exitCode = [
-        "help",
-        "ready_for_ai_identity_decisions",
-        "ready_no_identity_actions",
-      ].includes(result.status)
-        ? 0
-        : 1;
       break;
     case "dataset-classification-decision-task-build":
       result = runDatasetClassificationDecisionTaskBuild(options);
-      exitCode = [
-        "help",
-        "ready_for_ai_classification_decisions",
-        "ready_no_classification_actions",
-      ].includes(result.status)
-        ? 0
-        : 1;
       break;
     case "dataset-classification-decisions-apply":
       result = runDatasetClassificationDecisionsApply(options);
-      exitCode = ["help", "completed"].includes(result.status) ? 0 : 1;
       break;
     case "dataset-location-decision-task-build":
       result = runDatasetLocationDecisionTaskBuild(options);
-      exitCode = [
-        "help",
-        "ready_for_ai_location_decisions",
-        "ready_no_location_actions",
-      ].includes(result.status)
-        ? 0
-        : 1;
       break;
     case "dataset-location-decisions-apply":
       result = runDatasetLocationDecisionsApply(options);
-      exitCode = ["help", "completed"].includes(result.status) ? 0 : 1;
       break;
     case "dataset-curation-cleanup":
       result = runDatasetCurationCleanup({ repoRoot, options });
       break;
     case "dataset-patch-apply":
       result = runDatasetPatchApply(options);
-      exitCode = result.foundry_wrapper.exit_code;
       break;
     case "dataset-support-cache-refresh":
       result = await runDatasetSupportCacheRefresh(options);
-      exitCode = ["help", "completed"].includes(result.status) ? 0 : 1;
       break;
     case "dataset-bundle-sample-rows":
       result = runDatasetBundleSampleRows(options);
-      exitCode = ["help", "ready"].includes(result.status) ? 0 : 1;
       break;
     case "dataset-identity-preflight-requests-build":
       result = runDatasetIdentityPreflightRequestsBuild(options);
-      exitCode = ["help", "ready"].includes(result.status) ? 0 : 1;
       break;
     case "dataset-identity-preflight-query-audit":
       result = runDatasetIdentityPreflightQueryAudit(options);
-      exitCode = ["help", "passed"].includes(result.status) ? 0 : 1;
       break;
     case "dataset-identity-preflight-run":
       result = runDatasetIdentityPreflightRun(options);
-      exitCode = [
-        "help",
-        "planned",
-        "completed",
-        "completed_with_identity_findings",
-      ].includes(result.status)
-        ? 0
-        : 1;
       break;
     case "dataset-identity-preflight-index-merge":
       result = runDatasetIdentityPreflightIndexMerge(options);
-      exitCode = ["help", "ready"].includes(result.status) ? 0 : 1;
       break;
     case "dataset-identity-reference-rewrites-apply":
       result = runDatasetIdentityReferenceRewritesApply(options);
-      exitCode = [
-        "help",
-        "completed",
-        "completed_no_rewrites",
-        "completed_no_index",
-      ].includes(result.status)
-        ? 0
-        : 1;
       break;
     case "dataset-identity-decisions-apply":
       result = runDatasetIdentityDecisionsApply(options);
-      exitCode = ["help", "completed"].includes(result.status) ? 0 : 1;
       break;
     case "dataset-post-authoring-finalize":
       result = runDatasetPostAuthoringFinalize(options);
-      exitCode = [
-        "help",
-        "ready_for_remote_write",
-        "ready_reference_only",
-      ].includes(result.status)
-        ? 0
-        : 1;
       break;
     case "dataset-commit-handoff-plan":
       result = runDatasetCommitHandoffPlan(options);
-      exitCode = ["help", "ready_for_explicit_commit"].includes(result.status)
-        ? 0
-        : 1;
       break;
     case "dataset-post-write-closeout":
       result = runDatasetPostWriteCloseout(options);
-      exitCode = ["help", "completed"].includes(result.status) ? 0 : 1;
       break;
     case "dataset-import-completion-report":
       result = runDatasetImportCompletionReport(options);
-      exitCode = ["help", "completed"].includes(result.status) ? 0 : 1;
       break;
     case "dataset-mutation-manifest":
       result = runDatasetMutationManifest({ repoRoot, options });
-      exitCode = [
-        "help",
-        "ready_for_remote_write",
-        "ready_reference_only",
-      ].includes(result.status)
-        ? 0
-        : 1;
       break;
     default:
       console.error(`Unknown Foundry command: ${command}`);
       console.error(`Known commands: ${usage().commands.join(", ")}`);
       process.exit(2);
   }
+  const exitCode = exitCodeForCommand(command, result);
   printJson(result);
   process.exit(exitCode);
 }
