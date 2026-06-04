@@ -74,7 +74,7 @@ When a BAFU import attempt exposes a reusable defect in the CLI, SDK, tidas-tool
 
 1. Fix the defect in the owning repository and rebuild the affected local tool before invoking it from Foundry.
 2. Start a fresh downstream workspace from this BAFU profile and the current normalized/source manifest selected by the user.
-3. Build a fresh entity queue with `npm run dataset:curation-queue:build` / `tiangong-lca dataset curation-queue build`, using the current support, flow, process, and external-flow-ref row files.
+3. Build a fresh entity queue with `tiangong-lca dataset curation-queue build`, using the current support, flow, process, and external-flow-ref row files.
 4. Run `curation-queue next` through support, flow, and process scopes until the requested scope returns `complete`, or stop at the first blocker whose `next` action cannot proceed.
 5. If blocked, report the exact entity task, command, input artifact, output artifact, validation report, and owning repository defect. Do not summarize a prewrite gate with remaining runnable `next` actions as the final blocker.
 6. If not blocked, run prewrite verify, formal BAFU account write, and readback verify.
@@ -137,7 +137,7 @@ Record the exact source zip, checksum, source location, package title/version, a
 
 ### 2. Normalize
 
-Use `tidas-tools import-lca` as the conversion entrypoint. Produce ILCD output, TIDAS JSON, mapping CSV, and a conversion report in the task workspace. The normalized output is not yet TianGong-ready data.
+Use `tiangong-lca dataset import-lca convert` as the conversion entrypoint so the CLI owns the stable conversion contract. Produce ILCD output, TIDAS JSON, mapping CSV, a conversion report, and default per-process dependency bundles under `process-bundles/` in the task workspace. The normalized output is not yet TianGong-ready data.
 
 ### 3. Conversion QA
 

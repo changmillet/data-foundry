@@ -15,25 +15,30 @@ Foundry owns:
 - workspace creation under `.foundry/workspaces/<task-id>/`;
 - capability route plans;
 - artifact manifests and reports;
-- policy checks and handoff records.
+- policy checks and handoff records;
+- gate aggregation across owner-produced artifacts.
 
 Foundry does not own:
 
 - TIDAS schemas, YAML methodology, or runtime rulesets;
 - source package converters;
 - AI authoring implementation;
+- external source-evidence research skills;
 - dataset validators and QA engines;
+- curation queue state machines;
 - database write semantics.
 
-Those capabilities belong in `tidas-sdk`, `tidas-tools`, `tiangong-lca-cli`, `tiangong-lca-skills`, Edge Functions, database, or calculator projects.
+Those capabilities belong in `tidas-sdk`, `tidas-tools`, `tiangong-lca-cli`, `tiangong-lca-skills`, external runtime skill repositories such as `tiangong-ai/skills`, Edge Functions, database, or calculator projects.
 
 ## Required Artifacts
 
 Every import task should produce:
 
 - contract context manifest for each target TIDAS type;
+- runtime skill resolution manifest when an external source-evidence skill is used;
 - source package or source document manifest;
 - conversion report or source extraction report;
+- CLI curation queue build/next/verify reports;
 - validation and QA reports;
 - repair queue or explicit blocker report when validation fails;
 - dry-run publish/import plan before any remote write;

@@ -6,6 +6,7 @@ status: draft
 owner: tiangong-lca-data-foundry
 related:
   - docs/skill-orchestration/dataset-authoring-skill-architecture.md
+  - docs/runtime-skill-management.md
   - docs/import-profiles/bafu/profile.md
   - docs/import-profiles/bafu/constraints.md
   - ../AGENTS.md
@@ -176,6 +177,27 @@ If the user answers:
 
 Then the skill may create a `clarified_seed` and first run source discovery. It still may not publish until source evidence is frozen, goal/scope is accepted, build plans pass, and readback verification is possible.
 
+## Runtime Skill Resolution
+
+Source-evidence retrieval may need fast-moving research skills that are not owned by Foundry. These skills are runtime dependencies, resolved with `npx skills`, not checked into `.agents/skills`.
+
+For SCI paper and academic journal evidence, the required runtime skill is:
+
+```text
+tiangong-kb-sci-search
+source repo: https://github.com/tiangong-ai/skills
+evidence channel: sci
+```
+
+Before SCI retrieval, the top-level skill must:
+
+1. Resolve or read the latest remote skill instructions with `npm run skills:source-evidence:use:sci`.
+2. Record the upstream `refs/heads/main` commit from `git ls-remote https://github.com/tiangong-ai/skills.git refs/heads/main`.
+3. Write `.foundry/workspaces/<task-id>/runtime-skills/runtime-skill-resolution.json`.
+4. Keep SCI evidence separate from report, patent, standard, official, or web-page evidence channels.
+
+The resolved skill can identify and retrieve paper evidence, but it does not authorize TIDAS field values by itself. Retrieved papers become evidence candidates. Field-level extraction, limitations, conflicts, source rows, mapping, curation, dry-run, and write gates remain in the Foundry/CLI workflow.
+
 ## Evidence Contract
 
 Source evidence 不是临时搜索结果，而是后续字段、映射和 reviewer 能追溯的证据包。每条 evidence record 至少包含：
@@ -250,11 +272,13 @@ Gate：
 子 skill / CLI：
 
 - `process-automated-builder` 的 `evidence-search plan/run`；
+- SCI 论文和期刊证据使用 runtime `tiangong-kb-sci-search`，按 `docs/runtime-skill-management.md` 解析最新版本并记录 skill resolution；
 - 必要时使用项目文档、输入证据和外部来源上下文；
 - 需要确定性 artifact 时通过 `tiangong-lca dataset evidence-search plan/run`。
 
 输出：
 
+- `runtime-skills/runtime-skill-resolution.json`，当使用 runtime source-evidence skill 时；
 - `evidence/sources.jsonl`
 - `evidence/chunks.jsonl`
 - `evidence/field-evidence.jsonl`
@@ -264,6 +288,7 @@ Gate：
 
 Gate：
 
+- runtime source-evidence skill 已解析并记录 upstream ref，或当前 task 不需要外部 runtime skill；
 - goal/scope 的 critical fields 有足够证据，或明确成为 blocker/proxy；
 - 证据冲突已记录；
 - 没有把搜索摘要当作字段证据。
@@ -471,6 +496,7 @@ Gate：
 
 ## Child Skill Map
 
+- SCI literature evidence: runtime `tiangong-kb-sci-search` from `https://github.com/tiangong-ai/skills`, resolved through `npx skills` and recorded in the task workspace.
 - Evidence search and process evidence fields: `process-automated-builder` evidence-search mode。
 - Flow authoring: `flow-governance-review`，必要时 `flow-hybrid-search` 只做 candidate retrieval。
 - Process authoring: `process-automated-builder`。

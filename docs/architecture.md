@@ -1,44 +1,76 @@
+---
+title: Data Foundry Architecture
+docType: guide
+scope: repo
+status: active
+authoritative: true
+owner: tiangong-lca-data-foundry
+language: en
+whenToUse:
+  - when deciding what belongs in Foundry versus CLI, skills, tools, SDK, database, or Edge projects
+  - when reviewing public Foundry command surface or retired daemon/runtime assumptions
+whenToUpdate:
+  - when Foundry ownership, lane architecture, runtime model, or cross-project routing changes
+checkPaths:
+  - docs/architecture.md
+  - AGENTS.md
+  - README.md
+  - WORKFLOW.md
+  - docs/capability-ownership-policy.md
+  - docs/workspace-project-map.md
+  - specs/capability-ownership-rules.json
+  - specs/automated-lca-capability-registry.json
+lastReviewedAt: 2026-06-04
+lastReviewedCommit: 77dfa0de95629e228759e2fe84ea96f23d08623c
+---
+
 # Architecture
 
-## Layers
+## Current Shape
 
-1. Policy layer
-   - `WORKFLOW.md`
-   - task acceptance and stop rules
+Foundry is a thin local control plane. It owns task intake, profile locks, workspace ledgers, owner routing, and gate aggregation. It does not own reusable dataset execution logic.
 
-2. Configuration layer
-   - workflow front matter
-   - environment indirection
-   - default policy values
+The minimum runtime shape is:
 
-3. Workspace registry layer
-   - local project graph
-   - capability catalog
-   - source-root and skill-root discovery
-   - owner and write-policy boundaries
+```text
+Foundry
+  = task + workspace + profile + checkpoint + gate aggregator
 
-4. Coordination layer
-   - poll loop
-   - task eligibility
-   - concurrency
-   - retry and reconciliation
+tiangong-lca-cli
+  = conversion + validation + QA + curation queue state + remote write/verify
 
-5. Execution layer
-   - per-task workspace
-   - hooks
-   - agent app-server or CLI subprocess
-   - CLI, skill, source-artifact, hybrid-search, schema, and publish adapters
+tiangong-lca-skills
+  = top-level workflows + child semantic authoring skills
 
-6. Data layer
-   - source package manifests
-   - source document extraction outputs
-   - schema/source/reference outputs
-   - dry-run and verification artifacts
+profiles
+  = generic / bafu / uslci constraints
+```
 
-7. Observability layer
-   - structured logs
-   - status snapshots
-   - task reports
+## Foundry-Owned Layers
+
+1. Task intake
+   - create or classify a task
+   - choose `external-dataset-curated-import` or `source-evidence-dataset-development`
+   - freeze `source-manifest.json` or `seed-manifest.json`
+
+2. Profile lock
+   - resolve profile id
+   - freeze constraints hash
+   - record account/write policy guard
+
+3. Workspace ledger
+   - manage `.foundry/workspaces/<task-id>/`
+   - maintain `foundry-job.json`, checkpoints, and `artifact-index.jsonl`
+   - record runtime skill resolution when external evidence skills are used
+
+4. Route to owner
+   - call CLI commands or top-level skills
+   - do not duplicate owner behavior locally
+
+5. Gate aggregate
+   - check that schema, QA, curation, queue verify, dry-run, closeout, and readback artifacts exist
+   - verify artifacts point to the same rows scope
+   - generate completion reports
 
 ## v0 Runtime
 
@@ -50,15 +82,15 @@ The v0 runtime is intentionally small:
 - no persistent database
 - no remote commit by default
 
-## v1 Runtime Direction
+## Retired v1 Daemon Direction
 
-Add a daemon:
+Poll loops, persistent daemons, app-server integration, concurrency orchestration, retry schedulers, and reconciliation workers are not part of the current Foundry architecture. They may be reconsidered only after the two lane workflows are stable and the owner command surfaces are complete.
+
+Retired direction:
 
 ```text
 poll tasks -> claim -> create workspace -> launch agent -> collect outputs -> update task state -> verify -> repeat
 ```
-
-Then add tracker adapters and app-server integration.
 
 ## Workspace-Aware Direction
 

@@ -1,7 +1,7 @@
 {
   "$schema": "../specs/schemas/file-location-registry.schema.json",
   "schema_version": 1,
-  "updated_at_utc": "2026-06-02T00:00:00Z",
+  "updated_at_utc": "2026-06-04T00:00:00Z",
   "policy_doc": "docs/file-organization.md",
   "entries": [
     {
@@ -113,6 +113,43 @@
       "sensitivity": "non-sensitive architecture design; contains no credentials and no private dataset payloads",
       "tracked": true,
       "notes": "Defines the target layering for Foundry, top-level skills, child skills, and CLI commands."
+    },
+    {
+      "id": "runtime-skill-management",
+      "status": "active",
+      "classification": "skill-orchestration-contract",
+      "current_path": "docs/runtime-skill-management.md",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "README.md",
+        "AGENTS.md",
+        "WORKFLOW.md",
+        "docs/skill-orchestration/source-evidence-top-level-skill-design.md",
+        "docs/skill-orchestration/dataset-authoring-skill-architecture.md",
+        "specs/automated-lca-capability-registry.json"
+      ],
+      "sensitivity": "non-sensitive runtime skill dependency policy; contains no credentials and no private evidence payloads",
+      "tracked": true,
+      "notes": "Defines how Foundry resolves floating external source-evidence skills with npx skills without vendoring them into the repository."
+    },
+    {
+      "id": "foundry-task-contracts",
+      "status": "active",
+      "classification": "task-ledger-contract",
+      "current_path": "docs/foundry-task-contracts.md",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "README.md",
+        "AGENTS.md",
+        "WORKFLOW.md",
+        "docs/skill-orchestration/dataset-authoring-skill-architecture.md",
+        "docs/skill-orchestration/source-evidence-top-level-skill-design.md"
+      ],
+      "sensitivity": "non-sensitive task ledger schema examples; contains no credentials and no private payloads",
+      "tracked": true,
+      "notes": "Defines the minimal Foundry-owned foundry-job, source-manifest, seed-manifest, checkpoint, and artifact-index contracts."
     }
   ]
 }

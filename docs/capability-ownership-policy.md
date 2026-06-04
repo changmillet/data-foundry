@@ -3,7 +3,23 @@ title: Capability Ownership Policy
 docType: policy
 scope: workspace-adapters
 status: active
+authoritative: true
 owner: tiangong-lca-data-foundry
+language: en
+whenToUse:
+  - when deciding whether Foundry, CLI, skills, SDK, tools, database, or Edge owns a capability
+  - when reviewing capability registry or workspace adapter changes
+whenToUpdate:
+  - when capability ownership boundaries, routing rules, or follow-up fields change
+checkPaths:
+  - docs/capability-ownership-policy.md
+  - docs/architecture.md
+  - docs/workspace-project-map.md
+  - specs/capability-ownership-rules.json
+  - specs/automated-lca-capability-registry.json
+  - specs/workspace-capability-adapters.md
+lastReviewedAt: 2026-06-04
+lastReviewedCommit: 77dfa0de95629e228759e2fe84ea96f23d08623c
 ---
 
 # Capability Ownership Policy
@@ -36,7 +52,8 @@ Use this order before adding code:
 1. If the change only coordinates existing commands or checks foundry task artifacts, implement it in foundry.
 2. If the change is a reusable primitive command with stable input/output and remote access, create a development request for `tiangong-lca-cli`.
 3. If the change is a reusable agent workflow that composes CLI commands, create a development request for `tiangong-lca-skills`.
-4. If the change depends on database, Edge Function, converter, SDK, or schema internals, route it to that owning repo.
+4. If the change is a fast-moving external source-evidence retrieval workflow, consume it as a runtime `npx skills` dependency and record the resolved ref instead of copying it into Foundry.
+5. If the change depends on database, Edge Function, converter, SDK, or schema internals, route it to that owning repo.
 
 When unsure, keep the foundry implementation as a thin adapter or stub, stop at dry-run/curation, and create a follow-up task with an explicit `owner_project`.
 

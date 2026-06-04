@@ -6,6 +6,7 @@ status: draft
 owner: tiangong-lca-data-foundry
 lastReviewedAt: 2026-05-29
 related:
+  - docs/runtime-skill-management.md
   - docs/capability-ownership-policy.md
   - docs/workspace-project-map.md
   - specs/automated-lca-capability-registry.json
@@ -83,6 +84,12 @@ The latest checked-out `tiangong-lca-skills` already has reusable skills that sh
 | `lca-publish-executor`                                                        | Current unified publish request facade over `tiangong-lca publish run`.                                                                                                       |
 | `tiangong-lca-remote-ops`                                                     | Process-focused remote maintenance and verification wrapper. Use only where process-specific remote maintenance is required.                                                  |
 | `flow-hybrid-search`, `process-hybrid-search`, `lifecyclemodel-hybrid-search` | Retrieval helpers only. They produce candidates; they do not decide authoring or mapping.                                                                                     |
+
+External source-evidence skills can also be used, but they are a different dependency class. They are resolved through `npx skills` at runtime and should not be copied into Foundry:
+
+| Skill | Source | Current role in this architecture |
+| --- | --- | --- |
+| `tiangong-kb-sci-search` | `https://github.com/tiangong-ai/skills` | Floating SCI literature evidence retrieval skill for source-evidence dataset development. It returns paper evidence candidates; Foundry/CLI still own evidence capture, field mapping, row authoring gates, and publish handoff. |
 
 ## Remaining Gaps
 
@@ -205,7 +212,7 @@ Use when there is no structured source dataset. The workflow starts from evidenc
 
 Default stages:
 
-1. Evidence intake and source freeze.
+1. Runtime source-evidence skill resolution when needed, then evidence intake and source freeze.
 2. Goal, scope, system boundary, and entity plan.
 3. Contact/source/unit group/flow property authoring.
 4. Flow authoring.
@@ -216,6 +223,8 @@ Default stages:
 9. Readback verify.
 
 This skill should reuse the same child skills as `external-dataset-curated-import`, with `mode=evidence_development`.
+
+For SCI literature evidence, resolve the latest `tiangong-kb-sci-search` with `npx skills` and record the upstream ref under the task workspace before retrieval. This keeps fast-moving research capability outside Foundry while preserving run-level auditability.
 
 ## Child Skill Responsibilities
 
@@ -279,6 +288,7 @@ Every top-level workflow stage writes:
 Each checkpoint includes:
 
 - mode, scenario, profile, and constraints snapshot hash;
+- runtime skill resolution details when external source-evidence skills were used;
 - input paths and input hashes;
 - output paths and output hashes;
 - invoked skill and CLI commands;
@@ -288,14 +298,15 @@ Each checkpoint includes:
 
 On restart, the top-level skill resumes from the first missing, failed, stale, or input-mismatched checkpoint. If an upstream checkpoint changes, downstream checkpoints are stale until rerun.
 
-## Updated Implementation Order
+## Current Implementation Order
 
-1. Create `external-dataset-curated-import` in `tiangong-lca-skills` as the top-level orchestration skill.
-2. Have Foundry route structured import tasks to that skill instead of calling dataset adapters or CLI commands directly.
-3. Reuse existing child skills first: `tidas-contract-context`, `tidas-data-import`, `flow-governance-review`, `process-automated-builder`, and `lca-publish-executor`.
-4. Add aliases or new child skills only where naming or scope prevents clear composition.
-5. Add missing deterministic primitives in `tiangong-lca-cli` before exposing them in skills.
-6. Add `source-evidence-dataset-development` after the structured-import top-level skill has one successful pilot and the child-skill contracts are stable.
+1. `tiangong-lca-cli` owns `dataset curation-queue build/next/verify`.
+2. `tiangong-lca-skills` owns the top-level `external-dataset-curated-import` and `source-evidence-dataset-development` workflow skills.
+3. Foundry routes structured import and source-evidence tasks to those skills and CLI commands instead of expanding its public `dataset:*` command surface.
+4. Existing child skills remain the first reuse targets: `tidas-contract-context`, `tidas-data-import`, `flow-governance-review`, `process-automated-builder`, and `lca-publish-executor`.
+5. New child aliases should be added only where naming or scope blocks clear composition.
+6. Source-evidence research dependencies use runtime `npx skills` resolution records instead of vendoring external skill repositories into Foundry.
+7. Remaining Foundry-local dataset wrappers are migration shims until equivalent CLI/skill owner surfaces exist.
 
 ## Retired Local-Adapter Assumption
 

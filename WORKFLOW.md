@@ -1,4 +1,27 @@
 ---
+title: Foundry Import Workflow Prompt
+docType: prompt
+scope: repo
+status: active
+authoritative: true
+owner: tiangong-lca-data-foundry
+language: en
+whenToUse:
+  - when a filesystem Foundry task is converted into agent execution instructions
+  - when checking required order for external dataset import or source-evidence authoring tasks
+whenToUpdate:
+  - when Foundry task order, gate sequence, runtime skill policy, or lane definitions change
+checkPaths:
+  - WORKFLOW.md
+  - AGENTS.md
+  - README.md
+  - docs/architecture.md
+  - docs/runtime-skill-management.md
+  - docs/foundry-task-contracts.md
+  - specs/automated-lca-capability-registry.json
+  - specs/capability-ownership-rules.json
+lastReviewedAt: 2026-06-04
+lastReviewedCommit: 77dfa0de95629e228759e2fe84ea96f23d08623c
 tracker:
   kind: filesystem
   inbox: tasks/inbox
@@ -49,13 +72,13 @@ tiangong-lca dataset context-pack \
 ```
 
 4. For packaged imports, convert with `tiangong-lca dataset import-lca convert` or `tidas-tools`.
-5. For source-document authoring, extract source evidence first and keep unresolved assumptions explicit.
+5. For source-document authoring, extract source evidence first and keep unresolved assumptions explicit. For SCI paper or scientific journal evidence, resolve the latest `tiangong-kb-sci-search` skill from `https://github.com/tiangong-ai/skills` with `npx skills` before retrieval, then write `.foundry/workspaces/<task-id>/runtime-skills/runtime-skill-resolution.json` with the resolved upstream ref, command, skill name, and evidence channel. Do not commit the remote skill into `.agents/skills`.
 6. Validate generated rows with `tiangong-lca dataset validate --type <type>`.
 7. Run deterministic QA with `tiangong-lca qa <type>`.
 8. Build the entity-level import curation queue:
 
 ```bash
-npm run dataset:curation-queue:build -- \
+tiangong-lca dataset curation-queue build \
   --processes <process-rows.jsonl> \
   --flows <flow-rows.jsonl> \
   --support <source-or-contact-rows.jsonl> \
@@ -63,15 +86,17 @@ npm run dataset:curation-queue:build -- \
   --out-dir .foundry/workspaces/<task-id>/curation-queue
 ```
 
-The queue build is a Foundry wrapper around `tiangong-lca dataset curation-queue build`. It writes task, lock, blocker, closure, input, and run-plan artifacts; it does not run AI or write the database.
+The queue state machine belongs to `tiangong-lca dataset curation-queue build/next/verify`. It writes task, lock, blocker, closure, input, run-plan, and queue status artifacts; it does not run AI or write the database.
+
+After build, workers should call `tiangong-lca dataset curation-queue next --queue-dir .foundry/workspaces/<task-id>/curation-queue --json` and execute only the returned task. Before write planning, call `tiangong-lca dataset curation-queue verify --queue-dir .foundry/workspaces/<task-id>/curation-queue --type <support|flow|process> --json`.
 
 Before AI curation for process/flow imports, audit and then run the generated identity-preflight request index. The audit checks the exact `flow_hybrid_search` / `process_hybrid_search` Edge request body before any remote call: Edge only parses `query`, `filter`/`filter_condition`, match/page options, and `data_source`, so complete identity and source evidence must be present in the compact fielded `query`. Foundry may include `remote_candidate_search.profile_hints` in the request for source-derived facts such as elementary categories, flow property, reference unit, geography, reference flow names, technology, and system boundary; the CLI uses those hints only for local target profiling and candidate scoring, not as Edge Function request fields.
 
 ```bash
-npm run dataset:identity-preflight-query:audit -- \
+npm run legacy:dataset:identity-preflight-query:audit -- \
   --index .foundry/workspaces/<task-id>/identity-preflight-requests/identity-preflight-requests.jsonl \
   --out-dir .foundry/workspaces/<task-id>/identity-preflight-query-audit
-npm run dataset:identity-preflight:run -- \
+npm run legacy:dataset:identity-preflight:run -- \
   --index .foundry/workspaces/<task-id>/identity-preflight-requests/identity-preflight-requests.jsonl \
   --out-dir .foundry/workspaces/<task-id>/identity-preflight-run \
   --only-pending
@@ -80,18 +105,18 @@ npm run dataset:identity-preflight:run -- \
 If a later AI patch or deterministic cleanup changes the current process/flow rows, rebuild and rerun identity preflight for the exact patched rows. Pass the original full index as `--source-index` so refreshed requests inherit the original `source_file` trace context; then merge that refreshed current-scope index back into the original full index so dependency evidence is preserved:
 
 ```bash
-npm run dataset:identity-preflight-requests:build -- \
+npm run legacy:dataset:identity-preflight-requests:build -- \
   --type process \
   --rows-file .foundry/workspaces/<task-id>/rows/processes.patched.jsonl \
   --source-index .foundry/workspaces/<task-id>/identity-preflight-requests/identity-preflight-requests.jsonl \
   --out-dir .foundry/workspaces/<task-id>/identity-preflight-refresh
-npm run dataset:identity-preflight-query:audit -- \
+npm run legacy:dataset:identity-preflight-query:audit -- \
   --index .foundry/workspaces/<task-id>/identity-preflight-refresh/identity-preflight-requests/identity-preflight-requests.jsonl \
   --out-dir .foundry/workspaces/<task-id>/identity-preflight-refresh-query-audit
-npm run dataset:identity-preflight:run -- \
+npm run legacy:dataset:identity-preflight:run -- \
   --index .foundry/workspaces/<task-id>/identity-preflight-refresh/identity-preflight-requests/identity-preflight-requests.jsonl \
   --out-dir .foundry/workspaces/<task-id>/identity-preflight-refresh-run
-npm run dataset:identity-preflight-index:merge -- \
+npm run legacy:dataset:identity-preflight-index:merge -- \
   --base-index .foundry/workspaces/<task-id>/identity-preflight-requests/identity-preflight-requests.jsonl \
   --update-index .foundry/workspaces/<task-id>/identity-preflight-refresh/identity-preflight-requests/identity-preflight-requests.jsonl \
   --out-dir .foundry/workspaces/<task-id>/identity-preflight-index-merge
@@ -100,7 +125,7 @@ npm run dataset:identity-preflight-index:merge -- \
 9. Run Foundry curation:
 
 ```bash
-npm run dataset:curation-gate -- \
+npm run legacy:dataset:curation-gate -- \
   --type <process|flow|lifecyclemodel> \
   --rows-file <rows.jsonl> \
   --schema-report <dataset-validate-report.json> \
@@ -118,17 +143,17 @@ npm run dataset:curation-gate -- \
 
 The classification and location queue files may be empty, but when they exist they must be passed through so taxonomy and `tidas_locations_category.json` blockers enter the AI authoring package. For process/flow imports, the identity-preflight index must also be passed through; full-context process/flow profiles automatically block AI authoring on missing or pending current/dependency identity results until the runner has produced evidence. Foundry also attaches the bundled TIDAS category schemas and location schema as full-text contract context so AI decisions can cite the taxonomy it used. Decision task build must return a ready status before AI authoring; `blocked_missing_full_context` means schema, methodology YAML, runtime ruleset, category/location schema, identity-preflight evidence, authoring package, or converted row payload context is incomplete and must be fixed first. The same full-context rule applies to non-decision authoring tasks built from curation-gate packages; a `blocked_missing_full_context` task manifest is not valid AI input.
 
-Before choosing one of the AI authoring paths below, run `npm run dataset:authoring-plan -- --curation-gate-report <dataset-curation-gate-report.json>`. The plan is read-only: it aggregates identity/classification/location/field-patch readiness, points to missing task builds or deterministic apply commands, and prevents skipping from a blocked curation gate directly to write planning.
+Before choosing one of the AI authoring paths below, run `npm run legacy:dataset:authoring-plan -- --curation-gate-report <dataset-curation-gate-report.json>`. The plan is read-only: it aggregates identity/classification/location/field-patch readiness, points to missing task builds or deterministic apply commands, and prevents skipping from a blocked curation gate directly to write planning.
 
-10. If curation is blocked on identity manual-review action items, Codex/skills should output structured identity decisions only from a ready `identity-decision-task.json`, preserve each template decision's `decision_status=completed`, `authoring_package`, `authoring_package_sha256`, `used_context_kinds`, structured `evidence`, and `closes_action_items`, then apply them through `npm run dataset:identity-decisions:apply` with the matching `--authoring-package-dir` whenever the package directory is available. `reuse_existing_reference` must include canonical id/version. Product/process rows may choose `create_new` only with full candidate evidence; elementary flow rows must choose `reuse_existing_reference` or `block_unresolved`. Do not patch row JSON directly for identity decisions.
-11. If curation is blocked on classification queue rows, Codex/skills should output structured classification decisions only from a ready `classification-decision-task.json`, preserve each template decision's `decision_status=completed` and `authoring_context.context_bundle_sha256`, then apply them through `npm run dataset:classification-decisions:apply -- --decision-task <classification-decision-task.json>`. Large queues may be split with `--dataset-type`, `--bundle-id`/`--process-id`, `--limit`, `--offset`, and `--chunk-label`; use one `--shared-context-cache-dir` across chunks so repeated schema/YAML/category/location context is read from one stable bundle, and when decisions from multiple chunk tasks are applied to the source queue, pass every task with repeated `--decision-task`. Do not patch classification JSON directly when the classification decision workflow is available.
-12. If curation is blocked on location queue rows, Codex/skills should output structured location decisions only from a ready `location-decision-task.json`, preserve each template decision's `decision_status=completed` and `authoring_context.context_bundle_sha256`, then apply them through `npm run dataset:location-decisions:apply -- --decision-task <location-decision-task.json>`. Large queues may be split with the same chunk flags and the same `--shared-context-cache-dir`; when decisions from multiple chunk tasks are applied to the source queue, pass every task with repeated `--decision-task`. Do not patch location fields directly when the location decision workflow is available.
+10. If curation is blocked on identity manual-review action items, Codex/skills should output structured identity decisions only from a ready `identity-decision-task.json`, preserve each template decision's `decision_status=completed`, `authoring_package`, `authoring_package_sha256`, `used_context_kinds`, structured `evidence`, and `closes_action_items`, then apply them through `npm run legacy:dataset:identity-decisions:apply` with the matching `--authoring-package-dir` whenever the package directory is available. `reuse_existing_reference` must include canonical id/version. Product/process rows may choose `create_new` only with full candidate evidence; elementary flow rows must choose `reuse_existing_reference` or `block_unresolved`. Do not patch row JSON directly for identity decisions.
+11. If curation is blocked on classification queue rows, Codex/skills should output structured classification decisions only from a ready `classification-decision-task.json`, preserve each template decision's `decision_status=completed` and `authoring_context.context_bundle_sha256`, then apply them through `npm run legacy:dataset:classification-decisions:apply -- --decision-task <classification-decision-task.json>`. Large queues may be split with `--dataset-type`, `--bundle-id`/`--process-id`, `--limit`, `--offset`, and `--chunk-label`; use one `--shared-context-cache-dir` across chunks so repeated schema/YAML/category/location context is read from one stable bundle, and when decisions from multiple chunk tasks are applied to the source queue, pass every task with repeated `--decision-task`. Do not patch classification JSON directly when the classification decision workflow is available.
+12. If curation is blocked on location queue rows, Codex/skills should output structured location decisions only from a ready `location-decision-task.json`, preserve each template decision's `decision_status=completed` and `authoring_context.context_bundle_sha256`, then apply them through `npm run legacy:dataset:location-decisions:apply -- --decision-task <location-decision-task.json>`. Large queues may be split with the same chunk flags and the same `--shared-context-cache-dir`; when decisions from multiple chunk tasks are applied to the source queue, pass every task with repeated `--decision-task`. Do not patch location fields directly when the location decision workflow is available.
 13. For non-identity/non-classification/non-location curation blockers, first build explicit authoring tasks with `dataset-authoring-task-build`. Use the same `--shared-context-cache-dir` as decision tasks when rebuilding or splitting work so repeated schema/YAML/ruleset/category/location context is read from one stable bundle. The manifest must be `ready_for_ai_authoring_batch`; if it is `blocked_missing_full_context`, fix the missing schema/YAML/ruleset/category/location/source-row context before Codex/skills write patches. AI patch files must declare `patch_status=completed`; `dataset-authoring-patch-collect` rechecks full-context readiness from the manifest/tasks, verifies any referenced shared-context bundle still exists with the recorded stable `sha256`, and blocks stale, draft, incomplete, or non-completed task artifacts. Do not write the database directly from AI output.
 14. Apply identity decisions, classification decisions, location decisions, patches, or build plans through deterministic CLI/SDK paths, then rerun schema, QA, queue build when references changed, and curation.
 15. Run cleanup after source trace has been captured in authoring packages:
 
 ```bash
-npm run dataset:curation-cleanup -- \
+npm run legacy:dataset:curation-cleanup -- \
   --type <process|flow|lifecyclemodel> \
   --rows-file <rows.jsonl> \
   --out-file <cleaned-rows.jsonl>

@@ -1,0 +1,254 @@
+version: 1
+layout: repo
+# Review note, 2026-06-04: first-pass docpact onboarding for Foundry thin-control-plane refactor.
+lastReviewedAt: "2026-06-04"
+lastReviewedCommit: "77dfa0de95629e228759e2fe84ea96f23d08623c"
+
+catalog:
+  repos:
+    - id: data-foundry
+      path: .
+      canonicalRepo: tiangong-lca/data-foundry
+      entryDoc: AGENTS.md
+      workflowDocs:
+        - README.md
+        - WORKFLOW.md
+        - docs/architecture.md
+        - docs/capability-ownership-policy.md
+        - docs/runtime-skill-management.md
+        - docs/foundry-task-contracts.md
+      workspaceIntegrationRequired: true
+
+ownership:
+  domains:
+    - id: repo-governance-and-docs
+      paths:
+        include:
+          - AGENTS.md
+          - README.md
+          - WORKFLOW.md
+          - .docpact/config.yaml
+          - docs/**/*.md
+          - docs/file-location-registry.json
+      ownerRepo: data-foundry
+    - id: foundry-control-plane
+      paths:
+        include:
+          - package.json
+          - scripts/**
+          - specs/automated-lca-capability-registry.json
+          - specs/capability-ownership-rules.json
+          - specs/data-foundry-service.md
+          - specs/workspace-capability-adapters.md
+      ownerRepo: data-foundry
+    - id: import-profiles
+      paths:
+        include:
+          - specs/import-profiles.json
+          - docs/import-profiles/**
+      ownerRepo: data-foundry
+    - id: foundry-local-skills
+      paths:
+        include:
+          - .agents/skills/**
+      ownerRepo: data-foundry
+    - id: runtime-skill-cache-boundary
+      paths:
+        include:
+          - .gitignore
+      ownerRepo: data-foundry
+
+coverage:
+  include:
+    - AGENTS.md
+    - README.md
+    - WORKFLOW.md
+    - .docpact/config.yaml
+    - .gitignore
+    - package.json
+    - scripts/**
+    - specs/**
+    - docs/**
+    - .agents/skills/**
+  exclude:
+    - .git/**
+    - .docpact/runs/**
+    - node_modules/**
+    - .foundry/**
+    - tasks/**
+    - artifacts/**
+    - "*.log"
+
+freshness:
+  warn_after_commits: 40
+  warn_after_days: 60
+  critical_after_days: 120
+
+routing:
+  intents:
+    repo-docs:
+      paths:
+        - AGENTS.md
+        - README.md
+        - WORKFLOW.md
+        - .docpact/config.yaml
+        - docs/**/*.md
+    control-plane:
+      paths:
+        - package.json
+        - scripts/**
+        - specs/automated-lca-capability-registry.json
+        - specs/capability-ownership-rules.json
+        - specs/data-foundry-service.md
+        - specs/workspace-capability-adapters.md
+    import-profile:
+      paths:
+        - specs/import-profiles.json
+        - docs/import-profiles/**
+    runtime-skills:
+      paths:
+        - .gitignore
+        - docs/runtime-skill-management.md
+        - .agents/skills/**
+    workspace-ledger:
+      paths:
+        - docs/file-location-registry.json
+        - docs/foundry-task-contracts.md
+    proof:
+      paths:
+        - scripts/foundry.mjs
+        - package.json
+        - README.md
+        - WORKFLOW.md
+
+docInventory:
+  include:
+    - AGENTS.md
+    - README.md
+    - WORKFLOW.md
+    - .docpact/config.yaml
+    - docs/architecture.md
+    - docs/capability-ownership-policy.md
+    - docs/runtime-skill-management.md
+    - docs/foundry-task-contracts.md
+    - docs/workspace-project-map.md
+    - specs/data-foundry-service.md
+    - specs/workspace-capability-adapters.md
+
+repo:
+  id: data-foundry
+  owner: data-foundry
+
+rules:
+  - id: foundry-bootstrap-contract
+    scope: repo
+    repo: data-foundry
+    triggers:
+      - path: AGENTS.md
+        kind: doc-contract
+      - path: README.md
+        kind: repo-landing
+      - path: WORKFLOW.md
+        kind: workflow-contract
+      - path: .docpact/config.yaml
+        kind: doc-governance-layer
+      - path: docs/architecture.md
+        kind: architecture-contract
+      - path: docs/capability-ownership-policy.md
+        kind: ownership-policy
+      - path: docs/workspace-project-map.md
+        kind: workspace-routing-reference
+    requiredDocs:
+      - path: AGENTS.md
+        mode: review_or_update
+      - path: README.md
+        mode: review_or_update
+      - path: WORKFLOW.md
+        mode: review_or_update
+      - path: .docpact/config.yaml
+        mode: must_exist
+      - path: docs/architecture.md
+        mode: review_or_update
+    reason: Repo entry docs, workflow guidance, and docpact routing must stay aligned with the thin-control-plane contract.
+  - id: foundry-control-plane-contract
+    scope: repo
+    repo: data-foundry
+    triggers:
+      - path: package.json
+        kind: command-surface
+      - path: scripts/**
+        kind: local-runtime
+      - path: specs/automated-lca-capability-registry.json
+        kind: capability-registry
+      - path: specs/capability-ownership-rules.json
+        kind: ownership-rules
+      - path: specs/data-foundry-service.md
+        kind: service-contract
+      - path: specs/workspace-capability-adapters.md
+        kind: adapter-contract
+    requiredDocs:
+      - path: README.md
+        mode: review_or_update
+      - path: WORKFLOW.md
+        mode: review_or_update
+      - path: docs/architecture.md
+        mode: review_or_update
+      - path: docs/capability-ownership-policy.md
+        mode: review_or_update
+      - path: docs/workspace-project-map.md
+        mode: review_or_update
+      - path: specs/capability-ownership-rules.json
+        mode: review_or_update
+    reason: Command wrappers, route plans, and capability ownership changes must preserve Foundry as task/workspace/profile/gate control.
+  - id: foundry-import-profile-contract
+    scope: repo
+    repo: data-foundry
+    triggers:
+      - path: specs/import-profiles.json
+        kind: import-profile-index
+      - path: docs/import-profiles/**
+        kind: import-profile-doc
+    requiredDocs:
+      - path: specs/import-profiles.json
+        mode: review_or_update
+      - path: docs/architecture.md
+        mode: review_or_update
+    reason: Import profile constraints must remain generic profile contracts, not Foundry code paths.
+  - id: foundry-skill-orchestration-contract
+    scope: repo
+    repo: data-foundry
+    triggers:
+      - path: .agents/skills/**
+        kind: local-skill
+      - path: docs/skill-orchestration/**
+        kind: skill-orchestration-doc
+    requiredDocs:
+      - path: AGENTS.md
+        mode: review_or_update
+      - path: WORKFLOW.md
+        mode: review_or_update
+      - path: docs/architecture.md
+        mode: review_or_update
+      - path: docs/runtime-skill-management.md
+        mode: must_exist
+    reason: Foundry-local skills must remain orchestration wrappers and must consume external fast-moving evidence skills at runtime.
+  - id: foundry-workspace-ledger-contract
+    scope: repo
+    repo: data-foundry
+    triggers:
+      - path: .gitignore
+        kind: runtime-cache-boundary
+      - path: docs/file-location-registry.json
+        kind: file-location-registry
+      - path: docs/foundry-task-contracts.md
+        kind: workspace-ledger-contract
+      - path: docs/runtime-skill-management.md
+        kind: runtime-skill-contract
+    requiredDocs:
+      - path: docs/file-location-registry.json
+        mode: review_or_update
+      - path: docs/foundry-task-contracts.md
+        mode: must_exist
+      - path: docs/runtime-skill-management.md
+        mode: must_exist
+    reason: Workspace ledger files, runtime skill cache boundaries, and storage registry changes must stay consistent.

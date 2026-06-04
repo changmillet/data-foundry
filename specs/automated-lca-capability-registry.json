@@ -1,7 +1,7 @@
 {
   "$schema": "schemas/capability-registry.schema.json",
   "schema_version": 2,
-  "updated_at_utc": "2026-06-02T00:00:00Z",
+  "updated_at_utc": "2026-06-04T00:00:00Z",
   "purpose": "Machine-readable registry for generic external dataset import capabilities that Foundry may route without owning shared CLI, SDK, converter, or database business logic.",
   "capabilities": [
     {
@@ -68,13 +68,14 @@
       "owner_project": "tiangong-lca-cli",
       "entrypoint": "tiangong-lca dataset import-lca convert",
       "input_contract": "Supported external LCA source package, explicit output directory, source format detection mode, and target format.",
-      "output_contract": "import-lca-report.json, conversion-report.json, mapping.csv when generated, and converted TIDAS/ILCD package outputs.",
+      "output_contract": "import-lca-report.json, conversion-report.json, process-bundles/index.json with one dependency subdirectory per converted process by default, mapping.csv when generated, and converted TIDAS/ILCD package outputs.",
       "remote_write_mode": "read-only",
       "verification_gate": "converter exit code must be zero and generated TIDAS rows must pass downstream schema/QA/curation gates.",
       "source_manifest_requirements": [
         "source package path",
         "converter command record",
         "conversion report",
+        "process-bundles/index.json",
         "mapping file when generated"
       ]
     },
@@ -122,6 +123,25 @@
         "evidence request",
         "search results source",
         "evidence report"
+      ]
+    },
+    {
+      "id": "external.tiangong-kb-sci-search",
+      "class": "source-evidence-runtime-skill",
+      "owner_project": "tiangong-ai/skills",
+      "entrypoint": "npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --full-depth",
+      "input_contract": "SCI literature evidence question, query terms, optional filters/date filters, top-k budget, and authenticated Tiangong AI CLI environment when the remote KB requires it.",
+      "output_contract": "Runtime skill instructions and SCI search outputs captured as evidence candidates, followed by Foundry evidence records under evidence/sources.jsonl and evidence/field-evidence.jsonl.",
+      "remote_write_mode": "read-only",
+      "verification_gate": "Before retrieval, runtime-skill-resolution.json must record the npx skills command, source repo, refs/heads/main commit from git ls-remote, skill name, evidence channel=sci, and timestamp. Search results are candidates only; field values require downstream evidence capture, limitations, curation, and validation gates.",
+      "source_manifest_requirements": [
+        "SCI evidence question",
+        "runtime skill resolution report",
+        "resolved upstream commit",
+        "npx skills command record",
+        "SCI search request",
+        "retrieved paper evidence candidates",
+        "field-level evidence records"
       ]
     },
     {
@@ -215,10 +235,10 @@
       ]
     },
     {
-      "id": "foundry.dataset.curation-queue-build",
+      "id": "cli.dataset.curation-queue-build",
       "class": "dataset-curation",
-      "owner_project": "tiangong-lca-data-foundry",
-      "entrypoint": "node scripts/foundry.mjs dataset-curation-queue-build",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca dataset curation-queue build",
       "input_contract": "Process rows, optional local flow rows, optional support rows, optional external flow references, and output directory.",
       "output_contract": "CLI-owned curation queue artifacts: curation-queue-manifest.json, curation-queue-tasks.jsonl, curation-queue-locks.json, curation-queue-blockers.jsonl, and per-entity input/closure/run-plan files.",
       "remote_write_mode": "read-only",
@@ -230,6 +250,38 @@
         "external flow ref paths",
         "CLI command record",
         "curation queue manifest"
+      ]
+    },
+    {
+      "id": "cli.dataset.curation-queue-next",
+      "class": "dataset-curation",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca dataset curation-queue next",
+      "input_contract": "Curation queue directory produced by build, plus optional entity type or task id scope.",
+      "output_contract": "Next queue report with status ready, complete, or blocked; when ready, includes exactly one runnable entity_curation_task and its input/checkpoint artifacts.",
+      "remote_write_mode": "read-only",
+      "verification_gate": "Workers must execute only the returned task and update that task checkpoint before calling next again. If next is blocked and no runnable task exists, the queue cannot proceed autonomously.",
+      "source_manifest_requirements": [
+        "curation queue directory",
+        "curation queue task list",
+        "entity checkpoints",
+        "next report"
+      ]
+    },
+    {
+      "id": "cli.dataset.curation-queue-verify",
+      "class": "dataset-curation",
+      "owner_project": "tiangong-lca-cli",
+      "entrypoint": "tiangong-lca dataset curation-queue verify",
+      "input_contract": "Curation queue directory produced by build, plus optional entity type or task id scope.",
+      "output_contract": "Queue verification report with passed only when all scoped task checkpoints are complete and build blockers are absent.",
+      "remote_write_mode": "read-only",
+      "verification_gate": "Report status must be passed for the intended support, flow, process, or task scope before remote write planning treats the queue as complete.",
+      "source_manifest_requirements": [
+        "curation queue directory",
+        "curation queue task list",
+        "entity checkpoints",
+        "queue verify report"
       ]
     },
     {

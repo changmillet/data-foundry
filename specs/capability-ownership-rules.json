@@ -1,7 +1,7 @@
 {
   "$schema": "schemas/capability-ownership-rules.schema.json",
   "schema_version": 1,
-  "updated_at_utc": "2026-06-01T00:00:00Z",
+  "updated_at_utc": "2026-06-04T00:00:00Z",
   "principle": "Foundry owns routing, task state, manifests, reports, and policy checks. Reusable data logic belongs in the project that owns the schema, converter, CLI command, skill, runtime, database, or API surface.",
   "owners": [
     {
@@ -12,12 +12,14 @@
         "workspace manifests",
         "source package/document intake records",
         "artifact and policy checks",
-        "profile-aware dataset curation package assembly"
+        "profile-aware dataset curation package assembly",
+        "gate aggregation"
       ],
       "does_not_own": [
         "TIDAS schema definitions",
         "source package converters",
         "dataset validation engines",
+        "curation queue state machine",
         "remote write semantics",
         "shared skill workflows"
       ]
@@ -44,6 +46,7 @@
       "owns": [
         "dataset contract/context CLI surface",
         "dataset import and source authoring commands",
+        "dataset curation queue build/next/verify",
         "schema validation",
         "QA, reference, publish, and verification commands"
       ]
@@ -54,6 +57,14 @@
         "agent-facing import workflows",
         "contract-context usage instructions",
         "CLI orchestration skills"
+      ]
+    },
+    {
+      "owner_project": "tiangong-ai/skills",
+      "owns": [
+        "external source-evidence research skills",
+        "SCI literature retrieval workflow",
+        "Tiangong KB search wrappers"
       ]
     }
   ],
@@ -88,6 +99,16 @@
       "examples": [
         "dataset author",
         "$tidas-data-import"
+      ]
+    },
+    {
+      "id": "external-source-evidence-skill",
+      "route_to": "tiangong-ai/skills via npx skills runtime resolution",
+      "use_when": [
+        "the task needs fast-moving Tiangong KB research workflows such as SCI literature evidence retrieval"
+      ],
+      "examples": [
+        "npx skills use https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --full-depth"
       ]
     },
     {

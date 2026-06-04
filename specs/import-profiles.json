@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-06-02T00:00:00Z",
+  "updated_at_utc": "2026-06-04T00:00:00Z",
   "default_profile": "generic",
   "profiles": {
     "generic": {
@@ -48,6 +48,23 @@
           "tidas_locations_category.json"
         ],
         "proof": "dataset-identity-decision-task-build plus dataset-identity-decisions-apply with authoring_package_sha256 and closes_action_items evidence for identity-preflight decisions, dataset-classification-decisions-apply with matching classification decision task/context_bundle_sha256 for classification queues, dataset-location-decisions-apply with matching location decision task/context_bundle_sha256 for location queues, or dataset-authoring-patch-collect plus dataset-patch-apply with authoring_package_sha256 and closes_action_items evidence for other field patches"
+      }
+    },
+    "uslci": {
+      "id": "uslci",
+      "description": "USLCI import profile skeleton. It intentionally adds no dataset-specific code path or approved waivers until a pilot run proves them.",
+      "docs": [
+        "docs/import-profiles/uslci/profile.md",
+        "docs/import-profiles/uslci/constraints.md"
+      ],
+      "waived_qa_codes_by_type": {},
+      "waiver_reasons": {},
+      "full_context_ai_completion": {
+        "required": false,
+        "dataset_types": [],
+        "required_context_kinds": [],
+        "required_context_file_patterns": [],
+        "proof": "No USLCI-specific full-context AI proof override is approved yet; use generic curation and queue verification gates."
       }
     }
   }
