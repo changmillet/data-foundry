@@ -4,20 +4,23 @@ Foundry adapters are routing records. They identify which shared command or skil
 
 The machine-readable registry is `specs/automated-lca-capability-registry.json`.
 
+The local `$foundry-tidas-import` skill is the Foundry orchestration entrypoint for these routes. It should call shared CLI commands and `$foundry-tidas-authoring` instead of copying hybrid-search, remote-ops, schema, converter, QA, or publish internals into Foundry.
+
 ## Core Classes
 
-| Class | Purpose |
-| --- | --- |
-| `tidas-contract-context` | Fetch SDK-backed schema, methodology YAML, runtime ruleset, and AI context artifacts. |
-| `external-lca-package-conversion` | Convert supported packaged LCA data through CLI/tidas-tools. |
-| `source-document-authoring` | Extract source documents and prepare target context packs for AI authoring. |
-| `source-evidence-review` | Plan and record public/source evidence for field-level facts. |
-| `schema-gate` | Validate generated TIDAS rows. |
-| `process-qa` / `flow-qa` / `lifecyclemodel-qa` | Run target-type deterministic QA gates. |
-| `dataset-curation` | Build entity-level import queues, then build profile-aware AI authoring packages from rows, schema reports, QA reports, and optional full SDK schema/YAML context. |
-| `reference-closure` | Refresh or verify local references before publish preparation. |
-| `publish-prep` | Prepare local publish/import bundles without remote commit. |
-| `remote-verification` | Read back remote rows when a task explicitly reaches that stage. |
+| Class                                          | Purpose                                                                                                                                                                                                                                                          |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `import-orchestration`                         | Foundry-local skill entrypoint that orders shared CLI, curation, AI patch, dry-run, commit, and readback steps without owning database or converter internals.                                                                                                   |
+| `tidas-contract-context`                       | Fetch SDK-backed schema, methodology YAML, runtime ruleset, and AI context artifacts.                                                                                                                                                                            |
+| `external-lca-package-conversion`              | Convert supported packaged LCA data through CLI/tidas-tools.                                                                                                                                                                                                     |
+| `source-document-authoring`                    | Extract source documents and prepare target context packs for AI authoring.                                                                                                                                                                                      |
+| `source-evidence-review`                       | Plan and record public/source evidence for field-level facts.                                                                                                                                                                                                    |
+| `schema-gate`                                  | Validate generated TIDAS rows.                                                                                                                                                                                                                                   |
+| `process-qa` / `flow-qa` / `lifecyclemodel-qa` | Run target-type deterministic QA gates.                                                                                                                                                                                                                          |
+| `dataset-curation`                             | Build entity-level import queues, build profile-aware AI authoring packages from rows/schema/QA/context, generate Codex/skill authoring tasks, collect AI patch outputs, and deterministically apply AI-authored structured patches before cleanup/revalidation. |
+| `reference-closure`                            | Refresh or verify local references before publish preparation.                                                                                                                                                                                                   |
+| `publish-prep`                                 | Prepare local publish/import bundles without remote commit.                                                                                                                                                                                                      |
+| `remote-verification`                          | Read back remote rows when a task explicitly reaches that stage.                                                                                                                                                                                                 |
 
 ## Route Examples
 
@@ -27,10 +30,19 @@ npm run capabilities:list -- --class external-lca-package-conversion
 npm run capabilities:list -- --class source-document-authoring
 npm run task:route -- --kind external-dataset-curated-import --dataset-type process --required-gates contract,schema,qa,curation
 npm run dataset:curation-queue:build -- --processes ./rows/processes.jsonl --flows ./rows/flows.jsonl --support ./rows/sources.jsonl --out-dir ./curation-queue
-npm run dataset:curation-gate -- --type process --rows-file ./rows/processes.jsonl --schema-report ./schema/report.json --qa-report ./qa/process-qa-report.json --schema-file ./contract/schema.json --yaml-file ./contract/methodology.yaml --profile bafu
+npm run dataset:curation-gate -- --type process --rows-file ./rows/processes.jsonl --schema-report ./schema/report.json --qa-report ./qa/process-qa-report.json --schema-file ./contract/schema.json --yaml-file ./contract/methodology.yaml --profile bafu --queue-dir ./curation-queue --classification-queue ./classification-authoring-queue.jsonl --location-queue ./location-authoring-queue.jsonl
+npm run dataset:authoring-task:build -- --curation-gate-report ./curation-gate/dataset-curation-gate-report.json --out-dir ./authoring-tasks
+npm run dataset:authoring-patch:collect -- --task-manifest ./authoring-tasks/authoring-task-manifest.json
+npm run dataset:patch:apply -- --input ./rows/processes.jsonl --patch ./authoring-tasks/ai-patches.batch.json --out ./rows/processes.patched.jsonl --out-dir ./patch-apply --authoring-package-dir ./curation-gate/ai-authoring-packages --require-authoring-package --require-action-item-closure
+npm run dataset:post-authoring-finalize -- --type <process|flow|lifecyclemodel> --rows-file ./rows/<type>.patched.jsonl --out-dir ./post-authoring-finalize --profile bafu --queue-dir ./curation-queue --classification-queue ./classification-authoring-queue.jsonl --location-queue ./location-authoring-queue.jsonl --schema-file ./contract/schema.json --yaml-file ./contract/methodology.yaml --ruleset-file ./contract/runtime-ruleset.json --classification-decision-apply-report ./classification-decision-apply/classification-decisions-apply-report.json --location-decision-apply-report ./location-decision-apply/location-decisions-apply-report.json --patch-collect-report ./authoring-tasks/authoring-patch-collect-report.json --require-patch-collect-report --patch-apply-report ./patch-apply/outputs/dataset-patch-apply-report.json --target-user-id <uuid> --verify-remote
+npm run dataset:commit-handoff-plan -- --finalize-report ./post-authoring-finalize/dataset-post-authoring-finalize-report.json --state-code <expected-state-code>
+npm run dataset:post-write-closeout -- --handoff-plan ./post-authoring-finalize/commit-handoff/dataset-commit-handoff-plan.json --commit-report ./post-authoring-finalize/commit/<type-command>/<summary-or-report>.json --post-write-verify-report ./post-authoring-finalize/commit-handoff/post-write-verify/outputs/remote-verification-report.json --out-dir ./post-write-closeout
+npm run dataset:import-completion-report -- --task-dir . --require-type process --out-dir ./import-completion
 npm run task:route -- --kind source-evidence-dataset-development --dataset-type process --required-gates context,schema,qa,curation
 ```
 
 Missing classes must be resolved in the owning project. Add Foundry-local code only for task routing, manifests, reports, and policy checks.
 
 Import lanes must not require bilingual completion before database import. Use contract context, schema, QA, curation, cleanup, reference, dry-run, and verification gates for source-language rows, then route multilingual completion separately after import if a later task explicitly asks for it.
+
+For mutually-referencing contact/source/unitgroup/flowproperty rows, use `dataset-post-authoring-finalize --type support` as the mixed support-scope prewrite entrypoint. It wraps cleanup, SDK validation with `dataset validate --type auto`, location audit, generic `dataset save-draft --type auto --dry-run`, mutation manifest generation, commit handoff, and post-write closeout compatibility into one exact scope. For process, flow, and lifecyclemodel rows, `dataset-post-authoring-finalize` remains the preferred post-AI prewrite entrypoint. It wraps cleanup, SDK validation, deterministic QA, post-authoring curation gate, type-specific dry-run (`process save-draft --dry-run`, `flow publish-version --dry-run`, or `lifecyclemodel save-draft --dry-run`), optional `dataset verify-remote`, and mutation manifest generation into one exact-scope report. The mutation manifest is also the prewrite reference-closure gate: referenced rows outside the exact write scope must be proven by a passed remote verification report after support rows exist remotely, otherwise commit handoff is blocked. It still does not commit; commit remains an explicit CLI step after the finalize report and mutation manifest are ready. `dataset-commit-handoff-plan` turns that ready finalize report into a read-only commit/readback handoff artifact; it must report `ready_for_explicit_commit` before anyone runs the generated commit command. After that explicit commit, `dataset-post-write-closeout` must report `completed` before the write scope is closed; it checks that the CLI commit report is a real commit, post-write verification used the same final rows, root payload hashes match, owner/state_code match, and trace queues remain attached. For a whole task, `dataset-import-completion-report` must then aggregate all closeout reports and report `completed` before the Foundry task is moved to done.

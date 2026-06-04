@@ -34,6 +34,15 @@ npm run dataset:curation-queue:build -- \
   --support ./rows/sources.jsonl \
   --out-dir ./curation-queue
 
+npm run dataset:identity-preflight-query:audit -- \
+  --index ./identity-preflight-requests/identity-preflight-requests.jsonl \
+  --out-dir ./identity-preflight-query-audit
+
+npm run dataset:identity-preflight:run -- \
+  --index ./identity-preflight-requests/identity-preflight-requests.jsonl \
+  --out-dir ./identity-preflight-run \
+  --only-pending
+
 npm run dataset:curation-gate -- \
   --type process \
   --rows-file ./rows/processes.jsonl \
@@ -43,15 +52,38 @@ npm run dataset:curation-gate -- \
   --yaml-file ./context/process/methodology.yaml \
   --ruleset-file ./context/process/runtime-ruleset.json \
   --queue-dir ./curation-queue \
+  --classification-queue ./classification-authoring-queue.jsonl \
+  --location-queue ./location-authoring-queue.jsonl \
+  --identity-preflight-index ./identity-preflight-requests/identity-preflight-requests.jsonl \
+  --require-identity-preflight \
   --profile bafu
+
+npm run dataset:authoring-plan -- \
+  --curation-gate-report ./curation-gate/dataset-curation-gate-report.json \
+  --out-dir ./authoring-plan
+
+npm run dataset:identity-decision-task:build -- \
+  --curation-gate-report ./curation-gate/dataset-curation-gate-report.json \
+  --out-dir ./identity-decision-task
+
+npm run dataset:classification-decision-task:build -- \
+  --classification-queue ./classification-authoring-queue.jsonl \
+  --out-dir ./classification-decision-task
+
+npm run dataset:location-decision-task:build -- \
+  --location-queue ./location-authoring-queue.jsonl \
+  --out-dir ./location-decision-task
 
 npm run dataset:curation-cleanup -- \
   --type process \
   --rows-file ./rows/processes.jsonl \
   --out-file ./rows/processes.cleaned.jsonl
+
+npm run dataset:support-cache:refresh -- \
+  --out specs/canonical-support/flow-properties-unit-groups.json
 ```
 
-`dataset:curation-queue:build` is a thin wrapper over `tiangong-lca dataset curation-queue build`; set `TIANGONG_LCA_CLI_BIN` only when a local sibling CLI checkout should be used for validation.
+`dataset:curation-queue:build` is a thin wrapper over `tiangong-lca dataset curation-queue build`; set `TIANGONG_LCA_CLI_BIN` only when a local sibling CLI checkout should be used for validation. For packaged bundle samples, pass the generated `classification-authoring-queue.jsonl`, `location-authoring-queue.jsonl`, and `identity-preflight-requests.jsonl` into `dataset:curation-gate` so target taxonomy, `tidas_locations_category.json`, and completed `process_hybrid_search` / `flow_hybrid_search` evidence become concrete AI authoring context. Before running remote identity preflight, run `dataset:identity-preflight-query:audit`; it verifies that the actual Edge request body has a complete fielded `query` and no placeholder/source-format noise because Edge ignores local-only `profile_hints`. `dataset:authoring-plan` is the read-only coordinator after curation: it inspects the curation gate report plus any existing decision/task/apply reports and tells Codex/skills whether to build tasks, write AI decisions/patches, run deterministic apply, or move to post-authoring finalize. `dataset:identity-preflight:run` is read-only; `blocked` and `needs_review` identity findings are retained as evidence. Full-context process/flow profiles require completed current/dependency identity searches automatically at curation and finalize gates; `--require-identity-preflight` remains accepted as an explicit hard-gate flag. Identity manual-review action items must be turned into `identity-decisions.jsonl` from a ready `dataset:identity-decision-task:build` output and then applied through `dataset:identity-decisions:apply`; AI must decide `reuse_existing_reference`, `create_new`, or `block_unresolved` from the full authoring package and candidate evidence, and elementary flows must never choose `create_new`. When the authoring package directory is known, identity apply commands include `--authoring-package-dir` so deterministic apply can require readable package proof. The curation gate also attaches the bundled TIDAS category schemas and location schema as full-text contract context for full-context AI authoring. Identity/classification/location decision task builders can be chunked with `--dataset-type`, `--dataset-id`, `--bundle-id`/`--process-id`, `--limit`, `--offset`, and `--chunk-label` where supported; they return `blocked_missing_full_context` instead of a ready AI task when schema, methodology YAML, runtime ruleset, category/location schema, authoring package, identity evidence, or converted row payload context is missing. Non-identity/non-classification/non-location authoring task build uses the same readiness gate, and `dataset:authoring-patch:collect` rechecks the manifest/task full-context proof so stale or incomplete AI tasks cannot be collected into patches. Apply commands accept repeated `--decision-task` values where task-bundle proof is required so independently authored chunks can be proven against one source queue; identity decisions retain `authoring_package_sha256` instead. Every classification or location decision must keep the task template's `authoring_context.context_bundle_sha256` so the prewrite manifest can prove the exact schema/YAML/context bundle. Real source rows should be literature, reports, publications, or traceable source records; format/compliance placeholders such as `ILCD format` or `Not specified` remain provenance/reference rewrites, not imported BAFU source rows. True source rows with empty or generic `sourceDescriptionOrComment` values such as `Report` are repaired from `sourceCitation` / `common:shortName` before write planning. Flow Properties and Unit Groups are reference-only: Foundry keeps the small public canonical set in `specs/canonical-support/flow-properties-unit-groups.json`, rewrites converted references to those existing rows, requires the selected Flow Property's Reference Unit Group to be proven in the same cache, and never writes account-local My Data rows for those types. The mutation manifest blocks support/source write scopes that still try to write format/compliance/placeholder identities as source identity or account-local unit group / flow property support rows.
 
 `--profile generic` is the default. Dataset-specific behavior is configured in `specs/import-profiles.json`; BAFU is one profile, not a special code path.
 

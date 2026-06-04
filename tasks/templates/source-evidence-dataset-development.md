@@ -4,6 +4,7 @@ title: Author TIDAS data from source document
 state: Todo
 kind: source-evidence-dataset-development
 dataset_type: process
+profile: generic
 priority: P1
 allow_remote_commit: false
 source_document: inputs/source-documents/<document-note>.md

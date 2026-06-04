@@ -9,11 +9,23 @@ The first tracker adapter is filesystem-backed. Tasks describe import work; reus
 - `done/`: terminal tasks
 - `templates/`: reusable task skeletons, not part of the queue
 
+Do not move files into `done/` by hand for committed imports. Use:
+
+```bash
+npm run task:complete -- \
+  --task <task-id> \
+  --completion-report .foundry/workspaces/<task-id>/import-completion/dataset-import-completion-report.json
+```
+
+`task:complete` only moves a task from `active/` to `done/` when the completion report is `completed`, its `task_id` matches the active task id, it contains at least one post-write closeout scope, and every profile-required full-context scope proves AI semantic completion from the full schema/YAML/context package.
+
 ## Supported Task Kinds
 
 Use `external-dataset-curated-import` for zipped or directory-based LCA packages that `tidas-tools` can detect or convert.
 
 Use `source-evidence-dataset-development` for PDF, Excel, web exports, screenshots, or free text that must be authored into TIDAS candidate rows.
+
+Set `profile` explicitly in task frontmatter. `bafu` requires full-context AI semantic completion for flow, process, and lifecyclemodel data; generic tasks do not get that waiver unless their closeout profile requires it.
 
 ## Routing
 

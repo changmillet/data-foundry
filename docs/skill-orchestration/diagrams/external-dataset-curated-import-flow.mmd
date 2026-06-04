@@ -30,7 +30,7 @@ flowchart TD
 
   subgraph EntityOrder["Entity queue run-to-completion order"]
     direction TB
-    Support["4 Support loop<br/>CLI: next support、name-plan extract-apply-validate、support validation/catalog<br/>Codex: source/contact/unitgroup/flowproperty 名称、标题、证据选择<br/>DB/index: 优先复用 public/canonical support refs"]
+    Support["4 Support loop<br/>CLI: next support、name-plan extract-apply-validate、canonical support cache<br/>Codex: source/contact 名称、标题、证据选择<br/>DB/index: unitgroup/flowproperty 只复用 public/canonical support refs"]
     SupportDone{"support complete?"}
     Flow["5 Flow loop<br/>CLI: next flow、UUID/version lookup、identity-preflight、build-plan、name-quality、schema/QA<br/>Codex: 候选复用判断、分类、source-language 四段式 name、provenance reason<br/>DB/index: exact lookup、hybrid/search candidates、public/account flow visibility"]
     FlowDone{"flow complete?"}
