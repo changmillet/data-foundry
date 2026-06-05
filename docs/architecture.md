@@ -68,13 +68,18 @@ profiles
    - record runtime skill resolution when external evidence skills are used
 
 4. Route to owner
-   - call CLI commands or top-level skills
+   - call published CLI commands or top-level skills
    - do not duplicate owner behavior locally
 
 5. Gate aggregate
    - check that schema, QA, curation, queue verify, dry-run, closeout, and readback artifacts exist
    - verify artifacts point to the same rows scope
    - generate completion reports
+
+6. Whole-library scope orchestration
+   - build root TIDAS unique-entity indexes for packaged imports
+   - project library-level identity/classification/support decisions back to process scopes
+   - record ready scope checkpoints and blocked-scope ledgers without turning blocked scopes into write candidates
 
 ## v0 Runtime
 
@@ -86,6 +91,7 @@ The v0 runtime is intentionally small:
 - read-only workspace map diagnostic
 - no persistent database
 - no direct database commit from Foundry code; remote commit is allowed only through official CLI/platform commands when profile gates, write policy, commit handoff, and post-write verification are satisfied
+- published CLI invocation is the default command path: `npx --yes @tiangong-lca/cli@latest ...`
 
 ## Retired v1 Daemon Direction
 

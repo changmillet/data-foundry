@@ -12,7 +12,7 @@
     },
     "bafu": {
       "id": "bafu",
-      "description": "BAFU / FOEN import profile for BAFU 2025 ecoSpold1 converted TIDAS rows, using the converted process-bundles index for process-level closure, queue-lock parallelism, reference-only canonical unitgroup/flowproperty reuse, and task-policy-gated batch commit.",
+      "description": "BAFU / FOEN import profile for BAFU 2025 ecoSpold1 converted TIDAS rows, using root TIDAS library-level entity indexing plus the converted process-bundles index for process-level closure, queue-lock parallelism, reference-only canonical unitgroup/flowproperty reuse, and task-policy-gated batch commit.",
       "docs": [
         "docs/import-profiles/bafu/profile.md",
         "docs/import-profiles/bafu/constraints.md"

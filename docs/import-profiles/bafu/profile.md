@@ -37,7 +37,7 @@ For unstructured-only inputs, use an upstream source-evidence and draft-dataset 
 After the curation queue exists, every worker must ask the CLI for the next action before changing rows:
 
 ```bash
-tiangong-lca dataset curation-queue next \
+npx --yes @tiangong-lca/cli@latest dataset curation-queue next \
   --queue-dir .foundry/workspaces/<task-id>/curation-queue \
   --entity-type <support|flow|process> \
   --limit 1 \
@@ -78,7 +78,7 @@ When a BAFU import attempt exposes a reusable defect in the CLI, SDK, tidas-tool
 
 1. Fix the defect in the owning repository and rebuild the affected local tool before invoking it from Foundry.
 2. Start a fresh downstream workspace from this BAFU profile, the current source manifest, and the selected converted `process-bundles/index.json`.
-3. Build a fresh entity queue with `tiangong-lca dataset curation-queue build`, using the current support, flow, process, external-flow-ref, and packaged bundle closure files.
+3. Build a fresh entity queue with `npx --yes @tiangong-lca/cli@latest dataset curation-queue build`, using the current support, flow, process, external-flow-ref, and packaged bundle closure files.
 4. Run `curation-queue next` through support, flow, and process scopes until the requested scope returns `complete`; multiple workers may claim independent tasks up to the task `max_parallelism`.
 5. If a task is blocked, report the exact entity task, command, input artifact, output artifact, validation report, owning repository defect or missing canonical database support, and affected dependency closure. Keep unrelated runnable tasks moving instead of summarizing a prewrite gate with remaining runnable `next` actions as the final blocker.
 6. For scopes that are not blocked, run prewrite verify, policy-gated formal BAFU account write, and readback verify.
@@ -111,7 +111,7 @@ Allowed checkpoint statuses are `pending`, `running`, `passed`, `failed`, and `w
 Before stage 8 may commit anything to the BAFU account, Foundry must run:
 
 ```bash
-tiangong-lca dataset curation-queue verify \
+npx --yes @tiangong-lca/cli@latest dataset curation-queue verify \
   --queue-dir .foundry/workspaces/<task-id>/curation-queue \
   --out-dir .foundry/workspaces/<task-id>/prewrite-evidence-gate
 ```
@@ -142,7 +142,7 @@ Record the exact source zip, checksum, source location, package title/version, a
 
 ### 2. Normalize
 
-Use `tiangong-lca dataset import-lca convert` as the conversion entrypoint so the CLI owns the stable conversion contract. Produce ILCD output, TIDAS JSON, mapping CSV, a conversion report, and default per-process dependency bundles under `process-bundles/` in the task workspace. The normalized output is not yet TianGong-ready data. For BAFU whole-package imports, downstream process curation starts from the bundle index and per-process bundle directories so each process closure can be claimed, blocked, retried, or committed independently; direct traversal of the root `tidas/` tree is only a fallback for conversion audit or rebuilding bundle-derived row files.
+Use `npx --yes @tiangong-lca/cli@latest dataset import-lca convert` as the conversion entrypoint so the CLI owns the stable conversion contract. Produce ILCD output, TIDAS JSON, mapping CSV, a conversion report, and default per-process dependency bundles under `process-bundles/` in the task workspace. The normalized output is not yet TianGong-ready data. For BAFU whole-package imports, downstream process curation starts from the bundle index and per-process bundle directories so each process closure can be claimed, blocked, retried, or committed independently; direct traversal of the root `tidas/` tree is only a fallback for conversion audit or rebuilding bundle-derived row files.
 
 ### 3. Conversion QA
 
@@ -172,7 +172,7 @@ Remote writes must use the approved account context and official CLI/platform wr
 
 ### 9. Readback Verify
 
-The workflow is not complete when the write command succeeds. It is complete only after remote readback confirms that all intended rows exist in the BAFU account and match the final curated payloads or an explicitly documented accepted difference. Use `tiangong-lca dataset verify-remote --compare-root-payload --target-user-id <bafu-user-id> --state-code <expected-code>` for the committed root rows and retain its `remote-verification-report.json`.
+The workflow is not complete when the write command succeeds. It is complete only after remote readback confirms that all intended rows exist in the BAFU account and match the final curated payloads or an explicitly documented accepted difference. Use `npx --yes @tiangong-lca/cli@latest dataset verify-remote --compare-root-payload --target-user-id <bafu-user-id> --state-code <expected-code>` for the committed root rows and retain its `remote-verification-report.json`.
 
 ## New Principle Capture
 

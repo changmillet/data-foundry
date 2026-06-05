@@ -34,6 +34,7 @@ Foundry owns:
 - task queue and task state;
 - per-task workspace layout;
 - source manifests, import profiles, curation packages, cleanup reports, and handoff reports;
+- root-library entity indexes, process-scope projections, blocked-scope ledgers, and ready-scope checkpoints for packaged imports;
 - remote-write policy checks, execution policy records, blocked-scope ledgers, and commit/readback handoff aggregation;
 - acceptance checks and Stop-hook feedback loops;
 - thin adapters that call existing CLI or skill entrypoints.
@@ -47,7 +48,7 @@ Foundry does not own:
 - TIDAS schema semantics;
 - user RLS-scoped dataset delete, retirement, redo, repair execution, or database mutation semantics.
 
-Profile-gated batch commit does not change ownership: Foundry may decide that an exact scope has passed policy and handoff gates, but the actual mutation command remains an official CLI/platform command executed under an account guard.
+Profile-gated batch commit does not change ownership: Foundry may decide that an exact scope has passed policy and handoff gates, but the actual mutation command remains an official CLI/platform command executed under an account guard. Foundry's default platform invocation is the published CLI package, `npx --yes @tiangong-lca/cli@latest ...`; local binary overrides are only explicit operator/test state, not the workflow contract.
 
 ## Decision Rule
 

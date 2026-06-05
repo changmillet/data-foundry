@@ -177,7 +177,7 @@ The top-level skill must not hand-edit entity rows directly. It prepares structu
 Full structured imports must use entity-level queues rather than one package-sized curation batch. The top-level skill builds the queue after Conversion QA and before support/flow/process authoring:
 
 ```bash
-tiangong-lca dataset curation-queue build \
+npx --yes @tiangong-lca/cli@latest dataset curation-queue build \
   --processes /abs/path/rows/processes.normalized.jsonl \
   --flows /abs/path/rows/flows.normalized.jsonl \
   --support /abs/path/rows/sources.normalized.jsonl \

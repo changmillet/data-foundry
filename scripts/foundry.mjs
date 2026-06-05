@@ -11,6 +11,7 @@ import { createIdentityDecisionTaskCommands } from "./commands/identity-decision
 import { createIdentityReferenceRewriteCommands } from "./commands/identity-reference-rewrites.mjs";
 import { createIdentityPreflightRunCommands } from "./commands/identity-preflight-run.mjs";
 import { createImportCompletionCommands } from "./commands/import-completion.mjs";
+import { createLibraryScopeWorkflowCommands } from "./commands/library-scope-workflow.mjs";
 import { createPostWriteCloseoutCommands } from "./commands/post-write-closeout.mjs";
 import { createPostAuthoringFinalizeCommands } from "./commands/post-authoring-finalize.mjs";
 import { createSupportCacheCommands } from "./commands/support-cache.mjs";
@@ -81,6 +82,7 @@ const {
   repoRelativeMaybe,
   repoRelativePath,
   resolveRepoPath,
+  resolveTiangongLcaCliCommand,
   resolveTiangongLcaCliBin,
   runTiangongJsonStage,
   sameResolvedPath,
@@ -289,6 +291,7 @@ const cliWrapperCommands = createCliWrapperCommands({
   appendOption,
   appendRepeatedOptions,
   repoRoot,
+  resolveTiangongLcaCliCommand,
   resolveTiangongLcaCliBin,
 });
 
@@ -302,6 +305,7 @@ const commitHandoffCommands = createCommitHandoffCommands({
   readJsonArtifactOption,
   repoRelativePath,
   resolveRepoPath,
+  resolveTiangongLcaCliCommand,
   resolveTiangongLcaCliBin,
   shellQuote,
   validateTraceQueueCoverageForRows,
@@ -500,6 +504,7 @@ const identityPreflightCommands = createIdentityPreflightRunCommands({
   repoRelativePath,
   repoRoot,
   resolveRepoPath,
+  resolveTiangongLcaCliCommand,
   resolveTiangongLcaCliBin,
   safeFileToken,
   sha256Text,
@@ -507,6 +512,30 @@ const identityPreflightCommands = createIdentityPreflightRunCommands({
   writeJson,
   writeJsonLines,
   writeText,
+});
+
+const libraryScopeWorkflowCommands = createLibraryScopeWorkflowCommands({
+  asText,
+  booleanOption,
+  bundleClassificationPath,
+  cloneJson,
+  datasetIdentity,
+  directoryExists,
+  ensureArray,
+  fileExists,
+  flowTypeOfDataSet,
+  jsonSha256,
+  nowIso,
+  positiveIntegerOption,
+  readJson,
+  readJsonLines,
+  repoRelativeMaybe,
+  repoRelativePath,
+  resolveRepoPath,
+  sha256Text,
+  textValue,
+  writeJson,
+  writeJsonLines,
 });
 
 const {
@@ -737,6 +766,7 @@ runFoundryCli({
     identityPreflightCommands,
     identityReferenceRewriteCommands,
     importCompletionCommands,
+    libraryScopeWorkflowCommands,
     listImportProfiles,
     postAuthoringFinalizeCommands,
     postWriteCloseoutCommands,

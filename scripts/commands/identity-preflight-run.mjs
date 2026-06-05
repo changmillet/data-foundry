@@ -16,7 +16,7 @@ const identityPreflightRunStageContract = readOnlyStageContract([
     stage: "normalize_requests",
     phase: "rewrite_cleanup",
     purpose:
-      "Resolve request files, output directories, row keys, and timeout settings before invoking the sibling CLI.",
+      "Resolve request files, output directories, row keys, retry settings, and timeout settings before invoking the published CLI.",
     inputs: ["selected request rows", "runner options"],
     outputs: ["normalized executable request descriptors"],
     side_effects: [],
@@ -25,10 +25,10 @@ const identityPreflightRunStageContract = readOnlyStageContract([
     stage: "execute_cli_preflight",
     phase: "gate_validate",
     purpose:
-      "Execute the sibling tiangong-lca flow/process identity-preflight command for each selected request.",
+      "Execute the published tiangong-lca flow/process identity-preflight command for each selected request.",
     inputs: ["selected request rows", "request JSON files"],
     outputs: ["identity-decision.json", "identity candidate artifacts", "stdout/stderr logs"],
-    side_effects: ["runs sibling CLI read-only search", "writes local .foundry artifacts"],
+    side_effects: ["runs published CLI read-only search", "writes local .foundry artifacts"],
   },
   {
     stage: "collect_evidence",
@@ -70,6 +70,7 @@ export function createIdentityPreflightRunCommands({
   repoRelativePath,
   repoRoot,
   resolveRepoPath,
+  resolveTiangongLcaCliCommand,
   resolveTiangongLcaCliBin,
   safeFileToken,
   sha256Text,
@@ -144,12 +145,57 @@ export function createIdentityPreflightRunCommands({
     return filtered.slice(offset, limit ? offset + limit : undefined);
   }
 
+  function identityPreflightRunIdentityKey(row) {
+    return [
+      asText(row?.dataset_type || row?.type),
+      asText(row?.dataset_id || row?.entity_id || row?.id),
+      asText(row?.dataset_version || row?.version) || "00.00.001",
+    ].join(":");
+  }
+
   function parseJsonMaybe(text) {
     try {
       return text ? JSON.parse(text) : null;
     } catch {
       return null;
     }
+  }
+
+  function retryFailedRowsFromArtifact(value) {
+    if (!value) return [];
+    if (Array.isArray(value)) return value.flatMap(retryFailedRowsFromArtifact);
+    if (typeof value !== "object") return [];
+    const directStatus = asText(value.status);
+    const hasFailure =
+      directStatus === "failed" ||
+      Boolean(value.failure_code) ||
+      Boolean(value.failed === true);
+    const nested = [
+      value.results,
+      value.rows,
+      value.items,
+      value.blockers,
+      value.failures,
+    ].flatMap(retryFailedRowsFromArtifact);
+    return hasFailure ? [value, ...nested] : nested;
+  }
+
+  function retryFailedKeysFromArtifact(retryFailedPath) {
+    if (!retryFailedPath || !fileExists(retryFailedPath)) return new Set();
+    const value = retryFailedPath.toLowerCase().endsWith(".jsonl")
+      ? readJsonLines(retryFailedPath)
+      : readJson(retryFailedPath);
+    const keys = retryFailedRowsFromArtifact(value)
+      .map(identityPreflightRunIdentityKey)
+      .filter((key) => !key.startsWith(":"));
+    return new Set(keys);
+  }
+
+  function retriableIdentityPreflightFailure(row) {
+    return [
+      "identity_preflight_timeout",
+      "identity_preflight_report_missing_or_non_json",
+    ].includes(row?.failure_code);
   }
 
   function runDatasetIdentityPreflightRun(options) {
@@ -163,6 +209,7 @@ export function createIdentityPreflightRunCommands({
         usage: [
           "node scripts/foundry.mjs dataset-identity-preflight-run --index <identity-preflight-requests.jsonl> --out-dir <run-dir> --timeout-ms 60000",
           "node scripts/foundry.mjs dataset-identity-preflight-run --index ./identity-preflight-requests/identity-preflight-requests.jsonl --only-pending --timeout-ms 60000",
+          "node scripts/foundry.mjs dataset-identity-preflight-run --index ./identity-preflight-requests/identity-preflight-requests.jsonl --retry-failed ./identity-preflight-run/dataset-identity-preflight-run-report.json --max-attempts 3",
         ],
         ...identityPreflightRunStageContract,
       };
@@ -181,15 +228,32 @@ export function createIdentityPreflightRunCommands({
         ),
     );
     const rows = readJsonLines(indexPath);
-    const selectedRows = selectIdentityPreflightRunRows(rows, options);
+    const retryFailedPath = resolveRepoPath(
+      options.retryFailed || options.retryFailedReport || options.retryLedger,
+    );
+    const retryFailedKeys = retryFailedPath
+      ? retryFailedKeysFromArtifact(retryFailedPath)
+      : null;
+    const initiallySelectedRows = selectIdentityPreflightRunRows(rows, options);
+    const selectedRows = retryFailedKeys
+      ? initiallySelectedRows.filter((row) =>
+          retryFailedKeys.has(identityPreflightRunIdentityKey(row)),
+        )
+      : initiallySelectedRows;
     const onlyPending = booleanOption(options.onlyPending);
     const dryRun = booleanOption(options.dryRun);
+    const maxAttempts = positiveIntegerOption(
+      options.maxAttempts || options.retryMaxAttempts,
+      retryFailedKeys ? 3 : 1,
+    );
     const timeoutMs = positiveIntegerOption(
       options.timeoutMs || options.timeout || options.identityPreflightTimeoutMs,
       60_000,
     );
     const spawnTimeoutMs = identityPreflightSpawnTimeoutMs(timeoutMs);
-    const cliBin = resolveTiangongLcaCliBin();
+    const cli = resolveTiangongLcaCliCommand
+      ? resolveTiangongLcaCliCommand()
+      : { command: resolveTiangongLcaCliBin(), args: [], display: resolveTiangongLcaCliBin(), package: null };
     const logDir = path.join(outDir, "logs");
     const resultRows = [];
 
@@ -243,7 +307,10 @@ export function createIdentityPreflightRunCommands({
         request_file: repoRelativeMaybe(requestFile),
         output_dir: repoRelativeMaybe(outputDir),
         report_file: repoRelativeMaybe(reportFile),
-        command: [cliBin, ...cliArgs].map(shellQuote).join(" "),
+        command: [cli.command, ...cli.args, ...cliArgs].map(shellQuote).join(" "),
+        executable: cli.command,
+        cli_package: cli.package,
+        cli_args: cliArgs,
         stdout_log: repoRelativePath(stdoutLog),
         stderr_log: repoRelativePath(stderrLog),
       };
@@ -285,6 +352,7 @@ export function createIdentityPreflightRunCommands({
         resultRows.push({
           ...baseRow,
           status: "planned",
+          attempts: 0,
           cli_exit_code: null,
           report_status: null,
           decision: null,
@@ -292,56 +360,90 @@ export function createIdentityPreflightRunCommands({
         return;
       }
 
-      const result = spawnSync(cliBin, cliArgs, {
-        cwd: repoRoot,
-        env: process.env,
-        encoding: "utf8",
-        timeout: spawnTimeoutMs,
-        killSignal: "SIGTERM",
-      });
-      writeText(stdoutLog, result.stdout || "");
-      writeText(stderrLog, result.stderr || "");
-      const timedOut =
-        result.error?.code === "ETIMEDOUT" || result.signal === "SIGTERM";
-      if (result.error && !timedOut) throw result.error;
-      const cliExitCode = typeof result.status === "number" ? result.status : 1;
-      const stdoutReport = parseJsonMaybe(result.stdout);
-      const diskReport =
-        reportFile && fileExists(reportFile) ? readJson(reportFile) : null;
-      const report = stdoutReport || diskReport;
-      if (timedOut) {
-        resultRows.push({
-          ...baseRow,
-          status: "failed",
-          failure_code: "identity_preflight_timeout",
-          cli_exit_code: null,
-          report_status: report?.status ?? null,
-          decision: report?.decision ?? null,
-          confidence: report?.confidence ?? null,
-          next_action: report?.next_action ?? null,
-          blocker_count: ensureArray(report?.blockers).length,
-          candidate_count: ensureArray(report?.candidates).length,
-          candidate_source_count: ensureArray(report?.candidate_sources).length,
-          signal: result.signal ?? null,
-          timeout_ms: timeoutMs,
-          spawn_timeout_ms: spawnTimeoutMs,
+      const attemptRows = [];
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        const attemptSuffix = maxAttempts > 1 ? `.attempt-${attempt}` : "";
+        const attemptStdoutLog = maxAttempts > 1
+          ? path.join(logDir, `${logToken}${attemptSuffix}.stdout.json`)
+          : stdoutLog;
+        const attemptStderrLog = maxAttempts > 1
+          ? path.join(logDir, `${logToken}${attemptSuffix}.stderr.log`)
+          : stderrLog;
+        const spawnArgs = [...cli.args, ...cliArgs];
+        const result = spawnSync(cli.command, spawnArgs, {
+          cwd: repoRoot,
+          env: process.env,
+          encoding: "utf8",
+          timeout: spawnTimeoutMs,
+          killSignal: "SIGTERM",
         });
-        return;
+        writeText(attemptStdoutLog, result.stdout || "");
+        writeText(attemptStderrLog, result.stderr || "");
+        const timedOut =
+          result.error?.code === "ETIMEDOUT" || result.signal === "SIGTERM";
+        if (result.error && !timedOut) throw result.error;
+        const cliExitCode =
+          typeof result.status === "number" ? result.status : 1;
+        const stdoutReport = parseJsonMaybe(result.stdout);
+        const diskReport =
+          reportFile && fileExists(reportFile) ? readJson(reportFile) : null;
+        const report = stdoutReport || diskReport;
+        const attemptRow = timedOut
+          ? {
+              ...baseRow,
+              attempt,
+              attempts: attempt,
+              stdout_log: repoRelativePath(attemptStdoutLog),
+              stderr_log: repoRelativePath(attemptStderrLog),
+              status: "failed",
+              failure_code: "identity_preflight_timeout",
+              cli_exit_code: null,
+              report_status: report?.status ?? null,
+              decision: report?.decision ?? null,
+              confidence: report?.confidence ?? null,
+              next_action: report?.next_action ?? null,
+              blocker_count: ensureArray(report?.blockers).length,
+              candidate_count: ensureArray(report?.candidates).length,
+              candidate_source_count: ensureArray(report?.candidate_sources)
+                .length,
+              signal: result.signal ?? null,
+              timeout_ms: timeoutMs,
+              spawn_timeout_ms: spawnTimeoutMs,
+            }
+          : {
+              ...baseRow,
+              attempt,
+              attempts: attempt,
+              stdout_log: repoRelativePath(attemptStdoutLog),
+              stderr_log: repoRelativePath(attemptStderrLog),
+              status: report ? "completed" : "failed",
+              failure_code: report
+                ? null
+                : "identity_preflight_report_missing_or_non_json",
+              cli_exit_code: cliExitCode,
+              report_status: report?.status ?? null,
+              decision: report?.decision ?? null,
+              confidence: report?.confidence ?? null,
+              next_action: report?.next_action ?? null,
+              blocker_count: ensureArray(report?.blockers).length,
+              candidate_count: ensureArray(report?.candidates).length,
+              candidate_source_count: ensureArray(report?.candidate_sources)
+                .length,
+            };
+        attemptRows.push(attemptRow);
+        if (!retriableIdentityPreflightFailure(attemptRow)) break;
       }
+      const finalAttempt = attemptRows.at(-1);
       resultRows.push({
-        ...baseRow,
-        status: report ? "completed" : "failed",
-        failure_code: report
-          ? null
-          : "identity_preflight_report_missing_or_non_json",
-        cli_exit_code: cliExitCode,
-        report_status: report?.status ?? null,
-        decision: report?.decision ?? null,
-        confidence: report?.confidence ?? null,
-        next_action: report?.next_action ?? null,
-        blocker_count: ensureArray(report?.blockers).length,
-        candidate_count: ensureArray(report?.candidates).length,
-        candidate_source_count: ensureArray(report?.candidate_sources).length,
+        ...finalAttempt,
+        retry_attempts: attemptRows.map((attemptRow) => ({
+          attempt: attemptRow.attempt,
+          status: attemptRow.status,
+          failure_code: attemptRow.failure_code ?? null,
+          cli_exit_code: attemptRow.cli_exit_code,
+          stdout_log: attemptRow.stdout_log,
+          stderr_log: attemptRow.stderr_log,
+        })),
       });
     });
 
@@ -386,10 +488,28 @@ export function createIdentityPreflightRunCommands({
       runtime_options: {
         timeout_ms: timeoutMs,
         spawn_timeout_ms: spawnTimeoutMs,
+        max_attempts: maxAttempts,
+        retry_failed:
+          retryFailedPath && fileExists(retryFailedPath)
+            ? repoRelativePath(retryFailedPath)
+            : null,
+        cli: {
+          command: cli.display,
+          executable: cli.command,
+          args_prefix: cli.args,
+          package: cli.package,
+          source: cli.source,
+        },
       },
       counts: {
         index_rows: rows.length,
+        initially_selected_rows: initiallySelectedRows.length,
+        retry_failed_input_rows: retryFailedKeys ? retryFailedKeys.size : 0,
         selected_rows: selectedRows.length,
+        attempts: resultRows.reduce(
+          (total, row) => total + Number(row.attempts ?? 0),
+          0,
+        ),
         planned: resultRows.filter((row) => row.status === "planned").length,
         completed: resultRows.filter((row) => row.status === "completed")
           .length,

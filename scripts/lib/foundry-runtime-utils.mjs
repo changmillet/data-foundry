@@ -18,30 +18,38 @@ export function createFoundryRuntimeUtils({ parseScalar, repoRoot }) {
     fs.writeFileSync(filePath, text);
   }
 
-  function executableFile(filePath) {
-    try {
-      fs.accessSync(filePath, fs.constants.X_OK);
-      return true;
-    } catch {
-      return false;
+  function resolveTiangongLcaCliCommand() {
+    if (process.env.TIANGONG_LCA_CLI_BIN) {
+      const command = process.env.TIANGONG_LCA_CLI_BIN;
+      return {
+        command,
+        args: [],
+        display: command,
+        source: "TIANGONG_LCA_CLI_BIN",
+        package: null,
+      };
     }
+    return {
+      command: "npx",
+      args: ["--yes", "@tiangong-lca/cli@latest"],
+      display: "npx --yes @tiangong-lca/cli@latest",
+      source: "published_npm_package",
+      package: "@tiangong-lca/cli@latest",
+    };
   }
 
   function resolveTiangongLcaCliBin() {
-    if (process.env.TIANGONG_LCA_CLI_BIN) {
-      return process.env.TIANGONG_LCA_CLI_BIN;
-    }
-    const candidateDirs = [
-      process.env.TIANGONG_LCA_CLI_DIR,
-      path.resolve(repoRoot, "..", "tiangong-lca-cli"),
-    ].filter(Boolean);
-    for (const candidateDir of candidateDirs) {
-      const candidate = path.join(candidateDir, "bin", "tiangong-lca.js");
-      if (executableFile(candidate)) {
-        return candidate;
-      }
-    }
-    return "tiangong-lca";
+    return resolveTiangongLcaCliCommand().display;
+  }
+
+  function tiangongLcaCliInvocation(args = []) {
+    const cli = resolveTiangongLcaCliCommand();
+    const spawnArgs = [...cli.args, ...args];
+    return {
+      ...cli,
+      spawn_args: spawnArgs,
+      command_line: [cli.command, ...spawnArgs].map(shellQuote).join(" "),
+    };
   }
 
   function readJson(filePath) {
@@ -427,8 +435,8 @@ export function createFoundryRuntimeUtils({ parseScalar, repoRoot }) {
   }
 
   function runTiangongJsonStage(stage, args) {
-    const cliBin = resolveTiangongLcaCliBin();
-    const result = spawnSync(cliBin, args, {
+    const cli = tiangongLcaCliInvocation(args);
+    const result = spawnSync(cli.command, cli.spawn_args, {
       cwd: repoRoot,
       env: process.env,
       encoding: "utf8",
@@ -453,8 +461,11 @@ export function createFoundryRuntimeUtils({ parseScalar, repoRoot }) {
     }
     return {
       stage,
-      command: cliBin,
-      args,
+      command: cli.display,
+      executable: cli.command,
+      args: cli.spawn_args,
+      cli_args: args,
+      cli_package: cli.package,
       exit_code: exitCode,
       stderr: result.stderr || "",
       report,
@@ -542,6 +553,7 @@ export function createFoundryRuntimeUtils({ parseScalar, repoRoot }) {
     repoRelativeMaybe,
     repoRelativePath,
     resolveRepoPath,
+    resolveTiangongLcaCliCommand,
     resolveTiangongLcaCliBin,
     runTiangongJsonStage,
     sameResolvedPath,

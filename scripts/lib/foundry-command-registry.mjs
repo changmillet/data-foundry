@@ -33,6 +33,10 @@ export const datasetPolicyCommands = [
   "dataset-identity-preflight-query-audit",
   "dataset-identity-preflight-run",
   "dataset-identity-preflight-index-merge",
+  "dataset-library-index-build",
+  "dataset-library-authoring-plan",
+  "dataset-library-decisions-apply",
+  "dataset-process-scope-run",
   "dataset-identity-reference-rewrites-apply",
   "dataset-identity-decisions-apply",
   "dataset-post-authoring-finalize",
@@ -86,8 +90,17 @@ export function exitCodeForCommand(command, result) {
         ? 0
         : 1;
     case "dataset-authoring-plan":
+    case "dataset-library-index-build":
     case "dataset-curation-cleanup":
       return 0;
+    case "dataset-library-authoring-plan":
+      return statusIs(result, [
+        "help",
+        "ready_for_ai_library_decisions",
+        "ready_no_action_items",
+      ])
+        ? 0
+        : 1;
     case "dataset-authoring-task-build":
       return statusIs(result, [
         "help",
@@ -118,10 +131,17 @@ export function exitCodeForCommand(command, result) {
     case "dataset-classification-decisions-apply":
     case "dataset-location-decisions-apply":
     case "dataset-identity-decisions-apply":
+    case "dataset-library-decisions-apply":
     case "dataset-support-cache-refresh":
     case "dataset-post-write-closeout":
     case "dataset-import-completion-report":
-      return statusIs(result, ["help", "completed"]) ? 0 : 1;
+      return statusIs(result, [
+        "help",
+        "completed",
+        "completed_with_deferred_scopes",
+      ])
+        ? 0
+        : 1;
     case "dataset-location-decision-task-build":
       return statusIs(result, [
         "help",
@@ -136,6 +156,14 @@ export function exitCodeForCommand(command, result) {
       return statusIs(result, ["help", "ready"]) ? 0 : 1;
     case "dataset-identity-preflight-query-audit":
       return statusIs(result, ["help", "passed"]) ? 0 : 1;
+    case "dataset-process-scope-run":
+      return statusIs(result, [
+        "help",
+        "completed",
+        "completed_with_deferred_scopes",
+      ])
+        ? 0
+        : 1;
     case "dataset-identity-preflight-run":
       return statusIs(result, [
         "help",

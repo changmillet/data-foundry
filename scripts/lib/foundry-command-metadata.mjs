@@ -356,7 +356,7 @@ export const commandMetadata = {
     category: "workflow-internal",
     ownerModule: "scripts/commands/identity-preflight-run.mjs",
     ownerExport: "createIdentityPreflightRunCommands().runDatasetIdentityPreflightRun",
-    inputs: ["identity-preflight-requests.jsonl", "sibling tiangong-lca CLI"],
+    inputs: ["identity-preflight-requests.jsonl", "published tiangong-lca CLI"],
     outputs: ["identity-preflight-run-results.jsonl", "dataset-identity-preflight-run-report.json"],
     keyTests: [
       nodeTest("test/foundry-stage-contract.test.mjs", "complex workflow commands publish AI-readable stage contracts"),
@@ -372,6 +372,46 @@ export const commandMetadata = {
     outputs: ["identity-preflight-requests.jsonl", "dataset-identity-preflight-index-merge-report.json"],
     keyTests: [
       nodeTest("test/full-context-gate-03.test.mjs", "identity preflight index merge preserves dependency rows while refreshing current scope"),
+    ],
+  }),
+  "dataset-library-index-build": metadata({
+    category: "workflow-internal",
+    ownerModule: "scripts/commands/library-scope-workflow.mjs",
+    ownerExport: "createLibraryScopeWorkflowCommands().runDatasetLibraryIndexBuild",
+    inputs: ["root TIDAS library directory", "process-bundles/index.json"],
+    outputs: ["library-entity-index.jsonl", "scope-projection.jsonl", "dataset-library-index-build-report.json"],
+    keyTests: [
+      nodeTest("test/library-scope-workflow.test.mjs", "library index deduplicates root TIDAS entities and projects shared dependencies to process scopes"),
+    ],
+  }),
+  "dataset-library-authoring-plan": metadata({
+    category: "workflow-internal",
+    ownerModule: "scripts/commands/library-scope-workflow.mjs",
+    ownerExport: "createLibraryScopeWorkflowCommands().runDatasetLibraryAuthoringPlan",
+    inputs: ["library-entity-index.jsonl", "scope-projection.jsonl"],
+    outputs: ["identity-decisions.template.jsonl", "classification-decisions.template.jsonl", "canonical-support-mappings.template.jsonl"],
+    keyTests: [
+      nodeTest("test/library-scope-workflow.test.mjs", "library authoring plan emits deduplicated semantic decision templates"),
+    ],
+  }),
+  "dataset-library-decisions-apply": metadata({
+    category: "workflow-internal",
+    ownerModule: "scripts/commands/library-scope-workflow.mjs",
+    ownerExport: "createLibraryScopeWorkflowCommands().runDatasetLibraryDecisionsApply",
+    inputs: ["library index", "identity decisions", "classification decisions", "canonical support mappings"],
+    outputs: ["library-resolution.json", "scope-checkpoints.jsonl", "blocked-scope-ledger.jsonl", "exchange-reference-rewrites.jsonl"],
+    keyTests: [
+      nodeTest("test/library-scope-workflow.test.mjs", "library decisions apply rewrites only elementary flow references and defers unresolved scopes"),
+    ],
+  }),
+  "dataset-process-scope-run": metadata({
+    category: "workflow-internal",
+    ownerModule: "scripts/commands/library-scope-workflow.mjs",
+    ownerExport: "createLibraryScopeWorkflowCommands().runDatasetProcessScopeRun",
+    inputs: ["process-bundles directory", "library-resolution.json", "scope file"],
+    outputs: ["scope-checkpoints.jsonl", "blocked-scope-ledger.jsonl", "dataset-process-scope-run-report.json"],
+    keyTests: [
+      nodeTest("test/library-scope-workflow.test.mjs", "process scope runner plans only ready scopes and keeps blocked scopes out of the queue"),
     ],
   }),
   "dataset-identity-reference-rewrites-apply": metadata({

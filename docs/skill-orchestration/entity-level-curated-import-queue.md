@@ -26,7 +26,7 @@ For packaged conversions that produce `process-bundles/index.json`, the bundle i
 After source normalization and conversion QA, build the queue with the public CLI:
 
 ```bash
-tiangong-lca dataset curation-queue build \
+npx --yes @tiangong-lca/cli@latest dataset curation-queue build \
   --processes /abs/path/rows/processes.normalized.jsonl \
   --flows /abs/path/rows/flows.normalized.jsonl \
   --external-flow-ref /abs/path/rows/public-flow-refs.jsonl \

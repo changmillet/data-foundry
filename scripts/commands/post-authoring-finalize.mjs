@@ -28,7 +28,7 @@ const postAuthoringFinalizeStageContract = readOnlyStageContract([
       "Run curation queue preparation, SDK validation, deterministic QA, location audit, curation gate, dry-run write planning, and optional remote reference verification.",
     inputs: ["cleaned rows", "context files", "queue artifacts"],
     outputs: ["validation/QA/gate/dry-run/remote-verify reports"],
-    side_effects: ["runs sibling CLI read-only checks", "writes local .foundry artifact files"],
+    side_effects: ["runs published CLI read-only checks", "writes local .foundry artifact files"],
   },
   {
     stage: "mutation_manifest",

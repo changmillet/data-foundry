@@ -31,7 +31,7 @@ Foundry is intentionally thin. It owns task routing, local workspaces, import pr
 
 ## Import Lanes
 
-- `external-dataset-curated-import`: packaged LCA datasets converted through `tiangong-lca dataset import-lca convert` / `tidas-tools`, with default per-process dependency bundles under `process-bundles/`, then validated, QA checked, curated, cleaned, dry-run, committed, and verified through queue/checkpoint-driven scopes.
+- `external-dataset-curated-import`: packaged LCA datasets converted through `npx --yes @tiangong-lca/cli@latest dataset import-lca convert` / `tidas-tools`, with default per-process dependency bundles under `process-bundles/`, then validated, QA checked, curated, cleaned, dry-run, committed, and verified through queue/checkpoint-driven scopes.
 - `source-evidence-dataset-development`: PDF, Excel, web exports, images, markdown, or free text extracted through CLI/skills, authored into candidate TIDAS rows with source evidence, then sent through the same validation and curation gates.
 
 Rows stay source-language before database import. Missing bilingual text is not an import blocker.
@@ -57,17 +57,17 @@ npm run skills:source-evidence:use:sci
 Use owner-routed execution commands for dataset work:
 
 ```bash
-tiangong-lca dataset curation-queue build \
+npx --yes @tiangong-lca/cli@latest dataset curation-queue build \
   --processes ./rows/processes.jsonl \
   --flows ./rows/flows.jsonl \
   --support ./rows/sources.jsonl \
   --out-dir ./curation-queue
 
-tiangong-lca dataset curation-queue next \
+npx --yes @tiangong-lca/cli@latest dataset curation-queue next \
   --queue-dir ./curation-queue \
   --json
 
-tiangong-lca dataset curation-queue verify \
+npx --yes @tiangong-lca/cli@latest dataset curation-queue verify \
   --queue-dir ./curation-queue \
   --type process \
   --json
@@ -87,9 +87,34 @@ node scripts/foundry.mjs dataset-curation-gate \
   --profile bafu
 ```
 
-Foundry does not expose dataset npm script aliases. Queue state belongs to `tiangong-lca dataset curation-queue build/next/verify`; conversion, validation, QA, remote write/delete/redo, and readback verification belong to CLI-owned commands and checked-in skills. Foundry-local dataset commands are policy and artifact helpers only: curation packages, mutation manifests, commit handoff plans, closeout checks, and task completion reports.
+Foundry does not expose dataset npm script aliases. Queue state belongs to `npx --yes @tiangong-lca/cli@latest dataset curation-queue build/next/verify`; conversion, validation, QA, remote write/delete/redo, and readback verification belong to CLI-owned commands and checked-in skills. Foundry-local dataset commands are policy and artifact helpers only: curation packages, mutation manifests, commit handoff plans, closeout checks, and task completion reports.
 
 `process-bundles/index.json` is a generic packaged-import contract, not a BAFU-only path. A batch runner may process independent bundle/entity tasks in parallel when the queue lock and dependency checks allow it. The configured parallelism belongs in the task workspace policy, and completed scopes should continue through commit and readback automatically when all hard gates pass. Rows that hit missing canonical unit groups, flow properties, elementary flows, schema/QA blockers, or unresolved reference closure are recorded as blocked work and left out of executable commit scopes until humans or upstream database governance resolve the missing support.
+
+Whole-library packaged imports should first deduplicate root TIDAS entities, then project the resulting decisions back to process scopes:
+
+```bash
+node scripts/foundry.mjs dataset-library-index-build \
+  --source-dir <converted-library-root> \
+  --process-bundles-dir <converted-library-root>/process-bundles \
+  --out-dir <run-dir>/library-index
+
+node scripts/foundry.mjs dataset-library-authoring-plan \
+  --library-index <run-dir>/library-index \
+  --out-dir <run-dir>/authoring-plan
+
+node scripts/foundry.mjs dataset-library-decisions-apply \
+  --library-index <run-dir>/library-index \
+  --decisions-dir <run-dir>/decisions \
+  --out-dir <run-dir>/library-resolution
+
+node scripts/foundry.mjs dataset-process-scope-run \
+  --process-bundles-dir <converted-library-root>/process-bundles \
+  --library-resolution <run-dir>/library-resolution/library-resolution.json \
+  --scope-file <run-dir>/library-resolution/scope-checkpoints.jsonl \
+  --parallel 5 \
+  --dry-run
+```
 
 `annualSupplyOrProductionVolume` remains a required process field. When source data does not provide it, Foundry uses the deterministic `9999 missing-data-sentinel/year` value rather than AI trace deferral. The sentinel is intentionally non-physical and easy to bulk search so later database-side curation can replace it; that replacement is outside Foundry's import task.
 
@@ -107,7 +132,7 @@ npm run skills:update
 npm run skills:list
 ```
 
-For deleting, retiring, repairing, or redoing rows from a bad import under current-user RLS, route to the checked-in `tiangong-lca-skills` `$dataset-rls-maintenance` workflow and the CLI-owned `tiangong-lca dataset maintenance plan/apply/verify` surface. Do not add Foundry-local Supabase delete or redo commands.
+For deleting, retiring, repairing, or redoing rows from a bad import under current-user RLS, route to the checked-in `tiangong-lca-skills` `$dataset-rls-maintenance` workflow and the CLI-owned `npx --yes @tiangong-lca/cli@latest dataset maintenance plan/apply/verify` surface. Do not add Foundry-local Supabase delete or redo commands.
 
 For SCI literature evidence, use the latest remote `tiangong-kb-sci-search` skill from `https://github.com/tiangong-ai/skills`:
 

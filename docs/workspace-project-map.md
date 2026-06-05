@@ -27,15 +27,15 @@ Foundry should route reusable work to the owning repository instead of copying i
 
 | Need | Owning project | Normal surface |
 | --- | --- | --- |
-| TIDAS schema, methodology YAML, runtime rulesets | `tidas-sdk` | SDK contract API, CLI context pack |
-| Source package conversion | `tidas-tools` and `tiangong-lca-cli` | `tiangong-lca dataset import-lca convert` |
-| Entity curation queue state | `tiangong-lca-cli` | `tiangong-lca dataset curation-queue build/next/verify` |
-| PDF/Excel/source extraction and authoring setup | `tiangong-lca-cli` and `tiangong-lca-skills` | `tiangong-lca dataset author`, `$tidas-data-import` |
+| TIDAS schema, methodology YAML, runtime rulesets | `tidas-sdk` | SDK contract API, `npx --yes @tiangong-lca/cli@latest dataset context-pack` |
+| Source package conversion | `tidas-tools` and `tiangong-lca-cli` | `npx --yes @tiangong-lca/cli@latest dataset import-lca convert` |
+| Entity curation queue state | `tiangong-lca-cli` | `npx --yes @tiangong-lca/cli@latest dataset curation-queue build/next/verify` |
+| PDF/Excel/source extraction and authoring setup | `tiangong-lca-cli` and `tiangong-lca-skills` | `npx --yes @tiangong-lca/cli@latest dataset author`, `$tidas-data-import` |
 | SCI literature evidence retrieval for source-evidence tasks | `tiangong-ai/skills` | `npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --full-depth`; install/update with the npm `skills` package |
 | Agent workflow instructions | `tiangong-lca-skills` | `$tidas-contract-context`, `$tidas-data-import` |
-| Schema validation and QA gates | `tiangong-lca-cli` | `dataset validate`, `qa` |
-| Remote commit, readback, and publish prep | `tiangong-lca-cli`, Edge Functions, database | `dataset-post-authoring-finalize` handoff, CLI commit commands, `dataset verify-remote`, `publish run`, Edge verification |
+| Schema validation and QA gates | `tiangong-lca-cli` | `npx --yes @tiangong-lca/cli@latest dataset validate`, `npx --yes @tiangong-lca/cli@latest qa` |
+| Remote commit, readback, and publish prep | `tiangong-lca-cli`, Edge Functions, database | `dataset-post-authoring-finalize` handoff, published CLI commit commands, `npx --yes @tiangong-lca/cli@latest dataset verify-remote`, `publish run`, Edge verification |
 | Foundry task routing and manifests | `tiangong-lca-data-foundry` | `scripts/foundry.mjs route-task` |
-| Write/execution policy and blocked-scope ledgers | `tiangong-lca-data-foundry` | `foundry-job.json`, checkpoints, mutation manifest aggregation, closeout reports |
+| Write/execution policy and blocked-scope ledgers | `tiangong-lca-data-foundry` | `foundry-job.json`, library entity indexes, process-scope projections, checkpoints, mutation manifest aggregation, closeout reports |
 
 Before implementing a missing capability, classify it with `docs/capability-ownership-policy.md` and `specs/capability-ownership-rules.json`.

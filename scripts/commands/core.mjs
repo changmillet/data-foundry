@@ -41,7 +41,6 @@ const envExampleAllowedKeys = new Set([
   "TIANGONG_LCA_REVIEW_LLM_API_KEY",
   "TIANGONG_LCA_REVIEW_LLM_MODEL",
   "TIANGONG_LCA_CLI_BIN",
-  "TIANGONG_LCA_CLI_DIR",
   "TIANGONG_LCA_SKILLS_ROOT",
 ]);
 const envExampleAllowedPrefixes = ["FOUNDRY_"];

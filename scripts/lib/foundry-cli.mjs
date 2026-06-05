@@ -41,6 +41,7 @@ async function runFoundryCliMain({
     identityPreflightCommands,
     identityReferenceRewriteCommands,
     importCompletionCommands,
+    libraryScopeWorkflowCommands,
     listImportProfiles,
     postAuthoringFinalizeCommands,
     postWriteCloseoutCommands,
@@ -120,6 +121,14 @@ async function runFoundryCliMain({
       identityPreflightCommands.runDatasetIdentityPreflightRun(options),
     "dataset-identity-preflight-index-merge": (options) =>
       identityPreflightCommands.runDatasetIdentityPreflightIndexMerge(options),
+    "dataset-library-index-build": (options) =>
+      libraryScopeWorkflowCommands.runDatasetLibraryIndexBuild(options),
+    "dataset-library-authoring-plan": (options) =>
+      libraryScopeWorkflowCommands.runDatasetLibraryAuthoringPlan(options),
+    "dataset-library-decisions-apply": (options) =>
+      libraryScopeWorkflowCommands.runDatasetLibraryDecisionsApply(options),
+    "dataset-process-scope-run": (options) =>
+      libraryScopeWorkflowCommands.runDatasetProcessScopeRun(options),
     "dataset-identity-reference-rewrites-apply": (options) =>
       identityReferenceRewriteCommands.runDatasetIdentityReferenceRewritesApply(
         options,

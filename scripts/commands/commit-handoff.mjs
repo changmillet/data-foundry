@@ -5,8 +5,20 @@ function commitCommandForDatasetType(
   datasetType,
   rowsFile,
   outDir,
-  { appendOption, resolveTiangongLcaCliBin, targetUserId = null } = {},
+  {
+    appendOption,
+    resolveTiangongLcaCliBin,
+    resolveTiangongLcaCliCommand,
+    targetUserId = null,
+  } = {},
 ) {
+  const cliPrefix = () => {
+    if (resolveTiangongLcaCliCommand) {
+      const cli = resolveTiangongLcaCliCommand();
+      return [cli.command, ...cli.args];
+    }
+    return [resolveTiangongLcaCliBin()];
+  };
   if (["unitgroup", "flowproperty"].includes(datasetType)) {
     throw new Error(
       `${datasetType} rows are reference-only for Foundry imports and cannot be committed through dataset save-draft.`,
@@ -14,7 +26,7 @@ function commitCommandForDatasetType(
   }
   if (datasetType === "support") {
     return [
-      resolveTiangongLcaCliBin(),
+      ...cliPrefix(),
       "dataset",
       "save-draft",
       "--type",
@@ -29,7 +41,7 @@ function commitCommandForDatasetType(
   }
   if (["contact", "source"].includes(datasetType)) {
     return [
-      resolveTiangongLcaCliBin(),
+      ...cliPrefix(),
       "dataset",
       "save-draft",
       "--type",
@@ -44,7 +56,7 @@ function commitCommandForDatasetType(
   }
   if (datasetType === "flow") {
     const args = [
-      resolveTiangongLcaCliBin(),
+      ...cliPrefix(),
       "flow",
       "publish-version",
       "--input-file",
@@ -59,7 +71,7 @@ function commitCommandForDatasetType(
   }
   if (datasetType === "lifecyclemodel") {
     return [
-      resolveTiangongLcaCliBin(),
+      ...cliPrefix(),
       "lifecyclemodel",
       "save-draft",
       "--input",
@@ -71,7 +83,7 @@ function commitCommandForDatasetType(
     ];
   }
   return [
-    resolveTiangongLcaCliBin(),
+    ...cliPrefix(),
     "process",
     "save-draft",
     "--input",
@@ -93,6 +105,7 @@ export function createCommitHandoffCommands({
   readJsonArtifactOption,
   repoRelativePath,
   resolveRepoPath,
+  resolveTiangongLcaCliCommand,
   resolveTiangongLcaCliBin,
   shellQuote,
   validateTraceQueueCoverageForRows,
@@ -293,13 +306,20 @@ export function createCommitHandoffCommands({
     const commitArgs = finalRowsFile
       ? commitCommandForDatasetType(datasetType, finalRowsFile, outDir, {
           appendOption,
+          resolveTiangongLcaCliCommand,
           resolveTiangongLcaCliBin,
           targetUserId,
         })
       : [];
+    const cliPrefix = resolveTiangongLcaCliCommand
+      ? (() => {
+          const cli = resolveTiangongLcaCliCommand();
+          return [cli.command, ...cli.args];
+        })()
+      : [resolveTiangongLcaCliBin()];
     const verifyArgs = finalRowsFile
       ? [
-          resolveTiangongLcaCliBin(),
+          ...cliPrefix,
           "dataset",
           "verify-remote",
           "--input",

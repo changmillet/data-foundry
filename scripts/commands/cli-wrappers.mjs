@@ -6,11 +6,15 @@ export function createCliWrapperCommands({
   appendOption,
   appendRepeatedOptions,
   repoRoot,
+  resolveTiangongLcaCliCommand,
   resolveTiangongLcaCliBin,
 }) {
   function runJsonCli(cliArgs, errorMessage) {
-    const cliBin = resolveTiangongLcaCliBin();
-    const result = spawnSync(cliBin, cliArgs, {
+    const cli = resolveTiangongLcaCliCommand
+      ? resolveTiangongLcaCliCommand()
+      : { command: resolveTiangongLcaCliBin(), args: [], display: resolveTiangongLcaCliBin(), package: null };
+    const spawnArgs = [...cli.args, ...cliArgs];
+    const result = spawnSync(cli.command, spawnArgs, {
       cwd: repoRoot,
       env: process.env,
       encoding: "utf8",
@@ -33,7 +37,14 @@ export function createCliWrapperCommands({
           .join("\n"),
       );
     }
-    return { cliBin, exitCode, report, stderr: result.stderr || "" };
+    return {
+      cliBin: cli.display,
+      cli,
+      spawnArgs,
+      exitCode,
+      report,
+      stderr: result.stderr || "",
+    };
   }
 
   function runDatasetCurationQueueBuild(options) {
@@ -81,7 +92,7 @@ export function createCliWrapperCommands({
     appendOption(cliArgs, "--process-limit", options.processLimit);
     appendOption(cliArgs, "--out-dir", outDir);
 
-    const { cliBin, exitCode, report, stderr } = runJsonCli(
+    const { cliBin, cli, spawnArgs, exitCode, report, stderr } = runJsonCli(
       cliArgs,
       "tiangong-lca dataset curation-queue build did not emit JSON.",
     );
@@ -89,7 +100,10 @@ export function createCliWrapperCommands({
       ...report,
       foundry_wrapper: {
         command: cliBin,
-        args: cliArgs,
+        executable: cli.command,
+        args: spawnArgs,
+        cli_args: cliArgs,
+        cli_package: cli.package,
         exit_code: exitCode,
         stderr,
         owner: "tiangong-lca-cli",
@@ -148,7 +162,7 @@ export function createCliWrapperCommands({
       cliArgs.push("--require-action-item-closure");
     }
 
-    const { cliBin, exitCode, report, stderr } = runJsonCli(
+    const { cliBin, cli, spawnArgs, exitCode, report, stderr } = runJsonCli(
       cliArgs,
       "tiangong-lca dataset patch apply did not emit JSON.",
     );
@@ -156,7 +170,10 @@ export function createCliWrapperCommands({
       ...report,
       foundry_wrapper: {
         command: cliBin,
-        args: cliArgs,
+        executable: cli.command,
+        args: spawnArgs,
+        cli_args: cliArgs,
+        cli_package: cli.package,
         exit_code: exitCode,
         stderr,
         owner: "tiangong-lca-cli",
