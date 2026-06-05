@@ -305,13 +305,13 @@ function createLibraryFixture() {
     bundles: [
       {
         process_id: ids.p1,
-        manifest: path.join(p1Bundle, "manifest.json"),
-        tidas_dir: path.join(p1Bundle, "tidas"),
+        manifest: `${ids.p1}/manifest.json`,
+        tidas_dir: `${ids.p1}/tidas`,
       },
       {
         process_id: ids.p2,
-        manifest: path.join(p2Bundle, "manifest.json"),
-        tidas_dir: path.join(p2Bundle, "tidas"),
+        manifest: `${ids.p2}/manifest.json`,
+        tidas_dir: `${ids.p2}/tidas`,
       },
     ],
     unresolved_references: [],
@@ -460,6 +460,23 @@ test("library decisions apply rewrites only elementary flow references and defer
     ),
     true,
   );
+  const blockedReport = readJson(path.join(resolutionDir, "blocked-scope-report.json"));
+  assert.equal(report.files.blocked_scope_report, rel(path.join(resolutionDir, "blocked-scope-report.json")));
+  assert.equal(blockedReport.counts.blocked_scopes, 1);
+  assert.equal(
+    blockedReport.reason_summary.some(
+      (row) =>
+        row.reason === "elementary_flow_requires_existing_database_match" &&
+        row.messages.some((message) => message.includes("reference-only")),
+    ),
+    true,
+  );
+  assert.equal(
+    blockedReport.scope_summary[0].sample_blocking_dependencies.some(
+      (dependency) => dependency.dataset_type === "flowproperty",
+    ),
+    true,
+  );
 
   const rewritten = readJson(
     path.join(resolutionDir, "rewritten-processes", `${ids.p1}.json`),
@@ -534,6 +551,10 @@ test("process scope runner plans only ready scopes and keeps blocked scopes out 
   assert.equal(report.parallel, 5);
   assert.equal(report.counts.ready_scopes_planned, 1);
   assert.equal(report.counts.blocked_scopes_deferred, 1);
+  assert.equal(report.files.blocked_scope_report, rel(path.join(runDir, "blocked-scope-report.json")));
+  const blockedReport = readJson(path.join(runDir, "blocked-scope-report.json"));
+  assert.equal(blockedReport.counts.blocked_scopes, 1);
+  assert.equal(blockedReport.reason_summary[0].reason, "scope_not_ready");
   const checkpoints = readJsonLines(path.join(runDir, "scope-checkpoints.jsonl"));
   assert.deepEqual(
     checkpoints.map((row) => row.state).sort(),

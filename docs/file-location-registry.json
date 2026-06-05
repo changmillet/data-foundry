@@ -166,7 +166,7 @@
       ],
       "sensitivity": "non-sensitive task ledger schema examples; contains no credentials and no private payloads",
       "tracked": true,
-      "notes": "Defines the minimal Foundry-owned foundry-job, source-manifest, seed-manifest, checkpoint, and artifact-index contracts."
+      "notes": "Defines the minimal Foundry-owned foundry-job, source-manifest, seed-manifest, checkpoint, artifact-index, blocked-scope-ledger, and blocked-scope-report contracts. Runtime artifacts stay under ignored .foundry/workspaces/<task-id>/."
     },
     {
       "id": "foundry-safety-policy",

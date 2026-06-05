@@ -34,8 +34,9 @@ Foundry owns:
 - task queue and task state;
 - per-task workspace layout;
 - source manifests, import profiles, curation packages, cleanup reports, and handoff reports;
-- root-library entity indexes, process-scope projections, blocked-scope ledgers, and ready-scope checkpoints for packaged imports;
-- remote-write policy checks, execution policy records, blocked-scope ledgers, and commit/readback handoff aggregation;
+- root-library entity indexes, process-scope projections, blocked-scope ledgers, blocked-scope reports, and ready-scope checkpoints for packaged imports;
+- deterministic resolution of package-local bundle paths before Foundry projects library decisions to process scopes;
+- remote-write policy checks, execution policy records, blocked-scope ledgers and reports, and commit/readback handoff aggregation;
 - acceptance checks and Stop-hook feedback loops;
 - thin adapters that call existing CLI or skill entrypoints.
 

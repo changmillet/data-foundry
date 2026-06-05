@@ -350,12 +350,24 @@ export function createLibraryScopeWorkflowCommands({
   }
 
   function processBundleEntries(processBundlesDir) {
+    function resolveBundlePath(value, expectedKind) {
+      if (!value) return null;
+      if (path.isAbsolute(value)) return value;
+      const fromBundleRoot = path.join(processBundlesDir, value);
+      if (
+        (expectedKind === "file" && fileExists(fromBundleRoot)) ||
+        (expectedKind === "dir" && directoryExists(fromBundleRoot))
+      ) {
+        return fromBundleRoot;
+      }
+      return resolveRepoPath(value);
+    }
     const indexFile = path.join(processBundlesDir, "index.json");
     if (fileExists(indexFile)) {
       const index = readJson(indexFile);
       return ensureArray(index.bundles).map((bundle) => {
-        const manifest = resolveRepoPath(bundle.manifest);
-        const tidasDir = resolveRepoPath(bundle.tidas_dir);
+        const manifest = resolveBundlePath(bundle.manifest, "file");
+        const tidasDir = resolveBundlePath(bundle.tidas_dir, "dir");
         const bundleDir = manifest
           ? path.dirname(manifest)
           : tidasDir
@@ -874,13 +886,14 @@ export function createLibraryScopeWorkflowCommands({
   }
 
   function decisionIsCompleteClassification(row) {
+    const source = row ?? {};
     return Boolean(
       asText(
-        row.selected_code ||
-          row.code ||
-          row.leaf_code ||
-          row.class_id ||
-          row.cat_id,
+        source.selected_code ||
+          source.code ||
+          source.leaf_code ||
+          source.class_id ||
+          source.cat_id,
       ),
     );
   }
@@ -964,6 +977,146 @@ export function createLibraryScopeWorkflowCommands({
       required_human_action: requiredHumanAction,
       rerun_command:
         "node scripts/foundry.mjs dataset-library-decisions-apply --library-index <library-index> --decisions-dir <decisions-dir> --out-dir <library-resolution>",
+    };
+  }
+
+  function increment(map, key, count = 1) {
+    const normalizedKey = asText(key) || "unknown";
+    map.set(normalizedKey, (map.get(normalizedKey) ?? 0) + count);
+  }
+
+  function sortedCountObject(map) {
+    return Object.fromEntries(
+      [...map.entries()].sort(([left], [right]) => left.localeCompare(right)),
+    );
+  }
+
+  function compactBlockingDependency(row) {
+    const dependency = row.blocking_dependency ?? {};
+    return {
+      dataset_type: asText(dependency.dataset_type || dependency.type) || "unknown",
+      id: asText(dependency.id || dependency.dataset_id),
+      version:
+        asText(dependency.version || dependency.dataset_version) || "00.00.001",
+      reason: asText(row.reason) || "unknown",
+      message: asText(row.message),
+      required_human_action: asText(row.required_human_action),
+    };
+  }
+
+  function blockerScopeKey(row) {
+    return [
+      asText(row.blocked_process_id || row.process_id),
+      asText(row.blocked_process_version || row.process_version) || "00.00.001",
+    ].join(":");
+  }
+
+  function buildBlockedScopeReport({
+    command,
+    blockedRows,
+    blockedLedgerPath,
+    reportPath,
+  }) {
+    const sampleLimit = 20;
+    const reasonMap = new Map();
+    const scopeMap = new Map();
+    const dependencyTypeCounts = new Map();
+    for (const row of blockedRows) {
+      const reason = asText(row.reason) || "unknown";
+      const dependency = compactBlockingDependency(row);
+      increment(dependencyTypeCounts, dependency.dataset_type);
+
+      if (!reasonMap.has(reason)) {
+        reasonMap.set(reason, {
+          reason,
+          blocked_ledger_rows: 0,
+          blocked_scope_ids: new Set(),
+          blocking_dependency_types: new Map(),
+          messages: new Set(),
+          required_human_actions: new Set(),
+          sample_blocking_dependencies: [],
+        });
+      }
+      const reasonEntry = reasonMap.get(reason);
+      reasonEntry.blocked_ledger_rows += 1;
+      reasonEntry.blocked_scope_ids.add(asText(row.blocked_process_id));
+      increment(reasonEntry.blocking_dependency_types, dependency.dataset_type);
+      if (row.message) reasonEntry.messages.add(asText(row.message));
+      if (row.required_human_action) {
+        reasonEntry.required_human_actions.add(asText(row.required_human_action));
+      }
+      if (reasonEntry.sample_blocking_dependencies.length < sampleLimit) {
+        reasonEntry.sample_blocking_dependencies.push({
+          process_id: asText(row.blocked_process_id),
+          process_version:
+            asText(row.blocked_process_version) || "00.00.001",
+          ...dependency,
+        });
+      }
+
+      const scopeKey = blockerScopeKey(row);
+      if (!scopeMap.has(scopeKey)) {
+        scopeMap.set(scopeKey, {
+          process_id: asText(row.blocked_process_id),
+          process_version:
+            asText(row.blocked_process_version) || "00.00.001",
+          blocker_count: 0,
+          reasons: new Map(),
+          sample_blocking_dependencies: [],
+          rerun_commands: new Set(),
+        });
+      }
+      const scopeEntry = scopeMap.get(scopeKey);
+      scopeEntry.blocker_count += 1;
+      increment(scopeEntry.reasons, reason);
+      if (row.rerun_command) scopeEntry.rerun_commands.add(asText(row.rerun_command));
+      if (scopeEntry.sample_blocking_dependencies.length < sampleLimit) {
+        scopeEntry.sample_blocking_dependencies.push(dependency);
+      }
+    }
+
+    const reasonSummary = [...reasonMap.values()]
+      .sort((left, right) => left.reason.localeCompare(right.reason))
+      .map((entry) => ({
+        reason: entry.reason,
+        blocked_ledger_rows: entry.blocked_ledger_rows,
+        blocked_scope_count: entry.blocked_scope_ids.size,
+        blocking_dependency_types: sortedCountObject(entry.blocking_dependency_types),
+        messages: [...entry.messages].sort(),
+        required_human_actions: [...entry.required_human_actions].sort(),
+        sample_blocking_dependencies: entry.sample_blocking_dependencies,
+      }));
+    const scopeSummary = [...scopeMap.values()]
+      .sort((left, right) => left.process_id.localeCompare(right.process_id))
+      .map((entry) => ({
+        process_id: entry.process_id,
+        process_version: entry.process_version,
+        blocker_count: entry.blocker_count,
+        reasons: sortedCountObject(entry.reasons),
+        sample_blocking_dependencies: entry.sample_blocking_dependencies,
+        sample_limit: sampleLimit,
+        full_details_file: repoRelativePath(blockedLedgerPath),
+        rerun_commands: [...entry.rerun_commands].sort(),
+      }));
+    return {
+      schema_version: 1,
+      generated_at_utc: nowIso(),
+      status: blockedRows.length > 0 ? "blocked_scopes_present" : "no_blocked_scopes",
+      command,
+      counts: {
+        blocked_ledger_rows: blockedRows.length,
+        blocked_scopes: scopeMap.size,
+        blocker_reasons: reasonMap.size,
+        blocking_dependency_types: sortedCountObject(dependencyTypeCounts),
+      },
+      reason_summary: reasonSummary,
+      scope_summary: scopeSummary,
+      files: {
+        blocked_scope_report: repoRelativePath(reportPath),
+        blocked_scope_ledger: repoRelativePath(blockedLedgerPath),
+      },
+      ledger_semantics:
+        "blocked-scope-ledger.jsonl is the complete row-level blocker source of truth; this report is the per-run reader-facing summary.",
     };
   }
 
@@ -1132,11 +1285,19 @@ export function createLibraryScopeWorkflowCommands({
 
     const checkpointPath = path.join(outDir, "scope-checkpoints.jsonl");
     const blockedPath = path.join(outDir, "blocked-scope-ledger.jsonl");
+    const blockedReportPath = path.join(outDir, "blocked-scope-report.json");
     const readyPath = path.join(outDir, "ready-scopes.jsonl");
     const rewritePath = path.join(outDir, "exchange-reference-rewrites.jsonl");
     const resolutionPath = path.join(outDir, "library-resolution.json");
     writeJsonLines(checkpointPath, checkpoints);
     writeJsonLines(blockedPath, blockedLedger);
+    const blockedReport = buildBlockedScopeReport({
+      command: "dataset-library-decisions-apply",
+      blockedRows: blockedLedger,
+      blockedLedgerPath: blockedPath,
+      reportPath: blockedReportPath,
+    });
+    writeJson(blockedReportPath, blockedReport);
     writeJsonLines(readyPath, readyScopes);
     writeJsonLines(rewritePath, rewriteRows);
     const resolution = {
@@ -1164,6 +1325,7 @@ export function createLibraryScopeWorkflowCommands({
         library_resolution: repoRelativePath(resolutionPath),
         scope_checkpoints: repoRelativePath(checkpointPath),
         blocked_scope_ledger: repoRelativePath(blockedPath),
+        blocked_scope_report: repoRelativePath(blockedReportPath),
         ready_scopes: repoRelativePath(readyPath),
         exchange_reference_rewrites: repoRelativePath(rewritePath),
       },
@@ -1347,9 +1509,17 @@ export function createLibraryScopeWorkflowCommands({
     }
     const checkpointPath = path.join(outDir, "scope-checkpoints.jsonl");
     const blockedPath = path.join(outDir, "blocked-scope-ledger.jsonl");
+    const blockedReportPath = path.join(outDir, "blocked-scope-report.json");
     const reportPath = path.join(outDir, "dataset-process-scope-run-report.json");
     writeJsonLines(checkpointPath, checkpoints);
     writeJsonLines(blockedPath, blocked);
+    const blockedReport = buildBlockedScopeReport({
+      command: "dataset-process-scope-run",
+      blockedRows: blocked,
+      blockedLedgerPath: blockedPath,
+      reportPath: blockedReportPath,
+    });
+    writeJson(blockedReportPath, blockedReport);
     const commandFailures = checkpoints.filter((row) =>
       ["commit_failed", "verify_failed"].includes(row.state),
     );
@@ -1383,6 +1553,7 @@ export function createLibraryScopeWorkflowCommands({
         report: repoRelativePath(reportPath),
         scope_checkpoints: repoRelativePath(checkpointPath),
         blocked_scope_ledger: repoRelativePath(blockedPath),
+        blocked_scope_report: repoRelativePath(blockedReportPath),
       },
       policy: {
         ready_only_commit: true,

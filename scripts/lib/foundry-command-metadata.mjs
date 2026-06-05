@@ -399,7 +399,7 @@ export const commandMetadata = {
     ownerModule: "scripts/commands/library-scope-workflow.mjs",
     ownerExport: "createLibraryScopeWorkflowCommands().runDatasetLibraryDecisionsApply",
     inputs: ["library index", "identity decisions", "classification decisions", "canonical support mappings"],
-    outputs: ["library-resolution.json", "scope-checkpoints.jsonl", "blocked-scope-ledger.jsonl", "exchange-reference-rewrites.jsonl"],
+    outputs: ["library-resolution.json", "scope-checkpoints.jsonl", "blocked-scope-ledger.jsonl", "blocked-scope-report.json", "exchange-reference-rewrites.jsonl"],
     keyTests: [
       nodeTest("test/library-scope-workflow.test.mjs", "library decisions apply rewrites only elementary flow references and defers unresolved scopes"),
     ],
@@ -409,7 +409,7 @@ export const commandMetadata = {
     ownerModule: "scripts/commands/library-scope-workflow.mjs",
     ownerExport: "createLibraryScopeWorkflowCommands().runDatasetProcessScopeRun",
     inputs: ["process-bundles directory", "library-resolution.json", "scope file"],
-    outputs: ["scope-checkpoints.jsonl", "blocked-scope-ledger.jsonl", "dataset-process-scope-run-report.json"],
+    outputs: ["scope-checkpoints.jsonl", "blocked-scope-ledger.jsonl", "blocked-scope-report.json", "dataset-process-scope-run-report.json"],
     keyTests: [
       nodeTest("test/library-scope-workflow.test.mjs", "process scope runner plans only ready scopes and keeps blocked scopes out of the queue"),
     ],

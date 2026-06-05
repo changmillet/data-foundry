@@ -22,6 +22,7 @@ checkPaths:
   - docs/foundry-task-contracts.md
   - package.json
   - scripts/foundry.mjs
+  - scripts/lib/foundry-command-metadata.mjs
   - specs/**
 lastReviewedAt: 2026-06-05
 lastReviewedCommit: 76830c7adc67126a795f5fdc1c650fe56ac7b5e2
@@ -63,7 +64,7 @@ npx --yes @tiangong-lca/cli@latest dataset context-pack \
   --json
 ```
 
-6. For packaged datasets, convert with `npx --yes @tiangong-lca/cli@latest dataset import-lca convert` or `tidas-tools`; do not replace supported converters with AI. Keep per-process bundle generation enabled so `process-bundles/index.json` and one dependency subdirectory per converted process are available for curation. This bundle index is the generic packaged-import entrypoint for process-level dependency closure; dataset profiles may further require a specific converted bundle index.
+6. For packaged datasets, convert with `npx --yes @tiangong-lca/cli@latest dataset import-lca convert` or `tidas-tools`; do not replace supported converters with AI. Keep per-process bundle generation enabled so `process-bundles/index.json` and one dependency subdirectory per converted process are available for curation. This bundle index is the generic packaged-import entrypoint for process-level dependency closure; dataset profiles may further require a specific converted bundle index. Bundle `manifest` and `tidas_dir` entries may be relative to the index directory and must be resolved before execution.
 7. Before using shared skills, run `npm run skills:install:shared` when configured runtime skills may be missing or stale, and `npm run skills:update` for already installed project skills. For SCI literature evidence in source-evidence tasks, read the latest remote skill with `npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --full-depth`, record the upstream ref from `git ls-remote https://github.com/tiangong-ai/skills.git refs/heads/main`, then capture retrieved papers as evidence candidates before field-level extraction.
 8. Run `npx --yes @tiangong-lca/cli@latest dataset validate` and `npx --yes @tiangong-lca/cli@latest qa <type>` on converted or authored rows.
 9. Build and drive the entity-level queue with `npx --yes @tiangong-lca/cli@latest dataset curation-queue build/next/verify` so support, flow, and process work has stable task, lock, blocker, closure, and run-plan artifacts owned by the CLI state machine. Parallel workers are allowed only across independent queue locks and only at the configured task parallelism; passed tasks continue, blocked tasks are recorded for later support/database repair, and reruns resume from checkpoints.
@@ -74,6 +75,16 @@ npx --yes @tiangong-lca/cli@latest dataset context-pack \
 14. Do not treat historical `.foundry` artifacts as proof for a current task.
 
 `annualSupplyOrProductionVolume` is schema-required. If source data does not provide a real annual volume, Foundry must use the deterministic `9999 missing-data-sentinel/year` placeholder, not `common:other` deferral. The sentinel is deliberately non-physical and searchable; database-side curation owns replacing it later.
+
+## Implementation Pattern Requirements
+
+These rules are mandatory for code changes in this repository:
+
+- Read the nearby command/module implementation, tests, and routed workflow docs before editing. New behavior must match the existing Foundry pattern instead of adding one-off scripts, hidden state, or task-specific shortcuts.
+- Keep Foundry as a deterministic local control plane: it may index, project, package, checkpoint, summarize blockers, aggregate gates, and call published owner commands; it must not absorb CLI, skill, SDK, converter, database, or Edge ownership.
+- Every new or changed Foundry command must keep its stage contract, command metadata, output artifact list, tests, and governed docs in sync with the runtime behavior.
+- Every command that can block or defer scopes must write both a complete machine ledger and a reader-facing run report. The ledger is the row-level source of truth; the report must summarize concrete blocker reasons, affected scopes, blocking dependency types or examples, required human action, and the rerun path.
+- Batch imports must preserve ready-only execution: blocked scopes are recorded and excluded from write queues, while independent ready scopes continue through dry-run/write/verify when their gates pass.
 
 ## Commit Rules
 

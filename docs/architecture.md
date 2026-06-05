@@ -79,7 +79,8 @@ profiles
 6. Whole-library scope orchestration
    - build root TIDAS unique-entity indexes for packaged imports
    - project library-level identity/classification/support decisions back to process scopes
-   - record ready scope checkpoints and blocked-scope ledgers without turning blocked scopes into write candidates
+   - resolve bundle manifest and `tidas_dir` paths relative to `process-bundles/index.json`
+   - record ready scope checkpoints, blocked-scope ledgers, and reader-facing blocked-scope reports without turning blocked scopes into write candidates
 
 ## v0 Runtime
 

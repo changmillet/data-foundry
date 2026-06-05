@@ -89,7 +89,7 @@ node scripts/foundry.mjs dataset-curation-gate \
 
 Foundry does not expose dataset npm script aliases. Queue state belongs to `npx --yes @tiangong-lca/cli@latest dataset curation-queue build/next/verify`; conversion, validation, QA, remote write/delete/redo, and readback verification belong to CLI-owned commands and checked-in skills. Foundry-local dataset commands are policy and artifact helpers only: curation packages, mutation manifests, commit handoff plans, closeout checks, and task completion reports.
 
-`process-bundles/index.json` is a generic packaged-import contract, not a BAFU-only path. A batch runner may process independent bundle/entity tasks in parallel when the queue lock and dependency checks allow it. The configured parallelism belongs in the task workspace policy, and completed scopes should continue through commit and readback automatically when all hard gates pass. Rows that hit missing canonical unit groups, flow properties, elementary flows, schema/QA blockers, or unresolved reference closure are recorded as blocked work and left out of executable commit scopes until humans or upstream database governance resolve the missing support.
+`process-bundles/index.json` is a generic packaged-import contract, not a BAFU-only path. Bundle `manifest` and `tidas_dir` entries may be relative to the index directory; Foundry resolves them before scope projection. A batch runner may process independent bundle/entity tasks in parallel when the queue lock and dependency checks allow it. The configured parallelism belongs in the task workspace policy, and completed scopes should continue through commit and readback automatically when all hard gates pass. Rows that hit missing canonical unit groups, flow properties, elementary flows, schema/QA blockers, or unresolved reference closure are recorded as blocked work and left out of executable commit scopes until humans or upstream database governance resolve the missing support. Each run that defers scopes writes both `blocked-scope-ledger.jsonl` for complete row-level blocker facts and `blocked-scope-report.json` for reason, affected-scope, dependency, human-action, and rerun summaries.
 
 Whole-library packaged imports should first deduplicate root TIDAS entities, then project the resulting decisions back to process scopes:
 
@@ -115,6 +115,8 @@ node scripts/foundry.mjs dataset-process-scope-run \
   --parallel 5 \
   --dry-run
 ```
+
+`dataset-library-decisions-apply` writes `<run-dir>/library-resolution/blocked-scope-report.json` every time it evaluates scope closure. `dataset-process-scope-run` writes `<run-dir>/process-scope-run/blocked-scope-report.json` for runner-level deferrals such as non-ready scopes.
 
 `annualSupplyOrProductionVolume` remains a required process field. When source data does not provide it, Foundry uses the deterministic `9999 missing-data-sentinel/year` value rather than AI trace deferral. The sentinel is intentionally non-physical and easy to bulk search so later database-side curation can replace it; that replacement is outside Foundry's import task.
 

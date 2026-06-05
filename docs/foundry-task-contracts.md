@@ -85,6 +85,8 @@ Foundry owns a small task ledger. It records what should happen, which profile a
 
 `execution_policy.max_parallelism` controls queue workers. Workers must claim tasks through CLI queue locks and dependency checkpoints. Blocked entities are written to the task blocker ledger with affected dependency closures and rerun instructions; unrelated ready scopes may continue and may commit if the write policy allows it.
 
+For process-scope batch workflows, blocker artifacts are split by audience. `blocked-scope-ledger.jsonl` is the complete row-level fact source for automation and rerun planning. `blocked-scope-report.json` is required for every closure or runner evaluation and must summarize concrete blocker reasons, affected scopes, dependency types or examples, required human actions, and the rerun command.
+
 ## source-manifest.json
 
 ```json
