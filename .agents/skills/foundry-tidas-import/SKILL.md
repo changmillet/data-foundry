@@ -20,6 +20,8 @@ Use this skill as the Foundry-local entrypoint for end-to-end external data impo
 - After `dataset-curation-gate`, run `dataset-authoring-plan` before hand-authoring decisions or patches. Treat the plan as the current worklist for missing task builds, AI decisions/patches, deterministic apply, and post-authoring finalize readiness.
 - Import-ready rows are source-language rows. Bilingual completion is a separate post-import task.
 - Never continue to commit from stale historical `.foundry` artifacts. Every gate must point to the exact current final rows file.
+- Runtime `.env` values are credentials/defaults only. A task that may write remotely still needs durable source manifest, profile lock, account/write guard evidence, execution policy, checkpoints, and artifact ledger under the task workspace.
+- For packaged imports, process bundle execution is queue-driven and may be parallel only across independent locks up to the task `max_parallelism`. Blocked entities write blocker artifacts and are excluded from commit scopes; unrelated ready entities continue through finalize, commit, readback, and closeout when the write policy allows it.
 - Source rows must represent reports, publications, datasets, or other traceable evidence records. Data-format and compliance placeholders such as `ILCD format`, `Not specified`, `Data set formats`, and `Compliance systems` are allowed only as canonical reference rewrites/provenance; the mutation manifest blocks them as source identity in support/source write scopes. Empty or type-only true source descriptions such as `Report` must be repaired from citation/name evidence before write planning.
 
 ## Lanes
@@ -44,7 +46,7 @@ tiangong-lca dataset import-lca convert \
   --json
 ```
 
-For packaged imports, keep the CLI default process bundle generation enabled. The stable conversion contract includes `.foundry/workspaces/<task-id>/conversion/process-bundles/index.json` and one subdirectory per converted process so downstream curation can isolate evidence, dependencies, and blockers.
+For packaged imports, keep the CLI default process bundle generation enabled. The stable conversion contract includes `.foundry/workspaces/<task-id>/conversion/process-bundles/index.json` and one subdirectory per converted process so downstream curation can isolate evidence, dependencies, and blockers. The bundle index is a generic packaged-import contract; profile locks such as BAFU may require a specific converted bundle index, but the skill must not hard-code a dataset name or absolute path.
 
 ### Source Document Authoring
 
@@ -115,6 +117,8 @@ tiangong-lca dataset curation-queue next \
   --queue-dir .foundry/workspaces/<task-id>/curation-queue \
   --json
 ```
+
+Batch runners may call `curation-queue next` concurrently only when each claimed task has a distinct lock and passed dependencies, and only up to the task execution policy's `max_parallelism`. A worker executes exactly the returned action, writes that task's checkpoint or blocker, releases unrelated work, and then asks `next` again. Do not stop a whole package import because one process bundle is blocked unless the blocker is a shared dependency required by every remaining scope.
 
 Before the next curation gate for process/flow imports, audit then run the generated identity-preflight request index. The audit is read-only and proves the exact Edge request body contains a complete fielded `query` with no placeholder/source-format noise; Edge ignores local-only `profile_hints`. The runner is also read-only; `blocked` and `needs_review` identity findings are retained as evidence rather than treated as tool failures:
 
@@ -276,7 +280,7 @@ node scripts/foundry.mjs dataset-patch-apply \
   --require-action-item-closure
 ```
 
-14. For support rows that mutually reference each other, first build one mixed support rows file containing only writable contact/source rows, then run `dataset-post-authoring-finalize --type support`. Flow Properties and Unit Groups are reference-only: refresh `specs/canonical-support/flow-properties-unit-groups.json` and rewrite converted references to existing canonical database rows before flow/process curation. The finalizer reruns cleanup, SDK validation with `tiangong-lca dataset validate --type auto`, location audit, generic `tiangong-lca dataset save-draft --type auto --dry-run`, mutation manifest, and commit handoff on one exact writable support scope. The mutation manifest must show no source identity blockers and no account-local unitgroup/flowproperty rows before commit. Commit it through the generated `dataset save-draft --type auto --commit` handoff, then run post-write verify and closeout before dependent flow/process scopes.
+14. For support rows that mutually reference each other, first build one mixed support rows file containing only writable contact/source rows, then run `dataset-post-authoring-finalize --type support`. Flow Properties and Unit Groups are reference-only: refresh `specs/canonical-support/flow-properties-unit-groups.json` and rewrite converted references to existing canonical database rows before flow/process curation. The finalizer reruns cleanup, SDK validation with `tiangong-lca dataset validate --type auto`, location audit, generic `tiangong-lca dataset save-draft --type auto --dry-run`, mutation manifest, and commit handoff on one exact writable support scope. The mutation manifest must show no source identity blockers and no account-local unitgroup/flowproperty rows before commit. When task write policy allows automated commit, a batch runner may commit it through the generated `dataset save-draft --type auto --commit` handoff, then must run post-write verify and closeout before dependent flow/process scopes.
 
 15. For process, flow, and lifecyclemodel rows, run the post-AI prewrite finalize command. It reruns cleanup, SDK validation, deterministic QA, `tiangong-lca dataset classification audit --type location` for schema-derived location-code fields against `tidas_locations_category.json`, post-authoring curation gate, type-specific dry-run (`process save-draft --dry-run`, `flow publish-version --dry-run`, or `lifecyclemodel save-draft --dry-run`), optional remote reference verification, and mutation manifest generation on one exact rows-file scope:
 
@@ -301,7 +305,7 @@ node scripts/foundry.mjs dataset-post-authoring-finalize \
 
 Add `--patch-collect-report ... --require-patch-collect-report --patch-apply-report ...` only when patch collect/apply actually ran for the exact rows file.
 
-16. Inspect or regenerate the explicit commit handoff plan. It is read-only and must report `ready_for_explicit_commit` before any database write:
+16. Inspect or regenerate the commit handoff plan. It is read-only and must report `ready_for_explicit_commit` before any database write:
 
 ```bash
 node scripts/foundry.mjs dataset-commit-handoff-plan \
@@ -309,7 +313,7 @@ node scripts/foundry.mjs dataset-commit-handoff-plan \
   --state-code <expected-state-code>
 ```
 
-17. Commit only when `dataset-post-authoring-finalize-report.json` and its mutation manifest both report `ready_for_remote_write`, `dataset-commit-handoff-plan.json` reports `ready_for_explicit_commit`, `counts.location_audit_blockers` is `0`, and reference closure is proven for the exact write scope. If the manifest reports `reference_closure_remote_verify_required`, first write and verify the support scope, then rerun finalize for the dependent scope.
+17. Commit only when `dataset-post-authoring-finalize-report.json` and its mutation manifest both report `ready_for_remote_write`, `dataset-commit-handoff-plan.json` reports `ready_for_explicit_commit`, `counts.location_audit_blockers` is `0`, reference closure is proven for the exact write scope, and the task write policy allows the commit mode. If the manifest reports `reference_closure_remote_verify_required`, first write and verify the support scope, then rerun finalize for the dependent scope. If the task policy allows automated batch commit, the runner may run the generated command for that exact scope without per-row human approval; otherwise it stops at handoff.
 18. After commit, run the handoff plan's `post_write_verify` command. It must include `tiangong-lca dataset verify-remote --compare-root-payload --target-user-id <uuid> --state-code <code>` on the same final rows file.
 19. Close the import only after Foundry verifies the commit and readback artifacts:
 

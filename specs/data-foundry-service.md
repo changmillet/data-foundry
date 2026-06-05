@@ -62,7 +62,7 @@ Every import task should produce:
 - validation and QA reports;
 - repair queue or explicit blocker report when validation fails;
 - dry-run publish/import plan before any remote write;
-- verification/readback artifacts when remote writes are explicitly allowed.
+- write policy, account guard, commit handoff, and verification/readback artifacts when remote writes are profile-gated and explicitly in scope.
 
 ## Primary References
 

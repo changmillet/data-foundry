@@ -19,6 +19,8 @@ The execution unit is an entity task: one support record, one flow, or one proce
 
 The successful BAFU single-process rerun for `ffdd66da-8477-38b7-9cf8-af0c7ae7bb94` is the reference shape for process execution: one isolated workspace, complete support/flow/process dependency closure, stage checkpoints, mapping, guarded write, and readback diff. Batch execution must repeat that shape per process instead of switching to warning-only field repair.
 
+For packaged conversions that produce `process-bundles/index.json`, the bundle index is the generic process-closure entrypoint for queue build and sharding. Dataset profiles such as BAFU may require a specific converted bundle index, but queue logic must stay dataset-agnostic.
+
 ## Queue Build
 
 After source normalization and conversion QA, build the queue with the public CLI:
@@ -30,14 +32,14 @@ tiangong-lca dataset curation-queue build \
   --external-flow-ref /abs/path/rows/public-flow-refs.jsonl \
   --support /abs/path/rows/sources.normalized.jsonl \
   --support /abs/path/rows/contacts.normalized.jsonl \
-  --support /abs/path/rows/unitgroups.normalized.jsonl \
-  --support /abs/path/rows/flowproperties.normalized.jsonl \
   --out-dir /abs/path/.foundry/workspaces/<task-id>/curation-queue
 ```
 
 Use `--exclude-process-id` for process rows already completed in a pilot. Use `--process-limit` only for an explicit pilot run.
 
 Use `--external-flow-ref` for referenced public/authority flows that are already finalized. These refs are allowed dependencies for process tasks but do not create local flow curation tasks.
+
+For profiles such as BAFU, unitgroup and flowproperty conversion outputs are audit/mapping inputs only. They should be rewritten to existing public canonical support through the canonical support cache and must not create writable support tasks or commit handoff rows.
 
 ## Artifacts
 
@@ -91,9 +93,11 @@ For BAFU-style process batches, the practical pattern is:
 
 - one or more agents process pending support tasks;
 - several agents process flow tasks once the support catalog is available;
-- up to five agents process process closures once flow/support dependencies are finalized, with one isolated `entities/processes/<id>__<version>/` workspace per process.
+- process closures run once flow/support dependencies are finalized, with one isolated `entities/processes/<id>__<version>/` workspace per process and total concurrency capped by the task `execution_policy.max_parallelism`.
 
 Each agent runs the complete child-skill workflow for its owned entity. It should not switch into a lighter "last-function-only" mode because a previous task happened to work on classification, name normalization, or reference refresh.
+
+A blocked task writes blocker evidence, affected dependency closure, missing support details, and rerun instructions to the queue blocker ledger. The blocker does not stop independent ready tasks. Dependent tasks remain blocked until the missing flow/support/canonical database record exists and the affected checkpoints are rerun.
 
 ## Reference Text Rule
 

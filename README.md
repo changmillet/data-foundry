@@ -31,7 +31,7 @@ Foundry is intentionally thin. It owns task routing, local workspaces, import pr
 
 ## Import Lanes
 
-- `external-dataset-curated-import`: packaged LCA datasets converted through `tiangong-lca dataset import-lca convert` / `tidas-tools`, with default per-process dependency bundles under `process-bundles/`, then validated, QA checked, curated, cleaned, dry-run, and verified.
+- `external-dataset-curated-import`: packaged LCA datasets converted through `tiangong-lca dataset import-lca convert` / `tidas-tools`, with default per-process dependency bundles under `process-bundles/`, then validated, QA checked, curated, cleaned, dry-run, committed, and verified through queue/checkpoint-driven scopes.
 - `source-evidence-dataset-development`: PDF, Excel, web exports, images, markdown, or free text extracted through CLI/skills, authored into candidate TIDAS rows with source evidence, then sent through the same validation and curation gates.
 
 Rows stay source-language before database import. Missing bilingual text is not an import blocker.
@@ -89,6 +89,8 @@ node scripts/foundry.mjs dataset-curation-gate \
 
 Foundry does not expose dataset npm script aliases. Queue state belongs to `tiangong-lca dataset curation-queue build/next/verify`; conversion, validation, QA, remote write/delete/redo, and readback verification belong to CLI-owned commands and checked-in skills. Foundry-local dataset commands are policy and artifact helpers only: curation packages, mutation manifests, commit handoff plans, closeout checks, and task completion reports.
 
+`process-bundles/index.json` is a generic packaged-import contract, not a BAFU-only path. A batch runner may process independent bundle/entity tasks in parallel when the queue lock and dependency checks allow it. The configured parallelism belongs in the task workspace policy, and completed scopes should continue through commit and readback automatically when all hard gates pass. Rows that hit missing canonical unit groups, flow properties, elementary flows, schema/QA blockers, or unresolved reference closure are recorded as blocked work and left out of executable commit scopes until humans or upstream database governance resolve the missing support.
+
 `annualSupplyOrProductionVolume` remains a required process field. When source data does not provide it, Foundry uses the deterministic `9999 missing-data-sentinel/year` value rather than AI trace deferral. The sentinel is intentionally non-physical and easy to bulk search so later database-side curation can replace it; that replacement is outside Foundry's import task.
 
 `--profile generic` is the default. Dataset-specific behavior is configured in `specs/import-profiles.json`; BAFU is one profile, not a special code path.
@@ -143,4 +145,4 @@ Installed shared runtime skills such as `.agents/skills/tiangong-kb-sci-search/`
 - `tasks/`: lightweight task queue and task templates.
 - `.foundry/`: ignored runtime state and generated workspaces.
 
-Remote writes are never automatic. A task must pass schema, QA, curation, cleanup, dry-run, and verification gates, and explicit write policy must allow commit before any database mutation.
+Remote writes are never ungated. A task must pass schema, QA, curation, cleanup, dry-run, mutation-manifest/reference-closure, commit handoff, and post-write verification gates before any database mutation. When the task write policy permits automated batch commit, ready scopes may commit without per-row human approval; human input is reserved for policy changes, exceptional waivers, and missing canonical database support.

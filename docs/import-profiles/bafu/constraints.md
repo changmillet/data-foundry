@@ -16,8 +16,10 @@ related:
 ## 账号和写入边界
 
 - 远端 Foundry / TianGong CLI 读写必须使用 BAFU account profile，并由运行态 task manifest / account profile / checkpoint 记录实际账号、session、命令前缀和 guard 结果。
+- 仓库根目录或子项目根目录的 `.env` 只能提供运行态 credential / endpoint / 默认命令参数，不能替代 durable `source-manifest.json`、`profile-lock.json`、account/write guard report、checkpoint 和 artifact ledger。正式写入前必须能从 task workspace 证明当前 source、profile、目标账号、write policy 和待写 scope。
 - 单次运行的 thread id、具体 user id、临时 env 值或一次性命令前缀不属于 durable constraints；这些内容只能写入运行态 workspace、checkpoint 或 run manifest。
 - 所有写入必须通过官方 CLI / 平台路径执行；不得绕过 RLS，不得直接写 dataset tables。
+- 符合 task write policy 的批量自动 commit 是允许的；人工审批用于 policy 变更、exceptional waiver、缺失 canonical database support、删除动作或其他 profile gate，不用于逐条确认已经通过所有硬门禁的独立 scope。
 - 若运行态账号 guard 不能证明当前命令指向 BAFU account profile，应阻塞 remote write。
 
 ## 总体导入原则
@@ -39,10 +41,12 @@ related:
 - 队列建立后，每个执行 worker 在修改任何 row 之前都必须先运行：
   - `tiangong-lca dataset curation-queue next --queue-dir .foundry/workspaces/<task-id>/curation-queue --entity-type <support|flow|process> --limit 1 --out-dir .foundry/workspaces/<task-id>/execution-next`
 - worker 只能执行 `curation-queue next` 返回的 `next_tasks[].action`：若返回 CLI command，就按该命令执行；若返回 child skill，就按返回的 `skill`、`input_artifact`、`output_artifacts` 执行。完成后再次调用 `curation-queue next`。对导入、更新、写入、重跑类任务，必须持续循环，直到请求范围内的 support、flow、process scope 都返回 `status=complete`；只执行第一条 support / flow / process action 不能视为完成。
+- BAFU 当前转换结果按 process bundle 拆分时，允许多个 worker 并行执行独立 `curation-queue next` 返回的任务。并行数必须来自 task workspace 的 `max_parallelism` / execution policy，不得写死在 BAFU 规则中；每个 worker 必须持有不同 `lock_key`，且其 `depends_on` checkpoint 已通过。一个 entity 或 dependency closure 被 blocker 阻塞时，只记录该 blocker 和受影响 scope，不能阻塞没有共享未完成依赖的其他 ready process bundle。
 - 不得跳过 `curation-queue next` 自行选择“干净”的 process/flow/lifecyclemodel，也不得用 task-local 脚本批量生成 `rows/*.final.jsonl`、`rows/*.name-curated.jsonl` 或其他看似最终的行文件。
 - 每次正式 remote write 前必须运行并通过：
   - `tiangong-lca dataset curation-queue verify --queue-dir .foundry/workspaces/<task-id>/curation-queue --out-dir .foundry/workspaces/<task-id>/prewrite-evidence-gate`
 - `curation-queue verify` 的结果必须写入 stage 8 checkpoint 和 remote write status。若状态为 `blocked`，不得执行 commit。若任一 `curation-queue next` scope 仍返回 `status=ready`，该 blocked 只是说明队列尚未跑完，worker 必须继续执行 next 返回的 action；只有 next 本身 blocked、没有可执行 action 但 verify 仍 blocked，或遇到需要人工判断的 profile gate，才可以把 run 状态报告为阻塞。
+- 对批量自动入库，`verify --type` 或 exact-scope verify 可以按 support / flow / process / bundle scope 分别证明。通过 verify 的独立 scope 可进入 finalize/commit/readback；未通过的 scope 必须留在 blocked ledger 中，等待人工或数据库侧补齐后重跑，不得混入本次 executable commit scope。
 - 该 gate 必须证明每个 owned support / flow / process entity 均有：
   - `name-plan-units.jsonl`
   - Codex-authored `name-plan-draft.jsonl`
@@ -65,6 +69,7 @@ related:
 - 不得因为 TIDAS/ILCD schema 中存在 `complianceDeclarations`，就新建 BAFU 私有的 compliance system source。合规声明引用的是目标数据集按哪个合规体系被声明和评审，不是源 EcoSpold1 包自然具备的元数据。
 - 若 TianGong public canonical 的 `ILCD Data Network - Entry-level` compliance source 不存在或不可引用，应阻塞写入并先补公共支撑对象，不得在 BAFU 账号下临时新建占位 compliance system。
 - `referenceToDataSetFormat` 同样应优先引用 TianGong 公共库已有的 canonical data format source，例如平台标准的 TIDAS/ILCD format 记录；不得把转换包生成的临时 source 当作 BAFU-owned source 写入。
+- 本文件中的 `support` 是 workflow umbrella，不是一个单独 TIDAS dataset type。当前 BAFU 可写 support scope 只允许真实 `source` 和 canonical BAFU/FOEN `contact`；flow property、unit group、compliance system、data set format 属于 reference-only canonical reuse 或 provenance rewrite，除非另有公共库治理任务先把对应 canonical row 放入数据库。
 - `source` 表只能写入真实文献、报告、出版物、数据库文档或可追溯来源记录。`ILCD format`、`Not specified`、compliance system、data format、`Created for EcoSpold 1 compatibility` 等转换/格式/兼容性占位不得作为真实 source 名称写库；这些只能作为 canonical reference rewrite/provenance trace 保留。若 source description 中包含 `Original title`、`First author`、`Year` 等报告元数据，应先修复 source shortName/sourceCitation，并同步修复 process `referenceToDataSource.common:shortDescription`。若 true source 的 `sourceDescriptionOrComment` 为空或只有 `Report` / `Publication` / `Source` 这类类型词，应使用 `sourceCitation` 或 `common:shortName` 生成可读的报告/出版物说明，不能把空描述或单独 `Report` 当作最终来源描述。写库前 mutation manifest 必须阻断仍带这些占位 identity 的 support/source rows。
 - mutation manifest 必须把 compliance system / data set format reference rewrite 单独列出：原始引用 UUID、原始 shortDescription、目标 canonical UUID/version、处理动作、理由和来源证据。
 - 最终远端回读必须确认所有 compliance/data format 引用都指向 TianGong public canonical 支撑对象，且没有 `TIDAS_IMPORT_PLACEHOLDER:COMPLIANCE_NOT_DEFINED`、`COMPLIANCE_NOT_DEFINED` 或仅本地存在的 compliance source。
@@ -151,6 +156,7 @@ related:
 - EcoSpold1 的单位不能直接等同于 TIDAS reference unit。必须映射到 TIDAS flow property、unit group、reference unit 的规范结构。
 - Flow property、unit group、reference unit 必须优先使用 TianGong 数据库已有的规范记录；不能因为保留或新建了 BAFU flow，就同步新建一套 BAFU 私有 flow property / unit group。
 - 如果 TianGong 数据库中没有合适的规范 flow property 或 unit group，本次 BAFU 导入必须阻塞并形成公共 canonical support / mapping 待办；不得为 BAFU 账号或 My Data 新建私有 flow property / unit group 来绕过。
+- 这是设计门禁，不是异常摩擦：unitgroup / flowproperty 与 elementary flow 一样不能由 BAFU 导入流程自行新建私有记录。Foundry/AI 只能识别缺口、产出 mapping 待办和受影响 scope；公共库或人工治理补齐数据库 canonical support 后，导入流程从 checkpoint/queue resume 并重新匹配。
 - 已确认的单位/属性处理口径：
   - `p` 应映射为 `Number of items` / `Units of items`，参考单位使用 `Item(s)`；不能把 `p` 当作 TIDAS reference unit。
   - `kg` 映射到 Mass / Units of mass。
@@ -188,6 +194,7 @@ related:
 ## Contact 与归属约束
 
 - BAFU 2025 数据导入不得继续使用占位联系人，例如 `BAFU 2025 package import contact`。
+- BAFU contact 可以由 AI 生成/修复，但只能作为一次性的 canonical support authoring task，而不是每个 bundle 自由生成。AI 任务必须带 FOEN/BAFU 官方来源证据、当前转换 contact payload、SDK/schema、profile constraints 和固定 UUID/version；输出必须经过 patch collect/apply、schema/name-plan/location/manifest/readback 门禁后再被所有 bundle 复用。
 - 本批 BAFU / FOEN 数据的 canonical contact 使用：
   - UUID：`a6db11f5-1cb4-579a-b503-bd17c361b8c2`
   - version：`00.00.001`
@@ -312,7 +319,8 @@ related:
 - 大批量写入需要控制批次和失败恢复：
   - 每个批次必须可重跑；
   - commit 报告必须列出成功、失败、跳过、更新和插入；
-  - 任一批次出现引用不完整、schema invalid、前端必填校验失败或 public elementary flow 未解析，应阻塞后续批次。
+  - 远端写入必须按 exact write scope / process bundle closure 形成 dry-run、mutation manifest、commit handoff、commit report、readback verify 和 closeout；
+  - 任一 scope 出现引用不完整、schema invalid、前端必填校验失败、canonical unitgroup/flowproperty 缺失或 public elementary flow 未解析，应阻塞该 scope 及依赖它的闭包，并把 blocker 写入 blocked ledger；不得阻塞已经证明依赖独立且门禁通过的其他批次继续自动 commit/readback。
 
 ## Mapping Evidence And CSV Contract
 

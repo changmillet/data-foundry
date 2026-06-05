@@ -1,3 +1,30 @@
+---
+title: Foundry Safety Policy
+docType: policy
+scope: remote-write-safety
+status: active
+authoritative: true
+owner: tiangong-lca-data-foundry
+language: en
+whenToUse:
+  - when deciding whether a Foundry import scope may proceed from dry-run to remote commit
+  - when reviewing task write policy, mutation manifest, commit handoff, readback, or human approval requirements
+whenToUpdate:
+  - when remote commit gates, human approval boundaries, write policy, or blocked-scope recovery rules change
+checkPaths:
+  - docs/safety-policy.md
+  - WORKFLOW.md
+  - README.md
+  - AGENTS.md
+  - docs/foundry-task-contracts.md
+  - docs/import-profiles/bafu/profile.md
+  - docs/import-profiles/bafu/constraints.md
+  - specs/automated-lca-capability-registry.json
+  - specs/workspace-capability-adapters.md
+lastReviewedAt: 2026-06-05
+lastReviewedCommit: 18b9caed641add8f7c82f4d7abc5c9e34e50c29d
+---
+
 # Safety Policy
 
 ## Default Write Mode
@@ -10,6 +37,7 @@ Remote database writes are blocked unless:
 
 - the task explicitly permits commit
 - the workflow policy permits commit
+- the exact write scope is included in the task write policy and, for batch runs, was claimed through queue locks within configured `max_parallelism`
 - schema validation passes
 - deterministic QA and Foundry curation pass
 - source evidence is present for authored fields
@@ -27,6 +55,7 @@ Remote database writes are blocked unless:
 - for profiles that require full-context AI semantic completion, deterministic AI evidence is mandatory, not optional: classification queue fixes must carry completed `classification-decisions-apply` evidence, location queue fixes must carry completed `location-decisions-apply` evidence, and other patches must carry patch collect/apply evidence with `authoring_package_sha256` and `closes_action_items`
 - reference closure passes in the post-authoring mutation manifest; mutually-referencing writable contact/source rows must be grouped into a mixed `support` write scope when needed, Flow Properties and Unit Groups must resolve through the canonical support cache to existing database rows, and any referenced dataset outside the exact write scope must be proven by `dataset verify-remote` after its row exists remotely, or the dependent write scope remains blocked before commit handoff
 - support/source write scopes contain only true source identities for source rows; data-format, compliance-system, and placeholder identities such as `ILCD format` or `Not specified` must remain canonical reference rewrites/provenance and are blocked by the mutation manifest before commit handoff; true source rows with empty or type-only descriptions such as `Report` must be repaired from citation/name evidence before write planning
+- missing canonical unitgroups, flowproperties, elementary flows, compliance sources, data-format sources, contacts, or true sources block only the dependent write scope and are recorded for human/database governance; independent scopes with proven closure may continue
 - curation cleanup has run and cleaned rows were revalidated
 - post-authoring Foundry curation gate passes on the exact final rows and references a deterministic QA report for those rows
 - state-code-aware mutation plan exists
@@ -58,4 +87,4 @@ Never commit:
 
 ## Human Involvement
 
-The long-term goal is minimal human involvement, but v0 keeps human approval for remote commit. Humans should approve policy and exceptional waivers, not supervise every scan or repair candidate.
+The goal is batch automation with hard gates and recovery. Humans approve policy changes, exceptional waivers, delete actions, and missing canonical database support decisions. They do not supervise every scan, repair candidate, or gate-passing commit scope when the task write policy permits profile-gated automated batch commit.

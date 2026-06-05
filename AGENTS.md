@@ -45,6 +45,7 @@ Receive external LCA packages or source documents, choose the correct import lan
 - External source-evidence research skills, including `tiangong-kb-sci-search`, are installed or read through the npm `skills` package (`npx --yes skills@latest ...`) at runtime before use. Do not copy their retrieval logic into Foundry.
 - Import-ready rows are source-language rows. Do not add bilingual completion as a pre-import gate.
 - Do not implement direct database writes in Foundry.
+- Runtime `.env` files may provide account credentials and command defaults, but they do not replace the task-local `source-manifest.json`, `profile-lock.json`, account/write guard evidence, checkpoints, or artifact ledger. Durable import facts must live in the task workspace.
 
 ## Default Operating Order
 
@@ -62,14 +63,15 @@ tiangong-lca dataset context-pack \
   --json
 ```
 
-6. For packaged datasets, convert with `tiangong-lca dataset import-lca convert` or `tidas-tools`; do not replace supported converters with AI. Keep per-process bundle generation enabled so `process-bundles/index.json` and one dependency subdirectory per converted process are available for curation.
+6. For packaged datasets, convert with `tiangong-lca dataset import-lca convert` or `tidas-tools`; do not replace supported converters with AI. Keep per-process bundle generation enabled so `process-bundles/index.json` and one dependency subdirectory per converted process are available for curation. This bundle index is the generic packaged-import entrypoint for process-level dependency closure; dataset profiles may further require a specific converted bundle index.
 7. Before using shared skills, run `npm run skills:install:shared` when configured runtime skills may be missing or stale, and `npm run skills:update` for already installed project skills. For SCI literature evidence in source-evidence tasks, read the latest remote skill with `npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --full-depth`, record the upstream ref from `git ls-remote https://github.com/tiangong-ai/skills.git refs/heads/main`, then capture retrieved papers as evidence candidates before field-level extraction.
 8. Run `tiangong-lca dataset validate` and `tiangong-lca qa <type>` on converted or authored rows.
-9. Build and drive the entity-level queue with `tiangong-lca dataset curation-queue build/next/verify` so support, flow, and process work has stable task, lock, blocker, closure, and run-plan artifacts owned by the CLI state machine.
+9. Build and drive the entity-level queue with `tiangong-lca dataset curation-queue build/next/verify` so support, flow, and process work has stable task, lock, blocker, closure, and run-plan artifacts owned by the CLI state machine. Parallel workers are allowed only across independent queue locks and only at the configured task parallelism; passed tasks continue, blocked tasks are recorded for later support/database repair, and reruns resume from checkpoints.
 10. Run `node scripts/foundry.mjs dataset-curation-gate` with the rows, schema report, QA report, profile, full contract context files, and any generated classification/location authoring queues.
 11. Use `$foundry-tidas-import` as the Foundry-local orchestration entrypoint for external package or source-document imports. Use `$foundry-tidas-authoring` only after curation-gate authoring tasks, classification decision tasks, or location decision tasks exist and only to produce structured evidence-backed decisions or patches for curation blockers. Apply classification decisions with `dataset-classification-decisions-apply`, apply location decisions with `dataset-location-decisions-apply`, collect field patches with `dataset-authoring-patch-collect`, then after deterministic apply rerun SDK validation, deterministic QA, and the Foundry curation gate on the final rows before mutation manifest.
 12. Run `node scripts/foundry.mjs dataset-curation-cleanup` after source trace has been captured in authoring packages and before remote write planning.
-13. Do not treat historical `.foundry` artifacts as proof for a current task.
+13. Remote commit is policy-gated rather than manually supervised by default. A task may allow automated batch commit for scopes whose finalize report, mutation manifest, commit handoff, and post-write verification all pass; human input is required for policy changes, exceptional waivers, or blockers such as missing canonical unit groups, flow properties, elementary flows, or unresolved reference closure.
+14. Do not treat historical `.foundry` artifacts as proof for a current task.
 
 `annualSupplyOrProductionVolume` is schema-required. If source data does not provide a real annual volume, Foundry must use the deterministic `9999 missing-data-sentinel/year` placeholder, not `common:other` deferral. The sentinel is deliberately non-physical and searchable; database-side curation owns replacing it later.
 

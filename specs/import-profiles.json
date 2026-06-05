@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-06-04T00:00:00Z",
+  "updated_at_utc": "2026-06-05T00:00:00Z",
   "default_profile": "generic",
   "profiles": {
     "generic": {
@@ -12,7 +12,7 @@
     },
     "bafu": {
       "id": "bafu",
-      "description": "BAFU / FOEN import profile for BAFU 2025 ecoSpold1 converted TIDAS rows.",
+      "description": "BAFU / FOEN import profile for BAFU 2025 ecoSpold1 converted TIDAS rows, using the converted process-bundles index for process-level closure, queue-lock parallelism, reference-only canonical unitgroup/flowproperty reuse, and task-policy-gated batch commit.",
       "docs": [
         "docs/import-profiles/bafu/profile.md",
         "docs/import-profiles/bafu/constraints.md"

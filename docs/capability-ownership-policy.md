@@ -18,8 +18,9 @@ checkPaths:
   - specs/capability-ownership-rules.json
   - specs/automated-lca-capability-registry.json
   - specs/workspace-capability-adapters.md
+  - docs/safety-policy.md
 lastReviewedAt: 2026-06-05
-lastReviewedCommit: 76830c7adc67126a795f5fdc1c650fe56ac7b5e2
+lastReviewedCommit: 18b9caed641add8f7c82f4d7abc5c9e34e50c29d
 ---
 
 # Capability Ownership Policy
@@ -33,7 +34,7 @@ Foundry owns:
 - task queue and task state;
 - per-task workspace layout;
 - source manifests, import profiles, curation packages, cleanup reports, and handoff reports;
-- remote-write policy checks;
+- remote-write policy checks, execution policy records, blocked-scope ledgers, and commit/readback handoff aggregation;
 - acceptance checks and Stop-hook feedback loops;
 - thin adapters that call existing CLI or skill entrypoints.
 
@@ -44,7 +45,9 @@ Foundry does not own:
 - database RPC/schema/index behavior;
 - Edge Function API behavior;
 - TIDAS schema semantics;
-- user RLS-scoped dataset delete, retirement, redo, or repair execution.
+- user RLS-scoped dataset delete, retirement, redo, repair execution, or database mutation semantics.
+
+Profile-gated batch commit does not change ownership: Foundry may decide that an exact scope has passed policy and handoff gates, but the actual mutation command remains an official CLI/platform command executed under an account guard.
 
 ## Decision Rule
 

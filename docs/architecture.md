@@ -81,14 +81,15 @@ profiles
 The v0 runtime is intentionally small:
 
 - filesystem task queue
+- queue/checkpoint-aware batch execution contracts, including task-scoped `max_parallelism`
 - workflow/task validation script
 - read-only workspace map diagnostic
 - no persistent database
-- no remote commit by default
+- no direct database commit from Foundry code; remote commit is allowed only through official CLI/platform commands when profile gates, write policy, commit handoff, and post-write verification are satisfied
 
 ## Retired v1 Daemon Direction
 
-Poll loops, persistent daemons, app-server integration, concurrency orchestration, retry schedulers, and reconciliation workers are not part of the current Foundry architecture. They may be reconsidered only after the two lane workflows are stable and the owner command surfaces are complete.
+Poll loops, persistent daemons, app-server integration, unbounded concurrency orchestration, retry schedulers, and reconciliation workers are not part of the current Foundry architecture. Bounded parallel batch execution is represented as task workspace policy plus CLI queue locks/checkpoints, not as a resident Foundry daemon. Broader runtime workers may be reconsidered only after the two lane workflows are stable and the owner command surfaces are complete.
 
 Retired direction:
 

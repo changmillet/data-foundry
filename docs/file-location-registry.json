@@ -1,7 +1,7 @@
 {
   "$schema": "../specs/schemas/file-location-registry.schema.json",
   "schema_version": 1,
-  "updated_at_utc": "2026-06-04T00:00:00Z",
+  "updated_at_utc": "2026-06-05T00:00:00Z",
   "policy_doc": "docs/file-organization.md",
   "entries": [
     {
@@ -167,6 +167,25 @@
       "sensitivity": "non-sensitive task ledger schema examples; contains no credentials and no private payloads",
       "tracked": true,
       "notes": "Defines the minimal Foundry-owned foundry-job, source-manifest, seed-manifest, checkpoint, and artifact-index contracts."
+    },
+    {
+      "id": "foundry-safety-policy",
+      "status": "active",
+      "classification": "remote-write-safety-policy",
+      "current_path": "docs/safety-policy.md",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "WORKFLOW.md",
+        "README.md",
+        "AGENTS.md",
+        "docs/foundry-task-contracts.md",
+        "docs/import-profiles/bafu/profile.md",
+        "docs/import-profiles/bafu/constraints.md"
+      ],
+      "sensitivity": "non-sensitive remote-write gate and human-approval policy; contains no credentials and no private payloads",
+      "tracked": true,
+      "notes": "Defines when a Foundry import scope may move from dry-run to policy-gated CLI commit and how blocked scopes are isolated for recovery."
     }
   ]
 }

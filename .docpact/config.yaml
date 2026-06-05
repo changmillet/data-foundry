@@ -17,6 +17,7 @@ catalog:
         - docs/capability-ownership-policy.md
         - docs/runtime-skill-management.md
         - docs/foundry-task-contracts.md
+        - docs/safety-policy.md
       workspaceIntegrationRequired: true
 
 ownership:
@@ -131,6 +132,7 @@ docInventory:
     - docs/capability-ownership-policy.md
     - docs/runtime-skill-management.md
     - docs/foundry-task-contracts.md
+    - docs/safety-policy.md
     - docs/workspace-project-map.md
     - docs/agent-harness-cli-comparison.md
     - docs/data-governance-loop.md
@@ -189,6 +191,8 @@ rules:
         kind: service-contract
       - path: specs/workspace-capability-adapters.md
         kind: adapter-contract
+      - path: docs/safety-policy.md
+        kind: remote-write-safety-policy
     requiredDocs:
       - path: README.md
         mode: review_or_update

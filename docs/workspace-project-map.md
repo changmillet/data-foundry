@@ -18,7 +18,7 @@ checkPaths:
   - specs/capability-ownership-rules.json
   - specs/workspace-capability-adapters.md
 lastReviewedAt: 2026-06-05
-lastReviewedCommit: 76830c7adc67126a795f5fdc1c650fe56ac7b5e2
+lastReviewedCommit: 18b9caed641add8f7c82f4d7abc5c9e34e50c29d
 ---
 
 # Workspace Project Map
@@ -34,7 +34,8 @@ Foundry should route reusable work to the owning repository instead of copying i
 | SCI literature evidence retrieval for source-evidence tasks | `tiangong-ai/skills` | `npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --full-depth`; install/update with the npm `skills` package |
 | Agent workflow instructions | `tiangong-lca-skills` | `$tidas-contract-context`, `$tidas-data-import` |
 | Schema validation and QA gates | `tiangong-lca-cli` | `dataset validate`, `qa` |
-| Remote readback and publish prep | `tiangong-lca-cli`, Edge Functions, database | `dataset verify-remote`, `publish run`, Edge verification |
+| Remote commit, readback, and publish prep | `tiangong-lca-cli`, Edge Functions, database | `dataset-post-authoring-finalize` handoff, CLI commit commands, `dataset verify-remote`, `publish run`, Edge verification |
 | Foundry task routing and manifests | `tiangong-lca-data-foundry` | `scripts/foundry.mjs route-task` |
+| Write/execution policy and blocked-scope ledgers | `tiangong-lca-data-foundry` | `foundry-job.json`, checkpoints, mutation manifest aggregation, closeout reports |
 
 Before implementing a missing capability, classify it with `docs/capability-ownership-policy.md` and `specs/capability-ownership-rules.json`.

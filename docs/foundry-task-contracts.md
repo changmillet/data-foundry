@@ -58,7 +58,19 @@ Foundry owns a small task ledger. It records what should happen, which profile a
   "workspace_dir": ".foundry/workspaces/issue-123",
   "write_policy": {
     "mode": "dry-run",
-    "requires_human_approval": true
+    "remote_commit": "profile_gated_batch",
+    "requires_human_approval": false,
+    "human_approval_required_for": [
+      "policy_change",
+      "exceptional_waiver",
+      "missing_canonical_support_resolution",
+      "delete_action"
+    ]
+  },
+  "execution_policy": {
+    "max_parallelism": 4,
+    "claim_strategy": "queue_lock",
+    "blocked_item_policy": "record_and_continue_independent_scopes"
   },
   "owner_routes": {
     "conversion": "tiangong-lca-cli",
@@ -68,6 +80,10 @@ Foundry owns a small task ledger. It records what should happen, which profile a
   }
 }
 ```
+
+`write_policy.mode=dry-run` remains the default until a task explicitly permits commit. When `remote_commit=profile_gated_batch`, a runner may execute generated CLI commit commands only for exact scopes whose queue verify, finalize report, mutation manifest, commit handoff, and readback closeout gates pass. `.env` values can supply credentials or command defaults, but they do not replace `source-manifest.json`, `profile-lock.json`, account/write guard reports, or checkpoint evidence.
+
+`execution_policy.max_parallelism` controls queue workers. Workers must claim tasks through CLI queue locks and dependency checkpoints. Blocked entities are written to the task blocker ledger with affected dependency closures and rerun instructions; unrelated ready scopes may continue and may commit if the write policy allows it.
 
 ## source-manifest.json
 
