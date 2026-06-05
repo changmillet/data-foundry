@@ -488,13 +488,15 @@ function buildLibraryContactPayload(
   const libraryName = asText(
     options.libraryName ||
       options.name ||
-      "Federal Office for the Environment FOEN",
+      "Swiss Federal Administration - Federal Office for the Environment (FOEN)",
   );
-  const shortName = asText(options.shortName || "FOEN");
+  const shortName = asText(
+    options.shortName || "Federal Office for the Environment FOEN (BAFU)",
+  );
   const website = asText(
     options.website ||
       options.url ||
-      "https://www.bafu.admin.ch/bafu/en/home.html",
+      "https://www.bafu.admin.ch/en/contact-en",
   );
   const email = asText(options.email || "info@bafu.admin.ch");
   const telephone = asText(
@@ -503,11 +505,11 @@ function buildLibraryContactPayload(
   const contactAddress = asText(
     options.contactAddress ||
       options.address ||
-      "Mühlestrasse 2, 3063 Ittigen, Switzerland",
+      "Federal Office for the Environment FOEN, 3003 Bern, Switzerland",
   );
   const centralContactPoint = asText(
     options.centralContactPoint ||
-      "Federal Office for the Environment FOEN, Mühlestrasse 2, 3063 Ittigen, Switzerland; info@bafu.admin.ch; +41 58 462 93 11",
+      "Federal Office for the Environment FOEN, 3003 Bern, Switzerland; info@bafu.admin.ch; +41 58 462 93 11",
   );
   const description = asText(
     options.description ||
@@ -519,9 +521,11 @@ function buildLibraryContactPayload(
   );
   const id =
     asText(options.contactId || options.id) ||
-    deterministicUuid(
-      `tiangong-lca-foundry:library-contact:${profile}:${libraryName}:${website}`,
-    );
+    (profile === "bafu"
+      ? "a6db11f5-1cb4-579a-b503-bd17c361b8c2"
+      : deterministicUuid(
+          `tiangong-lca-foundry:library-contact:${profile}:${libraryName}:${website}`,
+        ));
   const now = nowIso();
   const templateRoot = templateContact?.contactDataSet;
   const templateDataEntryBy =
@@ -582,11 +586,18 @@ function buildLibraryContactPayload(
     "common:name": multiLang(libraryName, language),
     classificationInformation: {
       "common:classification": {
-        "common:class": {
-          "@level": "0",
-          "@classId": "5",
-          "#text": "Other",
-        },
+        "common:class": [
+          {
+            "@level": "0",
+            "@classId": "2",
+            "#text": "Organisations",
+          },
+          {
+            "@level": "1",
+            "@classId": "2.2",
+            "#text": "Governmental organisations",
+          },
+        ],
       },
     },
     WWWAddress: website,

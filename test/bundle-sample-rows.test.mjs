@@ -240,7 +240,20 @@ test("dataset-bundle-sample-rows creates one shared library contact and rewrites
     contacts[0].contactDataSet.contactInformation.dataSetInformation[
       "common:name"
     ]["#text"],
-    "Federal Office for the Environment FOEN",
+    "Swiss Federal Administration - Federal Office for the Environment (FOEN)",
+  );
+  assert.equal(
+    contacts[0].contactDataSet.contactInformation.dataSetInformation[
+      "common:shortName"
+    ]["#text"],
+    "Federal Office for the Environment FOEN (BAFU)",
+  );
+  assert.deepEqual(
+    contacts[0].contactDataSet.contactInformation.dataSetInformation
+      .classificationInformation["common:classification"]["common:class"].map(
+        (item) => item["#text"],
+      ),
+    ["Organisations", "Governmental organisations"],
   );
   assert.equal(JSON.stringify(processes).includes(newContactId), true);
   assert.equal(JSON.stringify(sources).includes(newContactId), true);
