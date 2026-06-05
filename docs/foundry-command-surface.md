@@ -28,15 +28,19 @@ Foundry command governance has two layers:
 
 The metadata module must cover every command returned by `node scripts/foundry.mjs help`.
 It records each command category, owner module, owner export, input artifacts, output
-artifacts, and key behavior checks.
+artifacts, workflow entry audit state, and key behavior checks.
 
 ## Categories
 
 - `public`: stable operator-facing commands for runtime setup, diagnostics, task routing, profile listing, and task state.
 - `workflow-internal`: Foundry policy or artifact helpers used inside the import/authoring workflow.
 - `cli-wrapper`: compatibility wrappers over sibling `tiangong-lca` CLI behavior that Foundry does not own.
-- `legacy`: retained compatibility surface whose current behavior is still active but whose ownership should be revisited.
 - `candidate-deprecate`: commands that may be deprecated only after evidence shows no command, test, doc, or artifact dependency still requires them.
+
+Every non-deprecated command must have `workflowEntry.status: "active"` and at
+least one key behavior check. A `candidate-deprecate` command must instead carry
+explicit `deprecation.deletionConditions`, so unused surface area cannot hide as
+an unreviewed command.
 
 ## Navigation Contract
 
@@ -52,7 +56,8 @@ Public command owner paths must be at most two jumps from `scripts/foundry.mjs`.
 For semantic import-curation commands, prefer owner modules such as
 `profiles.mjs`, `curation-gate.mjs`, `authoring-packages.mjs`, `patch-collect.mjs`,
 `curation-cleanup.mjs`, `trace-summary.mjs`, and `mutation-manifest.mjs` over
-mechanical part names.
+mechanical part names. Reusable import-curation logic should be exposed through
+focused workflow facets under `scripts/lib/import-curation/internal/*-workflow.mjs`.
 
 ## Maintenance Rule
 

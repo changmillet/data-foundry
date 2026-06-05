@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import * as legacy from "./internal/legacy-implementation.mjs";
+import * as mutationManifestWorkflow from "./internal/mutation-manifest-workflow.mjs";
 
 const {
   asText,
@@ -54,7 +54,7 @@ const {
   supportDatasetTypes,
   writeJson,
   writeText,
-} = legacy;
+} = mutationManifestWorkflow;
 
 export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
   const datasetType = datasetTypeFromOptions(options);

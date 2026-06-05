@@ -1,5 +1,54 @@
 import fs from "node:fs";
 import path from "node:path";
+import { readOnlyStageContract } from "../lib/stage-contract.mjs";
+
+const postAuthoringFinalizeStageContract = readOnlyStageContract([
+  {
+    stage: "prepare_scope",
+    phase: "prepare",
+    purpose:
+      "Resolve dataset type, input rows, profile requirements, output directory, and full-context identity-preflight requirement.",
+    inputs: ["rows file", "profile options", "queue/context options"],
+    outputs: ["finalize scope"],
+    side_effects: [],
+  },
+  {
+    stage: "rewrite_and_cleanup",
+    phase: "rewrite_cleanup",
+    purpose:
+      "Apply identity reference rewrites, unresolved exchange externalization, canonical support rewrites, and deterministic curation cleanup.",
+    inputs: ["input rows", "identity/preflight indexes", "canonical support cache"],
+    outputs: ["rewritten rows", "cleaned rows", "rewrite reports"],
+    side_effects: ["writes local .foundry artifact files"],
+  },
+  {
+    stage: "gate_and_validate",
+    phase: "gate_validate",
+    purpose:
+      "Run curation queue preparation, SDK validation, deterministic QA, location audit, curation gate, dry-run write planning, and optional remote reference verification.",
+    inputs: ["cleaned rows", "context files", "queue artifacts"],
+    outputs: ["validation/QA/gate/dry-run/remote-verify reports"],
+    side_effects: ["runs sibling CLI read-only checks", "writes local .foundry artifact files"],
+  },
+  {
+    stage: "mutation_manifest",
+    phase: "gate_validate",
+    purpose:
+      "Build exact-scope mutation evidence and aggregate prewrite blockers before any explicit commit handoff.",
+    inputs: ["cleaned rows", "all prewrite reports"],
+    outputs: ["dataset-mutation-manifest report"],
+    side_effects: ["writes local .foundry artifact files"],
+  },
+  {
+    stage: "report",
+    phase: "report",
+    purpose:
+      "Emit the post-authoring finalize report with runtime stages, counts, files, and blockers.",
+    inputs: ["runtime stage reports", "mutation manifest"],
+    outputs: ["dataset-post-authoring-finalize-report.json"],
+    side_effects: ["writes local .foundry artifact files"],
+  },
+]);
 
 export function createPostAuthoringFinalizeCommands({
   appendOption,
@@ -53,7 +102,7 @@ export function createPostAuthoringFinalizeCommands({
         ],
         purpose:
           "Run the post-AI authoring prewrite chain for support, process, flow, or lifecyclemodel rows: cleanup, SDK validate, location audit, dry-run publish/save, optional remote reference verification, and mutation manifest. Process/flow/lifecyclemodel rows additionally run deterministic QA and post-authoring curation gate. This command never commits rows.",
-        remote_write_mode: "read-only",
+        ...postAuthoringFinalizeStageContract,
         supported_types: supportedTypes,
       };
     }

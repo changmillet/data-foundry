@@ -1,6 +1,45 @@
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { readOnlyStageContract } from "../lib/stage-contract.mjs";
+
+const authoringPlanStageContract = readOnlyStageContract([
+  {
+    stage: "load_curation_scope",
+    phase: "prepare",
+    purpose:
+      "Read the curation gate report and derive the authoring workspace, context files, queues, and entity scope.",
+    inputs: ["dataset-curation-gate-report.json", "workspace options"],
+    outputs: ["authoring plan scope"],
+    side_effects: [],
+  },
+  {
+    stage: "inspect_existing_artifacts",
+    phase: "rewrite_cleanup",
+    purpose:
+      "Inspect existing identity, classification, location, patch task, decision, collect, and apply artifacts.",
+    inputs: ["authoring workspace artifacts"],
+    outputs: ["phase artifact status snapshots"],
+    side_effects: [],
+  },
+  {
+    stage: "plan_next_commands",
+    phase: "gate_validate",
+    purpose:
+      "Synthesize deterministic next commands for missing task builds, AI decision application, patch collection, and patch application.",
+    inputs: ["phase status snapshots", "curation scope"],
+    outputs: ["phase command plan"],
+    side_effects: [],
+  },
+  {
+    stage: "report",
+    phase: "report",
+    purpose: "Emit the authoring plan with phases, instructions, counts, and report path.",
+    inputs: ["phase command plan"],
+    outputs: ["dataset-authoring-plan.json"],
+    side_effects: ["writes local .foundry artifact files"],
+  },
+]);
 
 export function createAuthoringPlanCommands({
   appendOption,
@@ -623,6 +662,7 @@ export function createAuthoringPlanCommands({
         ],
         purpose:
           "Summarize the next required AI authoring, deterministic apply, and post-authoring validation steps from a Foundry curation gate report. This command never writes the database.",
+        ...authoringPlanStageContract,
       };
     }
 
@@ -1017,7 +1057,7 @@ export function createAuthoringPlanCommands({
       generated_at_utc: nowIso(),
       status: authoringPlanOverallStatus(phases),
       command: "dataset-authoring-plan",
-      remote_write_mode: "read-only",
+      ...authoringPlanStageContract,
       curation_gate_report: repoRelativePath(curationGateReportPath),
       workspace_dir: repoRelativePath(workspaceDir),
       profile: curationGateReport.profile ?? null,
@@ -1032,6 +1072,7 @@ export function createAuthoringPlanCommands({
         deterministic_cleanup_items: Number(
           counts.deterministic_cleanup_items ?? 0,
         ),
+        blockers: 0,
       },
       context: {
         schema_file: contextPaths.schema,
@@ -1043,6 +1084,7 @@ export function createAuthoringPlanCommands({
         shared_context_cache_dir: sharedContextCacheDirRef,
       },
       phases,
+      blockers: [],
       instructions: [
         "Run any needs_task_build command first; task status must be ready before AI authoring.",
         "AI/Codex/skills must read the task JSON and referenced authoring packages before writing decisions or patches.",

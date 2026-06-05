@@ -4,6 +4,63 @@ import {
   bundleRowTypeOrder,
   bundleRowTypes,
 } from "../lib/bundle-row-types.mjs";
+import { readOnlyStageContract } from "../lib/stage-contract.mjs";
+
+const bundleSampleStageContract = readOnlyStageContract([
+  {
+    stage: "select_bundles",
+    phase: "prepare",
+    purpose: "Resolve requested process ids or deterministic sample selection.",
+    inputs: ["process-bundles directory", "process id or sample options"],
+    outputs: ["selected bundle manifest list"],
+    side_effects: [],
+  },
+  {
+    stage: "materialize_rows",
+    phase: "rewrite_cleanup",
+    purpose:
+      "Read selected bundle dependencies and materialize source-language JSONL rows.",
+    inputs: ["selected manifests", "bundle TIDAS payload files"],
+    outputs: ["rows/*.jsonl", "support.jsonl"],
+    side_effects: ["writes local .foundry artifact files"],
+  },
+  {
+    stage: "deterministic_rewrites",
+    phase: "rewrite_cleanup",
+    purpose:
+      "Apply library contact, canonical source, canonical support, trace, source semantics, and placeholder repairs before write planning.",
+    inputs: ["materialized row payloads", "canonical support cache"],
+    outputs: [
+      "source-reference-rewrites.jsonl",
+      "canonical-support-rewrites.jsonl",
+      "source-semantics.jsonl",
+    ],
+    side_effects: ["writes local .foundry artifact files"],
+  },
+  {
+    stage: "authoring_queues",
+    phase: "gate_validate",
+    purpose:
+      "Produce classification, location, identity-preflight, and elementary-flow reuse queues for unresolved policy work.",
+    inputs: ["rewritten rows", "TIDAS classification/location schemas"],
+    outputs: [
+      "classification-authoring-queue.jsonl",
+      "location-authoring-queue.jsonl",
+      "identity-preflight-requests.jsonl",
+      "elementary-flow-reuse-queue.jsonl",
+    ],
+    side_effects: ["writes local .foundry artifact files"],
+  },
+  {
+    stage: "report",
+    phase: "report",
+    purpose:
+      "Emit a command report with row files, generated handoff commands, counts, and blockers.",
+    inputs: ["all generated local artifacts"],
+    outputs: ["dataset-bundle-sample-rows-report.json"],
+    side_effects: ["writes local .foundry artifact files"],
+  },
+]);
 
 export function createBundleSampleRowsCommands({
   addDedupedBundleRow,
@@ -59,7 +116,7 @@ export function createBundleSampleRowsCommands({
         ],
         purpose:
           "Sample process bundles, materialize support/process JSONL rows, replace all converted tool contacts with one library-level contact, and write commit-ready row files.",
-        remote_write_mode: "read-only",
+        ...bundleSampleStageContract,
       };
     }
 

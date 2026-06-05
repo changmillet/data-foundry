@@ -2,7 +2,6 @@ export const commandCategories = [
   "public",
   "workflow-internal",
   "cli-wrapper",
-  "legacy",
   "candidate-deprecate",
 ];
 
@@ -27,6 +26,36 @@ const taskOwner = "scripts/commands/tasks.mjs";
 const importOwner = (moduleName) =>
   `scripts/lib/import-curation/${moduleName}.mjs`;
 
+function workflowEntryForCategory(category) {
+  switch (category) {
+    case "public":
+      return {
+        status: "active",
+        entry_kind: "operator_control_surface",
+      };
+    case "workflow-internal":
+      return {
+        status: "active",
+        entry_kind: "dataset_import_workflow_stage",
+      };
+    case "cli-wrapper":
+      return {
+        status: "active",
+        entry_kind: "sibling_cli_policy_wrapper",
+      };
+    case "candidate-deprecate":
+      return {
+        status: "candidate-deprecate",
+        entry_kind: "pending_deprecation_review",
+      };
+    default:
+      return {
+        status: "unknown",
+        entry_kind: "unknown",
+      };
+  }
+}
+
 function metadata({
   category,
   ownerModule,
@@ -34,6 +63,8 @@ function metadata({
   inputs,
   outputs,
   keyTests,
+  workflowEntry,
+  deprecation = null,
 }) {
   return {
     category,
@@ -47,6 +78,8 @@ function metadata({
     inputs,
     outputs,
     keyTests,
+    workflowEntry: workflowEntry ?? workflowEntryForCategory(category),
+    deprecation,
   };
 }
 
@@ -183,6 +216,7 @@ export const commandMetadata = {
     inputs: ["curation gate reports", "authoring task manifests", "decision task manifests"],
     outputs: ["dataset-authoring-plan JSON report"],
     keyTests: [
+      nodeTest("test/foundry-stage-contract.test.mjs", "complex workflow commands publish AI-readable stage contracts"),
       nodeTest("test/authoring-plan.test.mjs", "dataset-authoring-plan aggregates missing AI task builds from curation gate"),
     ],
   }),
@@ -294,6 +328,7 @@ export const commandMetadata = {
     outputs: ["sample rows JSONL", "classification-authoring-queue.jsonl", "location-authoring-queue.jsonl", "identity-preflight-requests.jsonl", "dataset-bundle-sample-rows-report.json"],
     keyTests: [
       goldenDiff,
+      nodeTest("test/foundry-stage-contract.test.mjs", "complex workflow commands publish AI-readable stage contracts"),
       nodeTest("test/bundle-sample-rows.test.mjs", "dataset-bundle-sample-rows writes executable identity preflight requests for process and elementary flow matching"),
     ],
   }),
@@ -324,6 +359,7 @@ export const commandMetadata = {
     inputs: ["identity-preflight-requests.jsonl", "sibling tiangong-lca CLI"],
     outputs: ["identity-preflight-run-results.jsonl", "dataset-identity-preflight-run-report.json"],
     keyTests: [
+      nodeTest("test/foundry-stage-contract.test.mjs", "complex workflow commands publish AI-readable stage contracts"),
       nodeTest("test/bundle-sample-rows.test.mjs", "dataset-identity-preflight-run executes request indexes and preserves identity blockers as evidence"),
       nodeTest("test/full-context-gate-03.test.mjs", "identity preflight batch runner records timed-out CLI rows without hanging"),
     ],
@@ -367,6 +403,7 @@ export const commandMetadata = {
     outputs: ["final rows file", "schema report", "cleanup report", "dry-run report", "post-authoring-finalize report"],
     keyTests: [
       goldenDiff,
+      nodeTest("test/foundry-stage-contract.test.mjs", "complex workflow commands publish AI-readable stage contracts"),
       nodeTest("test/full-context-gate-04.test.mjs", "post-authoring finalize declares external process flow refs for remote proof"),
     ],
   }),

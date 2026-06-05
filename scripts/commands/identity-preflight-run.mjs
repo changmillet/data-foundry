@@ -1,6 +1,53 @@
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import process from "node:process";
+import { readOnlyStageContract } from "../lib/stage-contract.mjs";
+
+const identityPreflightRunStageContract = readOnlyStageContract([
+  {
+    stage: "load_index",
+    phase: "prepare",
+    purpose: "Read and select rows from a Foundry identity-preflight request index.",
+    inputs: ["identity-preflight-requests.jsonl", "dataset type/id/offset/limit options"],
+    outputs: ["selected request rows"],
+    side_effects: [],
+  },
+  {
+    stage: "normalize_requests",
+    phase: "rewrite_cleanup",
+    purpose:
+      "Resolve request files, output directories, row keys, and timeout settings before invoking the sibling CLI.",
+    inputs: ["selected request rows", "runner options"],
+    outputs: ["normalized executable request descriptors"],
+    side_effects: [],
+  },
+  {
+    stage: "execute_cli_preflight",
+    phase: "gate_validate",
+    purpose:
+      "Execute the sibling tiangong-lca flow/process identity-preflight command for each selected request.",
+    inputs: ["selected request rows", "request JSON files"],
+    outputs: ["identity-decision.json", "identity candidate artifacts", "stdout/stderr logs"],
+    side_effects: ["runs sibling CLI read-only search", "writes local .foundry artifacts"],
+  },
+  {
+    stage: "collect_evidence",
+    phase: "report",
+    purpose:
+      "Normalize CLI results so blocked/needs-review identity findings remain evidence rather than runner failures.",
+    inputs: ["CLI stdout", "identity-decision report files"],
+    outputs: ["identity-preflight-run-results.jsonl"],
+    side_effects: ["writes local .foundry artifacts"],
+  },
+  {
+    stage: "report",
+    phase: "report",
+    purpose: "Emit selected counts, failures, identity findings, and artifact paths.",
+    inputs: ["normalized run results"],
+    outputs: ["dataset-identity-preflight-run-report.json"],
+    side_effects: ["writes local .foundry artifacts"],
+  },
+]);
 
 export function createIdentityPreflightRunCommands({
   asText,
@@ -117,7 +164,7 @@ export function createIdentityPreflightRunCommands({
           "node scripts/foundry.mjs dataset-identity-preflight-run --index <identity-preflight-requests.jsonl> --out-dir <run-dir> --timeout-ms 60000",
           "node scripts/foundry.mjs dataset-identity-preflight-run --index ./identity-preflight-requests/identity-preflight-requests.jsonl --only-pending --timeout-ms 60000",
         ],
-        remote_write_mode: "read-only",
+        ...identityPreflightRunStageContract,
       };
     }
     const indexPath = identityPreflightRunIndexPath(options);
@@ -302,6 +349,17 @@ export function createIdentityPreflightRunCommands({
     const identityFindingRows = resultRows.filter((row) =>
       ["blocked", "needs_review"].includes(row.report_status),
     );
+    const blockers = failedRows.map((row) => ({
+      code: row.failure_code || "identity_preflight_run_failed",
+      message: "Identity-preflight runner could not produce usable evidence for a selected row.",
+      dataset_type: row.dataset_type || null,
+      dataset_id: row.dataset_id || null,
+      dataset_version: row.dataset_version || null,
+      request_file: row.request_file || null,
+      report_file: row.report_file || null,
+      stdout_log: row.stdout_log || null,
+      stderr_log: row.stderr_log || null,
+    }));
     const status = dryRun
       ? "planned"
       : failedRows.length > 0
@@ -324,7 +382,7 @@ export function createIdentityPreflightRunCommands({
       status,
       command: "dataset-identity-preflight-run",
       index_file: repoRelativePath(indexPath),
-      remote_write_mode: "read-only",
+      ...identityPreflightRunStageContract,
       runtime_options: {
         timeout_ms: timeoutMs,
         spawn_timeout_ms: spawnTimeoutMs,
@@ -349,6 +407,7 @@ export function createIdentityPreflightRunCommands({
           (row) =>
             Number.isInteger(row.cli_exit_code) && row.cli_exit_code !== 0,
         ).length,
+        blockers: blockers.length,
       },
       policy: {
         valid_identity_findings_are_not_tool_failures:
@@ -360,6 +419,7 @@ export function createIdentityPreflightRunCommands({
         report: repoRelativePath(reportPath),
         results: repoRelativePath(resultsPath),
       },
+      blockers,
       results: resultRows,
     };
     writeJson(reportPath, report);

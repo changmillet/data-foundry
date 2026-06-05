@@ -20,6 +20,10 @@ function repoFileExists(filePath) {
   return fs.existsSync(path.join(repoRoot, filePath));
 }
 
+function readRepoFile(filePath) {
+  return fs.readFileSync(path.join(repoRoot, filePath), "utf8");
+}
+
 test("foundry command metadata covers every registered command", () => {
   const metadataCommands = Object.keys(commandMetadata).sort();
   assert.deepEqual(metadataCommands, [...knownCommands].sort());
@@ -61,6 +65,19 @@ test("foundry command metadata is navigable and evidence backed", () => {
     assert.ok(entry.inputs.length > 0, `${entry.command} should declare input artifacts`);
     assert.ok(entry.outputs.length > 0, `${entry.command} should declare output artifacts`);
     assert.ok(entry.keyTests.length > 0, `${entry.command} should declare key tests`);
+    assert.ok(entry.workflowEntry, `${entry.command} should declare workflowEntry audit state`);
+    assert.ok(entry.workflowEntry.status, `${entry.command} workflowEntry should declare status`);
+    assert.ok(entry.workflowEntry.entry_kind, `${entry.command} workflowEntry should declare entry_kind`);
+    if (entry.category === "candidate-deprecate") {
+      assert.equal(entry.workflowEntry.status, "candidate-deprecate");
+      assert.ok(
+        entry.deprecation?.deletionConditions?.length > 0,
+        `${entry.command} candidate-deprecate command should declare deletion conditions`,
+      );
+    } else {
+      assert.equal(entry.workflowEntry.status, "active", `${entry.command} should have active workflow audit state`);
+      assert.equal(entry.deprecation, null, `${entry.command} active command should not carry deprecation conditions`);
+    }
     for (const keyTest of entry.keyTests) {
       if (keyTest.path) {
         assert.ok(repoFileExists(keyTest.path), `${entry.command} key test path is missing: ${keyTest.path}`);
@@ -76,6 +93,22 @@ test("public command implementation paths are at most two jumps from the CLI ent
     assert.ok(
       pathLength <= 3,
       `${command} should be reachable as foundry.mjs -> foundry-cli.mjs -> owner`,
+    );
+  }
+});
+
+test("command owners do not depend on bulk workflow implementation files", () => {
+  for (const entry of commandMetadataEntries()) {
+    const source = readRepoFile(entry.ownerModule);
+    assert.equal(
+      source.includes("legacy-implementation.mjs"),
+      false,
+      `${entry.command} owner must not import removed legacy implementation`,
+    );
+    assert.equal(
+      source.includes("internal/workflow-domain.mjs"),
+      false,
+      `${entry.command} owner should import a semantic workflow facet instead of workflow-domain.mjs`,
     );
   }
 });

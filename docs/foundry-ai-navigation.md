@@ -67,10 +67,26 @@ Use these semantic modules as the import-curation navigation surface:
 | `scripts/lib/import-curation/mutation-manifest.mjs` | prewrite mutation manifest and blocker aggregation |
 
 Command runners live in the semantic modules above. The remaining
-`scripts/lib/import-curation/internal/legacy-implementation.mjs` file is a
-compatibility/helper layer for workflow logic that has not yet been split into
-smaller internal modules. New command behavior should start in the semantic
-owner module, with reusable helpers placed in focused internal modules.
+reusable workflow logic is exposed through focused internal workflow facets such
+as `authoring-task-workflow.mjs`, `authoring-patch-workflow.mjs`,
+`curation-gate-workflow.mjs`, and `mutation-manifest-workflow.mjs`. New command
+behavior should start in the semantic owner module, with reusable helpers placed
+in focused internal modules.
+
+Complex workflow commands should also publish an AI-readable `stage_pipeline`
+contract in their help/report payload. The shared helper is
+`scripts/lib/stage-contract.mjs`; it standardizes `remote_write_mode`,
+`stage_pipeline[].stage`, canonical `phase`, `purpose`, `inputs`, `outputs`,
+`blockers`, `artifacts`, `side_effects`, and a stable `report_contract` requiring
+`status`, `counts`, `files`, `blockers`, and read-only `remote_write_mode`.
+Complex commands should expose the canonical phases `prepare`,
+`rewrite_cleanup`, `gate_validate`, and `report`.
+`test/foundry-stage-contract.test.mjs` currently enforces this contract for:
+
+- `dataset-bundle-sample-rows`
+- `dataset-post-authoring-finalize`
+- `dataset-authoring-plan`
+- `dataset-identity-preflight-run`
 
 ## Internal Layers
 
@@ -78,7 +94,8 @@ The current internal dependency direction is:
 
 ```text
 semantic import-curation modules
-  -> internal/legacy-implementation.mjs
+  -> internal/*-workflow.mjs
+  -> internal/workflow-domain.mjs
   -> internal/full-context-proof.mjs
   -> internal/profiles-config.mjs
   -> internal/trace-summary.mjs
@@ -94,8 +111,13 @@ Layer rules:
 - `dataset-payload.mjs`: TIDAS row payload unwrap, dataset root/type detection, dataset identity, and identity map keys.
 - `profiles-config.mjs`: import profile loading, normalization, listing, and lookup.
 - `trace-summary.mjs`: Foundry trace entry collection and compact trace summaries.
+- `prewrite-cleanup.mjs`: deterministic write-preparation transforms such as annual-supply sentinel completion, import trace externalization, Foundry trace namespace repair, local locator redaction, and timestamp normalization.
 - `full-context-proof.mjs`: full-context package/task proof loading and blocker construction.
-- `legacy-implementation.mjs`: remaining compatibility/helper surface; do not add new command runners here.
+- `authoring-task-workflow.mjs`: AI authoring package to task manifest/template preparation helpers.
+- `authoring-patch-workflow.mjs`: AI patch collection, patch-set validation, and full-context readiness helpers.
+- `curation-gate-workflow.mjs`: curation gate queue, identity-preflight, QA/schema action, and authoring context helpers.
+- `mutation-manifest-workflow.mjs`: prewrite evidence, reference closure, dry-run proof, and write-candidate planning helpers.
+- `workflow-domain.mjs`: shared import-curation domain implementation used by the workflow facets above; command modules should import the narrower facet whenever possible.
 
 Dependencies should point downward only. Internal low-level modules must not
 import semantic command modules.

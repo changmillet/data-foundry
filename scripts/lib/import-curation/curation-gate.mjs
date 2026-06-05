@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import * as legacy from "./internal/legacy-implementation.mjs";
+import * as curationGateWorkflow from "./internal/curation-gate-workflow.mjs";
 
 const {
   authoringQueueRowsForIdentity,
@@ -56,7 +56,7 @@ const {
   unresolvedExchangeExternalizationRowsForIdentity,
   writeJson,
   writeText,
-} = legacy;
+} = curationGateWorkflow;
 
 export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
   const datasetType = datasetTypeFromOptions(options);

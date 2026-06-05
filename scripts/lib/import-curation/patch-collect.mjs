@@ -16,7 +16,7 @@ import {
   patchSetOperations,
   sharedContextBundleReadinessBlockers,
   validateCollectedPatchSet,
-} from "./internal/legacy-implementation.mjs";
+} from "./internal/authoring-patch-workflow.mjs";
 
 export function runDatasetAuthoringPatchCollect({
   repoRoot,

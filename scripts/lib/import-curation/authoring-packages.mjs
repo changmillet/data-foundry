@@ -12,7 +12,7 @@ import {
   authoringPackageEntriesFromGate,
   buildDatasetAuthoringTaskFromPackage,
   writeAuthoringTaskBatchManifest,
-} from "./internal/legacy-implementation.mjs";
+} from "./internal/authoring-task-workflow.mjs";
 
 export function runDatasetAuthoringTaskBuild({ repoRoot, options = {} } = {}) {
   if (options.help) {
