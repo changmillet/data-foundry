@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
+  "..",
 );
 const fixtureRoot = path.join(repoRoot, "tmp", "authoring-task-context-test");
 const processId = "aaaaaaaa-bbbb-5ccc-8ddd-eeeeeeeeeeee";

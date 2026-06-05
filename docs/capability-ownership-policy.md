@@ -15,6 +15,9 @@ checkPaths:
   - docs/capability-ownership-policy.md
   - docs/architecture.md
   - docs/workspace-project-map.md
+  - docs/foundry-ai-navigation.md
+  - docs/foundry-command-surface.md
+  - test/README.md
   - specs/capability-ownership-rules.json
   - specs/automated-lca-capability-registry.json
   - specs/workspace-capability-adapters.md
@@ -41,6 +44,7 @@ Foundry owns:
 - remote-write policy checks, execution policy records, blocked-scope ledgers and reports, and commit/readback handoff aggregation;
 - support dependency finalize/handoff aggregation for profile-generated writable contact/source rows, without directly mutating the database;
 - acceptance checks and Stop-hook feedback loops;
+- local test structure for Foundry-owned metadata, command contracts, scenario orchestration, and shared fixtures;
 - thin adapters that call existing CLI or skill entrypoints.
 
 Foundry does not own:
@@ -50,6 +54,7 @@ Foundry does not own:
 - database RPC/schema/index behavior;
 - Edge Function API behavior;
 - TIDAS schema semantics;
+- CLI, SDK, database, converter, or Edge behavior reimplemented as local test fixtures;
 - user RLS-scoped dataset delete, retirement, redo, repair execution, or database mutation semantics.
 
 Profile-gated batch commit does not change ownership: Foundry may decide that an exact scope has passed policy and handoff gates, but the actual mutation command remains an official CLI/platform command executed under an account guard. Foundry's default platform invocation is the published CLI package, `npx --yes @tiangong-lca/cli@latest ...`; local binary overrides are only explicit operator/test state, not the workflow contract.
@@ -83,6 +88,8 @@ Treat a capability as foundry-specific when all of these are true:
 - it only checks foundry-owned artifacts;
 - it only controls task state, workspace layout, or gate reconciliation;
 - it does not duplicate CLI, skill, database, Edge, converter, SDK, or schema behavior.
+
+Foundry tests follow the same boundary. Unit tests cover local metadata and helpers, command tests cover Foundry command artifacts, scenario tests cover multi-command orchestration, and fixtures remain local harness data rather than fake implementations of sibling project ownership.
 
 ## Follow-Up Requirement
 

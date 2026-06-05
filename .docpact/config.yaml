@@ -18,6 +18,8 @@ catalog:
         - docs/runtime-skill-management.md
         - docs/foundry-task-contracts.md
         - docs/safety-policy.md
+        - docs/foundry-ai-navigation.md
+        - docs/foundry-command-surface.md
       workspaceIntegrationRequired: true
 
 ownership:
@@ -41,6 +43,11 @@ ownership:
           - specs/capability-ownership-rules.json
           - specs/data-foundry-service.md
           - specs/workspace-capability-adapters.md
+      ownerRepo: data-foundry
+    - id: foundry-test-harness
+      paths:
+        include:
+          - test/**
       ownerRepo: data-foundry
     - id: import-profiles
       paths:
@@ -68,6 +75,7 @@ coverage:
     - .gitignore
     - package.json
     - scripts/**
+    - test/**
     - specs/**
     - docs/**
     - .agents/skills/**
@@ -133,6 +141,9 @@ docInventory:
     - docs/runtime-skill-management.md
     - docs/foundry-task-contracts.md
     - docs/safety-policy.md
+    - docs/foundry-ai-navigation.md
+    - docs/foundry-command-surface.md
+    - test/README.md
     - docs/workspace-project-map.md
     - docs/agent-harness-cli-comparison.md
     - docs/data-governance-loop.md
@@ -193,6 +204,10 @@ rules:
         kind: adapter-contract
       - path: docs/safety-policy.md
         kind: remote-write-safety-policy
+      - path: docs/foundry-ai-navigation.md
+        kind: command-navigation
+      - path: docs/foundry-command-surface.md
+        kind: command-surface-doc
     requiredDocs:
       - path: README.md
         mode: review_or_update
@@ -221,6 +236,24 @@ rules:
       - path: docs/architecture.md
         mode: review_or_update
     reason: Import profile constraints must remain generic profile contracts, not Foundry code paths.
+  - id: foundry-test-layout-contract
+    scope: repo
+    repo: data-foundry
+    triggers:
+      - path: test/**
+        kind: local-test-harness
+      - path: test/README.md
+        kind: test-layout-contract
+    requiredDocs:
+      - path: test/README.md
+        mode: must_exist
+      - path: AGENTS.md
+        mode: must_exist
+      - path: docs/foundry-ai-navigation.md
+        mode: must_exist
+      - path: docs/foundry-command-surface.md
+        mode: must_exist
+    reason: Test changes must preserve the unit/commands/scenarios/fixtures layout and remain aligned with command navigation.
   - id: foundry-skill-orchestration-contract
     scope: repo
     repo: data-foundry

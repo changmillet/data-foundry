@@ -195,7 +195,7 @@ export const commandMetadata = {
     inputs: ["converted process/flow/support/lifecyclemodel rows"],
     outputs: ["CLI curation queue directory", "Foundry wrapper JSON report"],
     keyTests: [
-      nodeTest("test/full-context-gate-03.test.mjs", "curation queue build is used before full-context authoring"),
+      nodeTest("test/scenarios/identity-preflight-and-curation-context.test.mjs", "curation queue build is used before full-context authoring"),
     ],
   }),
   "dataset-curation-gate": metadata({
@@ -206,7 +206,7 @@ export const commandMetadata = {
     outputs: ["dataset-curation-gate-report.json", "ai-authoring-packages/*"],
     keyTests: [
       goldenDiff,
-      nodeTest("test/full-context-gate-03.test.mjs", "curation gate authoring package carries full contract text and queue dependency rows"),
+      nodeTest("test/scenarios/identity-preflight-and-curation-context.test.mjs", "curation gate authoring package carries full contract text and queue dependency rows"),
     ],
   }),
   "dataset-authoring-plan": metadata({
@@ -216,8 +216,8 @@ export const commandMetadata = {
     inputs: ["curation gate reports", "authoring task manifests", "decision task manifests"],
     outputs: ["dataset-authoring-plan JSON report"],
     keyTests: [
-      nodeTest("test/foundry-stage-contract.test.mjs", "complex workflow commands publish AI-readable stage contracts"),
-      nodeTest("test/authoring-plan.test.mjs", "dataset-authoring-plan aggregates missing AI task builds from curation gate"),
+      nodeTest("test/unit/foundry-stage-contract.test.mjs", "complex workflow commands publish AI-readable stage contracts"),
+      nodeTest("test/commands/authoring-plan.test.mjs", "dataset-authoring-plan aggregates missing AI task builds from curation gate"),
     ],
   }),
   "dataset-authoring-task-build": metadata({
@@ -228,7 +228,7 @@ export const commandMetadata = {
     outputs: ["ai-authoring-task.json", "ai-authoring-task.md", "patch-template.json", "authoring-task-manifest.json"],
     keyTests: [
       goldenDiff,
-      nodeTest("test/authoring-task-context.test.mjs", "authoring task build blocks AI patch authoring when full context is incomplete"),
+      nodeTest("test/commands/authoring-task-context.test.mjs", "authoring task build blocks AI patch authoring when full context is incomplete"),
     ],
   }),
   "dataset-authoring-patch-collect": metadata({
@@ -238,7 +238,7 @@ export const commandMetadata = {
     inputs: ["authoring task manifest", "AI patch files", "authoring packages"],
     outputs: ["authoring-patch-collect-report.json", "ai-patches.batch.json"],
     keyTests: [
-      nodeTest("test/authoring-task-context.test.mjs", "authoring patch collect blocks stale manifests that lack full-context task proof"),
+      nodeTest("test/commands/authoring-task-context.test.mjs", "authoring patch collect blocks stale manifests that lack full-context task proof"),
     ],
   }),
   "dataset-identity-decision-task-build": metadata({
@@ -248,7 +248,7 @@ export const commandMetadata = {
     inputs: ["curation gate report", "identity-preflight context"],
     outputs: ["identity-decision-task.json", "identity-decision-task.md", "identity-decisions.template.jsonl"],
     keyTests: [
-      nodeTest("test/full-context-gate-03.test.mjs", "identity decision task deduplicates repeated targets and keeps source evidence"),
+      nodeTest("test/scenarios/identity-preflight-and-curation-context.test.mjs", "identity decision task deduplicates repeated targets and keeps source evidence"),
     ],
   }),
   "dataset-classification-decision-task-build": metadata({
@@ -258,7 +258,7 @@ export const commandMetadata = {
     inputs: ["classification-authoring-queue.jsonl", "classification schemas", "context files"],
     outputs: ["classification-decision-task.json", "classification-decision-task.md", "classification-decisions.template.jsonl"],
     keyTests: [
-      nodeTest("test/classification-decisions.test.mjs", "classification decision task and apply route AI choices through CLI classification apply"),
+      nodeTest("test/commands/classification-decisions.test.mjs", "classification decision task and apply route AI choices through CLI classification apply"),
     ],
   }),
   "dataset-classification-decisions-apply": metadata({
@@ -268,7 +268,7 @@ export const commandMetadata = {
     inputs: ["classification queue", "AI classification decisions", "decision task proof"],
     outputs: ["classification-decisions-apply-report.json", "classified rows or queue outputs"],
     keyTests: [
-      nodeTest("test/classification-decisions.test.mjs", "classification decision task and apply route AI choices through CLI classification apply"),
+      nodeTest("test/commands/classification-decisions.test.mjs", "classification decision task and apply route AI choices through CLI classification apply"),
     ],
   }),
   "dataset-location-decision-task-build": metadata({
@@ -278,7 +278,7 @@ export const commandMetadata = {
     inputs: ["location-authoring-queue.jsonl", "tidas_locations_category.json", "context files"],
     outputs: ["location-decision-task.json", "location-decision-task.md", "location-decisions.template.jsonl"],
     keyTests: [
-      nodeTest("test/location-decisions.test.mjs", "location decision task and apply route AI location choices through CLI location apply"),
+      nodeTest("test/commands/location-decisions.test.mjs", "location decision task and apply route AI location choices through CLI location apply"),
     ],
   }),
   "dataset-location-decisions-apply": metadata({
@@ -288,7 +288,7 @@ export const commandMetadata = {
     inputs: ["location queue", "AI location decisions", "decision task proof"],
     outputs: ["location-decisions-apply-report.json", "location-coded rows or queue outputs"],
     keyTests: [
-      nodeTest("test/location-decisions.test.mjs", "location decision task and apply route AI location choices through CLI location apply"),
+      nodeTest("test/commands/location-decisions.test.mjs", "location decision task and apply route AI location choices through CLI location apply"),
     ],
   }),
   "dataset-curation-cleanup": metadata({
@@ -298,7 +298,7 @@ export const commandMetadata = {
     inputs: ["curated rows file", "profile cleanup policy"],
     outputs: ["dataset-curation-cleanup-report.json", "cleaned rows file"],
     keyTests: [
-      nodeTest("test/full-context-gate-04.test.mjs", "curation cleanup fills placeholder annual supply with searchable sentinel"),
+      nodeTest("test/scenarios/post-authoring-finalize-and-cleanup.test.mjs", "curation cleanup fills placeholder annual supply with searchable sentinel"),
     ],
   }),
   "dataset-patch-apply": metadata({
@@ -308,8 +308,8 @@ export const commandMetadata = {
     inputs: ["rows file", "AI patch file", "authoring package proof"],
     outputs: ["patched rows file", "dataset-patch-apply-report.json", "patch-evidence.jsonl"],
     keyTests: [
-      nodeTest("test/full-context-gate-02.test.mjs", "identity decision apply closes flow identity curation and counts as full-context evidence"),
-      nodeTest("test/authoring-task-context.test.mjs", "authoring patch collect blocks AI patches without completed status"),
+      nodeTest("test/scenarios/flow-identity-and-reference-reuse.test.mjs", "identity decision apply closes flow identity curation and counts as full-context evidence"),
+      nodeTest("test/commands/authoring-task-context.test.mjs", "authoring patch collect blocks AI patches without completed status"),
     ],
   }),
   "dataset-support-cache-refresh": metadata({
@@ -328,8 +328,8 @@ export const commandMetadata = {
     outputs: ["sample rows JSONL", "classification-authoring-queue.jsonl", "location-authoring-queue.jsonl", "identity-preflight-requests.jsonl", "dataset-bundle-sample-rows-report.json"],
     keyTests: [
       goldenDiff,
-      nodeTest("test/foundry-stage-contract.test.mjs", "complex workflow commands publish AI-readable stage contracts"),
-      nodeTest("test/bundle-sample-rows.test.mjs", "dataset-bundle-sample-rows writes executable identity preflight requests for process and elementary flow matching"),
+      nodeTest("test/unit/foundry-stage-contract.test.mjs", "complex workflow commands publish AI-readable stage contracts"),
+      nodeTest("test/commands/bundle-sample-rows.test.mjs", "dataset-bundle-sample-rows writes executable identity preflight requests for process and elementary flow matching"),
     ],
   }),
   "dataset-identity-preflight-requests-build": metadata({
@@ -339,7 +339,7 @@ export const commandMetadata = {
     inputs: ["current process or flow rows file", "optional source identity-preflight index"],
     outputs: ["identity-preflight-requests/identity-preflight-requests.jsonl", "dataset-identity-preflight-requests-build-report.json"],
     keyTests: [
-      nodeTest("test/bundle-sample-rows.test.mjs", "dataset-identity-preflight-requests-build creates a fresh exact-row request index"),
+      nodeTest("test/commands/bundle-sample-rows.test.mjs", "dataset-identity-preflight-requests-build creates a fresh exact-row request index"),
     ],
   }),
   "dataset-identity-preflight-query-audit": metadata({
@@ -349,7 +349,7 @@ export const commandMetadata = {
     inputs: ["identity-preflight-requests.jsonl"],
     outputs: ["identity-preflight-query-audit.jsonl", "dataset-identity-preflight-query-audit-report.json"],
     keyTests: [
-      nodeTest("test/bundle-sample-rows.test.mjs", "dataset-identity-preflight-query-audit passes complete fielded edge queries"),
+      nodeTest("test/commands/bundle-sample-rows.test.mjs", "dataset-identity-preflight-query-audit passes complete fielded edge queries"),
     ],
   }),
   "dataset-identity-preflight-run": metadata({
@@ -359,9 +359,9 @@ export const commandMetadata = {
     inputs: ["identity-preflight-requests.jsonl", "published tiangong-lca CLI"],
     outputs: ["identity-preflight-run-results.jsonl", "dataset-identity-preflight-run-report.json"],
     keyTests: [
-      nodeTest("test/foundry-stage-contract.test.mjs", "complex workflow commands publish AI-readable stage contracts"),
-      nodeTest("test/bundle-sample-rows.test.mjs", "dataset-identity-preflight-run executes request indexes and preserves identity blockers as evidence"),
-      nodeTest("test/full-context-gate-03.test.mjs", "identity preflight batch runner records timed-out CLI rows without hanging"),
+      nodeTest("test/unit/foundry-stage-contract.test.mjs", "complex workflow commands publish AI-readable stage contracts"),
+      nodeTest("test/commands/bundle-sample-rows.test.mjs", "dataset-identity-preflight-run executes request indexes and preserves identity blockers as evidence"),
+      nodeTest("test/scenarios/identity-preflight-and-curation-context.test.mjs", "identity preflight batch runner records timed-out CLI rows without hanging"),
     ],
   }),
   "dataset-identity-preflight-index-merge": metadata({
@@ -371,7 +371,7 @@ export const commandMetadata = {
     inputs: ["base identity-preflight index", "refreshed current-scope identity-preflight index"],
     outputs: ["identity-preflight-requests.jsonl", "dataset-identity-preflight-index-merge-report.json"],
     keyTests: [
-      nodeTest("test/full-context-gate-03.test.mjs", "identity preflight index merge preserves dependency rows while refreshing current scope"),
+      nodeTest("test/scenarios/identity-preflight-and-curation-context.test.mjs", "identity preflight index merge preserves dependency rows while refreshing current scope"),
     ],
   }),
   "dataset-library-index-build": metadata({
@@ -381,7 +381,7 @@ export const commandMetadata = {
     inputs: ["root TIDAS library directory", "process-bundles/index.json"],
     outputs: ["library-entity-index.jsonl", "scope-projection.jsonl", "dataset-library-index-build-report.json"],
     keyTests: [
-      nodeTest("test/library-scope-workflow.test.mjs", "library index deduplicates root TIDAS entities and projects shared dependencies to process scopes"),
+      nodeTest("test/scenarios/library-scope-workflow.test.mjs", "library index deduplicates root TIDAS entities and projects shared dependencies to process scopes"),
     ],
   }),
   "dataset-library-authoring-plan": metadata({
@@ -391,7 +391,7 @@ export const commandMetadata = {
     inputs: ["library-entity-index.jsonl", "scope-projection.jsonl"],
     outputs: ["identity-decisions.template.jsonl", "classification-decisions.template.jsonl", "canonical-support-mappings.template.jsonl"],
     keyTests: [
-      nodeTest("test/library-scope-workflow.test.mjs", "library authoring plan emits deduplicated semantic decision templates"),
+      nodeTest("test/scenarios/library-scope-workflow.test.mjs", "library authoring plan emits deduplicated semantic decision templates"),
     ],
   }),
   "dataset-library-decisions-apply": metadata({
@@ -401,7 +401,7 @@ export const commandMetadata = {
     inputs: ["library index", "identity decisions", "classification decisions", "canonical support mappings"],
     outputs: ["library-resolution.json", "scope-checkpoints.jsonl", "blocked-scope-ledger.jsonl", "blocked-scope-report.json", "exchange-reference-rewrites.jsonl"],
     keyTests: [
-      nodeTest("test/library-scope-workflow.test.mjs", "library decisions apply rewrites only elementary flow references and defers unresolved scopes"),
+      nodeTest("test/scenarios/library-scope-workflow.test.mjs", "library decisions apply rewrites only elementary flow references and defers unresolved scopes"),
     ],
   }),
   "dataset-process-scope-run": metadata({
@@ -411,7 +411,7 @@ export const commandMetadata = {
     inputs: ["process-bundles directory", "library-resolution.json", "scope file"],
     outputs: ["scope-checkpoints.jsonl", "blocked-scope-ledger.jsonl", "blocked-scope-report.json", "dataset-process-scope-run-report.json"],
     keyTests: [
-      nodeTest("test/library-scope-workflow.test.mjs", "process scope runner plans only ready scopes and keeps blocked scopes out of the queue"),
+      nodeTest("test/scenarios/library-scope-workflow.test.mjs", "process scope runner plans only ready scopes and keeps blocked scopes out of the queue"),
     ],
   }),
   "dataset-identity-reference-rewrites-apply": metadata({
@@ -421,7 +421,7 @@ export const commandMetadata = {
     inputs: ["process rows file", "identity-preflight index or identity decision rewrites"],
     outputs: ["rewritten rows file", "identity-reference-rewrites-apply-report.json", "reference reuse rows"],
     keyTests: [
-      nodeTest("test/full-context-gate-02.test.mjs", "identity duplicate flow rewrites require high-confidence preflight evidence"),
+      nodeTest("test/scenarios/flow-identity-and-reference-reuse.test.mjs", "identity duplicate flow rewrites require high-confidence preflight evidence"),
     ],
   }),
   "dataset-identity-decisions-apply": metadata({
@@ -431,8 +431,8 @@ export const commandMetadata = {
     inputs: ["rows file", "AI identity decisions", "identity decision task proof"],
     outputs: ["identity-decisions-apply-report.json", "write candidate rows", "reference reuse rows", "reference rewrites"],
     keyTests: [
-      nodeTest("test/authoring-plan.test.mjs", "dataset-identity-decisions-apply filters mixed decisions by requested type"),
-      nodeTest("test/full-context-gate-02.test.mjs", "AI identity decisions apply split flow rows into writes and reference reuse"),
+      nodeTest("test/commands/authoring-plan.test.mjs", "dataset-identity-decisions-apply filters mixed decisions by requested type"),
+      nodeTest("test/scenarios/flow-identity-and-reference-reuse.test.mjs", "AI identity decisions apply split flow rows into writes and reference reuse"),
     ],
   }),
   "dataset-post-authoring-finalize": metadata({
@@ -443,8 +443,8 @@ export const commandMetadata = {
     outputs: ["final rows file", "schema report", "cleanup report", "dry-run report", "post-authoring-finalize report"],
     keyTests: [
       goldenDiff,
-      nodeTest("test/foundry-stage-contract.test.mjs", "complex workflow commands publish AI-readable stage contracts"),
-      nodeTest("test/full-context-gate-04.test.mjs", "post-authoring finalize declares external process flow refs for remote proof"),
+      nodeTest("test/unit/foundry-stage-contract.test.mjs", "complex workflow commands publish AI-readable stage contracts"),
+      nodeTest("test/scenarios/post-authoring-finalize-and-cleanup.test.mjs", "post-authoring finalize declares external process flow refs for remote proof"),
     ],
   }),
   "dataset-commit-handoff-plan": metadata({
@@ -454,7 +454,7 @@ export const commandMetadata = {
     inputs: ["mutation manifest", "finalize report", "location audit evidence"],
     outputs: ["commit handoff plan JSON report"],
     keyTests: [
-      nodeTest("test/full-context-gate-01.test.mjs", "commit handoff blocks nonzero location audit blockers"),
+      nodeTest("test/scenarios/full-context-completion-and-authoring.test.mjs", "commit handoff blocks nonzero location audit blockers"),
     ],
   }),
   "dataset-post-write-closeout": metadata({
@@ -464,7 +464,7 @@ export const commandMetadata = {
     inputs: ["final rows", "write result", "trace queues", "readback/verify evidence"],
     outputs: ["post-write-closeout-report.json"],
     keyTests: [
-      nodeTest("test/full-context-gate-01.test.mjs", "post-write closeout requires common:other trace queues to match final rows"),
+      nodeTest("test/scenarios/full-context-completion-and-authoring.test.mjs", "post-write closeout requires common:other trace queues to match final rows"),
     ],
   }),
   "dataset-import-completion-report": metadata({
@@ -474,7 +474,7 @@ export const commandMetadata = {
     inputs: ["task manifest", "post-write closeout reports", "mutation manifests"],
     outputs: ["dataset-import-completion-report.json"],
     keyTests: [
-      nodeTest("test/full-context-gate-01.test.mjs", "full-context import completion gates block missing proof and pass evidenced BAFU scopes"),
+      nodeTest("test/scenarios/full-context-completion-and-authoring.test.mjs", "full-context import completion gates block missing proof and pass evidenced BAFU scopes"),
     ],
   }),
   "dataset-mutation-manifest": metadata({
@@ -485,8 +485,8 @@ export const commandMetadata = {
     outputs: ["dataset-mutation-manifest.json", "write candidates", "reference reuse items", "blockers"],
     keyTests: [
       goldenDiff,
-      nodeTest("test/full-context-gate-05.test.mjs", "mutation manifest requires full-context AI evidence and preserves deferred trace queues"),
-      nodeTest("test/full-context-gate-06.test.mjs", "mutation manifest blocks process writes when referenced datasets are not proven"),
+      nodeTest("test/scenarios/mutation-manifest-full-context-lineage.test.mjs", "mutation manifest requires full-context AI evidence and preserves deferred trace queues"),
+      nodeTest("test/scenarios/mutation-manifest-reference-closure.test.mjs", "mutation manifest blocks process writes when referenced datasets are not proven"),
     ],
   }),
 };

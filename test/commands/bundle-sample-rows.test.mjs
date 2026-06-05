@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
+  "..",
 );
 const fixtureRoot = path.join(repoRoot, "tmp", "bundle-sample-rows-test");
 const oldContactId = "a6db11f5-1cb4-579a-b503-bd17c361b8c2";

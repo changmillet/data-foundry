@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
+  "..",
 );
 const fixtureRoot = path.join(repoRoot, "tmp", "classification-decisions-test");
 const processId = "11111111-2222-5333-8444-555555555555";

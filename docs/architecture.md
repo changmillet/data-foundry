@@ -18,6 +18,7 @@ checkPaths:
   - AGENTS.md
   - README.md
   - WORKFLOW.md
+  - test/README.md
   - docs/capability-ownership-policy.md
   - docs/workspace-project-map.md
   - specs/capability-ownership-rules.json
@@ -84,6 +85,10 @@ profiles
    - resolve bundle manifest and `tidas_dir` paths relative to `process-bundles/index.json`
    - record ready scope checkpoints, blocked-scope ledgers, and reader-facing blocked-scope reports without turning blocked scopes into write candidates
 
+7. Local behavior test structure
+   - keep unit tests, command contract tests, multi-command scenarios, and shared fixtures in the `test/README.md` layout
+   - protect Foundry orchestration and artifact contracts locally without absorbing reusable CLI, skill, SDK, database, or Edge behavior
+
 ## v0 Runtime
 
 The v0 runtime is intentionally small:
@@ -96,6 +101,7 @@ The v0 runtime is intentionally small:
 - no direct database commit from Foundry code; remote commit is allowed only through official CLI/platform commands when profile gates, write policy, commit handoff, and post-write verification are satisfied
 - generated source/contact support rows may get Foundry-prepared finalize and commit-handoff artifacts, but dependent process/flow/lifecyclemodel scopes must wait for the CLI commit and readback verification of those support rows
 - published CLI invocation is the default command path: `npx --yes @tiangong-lca/cli@latest ...`
+- test execution is local and layered: `npm test` runs all behavior layers, while `npm run test:unit`, `npm run test:commands`, and `npm run test:scenarios` target specific Foundry-owned surfaces
 
 ## Retired v1 Daemon Direction
 

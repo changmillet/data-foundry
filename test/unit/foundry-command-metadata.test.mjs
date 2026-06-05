@@ -6,14 +6,14 @@ import {
   commandCategories,
   commandMetadata,
   commandMetadataEntries,
-} from "../scripts/lib/foundry-command-metadata.mjs";
+} from "../../scripts/lib/foundry-command-metadata.mjs";
 import {
   datasetPolicyCommands,
   knownCommands,
   publicCommands,
-} from "../scripts/lib/foundry-command-registry.mjs";
+} from "../../scripts/lib/foundry-command-registry.mjs";
 
-const repoRoot = path.resolve(import.meta.dirname, "..");
+const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 const allowedCategories = new Set(commandCategories);
 
 function repoFileExists(filePath) {

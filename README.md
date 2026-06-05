@@ -44,6 +44,10 @@ npm run doctor
 npm run workflow:check
 npm run storage:check
 npm run acceptance:check
+npm test
+npm run test:unit
+npm run test:commands
+npm run test:scenarios
 npm run skills:install:shared
 npm run skills:list
 npm run workspace:map

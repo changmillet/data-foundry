@@ -4,10 +4,11 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { createFoundryRuntimeUtils } from "../scripts/lib/foundry-runtime-utils.mjs";
+import { createFoundryRuntimeUtils } from "../../scripts/lib/foundry-runtime-utils.mjs";
 
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
+  "..",
   "..",
 );
 const fixtureRoot = path.join(repoRoot, "tmp", "library-scope-workflow-test");

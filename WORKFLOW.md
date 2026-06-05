@@ -16,10 +16,13 @@ checkPaths:
   - AGENTS.md
   - README.md
   - docs/architecture.md
+  - docs/foundry-ai-navigation.md
+  - docs/foundry-command-surface.md
   - docs/runtime-skill-management.md
   - docs/foundry-task-contracts.md
   - specs/automated-lca-capability-registry.json
   - specs/capability-ownership-rules.json
+  - test/README.md
 lastReviewedAt: 2026-06-05
 lastReviewedCommit: 70dcf44763e20b56027324a15fd8ec1786f9c8de
 tracker:
@@ -175,3 +178,14 @@ Use `--source-rows-file` for process scopes when the import source row may itsel
 22. Move `tasks/active/<task>.md` to `tasks/done/` only through `task-complete --completion-report <dataset-import-completion-report.json>`, so the task id, closeout scope, and profile-required full schema/YAML/context AI completion proof are checked before the file state changes.
 
 Rows remain source-language before import. Bilingual completion is a separate post-import task only when requested.
+
+## Maintainer Validation
+
+Foundry tests are organized by behavior layer, not by historical incident number:
+
+- `test/unit/` for pure metadata and contract helpers.
+- `test/commands/` for one-command artifact and report contracts.
+- `test/scenarios/` for multi-command import workflows and gate behavior.
+- `test/fixtures/` for shared Foundry row, report, and command harness helpers.
+
+Use `npm test` for the full suite, or `npm run test:unit`, `npm run test:commands`, and `npm run test:scenarios` for targeted checks. Legacy aliases may point at these layers, but new tests should be named after the behavior they protect rather than `full-context-gate-N`.

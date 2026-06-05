@@ -15,6 +15,9 @@ checkPaths:
   - docs/workspace-project-map.md
   - docs/architecture.md
   - docs/capability-ownership-policy.md
+  - docs/foundry-ai-navigation.md
+  - docs/foundry-command-surface.md
+  - test/README.md
   - specs/capability-ownership-rules.json
   - specs/workspace-capability-adapters.md
 lastReviewedAt: 2026-06-05
@@ -37,5 +40,6 @@ Foundry should route reusable work to the owning repository instead of copying i
 | Remote commit, readback, and publish prep | `tiangong-lca-cli`, Edge Functions, database | `dataset-post-authoring-finalize` and source/contact support handoff artifacts, published CLI commit commands, `npx --yes @tiangong-lca/cli@latest dataset verify-remote`, `publish run`, Edge verification |
 | Foundry task routing and manifests | `tiangong-lca-data-foundry` | `scripts/foundry.mjs route-task` |
 | Write/execution policy and blocked-scope ledgers/reports | `tiangong-lca-data-foundry` | `foundry-job.json`, library entity indexes, index-relative process-scope projections, deterministic transform evidence reconciliation, source-only-output exchange proof reconciliation, checkpoints, `blocked-scope-ledger.jsonl`, `blocked-scope-report.json`, mutation manifest aggregation, closeout reports |
+| Foundry test structure and command navigation checks | `tiangong-lca-data-foundry` | `test/README.md`, `test/unit`, `test/commands`, `test/scenarios`, `test/fixtures`, `scripts/lib/foundry-command-metadata.mjs` |
 
 Before implementing a missing capability, classify it with `docs/capability-ownership-policy.md` and `specs/capability-ownership-rules.json`.

@@ -15,11 +15,14 @@ whenToUpdate:
 checkPaths:
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
+  - test/README.md
   - scripts/foundry.mjs
   - scripts/lib/foundry-cli.mjs
   - scripts/lib/foundry-command-metadata.mjs
   - scripts/lib/import-curation/**
-  - test/foundry-command-metadata.test.mjs
+  - test/unit/foundry-command-metadata.test.mjs
+lastReviewedAt: 2026-06-05
+lastReviewedCommit: dabd3c9b9841641668caee6fe37cda37d3140739
 ---
 
 # Foundry AI Navigation
@@ -48,7 +51,7 @@ The checked source of truth for command ownership is
 - output artifacts
 - key tests
 
-`test/foundry-command-metadata.test.mjs` enforces that the metadata covers all
+`test/unit/foundry-command-metadata.test.mjs` enforces that the metadata covers all
 registered commands and that public commands remain reachable within two jumps
 from `scripts/foundry.mjs`.
 
@@ -81,7 +84,7 @@ contract in their help/report payload. The shared helper is
 `status`, `counts`, `files`, `blockers`, and read-only `remote_write_mode`.
 Complex commands should expose the canonical phases `prepare`,
 `rewrite_cleanup`, `gate_validate`, and `report`.
-`test/foundry-stage-contract.test.mjs` currently enforces this contract for:
+`test/unit/foundry-stage-contract.test.mjs` currently enforces this contract for:
 
 - `dataset-bundle-sample-rows`
 - `dataset-post-authoring-finalize`
@@ -124,11 +127,18 @@ import semantic command modules.
 
 ## Behavior Freeze
 
+The test tree is split by behavior layer:
+
+- `test/unit/` protects pure metadata and local helper contracts.
+- `test/commands/` protects single-command artifacts, reports, and stage contracts.
+- `test/scenarios/` protects multi-command workflow behavior.
+- `test/fixtures/` contains shared harness builders only.
+
 Before and after structural changes, run:
 
 ```bash
 npm run golden:diff
-node --test test/*.mjs
+npm test
 npm run test:full-context-gate
 node scripts/foundry.mjs doctor
 git diff --check

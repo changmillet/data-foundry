@@ -14,9 +14,12 @@ whenToUpdate:
   - when moving command owner modules or changing command artifact contracts
 checkPaths:
   - docs/foundry-command-surface.md
+  - test/README.md
   - scripts/lib/foundry-command-registry.mjs
   - scripts/lib/foundry-command-metadata.mjs
-  - test/foundry-command-metadata.test.mjs
+  - test/unit/foundry-command-metadata.test.mjs
+lastReviewedAt: 2026-06-05
+lastReviewedCommit: dabd3c9b9841641668caee6fe37cda37d3140739
 ---
 
 # Foundry Command Surface
@@ -69,6 +72,11 @@ When a command is added, removed, renamed, moved, or reclassified, update both:
 Then run:
 
 ```bash
-node --test test/foundry-command-metadata.test.mjs
+node --test test/unit/foundry-command-metadata.test.mjs
+npm run test:commands
 npm run golden:diff
 ```
+
+New command tests belong in `test/commands/` when they exercise one command's
+report or artifact contract. Multi-command workflow coverage belongs in
+`test/scenarios/`, and shared setup belongs in `test/fixtures/`.
