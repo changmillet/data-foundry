@@ -18,8 +18,8 @@ checkPaths:
   - specs/capability-ownership-rules.json
   - specs/automated-lca-capability-registry.json
   - specs/workspace-capability-adapters.md
-lastReviewedAt: 2026-06-04
-lastReviewedCommit: 77dfa0de95629e228759e2fe84ea96f23d08623c
+lastReviewedAt: 2026-06-05
+lastReviewedCommit: 76830c7adc67126a795f5fdc1c650fe56ac7b5e2
 ---
 
 # Capability Ownership Policy

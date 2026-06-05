@@ -19,8 +19,8 @@ checkPaths:
   - docs/runtime-skill-management.md
   - docs/foundry-task-contracts.md
   - specs/import-profiles.json
-lastReviewedAt: 2026-06-04
-lastReviewedCommit: 77dfa0de95629e228759e2fe84ea96f23d08623c
+lastReviewedAt: 2026-06-05
+lastReviewedCommit: 76830c7adc67126a795f5fdc1c650fe56ac7b5e2
 ---
 
 # TianGong LCA Data Foundry
@@ -50,7 +50,8 @@ npm run workspace:map
 npm run capabilities:list -- --class tidas-contract-context
 npm run profiles:list
 npm run task:route -- --kind external-dataset-curated-import --dataset-type process --required-gates contract,schema,qa,curation
-npm run task:run -- --kind source-evidence-dataset-development --dataset-type process --required-gates context,schema,qa,curation
+npm run task:route -- --kind source-evidence-dataset-development --dataset-type process --required-gates context,schema,qa,curation
+npm run skills:source-evidence:use:sci
 ```
 
 Use owner-routed execution commands for dataset work:

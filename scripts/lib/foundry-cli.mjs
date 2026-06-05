@@ -1,0 +1,153 @@
+import process from "node:process";
+import { createClassificationDecisionCommands } from "../commands/classification-decisions.mjs";
+import { createLocationDecisionCommands } from "../commands/location-decisions.mjs";
+
+export function runFoundryCli({
+  argv = process.argv,
+  commandDeps,
+  decisionDeps,
+  runtime,
+}) {
+  runFoundryCliMain({ argv, commandDeps, decisionDeps, runtime }).catch(
+    (error) => {
+      console.error(
+        error instanceof Error ? error.stack || error.message : String(error),
+      );
+      process.exit(1);
+    },
+  );
+}
+
+async function runFoundryCliMain({
+  argv,
+  commandDeps,
+  decisionDeps,
+  runtime,
+}) {
+  const {
+    exitCodeForCommand,
+    parseArgs,
+    printJson,
+    usage,
+  } = runtime;
+  const {
+    authoringPlanCommands,
+    bundleSampleRowsCommands,
+    cliWrapperCommands,
+    commitHandoffCommands,
+    coreCommands,
+    identityDecisionCommands,
+    identityDecisionTaskCommands,
+    identityPreflightCommands,
+    identityReferenceRewriteCommands,
+    importCompletionCommands,
+    listImportProfiles,
+    postAuthoringFinalizeCommands,
+    postWriteCloseoutCommands,
+    repoRoot,
+    runDatasetAuthoringPatchCollect,
+    runDatasetAuthoringTaskBuild,
+    runDatasetCurationCleanup,
+    runDatasetCurationGate,
+    runDatasetMutationManifest,
+    supportCacheCommands,
+    taskCommands,
+  } = commandDeps;
+  const locationDecisionCommands =
+    createLocationDecisionCommands(decisionDeps);
+  const classificationDecisionCommands =
+    createClassificationDecisionCommands(decisionDeps);
+  const commandHandlers = {
+    help: () => usage(),
+    "--help": () => usage(),
+    "-h": () => usage(),
+    init: () => coreCommands.initRuntime(),
+    doctor: () => coreCommands.doctor(),
+    "env-check": () => coreCommands.envCheck(),
+    "workflow-check": () => coreCommands.workflowCheck(),
+    "storage-check": () => coreCommands.storageCheck(),
+    "acceptance-check": () => coreCommands.acceptanceCheck(),
+    "workspace-map": () => coreCommands.workspaceMap(),
+    "capabilities-list": (options) => coreCommands.capabilitiesList(options),
+    "profiles-list": (options) => listImportProfiles({ repoRoot, options }),
+    "route-task": (options) =>
+      coreCommands.writeRoutePlan(
+        coreCommands.buildRoutePlan(options),
+        options.outDir,
+      ),
+    "tasks-list": () => taskCommands.tasksList(),
+    "tasks-check": () => taskCommands.tasksCheck(),
+    "task-complete": (options) => taskCommands.runTaskComplete(options),
+    "dataset-curation-queue-build": (options) =>
+      cliWrapperCommands.runDatasetCurationQueueBuild(options),
+    "dataset-curation-gate": (options) =>
+      runDatasetCurationGate({ repoRoot, options }),
+    "dataset-authoring-plan": (options) =>
+      authoringPlanCommands.runDatasetAuthoringPlan(options),
+    "dataset-authoring-task-build": (options) =>
+      runDatasetAuthoringTaskBuild({ repoRoot, options }),
+    "dataset-authoring-patch-collect": (options) =>
+      runDatasetAuthoringPatchCollect({ repoRoot, options }),
+    "dataset-identity-decision-task-build": (options) =>
+      identityDecisionTaskCommands.runDatasetIdentityDecisionTaskBuild(options),
+    "dataset-classification-decision-task-build": (options) =>
+      classificationDecisionCommands.runDatasetClassificationDecisionTaskBuild(
+        options,
+      ),
+    "dataset-classification-decisions-apply": (options) =>
+      classificationDecisionCommands.runDatasetClassificationDecisionsApply(
+        options,
+      ),
+    "dataset-location-decision-task-build": (options) =>
+      locationDecisionCommands.runDatasetLocationDecisionTaskBuild(options),
+    "dataset-location-decisions-apply": (options) =>
+      locationDecisionCommands.runDatasetLocationDecisionsApply(options),
+    "dataset-curation-cleanup": (options) =>
+      runDatasetCurationCleanup({ repoRoot, options }),
+    "dataset-patch-apply": (options) =>
+      cliWrapperCommands.runDatasetPatchApply(options),
+    "dataset-support-cache-refresh": (options) =>
+      supportCacheCommands.runDatasetSupportCacheRefresh(options),
+    "dataset-bundle-sample-rows": (options) =>
+      bundleSampleRowsCommands.runDatasetBundleSampleRows(options),
+    "dataset-identity-preflight-requests-build": (options) =>
+      identityPreflightCommands.runDatasetIdentityPreflightRequestsBuild(
+        options,
+      ),
+    "dataset-identity-preflight-query-audit": (options) =>
+      identityPreflightCommands.runDatasetIdentityPreflightQueryAudit(options),
+    "dataset-identity-preflight-run": (options) =>
+      identityPreflightCommands.runDatasetIdentityPreflightRun(options),
+    "dataset-identity-preflight-index-merge": (options) =>
+      identityPreflightCommands.runDatasetIdentityPreflightIndexMerge(options),
+    "dataset-identity-reference-rewrites-apply": (options) =>
+      identityReferenceRewriteCommands.runDatasetIdentityReferenceRewritesApply(
+        options,
+      ),
+    "dataset-identity-decisions-apply": (options) =>
+      identityDecisionCommands.runDatasetIdentityDecisionsApply(options),
+    "dataset-post-authoring-finalize": (options) =>
+      postAuthoringFinalizeCommands.runDatasetPostAuthoringFinalize(options),
+    "dataset-commit-handoff-plan": (options) =>
+      commitHandoffCommands.runDatasetCommitHandoffPlan(options),
+    "dataset-post-write-closeout": (options) =>
+      postWriteCloseoutCommands.runDatasetPostWriteCloseout(options),
+    "dataset-import-completion-report": (options) =>
+      importCompletionCommands.runDatasetImportCompletionReport(options),
+    "dataset-mutation-manifest": (options) =>
+      runDatasetMutationManifest({ repoRoot, options }),
+  };
+
+  const [command = "help", ...rest] = argv.slice(2);
+  const options = parseArgs(rest);
+  const handler = commandHandlers[command];
+  if (!handler) {
+    console.error(`Unknown Foundry command: ${command}`);
+    console.error(`Known commands: ${usage().commands.join(", ")}`);
+    process.exit(2);
+  }
+  const result = await handler(options);
+  const exitCode = exitCodeForCommand(command, result);
+  printJson(result);
+  process.exit(exitCode);
+}

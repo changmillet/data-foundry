@@ -13,6 +13,8 @@ whenToUpdate:
   - when Foundry ownership, lane architecture, runtime model, or cross-project routing changes
 checkPaths:
   - docs/architecture.md
+  - docs/foundry-ai-navigation.md
+  - docs/foundry-command-surface.md
   - AGENTS.md
   - README.md
   - WORKFLOW.md
@@ -20,8 +22,8 @@ checkPaths:
   - docs/workspace-project-map.md
   - specs/capability-ownership-rules.json
   - specs/automated-lca-capability-registry.json
-lastReviewedAt: 2026-06-04
-lastReviewedCommit: 77dfa0de95629e228759e2fe84ea96f23d08623c
+lastReviewedAt: 2026-06-05
+lastReviewedCommit: 76830c7adc67126a795f5fdc1c650fe56ac7b5e2
 ---
 
 # Architecture
@@ -29,6 +31,8 @@ lastReviewedCommit: 77dfa0de95629e228759e2fe84ea96f23d08623c
 ## Current Shape
 
 Foundry is a thin local control plane. It owns task intake, profile locks, workspace ledgers, owner routing, and gate aggregation. It does not own reusable dataset execution logic.
+
+For command ownership and navigation, use `docs/foundry-ai-navigation.md`, `docs/foundry-command-surface.md`, and the checked `scripts/lib/foundry-command-metadata.mjs` map. Those files classify every Foundry command and link each command to its owner module, artifacts, and tests without changing the runtime `help` output.
 
 The minimum runtime shape is:
 
