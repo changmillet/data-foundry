@@ -1,7 +1,6 @@
 import test from "node:test";
-import { acquireFullContextGateFileLock, annualSupplyFixtureRoot, assert, blockerCodes, bundledCategorySchemaNames, classificationFixtureRoot, contextFile, contextTextByPathSuffix, createFixture, createMutationManifestFixture, crypto, elementaryFlowManifestFixtureRoot, finalizeAutoQueueFixtureRoot, finalizeCurationGateFixtureRoot, finalizeIdentityPreflightFixtureRoot, finalizeLocationFixtureRoot, fixtureRoot, flowClassificationFixtureRoot, flowIdentityReferenceFixtureRoot, flowRow, flowRowWithClassification, fs, fullContextKinds, fullContextPatterns, identityPreflightRunFixtureRoot, itemBlockerCodes, locationFixtureRoot, mutationFixtureRoot, packageContextFixtureRoot, path, processRowWithDefaultClassification, processRowWithDeferredTrace, processRowWithFlowRef, processRowWithInvalidAnnualSupply, processRowWithInvalidLocation, processRowWithOnlyOutputExchange, qaPathFixtureRoot, readJson, readJsonLines, referenceClosureFixtureRoot, rel, repoRoot, runFoundry, scopeBlockerCodes, sha256Text, siblingCliBuildAvailable, siblingCliRoot, sourceExchangeFixtureRoot, sourceRow, spawnSync, supportManifestFixtureRoot, targetUserId, writeCompletedIdentityPreflightIndex, writeContextPackFiles, writeDecisionTaskFixture, writeJson, writeJsonLines, writeReadyFinalizeFixture, writeText } from "./helpers/full-context-gate-fixtures.mjs";
+import { annualSupplyFixtureRoot, assert, blockerCodes, bundledCategorySchemaNames, classificationFixtureRoot, contextFile, contextTextByPathSuffix, createFixture, createMutationManifestFixture, crypto, elementaryFlowManifestFixtureRoot, finalizeAutoQueueFixtureRoot, finalizeCurationGateFixtureRoot, finalizeIdentityPreflightFixtureRoot, finalizeLocationFixtureRoot, fixtureRoot, flowClassificationFixtureRoot, flowIdentityReferenceFixtureRoot, flowRow, flowRowWithClassification, fs, fullContextKinds, fullContextPatterns, identityPreflightRunFixtureRoot, itemBlockerCodes, locationFixtureRoot, mutationFixtureRoot, packageContextFixtureRoot, path, processRowWithDefaultClassification, processRowWithDeferredTrace, processRowWithFlowRef, processRowWithInvalidAnnualSupply, processRowWithInvalidLocation, processRowWithOnlyOutputExchange, qaPathFixtureRoot, readJson, readJsonLines, referenceClosureFixtureRoot, rel, repoRoot, runFoundry, scopeBlockerCodes, sha256Text, siblingCliBuildAvailable, siblingCliRoot, sourceExchangeFixtureRoot, sourceRow, spawnSync, supportManifestFixtureRoot, targetUserId, testTmpRoot, writeCompletedIdentityPreflightIndex, writeContextPackFiles, writeDecisionTaskFixture, writeJson, writeJsonLines, writeReadyFinalizeFixture, writeText } from "./helpers/full-context-gate-fixtures.mjs";
 
-acquireFullContextGateFileLock();
 
 test("identity decision task deduplicates repeated targets and keeps source evidence", () => {
   const root = path.join(
@@ -136,7 +135,7 @@ test("identity decision task deduplicates repeated targets and keeps source evid
 });
 
 test("curation gate turns flow identity manual review into an AI action item", () => {
-  const root = path.join(repoRoot, "tmp", "flow-identity-manual-review-gate-test");
+  const root = testTmpRoot("flow-identity-manual-review-gate-test");
   fs.rmSync(root, { recursive: true, force: true });
   const flowId = "aaaaaaaa-bbbb-4ccc-8ddd-000000000020";
   const rowsFile = path.join(root, "rows", "flows.jsonl");
@@ -672,7 +671,7 @@ test("curation gate authoring package carries full contract text and queue depen
 });
 
 test("curation gate can require completed identity preflight before full-context AI authoring", () => {
-  const root = path.join(repoRoot, "tmp", "identity-preflight-gate-test");
+  const root = testTmpRoot("identity-preflight-gate-test");
   fs.rmSync(root, { recursive: true, force: true });
   const processId = "abababab-cccc-4ddd-8eee-ffffffffffff";
   const flowId = "bcbcbcbc-dddd-4eee-8fff-aaaaaaaaaaaa";
@@ -940,7 +939,7 @@ test("curation gate can require completed identity preflight before full-context
 });
 
 test("bafu curation gate rejects refreshed identity preflight that drops source context", () => {
-  const root = path.join(repoRoot, "tmp", "identity-preflight-source-context-gate-test");
+  const root = testTmpRoot("identity-preflight-source-context-gate-test");
   fs.rmSync(root, { recursive: true, force: true });
   const processId = "abababab-cccc-4ddd-8eee-ffffffff0001";
   const flowId = "bcbcbcbc-dddd-4eee-8fff-aaaaaaaa0001";

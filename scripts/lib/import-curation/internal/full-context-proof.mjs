@@ -1,10 +1,222 @@
-import path from "node:path";
-import { asText, contextFileDetails, datasetIdentity, detectDatasetType, ensureArray, fileExists, readJson, readJsonOrJsonl, readText, repoRelativePath, resolveRepoPath } from "./part-00.mjs";
-import { identityFreshnessIdentityKey } from "./part-01.mjs";
-import { sha256Json } from "./part-05.mjs";
-import { readRowsIfExists, sha256Text } from "./part-06.mjs";
-import { contextFilesHaveKind, contextFilesHavePattern, readAuthoringPackageProof, repoRelativeArtifactPath, rowsFileChainsThroughUnresolvedExchangeExternalization, sameArtifactPath } from "./part-08.mjs";
+import {
+  datasetIdentity,
+  detectDatasetType,
+  identityFreshnessIdentityKey,
+} from "./dataset-payload.mjs";
+import { contextFileDetails } from "./context-inputs.mjs";
+import { sha256Json, sha256Text } from "./hash-utils.mjs";
+import {
+  asText,
+  ensureArray,
+  fileExists,
+  readJson,
+  readRows,
+  readText,
+  repoRelativeArtifactPath,
+  repoRelativePath,
+  resolveRepoPath,
+} from "./runtime-io.mjs";
 
+export function curationGateContextHasKind(curationGateArtifact, kind) {
+  const details = ensureArray(
+    curationGateArtifact?.value?.context?.contract_context_file_details,
+  );
+  if (details.some((file) => asText(file?.kind) === kind)) return true;
+  const contextPaths = ensureArray(
+    curationGateArtifact?.value?.context?.contract_context_files,
+  );
+  const expectedFileByKind = {
+    schema: "schema.json",
+    methodology_yaml: "methodology.yaml",
+    ruleset: "runtime-ruleset.json",
+  };
+  const expected = expectedFileByKind[kind];
+  return Boolean(
+    expected &&
+    contextPaths.some((filePath) =>
+      String(filePath ?? "")
+        .toLowerCase()
+        .includes(expected),
+    ),
+  );
+}
+
+export function curationGateContextHasPattern(curationGateArtifact, pattern) {
+  const details = ensureArray(
+    curationGateArtifact?.value?.context?.contract_context_file_details,
+  );
+  if (
+    details.some((file) =>
+      String(file?.path ?? "")
+        .toLowerCase()
+        .includes(pattern.toLowerCase()),
+    )
+  ) {
+    return true;
+  }
+  const contextPaths = ensureArray(
+    curationGateArtifact?.value?.context?.contract_context_files,
+  );
+  return contextPaths.some((filePath) =>
+    String(filePath ?? "")
+      .toLowerCase()
+      .includes(pattern.toLowerCase()),
+  );
+}
+
+export function evidenceResolution(entry) {
+  return entry?.resolution &&
+    typeof entry.resolution === "object" &&
+    !Array.isArray(entry.resolution)
+    ? entry.resolution
+    : null;
+}
+
+export function evidenceResolutionMode(entry) {
+  return asText(evidenceResolution(entry)?.mode);
+}
+
+export function evidenceResolutionContextKinds(entry) {
+  return ensureArray(
+    evidenceResolution(entry)?.used_context_kinds ??
+      evidenceResolution(entry)?.usedContextKinds,
+  )
+    .map((kind) => asText(kind))
+    .filter(Boolean);
+}
+
+export function contextFileHasNonEmptyText(file) {
+  return Buffer.byteLength(String(file?.text ?? ""), "utf8") > 0;
+}
+
+export function contextFilesHaveKind(files, kind) {
+  return ensureArray(files).some(
+    (file) => asText(file?.kind) === kind && contextFileHasNonEmptyText(file),
+  );
+}
+
+export function contextFilesHavePattern(files, pattern) {
+  const needle = String(pattern).toLowerCase();
+  return ensureArray(files).some(
+    (file) =>
+      String(file?.path ?? "")
+        .toLowerCase()
+        .includes(needle) && contextFileHasNonEmptyText(file),
+  );
+}
+
+export function readAuthoringPackageProof(
+  repoRoot,
+  packageRef,
+  expectedSha256 = null,
+  source = null,
+) {
+  const packagePath = resolveRepoPath(repoRoot, packageRef);
+  const proof = {
+    source,
+    path: packageRef ? repoRelativeArtifactPath(repoRoot, packageRef) : null,
+    exists: false,
+    sha256: null,
+    expected_sha256: asText(expectedSha256) || null,
+    payload: null,
+    contract_context_files: [],
+    contract_context_file_details: [],
+    blockers: [],
+  };
+  if (!packageRef || !packagePath || !fileExists(packagePath)) {
+    proof.blockers.push({
+      code: "full_context_authoring_package_missing",
+      stage: "full_context_ai_completion",
+      message:
+        "Full-context AI completion evidence references an unreadable authoring package.",
+      authoring_package: proof.path,
+      source,
+    });
+    return proof;
+  }
+  proof.exists = true;
+  proof.path = repoRelativePath(repoRoot, packagePath);
+  let rawText = "";
+  try {
+    rawText = readText(packagePath);
+    proof.sha256 = sha256Text(rawText);
+    proof.payload = JSON.parse(rawText);
+  } catch (error) {
+    proof.blockers.push({
+      code: "full_context_authoring_package_invalid",
+      stage: "full_context_ai_completion",
+      message: error instanceof Error ? error.message : String(error),
+      authoring_package: proof.path,
+      source,
+    });
+    return proof;
+  }
+  if (
+    !proof.payload ||
+    typeof proof.payload !== "object" ||
+    Array.isArray(proof.payload)
+  ) {
+    proof.blockers.push({
+      code: "full_context_authoring_package_invalid",
+      stage: "full_context_ai_completion",
+      message: "Authoring package must be a JSON object.",
+      authoring_package: proof.path,
+      source,
+    });
+    return proof;
+  }
+  proof.contract_context_files = ensureArray(
+    proof.payload.contract_context_files,
+  );
+  proof.contract_context_file_details = contextFileDetails(
+    proof.contract_context_files,
+  );
+  if (
+    proof.expected_sha256 &&
+    proof.sha256 &&
+    proof.expected_sha256 !== proof.sha256
+  ) {
+    proof.blockers.push({
+      code: "full_context_authoring_package_hash_mismatch",
+      stage: "full_context_ai_completion",
+      message:
+        "Recorded authoring_package_sha256 does not match the current authoring package content.",
+      authoring_package: proof.path,
+      expected_sha256: proof.expected_sha256,
+      actual_sha256: proof.sha256,
+      source,
+    });
+  }
+  return proof;
+}
+
+export function authoringPackageProofsFromCurationGate(
+  repoRoot,
+  curationGateArtifact,
+) {
+  const entities = ensureArray(
+    curationGateArtifact?.value?.entities ??
+      curationGateArtifact?.value?.processes ??
+      curationGateArtifact?.value?.flows ??
+      curationGateArtifact?.value?.items,
+  );
+  return entities
+    .map((entity) => {
+      const packageRef = asText(
+        entity?.authoring_package ?? entity?.authoringPackage,
+      );
+      if (!packageRef) return null;
+      return readAuthoringPackageProof(
+        repoRoot,
+        packageRef,
+        entity?.authoring_package_sha256,
+        "curation_gate",
+      );
+    })
+    .filter(Boolean);
+}
+
+// part-09.mjs
 export function authoringPackageProofsFromPatchCollect(
   repoRoot,
   patchCollectArtifact,
@@ -303,7 +515,7 @@ export function payloadSha256ByIdentityForRows(repoRoot, rowFiles, fallbackDatas
   for (const rowFile of ensureArray(rowFiles)) {
     const resolved = resolveRepoPath(repoRoot, rowFile);
     if (!resolved || !fileExists(resolved)) continue;
-    readRowsIfExists(resolved).forEach((row, index) => {
+    readRows(resolved).forEach((row, index) => {
       const datasetType = detectDatasetType(row, fallbackDatasetType);
       if (!datasetType) return;
       const identity = datasetIdentity(row, index, datasetType);
@@ -469,522 +681,5 @@ export function decisionTaskRequiredContextFilePatterns({ requirement, proof, la
   }
   return profilePatterns.filter((pattern) =>
     required.has(String(pattern).toLowerCase()),
-  );
-}
-
-export function readClassificationDecisionApplyContext(
-  repoRoot,
-  classificationDecisionApplyArtifact,
-  sourceLabel = "classification_decision_apply",
-) {
-  if (!classificationDecisionApplyArtifact) return null;
-  const report = classificationDecisionApplyArtifact.value ?? {};
-  const decisionsFile = resolveRepoPath(
-    repoRoot,
-    report.decisions_file || report.decisionsFile,
-  );
-  let decisions = [];
-  if (decisionsFile && fileExists(decisionsFile)) {
-    decisions = normalizeClassificationDecisionRows(
-      readJsonOrJsonl(decisionsFile),
-    );
-  }
-  const decisionTaskProofs = decisionTaskProofsFromApplyReport(
-    repoRoot,
-    report,
-    sourceLabel,
-  );
-  const inputRows = ensureArray(report.files?.input_rows)
-    .map((filePath) => resolveRepoPath(repoRoot, filePath))
-    .filter(Boolean);
-  const outputRows = ensureArray(report.files?.output_rows)
-    .map((filePath) => resolveRepoPath(repoRoot, filePath))
-    .filter(Boolean);
-  const fallbackDatasetType =
-    decisions.some((decision) =>
-      asText(decision?.category_type ?? decision?.categoryType).startsWith(
-        "flow",
-      ),
-    )
-      ? "flow"
-      : decisions.some(
-            (decision) =>
-              asText(decision?.category_type ?? decision?.categoryType) ===
-              "process",
-          )
-        ? "process"
-        : null;
-	  return {
-	    status: asText(report.status),
-	    reportPath: classificationDecisionApplyArtifact.path,
-	    decisionsFile,
-	    decisions,
-    decisionTaskProof:
-      decisionTaskProofs.length === 1 ? decisionTaskProofs[0] : null,
-    decisionTaskProofs,
-    inputRows,
-	    outputRows,
-    inputPayloadSha256ByIdentity: payloadSha256ByIdentityForRows(
-      repoRoot,
-      inputRows,
-      fallbackDatasetType,
-    ),
-    outputPayloadSha256ByIdentity: payloadSha256ByIdentityForRows(
-      repoRoot,
-      outputRows,
-      fallbackDatasetType,
-    ),
-    applied: Number(report.counts?.applied ?? 0) || 0,
-  };
-}
-
-export function cleanupInputRowsFile(repoRoot, cleanupArtifact) {
-  const inputRows =
-    cleanupArtifact?.value?.rows_file ??
-    cleanupArtifact?.value?.rowsFile ??
-    cleanupArtifact?.value?.input_path ??
-    cleanupArtifact?.value?.inputPath;
-  return inputRows ? resolveRepoPath(repoRoot, inputRows) : null;
-}
-
-export function decisionApplyExpectedRowsFile({ repoRoot, rowsFile, cleanupArtifact }) {
-  return cleanupArtifact
-    ? cleanupInputRowsFile(repoRoot, cleanupArtifact)
-    : rowsFile;
-}
-
-export function decisionApplyOutputRowsMatch(repoRoot, context, expectedRowsFile) {
-  return Boolean(
-    expectedRowsFile &&
-      context?.outputRows.some((filePath) =>
-        sameArtifactPath(repoRoot, filePath, expectedRowsFile),
-      ),
-  );
-}
-
-export function decisionApplyInputRowsMatch(repoRoot, context, expectedRowsFile) {
-  return Boolean(
-    expectedRowsFile &&
-      context?.inputRows.some((filePath) =>
-        sameArtifactPath(repoRoot, filePath, expectedRowsFile),
-      ),
-  );
-}
-
-export function rowsFileTransformEntriesFromDecisionApply(context, kind) {
-  const entries = [];
-  if (!context?.inputRows?.length || !context?.outputRows?.length) return entries;
-  if (context.status && context.status !== "completed") return entries;
-  for (const inputRowsFile of context.inputRows) {
-    for (const outputRowsFile of context.outputRows) {
-      entries.push({ kind, inputRowsFile, outputRowsFile });
-    }
-  }
-  return entries;
-}
-
-export function rowsFileTransformEntriesFromPatchApply(context) {
-  if (!context?.inputRowsFile || !context?.outputRows?.length) return [];
-  return context.outputRows.map((outputRowsFile) => ({
-    kind: "patch_apply",
-    inputRowsFile: context.inputRowsFile,
-    outputRowsFile,
-  }));
-}
-
-export function rowsFileTransformEntryFromIdentityReferenceRewrite(context) {
-  if (!context?.inputRowsFile || !context?.outputRowsFile) return [];
-  return [
-    {
-      kind: "identity_reference_rewrite",
-      inputRowsFile: context.inputRowsFile,
-      outputRowsFile: context.outputRowsFile,
-    },
-  ];
-}
-
-export function rowsFileTransformEntryFromUnresolvedExchangeExternalization(context) {
-  if (
-    context?.status !== "completed" ||
-    !context.inputRowsFile ||
-    !context.outputRowsFile
-  ) {
-    return [];
-  }
-  return [
-    {
-      kind: "unresolved_exchange_externalization",
-      inputRowsFile: context.inputRowsFile,
-      outputRowsFile: context.outputRowsFile,
-    },
-  ];
-}
-
-export function rowsFileTransformEntryFromCanonicalSupportRewrite(context) {
-  if (!context?.inputRowsFile || !context?.outputRowsFile) return [];
-  const status = asText(context.status);
-  if (
-    status &&
-    ![
-      "completed",
-      "completed_no_rewrites",
-      "completed_with_deferred_rows",
-      "blocked",
-    ].includes(status)
-  ) {
-    return [];
-  }
-  return [
-    {
-      kind: "canonical_support_rewrite",
-      inputRowsFile: context.inputRowsFile,
-      outputRowsFile: context.outputRowsFile,
-    },
-  ];
-}
-
-export function deterministicRowsFileTransformEntries({
-  patchApplyContext,
-  classificationDecisionApplyContext,
-  locationDecisionApplyContext,
-  identityDecisionApplyContext,
-  identityReferenceRewriteContext,
-  unresolvedExchangeExternalizationContext,
-  canonicalSupportRewriteContext,
-}) {
-  return [
-    ...rowsFileTransformEntriesFromPatchApply(patchApplyContext),
-    ...rowsFileTransformEntriesFromDecisionApply(
-      classificationDecisionApplyContext,
-      "classification_decision_apply",
-    ),
-    ...rowsFileTransformEntriesFromDecisionApply(
-      locationDecisionApplyContext,
-      "location_decision_apply",
-    ),
-    ...rowsFileTransformEntriesFromDecisionApply(
-      identityDecisionApplyContext,
-      "identity_decision_apply",
-    ),
-    ...rowsFileTransformEntryFromIdentityReferenceRewrite(
-      identityReferenceRewriteContext,
-    ),
-    ...rowsFileTransformEntryFromUnresolvedExchangeExternalization(
-      unresolvedExchangeExternalizationContext,
-    ),
-    ...rowsFileTransformEntryFromCanonicalSupportRewrite(
-      canonicalSupportRewriteContext,
-    ),
-  ].filter((entry) => entry.inputRowsFile && entry.outputRowsFile);
-}
-
-export function rowsFileReachableThroughTransformChain({
-  repoRoot,
-  startFiles,
-  expectedRowsFile,
-  transforms,
-}) {
-  if (!expectedRowsFile) return false;
-  const reachable = [];
-  const addReachable = (filePath) => {
-    if (!filePath) return false;
-    if (reachable.some((existing) => sameArtifactPath(repoRoot, existing, filePath))) {
-      return false;
-    }
-    reachable.push(filePath);
-    return true;
-  };
-  for (const filePath of ensureArray(startFiles)) addReachable(filePath);
-  if (reachable.some((filePath) => sameArtifactPath(repoRoot, filePath, expectedRowsFile))) {
-    return true;
-  }
-  for (let pass = 0; pass <= transforms.length; pass += 1) {
-    let changed = false;
-    for (const transform of transforms) {
-      const inputReachable = reachable.some((filePath) =>
-        sameArtifactPath(repoRoot, filePath, transform.inputRowsFile),
-      );
-      if (inputReachable) {
-        changed = addReachable(transform.outputRowsFile) || changed;
-      }
-    }
-    if (reachable.some((filePath) => sameArtifactPath(repoRoot, filePath, expectedRowsFile))) {
-      return true;
-    }
-    if (!changed) break;
-  }
-  return false;
-}
-
-export function decisionApplyOutputRowsReachableThroughDeterministicTransforms({
-  repoRoot,
-  context,
-  expectedRowsFile,
-  patchApplyContext,
-  classificationDecisionApplyContext,
-  locationDecisionApplyContext,
-  identityDecisionApplyContext,
-  identityReferenceRewriteContext,
-  unresolvedExchangeExternalizationContext,
-  canonicalSupportRewriteContext,
-}) {
-  return rowsFileReachableThroughTransformChain({
-    repoRoot,
-    startFiles: context?.outputRows ?? [],
-    expectedRowsFile,
-    transforms: deterministicRowsFileTransformEntries({
-      patchApplyContext,
-      classificationDecisionApplyContext,
-      locationDecisionApplyContext,
-      identityDecisionApplyContext,
-      identityReferenceRewriteContext,
-      unresolvedExchangeExternalizationContext,
-      canonicalSupportRewriteContext,
-    }),
-  });
-}
-
-export function decisionApplyOutputRowsChainThroughPatch(
-  repoRoot,
-  context,
-  patchApplyContext,
-  expectedRowsFile,
-) {
-  return Boolean(
-    expectedRowsFile &&
-      patchApplyContext?.inputRowsFile &&
-      decisionApplyOutputRowsMatch(
-        repoRoot,
-        context,
-        patchApplyContext.inputRowsFile,
-      ) &&
-      patchApplyContext.outputRows.some((filePath) =>
-        sameArtifactPath(repoRoot, filePath, expectedRowsFile),
-      ),
-  );
-}
-
-export function patchApplyOutputChainsThroughIdentityRewrite({
-  repoRoot,
-  patchOut,
-  cleanupInput,
-  identityReferenceRewriteContext,
-}) {
-  return Boolean(
-    patchOut &&
-      cleanupInput &&
-      identityReferenceRewriteContext?.inputRowsFile &&
-      identityReferenceRewriteContext?.outputRowsFile &&
-      sameArtifactPath(
-        repoRoot,
-        patchOut,
-        identityReferenceRewriteContext.inputRowsFile,
-      ) &&
-      sameArtifactPath(
-        repoRoot,
-        identityReferenceRewriteContext.outputRowsFile,
-        cleanupInput,
-      ),
-  );
-}
-
-export function patchApplyOutputChainsThroughUnresolvedExchangeExternalization({
-  repoRoot,
-  patchOut,
-  cleanupInput,
-  unresolvedExchangeExternalizationContext,
-}) {
-  return rowsFileChainsThroughUnresolvedExchangeExternalization({
-    repoRoot,
-    upstreamFile: patchOut,
-    finalFile: cleanupInput,
-    unresolvedExchangeExternalizationContext,
-  });
-}
-
-export function patchApplyOutputChainsThroughIdentityRewriteAndUnresolvedExchangeExternalization({
-  repoRoot,
-  patchOut,
-  cleanupInput,
-  identityReferenceRewriteContext,
-  unresolvedExchangeExternalizationContext,
-}) {
-  return Boolean(
-    patchApplyOutputChainsThroughIdentityRewrite({
-      repoRoot,
-      patchOut,
-      cleanupInput: unresolvedExchangeExternalizationContext?.inputRowsFile,
-      identityReferenceRewriteContext,
-    }) &&
-      rowsFileChainsThroughUnresolvedExchangeExternalization({
-        repoRoot,
-        upstreamFile: identityReferenceRewriteContext?.outputRowsFile,
-        finalFile: cleanupInput,
-        unresolvedExchangeExternalizationContext,
-      }),
-  );
-}
-
-export function decisionApplyOutputRowsChainThroughPatchAndIdentityRewrite(
-  repoRoot,
-  context,
-  patchApplyContext,
-  identityReferenceRewriteContext,
-  expectedRowsFile,
-) {
-  return Boolean(
-    expectedRowsFile &&
-      patchApplyContext?.inputRowsFile &&
-      identityReferenceRewriteContext?.inputRowsFile &&
-      identityReferenceRewriteContext?.outputRowsFile &&
-      decisionApplyOutputRowsMatch(
-        repoRoot,
-        context,
-        patchApplyContext.inputRowsFile,
-      ) &&
-      patchApplyContext.outputRows.some((filePath) =>
-        sameArtifactPath(
-          repoRoot,
-          filePath,
-          identityReferenceRewriteContext.inputRowsFile,
-        ),
-      ) &&
-      sameArtifactPath(
-        repoRoot,
-        identityReferenceRewriteContext.outputRowsFile,
-        expectedRowsFile,
-      ),
-  );
-}
-
-export function decisionApplyOutputRowsChainThroughIdentityRewrite(
-  repoRoot,
-  context,
-  identityReferenceRewriteContext,
-  expectedRowsFile,
-) {
-  return Boolean(
-    expectedRowsFile &&
-      identityReferenceRewriteContext?.inputRowsFile &&
-      identityReferenceRewriteContext?.outputRowsFile &&
-      decisionApplyOutputRowsMatch(
-        repoRoot,
-        context,
-        identityReferenceRewriteContext.inputRowsFile,
-      ) &&
-      sameArtifactPath(
-        repoRoot,
-        identityReferenceRewriteContext.outputRowsFile,
-        expectedRowsFile,
-      ),
-  );
-}
-
-export function decisionApplyOutputRowsChainThroughIdentityRewriteAndUnresolvedExchangeExternalization(
-  repoRoot,
-  context,
-  identityReferenceRewriteContext,
-  unresolvedExchangeExternalizationContext,
-  expectedRowsFile,
-) {
-  return Boolean(
-    expectedRowsFile &&
-      identityReferenceRewriteContext?.inputRowsFile &&
-      identityReferenceRewriteContext?.outputRowsFile &&
-      unresolvedExchangeExternalizationContext?.inputRowsFile &&
-      decisionApplyOutputRowsMatch(
-        repoRoot,
-        context,
-        identityReferenceRewriteContext.inputRowsFile,
-      ) &&
-      sameArtifactPath(
-        repoRoot,
-        identityReferenceRewriteContext.outputRowsFile,
-        unresolvedExchangeExternalizationContext.inputRowsFile,
-      ) &&
-      rowsFileChainsThroughUnresolvedExchangeExternalization({
-        repoRoot,
-        upstreamFile: unresolvedExchangeExternalizationContext.inputRowsFile,
-        finalFile: expectedRowsFile,
-        unresolvedExchangeExternalizationContext,
-      }),
-  );
-}
-
-export function decisionApplyOutputRowsChainThroughClassification(
-  repoRoot,
-  context,
-  classificationDecisionApplyContext,
-  expectedRowsFile,
-) {
-  return Boolean(
-    expectedRowsFile &&
-      classificationDecisionApplyContext?.inputRows.some((filePath) =>
-        decisionApplyOutputRowsMatch(repoRoot, context, filePath),
-      ) &&
-      decisionApplyOutputRowsMatch(
-        repoRoot,
-        classificationDecisionApplyContext,
-        expectedRowsFile,
-      ),
-  );
-}
-
-export function decisionApplyOutputRowsChainThroughClassificationAndIdentityRewrite(
-  repoRoot,
-  context,
-  classificationDecisionApplyContext,
-  identityReferenceRewriteContext,
-  expectedRowsFile,
-) {
-  return Boolean(
-    expectedRowsFile &&
-      identityReferenceRewriteContext?.inputRowsFile &&
-      identityReferenceRewriteContext?.outputRowsFile &&
-      classificationDecisionApplyContext?.outputRows.some((filePath) =>
-        sameArtifactPath(
-          repoRoot,
-          filePath,
-          identityReferenceRewriteContext.inputRowsFile,
-        ),
-      ) &&
-      decisionApplyOutputRowsChainThroughClassification(
-        repoRoot,
-        context,
-        classificationDecisionApplyContext,
-        identityReferenceRewriteContext.inputRowsFile,
-      ) &&
-      sameArtifactPath(
-        repoRoot,
-        identityReferenceRewriteContext.outputRowsFile,
-        expectedRowsFile,
-      ),
-  );
-}
-
-export function decisionApplyOutputRowsChainThroughClassificationIdentityRewriteAndUnresolvedExchangeExternalization(
-  repoRoot,
-  context,
-  classificationDecisionApplyContext,
-  identityReferenceRewriteContext,
-  unresolvedExchangeExternalizationContext,
-  expectedRowsFile,
-) {
-  return Boolean(
-    expectedRowsFile &&
-      unresolvedExchangeExternalizationContext?.inputRowsFile &&
-      decisionApplyOutputRowsChainThroughClassificationAndIdentityRewrite(
-        repoRoot,
-        context,
-        classificationDecisionApplyContext,
-        identityReferenceRewriteContext,
-        unresolvedExchangeExternalizationContext.inputRowsFile,
-      ) &&
-      rowsFileChainsThroughUnresolvedExchangeExternalization({
-        repoRoot,
-        upstreamFile: unresolvedExchangeExternalizationContext.inputRowsFile,
-        finalFile: expectedRowsFile,
-        unresolvedExchangeExternalizationContext,
-      }),
   );
 }

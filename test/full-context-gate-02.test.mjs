@@ -1,7 +1,6 @@
 import test from "node:test";
-import { acquireFullContextGateFileLock, annualSupplyFixtureRoot, assert, blockerCodes, bundledCategorySchemaNames, classificationFixtureRoot, contextFile, contextTextByPathSuffix, createFixture, createMutationManifestFixture, crypto, elementaryFlowManifestFixtureRoot, finalizeAutoQueueFixtureRoot, finalizeCurationGateFixtureRoot, finalizeIdentityPreflightFixtureRoot, finalizeLocationFixtureRoot, fixtureRoot, flowClassificationFixtureRoot, flowIdentityReferenceFixtureRoot, flowRow, flowRowWithClassification, fs, fullContextKinds, fullContextPatterns, identityPreflightRunFixtureRoot, itemBlockerCodes, locationFixtureRoot, mutationFixtureRoot, packageContextFixtureRoot, path, processRowWithDefaultClassification, processRowWithDeferredTrace, processRowWithFlowRef, processRowWithInvalidAnnualSupply, processRowWithInvalidLocation, processRowWithOnlyOutputExchange, qaPathFixtureRoot, readJson, readJsonLines, referenceClosureFixtureRoot, rel, repoRoot, runFoundry, scopeBlockerCodes, sha256Text, siblingCliBuildAvailable, siblingCliRoot, sourceExchangeFixtureRoot, sourceRow, spawnSync, supportManifestFixtureRoot, targetUserId, writeCompletedIdentityPreflightIndex, writeContextPackFiles, writeDecisionTaskFixture, writeJson, writeJsonLines, writeReadyFinalizeFixture, writeText } from "./helpers/full-context-gate-fixtures.mjs";
+import { annualSupplyFixtureRoot, assert, blockerCodes, bundledCategorySchemaNames, classificationFixtureRoot, contextFile, contextTextByPathSuffix, createFixture, createMutationManifestFixture, crypto, elementaryFlowManifestFixtureRoot, finalizeAutoQueueFixtureRoot, finalizeCurationGateFixtureRoot, finalizeIdentityPreflightFixtureRoot, finalizeLocationFixtureRoot, fixtureRoot, flowClassificationFixtureRoot, flowIdentityReferenceFixtureRoot, flowRow, flowRowWithClassification, fs, fullContextKinds, fullContextPatterns, identityPreflightRunFixtureRoot, itemBlockerCodes, locationFixtureRoot, mutationFixtureRoot, packageContextFixtureRoot, path, processRowWithDefaultClassification, processRowWithDeferredTrace, processRowWithFlowRef, processRowWithInvalidAnnualSupply, processRowWithInvalidLocation, processRowWithOnlyOutputExchange, qaPathFixtureRoot, readJson, readJsonLines, referenceClosureFixtureRoot, rel, repoRoot, runFoundry, scopeBlockerCodes, sha256Text, siblingCliBuildAvailable, siblingCliRoot, sourceExchangeFixtureRoot, sourceRow, spawnSync, supportManifestFixtureRoot, targetUserId, testTmpRoot, writeCompletedIdentityPreflightIndex, writeContextPackFiles, writeDecisionTaskFixture, writeJson, writeJsonLines, writeReadyFinalizeFixture, writeText } from "./helpers/full-context-gate-fixtures.mjs";
 
-acquireFullContextGateFileLock();
 
 test("flow curation gate distinguishes elementary and product category schemas", () => {
   fs.rmSync(flowClassificationFixtureRoot, {
@@ -873,7 +872,7 @@ test("identity duplicate flow rewrites require high-confidence preflight evidenc
 });
 
 test("AI identity decisions apply split flow rows into writes and reference reuse", () => {
-  const root = path.join(repoRoot, "tmp", "flow-identity-decisions-apply-test");
+  const root = testTmpRoot("flow-identity-decisions-apply-test");
   fs.rmSync(root, { recursive: true, force: true });
   const reuseFlowId = "aaaaaaaa-bbbb-4ccc-8ddd-000000000030";
   const createFlowId = "aaaaaaaa-bbbb-4ccc-8ddd-000000000031";
@@ -1157,11 +1156,7 @@ test("AI identity decisions apply blocks create_new for elementary flows", () =>
 });
 
 test("unresolved elementary flow identity decisions defer references as Foundry traces", () => {
-  const root = path.join(
-    repoRoot,
-    "tmp",
-    "elementary-flow-identity-unresolved-trace-test",
-  );
+  const root = testTmpRoot("elementary-flow-identity-unresolved-trace-test");
   fs.rmSync(root, { recursive: true, force: true });
   const flowId = "aaaaaaaa-bbbb-4ccc-8ddd-000000000041";
   const processId = "aaaaaaaa-bbbb-4ccc-8ddd-000000000042";
@@ -1330,7 +1325,7 @@ test("unresolved elementary flow identity decisions defer references as Foundry 
 });
 
 test("identity decision apply closes flow identity curation and counts as full-context evidence", () => {
-  const root = path.join(repoRoot, "tmp", "flow-identity-decision-proof-test");
+  const root = testTmpRoot("flow-identity-decision-proof-test");
 	  fs.rmSync(root, { recursive: true, force: true });
 	  const flowId = "aaaaaaaa-bbbb-4ccc-8ddd-000000000040";
 	  const rowsFile = path.join(root, "rows", "flows.jsonl");
@@ -1628,11 +1623,7 @@ test("identity decision apply closes flow identity curation and counts as full-c
 });
 
 test("identity decision task template uses canonical process table name", () => {
-  const root = path.join(
-    repoRoot,
-    "tmp",
-    "process-identity-decision-template-test",
-  );
+  const root = testTmpRoot("process-identity-decision-template-test");
   fs.rmSync(root, { recursive: true, force: true });
   const processId = "aaaaaaaa-bbbb-4ccc-8ddd-000000000041";
   const authoringPackage = path.join(root, "authoring-package.json");

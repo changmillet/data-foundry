@@ -84,32 +84,6 @@ export const fullContextPatterns = [
   "tidas_locations_category.json",
 ];
 
-export function acquireFullContextGateFileLock() {
-  const lockDir = path.join(repoRoot, "tmp", "full-context-gate-test.lock");
-  const sleepBuffer = new Int32Array(new SharedArrayBuffer(4));
-  while (true) {
-    try {
-      fs.mkdirSync(lockDir, { recursive: false });
-      break;
-    } catch (error) {
-      if (error?.code !== "EEXIST") throw error;
-      try {
-        const ageMs = Date.now() - fs.statSync(lockDir).mtimeMs;
-        if (ageMs > 10 * 60 * 1000) {
-          fs.rmSync(lockDir, { recursive: true, force: true });
-          continue;
-        }
-      } catch {
-        continue;
-      }
-      Atomics.wait(sleepBuffer, 0, 0, 50);
-    }
-  }
-  const release = () => fs.rmSync(lockDir, { recursive: true, force: true });
-  process.once("exit", release);
-  return release;
-}
-
 export function rel(filePath) {
   return path.relative(repoRoot, filePath);
 }

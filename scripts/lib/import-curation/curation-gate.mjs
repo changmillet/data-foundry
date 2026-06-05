@@ -1,90 +1,62 @@
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { annualSupplyMissingDataSentinelText, asText, authoringQueueRowsForIdentity, buildQueueAuthoringContext, collectBundledSchemaContextFiles, collectContextDirFiles, collectExplicitContextFiles, contextFileDetails, datasetIdentity, datasetTypePlural, defaultProfilesFile, ensureArray, entityIdFromFinding, fallbackProfiles, fileExists, fullContextAiCompletionRequirement, fullContextGateItems, jsonLines, nowIso, optionList, qaFindingCode, qaFindingCurationAction, readAuthoringQueueContext, readContextFiles, readCurationQueueContext, readJson, readQaFindings, readRows, readText, repoRelativePath, resolveRepoPath, sanitizeFileName, schemaIssueCurationAction, supportedDatasetTypes, unique, writeJson, writeText } from "./part-00.mjs";
-import { buildIdentityPreflightAuthoringContext, classificationQueueActionItem, classificationQueueRowStillNeedsAuthoring, identityPreflightAuthoringActionItems, identityPreflightGateItems, locationQueueActionItem, locationQueueRowStillNeedsAuthoring, readIdentityPreflightContext } from "./part-01.mjs";
-import { collectProfileSemanticActionItems } from "./part-02.mjs";
-import { applyAnnualSupplyMissingDataSentinel, ensureFoundryTraceNamespaces, externalizeImportTraceMetadata, normalizeDateTimeMetadata, normalizeProfile, readProfilesConfig, sanitizeFoundryTraceEvidenceLocators } from "./part-05.mjs";
-import { identityDecisionApplyContextDecisionsForIdentity, readIdentityDecisionApplyContexts, readIdentityReferenceRewriteContext } from "./part-07.mjs";
-import { readUnresolvedExchangeExternalizationContext, unresolvedExchangeExternalizationRowsForIdentity } from "./part-08.mjs";
-import { readClassificationDecisionApplyContext } from "./part-09.mjs";
+import * as legacy from "./internal/legacy-implementation.mjs";
 
-export function profileFor(repoRoot, profileId, options = {}) {
-  const config = readProfilesConfig(repoRoot, options.profilesFile);
-  const requestedId = String(profileId || config.default_profile || "generic")
-    .trim()
-    .toLowerCase();
-  const profiles = config.profiles ?? {};
-  const selected =
-    profiles[requestedId] ??
-    profiles.generic ??
-    fallbackProfiles.profiles.generic;
-  const profile = normalizeProfile(selected, requestedId);
-  const extraDocs = optionList(options.profileDoc ?? options.profileDocs);
-  const extraWaivers = optionList(
-    options.waiveQa ?? options.waiveQaCode ?? options.waivedQaCode,
-  );
-  return {
-    ...profile,
-    docs: [...profile.docs, ...extraDocs],
-    waivedQaCodesByType: {
-      ...profile.waivedQaCodesByType,
-      ...(extraWaivers.length > 0
-        ? {
-            [datasetTypeFromOptions(options)]: [
-              ...ensureArray(
-                profile.waivedQaCodesByType?.[datasetTypeFromOptions(options)],
-              ),
-              ...extraWaivers,
-            ],
-          }
-        : {}),
-    },
-  };
-}
-
-export function listImportProfiles({ repoRoot, options = {} } = {}) {
-  const config = readProfilesConfig(repoRoot, options.profilesFile);
-  const profiles = Object.fromEntries(
-    Object.entries(config.profiles ?? {}).map(([id, profile]) => {
-      const normalized = normalizeProfile(profile, id);
-      return [
-        id,
-        {
-          id: normalized.id,
-          description: normalized.description,
-          docs: normalized.docs,
-          waived_qa_codes_by_type: normalized.waivedQaCodesByType,
-          full_context_ai_completion: normalized.fullContextAiCompletion,
-        },
-      ];
-    }),
-  );
-  return {
-    schema_version: config.schema_version ?? 1,
-    profiles_file: options.profilesFile ?? defaultProfilesFile,
-    default_profile: config.default_profile ?? "generic",
-    profiles,
-  };
-}
-
-export function datasetTypeFromOptions(options, forcedType = null) {
-  const datasetType = String(
-    forcedType ??
-      options.type ??
-      options.datasetType ??
-      options.kind ??
-      "process",
-  )
-    .trim()
-    .toLowerCase();
-  if (!supportedDatasetTypes.has(datasetType)) {
-    throw new Error(
-      `Unsupported dataset type: ${datasetType}. Expected contact, source, unitgroup, flowproperty, support, flow, process, or lifecyclemodel.`,
-    );
-  }
-  return datasetType;
-}
+const {
+  authoringQueueRowsForIdentity,
+  buildIdentityPreflightAuthoringContext,
+  buildQueueAuthoringContext,
+  classificationQueueActionItem,
+  classificationQueueRowStillNeedsAuthoring,
+  collectBundledSchemaContextFiles,
+  collectContextDirFiles,
+  collectExplicitContextFiles,
+  collectProfileSemanticActionItems,
+  contextFileDetails,
+  datasetIdentity,
+  datasetTypeFromOptions,
+  datasetTypePlural,
+  ensureArray,
+  entityIdFromFinding,
+  fileExists,
+  fullContextAiCompletionRequirement,
+  fullContextGateItems,
+  identityDecisionApplyContextDecisionsForIdentity,
+  identityDecisionApplyReportOptionValues,
+  identityKey,
+  identityPreflightAuthoringActionItems,
+  identityPreflightGateItems,
+  jsonLines,
+  locationQueueActionItem,
+  locationQueueRowStillNeedsAuthoring,
+  mapRowsByIdentity,
+  nowIso,
+  profileFor,
+  qaFindingCode,
+  qaFindingCurationAction,
+  readAuthoringQueueContext,
+  readClassificationDecisionApplyContext,
+  readContextFiles,
+  readCurationQueueContext,
+  readIdentityDecisionApplyContexts,
+  readIdentityPreflightContext,
+  readIdentityReferenceRewriteContext,
+  readJson,
+  readJsonArtifactsIfOption,
+  readJsonIfOption,
+  readQaFindings,
+  readRows,
+  readText,
+  readUnresolvedExchangeExternalizationContext,
+  repoRelativePath,
+  resolveRepoPath,
+  sanitizeFileName,
+  schemaIssueCurationAction,
+  sha256Text,
+  unresolvedExchangeExternalizationRowsForIdentity,
+  writeJson,
+  writeText,
+} = legacy;
 
 export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
   const datasetType = datasetTypeFromOptions(options);
@@ -782,192 +754,4 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
       authoring_packages_dir: repoRelativePath(repoRoot, packageDir),
     },
   };
-}
-
-export function runDatasetCurationCleanup({ repoRoot, options = {} } = {}) {
-  const datasetType = datasetTypeFromOptions(options);
-  const rowsFile = resolveRepoPath(repoRoot, options.rowsFile || options.input);
-  const defaultOut = `.foundry/workspaces/${datasetType}-dataset-curation-cleanup`;
-  const outDir = resolveRepoPath(repoRoot, options.outDir || defaultOut);
-  const defaultOutFile = path.join(
-    outDir,
-    `${datasetTypePlural[datasetType]}.cleaned.jsonl`,
-  );
-  const outFile =
-    resolveRepoPath(repoRoot, options.out || options.outFile) || defaultOutFile;
-  if (!rowsFile || !fileExists(rowsFile)) {
-    throw new Error(
-      "--rows-file is required and must point to a JSON/JSONL dataset row file.",
-    );
-  }
-
-  const rows = readRows(rowsFile);
-  let removedSourceTraceBlocks = 0;
-  let externalizedSourceTraceSummaries = 0;
-  let normalizedDateTimeValues = 0;
-  let addedFoundryTraceNamespaces = 0;
-  let redactedFoundryTraceEvidenceLocators = 0;
-  let annualSupplyMissingDataSentinels = 0;
-  const cleanedRows = rows.map((row, rowIndex) => {
-    const cleaned = JSON.parse(JSON.stringify(row));
-    if (applyAnnualSupplyMissingDataSentinel(cleaned, datasetType, rowIndex)) {
-      annualSupplyMissingDataSentinels += 1;
-    }
-    normalizedDateTimeValues += normalizeDateTimeMetadata(cleaned);
-    const traceResult = externalizeImportTraceMetadata(cleaned);
-    removedSourceTraceBlocks += traceResult.removed;
-    externalizedSourceTraceSummaries += traceResult.summaries;
-    redactedFoundryTraceEvidenceLocators +=
-      sanitizeFoundryTraceEvidenceLocators(cleaned);
-    addedFoundryTraceNamespaces += ensureFoundryTraceNamespaces(cleaned);
-    return cleaned;
-  });
-  writeText(outFile, jsonLines(cleanedRows));
-
-  const report = {
-    schema_version: 2,
-    generated_at_utc: nowIso(),
-    status: "completed",
-    dataset_type: datasetType,
-    rows_file: repoRelativePath(repoRoot, rowsFile),
-    cleaned_rows_file: repoRelativePath(repoRoot, outFile),
-    counts: {
-      rows: cleanedRows.length,
-      removed_source_trace_blocks: removedSourceTraceBlocks,
-      externalized_source_trace_summaries: externalizedSourceTraceSummaries,
-      redacted_foundry_trace_evidence_locators:
-        redactedFoundryTraceEvidenceLocators,
-      added_foundry_trace_namespaces: addedFoundryTraceNamespaces,
-      normalized_datetime_values: normalizedDateTimeValues,
-      annual_supply_missing_data_sentinels: annualSupplyMissingDataSentinels,
-    },
-    policy: {
-      purpose:
-        "Normalize write-time metadata and externalize import-only tidasimport:sourceTrace after curation context has been captured and before remote write.",
-      preserves_payload_semantics: true,
-      source_trace_policy:
-        "Original trace remains in the AI authoring package; write payload keeps only a safe hash summary in common:other.",
-      foundry_trace_namespace_policy:
-        "Any common:other tiangongfoundry:* trace kept in write payload gets @xmlns:tiangongfoundry before SDK validation.",
-      foundry_trace_locator_policy:
-        "Local machine paths from tiangongfoundry:* trace evidence are redacted from write payloads; authoring packages and patch evidence retain the full local context.",
-      datetime_policy:
-        "TIDAS/ILCD dateTime values with timezone offsets are normalized to UTC Z form.",
-      annual_supply_placeholder_policy:
-        `annualSupplyOrProductionVolume is schema-required. If source evidence is missing or converted as a placeholder such as 'Not specified', Foundry writes '${annualSupplyMissingDataSentinelText}' so the row remains importable and later database-side curation can bulk-locate the intentionally non-physical sentinel.`,
-    },
-  };
-  const reportFileName = "dataset-curation-cleanup-report.json";
-  const reportPath = path.join(outDir, reportFileName);
-  writeJson(reportPath, report);
-  return {
-    ...report,
-    files: {
-      report: repoRelativePath(repoRoot, reportPath),
-      cleaned_rows: repoRelativePath(repoRoot, outFile),
-    },
-  };
-}
-
-export function sha256Text(value) {
-  return crypto
-    .createHash("sha256")
-    .update(String(value ?? ""))
-    .digest("hex");
-}
-
-export function readJsonLines(filePath) {
-  if (!filePath || !fileExists(filePath)) return [];
-  const text = readText(filePath).trim();
-  if (!text) return [];
-  return text
-    .split(/\r?\n/u)
-    .filter(Boolean)
-    .map((line) => JSON.parse(line));
-}
-
-export function readRowsIfExists(filePath) {
-  return filePath && fileExists(filePath) ? readRows(filePath) : [];
-}
-
-export function readJsonIfOption(repoRoot, value) {
-  const resolved = resolveRepoPath(repoRoot, value);
-  return resolved && fileExists(resolved)
-    ? { path: resolved, value: readJson(resolved) }
-    : null;
-}
-
-export function readJsonArtifactsIfOption(repoRoot, value) {
-  return optionList(value)
-    .map((entry) => {
-      const resolved = resolveRepoPath(repoRoot, entry);
-      return resolved && fileExists(resolved)
-        ? { path: resolved, value: readJson(resolved) }
-        : null;
-    })
-    .filter(Boolean);
-}
-
-export function identityDecisionApplyReportOptionValues(options) {
-  return unique([
-    ...optionList(options.identityDecisionApplyReport),
-    ...optionList(options.identityDecisionsApplyReport),
-    ...optionList(options.identityDecisionApplyReports),
-    ...optionList(options.identityDecisionsApplyReports),
-  ]);
-}
-
-export function readFileArtifactIfOption(repoRoot, value) {
-  const resolved = resolveRepoPath(repoRoot, value);
-  return resolved && fileExists(resolved) ? resolved : null;
-}
-
-export function curationEntityId(entity) {
-  return asText(entity?.entity_id ?? entity?.process_id ?? entity?.id);
-}
-
-export function identityKey(identity) {
-  return `${identity.id}@@${identity.version}`;
-}
-
-export function mapRowsByIdentity(rows, datasetType) {
-  return new Map(
-    rows.map((row, index) => {
-      const identity = datasetIdentity(row, index, datasetType);
-      return [identityKey(identity), { row, identity, index }];
-    }),
-  );
-}
-
-export function defaultSourceReferenceRewriteFile(rowsFile) {
-  const rowsDir = path.dirname(rowsFile);
-  const candidates = [
-    path.join(rowsDir, "source-reference-rewrites.jsonl"),
-    path.join(path.dirname(rowsDir), "source-reference-rewrites.jsonl"),
-  ];
-  return candidates.find((candidate) => fileExists(candidate)) ?? null;
-}
-
-export function normalizeSourceReferenceRewriteRow(row) {
-  const normalized = {
-    ...row,
-    dataset_type: asText(row?.dataset_type ?? row?.datasetType) || null,
-    dataset_id: asText(row?.dataset_id ?? row?.datasetId ?? row?.entity_id),
-    dataset_version:
-      asText(row?.dataset_version ?? row?.datasetVersion ?? row?.version) ||
-      "00.00.001",
-    relation: asText(row?.relation) || null,
-    path: asText(row?.path) || null,
-    action:
-      asText(row?.action) || "rewrite_to_canonical_source_reference",
-    reason: asText(row?.reason) || null,
-  };
-  normalized.evidence = {
-    source: "source-reference-rewrites.jsonl",
-    source_file: asText(row?.source_file ?? row?.sourceFile) || null,
-    original: row?.original ?? null,
-    canonical: row?.canonical ?? null,
-    reason: normalized.reason,
-  };
-  return normalized;
 }

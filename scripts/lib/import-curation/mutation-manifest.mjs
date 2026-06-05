@@ -1,12 +1,60 @@
 import fs from "node:fs";
 import path from "node:path";
-import { asText, datasetTypePlural, ensureArray, fileExists, fullContextAiCompletionRequirement, jsonLines, nowIso, readRows, repoRelativePath, resolveRepoPath, supportDatasetTypes, writeJson, writeText } from "./part-00.mjs";
-import { datasetTypeFromOptions, identityDecisionApplyReportOptionValues, identityKey, mapRowsByIdentity, profileFor, readFileArtifactIfOption, readJsonArtifactsIfOption, readJsonIfOption, readRowsIfExists } from "./part-06.mjs";
-import { identityDecisionUnresolvedReferenceKeys, mapCurationEntities, mapSchemaRows, readDatasetSaveDraftDryRunArtifacts, readFlowDryRunArtifacts, readIdentityDecisionApplyContexts, readIdentityReferenceRewriteContext, readLifecyclemodelDryRunArtifacts, readPatchApplyContext, readPolicySnapshots, readProcessDryRunArtifacts, readSourceReferenceRewriteContext, remoteVerifyBlockerKeys } from "./part-07.mjs";
-import { buildEvidenceScopeBlockers, evidenceScopeBlocker, readCanonicalSupportRewriteContext, readUnresolvedExchangeExternalizationContext } from "./part-08.mjs";
-import { readClassificationDecisionApplyContext } from "./part-09.mjs";
-import { decisionTaskContextBundleHashesFromContext, readLocationDecisionApplyContext } from "./part-10.mjs";
-import { buildFullContextAiCompletionBlockers, buildReferenceClosureBlockers, buildReferenceReuseItems, buildWriteCandidateItem, decisionCounts, identityReferenceRewriteProofKeys, operationCounts, plannedRootReferenceIds, plannedRootReferenceKeys } from "./part-11.mjs";
+import * as legacy from "./internal/legacy-implementation.mjs";
+
+const {
+  asText,
+  buildEvidenceScopeBlockers,
+  buildFullContextAiCompletionBlockers,
+  buildReferenceClosureBlockers,
+  buildReferenceReuseItems,
+  buildWriteCandidateItem,
+  datasetTypeFromOptions,
+  datasetTypePlural,
+  decisionCounts,
+  decisionTaskContextBundleHashesFromContext,
+  ensureArray,
+  evidenceScopeBlocker,
+  fileExists,
+  fullContextAiCompletionRequirement,
+  identityDecisionApplyReportOptionValues,
+  identityDecisionUnresolvedReferenceKeys,
+  identityKey,
+  identityReferenceRewriteProofKeys,
+  jsonLines,
+  mapCurationEntities,
+  mapRowsByIdentity,
+  mapSchemaRows,
+  nowIso,
+  operationCounts,
+  plannedRootReferenceIds,
+  plannedRootReferenceKeys,
+  profileFor,
+  readCanonicalSupportRewriteContext,
+  readClassificationDecisionApplyContext,
+  readDatasetSaveDraftDryRunArtifacts,
+  readFileArtifactIfOption,
+  readFlowDryRunArtifacts,
+  readIdentityDecisionApplyContexts,
+  readIdentityReferenceRewriteContext,
+  readJsonArtifactsIfOption,
+  readJsonIfOption,
+  readLifecyclemodelDryRunArtifacts,
+  readLocationDecisionApplyContext,
+  readPatchApplyContext,
+  readPolicySnapshots,
+  readProcessDryRunArtifacts,
+  readRows,
+  readRowsIfExists,
+  readSourceReferenceRewriteContext,
+  readUnresolvedExchangeExternalizationContext,
+  remoteVerifyBlockerKeys,
+  repoRelativePath,
+  resolveRepoPath,
+  supportDatasetTypes,
+  writeJson,
+  writeText,
+} = legacy;
 
 export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
   const datasetType = datasetTypeFromOptions(options);
