@@ -80,11 +80,15 @@ function annualSupplyTextValue(value) {
 
 function isPlaceholderAnnualSupplyValue(value) {
   const text = annualSupplyTextValue(value);
+  const normalized = text.toLowerCase();
   return (
     !text ||
     /^9999$/u.test(text) ||
     /^not\s+specified\.?$/iu.test(text) ||
-    /^not\s+declared\s+in\s+source\s+package\.?$/iu.test(text)
+    /^not\s+declared\s+in\s+source\s+package\.?$/iu.test(text) ||
+    normalized.includes("source production volume unavailable") ||
+    normalized.includes("production volume unavailable") ||
+    normalized.includes("source evidence unavailable")
   );
 }
 

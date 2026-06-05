@@ -35,7 +35,9 @@ const {
   qaFindingCode,
   qaFindingCurationAction,
   readAuthoringQueueContext,
+  readCanonicalSupportRewriteContext,
   readClassificationDecisionApplyContext,
+  readCleanupTransformContext,
   readContextFiles,
   readCurationQueueContext,
   readIdentityDecisionApplyContexts,
@@ -46,6 +48,7 @@ const {
   readJsonIfOption,
   readQaFindings,
   readRows,
+  readSourceContactRewriteContext,
   readText,
   readUnresolvedExchangeExternalizationContext,
   repoRelativePath,
@@ -188,6 +191,26 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
       repoRoot,
       unresolvedExchangeExternalizationArtifact,
     );
+  const sourceContactRewriteArtifact = readJsonIfOption(
+    repoRoot,
+    options.sourceContactRewriteReport ??
+      options.sourceContactRewritesReport,
+  );
+  const sourceContactRewriteContext = readSourceContactRewriteContext(
+    repoRoot,
+    sourceContactRewriteArtifact,
+  );
+  const canonicalSupportRewriteArtifact = readJsonIfOption(
+    repoRoot,
+    options.canonicalSupportRewriteReport ??
+      options.canonicalSupportRewritesReport,
+  );
+  const canonicalSupportRewriteContext = readCanonicalSupportRewriteContext(
+    repoRoot,
+    canonicalSupportRewriteArtifact,
+  );
+  const cleanupArtifact = readJsonIfOption(repoRoot, options.cleanupReport);
+  const cleanupContext = readCleanupTransformContext(repoRoot, cleanupArtifact);
 	  const writeRows = mapRowsByIdentity(rows, datasetType);
 	  const identityReferenceRewriteContext = readIdentityReferenceRewriteContext({
 	    repoRoot,
@@ -229,7 +252,12 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
         curationQueueContext,
         repoRoot,
         classificationDecisionApplyContext,
+        identityDecisionApplyContext,
+        identityReferenceRewriteContext,
         unresolvedExchangeExternalizationContext,
+        sourceContactRewriteContext,
+        canonicalSupportRewriteContext,
+        cleanupContext,
       });
     const unresolvedExchangeExternalizationRows =
       unresolvedExchangeExternalizationRowsForIdentity(

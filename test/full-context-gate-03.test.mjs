@@ -1655,6 +1655,12 @@ test("post-authoring finalize auto-requires identity preflight for BAFU process 
     assert.equal(finalize.code, 1);
     assert.equal(finalize.json.status, "blocked");
     assert.equal(finalize.json.counts.identity_preflight_required, true);
+    assert.equal(
+      finalize.json.counts.source_contact_support_finalize_status,
+      "available_not_requested",
+    );
+    assert.ok(finalize.json.files.source_contact_support_rows);
+    assert.equal(finalize.json.files.source_contact_support_finalize_report, null);
     assert.ok(finalize.json.files.curation_gate_report);
     assert.ok(
       finalize.json.stages.some(

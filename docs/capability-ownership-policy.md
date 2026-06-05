@@ -36,7 +36,9 @@ Foundry owns:
 - source manifests, import profiles, curation packages, cleanup reports, and handoff reports;
 - root-library entity indexes, process-scope projections, blocked-scope ledgers, blocked-scope reports, and ready-scope checkpoints for packaged imports;
 - deterministic resolution of package-local bundle paths before Foundry projects library decisions to process scopes;
+- deterministic row-transform evidence reconciliation across source/contact rewrites, canonical support rewrites, identity reference rewrites, unresolved-exchange externalization, and cleanup;
 - remote-write policy checks, execution policy records, blocked-scope ledgers and reports, and commit/readback handoff aggregation;
+- support dependency finalize/handoff aggregation for profile-generated writable contact/source rows, without directly mutating the database;
 - acceptance checks and Stop-hook feedback loops;
 - thin adapters that call existing CLI or skill entrypoints.
 

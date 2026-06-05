@@ -1015,6 +1015,53 @@ test("curation cleanup fills placeholder annual supply with searchable sentinel"
   }
 });
 
+test("curation cleanup treats unavailable annual production volume as sentinel", () => {
+  const root = path.join(
+    repoRoot,
+    "tmp",
+    "annual-supply-unavailable-cleanup-test",
+  );
+  fs.rmSync(root, { recursive: true, force: true });
+  const processId = "eeeeeeee-ffff-4000-8111-222222222224";
+  const row = processRowWithInvalidAnnualSupply(processId);
+  row.processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume = {
+    "@xml:lang": "en",
+    "#text": "0 m/year; source production volume unavailable",
+  };
+  const rowsFile = path.join(root, "rows", "processes.jsonl");
+  writeJsonLines(rowsFile, [row]);
+
+  try {
+    const cleanup = runFoundry([
+      "dataset-curation-cleanup",
+      "--type",
+      "process",
+      "--rows-file",
+      rel(rowsFile),
+      "--out-dir",
+      rel(path.join(root, "cleanup")),
+    ]);
+    assert.equal(cleanup.code, 0);
+    assert.equal(cleanup.json.status, "completed");
+    assert.equal(cleanup.json.counts.annual_supply_missing_data_sentinels, 1);
+
+    const cleaned = readJsonLines(
+      path.join(repoRoot, cleanup.json.files.cleaned_rows),
+    )[0];
+    assert.deepEqual(
+      cleaned.processDataSet.modellingAndValidation
+        .dataSourcesTreatmentAndRepresentativeness
+        .annualSupplyOrProductionVolume,
+      {
+        "@xml:lang": "en",
+        "#text": "9999 missing-data-sentinel/year",
+      },
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("output-only process exchanges require source exchange completeness trace", () => {
   fs.rmSync(sourceExchangeFixtureRoot, { recursive: true, force: true });
   const processId = "bbbbbbbb-cccc-4ddd-8eee-ffffffffffff";

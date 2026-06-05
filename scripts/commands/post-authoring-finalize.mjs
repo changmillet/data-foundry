@@ -258,7 +258,7 @@ export function createPostAuthoringFinalizeCommands({
         status: "help",
         command: "dataset-post-authoring-finalize",
         usage: [
-          "node scripts/foundry.mjs dataset-post-authoring-finalize --type <support|contact|source|process|flow|lifecyclemodel> --rows-file <patched-or-classified-rows.jsonl> --out-dir <finalize-dir> --profile <profile> --queue-dir <queue-dir> --classification-queue <classification-authoring-queue.jsonl> --location-queue <location-authoring-queue.jsonl> --identity-preflight-index <identity-preflight-requests.jsonl> --run-identity-preflight --schema-file <schema.json> --yaml-file <methodology.yaml> --ruleset-file <ruleset.json> --classification-decision-apply-report <classification-decisions-apply-report.json> --location-decision-apply-report <location-decisions-apply-report.json> --patch-collect-report <authoring-patch-collect-report.json> --patch-apply-report <dataset-patch-apply-report.json> --require-patch-collect-report --target-user-id <uuid> --verify-remote",
+          "node scripts/foundry.mjs dataset-post-authoring-finalize --type <support|contact|source|process|flow|lifecyclemodel> --rows-file <patched-or-classified-rows.jsonl> --out-dir <finalize-dir> --profile <profile> --queue-dir <queue-dir> --classification-queue <classification-authoring-queue.jsonl> --location-queue <location-authoring-queue.jsonl> --identity-preflight-index <identity-preflight-requests.jsonl> --run-identity-preflight --schema-file <schema.json> --yaml-file <methodology.yaml> --ruleset-file <ruleset.json> --classification-decision-apply-report <classification-decisions-apply-report.json> --location-decision-apply-report <location-decisions-apply-report.json> --patch-collect-report <authoring-patch-collect-report.json> --patch-apply-report <dataset-patch-apply-report.json> --require-patch-collect-report --target-user-id <uuid> --verify-remote --finalize-source-contact-support",
         ],
         purpose:
           "Run the post-AI authoring prewrite chain for support, process, flow, or lifecyclemodel rows: cleanup, SDK validate, location audit, dry-run publish/save, optional remote reference verification, and mutation manifest. Process/flow/lifecyclemodel rows additionally run deterministic QA and post-authoring curation gate. This command never commits rows.",
@@ -347,6 +347,59 @@ export function createPostAuthoringFinalizeCommands({
       sourceContactRewriteStage.files?.output_rows ||
         sourceContactRewriteStage.output_rows_file,
     );
+    const sourceContactSupportRowsFile = resolveRepoPath(
+      sourceContactRewriteStage.files?.support_rows,
+    );
+    const sourceContactSupportFinalizeRequested =
+      authoredTypes.includes(datasetType) &&
+      fileExists(sourceContactSupportRowsFile) &&
+      booleanOption(
+        options.finalizeSourceContactSupport ||
+          options.prepareSourceContactSupport ||
+          options.autoFinalizeSourceContactSupport,
+      );
+    const sourceContactSupportFinalize =
+      sourceContactSupportFinalizeRequested
+        ? runDatasetPostAuthoringFinalize({
+            ...options,
+            type: "contact",
+            rowsFile: sourceContactSupportRowsFile,
+            outDir: path.join(outDir, "source-contact-support-finalize"),
+            skipSourceContactRewrites: true,
+            finalizeSourceContactSupport: false,
+            prepareSourceContactSupport: false,
+            autoFinalizeSourceContactSupport: false,
+            requireIdentityPreflight: false,
+            runIdentityPreflight: false,
+            identityPreflightIndex: null,
+            identityPreflightRequests: null,
+            identityPreflightRequestsIndex: null,
+            classificationDecisionApplyReport: null,
+            classificationDecisionsApplyReport: null,
+            locationDecisionApplyReport: null,
+            locationDecisionsApplyReport: null,
+            identityDecisionApplyReport: null,
+            identityDecisionsApplyReport: null,
+            identityDecisionApplyReports: [],
+            identityDecisionsApplyReports: [],
+            patchCollectReport: null,
+            authoringPatchCollectReport: null,
+            patchApplyReport: null,
+          })
+        : {
+            status: sourceContactSupportRowsFile
+              ? "available_not_requested"
+              : "not_required",
+            counts: { blockers: 0, write_candidates: 0 },
+            files: {
+              report: null,
+              final_rows: sourceContactSupportRowsFile
+                ? repoRelativePath(sourceContactSupportRowsFile)
+                : null,
+            },
+            commit_handoff: { status: "not_requested", blockers: [] },
+            blockers: [],
+          };
 
     const canonicalSupportRewriteStage = applyCanonicalSupportRewrites({
       datasetType,
@@ -495,6 +548,10 @@ export function createPostAuthoringFinalizeCommands({
               options.classificationDecisionsApplyReport,
             unresolvedExchangeExternalizationReport:
               unresolvedExchangeExternalizeStage.files?.report,
+            sourceContactRewriteReport:
+              sourceContactRewriteStage.files?.report,
+            canonicalSupportRewriteReport: canonicalSupportReportFile,
+            cleanupReport: cleanupReportFile,
   	          identityDecisionApplyReport:
               options.identityDecisionApplyReport ||
               options.identityDecisionsApplyReport,
@@ -721,11 +778,13 @@ export function createPostAuthoringFinalizeCommands({
           ? curationGateReportFile
           : null,
         cleanupReport: cleanupReportFile,
-        canonicalSupportRewriteReport: canonicalSupportReportFile,
         dryRunReport: prewriteGateReady ? dryRunStage.report_file : null,
         remoteVerifyReport: remoteVerifyReportFile,
         unresolvedExchangeExternalizationReport:
           unresolvedExchangeExternalizeStage.files?.report,
+        sourceContactRewriteReport:
+          sourceContactRewriteStage.files?.report,
+        canonicalSupportRewriteReport: canonicalSupportReportFile,
         classificationDecisionApplyReport:
           options.classificationDecisionApplyReport ||
           options.classificationDecisionsApplyReport,
@@ -806,6 +865,23 @@ export function createPostAuthoringFinalizeCommands({
         args: [],
         stderr: "",
         report_file: resolveRepoPath(sourceContactRewriteStage.files?.report),
+      },
+      {
+        stage: "source_contact_support_finalize",
+        status: sourceContactSupportFinalize.status,
+        exit_code:
+          sourceContactSupportFinalizeRequested &&
+          sourceContactSupportFinalize.counts?.blockers > 0
+            ? 1
+            : 0,
+        command: sourceContactSupportFinalizeRequested
+          ? "foundry.dataset-post-authoring-finalize"
+          : "skipped",
+        args: [],
+        stderr: "",
+        report_file: resolveRepoPath(
+          sourceContactSupportFinalize.files?.report,
+        ),
       },
       {
         stage: "canonical_support_rewrites",
@@ -966,6 +1042,15 @@ export function createPostAuthoringFinalizeCommands({
           sourceContactRewriteStage.counts?.source_reference_rewrites ?? 0,
         source_contact_support_rows:
           sourceContactRewriteStage.counts?.support_rows ?? 0,
+        source_contact_support_finalize_status:
+          sourceContactSupportFinalize.status,
+        source_contact_support_finalize_write_candidates:
+          sourceContactSupportFinalize.counts?.write_candidates ?? 0,
+        source_contact_support_finalize_blockers:
+          sourceContactSupportFinalize.counts?.blockers ?? 0,
+        source_contact_support_commit_handoff_blockers:
+          ensureArray(sourceContactSupportFinalize.commit_handoff?.blockers)
+            .length,
         canonical_support_input_rows:
           canonicalSupportRewriteStage.counts?.input_rows ?? null,
         canonical_support_output_rows:
@@ -1058,6 +1143,12 @@ export function createPostAuthoringFinalizeCommands({
           sourceContactRewriteStage.files?.output_rows ?? null,
         source_contact_support_rows:
           sourceContactRewriteStage.files?.support_rows ?? null,
+        source_contact_support_finalize_report:
+          sourceContactSupportFinalize.files?.report ?? null,
+        source_contact_support_finalize_rows:
+          sourceContactSupportFinalize.files?.final_rows ?? null,
+        source_contact_support_commit_handoff_plan:
+          sourceContactSupportFinalize.files?.commit_handoff_plan ?? null,
         source_contact_source_reference_rewrites:
           sourceContactRewriteStage.files?.source_reference_rewrites ?? null,
         cleanup_report: repoRelativeMaybe(cleanupReportFile),

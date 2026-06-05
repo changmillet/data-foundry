@@ -32,6 +32,7 @@ const {
   profileFor,
   readCanonicalSupportRewriteContext,
   readClassificationDecisionApplyContext,
+  readCleanupTransformContext,
   readDatasetSaveDraftDryRunArtifacts,
   readFileArtifactIfOption,
   readFlowDryRunArtifacts,
@@ -46,6 +47,7 @@ const {
   readProcessDryRunArtifacts,
   readRows,
   readRowsIfExists,
+  readSourceContactRewriteContext,
   readSourceReferenceRewriteContext,
   readUnresolvedExchangeExternalizationContext,
   remoteVerifyBlockerKeys,
@@ -167,6 +169,16 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
     repoRoot,
     canonicalSupportRewriteArtifact,
   );
+  const sourceContactRewriteArtifact = readJsonIfOption(
+    repoRoot,
+    options.sourceContactRewriteReport ??
+      options.sourceContactRewritesReport,
+  );
+  const sourceContactRewriteContext = readSourceContactRewriteContext(
+    repoRoot,
+    sourceContactRewriteArtifact,
+  );
+  const cleanupContext = readCleanupTransformContext(repoRoot, cleanupArtifact);
   const hasClassificationDecisionProof =
     classificationDecisionApplyContext?.status === "completed" &&
     classificationDecisionApplyContext.decisions.length > 0;
@@ -266,7 +278,9 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
       identityDecisionApplyContext,
       identityReferenceRewriteContext,
       unresolvedExchangeExternalizationContext,
+      sourceContactRewriteContext,
       canonicalSupportRewriteContext,
+      cleanupContext,
     }),
   );
   evidenceScopeBlockers.push(

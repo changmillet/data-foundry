@@ -74,6 +74,7 @@ profiles
 5. Gate aggregate
    - check that schema, QA, curation, queue verify, dry-run, closeout, and readback artifacts exist
    - verify artifacts point to the same rows scope
+   - accept identity/classification/location evidence across deterministic row transforms such as source/contact rewrites, canonical support rewrites, identity reference rewrites, unresolved-exchange externalization, and cleanup
    - generate completion reports
 
 6. Whole-library scope orchestration
@@ -92,6 +93,7 @@ The v0 runtime is intentionally small:
 - read-only workspace map diagnostic
 - no persistent database
 - no direct database commit from Foundry code; remote commit is allowed only through official CLI/platform commands when profile gates, write policy, commit handoff, and post-write verification are satisfied
+- generated source/contact support rows may get Foundry-prepared finalize and commit-handoff artifacts, but dependent process/flow/lifecyclemodel scopes must wait for the CLI commit and readback verification of those support rows
 - published CLI invocation is the default command path: `npx --yes @tiangong-lca/cli@latest ...`
 
 ## Retired v1 Daemon Direction

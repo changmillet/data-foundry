@@ -34,8 +34,8 @@ Foundry should route reusable work to the owning repository instead of copying i
 | SCI literature evidence retrieval for source-evidence tasks | `tiangong-ai/skills` | `npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --full-depth`; install/update with the npm `skills` package |
 | Agent workflow instructions | `tiangong-lca-skills` | `$tidas-contract-context`, `$tidas-data-import` |
 | Schema validation and QA gates | `tiangong-lca-cli` | `npx --yes @tiangong-lca/cli@latest dataset validate`, `npx --yes @tiangong-lca/cli@latest qa` |
-| Remote commit, readback, and publish prep | `tiangong-lca-cli`, Edge Functions, database | `dataset-post-authoring-finalize` handoff, published CLI commit commands, `npx --yes @tiangong-lca/cli@latest dataset verify-remote`, `publish run`, Edge verification |
+| Remote commit, readback, and publish prep | `tiangong-lca-cli`, Edge Functions, database | `dataset-post-authoring-finalize` and source/contact support handoff artifacts, published CLI commit commands, `npx --yes @tiangong-lca/cli@latest dataset verify-remote`, `publish run`, Edge verification |
 | Foundry task routing and manifests | `tiangong-lca-data-foundry` | `scripts/foundry.mjs route-task` |
-| Write/execution policy and blocked-scope ledgers/reports | `tiangong-lca-data-foundry` | `foundry-job.json`, library entity indexes, index-relative process-scope projections, checkpoints, `blocked-scope-ledger.jsonl`, `blocked-scope-report.json`, mutation manifest aggregation, closeout reports |
+| Write/execution policy and blocked-scope ledgers/reports | `tiangong-lca-data-foundry` | `foundry-job.json`, library entity indexes, index-relative process-scope projections, deterministic transform evidence reconciliation, checkpoints, `blocked-scope-ledger.jsonl`, `blocked-scope-report.json`, mutation manifest aggregation, closeout reports |
 
 Before implementing a missing capability, classify it with `docs/capability-ownership-policy.md` and `specs/capability-ownership-rules.json`.
