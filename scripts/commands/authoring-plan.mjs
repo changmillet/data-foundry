@@ -1,0 +1,1062 @@
+import fs from "node:fs";
+import path from "node:path";
+import process from "node:process";
+
+export function createAuthoringPlanCommands({
+  appendOption,
+  appendRepeatedOptions,
+  asText,
+  datasetRowsFileStem,
+  decisionTaskChunkLabel,
+  ensureArray,
+  fileExists,
+  hasUnresolvedAiPlaceholder,
+  normalizedList,
+  nowIso,
+  positiveIntegerOption,
+  readJson,
+  readJsonOrJsonLines,
+  repoRelativeMaybe,
+  repoRelativePath,
+  repoRoot,
+  resolveRepoPath,
+  safeFileToken,
+  shellQuote,
+  unique,
+  writeJson,
+}) {
+  function foundryCommand(args) {
+    return [
+      process.execPath,
+      path.join(repoRoot, "scripts", "foundry.mjs"),
+      ...args,
+    ]
+      .map(shellQuote)
+      .join(" ");
+  }
+
+  function authoringPlanWorkspaceDir(curationGateReportPath, options) {
+    const explicit = resolveRepoPath(options.workspaceDir || options.workspace);
+    if (explicit) return explicit;
+    const curationDir = path.dirname(curationGateReportPath);
+    return path.basename(curationDir) === "curation-gate"
+      ? path.dirname(curationDir)
+      : curationDir;
+  }
+
+  function existingArtifact(filePath) {
+    const resolved = resolveRepoPath(filePath);
+    if (!resolved || !fileExists(resolved)) return null;
+    return { path: resolved, value: readJson(resolved) };
+  }
+
+  function artifactStatus(filePath) {
+    const artifact = existingArtifact(filePath);
+    if (!artifact) {
+      return {
+        exists: false,
+        path: repoRelativeMaybe(resolveRepoPath(filePath)),
+        status: "missing",
+      };
+    }
+    return {
+      exists: true,
+      path: repoRelativePath(artifact.path),
+      status: asText(artifact.value?.status) || "present",
+      counts: artifact.value?.counts ?? null,
+    };
+  }
+
+  function aiRowsFileStatus(
+    filePath,
+    { requireCompletedDecision = false } = {},
+  ) {
+    const resolved = resolveRepoPath(filePath);
+    if (!resolved || !fileExists(resolved)) {
+      return {
+        exists: false,
+        path: resolved ? repoRelativePath(resolved) : null,
+        status: "missing",
+        rows: 0,
+        placeholders: 0,
+        incomplete_decisions: 0,
+      };
+    }
+    const rows = readJsonOrJsonLines(resolved);
+    const placeholders = rows.filter(hasUnresolvedAiPlaceholder).length;
+    const incompleteDecisions = requireCompletedDecision
+      ? rows.filter((row) => asText(row?.decision_status) !== "completed")
+          .length
+      : 0;
+    return {
+      exists: true,
+      path: repoRelativePath(resolved),
+      status:
+        rows.length === 0
+          ? "empty"
+          : placeholders > 0 || incompleteDecisions > 0
+            ? "needs_ai_completion"
+            : "ready_for_apply",
+      rows: rows.length,
+      placeholders,
+      incomplete_decisions: incompleteDecisions,
+    };
+  }
+
+  function authoringPlanContextPaths(curationGateReport) {
+    const details = ensureArray(
+      curationGateReport?.context?.contract_context_file_details,
+    );
+    const byKind = new Map();
+    for (const detail of details) {
+      const kind = asText(detail?.kind);
+      const filePath = asText(detail?.path);
+      if (!kind || !filePath) continue;
+      const values = byKind.get(kind) ?? [];
+      values.push(filePath);
+      byKind.set(kind, values);
+    }
+    return {
+      schema: byKind.get("schema")?.[0] ?? null,
+      methodology_yaml: byKind.get("methodology_yaml")?.[0] ?? null,
+      ruleset: byKind.get("ruleset")?.[0] ?? null,
+      classification_schema: byKind.get("classification_schema") ?? [],
+      location_schema: byKind.get("location_schema")?.[0] ?? null,
+    };
+  }
+
+  function appendContextOptions(args, contextPaths) {
+    appendOption(args, "--schema-file", contextPaths.schema);
+    appendOption(args, "--yaml-file", contextPaths.methodology_yaml);
+    appendOption(args, "--ruleset-file", contextPaths.ruleset);
+    appendRepeatedOptions(
+      args,
+      "--classification-schema",
+      contextPaths.classification_schema,
+    );
+    appendOption(args, "--location-schema", contextPaths.location_schema);
+  }
+
+  function authoringPlanGateScope(curationGateReport) {
+    const datasetType = asText(curationGateReport?.dataset_type);
+    const entities = ensureArray(
+      curationGateReport?.entities ??
+        curationGateReport?.processes ??
+        curationGateReport?.flows ??
+        curationGateReport?.items,
+    );
+    return {
+      dataset_type: datasetType,
+      dataset_ids: unique(
+        entities
+          .map((entity) =>
+            asText(
+              entity?.entity_id ??
+                entity?.dataset_id ??
+                entity?.process_id ??
+                entity?.flow_id,
+            ),
+          )
+          .filter(Boolean),
+      ),
+    };
+  }
+
+  function appendAuthoringPlanGateScopeOptions(args, scope) {
+    appendOption(args, "--dataset-type", scope?.dataset_type);
+    appendRepeatedOptions(args, "--dataset-id", scope?.dataset_ids ?? []);
+  }
+
+  function authoringPlanScopedDecisionQueuePath({
+    taskPath,
+    taskQueueKey,
+    originalQueue,
+    scope,
+    kind,
+  }) {
+    const taskQueue = asText(existingArtifact(taskPath)?.value?.[taskQueueKey]);
+    if (taskQueue) return taskQueue;
+    if (scope?.dataset_type) {
+      const selection = {
+        dataset_types: [scope.dataset_type],
+        category_types: [],
+        bundle_ids: [],
+      };
+      const label = decisionTaskChunkLabel({}, selection, `${kind}-scope`);
+      return repoRelativePath(
+        path.join(
+          path.dirname(resolveRepoPath(taskPath)),
+          `${kind}-authoring-queue.${label}.jsonl`,
+        ),
+      );
+    }
+    return originalQueue;
+  }
+
+  function authoringPlanDefaultPaths(workspaceDir) {
+    return {
+      identityTask: path.join(
+        workspaceDir,
+        "identity-decision-task",
+        "identity-decision-task.json",
+      ),
+      identityDecisions: path.join(
+        workspaceDir,
+        "identity-decision-task",
+        "identity-decisions.jsonl",
+      ),
+      identityApplyReport: path.join(
+        workspaceDir,
+        "identity-decision-apply",
+        "identity-decisions-apply-report.json",
+      ),
+      classificationTask: path.join(
+        workspaceDir,
+        "classification-decision-task",
+        "classification-decision-task.json",
+      ),
+      classificationDecisions: path.join(
+        workspaceDir,
+        "classification-decision-task",
+        "classification-decisions.jsonl",
+      ),
+      classificationApplyReport: path.join(
+        workspaceDir,
+        "classification-decision-apply",
+        "classification-decisions-apply-report.json",
+      ),
+      locationTask: path.join(
+        workspaceDir,
+        "location-decision-task",
+        "location-decision-task.json",
+      ),
+      locationDecisions: path.join(
+        workspaceDir,
+        "location-decision-task",
+        "location-decisions.jsonl",
+      ),
+      locationApplyReport: path.join(
+        workspaceDir,
+        "location-decision-apply",
+        "location-decisions-apply-report.json",
+      ),
+      authoringTaskManifest: path.join(
+        workspaceDir,
+        "authoring-tasks",
+        "authoring-task-manifest.json",
+      ),
+      patchCollectReport: path.join(
+        workspaceDir,
+        "authoring-tasks",
+        "authoring-patch-collect-report.json",
+      ),
+      patchApplyReport: path.join(
+        workspaceDir,
+        "patch-apply",
+        "dataset-patch-apply-report.json",
+      ),
+    };
+  }
+
+  function authoringPlanApplyStatus(reportPath) {
+    const artifact = artifactStatus(reportPath);
+    return {
+      ...artifact,
+      completed: artifact.exists && artifact.status === "completed",
+    };
+  }
+
+  function phaseStatusFromTaskDecision({
+    required,
+    taskPath,
+    readyStatus,
+    emptyStatus,
+    decisionsPath,
+    applyReportPath,
+    applyReportPaths = null,
+  }) {
+    if (!required) {
+      return { status: "not_required", required: false };
+    }
+    const task = artifactStatus(taskPath);
+    if (!task.exists) {
+      return { status: "needs_task_build", required: true, task };
+    }
+    if (task.status === emptyStatus) {
+      return { status: "completed_no_actions", required: true, task };
+    }
+    if (task.status !== readyStatus) {
+      return { status: "blocked_task_not_ready", required: true, task };
+    }
+    const decisions = aiRowsFileStatus(decisionsPath, {
+      requireCompletedDecision: true,
+    });
+    if (decisions.status !== "ready_for_apply") {
+      return {
+        status: "ready_for_ai_decisions",
+        required: true,
+        task,
+        decisions,
+      };
+    }
+    const applyReports = (applyReportPaths ?? [applyReportPath]).map(
+      authoringPlanApplyStatus,
+    );
+    if (!applyReports.every((report) => report.completed)) {
+      return {
+        status: "needs_deterministic_apply",
+        required: true,
+        task,
+        decisions,
+        apply_report: applyReports.length === 1 ? applyReports[0] : null,
+        apply_reports: applyReports,
+      };
+    }
+    return {
+      status: "completed",
+      required: true,
+      task,
+      decisions,
+      apply_report: applyReports.length === 1 ? applyReports[0] : null,
+      apply_reports: applyReports,
+    };
+  }
+
+  function phaseStatusFromPatchAuthoring({
+    required,
+    manifestPath,
+    patchCollectReportPath,
+    patchApplyReportPath,
+  }) {
+    if (!required) {
+      return { status: "not_required", required: false };
+    }
+    const manifest = artifactStatus(manifestPath);
+    if (!manifest.exists) {
+      return { status: "needs_task_build", required: true, manifest };
+    }
+    if (manifest.status === "ready_no_action_items") {
+      return { status: "completed_no_actions", required: true, manifest };
+    }
+    if (manifest.status !== "ready_for_ai_authoring_batch") {
+      return { status: "blocked_task_not_ready", required: true, manifest };
+    }
+    const collect = artifactStatus(patchCollectReportPath);
+    if (!collect.exists || collect.status === "blocked") {
+      return {
+        status: "ready_for_ai_patches",
+        required: true,
+        manifest,
+        patch_collect_report: collect,
+      };
+    }
+    if (collect.status !== "ready_for_patch_apply") {
+      return {
+        status: "blocked_patch_collect_not_ready",
+        required: true,
+        manifest,
+        patch_collect_report: collect,
+      };
+    }
+    const applyReport = authoringPlanApplyStatus(patchApplyReportPath);
+    if (!applyReport.completed) {
+      return {
+        status: "needs_deterministic_apply",
+        required: true,
+        manifest,
+        patch_collect_report: collect,
+        patch_apply_report: applyReport,
+      };
+    }
+    return {
+      status: "completed",
+      required: true,
+      manifest,
+      patch_collect_report: collect,
+      patch_apply_report: applyReport,
+    };
+  }
+
+  function authoringPlanOverallStatus(phases) {
+    const required = phases.filter((phase) => phase.required);
+    if (required.length === 0) return "ready_no_authoring_actions";
+    if (required.some((phase) => phase.status === "blocked_task_not_ready")) {
+      return "blocked_task_not_ready";
+    }
+    if (
+      required.some(
+        (phase) => phase.status === "blocked_patch_collect_not_ready",
+      )
+    ) {
+      return "blocked_patch_collect_not_ready";
+    }
+    if (required.some((phase) => phase.status === "needs_task_build")) {
+      return "needs_task_build";
+    }
+    if (
+      required.some((phase) =>
+        ["ready_for_ai_decisions", "ready_for_ai_patches"].includes(
+          phase.status,
+        ),
+      )
+    ) {
+      return "ready_for_ai_authoring";
+    }
+    if (
+      required.some((phase) => phase.status === "needs_deterministic_apply")
+    ) {
+      return "needs_deterministic_apply";
+    }
+    return "ready_for_post_authoring_finalize";
+  }
+
+  function authoringPlanChunkSize(options, kind) {
+    return (
+      positiveIntegerOption(options[`${kind}ChunkSize`], null) ??
+      positiveIntegerOption(options.decisionChunkSize, null) ??
+      25
+    );
+  }
+
+  function authoringPlanDecisionRows(taskPath, key) {
+    const task = existingArtifact(taskPath)?.value;
+    return ensureArray(task?.[key]);
+  }
+
+  function groupedRowsByDatasetType(rows) {
+    const groups = new Map();
+    for (const row of rows) {
+      const datasetType = asText(row?.dataset_type) || "all";
+      const current = groups.get(datasetType) ?? [];
+      current.push(row);
+      groups.set(datasetType, current);
+    }
+    return [...groups.entries()].map(([datasetType, groupRows]) => ({
+      dataset_type: datasetType,
+      rows: groupRows,
+    }));
+  }
+
+  function authoringPlanDecisionChunkPlan({
+    kind,
+    rows,
+    chunkSize,
+    buildArgsForChunk,
+  }) {
+    if (rows.length === 0) {
+      return {
+        recommended: false,
+        chunk_size: chunkSize,
+        chunks: 0,
+        commands: [],
+      };
+    }
+    const commands = [];
+    for (const group of groupedRowsByDatasetType(rows)) {
+      for (let offset = 0; offset < group.rows.length; offset += chunkSize) {
+        const selectedRows = group.rows.slice(offset, offset + chunkSize);
+        const chunkLabel = safeFileToken(
+          `${kind}-${group.dataset_type}-${offset}-${offset + selectedRows.length}`,
+          `${kind}-chunk-${commands.length + 1}`,
+        );
+        commands.push({
+          dataset_type: group.dataset_type,
+          offset,
+          limit: chunkSize,
+          selected_rows: selectedRows.length,
+          chunk_label: chunkLabel,
+          command: foundryCommand(
+            buildArgsForChunk({
+              datasetType: group.dataset_type,
+              offset,
+              limit: chunkSize,
+              chunkLabel,
+            }),
+          ),
+        });
+      }
+    }
+    return {
+      recommended: rows.length > chunkSize,
+      chunk_size: chunkSize,
+      rows: rows.length,
+      chunks: commands.length,
+      commands,
+    };
+  }
+
+  function authoringPlanIdentityDatasetTypes(taskPath, curationGateReport) {
+    const task = existingArtifact(taskPath)?.value;
+    const taskTypes = normalizedList(task?.dataset_types ?? task?.datasetTypes);
+    if (taskTypes.length > 0) return taskTypes;
+    const reportType = asText(curationGateReport?.dataset_type);
+    return reportType ? [reportType] : ["<flow-or-process>"];
+  }
+
+  function authoringPlanRowsFileForDatasetType(
+    datasetType,
+    workspaceDir,
+    curationGateReport,
+  ) {
+    const reportType = asText(curationGateReport?.dataset_type).toLowerCase();
+    const normalizedType = asText(datasetType).toLowerCase();
+    if (
+      normalizedType &&
+      normalizedType === reportType &&
+      curationGateReport?.rows_file
+    ) {
+      return curationGateReport.rows_file;
+    }
+    const queueManifest = existingArtifact(
+      curationGateReport?.context?.curation_queue?.manifest_file,
+    )?.value;
+    const queueInput = asText(
+      {
+        process: queueManifest?.inputs?.processes,
+        flow: queueManifest?.inputs?.flows,
+        support: ensureArray(queueManifest?.inputs?.support)[0],
+      }[normalizedType],
+    );
+    if (queueInput) {
+      const resolved = resolveRepoPath(queueInput);
+      return resolved ? repoRelativePath(resolved) : queueInput;
+    }
+    if (!normalizedType || normalizedType.startsWith("<")) {
+      return "<rows-file-containing-identity-targets>";
+    }
+    return repoRelativePath(
+      path.join(
+        workspaceDir,
+        "rows",
+        `${datasetRowsFileStem(normalizedType)}.jsonl`,
+      ),
+    );
+  }
+
+  function authoringPlanAuthoringPackageDir(curationGateReport) {
+    const packageDirs = unique(
+      ensureArray(
+        curationGateReport?.entities ??
+          curationGateReport?.processes ??
+          curationGateReport?.flows ??
+          curationGateReport?.items,
+      )
+        .map((entity) =>
+          asText(entity?.authoring_package ?? entity?.authoringPackage),
+        )
+        .filter(Boolean)
+        .map((packageRef) => path.dirname(packageRef)),
+    );
+    return packageDirs.length === 1 ? packageDirs[0] : null;
+  }
+
+  function authoringPlanIdentityApplyReports(
+    workspaceDir,
+    datasetTypes,
+    explicitReportPath,
+  ) {
+    if (explicitReportPath && datasetTypes.length <= 1)
+      return [explicitReportPath];
+    if (datasetTypes.length <= 1) {
+      return [
+        path.join(
+          workspaceDir,
+          "identity-decision-apply",
+          "identity-decisions-apply-report.json",
+        ),
+      ];
+    }
+    return datasetTypes.map((datasetType) =>
+      path.join(
+        workspaceDir,
+        "identity-decision-apply",
+        datasetType,
+        "identity-decisions-apply-report.json",
+      ),
+    );
+  }
+
+  function authoringPlanIdentityApplyCommands({
+    workspaceDir,
+    curationGateReport,
+    datasetTypes,
+    decisionsPath,
+    applyReportPaths,
+    authoringPackageDir,
+  }) {
+    return datasetTypes.map((datasetType, index) => {
+      const reportPath = applyReportPaths[index];
+      const rowsFile = authoringPlanRowsFileForDatasetType(
+        datasetType,
+        workspaceDir,
+        curationGateReport,
+      );
+      const args = [
+        "dataset-identity-decisions-apply",
+        "--type",
+        datasetType,
+        "--rows-file",
+        rowsFile,
+        "--decisions",
+        decisionsPath,
+        "--out-dir",
+        path.dirname(reportPath),
+      ];
+      appendOption(args, "--authoring-package-dir", authoringPackageDir);
+      return {
+        dataset_type: datasetType,
+        rows_file: rowsFile,
+        authoring_package_dir: authoringPackageDir,
+        command: foundryCommand(args),
+      };
+    });
+  }
+
+  function runDatasetAuthoringPlan(options) {
+    if (options.help) {
+      return {
+        schema_version: 1,
+        status: "help",
+        command: "dataset-authoring-plan",
+        usage: [
+          "node scripts/foundry.mjs dataset-authoring-plan --curation-gate-report <dataset-curation-gate-report.json> --out-dir <plan-dir>",
+        ],
+        purpose:
+          "Summarize the next required AI authoring, deterministic apply, and post-authoring validation steps from a Foundry curation gate report. This command never writes the database.",
+      };
+    }
+
+    const curationGateReportPath = resolveRepoPath(
+      options.curationGateReport || options.report || options.input,
+    );
+    if (!curationGateReportPath || !fileExists(curationGateReportPath)) {
+      throw new Error(
+        "--curation-gate-report is required and must point to dataset-curation-gate-report.json.",
+      );
+    }
+    const curationGateReport = readJson(curationGateReportPath);
+    const workspaceDir = authoringPlanWorkspaceDir(
+      curationGateReportPath,
+      options,
+    );
+    const defaults = authoringPlanDefaultPaths(workspaceDir);
+    const outDir = resolveRepoPath(
+      options.outDir || path.join(workspaceDir, "authoring-plan"),
+    );
+    const contextPaths = authoringPlanContextPaths(curationGateReport);
+    const classificationQueue = asText(
+      curationGateReport?.context?.classification_queue?.queue_file,
+    );
+    const locationQueue = asText(
+      curationGateReport?.context?.location_queue?.queue_file,
+    );
+    const counts = curationGateReport.counts ?? {};
+    const gateScope = authoringPlanGateScope(curationGateReport);
+    const classificationRows = Number(
+      counts.classification_queue_action_items ??
+        curationGateReport?.context?.classification_queue?.rows ??
+        0,
+    );
+    const locationRows = Number(
+      counts.location_queue_action_items ??
+        curationGateReport?.context?.location_queue?.rows ??
+        0,
+    );
+    const identityActionItems = Number(counts.identity_action_items ?? 0);
+    const fieldActionItems = Math.max(
+      0,
+      Number(counts.action_items ?? 0) -
+        identityActionItems -
+        Number(counts.classification_queue_action_items ?? 0) -
+        Number(counts.location_queue_action_items ?? 0),
+    );
+
+    const identityTaskPath = resolveRepoPath(
+      options.identityDecisionTask ||
+        options.identityTask ||
+        defaults.identityTask,
+    );
+    const identityDecisionsPath = resolveRepoPath(
+      options.identityDecisions || defaults.identityDecisions,
+    );
+    const explicitIdentityApplyReportPath = resolveRepoPath(
+      options.identityDecisionApplyReport || options.identityApplyReport,
+    );
+    const classificationTaskPath = resolveRepoPath(
+      options.classificationDecisionTask ||
+        options.classificationTask ||
+        defaults.classificationTask,
+    );
+    const classificationDecisionsPath = resolveRepoPath(
+      options.classificationDecisions || defaults.classificationDecisions,
+    );
+    const classificationApplyReportPath = resolveRepoPath(
+      options.classificationDecisionApplyReport ||
+        options.classificationApplyReport ||
+        defaults.classificationApplyReport,
+    );
+    const locationTaskPath = resolveRepoPath(
+      options.locationDecisionTask || options.locationTask || defaults.locationTask,
+    );
+    const locationDecisionsPath = resolveRepoPath(
+      options.locationDecisions || defaults.locationDecisions,
+    );
+    const locationApplyReportPath = resolveRepoPath(
+      options.locationDecisionApplyReport ||
+        options.locationApplyReport ||
+        defaults.locationApplyReport,
+    );
+    const authoringTaskManifestPath = resolveRepoPath(
+      options.authoringTaskManifest ||
+        options.taskManifest ||
+        defaults.authoringTaskManifest,
+    );
+    const patchCollectReportPath = resolveRepoPath(
+      options.patchCollectReport || defaults.patchCollectReport,
+    );
+    const patchApplyReportPath = resolveRepoPath(
+      options.patchApplyReport || defaults.patchApplyReport,
+    );
+    const identityDatasetTypes = authoringPlanIdentityDatasetTypes(
+      identityTaskPath,
+      curationGateReport,
+    );
+    const identityApplyReportPaths = authoringPlanIdentityApplyReports(
+      workspaceDir,
+      identityDatasetTypes,
+      explicitIdentityApplyReportPath,
+    );
+    const authoringPackageDir =
+      authoringPlanAuthoringPackageDir(curationGateReport);
+    const identityApplyCommands = authoringPlanIdentityApplyCommands({
+      workspaceDir,
+      curationGateReport,
+      datasetTypes: identityDatasetTypes,
+      decisionsPath: identityDecisionsPath,
+      applyReportPaths: identityApplyReportPaths,
+      authoringPackageDir,
+    });
+    const identityChunkSize = authoringPlanChunkSize(options, "identity");
+    const classificationChunkSize = authoringPlanChunkSize(
+      options,
+      "classification",
+    );
+    const locationChunkSize = authoringPlanChunkSize(options, "location");
+    const sharedContextCacheDir = resolveRepoPath(
+      options.sharedContextCacheDir ||
+        options.contextCacheDir ||
+        path.join(workspaceDir, "shared-context-cache"),
+    );
+    const sharedContextCacheDirRef = repoRelativePath(sharedContextCacheDir);
+
+    const identityBuildArgs = [
+      "dataset-identity-decision-task-build",
+      "--curation-gate-report",
+      curationGateReportPath,
+      "--shared-context-cache-dir",
+      sharedContextCacheDirRef,
+      "--out-dir",
+      path.dirname(identityTaskPath),
+    ];
+
+    const classificationBuildArgs = [
+      "dataset-classification-decision-task-build",
+      "--classification-queue",
+      classificationQueue || "<classification-authoring-queue.jsonl>",
+    ];
+    appendAuthoringPlanGateScopeOptions(classificationBuildArgs, gateScope);
+    appendContextOptions(classificationBuildArgs, contextPaths);
+    appendOption(
+      classificationBuildArgs,
+      "--shared-context-cache-dir",
+      sharedContextCacheDirRef,
+    );
+    classificationBuildArgs.push(
+      "--out-dir",
+      path.dirname(classificationTaskPath),
+    );
+
+    const locationBuildArgs = [
+      "dataset-location-decision-task-build",
+      "--location-queue",
+      locationQueue || "<location-authoring-queue.jsonl>",
+    ];
+    appendAuthoringPlanGateScopeOptions(locationBuildArgs, gateScope);
+    appendContextOptions(locationBuildArgs, contextPaths);
+    appendOption(
+      locationBuildArgs,
+      "--shared-context-cache-dir",
+      sharedContextCacheDirRef,
+    );
+    locationBuildArgs.push("--out-dir", path.dirname(locationTaskPath));
+    const classificationApplyQueue = authoringPlanScopedDecisionQueuePath({
+      taskPath: classificationTaskPath,
+      taskQueueKey: "classification_queue",
+      originalQueue: classificationQueue || "<classification-authoring-queue.jsonl>",
+      scope: gateScope,
+      kind: "classification",
+    });
+    const locationApplyQueue = authoringPlanScopedDecisionQueuePath({
+      taskPath: locationTaskPath,
+      taskQueueKey: "location_queue",
+      originalQueue: locationQueue || "<location-authoring-queue.jsonl>",
+      scope: gateScope,
+      kind: "location",
+    });
+    const scopedApplyRowsFile = gateScope.dataset_type
+      ? authoringPlanRowsFileForDatasetType(
+          gateScope.dataset_type,
+          workspaceDir,
+          curationGateReport,
+        )
+      : null;
+
+    const identityPhase = {
+      phase: "identity_decisions",
+      action_items: identityActionItems,
+      ...phaseStatusFromTaskDecision({
+        required: identityActionItems > 0,
+        taskPath: identityTaskPath,
+        readyStatus: "ready_for_ai_identity_decisions",
+        emptyStatus: "ready_no_identity_actions",
+        decisionsPath: identityDecisionsPath,
+        applyReportPaths: identityApplyReportPaths,
+      }),
+      dataset_types: identityDatasetTypes,
+      chunk_plan: authoringPlanDecisionChunkPlan({
+        kind: "identity",
+        rows: authoringPlanDecisionRows(
+          identityTaskPath,
+          "identity_action_items",
+        ),
+        chunkSize: identityChunkSize,
+        buildArgsForChunk: ({ datasetType, offset, limit, chunkLabel }) => [
+          "dataset-identity-decision-task-build",
+          "--curation-gate-report",
+          curationGateReportPath,
+          "--dataset-type",
+          datasetType,
+          "--limit",
+          limit,
+          "--offset",
+          offset,
+          "--chunk-label",
+          chunkLabel,
+          "--shared-context-cache-dir",
+          sharedContextCacheDirRef,
+          "--out-dir",
+          path.join(path.dirname(identityTaskPath), "chunks", chunkLabel),
+        ],
+      }),
+      commands: {
+        build_task: foundryCommand(identityBuildArgs),
+        apply_decisions:
+          identityApplyCommands.length === 1
+            ? identityApplyCommands[0].command
+            : null,
+        apply_decisions_by_type: identityApplyCommands,
+      },
+    };
+    const classificationPhase = {
+      phase: "classification_decisions",
+      queue_rows: classificationRows,
+      ...phaseStatusFromTaskDecision({
+        required: classificationRows > 0,
+        taskPath: classificationTaskPath,
+        readyStatus: "ready_for_ai_classification_decisions",
+        emptyStatus: "ready_no_classification_actions",
+        decisionsPath: classificationDecisionsPath,
+        applyReportPath: classificationApplyReportPath,
+      }),
+      chunk_plan: authoringPlanDecisionChunkPlan({
+        kind: "classification",
+        rows: authoringPlanDecisionRows(
+          classificationTaskPath,
+          "classification_queue_rows",
+        ),
+        chunkSize: classificationChunkSize,
+        buildArgsForChunk: ({ datasetType, offset, limit, chunkLabel }) => {
+          const args = [
+            "dataset-classification-decision-task-build",
+            "--classification-queue",
+            classificationQueue || "<classification-authoring-queue.jsonl>",
+            "--dataset-type",
+            datasetType,
+            "--limit",
+            limit,
+            "--offset",
+            offset,
+            "--chunk-label",
+            chunkLabel,
+          ];
+          appendContextOptions(args, contextPaths);
+          appendOption(
+            args,
+            "--shared-context-cache-dir",
+            sharedContextCacheDirRef,
+          );
+          args.push(
+            "--out-dir",
+            path.join(path.dirname(classificationTaskPath), "chunks", chunkLabel),
+          );
+          return args;
+        },
+      }),
+      commands: {
+        build_task: foundryCommand(classificationBuildArgs),
+        apply_decisions: foundryCommand([
+          "dataset-classification-decisions-apply",
+          "--classification-queue",
+          classificationApplyQueue,
+          "--decisions",
+          classificationDecisionsPath,
+          "--decision-task",
+          classificationTaskPath,
+          ...(scopedApplyRowsFile ? ["--rows-file", scopedApplyRowsFile] : []),
+          "--out-dir",
+          path.dirname(classificationApplyReportPath),
+        ]),
+      },
+    };
+    const locationPhase = {
+      phase: "location_decisions",
+      queue_rows: locationRows,
+      ...phaseStatusFromTaskDecision({
+        required: locationRows > 0,
+        taskPath: locationTaskPath,
+        readyStatus: "ready_for_ai_location_decisions",
+        emptyStatus: "ready_no_location_actions",
+        decisionsPath: locationDecisionsPath,
+        applyReportPath: locationApplyReportPath,
+      }),
+      chunk_plan: authoringPlanDecisionChunkPlan({
+        kind: "location",
+        rows: authoringPlanDecisionRows(locationTaskPath, "location_queue_rows"),
+        chunkSize: locationChunkSize,
+        buildArgsForChunk: ({ datasetType, offset, limit, chunkLabel }) => {
+          const args = [
+            "dataset-location-decision-task-build",
+            "--location-queue",
+            locationQueue || "<location-authoring-queue.jsonl>",
+            "--dataset-type",
+            datasetType,
+            "--limit",
+            limit,
+            "--offset",
+            offset,
+            "--chunk-label",
+            chunkLabel,
+          ];
+          appendContextOptions(args, contextPaths);
+          appendOption(
+            args,
+            "--shared-context-cache-dir",
+            sharedContextCacheDirRef,
+          );
+          args.push(
+            "--out-dir",
+            path.join(path.dirname(locationTaskPath), "chunks", chunkLabel),
+          );
+          return args;
+        },
+      }),
+      commands: {
+        build_task: foundryCommand(locationBuildArgs),
+        apply_decisions: foundryCommand([
+          "dataset-location-decisions-apply",
+          "--location-queue",
+          locationApplyQueue,
+          "--decisions",
+          locationDecisionsPath,
+          "--decision-task",
+          locationTaskPath,
+          ...(scopedApplyRowsFile ? ["--rows-file", scopedApplyRowsFile] : []),
+          "--out-dir",
+          path.dirname(locationApplyReportPath),
+        ]),
+      },
+    };
+    const patchPhase = {
+      phase: "field_patches",
+      action_items: fieldActionItems,
+      ...phaseStatusFromPatchAuthoring({
+        required: fieldActionItems > 0,
+        manifestPath: authoringTaskManifestPath,
+        patchCollectReportPath,
+        patchApplyReportPath,
+      }),
+      commands: {
+        build_task: foundryCommand([
+          "dataset-authoring-task-build",
+          "--curation-gate-report",
+          curationGateReportPath,
+          "--shared-context-cache-dir",
+          sharedContextCacheDirRef,
+          "--out-dir",
+          path.dirname(authoringTaskManifestPath),
+        ]),
+        collect_patches: foundryCommand([
+          "dataset-authoring-patch-collect",
+          "--task-manifest",
+          authoringTaskManifestPath,
+        ]),
+        apply_patches:
+          existingArtifact(authoringTaskManifestPath)?.value?.commands
+            ?.apply_all_patches ?? null,
+      },
+    };
+    const phases = [
+      identityPhase,
+      classificationPhase,
+      locationPhase,
+      patchPhase,
+    ];
+    const reportPath = path.join(outDir, "dataset-authoring-plan.json");
+    const report = {
+      schema_version: 1,
+      generated_at_utc: nowIso(),
+      status: authoringPlanOverallStatus(phases),
+      command: "dataset-authoring-plan",
+      remote_write_mode: "read-only",
+      curation_gate_report: repoRelativePath(curationGateReportPath),
+      workspace_dir: repoRelativePath(workspaceDir),
+      profile: curationGateReport.profile ?? null,
+      dataset_type: curationGateReport.dataset_type ?? null,
+      rows_file: curationGateReport.rows_file ?? null,
+      counts: {
+        action_items: Number(counts.action_items ?? 0),
+        identity_action_items: identityActionItems,
+        classification_queue_rows: classificationRows,
+        location_queue_rows: locationRows,
+        field_patch_action_items: fieldActionItems,
+        deterministic_cleanup_items: Number(
+          counts.deterministic_cleanup_items ?? 0,
+        ),
+      },
+      context: {
+        schema_file: contextPaths.schema,
+        methodology_yaml: contextPaths.methodology_yaml,
+        ruleset_file: contextPaths.ruleset,
+        classification_schema_files: contextPaths.classification_schema,
+        location_schema_file: contextPaths.location_schema,
+        authoring_package_dir: authoringPackageDir,
+        shared_context_cache_dir: sharedContextCacheDirRef,
+      },
+      phases,
+      instructions: [
+        "Run any needs_task_build command first; task status must be ready before AI authoring.",
+        "AI/Codex/skills must read the task JSON and referenced authoring packages before writing decisions or patches.",
+        "Run deterministic apply commands after decisions/patches are completed; do not edit row JSON directly.",
+        "After all required phases are completed, rerun SDK validation, deterministic QA, curation gate, post-authoring finalize, mutation manifest, and only then remote write planning.",
+      ],
+      files: {
+        report: repoRelativePath(reportPath),
+      },
+    };
+    fs.mkdirSync(outDir, { recursive: true });
+    writeJson(reportPath, report);
+    return report;
+  }
+
+  return { runDatasetAuthoringPlan };
+}
