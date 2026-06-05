@@ -20,4 +20,6 @@ skills-lock.json
 artifacts/
 reports/
 tmp/
+inputs/
+!/inputs/README.md
 *.local
