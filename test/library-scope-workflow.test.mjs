@@ -393,24 +393,24 @@ test("library decisions apply rewrites only elementary flow references and defer
   ]);
   writeJsonLines(path.join(decisionsDir, "classification-decisions.jsonl"), [
     {
-      dataset_type: "process",
+      category_type: "process",
       dataset_id: ids.p1,
       dataset_version: "00.00.001",
-      selected_code: "process-ready",
+      code: "process-ready",
       confidence: "high",
     },
     {
-      dataset_type: "process",
+      category_type: "process",
       dataset_id: ids.p2,
       dataset_version: "00.00.001",
-      selected_code: "process-blocked",
+      code: "process-blocked",
       confidence: "high",
     },
     {
-      dataset_type: "flow",
+      category_type: "flow-product",
       dataset_id: ids.pf1,
       dataset_version: "00.00.001",
-      selected_code: "flow-product",
+      code: "flow-product",
       confidence: "high",
     },
   ]);
@@ -506,9 +506,9 @@ test("process scope runner plans only ready scopes and keeps blocked scopes out 
     },
   ]);
   writeJsonLines(path.join(decisionsDir, "classification-decisions.jsonl"), [
-    { dataset_type: "process", dataset_id: ids.p1, selected_code: "process-ready" },
-    { dataset_type: "process", dataset_id: ids.p2, selected_code: "process-blocked" },
-    { dataset_type: "flow", dataset_id: ids.pf1, selected_code: "flow-product" },
+    { category_type: "process", dataset_id: ids.p1, code: "process-ready" },
+    { category_type: "process", dataset_id: ids.p2, code: "process-blocked" },
+    { category_type: "flow-product", dataset_id: ids.pf1, code: "flow-product" },
   ]);
   writeJsonLines(path.join(decisionsDir, "canonical-support-mappings.jsonl"), [
     {

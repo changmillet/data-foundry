@@ -70,7 +70,9 @@ related:
 - 若 TianGong public canonical 的 `ILCD Data Network - Entry-level` compliance source 不存在或不可引用，应阻塞写入并先补公共支撑对象，不得在 BAFU 账号下临时新建占位 compliance system。
 - `referenceToDataSetFormat` 同样应优先引用 TianGong 公共库已有的 canonical data format source，例如平台标准的 TIDAS/ILCD format 记录；不得把转换包生成的临时 source 当作 BAFU-owned source 写入。
 - 本文件中的 `support` 是 workflow umbrella，不是一个单独 TIDAS dataset type。当前 BAFU 可写 support scope 只允许真实 `source` 和 canonical BAFU/FOEN `contact`；flow property、unit group、compliance system、data set format 属于 reference-only canonical reuse 或 provenance rewrite，除非另有公共库治理任务先把对应 canonical row 放入数据库。
-- `source` 表只能写入真实文献、报告、出版物、数据库文档或可追溯来源记录。`ILCD format`、`Not specified`、compliance system、data format、`Created for EcoSpold 1 compatibility` 等转换/格式/兼容性占位不得作为真实 source 名称写库；这些只能作为 canonical reference rewrite/provenance trace 保留。若 source description 中包含 `Original title`、`First author`、`Year` 等报告元数据，应先修复 source shortName/sourceCitation，并同步修复 process `referenceToDataSource.common:shortDescription`。若 true source 的 `sourceDescriptionOrComment` 为空或只有 `Report` / `Publication` / `Source` 这类类型词，应使用 `sourceCitation` 或 `common:shortName` 生成可读的报告/出版物说明，不能把空描述或单独 `Report` 当作最终来源描述。写库前 mutation manifest 必须阻断仍带这些占位 identity 的 support/source rows。
+- `source` 表只能写入真实文献、报告、出版物、数据库文档或可追溯来源记录。`ILCD format`、`Not specified`、compliance system、data format、`Created for EcoSpold 1 compatibility` 等转换/格式/兼容性占位不得作为真实 source 名称写库；这些只能作为 canonical reference rewrite/provenance trace 保留。若 source description 中包含 `Original title`、`First author`、`Year` 等报告元数据，应先修复 source shortName/sourceCitation，并同步修复 process `referenceToDataSource.common:shortDescription`。
+- 若 process `referenceToDataSource` 指向上述占位 support source，Foundry 必须先用完整 bundle context 查找同一 process scope 内可证明的真实报告、论文、数据库文档或数据来源；只有存在唯一且语义明确的 true source 时才自动改写到该 source。若没有任何来源线索，才允许改写到统一的 `BAFU 2025 Version 2 LCA database` database-level fallback source，并在 `source-reference-rewrites.jsonl` / `source-semantics.jsonl` 中记录 fallback 理由。不得因为原始转换 source 是占位就盲目写库，也不得在多个可能 true source 间无证据任选。
+- 若 true source 的 `sourceDescriptionOrComment` 为空或只有 `Report` / `Publication` / `Source` 这类类型词，应使用 `sourceCitation` 或 `common:shortName` 生成可读的报告/出版物说明，不能把空描述或单独 `Report` 当作最终来源描述。写库前 mutation manifest 必须阻断仍带这些占位 identity 的 support/source rows。
 - mutation manifest 必须把 compliance system / data set format reference rewrite 单独列出：原始引用 UUID、原始 shortDescription、目标 canonical UUID/version、处理动作、理由和来源证据。
 - 最终远端回读必须确认所有 compliance/data format 引用都指向 TianGong public canonical 支撑对象，且没有 `TIDAS_IMPORT_PLACEHOLDER:COMPLIANCE_NOT_DEFINED`、`COMPLIANCE_NOT_DEFINED` 或仅本地存在的 compliance source。
 
@@ -207,6 +209,7 @@ related:
   - WWWAddress：`https://www.bafu.admin.ch/en/contact-en`
 - 上述联系人信息来源为 FOEN / BAFU 官方 contact page。后续批量导入前应再次核对官方网页；若官方联系信息变更，应更新 contact dataset 并记录来源日期。
 - BAFU 导入包里的 commissioner、ownership，以及没有更具体来源人的 BAFU source/contact 引用，应统一指向上述 canonical BAFU / FOEN contact，不得保留临时导入联系人名称。
+- 同一个 BAFU 数据库/整库导入只允许使用这一条 canonical BAFU / FOEN contact 作为归属 contact。tidas-tools 或其他转换工具生成的 `TianGong LCA import tooling`、本地脚本、临时操作者等 contact 只能作为 provenance/trace 说明，不得作为 commissioner、ownership 或 source/contact support row 写入。
 - TianGong LCA 在本批数据中承担转换、字段补齐、flow reference 修复、验证和数据库发布处理工作，但不应因此被写成 BAFU 源数据的 commissioner 或 owner。
 - TianGong 的处理角色应记录在 `administrativeInformation.dataEntryBy.common:other` 或等价 provenance 字段中，例如说明 TianGong LCA prepared the TIDAS conversion, source-language field completion, flow-reference repair, validation, and database publication under the BAFU account。若以后引入单独的 TianGong contact，可在 `dataEntryBy.referenceToPersonOrEntityEnteringTheData` 中引用 TianGong contact，但不得替代 BAFU / FOEN 的 source ownership / commissioner attribution。
 

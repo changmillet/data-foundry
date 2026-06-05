@@ -1,5 +1,37 @@
 import test from "node:test";
 import { annualSupplyFixtureRoot, assert, blockerCodes, bundledCategorySchemaNames, classificationFixtureRoot, contextFile, contextTextByPathSuffix, createFixture, createMutationManifestFixture, crypto, elementaryFlowManifestFixtureRoot, finalizeAutoQueueFixtureRoot, finalizeCurationGateFixtureRoot, finalizeIdentityPreflightFixtureRoot, finalizeLocationFixtureRoot, fixtureRoot, flowClassificationFixtureRoot, flowIdentityReferenceFixtureRoot, flowRow, flowRowWithClassification, fs, fullContextKinds, fullContextPatterns, identityPreflightRunFixtureRoot, itemBlockerCodes, locationFixtureRoot, mutationFixtureRoot, packageContextFixtureRoot, path, processRowWithDefaultClassification, processRowWithDeferredTrace, processRowWithFlowRef, processRowWithInvalidAnnualSupply, processRowWithInvalidLocation, processRowWithOnlyOutputExchange, qaPathFixtureRoot, readJson, readJsonLines, referenceClosureFixtureRoot, rel, repoRoot, runFoundry, scopeBlockerCodes, sha256Text, siblingCliBuildAvailable, siblingCliRoot, sourceExchangeFixtureRoot, sourceRow, spawnSync, supportManifestFixtureRoot, targetUserId, writeCompletedIdentityPreflightIndex, writeContextPackFiles, writeDecisionTaskFixture, writeJson, writeJsonLines, writeReadyFinalizeFixture, writeText } from "./helpers/full-context-gate-fixtures.mjs";
+import {
+  rowsFileReachableThroughTransformChain,
+  sameRowsArtifact,
+} from "../scripts/lib/import-curation/internal/workflow-domain.mjs";
+
+test("rows artifact lineage accepts content-equivalent no-op transform files", () => {
+  const root = path.join(fixtureRoot, "content-equivalent-row-artifacts");
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.mkdirSync(root, { recursive: true });
+  const startRows = path.join(root, "rows.start.jsonl");
+  const copiedRows = path.join(root, "rows.copied.jsonl");
+  const finalRows = path.join(root, "rows.final.jsonl");
+  writeText(startRows, '{"id":"same","value":1}\n');
+  writeText(copiedRows, '{"id":"same","value":1}\n');
+  writeText(finalRows, '{"id":"same","value":2}\n');
+
+  assert.equal(sameRowsArtifact(repoRoot, rel(startRows), rel(copiedRows)), true);
+  assert.equal(
+    rowsFileReachableThroughTransformChain({
+      repoRoot,
+      startFiles: [rel(startRows)],
+      transforms: [
+        {
+          inputRowsFile: rel(copiedRows),
+          outputRowsFile: rel(finalRows),
+        },
+      ],
+      expectedRowsFile: rel(finalRows),
+    }),
+    true,
+  );
+});
 
 
 test("mutation manifest requires full-context AI evidence and preserves deferred trace queues", () => {

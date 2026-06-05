@@ -1405,7 +1405,7 @@ test("dataset-bundle-sample-rows omits format and compliance placeholder sources
   );
 });
 
-test("dataset-bundle-sample-rows blocks process data sources that point to placeholder support sources", () => {
+test("dataset-bundle-sample-rows rewrites placeholder process data sources to the unique true source", () => {
   createBundleFixture();
   const outDir = path.join(fixtureRoot, "out-process-source-placeholder");
   const bundleDir = path.join(fixtureRoot, "process-bundles", processId);
@@ -1469,18 +1469,15 @@ test("dataset-bundle-sample-rows blocks process data sources that point to place
     outDir,
     "--contact-id",
     newContactId,
-  ], 1);
+  ]);
 
-  assert.equal(report.status, "blocked");
+  assert.equal(report.status, "ready");
   assert.equal(report.counts.source_rows, 1);
   assert.equal(report.counts.compliance_support_source_rows, 1);
   assert.equal(report.counts.omitted_non_true_source_rows, 1);
-  assert.equal(
-    report.blockers.some(
-      (blocker) => blocker.code === "process_data_source_not_true_source",
-    ),
-    true,
-  );
+  assert.equal(report.counts.process_source_reference_rewrites, 1);
+  assert.equal(report.counts.process_source_reference_fallback_rewrites, 0);
+  assert.equal(report.blockers.length, 0);
 
   const sources = readJsonLines(path.join(repoRoot, report.files.rows.source));
   assert.deepEqual(
@@ -1495,7 +1492,89 @@ test("dataset-bundle-sample-rows blocks process data sources that point to place
   );
   assert.equal(
     sourceReferences[0].referenced_source_kind,
-    "compliance_support_source",
+    "true_source",
+  );
+  assert.equal(sourceReferences[0].ref_object_id, sourceId);
+  const sourceReferenceRewrites = readJsonLines(
+    path.join(repoRoot, report.files.source_reference_rewrites),
+  );
+  assert.equal(
+    sourceReferenceRewrites.some(
+      (row) =>
+        row.relation === "process_data_source_true_source" &&
+        row.original.ref_object_id === complianceSourceId &&
+        row.canonical.ref_object_id === sourceId,
+    ),
+    true,
+  );
+});
+
+test("dataset-bundle-sample-rows creates a BAFU database fallback source when no true source evidence exists", () => {
+  createBundleFixture();
+  const outDir = path.join(fixtureRoot, "out-process-source-fallback");
+  const bundleDir = path.join(fixtureRoot, "process-bundles", processId);
+  const sourcePath = path.join(
+    bundleDir,
+    "tidas",
+    "sources",
+    `${sourceId}.json`,
+  );
+  const sourcePayload = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
+  const sourceInfo =
+    sourcePayload.sourceDataSet.sourceInformation.dataSetInformation;
+  sourceInfo["common:shortName"] = ml("Not specified");
+  sourceInfo.sourceCitation = "Not specified";
+  sourceInfo.sourceDescriptionOrComment = ml("No source metadata available.");
+  writeJson(sourcePath, sourcePayload);
+
+  const report = runFoundry([
+    "dataset-bundle-sample-rows",
+    "--bundles-dir",
+    path.join(fixtureRoot, "process-bundles"),
+    "--process-id",
+    processId,
+    "--out-dir",
+    outDir,
+    "--contact-id",
+    newContactId,
+  ]);
+
+  assert.equal(report.status, "ready");
+  assert.equal(report.counts.source_rows, 1);
+  assert.equal(report.counts.true_source_rows, 1);
+  assert.equal(report.counts.placeholder_or_unspecified_source_rows, 1);
+  assert.equal(report.counts.process_source_reference_rewrites, 1);
+  assert.equal(report.counts.process_source_reference_fallback_rewrites, 1);
+
+  const sources = readJsonLines(path.join(repoRoot, report.files.rows.source));
+  const sourceInfoOut =
+    sources[0].sourceDataSet.sourceInformation.dataSetInformation;
+  assert.equal(
+    sourceInfoOut["common:shortName"]["#text"],
+    "BAFU 2025 Version 2 LCA database",
+  );
+  assert.equal(sourceInfoOut.sourceCitation.includes("FOEN"), true);
+  assert.equal(
+    sourceInfoOut.classificationInformation["common:classification"][
+      "common:class"
+    ]["#text"],
+    "Databases",
+  );
+  const sourceReferences = readJsonLines(
+    path.join(repoRoot, report.files.process_source_references),
+  );
+  assert.equal(
+    sourceReferences[0].short_description,
+    "BAFU 2025 Version 2 LCA database",
+  );
+  const sourceReferenceRewrites = readJsonLines(
+    path.join(repoRoot, report.files.source_reference_rewrites),
+  );
+  assert.equal(
+    sourceReferenceRewrites.some(
+      (row) => row.relation === "process_data_source_fallback_database",
+    ),
+    true,
   );
 });
 

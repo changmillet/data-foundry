@@ -3,6 +3,7 @@ export function createSourceSemanticUtils({
   bundleClassificationPath,
   cloneJson,
   datasetIdentity,
+  deterministicUuid,
   languageForText,
   multiLang,
   pathExpression,
@@ -237,6 +238,85 @@ function sourceSemanticSummary(payload, sourceFile) {
   };
 }
 
+function bafuFallbackSourceId() {
+  if (typeof deterministicUuid === "function") {
+    return deterministicUuid(
+      "tiangong-lca-foundry:bafu:database-source:BAFU 2025 Version 2",
+    );
+  }
+  return "7d6cb661-93f8-5c42-b23f-c3b73f8a6f97";
+}
+
+function buildBafuFallbackSourcePayload({
+  contactReference,
+  id = null,
+  version = "00.00.001",
+  language = "en",
+  timestamp = null,
+} = {}) {
+  const sourceId = asText(id) || bafuFallbackSourceId();
+  const shortName = "BAFU 2025 Version 2 LCA database";
+  const citation =
+    "BAFU 2025 Version 2 LCA database, Federal Office for the Environment (FOEN), 2025.";
+  const description =
+    "Database-level fallback source used when the converted BAFU package has no more specific report, publication, or data-source evidence for the process scope.";
+  const dataFormatReference = canonicalSourceReferenceForRelation(
+    "dataset_format_source",
+  );
+  const admin = {
+    "common:referenceToDataSetFormat": dataFormatReference,
+    publicationAndOwnership: {
+      "common:dataSetVersion": version,
+      "common:permanentDataSetURI": `https://www.bafu.admin.ch/bafu-2025-v2/${sourceId}`,
+    },
+  };
+  if (timestamp) {
+    admin.dataEntryBy = { "common:timeStamp": timestamp };
+  }
+  if (contactReference) {
+    admin.publicationAndOwnership["common:referenceToOwnershipOfDataSet"] =
+      cloneJson(contactReference);
+  }
+  return {
+    sourceDataSet: {
+      "@xmlns": "http://lca.jrc.it/ILCD/Source",
+      "@version": "1.1",
+      sourceInformation: {
+        dataSetInformation: {
+          "common:UUID": sourceId,
+          "common:shortName": multiLang(shortName, language),
+          classificationInformation: {
+            "common:classification": {
+              "common:class": {
+                "@level": "0",
+                "@classId": "2",
+                "#text": "Databases",
+              },
+            },
+          },
+          sourceCitation: citation,
+          sourceDescriptionOrComment: multiLang(description, language),
+        },
+      },
+      administrativeInformation: admin,
+    },
+  };
+}
+
+function sourceReferenceFromSummary(source, language = "en") {
+  const id = asText(source?.dataset_id);
+  if (!id) return null;
+  const version = asText(source?.dataset_version) || "00.00.001";
+  const shortName = asText(source?.short_name) || "BAFU 2025 Version 2 LCA database";
+  return {
+    "@type": "source data set",
+    "@refObjectId": id,
+    "@version": version,
+    "@uri": `../sources/${id}_${version}.xml`,
+    "common:shortDescription": multiLang(shortName, language),
+  };
+}
+
 function sourceReferenceKind(pathSegments) {
   const pathText = pathSegments.join(".");
   if (pathText.includes("referenceToDataSource")) return "process_data_source";
@@ -438,6 +518,125 @@ function rewriteTrueSourceReferenceDescriptions(
   }
 }
 
+function rewriteProcessDataSourceReferences(
+  value,
+  {
+    sourceLookup,
+    replacementSource = null,
+    sourceFile,
+    stats,
+    rewriteRows,
+    pathSegments = [],
+    datasetIdentityCache = null,
+    language = "en",
+  },
+) {
+  if (!value || typeof value !== "object") return;
+  if (Array.isArray(value)) {
+    value.forEach((item, index) =>
+      rewriteProcessDataSourceReferences(item, {
+        sourceLookup,
+        replacementSource,
+        sourceFile,
+        stats,
+        rewriteRows,
+        pathSegments: [...pathSegments, index],
+        datasetIdentityCache,
+        language,
+      }),
+    );
+    return;
+  }
+
+  const relation = sourceReferenceKind(pathSegments);
+  const refType = asText(value["@type"]).toLowerCase();
+  const refObjectId = asText(value["@refObjectId"]);
+  if (
+    relation === "process_data_source" &&
+    refObjectId &&
+    refType.includes("source")
+  ) {
+    const referencedSource = sourceLookup.get(refObjectId);
+    const currentShortName = textValue(value["common:shortDescription"]);
+    let targetSource = null;
+    let rewriteRelation = null;
+    let reason = null;
+
+    if (referencedSource?.kind === "true_source") {
+      const canonicalShortName = asText(referencedSource.short_name);
+      if (canonicalShortName && currentShortName !== canonicalShortName) {
+        targetSource = referencedSource;
+        rewriteRelation = "process_data_source_short_description";
+        reason =
+          "Process data source reference shortDescription is synchronized to the curated true source row name.";
+      }
+    } else if (replacementSource?.dataset_id) {
+      targetSource = replacementSource;
+      rewriteRelation = replacementSource.fallback_database_source
+        ? "process_data_source_fallback_database"
+        : "process_data_source_true_source";
+      reason = replacementSource.fallback_database_source
+        ? "Converted process data source pointed to a non-source support placeholder and no unambiguous process-specific report/publication source was available; the reference is rewritten to the BAFU database-level fallback source."
+        : "Converted process data source pointed to a non-source support placeholder; the bundle contains one unambiguous true source, so the reference is rewritten to that curated source row.";
+    }
+
+    const canonical = sourceReferenceFromSummary(targetSource, language);
+    if (canonical) {
+      const before = sourceReferenceSnapshot(value);
+      const after = sourceReferenceSnapshot(canonical);
+      if (
+        before.ref_object_id !== after.ref_object_id ||
+        before.version !== after.version ||
+        before.short_description !== after.short_description
+      ) {
+        Object.keys(value).forEach((key) => {
+          delete value[key];
+        });
+        Object.assign(value, cloneJson(canonical));
+        const identity = datasetIdentityCache && datasetIdentityCache.id
+          ? datasetIdentityCache
+          : { id: null, version: null };
+        if (rewriteRelation === "process_data_source_short_description") {
+          stats.true_source_reference_description_repairs += 1;
+        } else {
+          stats.process_source_reference_rewrites =
+            Number(stats.process_source_reference_rewrites ?? 0) + 1;
+          if (targetSource.fallback_database_source) {
+            stats.process_source_reference_fallback_rewrites =
+              Number(stats.process_source_reference_fallback_rewrites ?? 0) + 1;
+          }
+        }
+        rewriteRows.push({
+          dataset_type: "process",
+          dataset_id: identity.id,
+          dataset_version: identity.version,
+          source_file: repoRelativeMaybe(sourceFile),
+          path: pathExpression(pathSegments),
+          relation: rewriteRelation,
+          original: before,
+          canonical: after,
+          referenced_source_kind: referencedSource?.kind ?? null,
+          replacement_source_kind: targetSource.kind ?? null,
+          reason,
+        });
+      }
+    }
+  }
+
+  for (const [key, child] of Object.entries(value)) {
+    rewriteProcessDataSourceReferences(child, {
+      sourceLookup,
+      replacementSource,
+      sourceFile,
+      stats,
+      rewriteRows,
+      pathSegments: [...pathSegments, key],
+      datasetIdentityCache,
+      language,
+    });
+  }
+}
+
 function collectSourceReferences(value, pathSegments = [], refs = []) {
   if (!value || typeof value !== "object") return refs;
   if (Array.isArray(value)) {
@@ -503,12 +702,14 @@ function sourceReferenceSemanticBlockers(processSourceReferenceRows) {
 }
 
 return {
+  buildBafuFallbackSourcePayload,
   canonicalSourceReferenceForRelation,
   processSourceReferenceRows,
   repairTrueSourceClassification,
   repairTrueSourceDescription,
   repairTrueSourceIdentity,
   rewriteCanonicalSourceReferences,
+  rewriteProcessDataSourceReferences,
   rewriteTrueSourceReferenceDescriptions,
   sourceReferenceSemanticBlockers,
   sourceReferenceSnapshot,

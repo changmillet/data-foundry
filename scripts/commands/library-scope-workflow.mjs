@@ -839,9 +839,24 @@ export function createLibraryScopeWorkflowCommands({
     ].join(":");
   }
 
+  function classificationDecisionDatasetType(row) {
+    const explicitType = asText(row.dataset_type || row.type);
+    if (explicitType) {
+      return explicitType;
+    }
+    const categoryType = asText(row.category_type || row.schema_type);
+    if (categoryType === "process") {
+      return "process";
+    }
+    if (categoryType === "flow-product" || categoryType === "flow-elementary") {
+      return "flow";
+    }
+    return categoryType;
+  }
+
   function classificationDecisionKey(row) {
     return [
-      asText(row.dataset_type || row.type),
+      classificationDecisionDatasetType(row),
       asText(row.dataset_id || row.id),
       asText(row.dataset_version || row.version) || "00.00.001",
     ].join(":");

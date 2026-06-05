@@ -5731,6 +5731,7 @@ export function buildEvidenceScopeBlockers({
   requirePatchCollectReport,
   requireCurationGate = true,
   remoteVerifyArtifact,
+  identityDecisionApplyContext,
   identityReferenceRewriteContext,
   unresolvedExchangeExternalizationContext,
   canonicalSupportRewriteContext,
@@ -5980,6 +5981,7 @@ export function buildEvidenceScopeBlockers({
         expectedRowsFile: cleanupInput,
         transforms: deterministicRowsFileTransformEntries({
           patchApplyContext: null,
+          identityDecisionApplyContext,
           identityReferenceRewriteContext,
           unresolvedExchangeExternalizationContext,
           canonicalSupportRewriteContext,
@@ -6226,7 +6228,7 @@ export function decisionApplyOutputRowsMatch(repoRoot, context, expectedRowsFile
   return Boolean(
     expectedRowsFile &&
       context?.outputRows.some((filePath) =>
-        sameArtifactPath(repoRoot, filePath, expectedRowsFile),
+        sameRowsArtifact(repoRoot, filePath, expectedRowsFile),
       ),
   );
 }
@@ -6235,7 +6237,7 @@ export function decisionApplyInputRowsMatch(repoRoot, context, expectedRowsFile)
   return Boolean(
     expectedRowsFile &&
       context?.inputRows.some((filePath) =>
-        sameArtifactPath(repoRoot, filePath, expectedRowsFile),
+        sameRowsArtifact(repoRoot, filePath, expectedRowsFile),
       ),
   );
 }
@@ -6347,6 +6349,28 @@ export function deterministicRowsFileTransformEntries({
   ].filter((entry) => entry.inputRowsFile && entry.outputRowsFile);
 }
 
+export function sameRowsArtifact(repoRoot, left, right) {
+  if (sameArtifactPath(repoRoot, left, right)) return true;
+  const resolvedLeft = normalizedArtifactPath(repoRoot, left);
+  const resolvedRight = normalizedArtifactPath(repoRoot, right);
+  if (
+    !resolvedLeft ||
+    !resolvedRight ||
+    !fileExists(resolvedLeft) ||
+    !fileExists(resolvedRight)
+  ) {
+    return false;
+  }
+  try {
+    return (
+      sha256Text(readText(resolvedLeft)) ===
+      sha256Text(readText(resolvedRight))
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function rowsFileReachableThroughTransformChain({
   repoRoot,
   startFiles,
@@ -6357,27 +6381,27 @@ export function rowsFileReachableThroughTransformChain({
   const reachable = [];
   const addReachable = (filePath) => {
     if (!filePath) return false;
-    if (reachable.some((existing) => sameArtifactPath(repoRoot, existing, filePath))) {
+    if (reachable.some((existing) => sameRowsArtifact(repoRoot, existing, filePath))) {
       return false;
     }
     reachable.push(filePath);
     return true;
   };
   for (const filePath of ensureArray(startFiles)) addReachable(filePath);
-  if (reachable.some((filePath) => sameArtifactPath(repoRoot, filePath, expectedRowsFile))) {
+  if (reachable.some((filePath) => sameRowsArtifact(repoRoot, filePath, expectedRowsFile))) {
     return true;
   }
   for (let pass = 0; pass <= transforms.length; pass += 1) {
     let changed = false;
     for (const transform of transforms) {
       const inputReachable = reachable.some((filePath) =>
-        sameArtifactPath(repoRoot, filePath, transform.inputRowsFile),
+        sameRowsArtifact(repoRoot, filePath, transform.inputRowsFile),
       );
       if (inputReachable) {
         changed = addReachable(transform.outputRowsFile) || changed;
       }
     }
-    if (reachable.some((filePath) => sameArtifactPath(repoRoot, filePath, expectedRowsFile))) {
+    if (reachable.some((filePath) => sameRowsArtifact(repoRoot, filePath, expectedRowsFile))) {
       return true;
     }
     if (!changed) break;

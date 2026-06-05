@@ -237,6 +237,7 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
     patchCollectArtifact,
     requirePatchCollectReport,
     remoteVerifyArtifact,
+    identityDecisionApplyContext,
     requireCurationGate:
       options.requireCurationGate === undefined
         ? !(datasetType === "support" || supportDatasetTypes.has(datasetType))

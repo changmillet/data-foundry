@@ -66,6 +66,7 @@ export function createBundleSampleRowsCommands({
   addDedupedBundleRow,
   asText,
   attachIdentityPreflightRows,
+  buildBafuFallbackSourcePayload,
   buildIdentityPreflightArtifacts,
   buildLibraryContactPayload,
   classificationAuthoringCommands,
@@ -95,6 +96,7 @@ export function createBundleSampleRowsCommands({
   resolveTiangongLcaCliBin,
   rewriteCanonicalFlowPropertyReferences,
   rewriteCanonicalSourceReferences,
+  rewriteProcessDataSourceReferences,
   rewriteContactReferences,
   rewriteTrueSourceReferenceDescriptions,
   sanitizeBundlePayload,
@@ -187,6 +189,8 @@ export function createBundleSampleRowsCommands({
       location_code_valid: 0,
       location_code_blockers: 0,
       source_reference_rewrites: 0,
+      process_source_reference_rewrites: 0,
+      process_source_reference_fallback_rewrites: 0,
       true_source_identity_repairs: 0,
       true_source_description_repairs: 0,
       true_source_reference_description_repairs: 0,
@@ -349,7 +353,7 @@ export function createBundleSampleRowsCommands({
       }
     }
 
-    const sourceSemanticsRows = [...rowsByType.source.entries()].map(
+    let sourceSemanticsRows = [...rowsByType.source.entries()].map(
       ([key, payload]) =>
         sourceSemanticSummary(payload, sourceByType.source.get(key)),
     );
@@ -358,13 +362,55 @@ export function createBundleSampleRowsCommands({
         .filter((row) => row.dataset_id)
         .map((row) => [row.dataset_id, row]),
     );
+    const processSourceReplacement = (() => {
+      const trueSources = sourceSemanticsRows.filter(
+        (row) => row.kind === "true_source",
+      );
+      if (trueSources.length === 1) return trueSources[0];
+      return null;
+    })();
+    const needsFallbackSource = [...rowsByType.process.entries()].some(
+      ([key, payload]) =>
+        processSourceReferenceRows(
+          payload,
+          sourceLookup,
+          sourceByType.process.get(key),
+        ).some(
+          (row) =>
+            row.relation === "process_data_source" &&
+            row.referenced_source_kind !== "true_source",
+        ),
+    );
+    let fallbackSourceSummary = null;
+    if (!processSourceReplacement && needsFallbackSource) {
+      const fallbackSource = buildBafuFallbackSourcePayload({
+        contactReference: libraryContactRef,
+        language: asText(options.language || options.lang || "en") || "en",
+        timestamp: nowIso(),
+      });
+      const fallbackIdentity = datasetIdentity(fallbackSource, "source");
+      const fallbackKey = `${fallbackIdentity.id}::${fallbackIdentity.version}`;
+      rowsByType.source.set(fallbackKey, fallbackSource);
+      sourceByType.source.set(fallbackKey, "foundry:bafu-database-fallback-source");
+      fallbackSourceSummary = {
+        ...sourceSemanticSummary(
+          fallbackSource,
+          "foundry:bafu-database-fallback-source",
+        ),
+        fallback_database_source: true,
+      };
+      sourceSemanticsRows = [...sourceSemanticsRows, fallbackSourceSummary];
+      sourceLookup.set(fallbackSourceSummary.dataset_id, fallbackSourceSummary);
+    }
     for (const [key, payload] of rowsByType.process.entries()) {
-      rewriteTrueSourceReferenceDescriptions(payload.processDataSet, {
+      rewriteProcessDataSourceReferences(payload.processDataSet, {
         sourceLookup,
+        replacementSource: processSourceReplacement || fallbackSourceSummary,
         sourceFile: sourceByType.process.get(key),
         stats: sanitizeStats,
         rewriteRows: sourceReferenceRewriteRows,
         datasetIdentityCache: datasetIdentity(payload, "process"),
+        language: asText(options.language || options.lang || "en") || "en",
       });
     }
     const allProcessSourceReferenceRows = [];

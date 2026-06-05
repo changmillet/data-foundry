@@ -16,8 +16,13 @@ const postAuthoringFinalizeStageContract = readOnlyStageContract([
     stage: "rewrite_and_cleanup",
     phase: "rewrite_cleanup",
     purpose:
-      "Apply identity reference rewrites, unresolved exchange externalization, canonical support rewrites, and deterministic curation cleanup.",
-    inputs: ["input rows", "identity/preflight indexes", "canonical support cache"],
+      "Apply identity reference rewrites, unresolved exchange externalization, BAFU source/contact rewrites, canonical support rewrites, and deterministic curation cleanup.",
+    inputs: [
+      "input rows",
+      "identity/preflight indexes",
+      "BAFU source/contact policy",
+      "canonical support cache",
+    ],
     outputs: ["rewritten rows", "cleaned rows", "rewrite reports"],
     side_effects: ["writes local .foundry artifact files"],
   },
@@ -54,9 +59,14 @@ export function createPostAuthoringFinalizeCommands({
   appendOption,
   applyCanonicalSupportRewrites,
   applyIdentityReferenceRewrites,
+  asText,
   blockersFromLocationAuditStage,
+  buildLibraryContactPayload,
   booleanOption,
   compactStageReport,
+  cloneJson,
+  contactGlobalReference,
+  datasetIdentity,
   datasetRowsFileStem,
   ensureArray,
   externalizeUnresolvedProcessFlowExchanges,
@@ -69,7 +79,10 @@ export function createPostAuthoringFinalizeCommands({
   repoRelativePath,
   repoRoot,
   reportFileFromCliStage,
+  readRowsFile,
   resolveRepoPath,
+  rewriteCanonicalSourceReferences,
+  rewriteContactReferences,
   runDatasetCommitHandoffPlan,
   runDatasetCurationCleanup,
   runDatasetCurationGate,
@@ -81,7 +94,154 @@ export function createPostAuthoringFinalizeCommands({
   sourceReferenceRewritesFileForRowsFile,
   unique,
   writeJson,
+  writeJsonLines,
 }) {
+  function rowDatasetType(payload, fallbackType) {
+    if (payload?.processDataSet) return "process";
+    if (payload?.flowDataSet) return "flow";
+    if (payload?.lifeCycleModelDataSet) return "lifecyclemodel";
+    if (payload?.contactDataSet) return "contact";
+    if (payload?.sourceDataSet) return "source";
+    if (payload?.flowPropertyDataSet) return "flowproperty";
+    if (payload?.unitGroupDataSet) return "unitgroup";
+    return fallbackType;
+  }
+
+  function applySourceContactRewrites({
+    datasetType,
+    rowsFile,
+    outDir,
+    options,
+  }) {
+    const profile = String(options.profile || "generic").trim().toLowerCase();
+    const supportedForProfile = profile === "bafu";
+    const outputRowsFile = path.join(
+      outDir,
+      `${datasetRowsFileStem(datasetType)}.source-contact-rewritten.jsonl`,
+    );
+    const reportPath = path.join(outDir, "source-contact-rewrites-report.json");
+    const sourceReferenceRewritesPath = path.join(
+      outDir,
+      "source-reference-rewrites.jsonl",
+    );
+    const supportRowsPath = path.join(outDir, "support.jsonl");
+    fs.mkdirSync(outDir, { recursive: true });
+    if (!supportedForProfile || booleanOption(options.skipSourceContactRewrites)) {
+      const report = {
+        schema_version: 1,
+        status: "skipped",
+        reason: supportedForProfile
+          ? "Skipped by --skip-source-contact-rewrites."
+          : "Source/contact deterministic rewrites are currently profile-specific and only required for BAFU.",
+        profile,
+        rows_file: repoRelativePath(rowsFile),
+        counts: {
+          input_rows: 0,
+          output_rows: 0,
+          contact_reference_rewrites: 0,
+          source_reference_rewrites: 0,
+          support_rows: 0,
+        },
+        files: {},
+      };
+      writeJson(reportPath, report);
+      return {
+        ...report,
+        output_rows_file: repoRelativePath(rowsFile),
+        files: {
+          report: repoRelativePath(reportPath),
+        },
+      };
+    }
+
+    const rows = readRowsFile(rowsFile);
+    const sourceReferenceRewriteRows = [];
+    const stats = {
+      source_reference_rewrites: 0,
+    };
+    const libraryContact = buildLibraryContactPayload(options, null, {
+      rewriteRows: sourceReferenceRewriteRows,
+      stats,
+    });
+    const libraryContactIdentity = datasetIdentity(libraryContact, "contact");
+    const libraryContactName = asText(
+      libraryContact.contactDataSet.contactInformation.dataSetInformation[
+        "common:name"
+      ]?.["#text"],
+    );
+    const libraryContactRef = contactGlobalReference({
+      id: libraryContactIdentity.id,
+      version: libraryContactIdentity.version,
+      shortDescription: libraryContactName,
+      language: asText(options.language || options.lang || "en") || "en",
+    });
+    const contactRewriteStats = {
+      rewritten: 0,
+      previous_ids: new Set(),
+      previous_descriptions: new Set(),
+    };
+    const rewrittenRows = rows.map((row) => {
+      const payload = cloneJson(row);
+      const type = rowDatasetType(payload, datasetType);
+      rewriteContactReferences(payload, libraryContactRef, contactRewriteStats);
+      rewriteCanonicalSourceReferences(payload, {
+        datasetType: type,
+        sourceFile: rowsFile,
+        stats,
+        rewriteRows: sourceReferenceRewriteRows,
+        datasetIdentityCache: datasetIdentity(payload, type),
+      });
+      return payload;
+    });
+
+    writeJsonLines(outputRowsFile, rewrittenRows);
+    writeJsonLines(sourceReferenceRewritesPath, sourceReferenceRewriteRows);
+    writeJsonLines(supportRowsPath, [libraryContact]);
+    const totalRewrites =
+      Number(contactRewriteStats.rewritten ?? 0) +
+      Number(stats.source_reference_rewrites ?? 0);
+    const report = {
+      schema_version: 1,
+      status: totalRewrites > 0 ? "completed" : "completed_no_rewrites",
+      profile,
+      rows_file: repoRelativePath(rowsFile),
+      output_rows_file: repoRelativePath(outputRowsFile),
+      policy: {
+        contact:
+          "BAFU imports use one database-level FOEN/BAFU ownership contact for every row in the library.",
+        source:
+          "Data set format and compliance source references are canonical public support references, not BAFU source rows.",
+      },
+      counts: {
+        input_rows: rows.length,
+        output_rows: rewrittenRows.length,
+        contact_reference_rewrites: contactRewriteStats.rewritten,
+        source_reference_rewrites: stats.source_reference_rewrites,
+        support_rows: 1,
+      },
+      contact: {
+        id: libraryContactIdentity.id,
+        version: libraryContactIdentity.version,
+        name: libraryContactName,
+        previous_ids: [...contactRewriteStats.previous_ids].sort(),
+        previous_descriptions: [
+          ...contactRewriteStats.previous_descriptions,
+        ].sort(),
+      },
+      files: {
+        output_rows: repoRelativePath(outputRowsFile),
+        source_reference_rewrites: repoRelativePath(sourceReferenceRewritesPath),
+        support_rows: repoRelativePath(supportRowsPath),
+        report: repoRelativePath(reportPath),
+      },
+    };
+    writeJson(reportPath, report);
+    return {
+      ...report,
+      output_rows_file: repoRelativePath(outputRowsFile),
+    };
+  }
+
   function runDatasetPostAuthoringFinalize(options) {
     const datasetType = String(options.type || options.datasetType || "process")
       .trim()
@@ -177,10 +337,20 @@ export function createPostAuthoringFinalizeCommands({
       ) > 0
         ? resolveRepoPath(unresolvedExchangeExternalizeStage.output_rows_file)
         : identityRewrittenRowsFile;
+    const sourceContactRewriteStage = applySourceContactRewrites({
+      datasetType,
+      rowsFile: preCleanupRowsFile,
+      outDir: path.join(outDir, "source-contact-rewrites"),
+      options,
+    });
+    const sourceContactRowsFile = resolveRepoPath(
+      sourceContactRewriteStage.files?.output_rows ||
+        sourceContactRewriteStage.output_rows_file,
+    );
 
     const canonicalSupportRewriteStage = applyCanonicalSupportRewrites({
       datasetType,
-      rowsFile: preCleanupRowsFile,
+      rowsFile: sourceContactRowsFile || preCleanupRowsFile,
       outFile: path.join(
         outDir,
         "canonical-support-rewrites",
@@ -559,9 +729,9 @@ export function createPostAuthoringFinalizeCommands({
         classificationDecisionApplyReport:
           options.classificationDecisionApplyReport ||
           options.classificationDecisionsApplyReport,
-  	      locationDecisionApplyReport:
-  	        options.locationDecisionApplyReport ||
-  	        options.locationDecisionsApplyReport,
+        locationDecisionApplyReport:
+          options.locationDecisionApplyReport ||
+          options.locationDecisionsApplyReport,
         identityDecisionApplyReport:
           options.identityDecisionApplyReport ||
           options.identityDecisionsApplyReport,
@@ -570,10 +740,9 @@ export function createPostAuthoringFinalizeCommands({
         identityReferenceRewriteInputRows: rowsFile,
         identityReferenceRewriteOutputRows:
           identityReferenceRewriteStage.output_rows_file,
-  	      sourceReferenceRewrites: sourceReferenceRewritesFileForRowsFile(
-          rowsFile,
-          options,
-        ),
+        sourceReferenceRewrites:
+          sourceContactRewriteStage.files?.source_reference_rewrites ||
+          sourceReferenceRewritesFileForRowsFile(rowsFile, options),
         identityReferenceRewrites: identityReferenceRewriteFile,
         outDir: path.join(outDir, "mutation-manifest"),
         requireCurationGate: requiresCurationGate,
@@ -628,6 +797,15 @@ export function createPostAuthoringFinalizeCommands({
         args: [],
         stderr: "",
         report_file: resolveRepoPath(unresolvedExchangeExternalizeStage.files?.report),
+      },
+      {
+        stage: "source_contact_rewrites",
+        status: sourceContactRewriteStage.status,
+        exit_code: 0,
+        command: "foundry.dataset-source-contact-rewrites-apply",
+        args: [],
+        stderr: "",
+        report_file: resolveRepoPath(sourceContactRewriteStage.files?.report),
       },
       {
         stage: "canonical_support_rewrites",
@@ -753,6 +931,7 @@ export function createPostAuthoringFinalizeCommands({
       profile: mutationManifest.profile || String(options.profile || "generic"),
       rows_file: repoRelativePath(rowsFile),
       pre_cleanup_rows_file: repoRelativeMaybe(preCleanupRowsFile),
+      source_contact_rows_file: repoRelativeMaybe(sourceContactRowsFile),
       canonical_support_rows_file: repoRelativeMaybe(canonicalSupportRowsFile),
       final_rows_file: repoRelativeMaybe(cleanedRowsFile),
       remote_write_mode: "read-only",
@@ -777,6 +956,16 @@ export function createPostAuthoringFinalizeCommands({
         prewrite_gate_blockers: prewriteGateBlockers.length,
         canonical_support_blockers:
           canonicalSupportRewriteStage.counts?.blockers ?? 0,
+        source_contact_rewrite_input_rows:
+          sourceContactRewriteStage.counts?.input_rows ?? null,
+        source_contact_rewrite_output_rows:
+          sourceContactRewriteStage.counts?.output_rows ?? null,
+        source_contact_reference_rewrites:
+          sourceContactRewriteStage.counts?.contact_reference_rewrites ?? 0,
+        source_contact_source_reference_rewrites:
+          sourceContactRewriteStage.counts?.source_reference_rewrites ?? 0,
+        source_contact_support_rows:
+          sourceContactRewriteStage.counts?.support_rows ?? 0,
         canonical_support_input_rows:
           canonicalSupportRewriteStage.counts?.input_rows ?? null,
         canonical_support_output_rows:
@@ -863,6 +1052,14 @@ export function createPostAuthoringFinalizeCommands({
       blockers: [...prewriteGateBlockers, ...mutationManifestBlockers],
       stages: stageReports.map(compactStageReport),
       files: {
+        source_contact_rewrite_report:
+          sourceContactRewriteStage.files?.report ?? null,
+        source_contact_rewritten_rows:
+          sourceContactRewriteStage.files?.output_rows ?? null,
+        source_contact_support_rows:
+          sourceContactRewriteStage.files?.support_rows ?? null,
+        source_contact_source_reference_rewrites:
+          sourceContactRewriteStage.files?.source_reference_rewrites ?? null,
         cleanup_report: repoRelativeMaybe(cleanupReportFile),
         canonical_support_rewrite_report:
           repoRelativeMaybe(canonicalSupportReportFile),
