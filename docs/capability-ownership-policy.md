@@ -37,6 +37,7 @@ Foundry owns:
 - root-library entity indexes, process-scope projections, blocked-scope ledgers, blocked-scope reports, and ready-scope checkpoints for packaged imports;
 - deterministic resolution of package-local bundle paths before Foundry projects library decisions to process scopes;
 - deterministic row-transform evidence reconciliation across source/contact rewrites, canonical support rewrites, identity reference rewrites, unresolved-exchange externalization, and cleanup;
+- deterministic source-only-output exchange proof from explicit source rows when the final process row preserves the non-flow-reference exchange signature;
 - remote-write policy checks, execution policy records, blocked-scope ledgers and reports, and commit/readback handoff aggregation;
 - support dependency finalize/handoff aggregation for profile-generated writable contact/source rows, without directly mutating the database;
 - acceptance checks and Stop-hook feedback loops;

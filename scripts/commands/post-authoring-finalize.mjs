@@ -434,6 +434,11 @@ export function createPostAuthoringFinalizeCommands({
         ...options,
         type: datasetType,
         rowsFile: canonicalSupportRowsFile || preCleanupRowsFile,
+        sourceRowsFile:
+          options.sourceRowsFile ||
+          options.sourceRows ||
+          options.originalSourceRowsFile ||
+          options.originalRowsFile,
         outDir: path.join(outDir, "cleanup"),
         outFile:
           options.cleanedRowsFile || options.cleanedRows || options.outFile,

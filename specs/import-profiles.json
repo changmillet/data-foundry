@@ -12,7 +12,7 @@
     },
     "bafu": {
       "id": "bafu",
-      "description": "BAFU / FOEN import profile for BAFU 2025 ecoSpold1 converted TIDAS rows, using root TIDAS library-level entity indexing plus the converted process-bundles index for process-level closure, queue-lock parallelism, reference-only canonical unitgroup/flowproperty reuse, true-source-or-BAFU-database source attribution, one canonical FOEN/BAFU contact, and task-policy-gated batch commit.",
+      "description": "BAFU / FOEN import profile for BAFU 2025 ecoSpold1 converted TIDAS rows, using root TIDAS library-level entity indexing plus the converted process-bundles index for process-level closure, queue-lock parallelism, reference-only canonical unitgroup/flowproperty reuse, true-source-or-BAFU-database source attribution, one canonical FOEN/BAFU contact, deterministic source-only-output exchange proof when source rows support it, and task-policy-gated batch commit.",
       "docs": [
         "docs/import-profiles/bafu/profile.md",
         "docs/import-profiles/bafu/constraints.md"
@@ -47,7 +47,7 @@
           "tidas_unitgroups_category.json",
           "tidas_locations_category.json"
         ],
-        "proof": "dataset-identity-decision-task-build plus dataset-identity-decisions-apply with authoring_package_sha256 and closes_action_items evidence for identity-preflight decisions, dataset-classification-decisions-apply with matching classification decision task/context_bundle_sha256 for classification queues, dataset-location-decisions-apply with matching location decision task/context_bundle_sha256 for location queues, or dataset-authoring-patch-collect plus dataset-patch-apply with authoring_package_sha256 and closes_action_items evidence for other field patches"
+        "proof": "dataset-identity-decision-task-build plus dataset-identity-decisions-apply with authoring_package_sha256 and closes_action_items evidence for identity-preflight decisions, dataset-classification-decisions-apply with matching classification decision task/context_bundle_sha256 for classification queues, dataset-location-decisions-apply with matching location decision task/context_bundle_sha256 for location queues, dataset-curation-cleanup deterministic proof for source-only-output exchange completeness when an explicit source rows file proves the source and final exchange signatures, or dataset-authoring-patch-collect plus dataset-patch-apply with authoring_package_sha256 and closes_action_items evidence for other field patches"
       }
     },
     "uslci": {

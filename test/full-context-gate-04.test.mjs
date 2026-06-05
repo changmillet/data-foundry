@@ -1136,6 +1136,171 @@ test("output-only process exchanges require source exchange completeness trace",
       "semantic_process_only_output_exchange_requires_review",
     );
 
+    const autoCleanup = runFoundry([
+      "dataset-curation-cleanup",
+      "--type",
+      "process",
+      "--rows-file",
+      rel(rowsFile),
+      "--source-rows-file",
+      rel(rowsFile),
+      "--out-dir",
+      rel(path.join(sourceExchangeFixtureRoot, "cleanup-auto-proof")),
+    ]);
+    assert.equal(autoCleanup.code, 0);
+    assert.equal(autoCleanup.json.status, "completed");
+    assert.equal(
+      autoCleanup.json.counts.source_exchange_completeness_proofs,
+      1,
+    );
+    const autoCleanedRowsFile = path.join(
+      repoRoot,
+      autoCleanup.json.files.cleaned_rows,
+    );
+    const autoCleanedRow = readJsonLines(autoCleanedRowsFile)[0];
+    assert.equal(
+      autoCleanedRow.processDataSet.processInformation.dataSetInformation[
+        "common:other"
+      ]["tiangongfoundry:sourceExchangeCompleteness"][0].evidence.source,
+      "foundry_deterministic_cleanup",
+    );
+    const autoSchemaReport = path.join(
+      sourceExchangeFixtureRoot,
+      "schema",
+      "auto-cleaned-validation-report.json",
+    );
+    writeJson(autoSchemaReport, {
+      input_path: rel(autoCleanedRowsFile),
+      status: "completed",
+      rows: [
+        {
+          index: 0,
+          id: processId,
+          version: "00.00.001",
+          type: "process",
+          status: "valid",
+          issues: [],
+        },
+      ],
+    });
+    const autoQaReport = path.join(
+      sourceExchangeFixtureRoot,
+      "qa",
+      "auto-cleaned-process-qa-report.json",
+    );
+    writeJson(autoQaReport, {
+      rows_file: rel(autoCleanedRowsFile),
+      status: "completed",
+      blockers: [],
+      findings: [],
+    });
+    const autoIdentityPreflightIndex = writeCompletedIdentityPreflightIndex(
+      sourceExchangeFixtureRoot,
+      [
+        {
+          datasetType: "process",
+          id: processId,
+          target: autoCleanedRow,
+          name: "Heat production",
+          query: "process name: Heat production\nexchange signature: Output heat 1",
+        },
+      ],
+    );
+    const autoGate = runFoundry([
+      "dataset-curation-gate",
+      "--type",
+      "process",
+      "--profile",
+      "bafu",
+      "--rows-file",
+      rel(autoCleanedRowsFile),
+      "--schema-report",
+      rel(autoSchemaReport),
+      "--qa-report",
+      rel(autoQaReport),
+      "--schema-file",
+      rel(context.schemaFile),
+      "--yaml-file",
+      rel(context.yamlFile),
+      "--ruleset-file",
+      rel(context.rulesetFile),
+      "--identity-preflight-index",
+      rel(autoIdentityPreflightIndex),
+      "--out-dir",
+      rel(path.join(sourceExchangeFixtureRoot, "curation-gate-auto-proof")),
+    ]);
+    assert.equal(autoGate.code, 0);
+    assert.equal(autoGate.json.status, "ready");
+    assert.equal(autoGate.json.counts.action_items, 0);
+
+    const autoProgressJsonl = path.join(
+      sourceExchangeFixtureRoot,
+      "dry-run-auto",
+      "outputs",
+      "save-draft-rpc",
+      "progress.jsonl",
+    );
+    const autoFailuresJsonl = path.join(
+      sourceExchangeFixtureRoot,
+      "dry-run-auto",
+      "outputs",
+      "save-draft-rpc",
+      "failures.jsonl",
+    );
+    writeJsonLines(autoProgressJsonl, [
+      {
+        id: processId,
+        version: "00.00.001",
+        status: "prepared",
+        operation: "would_insert",
+      },
+    ]);
+    writeJsonLines(autoFailuresJsonl, []);
+    const autoDryRunReport = path.join(
+      sourceExchangeFixtureRoot,
+      "dry-run-auto",
+      "outputs",
+      "save-draft-rpc",
+      "summary.json",
+    );
+    writeJson(autoDryRunReport, {
+      status: "completed",
+      mode: "dry-run",
+      commit: false,
+      input_path: rel(autoCleanedRowsFile),
+      files: {
+        progress_jsonl: rel(autoProgressJsonl),
+        failures_jsonl: rel(autoFailuresJsonl),
+      },
+    });
+    const autoManifest = runFoundry([
+      "dataset-mutation-manifest",
+      "--type",
+      "process",
+      "--profile",
+      "generic",
+      "--rows-file",
+      rel(autoCleanedRowsFile),
+      "--schema-report",
+      rel(autoSchemaReport),
+      "--curation-gate-report",
+      autoGate.json.files.report,
+      "--cleanup-report",
+      autoCleanup.json.files.report,
+      "--dry-run-report",
+      rel(autoDryRunReport),
+      "--target-user-id",
+      targetUserId,
+      "--out-dir",
+      rel(path.join(sourceExchangeFixtureRoot, "mutation-manifest-auto-proof")),
+    ]);
+    assert.equal(autoManifest.code, 0, JSON.stringify(autoManifest.json, null, 2));
+    assert.equal(autoManifest.json.status, "ready_for_remote_write");
+    assert.equal(
+      autoManifest.json.counts.source_exchange_completeness_entries,
+      1,
+    );
+
     const task = runFoundry([
       "dataset-authoring-task-build",
       "--curation-gate-report",

@@ -5553,7 +5553,54 @@ export function isDeterministicAnnualSupplyCleanupTrace(trace) {
   const evidence = trace?.evidence ?? {};
   return (
     isAnnualSupplyTarget(actionCode, blockedPath) &&
-    asText(evidence?.source) === "foundry_deterministic_cleanup"
+      asText(evidence?.source) === "foundry_deterministic_cleanup"
+  );
+}
+
+export function isDeterministicSourceExchangeCleanupTrace({
+  trace,
+  cleanupContext,
+  identity,
+  rowIndex,
+}) {
+  if (!cleanupContext || cleanupContext.status !== "completed") return false;
+  const status = asText(
+    trace?.status ?? trace?.decision_status ?? trace?.decisionStatus,
+  );
+  if (
+    ![
+      "source_only_output_exchange_verified",
+      "accepted_source_only_output",
+      "verified",
+    ].includes(status)
+  ) {
+    return false;
+  }
+  const evidence = trace?.evidence ?? trace?.source_evidence ?? trace?.trace;
+  if (asText(evidence?.source) !== "foundry_deterministic_cleanup") {
+    return false;
+  }
+  const id = asText(identity?.id);
+  const version = asText(identity?.version) || "00.00.001";
+  const traceHash = asText(trace?.trace_sha256) || sha256Json(trace);
+  return ensureArray(cleanupContext.sourceExchangeCompletenessProofs).some(
+    (proof) => {
+      const proofId = asText(
+        proof?.dataset_id ?? proof?.entity_id ?? proof?.id,
+      );
+      const proofVersion =
+        asText(proof?.version ?? proof?.dataset_version) || "00.00.001";
+      const sourceSignature = asText(proof?.source_exchange_signature_hash);
+      const finalSignature = asText(proof?.final_exchange_signature_hash);
+      return (
+        proofId === id &&
+        proofVersion === version &&
+        Number(proof?.row_index) === Number(rowIndex) &&
+        asText(proof?.trace_hash) === traceHash &&
+        sourceSignature &&
+        sourceSignature === finalSignature
+      );
+    },
   );
 }
 
@@ -5561,6 +5608,9 @@ export function tracePatchEvidenceBlockers({
   traceSummary,
   aiPatchEvidence,
   identityDecisionApplyContext = null,
+  cleanupContext = null,
+  identity = null,
+  rowIndex = null,
 }) {
   const blockers = [];
   const deferredEvidence = aiPatchEvidence.filter(
@@ -5605,12 +5655,20 @@ export function tracePatchEvidenceBlockers({
   for (const trace of ensureArray(
     traceSummary?.source_exchange_completeness,
   )) {
-    if (sourceTraceEvidence.length === 0) {
+    if (
+      sourceTraceEvidence.length === 0 &&
+      !isDeterministicSourceExchangeCleanupTrace({
+        trace,
+        cleanupContext,
+        identity,
+        rowIndex,
+      })
+    ) {
       blockers.push({
         code: "source_exchange_trace_patch_evidence_required",
         stage: "full_context_ai_completion",
         message:
-          "Final payload contains tiangongfoundry:sourceExchangeCompleteness. Source-only exchange acceptance must be backed by same-row AI patch evidence with resolution.mode=source_trace_verified.",
+          "Final payload contains tiangongfoundry:sourceExchangeCompleteness. Source-only exchange acceptance must be backed by same-row AI patch evidence with resolution.mode=source_trace_verified or by a matching deterministic cleanup source-exchange proof for this exact row.",
         status: trace?.status ?? null,
       });
     }
@@ -5855,6 +5913,10 @@ export function readRowsFileTransformContext(repoRoot, artifact, kind) {
     artifact,
     status: asText(report.status),
     counts: report.counts && typeof report.counts === "object" ? report.counts : {},
+    sourceExchangeCompletenessProofs: ensureArray(
+      report.source_exchange_completeness_proofs ??
+        report.proofs?.source_exchange_completeness,
+    ),
     inputRowsFile,
     outputRowsFile,
     inputRowsFileRelative: repoRelativeArtifactPath(repoRoot, inputRowsFile),
@@ -8613,6 +8675,7 @@ export function buildWriteCandidateItem({
   sourceReferenceRewritesByKey,
   identityReferenceRewritesByKey,
   identityDecisionApplyContext,
+  cleanupContext = null,
   evidenceScopeBlockers = [],
 }) {
   const key = identityKey(identity);
@@ -8802,6 +8865,9 @@ export function buildWriteCandidateItem({
       traceSummary,
       aiPatchEvidence,
       identityDecisionApplyContext,
+      cleanupContext,
+      identity,
+      rowIndex,
     }),
   );
   const decision = blockers.length > 0 ? "blocked" : "write_or_update";

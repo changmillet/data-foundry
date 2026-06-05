@@ -75,6 +75,7 @@ profiles
    - check that schema, QA, curation, queue verify, dry-run, closeout, and readback artifacts exist
    - verify artifacts point to the same rows scope
    - accept identity/classification/location evidence across deterministic row transforms such as source/contact rewrites, canonical support rewrites, identity reference rewrites, unresolved-exchange externalization, and cleanup
+   - reconcile deterministic source-only-output exchange proofs from cleanup against final-row `sourceExchangeCompleteness` traces
    - generate completion reports
 
 6. Whole-library scope orchestration

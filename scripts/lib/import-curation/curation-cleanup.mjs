@@ -12,7 +12,9 @@ import {
 } from "./internal/runtime-io.mjs";
 import {
   annualSupplyMissingDataSentinelText,
+  applyDeterministicSourceExchangeCompletenessProofs,
   applyAnnualSupplyMissingDataSentinel,
+  buildSourceRowsByIdentity,
   ensureFoundryTraceNamespaces,
   externalizeImportTraceMetadata,
   normalizeDateTimeMetadata,
@@ -27,7 +29,7 @@ export function runDatasetCurationCleanup({ repoRoot, options = {} } = {}) {
       status: "help",
       command: "dataset-curation-cleanup",
       usage: [
-        "node scripts/foundry.mjs dataset-curation-cleanup --type <process|flow|lifecyclemodel|support|contact|source> --rows-file <rows.jsonl> --out-dir <cleanup-dir>",
+        "node scripts/foundry.mjs dataset-curation-cleanup --type <process|flow|lifecyclemodel|support|contact|source> --rows-file <rows.jsonl> [--source-rows-file <source-rows.jsonl>] --out-dir <cleanup-dir>",
       ],
       purpose:
         "Run deterministic prewrite cleanup transforms: annual-supply sentinel completion, import trace externalization, Foundry trace namespace repair, local locator redaction, and timestamp normalization.",
@@ -49,6 +51,19 @@ export function runDatasetCurationCleanup({ repoRoot, options = {} } = {}) {
       "--rows-file is required and must point to a JSON/JSONL dataset row file.",
     );
   }
+  const sourceRowsFile = resolveRepoPath(
+    repoRoot,
+    options.sourceRowsFile ||
+      options.sourceRows ||
+      options.originalSourceRowsFile ||
+      options.originalRowsFile,
+  );
+  const sourceRows =
+    datasetType === "process" && sourceRowsFile && fileExists(sourceRowsFile)
+      ? readRows(sourceRowsFile)
+      : [];
+  const sourceRowsByKey =
+    sourceRows.length > 0 ? buildSourceRowsByIdentity(sourceRows) : null;
 
   const rows = readRows(rowsFile);
   let removedSourceTraceBlocks = 0;
@@ -57,10 +72,25 @@ export function runDatasetCurationCleanup({ repoRoot, options = {} } = {}) {
   let addedFoundryTraceNamespaces = 0;
   let redactedFoundryTraceEvidenceLocators = 0;
   let annualSupplyMissingDataSentinels = 0;
+  let sourceExchangeCompletenessProofs = 0;
+  const sourceExchangeProofRows = [];
   const cleanedRows = rows.map((row, rowIndex) => {
     const cleaned = JSON.parse(JSON.stringify(row));
     if (applyAnnualSupplyMissingDataSentinel(cleaned, datasetType, rowIndex)) {
       annualSupplyMissingDataSentinels += 1;
+    }
+    if (
+      applyDeterministicSourceExchangeCompletenessProofs(cleaned, datasetType, {
+        rowIndex,
+        sourceRowsByKey,
+        sourceRowsFile: sourceRowsFile
+          ? repoRelativePath(repoRoot, sourceRowsFile)
+          : null,
+        rowsFile: repoRelativePath(repoRoot, rowsFile),
+        proofRows: sourceExchangeProofRows,
+      })
+    ) {
+      sourceExchangeCompletenessProofs += 1;
     }
     normalizedDateTimeValues += normalizeDateTimeMetadata(cleaned);
     const traceResult = externalizeImportTraceMetadata(cleaned);
@@ -92,7 +122,13 @@ export function runDatasetCurationCleanup({ repoRoot, options = {} } = {}) {
       added_foundry_trace_namespaces: addedFoundryTraceNamespaces,
       normalized_datetime_values: normalizedDateTimeValues,
       annual_supply_missing_data_sentinels: annualSupplyMissingDataSentinels,
+      source_exchange_completeness_proofs: sourceExchangeCompletenessProofs,
     },
+    source_rows_file:
+      sourceRowsFile && fileExists(sourceRowsFile)
+        ? repoRelativePath(repoRoot, sourceRowsFile)
+        : null,
+    source_exchange_completeness_proofs: sourceExchangeProofRows,
     blockers: [],
     policy: {
       purpose:
@@ -108,6 +144,8 @@ export function runDatasetCurationCleanup({ repoRoot, options = {} } = {}) {
         "TIDAS/ILCD dateTime values with timezone offsets are normalized to UTC Z form.",
       annual_supply_placeholder_policy:
         `annualSupplyOrProductionVolume is schema-required. If source evidence is missing or converted as a placeholder such as 'Not specified', Foundry writes '${annualSupplyMissingDataSentinelText}' so the row remains importable and later database-side curation can bulk-locate the intentionally non-physical sentinel.`,
+      source_exchange_completeness_policy:
+        "For process rows, if an explicit source rows file is supplied and the source process row is Output-only with the same non-flow-reference exchange signature as the final row, Foundry may write deterministic tiangongfoundry:sourceExchangeCompleteness proof. Otherwise source-only-output acceptance still requires AI source_trace_verified evidence or exchange repair.",
     },
   };
   const reportFileName = "dataset-curation-cleanup-report.json";

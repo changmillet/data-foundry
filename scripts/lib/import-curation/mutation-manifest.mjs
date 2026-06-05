@@ -364,6 +364,7 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
       identityReferenceRewritesByKey:
         identityReferenceRewriteContext.byIdentity,
       identityDecisionApplyContext,
+      cleanupContext,
       evidenceScopeBlockers,
     });
   });
