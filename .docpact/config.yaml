@@ -132,6 +132,9 @@ docInventory:
     - docs/runtime-skill-management.md
     - docs/foundry-task-contracts.md
     - docs/workspace-project-map.md
+    - docs/agent-harness-cli-comparison.md
+    - docs/data-governance-loop.md
+    - docs/symphony-adaptation.md
     - specs/data-foundry-service.md
     - specs/workspace-capability-adapters.md
 
@@ -198,7 +201,7 @@ rules:
       - path: docs/workspace-project-map.md
         mode: review_or_update
       - path: specs/capability-ownership-rules.json
-        mode: review_or_update
+        mode: must_exist
     reason: Command wrappers, route plans, and capability ownership changes must preserve Foundry as task/workspace/profile/gate control.
   - id: foundry-import-profile-contract
     scope: repo
@@ -232,6 +235,36 @@ rules:
       - path: docs/runtime-skill-management.md
         mode: must_exist
     reason: Foundry-local skills must remain orchestration wrappers and must consume external fast-moving evidence skills at runtime.
+  - id: foundry-acceptance-loop-reference
+    scope: repo
+    repo: data-foundry
+    triggers:
+      - path: docs/agent-harness-cli-comparison.md
+        kind: reference-doc
+    requiredDocs:
+      - path: docs/agent-harness-cli-comparison.md
+        mode: review_or_update
+    reason: Acceptance-loop notes are retained reference material and should remain explicitly self-governed when edited.
+  - id: foundry-import-loop-reference
+    scope: repo
+    repo: data-foundry
+    triggers:
+      - path: docs/data-governance-loop.md
+        kind: reference-doc
+    requiredDocs:
+      - path: docs/data-governance-loop.md
+        mode: review_or_update
+    reason: High-level import-loop notes are retained reference material and should not become uncovered documentation changes.
+  - id: foundry-orchestration-pattern-reference
+    scope: repo
+    repo: data-foundry
+    triggers:
+      - path: docs/symphony-adaptation.md
+        kind: reference-doc
+    requiredDocs:
+      - path: docs/symphony-adaptation.md
+        mode: review_or_update
+    reason: Historical orchestration-pattern notes are retained reference material and should remain explicitly self-governed when edited.
   - id: foundry-workspace-ledger-contract
     scope: repo
     repo: data-foundry

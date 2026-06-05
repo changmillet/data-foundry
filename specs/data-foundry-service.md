@@ -1,3 +1,23 @@
+---
+title: Data Foundry Service
+docType: service-contract
+scope: data-foundry
+status: active
+authoritative: false
+owner: tiangong-lca-data-foundry
+language: en
+whenToUse:
+  - when checking the service-level scope of Foundry lanes and artifact classes
+  - when comparing high-level service boundaries against current workflow docs
+whenToUpdate:
+  - when supported production lanes, owner boundaries, or required artifact classes change
+related:
+  - WORKFLOW.md
+  - docs/workspace-project-map.md
+  - specs/workspace-capability-adapters.md
+  - specs/automated-lca-capability-registry.json
+---
+
 # Data Foundry Service
 
 Data Foundry is a local control plane for producing TianGong-ready TIDAS data from external source material.

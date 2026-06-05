@@ -1,3 +1,28 @@
+---
+title: Symphony Adaptation Notes
+docType: reference
+scope: orchestration-patterns
+status: active
+authoritative: false
+owner: tiangong-lca-data-foundry
+language: en
+whenToUse:
+  - when comparing Foundry's filesystem control plane to issue-tracker orchestration patterns
+  - when maintaining historical rationale for the v0 filesystem task queue
+whenToUpdate:
+  - when Foundry task tracking moves away from the filesystem queue or adopts a new tracker adapter
+checkPaths:
+  - docs/symphony-adaptation.md
+  - specs/data-foundry-service.md
+  - docs/foundry-task-contracts.md
+  - tasks/**
+lastReviewedAt: 2026-06-05
+lastReviewedCommit: 76830c7adc67126a795f5fdc1c650fe56ac7b5e2
+related:
+  - specs/data-foundry-service.md
+  - docs/foundry-task-contracts.md
+---
+
 # Symphony Adaptation Notes
 
 OpenAI Symphony is an issue-tracker-driven orchestration pattern for autonomous implementation runs. This project adapts the same control-plane idea to LCA data production.
