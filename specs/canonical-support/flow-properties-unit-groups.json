@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at_utc": "2026-06-03T06:19:52.985Z",
+  "generated_at_utc": "2026-06-05T03:59:47.271Z",
   "source": {
     "table_state_code": 100,
     "policy": "Flow Properties and Unit Groups are read-only support choices for Foundry imports; import rows must reference existing canonical DB rows instead of creating My Data support rows."
