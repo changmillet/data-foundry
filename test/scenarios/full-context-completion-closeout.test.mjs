@@ -790,17 +790,17 @@ test("process commit handoff defaults draft state code and records account guard
     assert.equal(handoff.json.expected_state_code, "0");
     assert.equal(handoff.json.expected_state_code_source, "default_draft_write_state");
     assert.match(handoff.json.commands.commit, / process save-draft /);
-    assert.doesNotMatch(handoff.json.commands.commit, /--target-user-id/);
+    assert.match(handoff.json.commands.commit, new RegExp(`--target-user-id ${targetUserId}`));
     assert.doesNotMatch(handoff.json.commands.commit, /--state-code/);
     assert.match(
       handoff.json.commands.post_write_verify,
       new RegExp(`--target-user-id ${targetUserId}`),
     );
     assert.match(handoff.json.commands.post_write_verify, /--state-code 0/);
-    assert.equal(handoff.json.account_write_guard.commit_command_supports_target_user_id, false);
+    assert.equal(handoff.json.account_write_guard.commit_command_supports_target_user_id, true);
     assert.equal(
       handoff.json.account_write_guard.commit_account_binding,
-      "current_cli_auth_session",
+      "target_user_id_cli_argument",
     );
   } finally {
     fs.rmSync(root, { recursive: true, force: true });

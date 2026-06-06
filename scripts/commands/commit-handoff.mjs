@@ -82,7 +82,7 @@ function commitCommandForDatasetType(
       "--json",
     ];
   }
-  return [
+  const args = [
     ...cliPrefix(),
     "process",
     "save-draft",
@@ -93,6 +93,8 @@ function commitCommandForDatasetType(
     "--commit",
     "--json",
   ];
+  appendOption(args, "--target-user-id", targetUserId);
+  return args;
 }
 
 export function createCommitHandoffCommands({
@@ -225,7 +227,7 @@ export function createCommitHandoffCommands({
     const explicitStateCode = asText(options.stateCode ?? options.expectedStateCode);
     const stateCode = explicitStateCode || "0";
     const stateCodeSource = explicitStateCode ? "explicit_option" : "default_draft_write_state";
-    const commitSupportsTargetUserId = datasetType === "flow";
+    const commitSupportsTargetUserId = ["flow", "process"].includes(datasetType);
     const blockers = [];
 
     if (finalizeReport.status !== "ready_for_remote_write") {
