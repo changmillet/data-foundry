@@ -186,6 +186,6 @@ Foundry tests are organized by behavior layer, not by historical incident number
 - `test/unit/` for pure metadata and contract helpers.
 - `test/commands/` for one-command artifact and report contracts.
 - `test/scenarios/` for multi-command import workflows and gate behavior.
-- `test/fixtures/` for shared Foundry row, report, and command harness helpers.
+- `test/fixtures/` for shared Foundry row, report, command, and workflow-specific fixture helpers split by behavior surface.
 
 Use `npm test` for the full suite, or `npm run test:unit`, `npm run test:commands`, and `npm run test:scenarios` for targeted checks. New tests should be named after the behavior they protect rather than `full-context-gate-N`.

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { runSurfaceAudit } from "../lib/surface-audit.mjs";
 
 const capabilityRegistryPath = "specs/automated-lca-capability-registry.json";
 const runtimeDirs = [
@@ -297,10 +298,12 @@ export function createCoreCommands({
     const workflow = workflowCheck();
     const storage = storageCheck();
     const envSurface = envExampleSurfaceCheck();
+    const surfaceAudit = surfaceAuditCheck();
     const checks = [
       { name: "workflow", ok: workflow.ok, report: workflow },
       { name: "storage", ok: storage.ok, report: storage },
       { name: "env_example_surface", ok: envSurface.ok, report: envSurface },
+      { name: "surface_audit", ok: surfaceAudit.status === "passed", report: surfaceAudit },
     ];
     const result = {
       schema_version: 2,
@@ -316,17 +319,23 @@ export function createCoreCommands({
   }
 
   function doctor() {
+    const surfaceAudit = surfaceAuditCheck();
     return {
       repo_root: repoRoot,
       node: process.version,
       workflow_check: workflowCheck(),
       storage_check: storageCheck(),
       env_example_surface: envExampleSurfaceCheck(),
+      surface_audit: surfaceAudit,
       runtime_dirs: Object.fromEntries(
         runtimeDirs.map((dir) => [dir, fs.existsSync(path.join(repoRoot, dir))]),
       ),
       import_profiles: listImportProfiles({ repoRoot }),
     };
+  }
+
+  function surfaceAuditCheck() {
+    return runSurfaceAudit({ repoRoot, nowIso });
   }
 
   function envCheck() {
@@ -507,6 +516,7 @@ export function createCoreCommands({
     envCheck,
     initRuntime,
     storageCheck,
+    surfaceAuditCheck,
     workspaceMap,
     workflowCheck,
     writeRoutePlan,

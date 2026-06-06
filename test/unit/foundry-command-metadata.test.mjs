@@ -88,18 +88,13 @@ test("public command implementation paths are at most two jumps from the CLI ent
   }
 });
 
-test("command owners do not depend on bulk workflow implementation files", () => {
+test("command owners do not depend on removed compatibility modules", () => {
   for (const entry of commandMetadataEntries()) {
     const source = readRepoFile(entry.ownerModule);
     assert.equal(
       source.includes("legacy-implementation.mjs"),
       false,
       `${entry.command} owner must not import removed legacy implementation`,
-    );
-    assert.equal(
-      source.includes("internal/workflow-domain.mjs"),
-      false,
-      `${entry.command} owner should import a semantic workflow facet instead of workflow-domain.mjs`,
     );
   }
 });

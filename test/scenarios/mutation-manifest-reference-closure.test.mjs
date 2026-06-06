@@ -1,5 +1,76 @@
 import test from "node:test";
-import { annualSupplyFixtureRoot, assert, blockerCodes, bundledCategorySchemaNames, classificationFixtureRoot, contextFile, contextTextByPathSuffix, createFixture, createMutationManifestFixture, crypto, elementaryFlowManifestFixtureRoot, finalizeAutoQueueFixtureRoot, finalizeCurationGateFixtureRoot, finalizeIdentityPreflightFixtureRoot, finalizeLocationFixtureRoot, fixtureRoot, flowClassificationFixtureRoot, flowIdentityReferenceFixtureRoot, flowRow, flowRowWithClassification, fs, fullContextKinds, fullContextPatterns, identityPreflightRunFixtureRoot, itemBlockerCodes, locationFixtureRoot, mutationFixtureRoot, packageContextFixtureRoot, path, processRowWithDefaultClassification, processRowWithDeferredTrace, processRowWithFlowRef, processRowWithInvalidAnnualSupply, processRowWithInvalidLocation, processRowWithOnlyOutputExchange, qaPathFixtureRoot, readJson, readJsonLines, referenceClosureFixtureRoot, rel, repoRoot, runFoundry, scopeBlockerCodes, sha256Text, siblingCliBuildAvailable, siblingCliRoot, sourceExchangeFixtureRoot, sourceRow, spawnSync, supportManifestFixtureRoot, targetUserId, writeCompletedIdentityPreflightIndex, writeContextPackFiles, writeDecisionTaskFixture, writeJson, writeJsonLines, writeReadyFinalizeFixture, writeText } from "../fixtures/foundry-harness.mjs";
+import {
+  writeReadyFinalizeFixture,
+} from "../fixtures/finalize-fixtures.mjs";
+import {
+  annualSupplyFixtureRoot,
+  classificationFixtureRoot,
+  elementaryFlowManifestFixtureRoot,
+  finalizeAutoQueueFixtureRoot,
+  finalizeCurationGateFixtureRoot,
+  finalizeIdentityPreflightFixtureRoot,
+  finalizeLocationFixtureRoot,
+  fixtureRoot,
+  flowClassificationFixtureRoot,
+  flowIdentityReferenceFixtureRoot,
+  identityPreflightRunFixtureRoot,
+  locationFixtureRoot,
+  mutationFixtureRoot,
+  packageContextFixtureRoot,
+  qaPathFixtureRoot,
+  referenceClosureFixtureRoot,
+  sourceExchangeFixtureRoot,
+  supportManifestFixtureRoot,
+} from "../fixtures/fixture-roots.mjs";
+import {
+  assert,
+  blockerCodes,
+  bundledCategorySchemaNames,
+  contextTextByPathSuffix,
+  crypto,
+  fs,
+  fullContextKinds,
+  fullContextPatterns,
+  itemBlockerCodes,
+  path,
+  readJson,
+  readJsonLines,
+  rel,
+  repoRoot,
+  runFoundry,
+  scopeBlockerCodes,
+  sha256Text,
+  siblingCliBuildAvailable,
+  siblingCliRoot,
+  spawnSync,
+  targetUserId,
+  writeJson,
+  writeJsonLines,
+  writeText,
+} from "../fixtures/foundry-core.mjs";
+import {
+  contextFile,
+  createFixture,
+  writeContextPackFiles,
+  writeDecisionTaskFixture,
+} from "../fixtures/full-context-fixtures.mjs";
+import {
+  writeCompletedIdentityPreflightIndex,
+} from "../fixtures/identity-fixtures.mjs";
+import {
+  createMutationManifestFixture,
+} from "../fixtures/mutation-fixtures.mjs";
+import {
+  flowRow,
+  flowRowWithClassification,
+  processRowWithDefaultClassification,
+  processRowWithDeferredTrace,
+  processRowWithFlowRef,
+  processRowWithInvalidAnnualSupply,
+  processRowWithInvalidLocation,
+  processRowWithOnlyOutputExchange,
+  sourceRow,
+} from "../fixtures/row-builders.mjs";
 
 
 test("mutation manifest blocks process writes when referenced datasets are not proven", () => {

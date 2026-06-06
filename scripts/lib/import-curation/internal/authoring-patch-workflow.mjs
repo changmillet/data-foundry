@@ -2,6 +2,10 @@ export {
   authoringTaskFullContextReadinessBlockers,
   patchPayloadPatchSets,
   patchSetOperations,
-  sharedContextBundleReadinessBlockers,
+} from "./workflow-authoring-tasks.mjs";
+export {
   validateCollectedPatchSet,
-} from "./workflow-domain.mjs";
+} from "./workflow-patch-collect.mjs";
+export {
+  sharedContextBundleReadinessBlockers,
+} from "./workflow-semantic-actions.mjs";

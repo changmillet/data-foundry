@@ -149,6 +149,8 @@ docInventory:
     - docs/foundry-ai-navigation.md
     - docs/foundry-command-surface.md
     - test/README.md
+    - docs/account-context-policy.md
+    - docs/countable-product-functional-unit-design.md
     - docs/workspace-project-map.md
     - docs/agent-harness-cli-comparison.md
     - docs/data-governance-loop.md

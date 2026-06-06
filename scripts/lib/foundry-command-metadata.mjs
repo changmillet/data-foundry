@@ -88,7 +88,7 @@ export const commandMetadata = {
     category: "public",
     ownerModule: coreOwner,
     ownerExport: "createCoreCommands().doctor",
-    inputs: ["WORKFLOW.md", "docs/file-location-registry.json", ".env.example", "specs/import-profiles.json"],
+    inputs: ["WORKFLOW.md", "docs/file-location-registry.json", ".env.example", "specs/import-profiles.json", "command metadata", "script import graph"],
     outputs: ["doctor JSON status report"],
     keyTests: [goldenDiff, commandSmoke("doctor")],
   }),
@@ -115,6 +115,14 @@ export const commandMetadata = {
     inputs: ["docs/file-location-registry.json"],
     outputs: ["storage_check JSON status report"],
     keyTests: [commandSmoke("storage-check"), commandSmoke("doctor")],
+  }),
+  "surface-audit": metadata({
+    category: "public",
+    ownerModule: coreOwner,
+    ownerExport: "createCoreCommands().surfaceAuditCheck",
+    inputs: ["command registry", "command metadata", "docs/**/*.md", "scripts/**/*.mjs"],
+    outputs: ["surface audit JSON status report"],
+    keyTests: [commandSmoke("surface-audit"), commandSmoke("doctor")],
   }),
   "acceptance-check": metadata({
     category: "public",
@@ -187,7 +195,7 @@ export const commandMetadata = {
     inputs: ["converted process/flow/support/lifecyclemodel rows"],
     outputs: ["CLI curation queue directory", "Foundry wrapper JSON report"],
     keyTests: [
-      nodeTest("test/scenarios/identity-preflight-and-curation-context.test.mjs", "curation queue build is used before full-context authoring"),
+      nodeTest("test/scenarios/identity-curation-context.test.mjs", "curation queue build is used before full-context authoring"),
     ],
   }),
   "dataset-curation-gate": metadata({
@@ -198,7 +206,7 @@ export const commandMetadata = {
     outputs: ["dataset-curation-gate-report.json", "ai-authoring-packages/*"],
     keyTests: [
       goldenDiff,
-      nodeTest("test/scenarios/identity-preflight-and-curation-context.test.mjs", "curation gate authoring package carries full contract text and queue dependency rows"),
+      nodeTest("test/scenarios/identity-curation-context.test.mjs", "curation gate authoring package carries full contract text and queue dependency rows"),
     ],
   }),
   "dataset-authoring-plan": metadata({
@@ -240,7 +248,7 @@ export const commandMetadata = {
     inputs: ["curation gate report", "identity-preflight context"],
     outputs: ["identity-decision-task.json", "identity-decision-task.md", "identity-decisions.template.jsonl"],
     keyTests: [
-      nodeTest("test/scenarios/identity-preflight-and-curation-context.test.mjs", "identity decision task deduplicates repeated targets and keeps source evidence"),
+      nodeTest("test/scenarios/identity-curation-context.test.mjs", "identity decision task deduplicates repeated targets and keeps source evidence"),
     ],
   }),
   "dataset-classification-decision-task-build": metadata({
@@ -290,7 +298,7 @@ export const commandMetadata = {
     inputs: ["curated rows file", "profile cleanup policy"],
     outputs: ["dataset-curation-cleanup-report.json", "cleaned rows file"],
     keyTests: [
-      nodeTest("test/scenarios/post-authoring-finalize-and-cleanup.test.mjs", "curation cleanup fills placeholder annual supply with searchable sentinel"),
+      nodeTest("test/scenarios/curation-cleanup-quality-gates.test.mjs", "curation cleanup fills placeholder annual supply with searchable sentinel"),
     ],
   }),
   "dataset-patch-apply": metadata({
@@ -300,7 +308,7 @@ export const commandMetadata = {
     inputs: ["rows file", "AI patch file", "authoring package proof"],
     outputs: ["patched rows file", "dataset-patch-apply-report.json", "patch-evidence.jsonl"],
     keyTests: [
-      nodeTest("test/scenarios/flow-identity-and-reference-reuse.test.mjs", "identity decision apply closes flow identity curation and counts as full-context evidence"),
+      nodeTest("test/scenarios/flow-reference-reuse-and-traces.test.mjs", "identity decision apply closes flow identity curation and counts as full-context evidence"),
       nodeTest("test/commands/authoring-task-context.test.mjs", "authoring patch collect blocks AI patches without completed status"),
     ],
   }),
@@ -353,7 +361,7 @@ export const commandMetadata = {
     keyTests: [
       nodeTest("test/unit/foundry-stage-contract.test.mjs", "complex workflow commands publish AI-readable stage contracts"),
       nodeTest("test/commands/bundle-sample-rows.test.mjs", "dataset-identity-preflight-run executes request indexes and preserves identity blockers as evidence"),
-      nodeTest("test/scenarios/identity-preflight-and-curation-context.test.mjs", "identity preflight batch runner records timed-out CLI rows without hanging"),
+      nodeTest("test/scenarios/identity-preflight-run-and-merge.test.mjs", "identity preflight batch runner records timed-out CLI rows without hanging"),
     ],
   }),
   "dataset-identity-preflight-index-merge": metadata({
@@ -363,7 +371,7 @@ export const commandMetadata = {
     inputs: ["base identity-preflight index", "refreshed current-scope identity-preflight index"],
     outputs: ["identity-preflight-requests.jsonl", "dataset-identity-preflight-index-merge-report.json"],
     keyTests: [
-      nodeTest("test/scenarios/identity-preflight-and-curation-context.test.mjs", "identity preflight index merge preserves dependency rows while refreshing current scope"),
+      nodeTest("test/scenarios/identity-preflight-run-and-merge.test.mjs", "identity preflight index merge preserves dependency rows while refreshing current scope"),
     ],
   }),
   "dataset-library-index-build": metadata({
@@ -413,7 +421,7 @@ export const commandMetadata = {
     inputs: ["process rows file", "identity-preflight index or identity decision rewrites"],
     outputs: ["rewritten rows file", "identity-reference-rewrites-apply-report.json", "reference reuse rows"],
     keyTests: [
-      nodeTest("test/scenarios/flow-identity-and-reference-reuse.test.mjs", "identity duplicate flow rewrites require high-confidence preflight evidence"),
+      nodeTest("test/scenarios/flow-identity-decisions.test.mjs", "identity duplicate flow rewrites require high-confidence preflight evidence"),
     ],
   }),
   "dataset-identity-decisions-apply": metadata({
@@ -424,7 +432,7 @@ export const commandMetadata = {
     outputs: ["identity-decisions-apply-report.json", "write candidate rows", "reference reuse rows", "reference rewrites"],
     keyTests: [
       nodeTest("test/commands/authoring-plan.test.mjs", "dataset-identity-decisions-apply filters mixed decisions by requested type"),
-      nodeTest("test/scenarios/flow-identity-and-reference-reuse.test.mjs", "AI identity decisions apply split flow rows into writes and reference reuse"),
+      nodeTest("test/scenarios/flow-identity-decisions.test.mjs", "AI identity decisions apply split flow rows into writes and reference reuse"),
     ],
   }),
   "dataset-post-authoring-finalize": metadata({
@@ -436,7 +444,7 @@ export const commandMetadata = {
     keyTests: [
       goldenDiff,
       nodeTest("test/unit/foundry-stage-contract.test.mjs", "complex workflow commands publish AI-readable stage contracts"),
-      nodeTest("test/scenarios/post-authoring-finalize-and-cleanup.test.mjs", "post-authoring finalize declares external process flow refs for remote proof"),
+      nodeTest("test/scenarios/post-authoring-finalize-gates.test.mjs", "post-authoring finalize declares external process flow refs for remote proof"),
     ],
   }),
   "dataset-commit-handoff-plan": metadata({
@@ -446,7 +454,7 @@ export const commandMetadata = {
     inputs: ["mutation manifest", "finalize report", "location audit evidence"],
     outputs: ["commit handoff plan JSON report"],
     keyTests: [
-      nodeTest("test/scenarios/full-context-completion-and-authoring.test.mjs", "commit handoff blocks nonzero location audit blockers"),
+      nodeTest("test/scenarios/full-context-completion-closeout.test.mjs", "commit handoff blocks nonzero location audit blockers"),
     ],
   }),
   "dataset-post-write-closeout": metadata({
@@ -456,7 +464,7 @@ export const commandMetadata = {
     inputs: ["final rows", "write result", "trace queues", "readback/verify evidence"],
     outputs: ["post-write-closeout-report.json"],
     keyTests: [
-      nodeTest("test/scenarios/full-context-completion-and-authoring.test.mjs", "post-write closeout requires common:other trace queues to match final rows"),
+      nodeTest("test/scenarios/full-context-completion-closeout.test.mjs", "post-write closeout requires common:other trace queues to match final rows"),
     ],
   }),
   "dataset-import-completion-report": metadata({
@@ -466,7 +474,7 @@ export const commandMetadata = {
     inputs: ["task manifest", "post-write closeout reports", "mutation manifests"],
     outputs: ["dataset-import-completion-report.json"],
     keyTests: [
-      nodeTest("test/scenarios/full-context-completion-and-authoring.test.mjs", "full-context import completion gates block missing proof and pass evidenced BAFU scopes"),
+      nodeTest("test/scenarios/full-context-completion-closeout.test.mjs", "full-context import completion gates block missing proof and pass evidenced BAFU scopes"),
     ],
   }),
   "dataset-mutation-manifest": metadata({
@@ -477,7 +485,7 @@ export const commandMetadata = {
     outputs: ["dataset-mutation-manifest.json", "write candidates", "reference reuse items", "blockers"],
     keyTests: [
       goldenDiff,
-      nodeTest("test/scenarios/mutation-manifest-full-context-lineage.test.mjs", "mutation manifest requires full-context AI evidence and preserves deferred trace queues"),
+      nodeTest("test/scenarios/mutation-full-context-evidence.test.mjs", "mutation manifest requires full-context AI evidence and preserves deferred trace queues"),
       nodeTest("test/scenarios/mutation-manifest-reference-closure.test.mjs", "mutation manifest blocks process writes when referenced datasets are not proven"),
     ],
   }),

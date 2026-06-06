@@ -16,6 +16,7 @@
     "account:run": "node scripts/with-lca-account.mjs",
     "workflow:check": "node scripts/foundry.mjs workflow-check",
     "storage:check": "node scripts/foundry.mjs storage-check",
+    "surface:audit": "node scripts/foundry.mjs surface-audit",
     "acceptance:check": "node scripts/foundry.mjs acceptance-check",
     "skills:list": "npx --yes skills@latest list --json",
     "skills:update": "npx --yes skills@latest update --project --yes",

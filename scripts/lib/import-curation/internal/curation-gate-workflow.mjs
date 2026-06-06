@@ -1,58 +1,84 @@
 export {
-  authoringQueueRowsForIdentity,
-  buildIdentityPreflightAuthoringContext,
-  buildQueueAuthoringContext,
-  classificationQueueActionItem,
-  classificationQueueRowStillNeedsAuthoring,
+  entityIdFromFinding,
+  qaFindingCode,
+  qaFindingCurationAction,
+  readQaFindings,
+} from "./artifact-inputs.mjs";
+export {
   collectBundledSchemaContextFiles,
   collectContextDirFiles,
   collectExplicitContextFiles,
-  collectProfileSemanticActionItems,
   contextFileDetails,
-  datasetIdentity,
-  datasetTypeFromOptions,
-  datasetTypePlural,
-  ensureArray,
-  entityIdFromFinding,
-  fileExists,
   fullContextAiCompletionRequirement,
   fullContextGateItems,
-  identityDecisionApplyContextDecisionsForIdentity,
-  identityDecisionApplyReportOptionValues,
-  identityKey,
-  identityPreflightAuthoringActionItems,
-  identityPreflightGateItems,
-  jsonLines,
-  locationQueueActionItem,
-  locationQueueRowStillNeedsAuthoring,
-  mapRowsByIdentity,
-  nowIso,
-  profileFor,
-  qaFindingCode,
-  qaFindingCurationAction,
-  readAuthoringQueueContext,
-  readCanonicalSupportRewriteContext,
-  readClassificationDecisionApplyContext,
-  readCleanupTransformContext,
   readContextFiles,
-  readCurationQueueContext,
-  readIdentityDecisionApplyContexts,
-  readIdentityPreflightContext,
-  readIdentityReferenceRewriteContext,
+} from "./context-inputs.mjs";
+export {
+  datasetIdentity,
+  identityKey,
+  mapRowsByIdentity,
+} from "./dataset-payload.mjs";
+export {
+  datasetTypeFromOptions,
+  datasetTypePlural,
+} from "./dataset-types.mjs";
+export {
+  sha256Text,
+} from "./hash-utils.mjs";
+export {
+  profileFor,
+} from "./profiles-config.mjs";
+export {
+  ensureArray,
+  fileExists,
+  jsonLines,
+  nowIso,
   readJson,
-  readJsonArtifactsIfOption,
-  readJsonIfOption,
-  readQaFindings,
   readRows,
-  readSourceContactRewriteContext,
   readText,
-  readUnresolvedExchangeExternalizationContext,
   repoRelativePath,
   resolveRepoPath,
   sanitizeFileName,
-  schemaIssueCurationAction,
-  sha256Text,
-  unresolvedExchangeExternalizationRowsForIdentity,
   writeJson,
   writeText,
-} from "./workflow-domain.mjs";
+} from "./runtime-io.mjs";
+export {
+  readIdentityDecisionApplyContexts,
+  readIdentityReferenceRewriteContext,
+  identityDecisionApplyContextDecisionsForIdentity,
+} from "./workflow-identity-decision-context.mjs";
+export {
+  readCanonicalSupportRewriteContext,
+  readCleanupTransformContext,
+  readSourceContactRewriteContext,
+  readUnresolvedExchangeExternalizationContext,
+  unresolvedExchangeExternalizationRowsForIdentity,
+} from "./workflow-row-transform-context.mjs";
+export {
+  readClassificationDecisionApplyContext,
+} from "./workflow-decision-apply-context.mjs";
+export {
+  buildIdentityPreflightAuthoringContext,
+  classificationQueueActionItem,
+  classificationQueueRowStillNeedsAuthoring,
+  identityPreflightAuthoringActionItems,
+  identityPreflightGateItems,
+  locationQueueActionItem,
+  locationQueueRowStillNeedsAuthoring,
+  readIdentityPreflightContext,
+} from "./workflow-identity-preflight.mjs";
+export {
+  identityDecisionApplyReportOptionValues,
+  readJsonArtifactsIfOption,
+  readJsonIfOption,
+} from "./workflow-patch-collect.mjs";
+export {
+  authoringQueueRowsForIdentity,
+  buildQueueAuthoringContext,
+  readAuthoringQueueContext,
+  readCurationQueueContext,
+  schemaIssueCurationAction,
+} from "./workflow-queue-context.mjs";
+export {
+  collectProfileSemanticActionItems,
+} from "./workflow-semantic-actions.mjs";

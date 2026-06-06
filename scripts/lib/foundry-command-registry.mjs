@@ -4,6 +4,7 @@ export const publicCommands = [
   "env-check",
   "workflow-check",
   "storage-check",
+  "surface-audit",
   "acceptance-check",
   "workspace-map",
   "capabilities-list",
@@ -67,15 +68,17 @@ export function exitCodeForCommand(command, result) {
     case "doctor":
       return result?.workflow_check?.ok &&
         result?.storage_check?.ok &&
-        result?.env_example_surface?.ok
+        result?.env_example_surface?.ok &&
+        result?.surface_audit?.status === "passed"
         ? 0
         : 1;
     case "env-check":
       return result?.env_example_surface?.ok ? 0 : 1;
     case "workflow-check":
     case "storage-check":
+    case "surface-audit":
     case "tasks-check":
-      return result?.ok ? 0 : 1;
+      return result?.ok || result?.status === "passed" ? 0 : 1;
     case "acceptance-check":
       return result?.status === "passed" ? 0 : 1;
     case "route-task":

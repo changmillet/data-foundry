@@ -22,8 +22,8 @@ checkPaths:
   - specs/automated-lca-capability-registry.json
   - specs/workspace-capability-adapters.md
   - docs/safety-policy.md
-lastReviewedAt: 2026-06-05
-lastReviewedCommit: 70dcf44763e20b56027324a15fd8ec1786f9c8de
+lastReviewedAt: 2026-06-06
+lastReviewedCommit: 9d85e4b4e8eaeb38428b2b73873d4af583feb335
 ---
 
 # Capability Ownership Policy

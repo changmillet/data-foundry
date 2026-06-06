@@ -41,6 +41,9 @@ artifacts, workflow entry audit state, and key behavior checks.
 
 Every command must have `workflowEntry.status: "active"` and at least one key
 behavior check, so unused surface area cannot hide as an unreviewed command.
+`surface-audit` is the read-only guard for hidden command aliases, empty metadata
+categories, unregistered orphan docs, and script modules with no inbound imports;
+`doctor` and `acceptance-check` include it.
 
 ## Navigation Contract
 
@@ -70,6 +73,7 @@ Then run:
 
 ```bash
 node --test test/unit/foundry-command-metadata.test.mjs
+npm run surface:audit
 npm run test:commands
 npm run golden:diff
 ```

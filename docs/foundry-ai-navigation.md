@@ -98,7 +98,7 @@ The current internal dependency direction is:
 ```text
 semantic import-curation modules
   -> internal/*-workflow.mjs
-  -> internal/workflow-domain.mjs
+  -> internal/workflow-*.mjs
   -> internal/full-context-proof.mjs
   -> internal/profiles-config.mjs
   -> internal/trace-summary.mjs
@@ -120,7 +120,7 @@ Layer rules:
 - `authoring-patch-workflow.mjs`: AI patch collection, patch-set validation, and full-context readiness helpers.
 - `curation-gate-workflow.mjs`: curation gate queue, identity-preflight, QA/schema action, and authoring context helpers.
 - `mutation-manifest-workflow.mjs`: prewrite evidence, reference closure, dry-run proof, and write-candidate planning helpers.
-- `workflow-domain.mjs`: shared import-curation domain implementation used by the workflow facets above; command modules should import the narrower facet whenever possible.
+- `workflow-queue-context.mjs`, `workflow-identity-preflight.mjs`, `workflow-identity-decision-context.mjs`, `workflow-semantic-actions.mjs`, `workflow-authoring-tasks.mjs`, `workflow-patch-evidence.mjs`, `workflow-patch-evidence-context.mjs`, `workflow-patch-collect.mjs`, `workflow-row-transform-context.mjs`, `workflow-evidence-scope.mjs`, `workflow-decision-apply-context.mjs`, `workflow-decision-full-context.mjs`, `workflow-dry-run-context.mjs`, `workflow-source-reference-context.mjs`, and `workflow-reference-closure.mjs`: focused domain helpers used by the workflow facets above.
 
 Dependencies should point downward only. Internal low-level modules must not
 import semantic command modules.
@@ -133,6 +133,7 @@ old npm aliases, empty metadata categories, and draft orchestration docs with no
 remaining consumer. Do not delete runtime skills, task templates, profile docs,
 or account-safety docs only because they are low-frequency; those may be agent
 entrypoints rather than code imports.
+Run `node scripts/foundry.mjs surface-audit` to automate the local scan for hidden command aliases, empty metadata categories, unregistered orphan docs, and script modules without inbound imports.
 
 ## Behavior Freeze
 
@@ -141,7 +142,7 @@ The test tree is split by behavior layer:
 - `test/unit/` protects pure metadata and local helper contracts.
 - `test/commands/` protects single-command artifacts, reports, and stage contracts.
 - `test/scenarios/` protects multi-command workflow behavior.
-- `test/fixtures/` contains shared harness builders only.
+- `test/fixtures/` contains focused helper modules for core command runners, fixture roots, row builders, identity/finalize/full-context/mutation workflow fixtures, and similar shared setup.
 
 Before and after structural changes, run:
 

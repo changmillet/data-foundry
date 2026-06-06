@@ -43,6 +43,7 @@ npm run init:runtime
 npm run doctor
 npm run workflow:check
 npm run storage:check
+npm run surface:audit
 npm run acceptance:check
 npm test
 npm run test:unit

@@ -67,6 +67,7 @@ async function runFoundryCliMain({
     "env-check": () => coreCommands.envCheck(),
     "workflow-check": () => coreCommands.workflowCheck(),
     "storage-check": () => coreCommands.storageCheck(),
+    "surface-audit": () => coreCommands.surfaceAuditCheck(),
     "acceptance-check": () => coreCommands.acceptanceCheck(),
     "workspace-map": () => coreCommands.workspaceMap(),
     "capabilities-list": (options) => coreCommands.capabilitiesList(options),

@@ -1,55 +1,83 @@
 export {
+  fullContextAiCompletionRequirement,
+} from "./context-inputs.mjs";
+export {
+  identityKey,
+  mapRowsByIdentity,
+} from "./dataset-payload.mjs";
+export {
+  datasetTypeFromOptions,
+  datasetTypePlural,
+  supportDatasetTypes,
+} from "./dataset-types.mjs";
+export {
+  profileFor,
+} from "./profiles-config.mjs";
+export {
   asText,
+  ensureArray,
+  fileExists,
+  jsonLines,
+  nowIso,
+  readRows,
+  repoRelativePath,
+  resolveRepoPath,
+  writeJson,
+  writeText,
+} from "./runtime-io.mjs";
+export {
   buildEvidenceScopeBlockers,
+  evidenceScopeBlocker,
+} from "./workflow-evidence-scope.mjs";
+export {
+  identityDecisionUnresolvedReferenceKeys,
+  readIdentityDecisionApplyContexts,
+  readIdentityReferenceRewriteContext,
+} from "./workflow-identity-decision-context.mjs";
+export {
+  mapCurationEntities,
+  mapSchemaRows,
+  readDatasetSaveDraftDryRunArtifacts,
+  readFlowDryRunArtifacts,
+  readLifecyclemodelDryRunArtifacts,
+  readProcessDryRunArtifacts,
+  remoteVerifyBlockerKeys,
+} from "./workflow-dry-run-context.mjs";
+export {
+  readPatchApplyContext,
+  readPolicySnapshots,
+} from "./workflow-patch-evidence-context.mjs";
+export {
+  readCanonicalSupportRewriteContext,
+  readCleanupTransformContext,
+  readSourceContactRewriteContext,
+  readUnresolvedExchangeExternalizationContext,
+} from "./workflow-row-transform-context.mjs";
+export {
+  readClassificationDecisionApplyContext,
+} from "./workflow-decision-apply-context.mjs";
+export {
+  readSourceReferenceRewriteContext,
+} from "./workflow-source-reference-context.mjs";
+export {
+  decisionTaskContextBundleHashesFromContext,
+  readLocationDecisionApplyContext,
+} from "./workflow-decision-full-context.mjs";
+export {
+  identityDecisionApplyReportOptionValues,
+  readFileArtifactIfOption,
+  readJsonArtifactsIfOption,
+  readJsonIfOption,
+  readRowsIfExists,
+} from "./workflow-patch-collect.mjs";
+export {
   buildFullContextAiCompletionBlockers,
   buildReferenceClosureBlockers,
   buildReferenceReuseItems,
   buildWriteCandidateItem,
-  datasetTypeFromOptions,
-  datasetTypePlural,
   decisionCounts,
-  decisionTaskContextBundleHashesFromContext,
-  ensureArray,
-  evidenceScopeBlocker,
-  fileExists,
-  fullContextAiCompletionRequirement,
-  identityDecisionApplyReportOptionValues,
-  identityDecisionUnresolvedReferenceKeys,
-  identityKey,
   identityReferenceRewriteProofKeys,
-  jsonLines,
-  mapCurationEntities,
-  mapRowsByIdentity,
-  mapSchemaRows,
-  nowIso,
   operationCounts,
   plannedRootReferenceIds,
   plannedRootReferenceKeys,
-  profileFor,
-  readCanonicalSupportRewriteContext,
-  readClassificationDecisionApplyContext,
-  readCleanupTransformContext,
-  readDatasetSaveDraftDryRunArtifacts,
-  readFileArtifactIfOption,
-  readFlowDryRunArtifacts,
-  readIdentityDecisionApplyContexts,
-  readIdentityReferenceRewriteContext,
-  readJsonArtifactsIfOption,
-  readJsonIfOption,
-  readLifecyclemodelDryRunArtifacts,
-  readLocationDecisionApplyContext,
-  readPatchApplyContext,
-  readPolicySnapshots,
-  readProcessDryRunArtifacts,
-  readRows,
-  readRowsIfExists,
-  readSourceContactRewriteContext,
-  readSourceReferenceRewriteContext,
-  readUnresolvedExchangeExternalizationContext,
-  remoteVerifyBlockerKeys,
-  repoRelativePath,
-  resolveRepoPath,
-  supportDatasetTypes,
-  writeJson,
-  writeText,
-} from "./workflow-domain.mjs";
+} from "./workflow-reference-closure.mjs";
