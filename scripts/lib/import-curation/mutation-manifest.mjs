@@ -84,28 +84,18 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
     options.referenceRowsFile || options.referenceRows || options.reuseRowsFile,
   );
   const schemaReportArtifact = readJsonIfOption(repoRoot, options.schemaReport);
-  const curationGateArtifact = readJsonIfOption(
-    repoRoot,
-    options.curationGateReport,
-  );
+  const curationGateArtifact = readJsonIfOption(repoRoot, options.curationGateReport);
   const dryRunReportArtifact = readJsonIfOption(repoRoot, options.dryRunReport);
-  const remoteVerifyArtifact = readJsonIfOption(
-    repoRoot,
-    options.remoteVerifyReport,
-  );
+  const remoteVerifyArtifact = readJsonIfOption(repoRoot, options.remoteVerifyReport);
   const cleanupArtifact = readJsonIfOption(repoRoot, options.cleanupReport);
-  const patchApplyArtifact = readJsonIfOption(
-    repoRoot,
-    options.patchApplyReport,
-  );
+  const patchApplyArtifact = readJsonIfOption(repoRoot, options.patchApplyReport);
   const patchCollectArtifact = readJsonIfOption(
     repoRoot,
     options.patchCollectReport ?? options.authoringPatchCollectReport,
   );
   const classificationDecisionApplyArtifact = readJsonIfOption(
     repoRoot,
-    options.classificationDecisionApplyReport ??
-      options.classificationDecisionsApplyReport,
+    options.classificationDecisionApplyReport ?? options.classificationDecisionsApplyReport,
   );
   const locationDecisionApplyArtifact = readJsonIfOption(
     repoRoot,
@@ -132,18 +122,10 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
     .trim()
     .toLowerCase();
   const profile = profileFor(repoRoot, profileId, options);
-  const fullContextRequirement = fullContextAiCompletionRequirement(
-    profile,
-    datasetType,
-    repoRoot,
-  );
-  const classificationDecisionApplyContext =
-    classificationDecisionApplyArtifact
-      ? readClassificationDecisionApplyContext(
-          repoRoot,
-          classificationDecisionApplyArtifact,
-        )
-      : null;
+  const fullContextRequirement = fullContextAiCompletionRequirement(profile, datasetType, repoRoot);
+  const classificationDecisionApplyContext = classificationDecisionApplyArtifact
+    ? readClassificationDecisionApplyContext(repoRoot, classificationDecisionApplyArtifact)
+    : null;
   const locationDecisionApplyContext = locationDecisionApplyArtifact
     ? readLocationDecisionApplyContext(repoRoot, locationDecisionApplyArtifact)
     : null;
@@ -155,15 +137,13 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
     repoRoot,
     options.unresolvedExchangeExternalizationReport,
   );
-  const unresolvedExchangeExternalizationContext =
-    readUnresolvedExchangeExternalizationContext(
-      repoRoot,
-      unresolvedExchangeExternalizationArtifact,
-    );
+  const unresolvedExchangeExternalizationContext = readUnresolvedExchangeExternalizationContext(
+    repoRoot,
+    unresolvedExchangeExternalizationArtifact,
+  );
   const canonicalSupportRewriteArtifact = readJsonIfOption(
     repoRoot,
-    options.canonicalSupportRewriteReport ||
-      options.canonicalSupportRewritesReport,
+    options.canonicalSupportRewriteReport || options.canonicalSupportRewritesReport,
   );
   const canonicalSupportRewriteContext = readCanonicalSupportRewriteContext(
     repoRoot,
@@ -171,8 +151,7 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
   );
   const sourceContactRewriteArtifact = readJsonIfOption(
     repoRoot,
-    options.sourceContactRewriteReport ??
-      options.sourceContactRewritesReport,
+    options.sourceContactRewriteReport ?? options.sourceContactRewritesReport,
   );
   const sourceContactRewriteContext = readSourceContactRewriteContext(
     repoRoot,
@@ -197,14 +176,10 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
       !hasIdentityDecisionProof);
 
   if (!rowsFile || !fileExists(rowsFile)) {
-    throw new Error(
-      "--rows-file is required and must point to JSON/JSONL write-candidate rows.",
-    );
+    throw new Error("--rows-file is required and must point to JSON/JSONL write-candidate rows.");
   }
   if (!schemaReportArtifact) {
-    throw new Error(
-      "--schema-report is required for mutation manifest generation.",
-    );
+    throw new Error("--schema-report is required for mutation manifest generation.");
   }
 
   const rows = readRows(rowsFile);
@@ -229,10 +204,10 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
   });
   const plannedRootKeys = plannedRootReferenceKeys(rows, datasetType);
   const plannedRootIds = plannedRootReferenceIds(rows, datasetType);
-  const remoteVerifyBlockers = remoteVerifyBlockerKeys(
-    remoteVerifyArtifact?.value,
-    { plannedRootKeys, plannedRootIds },
-  );
+  const remoteVerifyBlockers = remoteVerifyBlockerKeys(remoteVerifyArtifact?.value, {
+    plannedRootKeys,
+    plannedRootIds,
+  });
   const patchApplyContext =
     patchApplyArtifact || patchEvidenceFile
       ? readPatchApplyContext(repoRoot, patchApplyArtifact, patchEvidenceFile)
@@ -253,8 +228,7 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
     requireCurationGate:
       options.requireCurationGate === undefined
         ? !(datasetType === "support" || supportDatasetTypes.has(datasetType))
-        : options.requireCurationGate === true ||
-          options.requireCurationGate === "true",
+        : options.requireCurationGate === true || options.requireCurationGate === "true",
     identityReferenceRewriteContext,
     unresolvedExchangeExternalizationContext,
     canonicalSupportRewriteContext,
@@ -289,9 +263,7 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
       rows,
       datasetType,
       remoteVerifyArtifact,
-      provenReferenceKeys: identityReferenceRewriteProofKeys(
-        identityReferenceRewriteContext,
-      ),
+      provenReferenceKeys: identityReferenceRewriteProofKeys(identityReferenceRewriteContext),
       unresolvedReferenceKeys: identityDecisionUnresolvedReferenceKeys(
         identityDecisionApplyContext,
       ),
@@ -322,18 +294,11 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
         : null,
     lifecyclemodel:
       datasetType === "lifecyclemodel" && dryRunReportArtifact
-        ? readLifecyclemodelDryRunArtifacts(
-            repoRoot,
-            dryRunReportArtifact.value,
-          )
+        ? readLifecyclemodelDryRunArtifacts(repoRoot, dryRunReportArtifact.value)
         : null,
     datasetSaveDraft:
-      (datasetType === "support" || supportDatasetTypes.has(datasetType)) &&
-      dryRunReportArtifact
-        ? readDatasetSaveDraftDryRunArtifacts(
-            repoRoot,
-            dryRunReportArtifact.value,
-          )
+      (datasetType === "support" || supportDatasetTypes.has(datasetType)) && dryRunReportArtifact
+        ? readDatasetSaveDraftDryRunArtifacts(repoRoot, dryRunReportArtifact.value)
         : null,
   };
 
@@ -352,8 +317,7 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
       identity,
       rowIndex: index,
       schemaRow: schemaRows.get(key) ?? schemaRows.get(identity.id) ?? null,
-      curationEntity:
-        curationEntities.get(key) ?? curationEntities.get(identity.id) ?? null,
+      curationEntity: curationEntities.get(key) ?? curationEntities.get(identity.id) ?? null,
       curationGateProvided: Boolean(curationGateArtifact),
       dryRun,
       remoteVerifyBlockers,
@@ -361,8 +325,7 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
       cleanupStatus: cleanupArtifact?.value?.status ?? "not_provided",
       patchApplyContext,
       sourceReferenceRewritesByKey: sourceReferenceRewriteContext.byIdentity,
-      identityReferenceRewritesByKey:
-        identityReferenceRewriteContext.byIdentity,
+      identityReferenceRewritesByKey: identityReferenceRewriteContext.byIdentity,
       identityDecisionApplyContext,
       cleanupContext,
       evidenceScopeBlockers,
@@ -373,8 +336,7 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
     datasetType,
     rows: referenceRows,
     writeCandidateKeys,
-    identityReferenceRewritesByKey:
-      identityReferenceRewriteContext.byIdentity,
+    identityReferenceRewritesByKey: identityReferenceRewriteContext.byIdentity,
   });
   const items = [...writeItems, ...referenceItems];
   const unresolvedTraceItems = items.flatMap((item) =>
@@ -386,13 +348,9 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
   const sourceExchangeCompletenessItems = items.flatMap((item) =>
     ensureArray(item?.foundry_traces?.source_exchange_completeness),
   );
-  const blockerCount = items.reduce(
-    (total, item) => total + item.blockers.length,
-    0,
-  );
+  const blockerCount = items.reduce((total, item) => total + item.blockers.length, 0);
   const cleanupStatus = cleanupArtifact?.value?.status ?? "not_provided";
-  const remoteVerifyStatus =
-    remoteVerifyArtifact?.value?.status ?? "not_provided";
+  const remoteVerifyStatus = remoteVerifyArtifact?.value?.status ?? "not_provided";
   const status =
     blockerCount > 0
       ? "blocked"
@@ -404,10 +362,7 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
       ? writeEntries
           .filter((entry, index) => {
             const item = writeItems[index];
-            return (
-              item?.decision === "write_or_update" &&
-              item.blockers.length === 0
-            );
+            return item?.decision === "write_or_update" && item.blockers.length === 0;
           })
           .map((entry) => entry.row)
       : [];
@@ -432,9 +387,7 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
       curation_gate_report: curationGateArtifact
         ? repoRelativePath(repoRoot, curationGateArtifact.path)
         : null,
-      cleanup_report: cleanupArtifact
-        ? repoRelativePath(repoRoot, cleanupArtifact.path)
-        : null,
+      cleanup_report: cleanupArtifact ? repoRelativePath(repoRoot, cleanupArtifact.path) : null,
       cleanup_status: cleanupStatus,
       patch_apply_report: patchApplyArtifact
         ? repoRelativePath(repoRoot, patchApplyArtifact.path)
@@ -443,8 +396,7 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
       patch_collect_report: patchCollectArtifact
         ? repoRelativePath(repoRoot, patchCollectArtifact.path)
         : null,
-      patch_collect_status:
-        patchCollectArtifact?.value?.status ?? "not_provided",
+      patch_collect_status: patchCollectArtifact?.value?.status ?? "not_provided",
       patch_collect_required: requirePatchCollectReport,
       patch_evidence_file: patchApplyContext?.evidenceFile
         ? repoRelativePath(repoRoot, patchApplyContext.evidenceFile)
@@ -453,66 +405,50 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
       classification_decision_apply_report: classificationDecisionApplyArtifact
         ? repoRelativePath(repoRoot, classificationDecisionApplyArtifact.path)
         : null,
-	      classification_decision_apply_status:
-	        classificationDecisionApplyContext?.status ?? "not_provided",
-	      classification_decision_count:
-	        classificationDecisionApplyContext?.decisions.length ?? 0,
-	      classification_decision_task:
-	        classificationDecisionApplyContext?.decisionTaskProof?.path ?? null,
+      classification_decision_apply_status:
+        classificationDecisionApplyContext?.status ?? "not_provided",
+      classification_decision_count: classificationDecisionApplyContext?.decisions.length ?? 0,
+      classification_decision_task:
+        classificationDecisionApplyContext?.decisionTaskProof?.path ?? null,
       classification_decision_tasks:
-        classificationDecisionApplyContext?.decisionTaskProofs?.map(
-          (proof) => proof.path,
-        ) ?? [],
-	      classification_decision_context_bundle_sha256:
-	        classificationDecisionApplyContext?.decisionTaskProof
-	          ?.context_bundle_sha256 ?? null,
-      classification_decision_context_bundle_sha256s:
-        decisionTaskContextBundleHashesFromContext(
-          classificationDecisionApplyContext,
-        ),
-	      location_decision_apply_report: locationDecisionApplyArtifact
-	        ? repoRelativePath(repoRoot, locationDecisionApplyArtifact.path)
-	        : null,
-	      location_decision_apply_status:
-	        locationDecisionApplyContext?.status ?? "not_provided",
-	      location_decision_count:
-	        locationDecisionApplyContext?.decisions.length ?? 0,
-	      location_decision_task:
-	        locationDecisionApplyContext?.decisionTaskProof?.path ?? null,
+        classificationDecisionApplyContext?.decisionTaskProofs?.map((proof) => proof.path) ?? [],
+      classification_decision_context_bundle_sha256:
+        classificationDecisionApplyContext?.decisionTaskProof?.context_bundle_sha256 ?? null,
+      classification_decision_context_bundle_sha256s: decisionTaskContextBundleHashesFromContext(
+        classificationDecisionApplyContext,
+      ),
+      location_decision_apply_report: locationDecisionApplyArtifact
+        ? repoRelativePath(repoRoot, locationDecisionApplyArtifact.path)
+        : null,
+      location_decision_apply_status: locationDecisionApplyContext?.status ?? "not_provided",
+      location_decision_count: locationDecisionApplyContext?.decisions.length ?? 0,
+      location_decision_task: locationDecisionApplyContext?.decisionTaskProof?.path ?? null,
       location_decision_tasks:
-        locationDecisionApplyContext?.decisionTaskProofs?.map(
-          (proof) => proof.path,
-        ) ?? [],
-	      location_decision_context_bundle_sha256:
-	        locationDecisionApplyContext?.decisionTaskProof
-	          ?.context_bundle_sha256 ?? null,
-	      location_decision_context_bundle_sha256s:
-	        decisionTaskContextBundleHashesFromContext(locationDecisionApplyContext),
+        locationDecisionApplyContext?.decisionTaskProofs?.map((proof) => proof.path) ?? [],
+      location_decision_context_bundle_sha256:
+        locationDecisionApplyContext?.decisionTaskProof?.context_bundle_sha256 ?? null,
+      location_decision_context_bundle_sha256s: decisionTaskContextBundleHashesFromContext(
+        locationDecisionApplyContext,
+      ),
       identity_decision_apply_report: identityDecisionApplyArtifact
         ? repoRelativePath(repoRoot, identityDecisionApplyArtifact.path)
         : null,
-      identity_decision_apply_reports: identityDecisionApplyArtifacts.map(
-        (artifact) => repoRelativePath(repoRoot, artifact.path),
+      identity_decision_apply_reports: identityDecisionApplyArtifacts.map((artifact) =>
+        repoRelativePath(repoRoot, artifact.path),
       ),
-      identity_decision_apply_status:
-        identityDecisionApplyContext?.status ?? "not_provided",
-      identity_decision_count:
-        identityDecisionApplyContext?.decisions.length ?? 0,
+      identity_decision_apply_status: identityDecisionApplyContext?.status ?? "not_provided",
+      identity_decision_count: identityDecisionApplyContext?.decisions.length ?? 0,
       identity_decision_authoring_packages:
-        identityDecisionApplyContext?.authoringPackageProofs.map(
-          (proof) => proof.path,
-        ) ?? [],
-	      dry_run_report: dryRunReportArtifact
-	        ? repoRelativePath(repoRoot, dryRunReportArtifact.path)
-	        : null,
+        identityDecisionApplyContext?.authoringPackageProofs.map((proof) => proof.path) ?? [],
+      dry_run_report: dryRunReportArtifact
+        ? repoRelativePath(repoRoot, dryRunReportArtifact.path)
+        : null,
       remote_verify_report: remoteVerifyArtifact
         ? repoRelativePath(repoRoot, remoteVerifyArtifact.path)
         : null,
       remote_verify_status: remoteVerifyStatus,
-      canonical_support_rewrite_report:
-        canonicalSupportRewriteContext?.reportPathRelative ?? null,
-      canonical_support_rewrite_status:
-        canonicalSupportRewriteContext?.status ?? "not_provided",
+      canonical_support_rewrite_report: canonicalSupportRewriteContext?.reportPathRelative ?? null,
+      canonical_support_rewrite_status: canonicalSupportRewriteContext?.status ?? "not_provided",
       canonical_support_rewrite_input_rows:
         canonicalSupportRewriteContext?.inputRowsFileRelative ?? null,
       canonical_support_rewrite_output_rows:
@@ -525,8 +461,7 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
         canonicalSupportRewriteContext?.counts?.output_rows ?? null,
       canonical_support_rewrite_deferred_row_count:
         canonicalSupportRewriteContext?.counts?.deferred_rows ?? 0,
-      canonical_support_rewrite_blockers:
-        canonicalSupportRewriteContext?.blockers.length ?? 0,
+      canonical_support_rewrite_blockers: canonicalSupportRewriteContext?.blockers.length ?? 0,
       canonical_support_rewrite_deferred_blockers:
         canonicalSupportRewriteContext?.deferredBlockers.length ?? 0,
       unresolved_exchange_externalization_report:
@@ -549,10 +484,7 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
       identity_reference_rewrites_file:
         identityReferenceRewriteContext.sourceFile &&
         identityReferenceRewriteContext.sourceRows.length > 0
-          ? repoRelativePath(
-              repoRoot,
-              identityReferenceRewriteContext.sourceFile,
-            )
+          ? repoRelativePath(repoRoot, identityReferenceRewriteContext.sourceFile)
           : null,
       full_context_ai_completion_required: Boolean(fullContextRequirement),
       full_context_ai_completion_proof: fullContextRequirement?.proof ?? null,
@@ -562,9 +494,8 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
       write_candidates: readyWriteRows.length,
       planned_write_candidates: writeItems.length,
       blocked_write_candidates: blockedWriteRows.length,
-      reference_reuse: referenceItems.filter(
-        (item) => item.decision === "reuse_existing_reference",
-      ).length,
+      reference_reuse: referenceItems.filter((item) => item.decision === "reuse_existing_reference")
+        .length,
       covered_by_write_candidate: referenceItems.filter(
         (item) => item.decision === "covered_by_write_candidate",
       ).length,
@@ -576,20 +507,14 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
         (total, item) => total + item.ai_patch_evidence_count,
         0,
       ),
-      ai_classification_decision_entries:
-        classificationDecisionApplyContext?.decisions.length ?? 0,
-	      ai_location_decision_entries:
-	        locationDecisionApplyContext?.decisions.length ?? 0,
-      ai_identity_decision_entries:
-        identityDecisionApplyContext?.decisions.length ?? 0,
-	      unresolved_trace_entries: unresolvedTraceItems.length,
+      ai_classification_decision_entries: classificationDecisionApplyContext?.decisions.length ?? 0,
+      ai_location_decision_entries: locationDecisionApplyContext?.decisions.length ?? 0,
+      ai_identity_decision_entries: identityDecisionApplyContext?.decisions.length ?? 0,
+      unresolved_trace_entries: unresolvedTraceItems.length,
       unresolved_exchange_trace_entries: unresolvedExchangeTraceItems.length,
-      source_exchange_completeness_entries:
-        sourceExchangeCompletenessItems.length,
-      source_reference_rewrites:
-        sourceReferenceRewriteContext.scopedRows.length,
-      identity_reference_rewrites:
-        identityReferenceRewriteContext.scopedRows.length,
+      source_exchange_completeness_entries: sourceExchangeCompletenessItems.length,
+      source_reference_rewrites: sourceReferenceRewriteContext.scopedRows.length,
+      identity_reference_rewrites: identityReferenceRewriteContext.scopedRows.length,
       identity_reference_reuse_rows: referenceItems.filter(
         (item) => item.identity_reference_rewrite_count > 0,
       ).length,
@@ -615,22 +540,13 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
     `${datasetTypePlural[datasetType]}.reference-reuse.jsonl`,
   );
   const unresolvedTracesPath = path.join(outDir, "unresolved-traces.jsonl");
-  const unresolvedExchangeTracesPath = path.join(
-    outDir,
-    "unresolved-exchange-traces.jsonl",
-  );
+  const unresolvedExchangeTracesPath = path.join(outDir, "unresolved-exchange-traces.jsonl");
   const sourceExchangeCompletenessPath = path.join(
     outDir,
     "source-exchange-completeness-traces.jsonl",
   );
-  const sourceReferenceRewritesPath = path.join(
-    outDir,
-    "source-reference-rewrites.jsonl",
-  );
-  const identityReferenceRewritesPath = path.join(
-    outDir,
-    "identity-reference-rewrites.jsonl",
-  );
+  const sourceReferenceRewritesPath = path.join(outDir, "source-reference-rewrites.jsonl");
+  const identityReferenceRewritesPath = path.join(outDir, "identity-reference-rewrites.jsonl");
   const files = {
     report: repoRelativePath(repoRoot, reportPath),
     items: repoRelativePath(repoRoot, itemsPath),
@@ -638,22 +554,10 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
     blocked_write_candidates: repoRelativePath(repoRoot, blockedWriteRowsPath),
     reference_reuse: repoRelativePath(repoRoot, referenceRowsPath),
     unresolved_traces: repoRelativePath(repoRoot, unresolvedTracesPath),
-    unresolved_exchange_traces: repoRelativePath(
-      repoRoot,
-      unresolvedExchangeTracesPath,
-    ),
-    source_exchange_completeness_traces: repoRelativePath(
-      repoRoot,
-      sourceExchangeCompletenessPath,
-    ),
-    source_reference_rewrites: repoRelativePath(
-      repoRoot,
-      sourceReferenceRewritesPath,
-    ),
-    identity_reference_rewrites: repoRelativePath(
-      repoRoot,
-      identityReferenceRewritesPath,
-    ),
+    unresolved_exchange_traces: repoRelativePath(repoRoot, unresolvedExchangeTracesPath),
+    source_exchange_completeness_traces: repoRelativePath(repoRoot, sourceExchangeCompletenessPath),
+    source_reference_rewrites: repoRelativePath(repoRoot, sourceReferenceRewritesPath),
+    identity_reference_rewrites: repoRelativePath(repoRoot, identityReferenceRewritesPath),
     unresolved_exchange_externalization_report:
       unresolvedExchangeExternalizationContext?.reportPathRelative ?? null,
     unresolved_exchange_traces:
@@ -666,18 +570,9 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
   writeText(referenceRowsPath, jsonLines(referenceRows));
   writeText(unresolvedTracesPath, jsonLines(unresolvedTraceItems));
   writeText(unresolvedExchangeTracesPath, jsonLines(unresolvedExchangeTraceItems));
-  writeText(
-    sourceExchangeCompletenessPath,
-    jsonLines(sourceExchangeCompletenessItems),
-  );
-  writeText(
-    sourceReferenceRewritesPath,
-    jsonLines(sourceReferenceRewriteContext.scopedRows),
-  );
-  writeText(
-    identityReferenceRewritesPath,
-    jsonLines(identityReferenceRewriteContext.scopedRows),
-  );
+  writeText(sourceExchangeCompletenessPath, jsonLines(sourceExchangeCompletenessItems));
+  writeText(sourceReferenceRewritesPath, jsonLines(sourceReferenceRewriteContext.scopedRows));
+  writeText(identityReferenceRewritesPath, jsonLines(identityReferenceRewriteContext.scopedRows));
   return {
     ...report,
     files,

@@ -33,15 +33,11 @@ export function writeJson(filePath, data) {
 }
 
 export function fileExists(filePath) {
-  return Boolean(
-    filePath && fs.existsSync(filePath) && fs.statSync(filePath).isFile(),
-  );
+  return Boolean(filePath && fs.existsSync(filePath) && fs.statSync(filePath).isFile());
 }
 
 export function directoryExists(filePath) {
-  return Boolean(
-    filePath && fs.existsSync(filePath) && fs.statSync(filePath).isDirectory(),
-  );
+  return Boolean(filePath && fs.existsSync(filePath) && fs.statSync(filePath).isDirectory());
 }
 
 export function resolveRepoPath(repoRoot, filePath) {
@@ -62,9 +58,7 @@ export function normalizedArtifactPath(repoRoot, value) {
 export function sameArtifactPath(repoRoot, left, right) {
   const resolvedLeft = normalizedArtifactPath(repoRoot, left);
   const resolvedRight = normalizedArtifactPath(repoRoot, right);
-  return Boolean(
-    resolvedLeft && resolvedRight && resolvedLeft === resolvedRight,
-  );
+  return Boolean(resolvedLeft && resolvedRight && resolvedLeft === resolvedRight);
 }
 
 export function repoRelativeArtifactPath(repoRoot, value) {
@@ -104,10 +98,7 @@ export function optionList(value) {
 }
 
 export function jsonLines(rows) {
-  return (
-    rows.map((row) => JSON.stringify(row)).join("\n") +
-    (rows.length ? "\n" : "")
-  );
+  return rows.map((row) => JSON.stringify(row)).join("\n") + (rows.length ? "\n" : "");
 }
 
 export function unique(values) {

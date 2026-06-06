@@ -45,45 +45,31 @@ export function createDecisionTaskUtils({
   }
 
   function queueRowBundleId(row) {
-    const match = queueRowSourceFile(row).match(
-      /(?:^|\/)process-bundles\/([^/]+)\//u,
-    );
+    const match = queueRowSourceFile(row).match(/(?:^|\/)process-bundles\/([^/]+)\//u);
     return match?.[1] ?? "";
   }
 
   function hasQueueSelectionOptions(options) {
     return Boolean(
-      normalizedList(options.datasetId || options.datasetIds || options.id)
-        .length ||
-        normalizedList(options.datasetType || options.datasetTypes).length ||
-        normalizedList(
-          options.categoryType ||
-            options.categoryTypes ||
-            options.schemaType ||
-            options.schemaTypes,
-        ).length ||
-        normalizedList(options.bundleId || options.bundleIds || options.processId)
-          .length ||
-        integerOption(options.offset, null) !== null ||
-        positiveIntegerOption(options.limit || options.count, null) !== null,
+      normalizedList(options.datasetId || options.datasetIds || options.id).length ||
+      normalizedList(options.datasetType || options.datasetTypes).length ||
+      normalizedList(
+        options.categoryType || options.categoryTypes || options.schemaType || options.schemaTypes,
+      ).length ||
+      normalizedList(options.bundleId || options.bundleIds || options.processId).length ||
+      integerOption(options.offset, null) !== null ||
+      positiveIntegerOption(options.limit || options.count, null) !== null,
     );
   }
 
   function queueSelectionSummary(options) {
     return {
-      dataset_ids: normalizedList(
-        options.datasetId || options.datasetIds || options.id,
-      ),
+      dataset_ids: normalizedList(options.datasetId || options.datasetIds || options.id),
       dataset_types: normalizedList(options.datasetType || options.datasetTypes),
       category_types: normalizedList(
-        options.categoryType ||
-          options.categoryTypes ||
-          options.schemaType ||
-          options.schemaTypes,
+        options.categoryType || options.categoryTypes || options.schemaType || options.schemaTypes,
       ),
-      bundle_ids: normalizedList(
-        options.bundleId || options.bundleIds || options.processId,
-      ),
+      bundle_ids: normalizedList(options.bundleId || options.bundleIds || options.processId),
       offset: Math.max(0, integerOption(options.offset, 0) ?? 0),
       limit: positiveIntegerOption(options.limit || options.count, null),
     };
@@ -94,28 +80,16 @@ export function createDecisionTaskUtils({
     const datasetType = asText(row?.dataset_type);
     const categoryType = schemaTypeForRow(row);
     const bundleId = queueRowBundleId(row);
-    if (
-      selection.dataset_ids.length > 0 &&
-      !selection.dataset_ids.includes(datasetId)
-    ) {
+    if (selection.dataset_ids.length > 0 && !selection.dataset_ids.includes(datasetId)) {
       return false;
     }
-    if (
-      selection.dataset_types.length > 0 &&
-      !selection.dataset_types.includes(datasetType)
-    ) {
+    if (selection.dataset_types.length > 0 && !selection.dataset_types.includes(datasetType)) {
       return false;
     }
-    if (
-      selection.category_types.length > 0 &&
-      !selection.category_types.includes(categoryType)
-    ) {
+    if (selection.category_types.length > 0 && !selection.category_types.includes(categoryType)) {
       return false;
     }
-    if (
-      selection.bundle_ids.length > 0 &&
-      !selection.bundle_ids.includes(bundleId)
-    ) {
+    if (selection.bundle_ids.length > 0 && !selection.bundle_ids.includes(bundleId)) {
       return false;
     }
     return true;
@@ -164,10 +138,7 @@ export function createDecisionTaskUtils({
     if (selection.dataset_types.length === 1) {
       return safeFileToken(selection.dataset_types[0], fallback);
     }
-    return safeFileToken(
-      `offset-${selection.offset}-limit-${selection.limit ?? "all"}`,
-      fallback,
-    );
+    return safeFileToken(`offset-${selection.offset}-limit-${selection.limit ?? "all"}`, fallback);
   }
 
   function rewriteDecisionTaskQueueRowsForChunk({
@@ -203,9 +174,7 @@ export function createDecisionTaskUtils({
       if (inputRowsOverride) {
         next[workflowKey].commands.input_rows = repoRelativePath(inputRowsOverride);
       }
-      next[workflowKey].commands.output_rows = repoRelativePath(
-        outputByInput.get(inputBase),
-      );
+      next[workflowKey].commands.output_rows = repoRelativePath(outputByInput.get(inputBase));
       return next;
     });
   }
@@ -270,12 +239,10 @@ export function createDecisionTaskUtils({
     return unique([
       ...normalizedList(decision?.used_context_kinds ?? decision?.usedContextKinds),
       ...normalizedList(
-        decision?.evidence?.used_context_kinds ??
-          decision?.evidence?.usedContextKinds,
+        decision?.evidence?.used_context_kinds ?? decision?.evidence?.usedContextKinds,
       ),
       ...normalizedList(
-        decision?.resolution?.used_context_kinds ??
-          decision?.resolution?.usedContextKinds,
+        decision?.resolution?.used_context_kinds ?? decision?.resolution?.usedContextKinds,
       ),
     ]);
   }
@@ -360,17 +327,11 @@ export function createDecisionTaskUtils({
     cacheDir = null,
   }) {
     const uniqueFiles = dedupeDecisionTaskContextFiles(files);
-    const uniqueBytes = uniqueFiles.reduce(
-      (total, file) => total + (Number(file.bytes) || 0),
-      0,
-    );
+    const uniqueBytes = uniqueFiles.reduce((total, file) => total + (Number(file.bytes) || 0), 0);
     const referenceRows = ensureArray(references);
     const referencedBytes =
       referenceRows.length > 0
-        ? referenceRows.reduce(
-            (total, ref) => total + (Number(ref.bytes) || 0),
-            0,
-          )
+        ? referenceRows.reduce((total, ref) => total + (Number(ref.bytes) || 0), 0)
         : uniqueBytes;
     const stablePayload = {
       schema_version: 1,
@@ -379,10 +340,7 @@ export function createDecisionTaskUtils({
       counts: {
         files: uniqueFiles.length,
         references: referenceRows.length,
-        duplicate_references: Math.max(
-          0,
-          referenceRows.length - uniqueFiles.length,
-        ),
+        duplicate_references: Math.max(0, referenceRows.length - uniqueFiles.length),
         unique_context_bytes: uniqueBytes,
         referenced_context_bytes: referencedBytes,
         duplicate_context_bytes_avoided: Math.max(0, referencedBytes - uniqueBytes),
@@ -518,9 +476,7 @@ export function createDecisionTaskUtils({
     return {
       task: contextBundle.task,
       context_bundle_sha256: contextBundle.sha256,
-      required_context_kinds: unique(
-        contextBundle.contract_context_files.map((file) => file.kind),
-      ),
+      required_context_kinds: unique(contextBundle.contract_context_files.map((file) => file.kind)),
       context_files: contextBundle.contract_context_files.map((file) => ({
         kind: file.kind,
         path: file.path,
@@ -557,10 +513,7 @@ export function createDecisionTaskUtils({
     for (const [defaultKind, optionValue] of inputs) {
       for (const filePath of normalizedList(optionValue)) {
         const resolved = resolveRepoPath(filePath);
-        const kind = classificationDecisionTaskContextKind(
-          defaultKind,
-          filePath,
-        );
+        const kind = classificationDecisionTaskContextKind(defaultKind, filePath);
         if (!resolved || !fileExists(resolved)) {
           missing.push({ kind, path: filePath });
           continue;
@@ -588,15 +541,12 @@ export function createDecisionTaskUtils({
     if (queueRows.length === 0) return [];
     const blockers = [];
     const availableKinds = new Set(
-      contractContext.files
-        .filter((file) => Number(file.bytes) > 0)
-        .map((file) => file.kind),
+      contractContext.files.filter((file) => Number(file.bytes) > 0).map((file) => file.kind),
     );
     for (const missingFile of contractContext.missing) {
       blockers.push({
         code: `${kind}_decision_task_context_file_missing`,
-        message:
-          "Decision task cannot be sent to AI while a referenced context file is missing.",
+        message: "Decision task cannot be sent to AI while a referenced context file is missing.",
         kind: missingFile.kind,
         path: missingFile.path,
       });
@@ -605,8 +555,7 @@ export function createDecisionTaskUtils({
       if (Number(file.bytes) === 0) {
         blockers.push({
           code: `${kind}_decision_task_context_file_empty`,
-          message:
-            "Decision task cannot be sent to AI with an empty context file.",
+          message: "Decision task cannot be sent to AI with an empty context file.",
           kind: file.kind,
           path: file.path,
         });
@@ -666,11 +615,8 @@ export function createDecisionTaskUtils({
 
   function readDecisionTaskSharedContextBundleProof(task, proofPath) {
     const contextBundle = task?.context_bundle ?? task?.authoring_context ?? {};
-    const sharedContext =
-      task?.shared_context_bundle ?? contextBundle?.shared_context_bundle ?? {};
-    const sharedPath = asText(
-      sharedContext?.path ?? task?.files?.shared_context_bundle,
-    );
+    const sharedContext = task?.shared_context_bundle ?? contextBundle?.shared_context_bundle ?? {};
+    const sharedPath = asText(sharedContext?.path ?? task?.files?.shared_context_bundle);
     const expectedSha256 = asText(
       sharedContext?.sha256 ?? contextBundle?.shared_context_bundle_sha256,
     );
@@ -687,8 +633,7 @@ export function createDecisionTaskUtils({
     if (!resolved || !fileExists(resolved)) {
       proof.blockers.push({
         code: "decision_task_shared_context_bundle_missing",
-        message:
-          "Decision task references an unreadable shared full-context bundle.",
+        message: "Decision task references an unreadable shared full-context bundle.",
         decision_task: proofPath,
         shared_context_bundle: sharedPath,
       });
@@ -756,27 +701,17 @@ export function createDecisionTaskUtils({
         contextBundle?.sha256 ?? contextBundle?.context_bundle_sha256,
       );
       proof.queue = asText(
-        kind === "classification"
-          ? task.classification_queue
-          : task.location_queue,
+        kind === "classification" ? task.classification_queue : task.location_queue,
       );
       proof.source_queue = asText(
-        kind === "classification"
-          ? task.source_classification_queue
-          : task.source_location_queue,
+        kind === "classification" ? task.source_classification_queue : task.source_location_queue,
       );
       proof.contract_context_files = ensureArray(task.contract_context_files);
       proof.missing_context_files = ensureArray(task.missing_context_files);
       proof.context_bundle = contextBundle ?? null;
-      proof.shared_context_bundle = readDecisionTaskSharedContextBundleProof(
-        task,
-        proof.path,
-      );
+      proof.shared_context_bundle = readDecisionTaskSharedContextBundleProof(task, proof.path);
       proof.blockers.push(...proof.shared_context_bundle.blockers);
-      if (
-        kind === "classification" &&
-        proof.task_kind !== "classification_decision_authoring"
-      ) {
+      if (kind === "classification" && proof.task_kind !== "classification_decision_authoring") {
         proof.blockers.push({
           code: "classification_decision_task_kind_invalid",
           message: "Classification decisions must be bound to a classification decision task.",
@@ -856,11 +791,7 @@ export function createDecisionTaskUtils({
   }
 
   function decisionCompletionStatus(decision) {
-    return asText(
-      decision?.decision_status ??
-        decision?.decisionStatus ??
-        decision?.status,
-    );
+    return asText(decision?.decision_status ?? decision?.decisionStatus ?? decision?.status);
   }
 
   function decisionTaskReportPayload(proof) {
@@ -896,9 +827,7 @@ export function createDecisionTaskUtils({
   }
 
   function decisionTaskContextBundleHashes(proofs) {
-    return unique(
-      decisionTaskProofList(proofs).map((proof) => proof.context_bundle_sha256),
-    );
+    return unique(decisionTaskProofList(proofs).map((proof) => proof.context_bundle_sha256));
   }
 
   return {

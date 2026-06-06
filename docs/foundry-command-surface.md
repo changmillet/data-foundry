@@ -29,9 +29,7 @@ Foundry command governance has two layers:
 - `scripts/lib/foundry-command-registry.mjs` is the runtime command list and exit-code policy.
 - `scripts/lib/foundry-command-metadata.mjs` is the AI-readable navigation and ownership map.
 
-The metadata module must cover every command returned by `node scripts/foundry.mjs help`.
-It records each command category, owner module, owner export, input artifacts, output
-artifacts, workflow entry audit state, and key behavior checks.
+The metadata module must cover every command returned by `node scripts/foundry.mjs help`. It records each command category, owner module, owner export, input artifacts, output artifacts, workflow entry audit state, and key behavior checks.
 
 ## Categories
 
@@ -39,11 +37,7 @@ artifacts, workflow entry audit state, and key behavior checks.
 - `workflow-internal`: Foundry policy or artifact helpers used inside the import/authoring workflow.
 - `cli-wrapper`: compatibility wrappers over sibling `tiangong-lca` CLI behavior that Foundry does not own.
 
-Every command must have `workflowEntry.status: "active"` and at least one key
-behavior check, so unused surface area cannot hide as an unreviewed command.
-`surface-audit` is the read-only guard for hidden command aliases, empty metadata
-categories, unregistered orphan docs, and script modules with no inbound imports;
-`doctor` and `acceptance-check` include it.
+Every command must have `workflowEntry.status: "active"` and at least one key behavior check, so unused surface area cannot hide as an unreviewed command. `surface-audit` is the read-only guard for hidden command aliases, empty metadata categories, unregistered orphan docs, and script modules with no inbound imports; `doctor` and `acceptance-check` include it.
 
 ## Navigation Contract
 
@@ -55,12 +49,7 @@ scripts/foundry.mjs
   -> owner module in scripts/commands or scripts/lib/import-curation
 ```
 
-Public command owner paths must be at most two jumps from `scripts/foundry.mjs`.
-For semantic import-curation commands, prefer owner modules such as
-`profiles.mjs`, `curation-gate.mjs`, `authoring-packages.mjs`, `patch-collect.mjs`,
-`curation-cleanup.mjs`, `trace-summary.mjs`, and `mutation-manifest.mjs` over
-mechanical part names. Reusable import-curation logic should be exposed through
-focused workflow facets under `scripts/lib/import-curation/internal/*-workflow.mjs`.
+Public command owner paths must be at most two jumps from `scripts/foundry.mjs`. For semantic import-curation commands, prefer owner modules such as `profiles.mjs`, `curation-gate.mjs`, `authoring-packages.mjs`, `patch-collect.mjs`, `curation-cleanup.mjs`, `trace-summary.mjs`, and `mutation-manifest.mjs` over mechanical part names. Reusable import-curation logic should be exposed through focused workflow facets under `scripts/lib/import-curation/internal/*-workflow.mjs`.
 
 ## Maintenance Rule
 
@@ -78,6 +67,4 @@ npm run test:commands
 npm run golden:diff
 ```
 
-New command tests belong in `test/commands/` when they exercise one command's
-report or artifact contract. Multi-command workflow coverage belongs in
-`test/scenarios/`, and shared setup belongs in `test/fixtures/`.
+New command tests belong in `test/commands/` when they exercise one command's report or artifact contract. Multi-command workflow coverage belongs in `test/scenarios/`, and shared setup belongs in `test/fixtures/`.

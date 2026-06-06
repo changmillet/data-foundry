@@ -124,10 +124,7 @@ export function createCommitHandoffCommands({
         "source_exchange_completeness_traces",
         Number(counts.source_exchange_completeness_entries ?? 0) || 0,
       ],
-      [
-        "source_reference_rewrites",
-        Number(counts.source_reference_rewrites ?? 0) || 0,
-      ],
+      ["source_reference_rewrites", Number(counts.source_reference_rewrites ?? 0) || 0],
     ]) {
       const queuePath = traceFiles?.[key];
       const resolved = resolveRepoPath(queuePath);
@@ -200,14 +197,7 @@ export function createCommitHandoffCommands({
       .trim()
       .toLowerCase();
     if (
-      ![
-        "contact",
-        "source",
-        "support",
-        "process",
-        "flow",
-        "lifecyclemodel",
-      ].includes(datasetType)
+      !["contact", "source", "support", "process", "flow", "lifecyclemodel"].includes(datasetType)
     ) {
       throw new Error(
         `Unsupported dataset type for commit handoff: ${datasetType || "(missing)"}.`,
@@ -215,9 +205,7 @@ export function createCommitHandoffCommands({
     }
 
     const finalizeDir = path.dirname(finalizeArtifact.path);
-    const outDir = resolveRepoPath(
-      options.outDir || path.join(finalizeDir, "commit-handoff"),
-    );
+    const outDir = resolveRepoPath(options.outDir || path.join(finalizeDir, "commit-handoff"));
     const finalRowsFile = resolveRepoPath(
       options.rowsFile ||
         options.finalRowsFile ||
@@ -243,16 +231,12 @@ export function createCommitHandoffCommands({
         report: repoRelativePath(finalizeArtifact.path),
       });
     }
-    const locationAuditBlockers = Number(
-      finalizeReport.counts?.location_audit_blockers ?? 0,
-    );
+    const locationAuditBlockers = Number(finalizeReport.counts?.location_audit_blockers ?? 0);
     if (!Number.isFinite(locationAuditBlockers) || locationAuditBlockers !== 0) {
       blockers.push({
         code: "location_audit_blockers_present",
         message: `Finalize report still records ${
-          Number.isFinite(locationAuditBlockers)
-            ? locationAuditBlockers
-            : "unknown"
+          Number.isFinite(locationAuditBlockers) ? locationAuditBlockers : "unknown"
         } location audit blockers; all rows must satisfy tidas_locations_category.json before commit handoff.`,
         report: repoRelativePath(finalizeArtifact.path),
       });
@@ -273,12 +257,8 @@ export function createCommitHandoffCommands({
     if (!finalRowsFile || !fileExists(finalRowsFile)) {
       blockers.push({
         code: "final_rows_missing",
-        message:
-          "Commit handoff requires readable final rows from the finalize report.",
-        rows_file:
-          finalizeReport.files?.final_rows ??
-          finalizeReport.final_rows_file ??
-          null,
+        message: "Commit handoff requires readable final rows from the finalize report.",
+        rows_file: finalizeReport.files?.final_rows ?? finalizeReport.final_rows_file ?? null,
       });
     }
     if (!targetUserId) {
@@ -382,9 +362,7 @@ export function createCommitHandoffCommands({
       profile: finalizeReport.profile ?? mutationArtifact?.value?.profile ?? null,
       remote_write_mode: "read-only",
       finalize_report: repoRelativePath(finalizeArtifact.path),
-      mutation_manifest: mutationArtifact
-        ? repoRelativePath(mutationArtifact.path)
-        : null,
+      mutation_manifest: mutationArtifact ? repoRelativePath(mutationArtifact.path) : null,
       final_rows_file: finalRowsFile ? repoRelativePath(finalRowsFile) : null,
       target_user_id: targetUserId || null,
       expected_state_code: stateCode || null,
@@ -417,19 +395,13 @@ export function createCommitHandoffCommands({
       },
       blockers,
       commands: {
-        commit: readyForExplicitCommit
-          ? commitArgs.map(shellQuote).join(" ")
-          : null,
-        post_write_verify: readyForExplicitCommit
-          ? verifyArgs.map(shellQuote).join(" ")
-          : null,
+        commit: readyForExplicitCommit ? commitArgs.map(shellQuote).join(" ") : null,
+        post_write_verify: readyForExplicitCommit ? verifyArgs.map(shellQuote).join(" ") : null,
       },
       files: {
         trace_queues: traceFiles,
         expected_commit_report_dir: repoRelativePath(path.join(outDir, "commit")),
-        expected_post_write_verify_dir: repoRelativePath(
-          path.join(outDir, "post-write-verify"),
-        ),
+        expected_post_write_verify_dir: repoRelativePath(path.join(outDir, "post-write-verify")),
       },
     };
     const reportPath = path.join(outDir, "dataset-commit-handoff-plan.json");

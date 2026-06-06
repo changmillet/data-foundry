@@ -5,11 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-const repoRoot = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "..",
-);
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const fixtureRoot = path.join(repoRoot, "tmp", "bundle-sample-rows-test");
 const oldContactId = "a6db11f5-1cb4-579a-b503-bd17c361b8c2";
 const newContactId = "11111111-2222-5333-8444-555555555555";
@@ -65,8 +61,7 @@ function writeJsonLines(filePath, rows) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(
     filePath,
-    rows.map((row) => JSON.stringify(row)).join("\n") +
-      (rows.length ? "\n" : ""),
+    rows.map((row) => JSON.stringify(row)).join("\n") + (rows.length ? "\n" : ""),
   );
 }
 
@@ -156,7 +151,9 @@ function createBundleFixture() {
         geography: {
           locationOfOperationSupplyOrProduction: {
             "@location": "CH",
-            descriptionOfRestrictions: ml("Fixture geography description should not be in search query."),
+            descriptionOfRestrictions: ml(
+              "Fixture geography description should not be in search query.",
+            ),
           },
         },
       },
@@ -225,12 +222,8 @@ test("dataset-bundle-sample-rows creates one shared library contact and rewrites
   assert.equal(report.counts.process_source_reference_rows, 1);
   assert.deepEqual(report.library_contact.replaced_contact_ids, [oldContactId]);
 
-  const contacts = readJsonLines(
-    path.join(repoRoot, report.files.rows.contact),
-  );
-  const processes = readJsonLines(
-    path.join(repoRoot, report.files.rows.process),
-  );
+  const contacts = readJsonLines(path.join(repoRoot, report.files.rows.contact));
+  const processes = readJsonLines(path.join(repoRoot, report.files.rows.process));
   const sources = readJsonLines(path.join(repoRoot, report.files.rows.source));
   const support = readJsonLines(path.join(repoRoot, report.files.rows.support));
   assert.equal(contacts.length, 1);
@@ -238,22 +231,17 @@ test("dataset-bundle-sample-rows creates one shared library contact and rewrites
   assert.match(report.commands.support.validate, /--type auto/u);
   assert.match(report.commands.support.commit, /--type auto/u);
   assert.equal(
-    contacts[0].contactDataSet.contactInformation.dataSetInformation[
-      "common:name"
-    ]["#text"],
+    contacts[0].contactDataSet.contactInformation.dataSetInformation["common:name"]["#text"],
     "Swiss Federal Administration - Federal Office for the Environment (FOEN)",
   );
   assert.equal(
-    contacts[0].contactDataSet.contactInformation.dataSetInformation[
-      "common:shortName"
-    ]["#text"],
+    contacts[0].contactDataSet.contactInformation.dataSetInformation["common:shortName"]["#text"],
     "Federal Office for the Environment FOEN (BAFU)",
   );
   assert.deepEqual(
-    contacts[0].contactDataSet.contactInformation.dataSetInformation
-      .classificationInformation["common:classification"]["common:class"].map(
-        (item) => item["#text"],
-      ),
+    contacts[0].contactDataSet.contactInformation.dataSetInformation.classificationInformation[
+      "common:classification"
+    ]["common:class"].map((item) => item["#text"]),
     ["Organisations", "Governmental organisations"],
   );
   assert.equal(JSON.stringify(processes).includes(newContactId), true);
@@ -261,15 +249,15 @@ test("dataset-bundle-sample-rows creates one shared library contact and rewrites
   assert.equal(JSON.stringify(processes).includes(oldContactId), false);
   assert.equal(JSON.stringify(sources).includes(oldContactId), false);
   assert.equal(
-    sources[0].sourceDataSet.sourceInformation.dataSetInformation
-      .classificationInformation["common:classification"]["common:class"][
-      "#text"
-    ],
+    sources[0].sourceDataSet.sourceInformation.dataSetInformation.classificationInformation[
+      "common:classification"
+    ]["common:class"]["#text"],
     "Publications and communications",
   );
   assert.equal(
-    sources[0].sourceDataSet.sourceInformation.dataSetInformation
-      .sourceDescriptionOrComment["#text"],
+    sources[0].sourceDataSet.sourceInformation.dataSetInformation.sourceDescriptionOrComment[
+      "#text"
+    ],
     "Report/publication: Fixture source report, 2026.",
   );
 
@@ -290,14 +278,9 @@ test("dataset-bundle-sample-rows creates one shared library contact and rewrites
     true,
   );
 
-  const sourceSemantics = readJsonLines(
-    path.join(repoRoot, report.files.source_semantics),
-  );
+  const sourceSemantics = readJsonLines(path.join(repoRoot, report.files.source_semantics));
   assert.equal(sourceSemantics[0].kind, "true_source");
-  assert.equal(
-    sourceSemantics[0].source_citation,
-    "Fixture source report, 2026",
-  );
+  assert.equal(sourceSemantics[0].source_citation, "Fixture source report, 2026");
   assert.equal(
     sourceSemantics[0].source_description,
     "Report/publication: Fixture source report, 2026.",
@@ -306,10 +289,7 @@ test("dataset-bundle-sample-rows creates one shared library contact and rewrites
     path.join(repoRoot, report.files.process_source_references),
   );
   assert.equal(processSourceReferences[0].relation, "process_data_source");
-  assert.equal(
-    processSourceReferences[0].referenced_source_kind,
-    "true_source",
-  );
+  assert.equal(processSourceReferences[0].referenced_source_kind, "true_source");
 });
 
 test("dataset-bundle-sample-rows rewrites flow property refs to canonical support and does not write unitgroup or flowproperty support", () => {
@@ -363,33 +343,30 @@ test("dataset-bundle-sample-rows rewrites flow property refs to canonical suppor
       },
     },
   });
-  writeJson(
-    path.join(bundleDir, "tidas", "flowproperties", `${flowpropertyId}.json`),
-    {
-      flowPropertyDataSet: {
-        flowPropertiesInformation: {
-          dataSetInformation: {
-            "common:UUID": flowpropertyId,
-            "common:name": ml("Amount in kg"),
-          },
-          quantitativeReference: {
-            referenceToReferenceUnitGroup: {
-              "@type": "unit group data set",
-              "@refObjectId": unitgroupId,
-              "@version": "00.00.001",
-              "@uri": `../unitgroups/${unitgroupId}.json`,
-              "common:shortDescription": ml("Units of kg"),
-            },
-          },
+  writeJson(path.join(bundleDir, "tidas", "flowproperties", `${flowpropertyId}.json`), {
+    flowPropertyDataSet: {
+      flowPropertiesInformation: {
+        dataSetInformation: {
+          "common:UUID": flowpropertyId,
+          "common:name": ml("Amount in kg"),
         },
-        administrativeInformation: {
-          publicationAndOwnership: {
-            "common:dataSetVersion": "00.00.001",
+        quantitativeReference: {
+          referenceToReferenceUnitGroup: {
+            "@type": "unit group data set",
+            "@refObjectId": unitgroupId,
+            "@version": "00.00.001",
+            "@uri": `../unitgroups/${unitgroupId}.json`,
+            "common:shortDescription": ml("Units of kg"),
           },
         },
       },
+      administrativeInformation: {
+        publicationAndOwnership: {
+          "common:dataSetVersion": "00.00.001",
+        },
+      },
     },
-  );
+  });
   writeJson(path.join(bundleDir, "tidas", "flows", `${flowId}.json`), {
     flowDataSet: {
       flowInformation: {
@@ -457,25 +434,16 @@ test("dataset-bundle-sample-rows rewrites flow property refs to canonical suppor
   );
   const flows = readJsonLines(path.join(repoRoot, report.files.rows.flow));
   const flowPropertyReference =
-    flows[0].flowDataSet.flowProperties.flowProperty
-      .referenceToFlowPropertyDataSet;
+    flows[0].flowDataSet.flowProperties.flowProperty.referenceToFlowPropertyDataSet;
   assert.equal(flowPropertyReference["@refObjectId"], canonicalMassFlowPropertyId);
   assert.equal(flowPropertyReference["@version"], "03.00.003");
 
-  const rewrites = readJsonLines(
-    path.join(repoRoot, report.files.canonical_support_rewrites),
-  );
+  const rewrites = readJsonLines(path.join(repoRoot, report.files.canonical_support_rewrites));
   assert.equal(rewrites.length, 1);
-  assert.equal(
-    rewrites[0].relation,
-    "flow_property_reference_to_canonical_support",
-  );
+  assert.equal(rewrites[0].relation, "flow_property_reference_to_canonical_support");
   assert.equal(rewrites[0].original.ref_object_id, flowpropertyId);
   assert.equal(rewrites[0].canonical.ref_object_id, canonicalMassFlowPropertyId);
-  assert.equal(
-    rewrites[0].canonical_reference_unit_group.ref_object_id,
-    canonicalMassUnitGroupId,
-  );
+  assert.equal(rewrites[0].canonical_reference_unit_group.ref_object_id, canonicalMassUnitGroupId);
 });
 
 test("dataset-bundle-sample-rows blocks canonical flow property mappings when the cached unit group proof is missing", () => {
@@ -663,19 +631,11 @@ test("dataset-bundle-sample-rows writes executable identity preflight requests f
     /process_hybrid_search or flow_hybrid_search/u,
   );
 
-  const indexRows = readJsonLines(
-    path.join(repoRoot, report.files.identity_preflight_requests),
-  );
-  assert.deepEqual(
-    indexRows.map((row) => row.dataset_type).sort(),
-    ["flow", "process"],
-  );
+  const indexRows = readJsonLines(path.join(repoRoot, report.files.identity_preflight_requests));
+  assert.deepEqual(indexRows.map((row) => row.dataset_type).sort(), ["flow", "process"]);
   const processRequest = indexRows.find((row) => row.dataset_type === "process");
   assert.match(processRequest.command, /process identity-preflight/u);
-  assert.equal(
-    processRequest.remote_search.edge_request.endpoint,
-    "process_hybrid_search",
-  );
+  assert.equal(processRequest.remote_search.edge_request.endpoint, "process_hybrid_search");
   assert.match(processRequest.remote_search.query, /process name: Fixture process/u);
   assert.match(processRequest.remote_search.query, /reference flow: Methane/u);
   assert.match(processRequest.remote_search.query, /geography: CH/u);
@@ -688,12 +648,12 @@ test("dataset-bundle-sample-rows writes executable identity preflight requests f
   const elementaryQueue = readJsonLines(
     path.join(repoRoot, report.files.elementary_flow_reuse_queue),
   );
-  assert.equal(elementaryQueue[0].identity_preflight_request_file, indexRows.find((row) => row.dataset_type === "flow").request_file);
-  assert.match(elementaryQueue[0].identity_preflight_command, /flow identity-preflight/u);
   assert.equal(
-    elementaryQueue[0].remote_search.edge_request.endpoint,
-    "flow_hybrid_search",
+    elementaryQueue[0].identity_preflight_request_file,
+    indexRows.find((row) => row.dataset_type === "flow").request_file,
   );
+  assert.match(elementaryQueue[0].identity_preflight_command, /flow identity-preflight/u);
+  assert.equal(elementaryQueue[0].remote_search.edge_request.endpoint, "flow_hybrid_search");
   assert.deepEqual(elementaryQueue[0].remote_search.edge_request.body.filter, {
     flowType: "Elementary flow",
   });
@@ -723,18 +683,9 @@ test("dataset-bundle-sample-rows writes executable identity preflight requests f
   assert.equal(request.remote_candidate_search.extracted_text_weight, 0.35);
   assert.equal(request.remote_candidate_search.semantic_weight, 0.2);
   assert.equal(request.remote_candidate_search.rrf_k, 30);
-  assert.equal(
-    elementaryQueue[0].remote_search.edge_request.body.match_threshold,
-    0.15,
-  );
-  assert.equal(
-    elementaryQueue[0].remote_search.edge_request.body.full_text_weight,
-    0.45,
-  );
-  assert.equal(
-    "profile_hints" in elementaryQueue[0].remote_search.edge_request.body,
-    false,
-  );
+  assert.equal(elementaryQueue[0].remote_search.edge_request.body.match_threshold, 0.15);
+  assert.equal(elementaryQueue[0].remote_search.edge_request.body.full_text_weight, 0.45);
+  assert.equal("profile_hints" in elementaryQueue[0].remote_search.edge_request.body, false);
   assert.equal(request.remote_candidate_search.profile_hints.type_of_dataset, "Elementary flow");
   assert.equal(request.remote_candidate_search.profile_hints.flow_property[0], "Mass");
   assert.ok(request.remote_candidate_search.profile_hints);
@@ -796,17 +747,12 @@ test("dataset-identity-preflight-requests-build creates a fresh exact-row reques
 
   assert.equal(report.status, "ready");
   assert.equal(report.counts.request_rows, 1);
-  const indexRows = readJsonLines(
-    path.join(repoRoot, report.files.identity_preflight_requests),
-  );
+  const indexRows = readJsonLines(path.join(repoRoot, report.files.identity_preflight_requests));
   assert.equal(indexRows.length, 1);
   assert.equal(indexRows[0].dataset_type, "flow");
   assert.equal(indexRows[0].dataset_id, flowId);
   assert.match(indexRows[0].target_sha256, /^[a-f0-9]{64}$/u);
-  assert.equal(
-    indexRows[0].remote_search.edge_request.endpoint,
-    "flow_hybrid_search",
-  );
+  assert.equal(indexRows[0].remote_search.edge_request.endpoint, "flow_hybrid_search");
   assert.deepEqual(indexRows[0].remote_search.edge_request.body.filter, {
     flowType: "Elementary flow",
   });
@@ -1062,13 +1008,7 @@ process.exit(blocked ? 1 : 0);
       request_file: rel(processRequest),
       output_dir: rel(path.join(outputRoot, "processes", processId)),
       expected_report_file: rel(
-        path.join(
-          outputRoot,
-          "processes",
-          processId,
-          "outputs",
-          "identity-decision.json",
-        ),
+        path.join(outputRoot, "processes", processId, "outputs", "identity-decision.json"),
       ),
     },
     {
@@ -1113,9 +1053,7 @@ process.exit(blocked ? 1 : 0);
     "block_duplicate",
   );
   assert.equal(
-    fs.existsSync(
-      path.join(outputRoot, "flows", flowId, "outputs", "identity-decision.json"),
-    ),
+    fs.existsSync(path.join(outputRoot, "flows", flowId, "outputs", "identity-decision.json")),
     true,
   );
 });
@@ -1124,15 +1062,9 @@ test("dataset-bundle-sample-rows repairs generic EcoSpold source identity from r
   createBundleFixture();
   const outDir = path.join(fixtureRoot, "out-source-identity");
   const bundleDir = path.join(fixtureRoot, "process-bundles", processId);
-  const sourcePath = path.join(
-    bundleDir,
-    "tidas",
-    "sources",
-    `${sourceId}.json`,
-  );
+  const sourcePath = path.join(bundleDir, "tidas", "sources", `${sourceId}.json`);
   const sourcePayload = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
-  const sourceInfo =
-    sourcePayload.sourceDataSet.sourceInformation.dataSetInformation;
+  const sourceInfo = sourcePayload.sourceDataSet.sourceInformation.dataSetInformation;
   sourceInfo["common:shortName"] = ml("Created for EcoSpold 1 compatibility");
   sourceInfo.sourceCitation = "Created for EcoSpold 1 compatibility";
   sourceInfo.sourceDescriptionOrComment = ml(
@@ -1140,15 +1072,9 @@ test("dataset-bundle-sample-rows repairs generic EcoSpold source identity from r
   );
   writeJson(sourcePath, sourcePayload);
 
-  const processPath = path.join(
-    bundleDir,
-    "tidas",
-    "processes",
-    `${processId}.json`,
-  );
+  const processPath = path.join(bundleDir, "tidas", "processes", `${processId}.json`);
   const processPayload = JSON.parse(fs.readFileSync(processPath, "utf8"));
-  processPayload.processDataSet.modellingAndValidation
-    .dataSourcesTreatmentAndRepresentativeness.referenceToDataSource =
+  processPayload.processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.referenceToDataSource =
     sourceRef(sourceId, "Created for EcoSpold 1 compatibility");
   writeJson(processPath, processPayload);
 
@@ -1169,44 +1095,30 @@ test("dataset-bundle-sample-rows repairs generic EcoSpold source identity from r
   assert.equal(report.counts.true_source_reference_description_repairs, 1);
 
   const sources = readJsonLines(path.join(repoRoot, report.files.rows.source));
-  const repairedSourceInfo =
-    sources[0].sourceDataSet.sourceInformation.dataSetInformation;
+  const repairedSourceInfo = sources[0].sourceDataSet.sourceInformation.dataSetInformation;
   assert.equal(
     repairedSourceInfo["common:shortName"]["#text"],
     "2007 - Life Cycle Inventories of Metal Processing and Compressed Air Supply - Steiner",
   );
-  assert.match(
-    repairedSourceInfo.sourceCitation,
-    /Life Cycle Inventories of Metal Processing/u,
-  );
+  assert.match(repairedSourceInfo.sourceCitation, /Life Cycle Inventories of Metal Processing/u);
 
-  const processes = readJsonLines(
-    path.join(repoRoot, report.files.rows.process),
-  );
+  const processes = readJsonLines(path.join(repoRoot, report.files.rows.process));
   const processSourceRef =
-    processes[0].processDataSet.modellingAndValidation
-      .dataSourcesTreatmentAndRepresentativeness.referenceToDataSource;
+    processes[0].processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness
+      .referenceToDataSource;
   assert.equal(
     processSourceRef["common:shortDescription"]["#text"],
     repairedSourceInfo["common:shortName"]["#text"],
   );
 
-  const repairRows = readJsonLines(
-    path.join(repoRoot, report.files.source_classification_repairs),
-  );
+  const repairRows = readJsonLines(path.join(repoRoot, report.files.source_classification_repairs));
   assert.equal(
-    repairRows.some(
-      (row) => row.relation === "true_source_identity_from_description",
-    ),
+    repairRows.some((row) => row.relation === "true_source_identity_from_description"),
     true,
   );
-  const rewriteRows = readJsonLines(
-    path.join(repoRoot, report.files.source_reference_rewrites),
-  );
+  const rewriteRows = readJsonLines(path.join(repoRoot, report.files.source_reference_rewrites));
   assert.equal(
-    rewriteRows.some(
-      (row) => row.relation === "process_data_source_short_description",
-    ),
+    rewriteRows.some((row) => row.relation === "process_data_source_short_description"),
     true,
   );
 });
@@ -1215,12 +1127,7 @@ test("dataset-bundle-sample-rows omits format and compliance placeholder sources
   createBundleFixture();
   const outDir = path.join(fixtureRoot, "out-source-semantics");
   const bundleDir = path.join(fixtureRoot, "process-bundles", processId);
-  const formatSourcePath = path.join(
-    bundleDir,
-    "tidas",
-    "sources",
-    `${formatSourceId}.json`,
-  );
+  const formatSourcePath = path.join(bundleDir, "tidas", "sources", `${formatSourceId}.json`);
   const complianceSourcePath = path.join(
     bundleDir,
     "tidas",
@@ -1276,22 +1183,14 @@ test("dataset-bundle-sample-rows omits format and compliance placeholder sources
     },
   });
 
-  const processPath = path.join(
-    bundleDir,
-    "tidas",
-    "processes",
-    `${processId}.json`,
-  );
+  const processPath = path.join(bundleDir, "tidas", "processes", `${processId}.json`);
   const processPayload = JSON.parse(fs.readFileSync(processPath, "utf8"));
   processPayload.processDataSet.administrativeInformation.dataEntryBy[
     "common:referenceToDataSetFormat"
   ] = sourceRef(formatSourceId, "ILCD format");
   processPayload.processDataSet.modellingAndValidation.complianceDeclarations = {
     compliance: {
-      "common:referenceToComplianceSystem": sourceRef(
-        complianceSourceId,
-        "Not specified",
-      ),
+      "common:referenceToComplianceSystem": sourceRef(complianceSourceId, "Not specified"),
     },
   };
   writeJson(processPath, processPayload);
@@ -1329,9 +1228,7 @@ test("dataset-bundle-sample-rows omits format and compliance placeholder sources
   const sources = readJsonLines(path.join(repoRoot, report.files.rows.source));
   assert.equal(sources.length, 1);
   assert.equal(
-    sources[0].sourceDataSet.sourceInformation.dataSetInformation[
-      "common:UUID"
-    ],
+    sources[0].sourceDataSet.sourceInformation.dataSetInformation["common:UUID"],
     sourceId,
   );
   assert.equal(JSON.stringify(sources).includes("ILCD format"), false);
@@ -1345,49 +1242,31 @@ test("dataset-bundle-sample-rows omits format and compliance placeholder sources
     canonicalIlcdFormatSourceId,
   );
 
-  const processes = readJsonLines(
-    path.join(repoRoot, report.files.rows.process),
-  );
-  const dataEntryBy =
-    processes[0].processDataSet.administrativeInformation.dataEntryBy;
+  const processes = readJsonLines(path.join(repoRoot, report.files.rows.process));
+  const dataEntryBy = processes[0].processDataSet.administrativeInformation.dataEntryBy;
   assert.equal(
     dataEntryBy["common:referenceToDataSetFormat"]["@refObjectId"],
     canonicalIlcdFormatSourceId,
   );
-  assert.equal(
-    dataEntryBy["common:referenceToDataSetFormat"]["@version"],
-    "03.00.003",
-  );
+  assert.equal(dataEntryBy["common:referenceToDataSetFormat"]["@version"], "03.00.003");
   const compliance =
-    processes[0].processDataSet.modellingAndValidation.complianceDeclarations
-      .compliance;
+    processes[0].processDataSet.modellingAndValidation.complianceDeclarations.compliance;
   assert.equal(
     compliance["common:referenceToComplianceSystem"]["@refObjectId"],
     canonicalComplianceSourceId,
   );
-  assert.equal(
-    compliance["common:referenceToComplianceSystem"]["@version"],
-    "20.20.002",
-  );
+  assert.equal(compliance["common:referenceToComplianceSystem"]["@version"], "20.20.002");
 
-  const sourceSemantics = readJsonLines(
-    path.join(repoRoot, report.files.source_semantics),
-  );
+  const sourceSemantics = readJsonLines(path.join(repoRoot, report.files.source_semantics));
   assert.deepEqual(
-    sourceSemantics.map((row) => [
-      row.dataset_id,
-      row.kind,
-      row.materialized_as_source_row,
-    ]),
+    sourceSemantics.map((row) => [row.dataset_id, row.kind, row.materialized_as_source_row]),
     [
       [sourceId, "true_source", true],
       [formatSourceId, "format_support_source", false],
       [complianceSourceId, "compliance_support_source", false],
     ],
   );
-  const rewrites = readJsonLines(
-    path.join(repoRoot, report.files.source_reference_rewrites),
-  );
+  const rewrites = readJsonLines(path.join(repoRoot, report.files.source_reference_rewrites));
   assert.deepEqual(
     rewrites.map((row) => [row.relation, row.original.ref_object_id, row.canonical.ref_object_id]),
     [
@@ -1397,11 +1276,7 @@ test("dataset-bundle-sample-rows omits format and compliance placeholder sources
         canonicalIlcdFormatSourceId,
       ],
       ["dataset_format_source", formatSourceId, canonicalIlcdFormatSourceId],
-      [
-        "compliance_system_source",
-        complianceSourceId,
-        canonicalComplianceSourceId,
-      ],
+      ["compliance_system_source", complianceSourceId, canonicalComplianceSourceId],
     ],
   );
 });
@@ -1441,18 +1316,10 @@ test("dataset-bundle-sample-rows rewrites placeholder process data sources to th
     },
   });
 
-  const processPath = path.join(
-    bundleDir,
-    "tidas",
-    "processes",
-    `${processId}.json`,
-  );
+  const processPath = path.join(bundleDir, "tidas", "processes", `${processId}.json`);
   const processPayload = JSON.parse(fs.readFileSync(processPath, "utf8"));
-  processPayload.processDataSet.modellingAndValidation
-    .dataSourcesTreatmentAndRepresentativeness.referenceToDataSource = sourceRef(
-    complianceSourceId,
-    "Not specified",
-  );
+  processPayload.processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.referenceToDataSource =
+    sourceRef(complianceSourceId, "Not specified");
   writeJson(processPath, processPayload);
 
   const manifestPath = path.join(bundleDir, "manifest.json");
@@ -1482,19 +1349,13 @@ test("dataset-bundle-sample-rows rewrites placeholder process data sources to th
 
   const sources = readJsonLines(path.join(repoRoot, report.files.rows.source));
   assert.deepEqual(
-    sources.map(
-      (row) =>
-        row.sourceDataSet.sourceInformation.dataSetInformation["common:UUID"],
-    ),
+    sources.map((row) => row.sourceDataSet.sourceInformation.dataSetInformation["common:UUID"]),
     [sourceId],
   );
   const sourceReferences = readJsonLines(
     path.join(repoRoot, report.files.process_source_references),
   );
-  assert.equal(
-    sourceReferences[0].referenced_source_kind,
-    "true_source",
-  );
+  assert.equal(sourceReferences[0].referenced_source_kind, "true_source");
   assert.equal(sourceReferences[0].ref_object_id, sourceId);
   const sourceReferenceRewrites = readJsonLines(
     path.join(repoRoot, report.files.source_reference_rewrites),
@@ -1514,15 +1375,9 @@ test("dataset-bundle-sample-rows creates a BAFU database fallback source when no
   createBundleFixture();
   const outDir = path.join(fixtureRoot, "out-process-source-fallback");
   const bundleDir = path.join(fixtureRoot, "process-bundles", processId);
-  const sourcePath = path.join(
-    bundleDir,
-    "tidas",
-    "sources",
-    `${sourceId}.json`,
-  );
+  const sourcePath = path.join(bundleDir, "tidas", "sources", `${sourceId}.json`);
   const sourcePayload = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
-  const sourceInfo =
-    sourcePayload.sourceDataSet.sourceInformation.dataSetInformation;
+  const sourceInfo = sourcePayload.sourceDataSet.sourceInformation.dataSetInformation;
   sourceInfo["common:shortName"] = ml("Not specified");
   sourceInfo.sourceCitation = "Not specified";
   sourceInfo.sourceDescriptionOrComment = ml("No source metadata available.");
@@ -1548,33 +1403,22 @@ test("dataset-bundle-sample-rows creates a BAFU database fallback source when no
   assert.equal(report.counts.process_source_reference_fallback_rewrites, 1);
 
   const sources = readJsonLines(path.join(repoRoot, report.files.rows.source));
-  const sourceInfoOut =
-    sources[0].sourceDataSet.sourceInformation.dataSetInformation;
-  assert.equal(
-    sourceInfoOut["common:shortName"]["#text"],
-    "BAFU 2025 Version 2 LCA database",
-  );
+  const sourceInfoOut = sources[0].sourceDataSet.sourceInformation.dataSetInformation;
+  assert.equal(sourceInfoOut["common:shortName"]["#text"], "BAFU 2025 Version 2 LCA database");
   assert.equal(sourceInfoOut.sourceCitation.includes("FOEN"), true);
   assert.equal(
-    sourceInfoOut.classificationInformation["common:classification"][
-      "common:class"
-    ]["#text"],
+    sourceInfoOut.classificationInformation["common:classification"]["common:class"]["#text"],
     "Databases",
   );
   const sourceReferences = readJsonLines(
     path.join(repoRoot, report.files.process_source_references),
   );
-  assert.equal(
-    sourceReferences[0].short_description,
-    "BAFU 2025 Version 2 LCA database",
-  );
+  assert.equal(sourceReferences[0].short_description, "BAFU 2025 Version 2 LCA database");
   const sourceReferenceRewrites = readJsonLines(
     path.join(repoRoot, report.files.source_reference_rewrites),
   );
   assert.equal(
-    sourceReferenceRewrites.some(
-      (row) => row.relation === "process_data_source_fallback_database",
-    ),
+    sourceReferenceRewrites.some((row) => row.relation === "process_data_source_fallback_database"),
     true,
   );
 });
@@ -1674,33 +1518,16 @@ test("dataset-bundle-sample-rows omits placeholder source identities even when c
 
   const sources = readJsonLines(path.join(repoRoot, report.files.rows.source));
   assert.deepEqual(
-    sources.map(
-      (row) =>
-        row.sourceDataSet.sourceInformation.dataSetInformation["common:UUID"],
-    ),
+    sources.map((row) => row.sourceDataSet.sourceInformation.dataSetInformation["common:UUID"]),
     [sourceId],
   );
 
-  const sourceSemantics = readJsonLines(
-    path.join(repoRoot, report.files.source_semantics),
-  );
+  const sourceSemantics = readJsonLines(path.join(repoRoot, report.files.source_semantics));
   const byId = new Map(sourceSemantics.map((row) => [row.dataset_id, row]));
-  assert.equal(
-    byId.get(placeholderCitationSourceId).kind,
-    "placeholder_or_unspecified_source",
-  );
-  assert.equal(
-    byId.get(placeholderCitationSourceId).materialized_as_source_row,
-    false,
-  );
-  assert.equal(
-    byId.get(genericUnrepairableSourceId).kind,
-    "unresolved_source_semantics",
-  );
-  assert.equal(
-    byId.get(genericUnrepairableSourceId).materialized_as_source_row,
-    false,
-  );
+  assert.equal(byId.get(placeholderCitationSourceId).kind, "placeholder_or_unspecified_source");
+  assert.equal(byId.get(placeholderCitationSourceId).materialized_as_source_row, false);
+  assert.equal(byId.get(genericUnrepairableSourceId).kind, "unresolved_source_semantics");
+  assert.equal(byId.get(genericUnrepairableSourceId).materialized_as_source_row, false);
 });
 
 test("dataset-bundle-sample-rows blocks converted default process classification and cleans reference names", () => {
@@ -1715,8 +1542,7 @@ test("dataset-bundle-sample-rows blocks converted default process classification
     `${processId}.json`,
   );
   const processPayload = JSON.parse(fs.readFileSync(processPath, "utf8"));
-  const dataSetInformation =
-    processPayload.processDataSet.processInformation.dataSetInformation;
+  const dataSetInformation = processPayload.processDataSet.processInformation.dataSetInformation;
   dataSetInformation.classificationInformation = {
     "common:classification": {
       "common:class": [
@@ -1844,30 +1670,17 @@ test("dataset-bundle-sample-rows blocks converted default process classification
   assert.equal(report.counts.location_code_blockers, 2);
   assert.equal(report.counts.location_authoring_queue_rows, 2);
   assert.ok(
-    report.blockers.some(
-      (blocker) => blocker.code === "process_classification_requires_authoring",
-    ),
+    report.blockers.some((blocker) => blocker.code === "process_classification_requires_authoring"),
   );
   assert.ok(
-    report.blockers.some(
-      (blocker) => blocker.code === "flow_classification_requires_authoring",
-    ),
+    report.blockers.some((blocker) => blocker.code === "flow_classification_requires_authoring"),
   );
-  assert.ok(
-    report.blockers.some(
-      (blocker) => blocker.code === "location_code_requires_authoring",
-    ),
-  );
+  assert.ok(report.blockers.some((blocker) => blocker.code === "location_code_requires_authoring"));
 
-  const queue = readJsonLines(
-    path.join(repoRoot, report.files.classification_authoring_queue),
-  );
+  const queue = readJsonLines(path.join(repoRoot, report.files.classification_authoring_queue));
   const processQueueRow = queue.find((row) => row.dataset_type === "process");
   const flowQueueRow = queue.find((row) => row.dataset_type === "flow");
-  assert.equal(
-    processQueueRow.source_classification.category,
-    "material, obsolete",
-  );
+  assert.equal(processQueueRow.source_classification.category, "material, obsolete");
   assert.match(
     processQueueRow.classification_workflow.commands.children_root,
     /dataset classification children --type process/u,
@@ -1886,21 +1699,14 @@ test("dataset-bundle-sample-rows blocks converted default process classification
     flowQueueRow.classification_workflow.commands.apply,
     /dataset classification apply .* --type flow-product/u,
   );
-  assert.match(
-    flowQueueRow.classification_workflow.commands.input_rows,
-    /rows\/flows\.jsonl$/u,
-  );
+  assert.match(flowQueueRow.classification_workflow.commands.input_rows, /rows\/flows\.jsonl$/u);
   assert.match(
     flowQueueRow.classification_workflow.commands.output_rows,
     /rows\/flows\.classified\.jsonl$/u,
   );
 
-  const locationQueue = readJsonLines(
-    path.join(repoRoot, report.files.location_authoring_queue),
-  );
-  assert.ok(
-    locationQueue.some((row) => row.current_location === "Invalid region"),
-  );
+  const locationQueue = readJsonLines(path.join(repoRoot, report.files.location_authoring_queue));
+  assert.ok(locationQueue.some((row) => row.current_location === "Invalid region"));
   assert.ok(
     locationQueue.some(
       (row) =>
@@ -1913,14 +1719,9 @@ test("dataset-bundle-sample-rows blocks converted default process classification
     locationQueue[0].location_workflow.commands.audit,
     /dataset classification audit --type location/u,
   );
-  assert.match(
-    locationQueue[0].location_workflow.commands.apply,
-    /dataset classification apply/u,
-  );
+  assert.match(locationQueue[0].location_workflow.commands.apply, /dataset classification apply/u);
 
-  const processes = readJsonLines(
-    path.join(repoRoot, report.files.rows.process),
-  );
+  const processes = readJsonLines(path.join(repoRoot, report.files.rows.process));
   const shortDescription =
     processes[0].processDataSet.exchanges.exchange.referenceToFlowDataSet[
       "common:shortDescription"
@@ -1968,9 +1769,7 @@ test("dataset-bundle-sample-rows materializes lifecyclemodels and queues locatio
   });
   const manifestPath = path.join(bundleDir, "manifest.json");
   const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-  manifest.files.lifecyclemodels = [
-    `tidas/lifecyclemodels/${lifecyclemodelId}.json`,
-  ];
+  manifest.files.lifecyclemodels = [`tidas/lifecyclemodels/${lifecyclemodelId}.json`];
   writeJson(manifestPath, manifest);
 
   const report = runFoundry(
@@ -1992,28 +1791,22 @@ test("dataset-bundle-sample-rows materializes lifecyclemodels and queues locatio
   assert.equal(report.counts.lifecyclemodel_rows, 1);
   assert.equal(report.counts.location_code_blockers, 1);
   assert.equal(report.counts.location_authoring_queue_rows, 1);
-  assert.match(
-    report.commands.lifecyclemodel.validate,
-    /lifecyclemodel save-draft/u,
-  );
+  assert.match(report.commands.lifecyclemodel.validate, /lifecyclemodel save-draft/u);
   assert.doesNotMatch(
     report.commands.lifecyclemodel.validate,
     /dataset save-draft --input .* --type lifecyclemodel/u,
   );
 
-  const lifecyclemodels = readJsonLines(
-    path.join(repoRoot, report.files.rows.lifecyclemodel),
-  );
+  const lifecyclemodels = readJsonLines(path.join(repoRoot, report.files.rows.lifecyclemodel));
   assert.equal(lifecyclemodels.length, 1);
   assert.equal(
-    lifecyclemodels[0].lifeCycleModelDataSet.lifeCycleModelInformation
-      .dataSetInformation["common:UUID"],
+    lifecyclemodels[0].lifeCycleModelDataSet.lifeCycleModelInformation.dataSetInformation[
+      "common:UUID"
+    ],
     lifecyclemodelId,
   );
 
-  const locationQueue = readJsonLines(
-    path.join(repoRoot, report.files.location_authoring_queue),
-  );
+  const locationQueue = readJsonLines(path.join(repoRoot, report.files.location_authoring_queue));
   assert.equal(locationQueue[0].dataset_type, "lifecyclemodel");
   assert.equal(locationQueue[0].dataset_id, lifecyclemodelId);
   assert.equal(locationQueue[0].dataset_version, "00.00.001");

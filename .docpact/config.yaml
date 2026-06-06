@@ -41,8 +41,10 @@ ownership:
           - package.json
           - scripts/**
           - specs/automated-lca-capability-registry.json
+          - specs/canonical-support/**
           - specs/capability-ownership-rules.json
           - specs/data-foundry-service.md
+          - specs/schemas/**
           - specs/workspace-capability-adapters.md
       ownerRepo: data-foundry
     - id: foundry-test-harness
@@ -110,8 +112,10 @@ routing:
         - package.json
         - scripts/**
         - specs/automated-lca-capability-registry.json
+        - specs/canonical-support/**
         - specs/capability-ownership-rules.json
         - specs/data-foundry-service.md
+        - specs/schemas/**
         - specs/workspace-capability-adapters.md
     import-profile:
       paths:
@@ -203,10 +207,14 @@ rules:
         kind: local-runtime
       - path: specs/automated-lca-capability-registry.json
         kind: capability-registry
+      - path: specs/canonical-support/**
+        kind: canonical-support-cache
       - path: specs/capability-ownership-rules.json
         kind: ownership-rules
       - path: specs/data-foundry-service.md
         kind: service-contract
+      - path: specs/schemas/**
+        kind: artifact-schema-contract
       - path: specs/workspace-capability-adapters.md
         kind: adapter-contract
       - path: docs/safety-policy.md
@@ -293,6 +301,16 @@ rules:
       - path: docs/agent-harness-cli-comparison.md
         mode: review_or_update
     reason: Acceptance-loop notes are retained reference material and should remain explicitly self-governed when edited.
+  - id: foundry-account-context-policy
+    scope: repo
+    repo: data-foundry
+    triggers:
+      - path: docs/account-context-policy.md
+        kind: runtime-account-policy
+    requiredDocs:
+      - path: docs/account-context-policy.md
+        mode: review_or_update
+    reason: Account context policy changes must remain explicitly self-governed because they affect local credential and remote-write safety expectations.
   - id: foundry-import-loop-reference
     scope: repo
     repo: data-foundry

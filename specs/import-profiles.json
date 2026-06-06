@@ -13,10 +13,7 @@
     "bafu": {
       "id": "bafu",
       "description": "BAFU / FOEN import profile for BAFU 2025 ecoSpold1 converted TIDAS rows, using root TIDAS library-level entity indexing plus the converted process-bundles index for process-level closure, queue-lock parallelism, reference-only canonical unitgroup/flowproperty reuse, true-source-or-BAFU-database source attribution, one canonical FOEN/BAFU contact, deterministic source-only-output exchange proof when source rows support it, and task-policy-gated batch commit.",
-      "docs": [
-        "docs/import-profiles/bafu/profile.md",
-        "docs/import-profiles/bafu/constraints.md"
-      ],
+      "docs": ["docs/import-profiles/bafu/profile.md", "docs/import-profiles/bafu/constraints.md"],
       "waived_qa_codes_by_type": {
         "process": ["process_material_balance_deviation"]
       },

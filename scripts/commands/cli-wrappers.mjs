@@ -12,7 +12,12 @@ export function createCliWrapperCommands({
   function runJsonCli(cliArgs, errorMessage) {
     const cli = resolveTiangongLcaCliCommand
       ? resolveTiangongLcaCliCommand()
-      : { command: resolveTiangongLcaCliBin(), args: [], display: resolveTiangongLcaCliBin(), package: null };
+      : {
+          command: resolveTiangongLcaCliBin(),
+          args: [],
+          display: resolveTiangongLcaCliBin(),
+          package: null,
+        };
     const spawnArgs = [...cli.args, ...cliArgs];
     const result = spawnSync(cli.command, spawnArgs, {
       cwd: repoRoot,
@@ -64,16 +69,11 @@ export function createCliWrapperCommands({
         },
       };
     }
-    const processes =
-      options.processes || options.processesFile || options.processRows;
+    const processes = options.processes || options.processesFile || options.processRows;
     const outDir = options.outDir || ".foundry/workspaces/dataset-curation-queue";
     const cliArgs = ["dataset", "curation-queue", "build", "--json"];
     appendOption(cliArgs, "--processes", processes);
-    appendOption(
-      cliArgs,
-      "--flows",
-      options.flows || options.flowsFile || options.flowRows,
-    );
+    appendOption(cliArgs, "--flows", options.flows || options.flowsFile || options.flowRows);
     appendRepeatedOptions(
       cliArgs,
       "--support",
@@ -131,14 +131,9 @@ export function createCliWrapperCommands({
     }
 
     const input = options.input || options.rowsFile || options.rows;
-    const patch =
-      options.patch ||
-      options.patchFile ||
-      options.patches ||
-      options.suggestions;
+    const patch = options.patch || options.patchFile || options.patches || options.suggestions;
     const outDir = options.outDir || ".foundry/workspaces/dataset-patch-apply";
-    const out =
-      options.out || options.outFile || path.join(outDir, "patched-rows.jsonl");
+    const out = options.out || options.outFile || path.join(outDir, "patched-rows.jsonl");
     const cliArgs = ["dataset", "patch", "apply", "--json"];
     appendOption(cliArgs, "--input", input);
     appendOption(cliArgs, "--patch", patch);
@@ -149,16 +144,10 @@ export function createCliWrapperCommands({
       "--authoring-package-dir",
       options.authoringPackageDir || options.authoringPackagesDir,
     );
-    if (
-      options.requireAuthoringPackage === true ||
-      options.requireAuthoringPackage === "true"
-    ) {
+    if (options.requireAuthoringPackage === true || options.requireAuthoringPackage === "true") {
       cliArgs.push("--require-authoring-package");
     }
-    if (
-      options.requireActionItemClosure === true ||
-      options.requireActionItemClosure === "true"
-    ) {
+    if (options.requireActionItemClosure === true || options.requireActionItemClosure === "true") {
       cliArgs.push("--require-action-item-closure");
     }
 

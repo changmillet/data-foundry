@@ -27,8 +27,7 @@ lastReviewedCommit: dabd3c9b9841641668caee6fe37cda37d3140739
 
 # Foundry AI Navigation
 
-Foundry is a thin control plane. Start from commands and artifacts, then move to
-the semantic owner module. Do not start from large implementation files.
+Foundry is a thin control plane. Start from commands and artifacts, then move to the semantic owner module. Do not start from large implementation files.
 
 ## Command Path
 
@@ -40,9 +39,7 @@ scripts/foundry.mjs
   -> command owner module
 ```
 
-The checked source of truth for command ownership is
-`scripts/lib/foundry-command-metadata.mjs`. It maps every command returned by
-`node scripts/foundry.mjs help` to:
+The checked source of truth for command ownership is `scripts/lib/foundry-command-metadata.mjs`. It maps every command returned by `node scripts/foundry.mjs help` to:
 
 - category
 - owner module
@@ -51,9 +48,7 @@ The checked source of truth for command ownership is
 - output artifacts
 - key tests
 
-`test/unit/foundry-command-metadata.test.mjs` enforces that the metadata covers all
-registered commands and that public commands remain reachable within two jumps
-from `scripts/foundry.mjs`.
+`test/unit/foundry-command-metadata.test.mjs` enforces that the metadata covers all registered commands and that public commands remain reachable within two jumps from `scripts/foundry.mjs`.
 
 ## Import-Curation Modules
 
@@ -69,22 +64,9 @@ Use these semantic modules as the import-curation navigation surface:
 | `scripts/lib/import-curation/trace-summary.mjs` | Foundry trace summarization |
 | `scripts/lib/import-curation/mutation-manifest.mjs` | prewrite mutation manifest and blocker aggregation |
 
-Command runners live in the semantic modules above. The remaining
-reusable workflow logic is exposed through focused internal workflow facets such
-as `authoring-task-workflow.mjs`, `authoring-patch-workflow.mjs`,
-`curation-gate-workflow.mjs`, and `mutation-manifest-workflow.mjs`. New command
-behavior should start in the semantic owner module, with reusable helpers placed
-in focused internal modules.
+Command runners live in the semantic modules above. The remaining reusable workflow logic is exposed through focused internal workflow facets such as `authoring-task-workflow.mjs`, `authoring-patch-workflow.mjs`, `curation-gate-workflow.mjs`, and `mutation-manifest-workflow.mjs`. New command behavior should start in the semantic owner module, with reusable helpers placed in focused internal modules.
 
-Complex workflow commands should also publish an AI-readable `stage_pipeline`
-contract in their help/report payload. The shared helper is
-`scripts/lib/stage-contract.mjs`; it standardizes `remote_write_mode`,
-`stage_pipeline[].stage`, canonical `phase`, `purpose`, `inputs`, `outputs`,
-`blockers`, `artifacts`, `side_effects`, and a stable `report_contract` requiring
-`status`, `counts`, `files`, `blockers`, and read-only `remote_write_mode`.
-Complex commands should expose the canonical phases `prepare`,
-`rewrite_cleanup`, `gate_validate`, and `report`.
-`test/unit/foundry-stage-contract.test.mjs` currently enforces this contract for:
+Complex workflow commands should also publish an AI-readable `stage_pipeline` contract in their help/report payload. The shared helper is `scripts/lib/stage-contract.mjs`; it standardizes `remote_write_mode`, `stage_pipeline[].stage`, canonical `phase`, `purpose`, `inputs`, `outputs`, `blockers`, `artifacts`, `side_effects`, and a stable `report_contract` requiring `status`, `counts`, `files`, `blockers`, and read-only `remote_write_mode`. Complex commands should expose the canonical phases `prepare`, `rewrite_cleanup`, `gate_validate`, and `report`. `test/unit/foundry-stage-contract.test.mjs` currently enforces this contract for:
 
 - `dataset-bundle-sample-rows`
 - `dataset-post-authoring-finalize`
@@ -122,18 +104,11 @@ Layer rules:
 - `mutation-manifest-workflow.mjs`: prewrite evidence, reference closure, dry-run proof, and write-candidate planning helpers.
 - `workflow-queue-context.mjs`, `workflow-identity-preflight.mjs`, `workflow-identity-decision-context.mjs`, `workflow-semantic-actions.mjs`, `workflow-authoring-tasks.mjs`, `workflow-patch-evidence.mjs`, `workflow-patch-evidence-context.mjs`, `workflow-patch-collect.mjs`, `workflow-row-transform-context.mjs`, `workflow-evidence-scope.mjs`, `workflow-decision-apply-context.mjs`, `workflow-decision-full-context.mjs`, `workflow-dry-run-context.mjs`, `workflow-source-reference-context.mjs`, and `workflow-reference-closure.mjs`: focused domain helpers used by the workflow facets above.
 
-Dependencies should point downward only. Internal low-level modules must not
-import semantic command modules.
+Dependencies should point downward only. Internal low-level modules must not import semantic command modules.
 
 ## Cleanup Checks
 
-Before deleting a Foundry-local surface, prove the current replacement path and
-check command metadata, tests, docs, and docpact coverage. Safe deletions include
-old npm aliases, empty metadata categories, and draft orchestration docs with no
-remaining consumer. Do not delete runtime skills, task templates, profile docs,
-or account-safety docs only because they are low-frequency; those may be agent
-entrypoints rather than code imports.
-Run `node scripts/foundry.mjs surface-audit` to automate the local scan for hidden command aliases, empty metadata categories, unregistered orphan docs, and script modules without inbound imports.
+Before deleting a Foundry-local surface, prove the current replacement path and check command metadata, tests, docs, and docpact coverage. Safe deletions include old npm aliases, empty metadata categories, and draft orchestration docs with no remaining consumer. Do not delete runtime skills, task templates, profile docs, or account-safety docs only because they are low-frequency; those may be agent entrypoints rather than code imports. Run `node scripts/foundry.mjs surface-audit` to automate the local scan for hidden command aliases, empty metadata categories, unregistered orphan docs, and script modules without inbound imports.
 
 ## Behavior Freeze
 
@@ -153,6 +128,4 @@ node scripts/foundry.mjs doctor
 git diff --check
 ```
 
-Golden diff protects CLI JSON compatibility for the key command set. The full
-test suite protects workflow-specific artifact and proof behavior. Command
-metadata tests protect AI navigation.
+Golden diff protects CLI JSON compatibility for the key command set. The full test suite protects workflow-specific artifact and proof behavior. Command metadata tests protect AI navigation.

@@ -1,3 +1,4 @@
+import { mutationFixtureRoot } from "./fixture-roots.mjs";
 import {
   fs,
   fullContextKinds,
@@ -10,15 +11,8 @@ import {
   writeJsonLines,
   writeText,
 } from "./foundry-core.mjs";
-import {
-  mutationFixtureRoot,
-} from "./fixture-roots.mjs";
-import {
-  contextFile,
-} from "./full-context-fixtures.mjs";
-import {
-  processRowWithDeferredTrace,
-} from "./row-builders.mjs";
+import { contextFile } from "./full-context-fixtures.mjs";
+import { processRowWithDeferredTrace } from "./row-builders.mjs";
 
 export function createMutationManifestFixture() {
   fs.rmSync(mutationFixtureRoot, { recursive: true, force: true });
@@ -26,16 +20,8 @@ export function createMutationManifestFixture() {
 
   const processId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
   const row = processRowWithDeferredTrace(processId);
-  const patchOutputRows = path.join(
-    mutationFixtureRoot,
-    "patch-apply",
-    "processes.patched.jsonl",
-  );
-  const rowsFile = path.join(
-    mutationFixtureRoot,
-    "final",
-    "processes.cleaned.jsonl",
-  );
+  const patchOutputRows = path.join(mutationFixtureRoot, "patch-apply", "processes.patched.jsonl");
+  const rowsFile = path.join(mutationFixtureRoot, "final", "processes.cleaned.jsonl");
   writeJsonLines(patchOutputRows, [row]);
   writeJsonLines(rowsFile, [row]);
   const sourceReferenceRewritesFile = path.join(
@@ -77,11 +63,7 @@ export function createMutationManifestFixture() {
     },
   ]);
 
-  const schemaReport = path.join(
-    mutationFixtureRoot,
-    "schema",
-    "validation-report.json",
-  );
+  const schemaReport = path.join(mutationFixtureRoot, "schema", "validation-report.json");
   writeJson(schemaReport, {
     generated_at_utc: "2026-06-02T00:00:00.000Z",
     input_path: rel(rowsFile),
@@ -99,11 +81,7 @@ export function createMutationManifestFixture() {
     ],
   });
 
-  const qaReport = path.join(
-    mutationFixtureRoot,
-    "qa",
-    "process-qa-report.json",
-  );
+  const qaReport = path.join(mutationFixtureRoot, "qa", "process-qa-report.json");
   writeJson(qaReport, {
     generated_at_utc: "2026-06-02T00:00:00.000Z",
     rows_file: rel(rowsFile),
@@ -175,9 +153,7 @@ export function createMutationManifestFixture() {
     contextFile("runtime-ruleset.json", '{"rules":["source-language-only"]}'),
     ...fullContextPatterns
       .filter(
-        (fileName) =>
-          fileName.startsWith("tidas_") &&
-          fileName !== "tidas_locations_category.json",
+        (fileName) => fileName.startsWith("tidas_") && fileName !== "tidas_locations_category.json",
       )
       .map((fileName) => ({
         kind: "classification_schema",
@@ -186,13 +162,7 @@ export function createMutationManifestFixture() {
       })),
     {
       kind: "location_schema",
-      path: rel(
-        path.join(
-          mutationFixtureRoot,
-          "context",
-          "tidas_locations_category.json",
-        ),
-      ),
+      path: rel(path.join(mutationFixtureRoot, "context", "tidas_locations_category.json")),
       text: '{"oneOf":[{"const":"CH","description":"Switzerland"}]}',
     },
   ];
@@ -235,9 +205,7 @@ export function createMutationManifestFixture() {
     entity_payload: row,
   };
   writeJson(authoringPackage, authoringPackagePayload);
-  const authoringPackageSha256 = sha256Text(
-    fs.readFileSync(authoringPackage, "utf8"),
-  );
+  const authoringPackageSha256 = sha256Text(fs.readFileSync(authoringPackage, "utf8"));
 
   const curationGateReport = path.join(
     mutationFixtureRoot,
@@ -269,11 +237,7 @@ export function createMutationManifestFixture() {
     ],
   });
 
-  const batchPatch = path.join(
-    mutationFixtureRoot,
-    "authoring-tasks",
-    "ai-patches.batch.json",
-  );
+  const batchPatch = path.join(mutationFixtureRoot, "authoring-tasks", "ai-patches.batch.json");
   writeJson(batchPatch, {
     schema_version: 1,
     kind: "tiangong_foundry_dataset_patch_batch",
@@ -378,9 +342,9 @@ export function createMutationManifestFixture() {
     cleanupReport,
     curationGateReport,
     patchCollectReport,
-	    patchApplyReport,
-	    sourceReferenceRewritesFile,
-	    contractContextFiles,
-	    processId,
-	  };
-	}
+    patchApplyReport,
+    sourceReferenceRewritesFile,
+    contractContextFiles,
+    processId,
+  };
+}

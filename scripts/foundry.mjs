@@ -6,16 +6,27 @@ import { createBundleSampleRowsCommands } from "./commands/bundle-sample-rows.mj
 import { createCliWrapperCommands } from "./commands/cli-wrappers.mjs";
 import { createCommitHandoffCommands } from "./commands/commit-handoff.mjs";
 import { createCoreCommands } from "./commands/core.mjs";
-import { createIdentityDecisionCommands } from "./commands/identity-decisions.mjs";
 import { createIdentityDecisionTaskCommands } from "./commands/identity-decision-task.mjs";
-import { createIdentityReferenceRewriteCommands } from "./commands/identity-reference-rewrites.mjs";
+import { createIdentityDecisionCommands } from "./commands/identity-decisions.mjs";
 import { createIdentityPreflightRunCommands } from "./commands/identity-preflight-run.mjs";
+import { createIdentityReferenceRewriteCommands } from "./commands/identity-reference-rewrites.mjs";
 import { createImportCompletionCommands } from "./commands/import-completion.mjs";
 import { createLibraryScopeWorkflowCommands } from "./commands/library-scope-workflow.mjs";
-import { createPostWriteCloseoutCommands } from "./commands/post-write-closeout.mjs";
 import { createPostAuthoringFinalizeCommands } from "./commands/post-authoring-finalize.mjs";
+import { createPostWriteCloseoutCommands } from "./commands/post-write-closeout.mjs";
 import { createSupportCacheCommands } from "./commands/support-cache.mjs";
 import { createTaskCommands } from "./commands/tasks.mjs";
+import { bundleRowTypes } from "./lib/bundle-row-types.mjs";
+import { createBundleSampleUtils } from "./lib/bundle-sample-utils.mjs";
+import { createCanonicalSupportRewriteUtils } from "./lib/canonical-support-rewrites.mjs";
+import { createDecisionTaskUtils } from "./lib/decision-task-utils.mjs";
+import { parseArgs, parseScalar } from "./lib/foundry-args.mjs";
+import { runFoundryCli } from "./lib/foundry-cli.mjs";
+import { exitCodeForCommand, usage } from "./lib/foundry-command-registry.mjs";
+import { createFoundryRuntimeUtils } from "./lib/foundry-runtime-utils.mjs";
+import { createFullContextProofUtils } from "./lib/full-context-proof.mjs";
+import { createIdentityPreflightArtifactUtils } from "./lib/identity-preflight-artifacts.mjs";
+import { createIdentityReferenceRewriteUtils } from "./lib/identity-reference-rewrite-utils.mjs";
 import {
   foundryTraceSummary,
   listImportProfiles,
@@ -25,22 +36,11 @@ import {
   runDatasetCurationGate,
   runDatasetMutationManifest,
 } from "./lib/import-curation.mjs";
-import { exitCodeForCommand, usage } from "./lib/foundry-command-registry.mjs";
-import { parseArgs, parseScalar } from "./lib/foundry-args.mjs";
-import { createFoundryRuntimeUtils } from "./lib/foundry-runtime-utils.mjs";
-import { createFullContextProofUtils } from "./lib/full-context-proof.mjs";
-import { createCanonicalSupportRewriteUtils } from "./lib/canonical-support-rewrites.mjs";
-import { createIdentityReferenceRewriteUtils } from "./lib/identity-reference-rewrite-utils.mjs";
-import { createIdentityPreflightArtifactUtils } from "./lib/identity-preflight-artifacts.mjs";
-import { createSourceSemanticUtils } from "./lib/source-semantics.mjs";
 import { createLocationQualityUtils } from "./lib/location-quality-utils.mjs";
-import { createDecisionTaskUtils } from "./lib/decision-task-utils.mjs";
-import { createTraceCoverageUtils } from "./lib/trace-coverage.mjs";
-import { createBundleSampleUtils } from "./lib/bundle-sample-utils.mjs";
-import { createTidasRowUtils } from "./lib/tidas-row-utils.mjs";
 import { createPostAuthoringFinalizeUtils } from "./lib/post-authoring-finalize-utils.mjs";
-import { runFoundryCli } from "./lib/foundry-cli.mjs";
-import { bundleRowTypeOrder, bundleRowTypes } from "./lib/bundle-row-types.mjs";
+import { createSourceSemanticUtils } from "./lib/source-semantics.mjs";
+import { createTidasRowUtils } from "./lib/tidas-row-utils.mjs";
+import { createTraceCoverageUtils } from "./lib/trace-coverage.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const foundryTraceNamespace = "https://tiangong-lca.dev/foundry/import-curation/1";
@@ -193,29 +193,26 @@ const {
   writeJson,
 });
 
-const {
-  completionFullContextBlockers,
-  fullContextProofCheck,
-  profileFullContextRequirement,
-} = createFullContextProofUtils({
-  asText,
-  classificationDecisionUsedContextKinds,
-  decisionCompletionStatus,
-  decisionContextBundleSha256,
-  ensureArray,
-  fileExists,
-  listImportProfiles,
-  normalizedList,
-  readJson,
-  readJsonArtifactOption,
-  readJsonLines,
-  readText,
-  repoRelativePath,
-  resolveRepoPath,
-  repoRoot,
-  sha256Text,
-  unique,
-});
+const { completionFullContextBlockers, fullContextProofCheck, profileFullContextRequirement } =
+  createFullContextProofUtils({
+    asText,
+    classificationDecisionUsedContextKinds,
+    decisionCompletionStatus,
+    decisionContextBundleSha256,
+    ensureArray,
+    fileExists,
+    listImportProfiles,
+    normalizedList,
+    readJson,
+    readJsonArtifactOption,
+    readJsonLines,
+    readText,
+    repoRelativePath,
+    resolveRepoPath,
+    repoRoot,
+    sha256Text,
+    unique,
+  });
 
 const { validateTraceQueueCoverageForRows } = createTraceCoverageUtils({
   asText,

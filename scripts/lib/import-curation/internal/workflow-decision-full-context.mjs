@@ -10,6 +10,7 @@ import {
   sameArtifactPath,
   unique,
 } from "./runtime-io.mjs";
+import { readClassificationDecisionApplyContext } from "./workflow-decision-apply-context.mjs";
 import {
   identityDecisionCanonical,
   identityDecisionClosesAction,
@@ -30,9 +31,6 @@ import {
   decisionApplyOutputRowsReachableThroughDeterministicTransforms,
   rowsFileChainsThroughUnresolvedExchangeExternalization,
 } from "./workflow-row-transform-context.mjs";
-import {
-  readClassificationDecisionApplyContext,
-} from "./workflow-decision-apply-context.mjs";
 
 // part-10.mjs
 export function decisionApplyOutputRowsChainThroughUnresolvedExchangeExternalization(
@@ -43,18 +41,18 @@ export function decisionApplyOutputRowsChainThroughUnresolvedExchangeExternaliza
 ) {
   return Boolean(
     expectedRowsFile &&
-      unresolvedExchangeExternalizationContext?.inputRowsFile &&
-      decisionApplyOutputRowsMatch(
-        repoRoot,
-        context,
-        unresolvedExchangeExternalizationContext.inputRowsFile,
-      ) &&
-      rowsFileChainsThroughUnresolvedExchangeExternalization({
-        repoRoot,
-        upstreamFile: unresolvedExchangeExternalizationContext.inputRowsFile,
-        finalFile: expectedRowsFile,
-        unresolvedExchangeExternalizationContext,
-      }),
+    unresolvedExchangeExternalizationContext?.inputRowsFile &&
+    decisionApplyOutputRowsMatch(
+      repoRoot,
+      context,
+      unresolvedExchangeExternalizationContext.inputRowsFile,
+    ) &&
+    rowsFileChainsThroughUnresolvedExchangeExternalization({
+      repoRoot,
+      upstreamFile: unresolvedExchangeExternalizationContext.inputRowsFile,
+      finalFile: expectedRowsFile,
+      unresolvedExchangeExternalizationContext,
+    }),
   );
 }
 
@@ -67,26 +65,18 @@ export function decisionApplyOutputRowsChainThroughPatchAndUnresolvedExchangeExt
 ) {
   return Boolean(
     expectedRowsFile &&
-      patchApplyContext?.inputRowsFile &&
-      unresolvedExchangeExternalizationContext?.inputRowsFile &&
-      decisionApplyOutputRowsMatch(
-        repoRoot,
-        context,
-        patchApplyContext.inputRowsFile,
-      ) &&
-      patchApplyContext.outputRows.some((filePath) =>
-        sameArtifactPath(
-          repoRoot,
-          filePath,
-          unresolvedExchangeExternalizationContext.inputRowsFile,
-        ),
-      ) &&
-      rowsFileChainsThroughUnresolvedExchangeExternalization({
-        repoRoot,
-        upstreamFile: unresolvedExchangeExternalizationContext.inputRowsFile,
-        finalFile: expectedRowsFile,
-        unresolvedExchangeExternalizationContext,
-      }),
+    patchApplyContext?.inputRowsFile &&
+    unresolvedExchangeExternalizationContext?.inputRowsFile &&
+    decisionApplyOutputRowsMatch(repoRoot, context, patchApplyContext.inputRowsFile) &&
+    patchApplyContext.outputRows.some((filePath) =>
+      sameArtifactPath(repoRoot, filePath, unresolvedExchangeExternalizationContext.inputRowsFile),
+    ) &&
+    rowsFileChainsThroughUnresolvedExchangeExternalization({
+      repoRoot,
+      upstreamFile: unresolvedExchangeExternalizationContext.inputRowsFile,
+      finalFile: expectedRowsFile,
+      unresolvedExchangeExternalizationContext,
+    }),
   );
 }
 
@@ -100,33 +90,25 @@ export function decisionApplyOutputRowsChainThroughPatchIdentityRewriteAndUnreso
 ) {
   return Boolean(
     expectedRowsFile &&
-      patchApplyContext?.inputRowsFile &&
-      identityReferenceRewriteContext?.inputRowsFile &&
-      identityReferenceRewriteContext?.outputRowsFile &&
-      unresolvedExchangeExternalizationContext?.inputRowsFile &&
-      decisionApplyOutputRowsMatch(
-        repoRoot,
-        context,
-        patchApplyContext.inputRowsFile,
-      ) &&
-      patchApplyContext.outputRows.some((filePath) =>
-        sameArtifactPath(
-          repoRoot,
-          filePath,
-          identityReferenceRewriteContext.inputRowsFile,
-        ),
-      ) &&
-      sameArtifactPath(
-        repoRoot,
-        identityReferenceRewriteContext.outputRowsFile,
-        unresolvedExchangeExternalizationContext.inputRowsFile,
-      ) &&
-      rowsFileChainsThroughUnresolvedExchangeExternalization({
-        repoRoot,
-        upstreamFile: unresolvedExchangeExternalizationContext.inputRowsFile,
-        finalFile: expectedRowsFile,
-        unresolvedExchangeExternalizationContext,
-      }),
+    patchApplyContext?.inputRowsFile &&
+    identityReferenceRewriteContext?.inputRowsFile &&
+    identityReferenceRewriteContext?.outputRowsFile &&
+    unresolvedExchangeExternalizationContext?.inputRowsFile &&
+    decisionApplyOutputRowsMatch(repoRoot, context, patchApplyContext.inputRowsFile) &&
+    patchApplyContext.outputRows.some((filePath) =>
+      sameArtifactPath(repoRoot, filePath, identityReferenceRewriteContext.inputRowsFile),
+    ) &&
+    sameArtifactPath(
+      repoRoot,
+      identityReferenceRewriteContext.outputRowsFile,
+      unresolvedExchangeExternalizationContext.inputRowsFile,
+    ) &&
+    rowsFileChainsThroughUnresolvedExchangeExternalization({
+      repoRoot,
+      upstreamFile: unresolvedExchangeExternalizationContext.inputRowsFile,
+      finalFile: expectedRowsFile,
+      unresolvedExchangeExternalizationContext,
+    }),
   );
 }
 
@@ -135,10 +117,12 @@ export function identityDecisionApplyProvesReferenceRewrite(
   context,
   identityReferenceRewriteContext,
 ) {
-  const decisionRewriteFiles = unique([
-    ...ensureArray(context?.identityReferenceRewritesFiles),
-    context?.identityReferenceRewritesFile,
-  ].filter(Boolean));
+  const decisionRewriteFiles = unique(
+    [
+      ...ensureArray(context?.identityReferenceRewritesFiles),
+      context?.identityReferenceRewritesFile,
+    ].filter(Boolean),
+  );
   if (decisionRewriteFiles.length === 0 || !identityReferenceRewriteContext?.sourceFile) {
     return false;
   }
@@ -148,15 +132,14 @@ export function identityDecisionApplyProvesReferenceRewrite(
       decisionRewriteFile,
       identityReferenceRewriteContext.sourceFile,
     );
-    const chainedThroughProcessRewrite =
-      identityReferenceRewriteContext.scopedRows.some(
-        (row) =>
-          sameArtifactPath(repoRoot, row?.rewrite_source?.file, decisionRewriteFile) ||
-          sameArtifactPath(repoRoot, row?.rewriteSource?.file, decisionRewriteFile),
-      );
+    const chainedThroughProcessRewrite = identityReferenceRewriteContext.scopedRows.some(
+      (row) =>
+        sameArtifactPath(repoRoot, row?.rewrite_source?.file, decisionRewriteFile) ||
+        sameArtifactPath(repoRoot, row?.rewriteSource?.file, decisionRewriteFile),
+    );
     return Boolean(
       identityReferenceRewriteContext.scopedRows.length > 0 &&
-        (directlyUsed || chainedThroughProcessRewrite),
+      (directlyUsed || chainedThroughProcessRewrite),
     );
   });
 }
@@ -165,13 +148,9 @@ export function classificationDecisionContextKinds(decision) {
   return [
     ...optionList(decision?.used_context_kinds ?? decision?.usedContextKinds),
     ...optionList(
-      decision?.resolution?.used_context_kinds ??
-        decision?.resolution?.usedContextKinds,
+      decision?.resolution?.used_context_kinds ?? decision?.resolution?.usedContextKinds,
     ),
-    ...optionList(
-      decision?.evidence?.used_context_kinds ??
-        decision?.evidence?.usedContextKinds,
-    ),
+    ...optionList(decision?.evidence?.used_context_kinds ?? decision?.evidence?.usedContextKinds),
   ];
 }
 
@@ -186,9 +165,7 @@ export function classificationDecisionContextBundleSha256(decision) {
 }
 
 export function classificationDecisionCompletionStatus(decision) {
-  return asText(
-    decision?.decision_status ?? decision?.decisionStatus ?? decision?.status,
-  );
+  return asText(decision?.decision_status ?? decision?.decisionStatus ?? decision?.status);
 }
 
 export function decisionTaskProofListFromContext(context) {
@@ -199,9 +176,7 @@ export function decisionTaskProofListFromContext(context) {
 
 export function decisionTaskContextBundleHashesFromContext(context) {
   return unique(
-    decisionTaskProofListFromContext(context).map(
-      (proof) => proof.context_bundle_sha256,
-    ),
+    decisionTaskProofListFromContext(context).map((proof) => proof.context_bundle_sha256),
   );
 }
 
@@ -223,17 +198,14 @@ export function buildClassificationDecisionFullContextBlockers({
   const blockers = [];
   if (!classificationDecisionApplyArtifact) return blockers;
   const context = classificationDecisionApplyContext;
-	  if (context?.status !== "completed") {
-	    blockers.push({
-	      code: "full_context_ai_classification_apply_not_completed",
+  if (context?.status !== "completed") {
+    blockers.push({
+      code: "full_context_ai_classification_apply_not_completed",
       stage: "full_context_ai_completion",
       message: `dataset-classification-decisions-apply status is ${context?.status || "missing"}.`,
-      artifact: repoRelativePath(
-        repoRoot,
-        classificationDecisionApplyArtifact.path,
-	      ),
-	    });
-	  }
+      artifact: repoRelativePath(repoRoot, classificationDecisionApplyArtifact.path),
+    });
+  }
   const decisionTaskProofs = decisionTaskProofListFromContext(context);
   if (decisionTaskProofs.length === 0) {
     blockers.push(
@@ -254,9 +226,9 @@ export function buildClassificationDecisionFullContextBlockers({
       );
     }
   }
-	  const expectedRowsFile = decisionApplyExpectedRowsFile({
-	    repoRoot,
-	    rowsFile,
+  const expectedRowsFile = decisionApplyExpectedRowsFile({
+    repoRoot,
+    rowsFile,
     cleanupArtifact,
   });
   if (cleanupArtifact && !expectedRowsFile) {
@@ -266,10 +238,7 @@ export function buildClassificationDecisionFullContextBlockers({
       message:
         "Classification decision proof cannot be chained because the cleanup report does not record its input rows_file.",
       rows_file: repoRelativePath(repoRoot, rowsFile),
-      artifact: repoRelativePath(
-        repoRoot,
-        classificationDecisionApplyArtifact.path,
-      ),
+      artifact: repoRelativePath(repoRoot, classificationDecisionApplyArtifact.path),
       cleanup_report: repoRelativePath(repoRoot, cleanupArtifact.path),
     });
   } else if (
@@ -337,59 +306,41 @@ export function buildClassificationDecisionFullContextBlockers({
       patch_apply_input_rows_file: patchApplyContext?.inputRowsFile
         ? repoRelativePath(repoRoot, patchApplyContext.inputRowsFile)
         : null,
-      patch_apply_output_rows_files: patchApplyContext?.outputRows.map((file) =>
-        repoRelativePath(repoRoot, file),
-      ) ?? [],
-      identity_reference_rewrite_input_rows_file:
-        identityReferenceRewriteContext?.inputRowsFile
-          ? repoRelativePath(repoRoot, identityReferenceRewriteContext.inputRowsFile)
-          : null,
-      identity_reference_rewrite_output_rows_file:
-        identityReferenceRewriteContext?.outputRowsFile
-          ? repoRelativePath(repoRoot, identityReferenceRewriteContext.outputRowsFile)
-          : null,
+      patch_apply_output_rows_files:
+        patchApplyContext?.outputRows.map((file) => repoRelativePath(repoRoot, file)) ?? [],
+      identity_reference_rewrite_input_rows_file: identityReferenceRewriteContext?.inputRowsFile
+        ? repoRelativePath(repoRoot, identityReferenceRewriteContext.inputRowsFile)
+        : null,
+      identity_reference_rewrite_output_rows_file: identityReferenceRewriteContext?.outputRowsFile
+        ? repoRelativePath(repoRoot, identityReferenceRewriteContext.outputRowsFile)
+        : null,
       unresolved_exchange_externalization_input_rows_file:
         unresolvedExchangeExternalizationContext?.inputRowsFile
-          ? repoRelativePath(
-              repoRoot,
-              unresolvedExchangeExternalizationContext.inputRowsFile,
-            )
+          ? repoRelativePath(repoRoot, unresolvedExchangeExternalizationContext.inputRowsFile)
           : null,
       unresolved_exchange_externalization_output_rows_file:
         unresolvedExchangeExternalizationContext?.outputRowsFile
-          ? repoRelativePath(
-              repoRoot,
-              unresolvedExchangeExternalizationContext.outputRowsFile,
-            )
+          ? repoRelativePath(repoRoot, unresolvedExchangeExternalizationContext.outputRowsFile)
           : null,
-      source_contact_rewrite_input_rows_file:
-        sourceContactRewriteContext?.inputRowsFile
-          ? repoRelativePath(repoRoot, sourceContactRewriteContext.inputRowsFile)
-          : null,
-      source_contact_rewrite_output_rows_file:
-        sourceContactRewriteContext?.outputRowsFile
-          ? repoRelativePath(repoRoot, sourceContactRewriteContext.outputRowsFile)
-          : null,
-      canonical_support_rewrite_input_rows_file:
-        canonicalSupportRewriteContext?.inputRowsFile
-          ? repoRelativePath(repoRoot, canonicalSupportRewriteContext.inputRowsFile)
-          : null,
-      canonical_support_rewrite_output_rows_file:
-        canonicalSupportRewriteContext?.outputRowsFile
-          ? repoRelativePath(repoRoot, canonicalSupportRewriteContext.outputRowsFile)
-          : null,
-      cleanup_input_rows_file:
-        cleanupContext?.inputRowsFile
-          ? repoRelativePath(repoRoot, cleanupContext.inputRowsFile)
-          : null,
-      cleanup_output_rows_file:
-        cleanupContext?.outputRowsFile
-          ? repoRelativePath(repoRoot, cleanupContext.outputRowsFile)
-          : null,
-      artifact: repoRelativePath(
-        repoRoot,
-        classificationDecisionApplyArtifact.path,
-      ),
+      source_contact_rewrite_input_rows_file: sourceContactRewriteContext?.inputRowsFile
+        ? repoRelativePath(repoRoot, sourceContactRewriteContext.inputRowsFile)
+        : null,
+      source_contact_rewrite_output_rows_file: sourceContactRewriteContext?.outputRowsFile
+        ? repoRelativePath(repoRoot, sourceContactRewriteContext.outputRowsFile)
+        : null,
+      canonical_support_rewrite_input_rows_file: canonicalSupportRewriteContext?.inputRowsFile
+        ? repoRelativePath(repoRoot, canonicalSupportRewriteContext.inputRowsFile)
+        : null,
+      canonical_support_rewrite_output_rows_file: canonicalSupportRewriteContext?.outputRowsFile
+        ? repoRelativePath(repoRoot, canonicalSupportRewriteContext.outputRowsFile)
+        : null,
+      cleanup_input_rows_file: cleanupContext?.inputRowsFile
+        ? repoRelativePath(repoRoot, cleanupContext.inputRowsFile)
+        : null,
+      cleanup_output_rows_file: cleanupContext?.outputRowsFile
+        ? repoRelativePath(repoRoot, cleanupContext.outputRowsFile)
+        : null,
+      artifact: repoRelativePath(repoRoot, classificationDecisionApplyArtifact.path),
     });
   }
   if (!context?.decisions.length) {
@@ -398,26 +349,18 @@ export function buildClassificationDecisionFullContextBlockers({
       stage: "full_context_ai_completion",
       message:
         "Classification decision apply report must point to at least one AI-authored classification decision.",
-      artifact: repoRelativePath(
-        repoRoot,
-        classificationDecisionApplyArtifact.path,
-      ),
+      artifact: repoRelativePath(repoRoot, classificationDecisionApplyArtifact.path),
     });
     return blockers;
   }
-  const missingBasis = context.decisions.filter(
-    (decision) => !asText(decision?.basis),
-  );
+  const missingBasis = context.decisions.filter((decision) => !asText(decision?.basis));
   if (missingBasis.length > 0) {
     blockers.push({
       code: "full_context_ai_classification_basis_missing",
       stage: "full_context_ai_completion",
       message: "Every classification decision must include basis.",
       count: missingBasis.length,
-      artifact: repoRelativePath(
-        repoRoot,
-        classificationDecisionApplyArtifact.path,
-      ),
+      artifact: repoRelativePath(repoRoot, classificationDecisionApplyArtifact.path),
     });
   }
   const missingEvidence = context.decisions.filter(
@@ -429,11 +372,8 @@ export function buildClassificationDecisionFullContextBlockers({
       stage: "full_context_ai_completion",
       message: "Every classification decision must include structured evidence.",
       count: missingEvidence.length,
-      artifact: repoRelativePath(
-        repoRoot,
-        classificationDecisionApplyArtifact.path,
-      ),
-      });
+      artifact: repoRelativePath(repoRoot, classificationDecisionApplyArtifact.path),
+    });
   }
   const notCompleted = context.decisions.filter(
     (decision) => classificationDecisionCompletionStatus(decision) !== "completed",
@@ -445,22 +385,19 @@ export function buildClassificationDecisionFullContextBlockers({
       message:
         "Every classification decision used as full-context AI evidence must declare decision_status=completed.",
       count: notCompleted.length,
-      artifact: repoRelativePath(
-        repoRoot,
-        classificationDecisionApplyArtifact.path,
-      ),
+      artifact: repoRelativePath(repoRoot, classificationDecisionApplyArtifact.path),
     });
   }
-		  const missingContextKinds = [];
-	  for (const decision of context.decisions) {
-	    const usedKinds = new Set(classificationDecisionContextKinds(decision));
+  const missingContextKinds = [];
+  for (const decision of context.decisions) {
+    const usedKinds = new Set(classificationDecisionContextKinds(decision));
     for (const requiredKind of requirement.requiredContextKinds) {
       if (!usedKinds.has(requiredKind)) {
         missingContextKinds.push({ decision, requiredKind });
       }
     }
-	  }
-	  if (missingContextKinds.length > 0) {
+  }
+  if (missingContextKinds.length > 0) {
     blockers.push({
       code: "full_context_ai_classification_context_missing",
       stage: "full_context_ai_completion",
@@ -468,43 +405,35 @@ export function buildClassificationDecisionFullContextBlockers({
         "Classification decision used_context_kinds must include every required full-context kind for this profile.",
       count: missingContextKinds.length,
       required_context_kinds: requirement.requiredContextKinds,
-      artifact: repoRelativePath(
-        repoRoot,
-        classificationDecisionApplyArtifact.path,
-      ),
-	    });
-	  }
-  const expectedContextBundleSha256AnyOf =
-    decisionTaskContextBundleHashesFromContext(context);
+      artifact: repoRelativePath(repoRoot, classificationDecisionApplyArtifact.path),
+    });
+  }
+  const expectedContextBundleSha256AnyOf = decisionTaskContextBundleHashesFromContext(context);
   if (expectedContextBundleSha256AnyOf.length > 0) {
-		    const mismatchedContextBundle = context.decisions.filter(
-	      (decision) =>
+    const mismatchedContextBundle = context.decisions.filter(
+      (decision) =>
         !expectedContextBundleSha256AnyOf.includes(
           classificationDecisionContextBundleSha256(decision),
         ),
-	    );
-	    if (mismatchedContextBundle.length > 0) {
-	      blockers.push({
-	        code: "full_context_ai_classification_context_bundle_mismatch",
-	        stage: "full_context_ai_completion",
-	        message:
+    );
+    if (mismatchedContextBundle.length > 0) {
+      blockers.push({
+        code: "full_context_ai_classification_context_bundle_mismatch",
+        stage: "full_context_ai_completion",
+        message:
           "Every classification decision must reference one of the AI decision task context_bundle_sha256 values.",
-	        count: mismatchedContextBundle.length,
+        count: mismatchedContextBundle.length,
         expected_context_bundle_sha256:
           expectedContextBundleSha256AnyOf.length === 1
             ? expectedContextBundleSha256AnyOf[0]
             : null,
-        expected_context_bundle_sha256_any_of:
-          expectedContextBundleSha256AnyOf,
-	        artifact: repoRelativePath(
-	          repoRoot,
-	          classificationDecisionApplyArtifact.path,
-	        ),
-	      });
-	    }
-	  }
-	  return blockers;
-	}
+        expected_context_bundle_sha256_any_of: expectedContextBundleSha256AnyOf,
+        artifact: repoRelativePath(repoRoot, classificationDecisionApplyArtifact.path),
+      });
+    }
+  }
+  return blockers;
+}
 
 export function readLocationDecisionApplyContext(repoRoot, locationDecisionApplyArtifact) {
   return readClassificationDecisionApplyContext(
@@ -532,14 +461,14 @@ export function buildLocationDecisionFullContextBlockers({
   const blockers = [];
   if (!locationDecisionApplyArtifact) return blockers;
   const context = locationDecisionApplyContext;
-	  if (context?.status !== "completed") {
-	    blockers.push({
-	      code: "full_context_ai_location_apply_not_completed",
+  if (context?.status !== "completed") {
+    blockers.push({
+      code: "full_context_ai_location_apply_not_completed",
       stage: "full_context_ai_completion",
       message: `dataset-location-decisions-apply status is ${context?.status || "missing"}.`,
-	      artifact: repoRelativePath(repoRoot, locationDecisionApplyArtifact.path),
-	    });
-	  }
+      artifact: repoRelativePath(repoRoot, locationDecisionApplyArtifact.path),
+    });
+  }
   const decisionTaskProofs = decisionTaskProofListFromContext(context);
   if (decisionTaskProofs.length === 0) {
     blockers.push(
@@ -560,7 +489,7 @@ export function buildLocationDecisionFullContextBlockers({
       );
     }
   }
-	  const expectedRowsFile = decisionApplyExpectedRowsFile({
+  const expectedRowsFile = decisionApplyExpectedRowsFile({
     repoRoot,
     rowsFile,
     cleanupArtifact,
@@ -640,55 +569,40 @@ export function buildLocationDecisionFullContextBlockers({
       patch_apply_input_rows_file: patchApplyContext?.inputRowsFile
         ? repoRelativePath(repoRoot, patchApplyContext.inputRowsFile)
         : null,
-      patch_apply_output_rows_files: patchApplyContext?.outputRows.map((file) =>
-        repoRelativePath(repoRoot, file),
-      ) ?? [],
-      identity_reference_rewrite_input_rows_file:
-        identityReferenceRewriteContext?.inputRowsFile
-          ? repoRelativePath(repoRoot, identityReferenceRewriteContext.inputRowsFile)
-          : null,
-      identity_reference_rewrite_output_rows_file:
-        identityReferenceRewriteContext?.outputRowsFile
-          ? repoRelativePath(repoRoot, identityReferenceRewriteContext.outputRowsFile)
-          : null,
+      patch_apply_output_rows_files:
+        patchApplyContext?.outputRows.map((file) => repoRelativePath(repoRoot, file)) ?? [],
+      identity_reference_rewrite_input_rows_file: identityReferenceRewriteContext?.inputRowsFile
+        ? repoRelativePath(repoRoot, identityReferenceRewriteContext.inputRowsFile)
+        : null,
+      identity_reference_rewrite_output_rows_file: identityReferenceRewriteContext?.outputRowsFile
+        ? repoRelativePath(repoRoot, identityReferenceRewriteContext.outputRowsFile)
+        : null,
       unresolved_exchange_externalization_input_rows_file:
         unresolvedExchangeExternalizationContext?.inputRowsFile
-          ? repoRelativePath(
-              repoRoot,
-              unresolvedExchangeExternalizationContext.inputRowsFile,
-            )
+          ? repoRelativePath(repoRoot, unresolvedExchangeExternalizationContext.inputRowsFile)
           : null,
       unresolved_exchange_externalization_output_rows_file:
         unresolvedExchangeExternalizationContext?.outputRowsFile
-          ? repoRelativePath(
-              repoRoot,
-              unresolvedExchangeExternalizationContext.outputRowsFile,
-            )
+          ? repoRelativePath(repoRoot, unresolvedExchangeExternalizationContext.outputRowsFile)
           : null,
-      source_contact_rewrite_input_rows_file:
-        sourceContactRewriteContext?.inputRowsFile
-          ? repoRelativePath(repoRoot, sourceContactRewriteContext.inputRowsFile)
-          : null,
-      source_contact_rewrite_output_rows_file:
-        sourceContactRewriteContext?.outputRowsFile
-          ? repoRelativePath(repoRoot, sourceContactRewriteContext.outputRowsFile)
-          : null,
-      canonical_support_rewrite_input_rows_file:
-        canonicalSupportRewriteContext?.inputRowsFile
-          ? repoRelativePath(repoRoot, canonicalSupportRewriteContext.inputRowsFile)
-          : null,
-      canonical_support_rewrite_output_rows_file:
-        canonicalSupportRewriteContext?.outputRowsFile
-          ? repoRelativePath(repoRoot, canonicalSupportRewriteContext.outputRowsFile)
-          : null,
-      cleanup_input_rows_file:
-        cleanupContext?.inputRowsFile
-          ? repoRelativePath(repoRoot, cleanupContext.inputRowsFile)
-          : null,
-      cleanup_output_rows_file:
-        cleanupContext?.outputRowsFile
-          ? repoRelativePath(repoRoot, cleanupContext.outputRowsFile)
-          : null,
+      source_contact_rewrite_input_rows_file: sourceContactRewriteContext?.inputRowsFile
+        ? repoRelativePath(repoRoot, sourceContactRewriteContext.inputRowsFile)
+        : null,
+      source_contact_rewrite_output_rows_file: sourceContactRewriteContext?.outputRowsFile
+        ? repoRelativePath(repoRoot, sourceContactRewriteContext.outputRowsFile)
+        : null,
+      canonical_support_rewrite_input_rows_file: canonicalSupportRewriteContext?.inputRowsFile
+        ? repoRelativePath(repoRoot, canonicalSupportRewriteContext.inputRowsFile)
+        : null,
+      canonical_support_rewrite_output_rows_file: canonicalSupportRewriteContext?.outputRowsFile
+        ? repoRelativePath(repoRoot, canonicalSupportRewriteContext.outputRowsFile)
+        : null,
+      cleanup_input_rows_file: cleanupContext?.inputRowsFile
+        ? repoRelativePath(repoRoot, cleanupContext.inputRowsFile)
+        : null,
+      cleanup_output_rows_file: cleanupContext?.outputRowsFile
+        ? repoRelativePath(repoRoot, cleanupContext.outputRowsFile)
+        : null,
       artifact: repoRelativePath(repoRoot, locationDecisionApplyArtifact.path),
     });
   }
@@ -702,9 +616,7 @@ export function buildLocationDecisionFullContextBlockers({
     });
     return blockers;
   }
-  const missingBasis = context.decisions.filter(
-    (decision) => !asText(decision?.basis),
-  );
+  const missingBasis = context.decisions.filter((decision) => !asText(decision?.basis));
   if (missingBasis.length > 0) {
     blockers.push({
       code: "full_context_ai_location_basis_missing",
@@ -724,7 +636,7 @@ export function buildLocationDecisionFullContextBlockers({
       message: "Every location decision must include structured evidence.",
       count: missingEvidence.length,
       artifact: repoRelativePath(repoRoot, locationDecisionApplyArtifact.path),
-      });
+    });
   }
   const notCompleted = context.decisions.filter(
     (decision) => classificationDecisionCompletionStatus(decision) !== "completed",
@@ -748,7 +660,7 @@ export function buildLocationDecisionFullContextBlockers({
       }
     }
   }
-	  if (missingContextKinds.length > 0) {
+  if (missingContextKinds.length > 0) {
     blockers.push({
       code: "full_context_ai_location_context_missing",
       stage: "full_context_ai_completion",
@@ -757,36 +669,34 @@ export function buildLocationDecisionFullContextBlockers({
       count: missingContextKinds.length,
       required_context_kinds: requirement.requiredContextKinds,
       artifact: repoRelativePath(repoRoot, locationDecisionApplyArtifact.path),
-	    });
-	  }
-  const expectedContextBundleSha256AnyOf =
-    decisionTaskContextBundleHashesFromContext(context);
+    });
+  }
+  const expectedContextBundleSha256AnyOf = decisionTaskContextBundleHashesFromContext(context);
   if (expectedContextBundleSha256AnyOf.length > 0) {
-		    const mismatchedContextBundle = context.decisions.filter(
-	      (decision) =>
+    const mismatchedContextBundle = context.decisions.filter(
+      (decision) =>
         !expectedContextBundleSha256AnyOf.includes(
           classificationDecisionContextBundleSha256(decision),
         ),
-	    );
-	    if (mismatchedContextBundle.length > 0) {
-	      blockers.push({
-	        code: "full_context_ai_location_context_bundle_mismatch",
-	        stage: "full_context_ai_completion",
-	        message:
+    );
+    if (mismatchedContextBundle.length > 0) {
+      blockers.push({
+        code: "full_context_ai_location_context_bundle_mismatch",
+        stage: "full_context_ai_completion",
+        message:
           "Every location decision must reference one of the AI decision task context_bundle_sha256 values.",
-	        count: mismatchedContextBundle.length,
+        count: mismatchedContextBundle.length,
         expected_context_bundle_sha256:
           expectedContextBundleSha256AnyOf.length === 1
             ? expectedContextBundleSha256AnyOf[0]
             : null,
-        expected_context_bundle_sha256_any_of:
-          expectedContextBundleSha256AnyOf,
-	        artifact: repoRelativePath(repoRoot, locationDecisionApplyArtifact.path),
-	      });
-	    }
-		  }
-		  return blockers;
-		}
+        expected_context_bundle_sha256_any_of: expectedContextBundleSha256AnyOf,
+        artifact: repoRelativePath(repoRoot, locationDecisionApplyArtifact.path),
+      });
+    }
+  }
+  return blockers;
+}
 
 export function buildIdentityDecisionFullContextBlockers({
   repoRoot,
@@ -888,14 +798,12 @@ export function buildIdentityDecisionFullContextBlockers({
         "Identity decision apply report files.output_rows must match the cleanup input rows file, the exact mutation rows file, feed a completed identity reference rewrite / unresolved exchange externalization chain, or provide an identity-reference-rewrites file used by this scope.",
       rows_file: repoRelativePath(repoRoot, rowsFile),
       expected_output_rows_file: repoRelativePath(repoRoot, expectedRowsFile),
-      identity_reference_rewrite_input_rows_file:
-        identityReferenceRewriteContext?.inputRowsFile
-          ? repoRelativePath(repoRoot, identityReferenceRewriteContext.inputRowsFile)
-          : null,
-      identity_reference_rewrite_output_rows_file:
-        identityReferenceRewriteContext?.outputRowsFile
-          ? repoRelativePath(repoRoot, identityReferenceRewriteContext.outputRowsFile)
-          : null,
+      identity_reference_rewrite_input_rows_file: identityReferenceRewriteContext?.inputRowsFile
+        ? repoRelativePath(repoRoot, identityReferenceRewriteContext.inputRowsFile)
+        : null,
+      identity_reference_rewrite_output_rows_file: identityReferenceRewriteContext?.outputRowsFile
+        ? repoRelativePath(repoRoot, identityReferenceRewriteContext.outputRowsFile)
+        : null,
       classification_decision_apply_input_rows_files:
         classificationDecisionApplyContext?.inputRows.map((file) =>
           repoRelativePath(repoRoot, file),
@@ -906,51 +814,37 @@ export function buildIdentityDecisionFullContextBlockers({
         ) ?? [],
       unresolved_exchange_externalization_input_rows_file:
         unresolvedExchangeExternalizationContext?.inputRowsFile
-          ? repoRelativePath(
-              repoRoot,
-              unresolvedExchangeExternalizationContext.inputRowsFile,
-            )
+          ? repoRelativePath(repoRoot, unresolvedExchangeExternalizationContext.inputRowsFile)
           : null,
       unresolved_exchange_externalization_output_rows_file:
         unresolvedExchangeExternalizationContext?.outputRowsFile
-          ? repoRelativePath(
-              repoRoot,
-              unresolvedExchangeExternalizationContext.outputRowsFile,
-            )
+          ? repoRelativePath(repoRoot, unresolvedExchangeExternalizationContext.outputRowsFile)
           : null,
-      source_contact_rewrite_input_rows_file:
-        sourceContactRewriteContext?.inputRowsFile
-          ? repoRelativePath(repoRoot, sourceContactRewriteContext.inputRowsFile)
-          : null,
-      source_contact_rewrite_output_rows_file:
-        sourceContactRewriteContext?.outputRowsFile
-          ? repoRelativePath(repoRoot, sourceContactRewriteContext.outputRowsFile)
-          : null,
-      canonical_support_rewrite_input_rows_file:
-        canonicalSupportRewriteContext?.inputRowsFile
-          ? repoRelativePath(repoRoot, canonicalSupportRewriteContext.inputRowsFile)
-          : null,
-      canonical_support_rewrite_output_rows_file:
-        canonicalSupportRewriteContext?.outputRowsFile
-          ? repoRelativePath(repoRoot, canonicalSupportRewriteContext.outputRowsFile)
-          : null,
-      cleanup_input_rows_file:
-        cleanupContext?.inputRowsFile
-          ? repoRelativePath(repoRoot, cleanupContext.inputRowsFile)
-          : null,
-      cleanup_output_rows_file:
-        cleanupContext?.outputRowsFile
-          ? repoRelativePath(repoRoot, cleanupContext.outputRowsFile)
-          : null,
-      identity_decision_reference_rewrites_file: context
-        ?.identityReferenceRewritesFile
+      source_contact_rewrite_input_rows_file: sourceContactRewriteContext?.inputRowsFile
+        ? repoRelativePath(repoRoot, sourceContactRewriteContext.inputRowsFile)
+        : null,
+      source_contact_rewrite_output_rows_file: sourceContactRewriteContext?.outputRowsFile
+        ? repoRelativePath(repoRoot, sourceContactRewriteContext.outputRowsFile)
+        : null,
+      canonical_support_rewrite_input_rows_file: canonicalSupportRewriteContext?.inputRowsFile
+        ? repoRelativePath(repoRoot, canonicalSupportRewriteContext.inputRowsFile)
+        : null,
+      canonical_support_rewrite_output_rows_file: canonicalSupportRewriteContext?.outputRowsFile
+        ? repoRelativePath(repoRoot, canonicalSupportRewriteContext.outputRowsFile)
+        : null,
+      cleanup_input_rows_file: cleanupContext?.inputRowsFile
+        ? repoRelativePath(repoRoot, cleanupContext.inputRowsFile)
+        : null,
+      cleanup_output_rows_file: cleanupContext?.outputRowsFile
+        ? repoRelativePath(repoRoot, cleanupContext.outputRowsFile)
+        : null,
+      identity_decision_reference_rewrites_file: context?.identityReferenceRewritesFile
         ? repoRelativePath(repoRoot, context.identityReferenceRewritesFile)
         : null,
       identity_reference_rewrites_file: identityReferenceRewriteContext?.sourceFile
         ? repoRelativePath(repoRoot, identityReferenceRewriteContext.sourceFile)
         : null,
-      identity_reference_rewrite_rows:
-        identityReferenceRewriteContext?.scopedRows.length ?? 0,
+      identity_reference_rewrite_rows: identityReferenceRewriteContext?.scopedRows.length ?? 0,
       artifact: repoRelativePath(repoRoot, identityDecisionApplyArtifact.path),
     });
   }
@@ -980,8 +874,7 @@ export function buildIdentityDecisionFullContextBlockers({
   }
   const missingPackageBinding = context.decisions.filter(
     (decision) =>
-      !identityDecisionPackageReference(decision) ||
-      !identityDecisionPackageSha(decision),
+      !identityDecisionPackageReference(decision) || !identityDecisionPackageSha(decision),
   );
   if (missingPackageBinding.length > 0) {
     blockers.push({
@@ -1033,10 +926,7 @@ export function buildIdentityDecisionFullContextBlockers({
   const missingClosures = context.decisions.filter(
     (decision) =>
       !identityDecisionClosesAction(decision, "identity_preflight_manual_review") &&
-      !identityDecisionClosesAction(
-        decision,
-        "elementary_flow_identity_manual_review",
-      ),
+      !identityDecisionClosesAction(decision, "elementary_flow_identity_manual_review"),
   );
   if (missingClosures.length > 0) {
     blockers.push({

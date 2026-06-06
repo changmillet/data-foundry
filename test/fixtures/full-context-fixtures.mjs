@@ -1,20 +1,15 @@
+import { fixtureRoot, mutationFixtureRoot } from "./fixture-roots.mjs";
 import {
   fs,
   fullContextKinds,
-  fullContextPatterns,
   path,
   rel,
-  repoRoot,
   sha256Text,
   targetUserId,
   writeJson,
   writeJsonLines,
   writeText,
 } from "./foundry-core.mjs";
-import {
-  fixtureRoot,
-  mutationFixtureRoot,
-} from "./fixture-roots.mjs";
 
 export function createFixture() {
   fs.rmSync(fixtureRoot, { recursive: true, force: true });
@@ -55,10 +50,7 @@ export function createFixture() {
     },
   });
 
-  const verifyReport = path.join(
-    fixtureRoot,
-    "remote-verification-report.json",
-  );
+  const verifyReport = path.join(fixtureRoot, "remote-verification-report.json");
   writeJson(verifyReport, {
     status: "passed_remote_verification",
     input_path: rel(rowsFile),
@@ -86,10 +78,7 @@ export function createFixture() {
     },
   });
 
-  const mutationMissingProof = path.join(
-    fixtureRoot,
-    "mutation-missing-proof.json",
-  );
+  const mutationMissingProof = path.join(fixtureRoot, "mutation-missing-proof.json");
   writeJson(mutationMissingProof, {
     status: "ready_for_remote_write",
     dataset_type: "process",
@@ -108,49 +97,47 @@ export function createFixture() {
     },
   });
 
-	  const patchCollectReport = path.join(fixtureRoot, "patch-collect-ready.json");
-	  const authoringPackage = path.join(fixtureRoot, "authoring-package.json");
-	  writeJson(authoringPackage, {
-	    schema_version: 2,
-	    profile: "bafu",
-	    dataset_type: "process",
-	    entity_id: "process-a",
-	    version: "00.00.001",
-	    contract_context_files: fullContextKinds.map((kind) => ({
-	      kind,
-	      path: `${kind}.fixture`,
-	      text: `${kind} context`,
-	    })),
-	    missing_context_files: [],
-	  });
-	  const authoringPackageSha256 = sha256Text(
-	    fs.readFileSync(authoringPackage, "utf8"),
-	  );
-	  const taskManifest = path.join(fixtureRoot, "authoring-task-manifest.json");
-	  writeJson(taskManifest, {
-	    schema_version: 1,
-	    status: "ready_for_ai_authoring_batch",
-	    tasks: [
-	      {
-	        files: {
-	          authoring_package: rel(authoringPackage),
-	        },
-	        context: {
-	          authoring_package_sha256: authoringPackageSha256,
-	        },
-	      },
-	    ],
-	  });
-	  writeJson(patchCollectReport, {
-	    status: "ready_for_patch_apply",
-	    task_manifest: rel(taskManifest),
-	  });
+  const patchCollectReport = path.join(fixtureRoot, "patch-collect-ready.json");
+  const authoringPackage = path.join(fixtureRoot, "authoring-package.json");
+  writeJson(authoringPackage, {
+    schema_version: 2,
+    profile: "bafu",
+    dataset_type: "process",
+    entity_id: "process-a",
+    version: "00.00.001",
+    contract_context_files: fullContextKinds.map((kind) => ({
+      kind,
+      path: `${kind}.fixture`,
+      text: `${kind} context`,
+    })),
+    missing_context_files: [],
+  });
+  const authoringPackageSha256 = sha256Text(fs.readFileSync(authoringPackage, "utf8"));
+  const taskManifest = path.join(fixtureRoot, "authoring-task-manifest.json");
+  writeJson(taskManifest, {
+    schema_version: 1,
+    status: "ready_for_ai_authoring_batch",
+    tasks: [
+      {
+        files: {
+          authoring_package: rel(authoringPackage),
+        },
+        context: {
+          authoring_package_sha256: authoringPackageSha256,
+        },
+      },
+    ],
+  });
+  writeJson(patchCollectReport, {
+    status: "ready_for_patch_apply",
+    task_manifest: rel(taskManifest),
+  });
   const patchEvidenceFile = path.join(fixtureRoot, "patch-evidence.jsonl");
   writeJsonLines(patchEvidenceFile, [
     {
       dataset_id: "process-a",
       dataset_version: "00.00.001",
-	      authoring_package_sha256: authoringPackageSha256,
+      authoring_package_sha256: authoringPackageSha256,
       closes_action_items: ["fixture-action"],
       resolution: {
         mode: "evidence_backed_completion",
@@ -200,10 +187,7 @@ export function createFixture() {
     },
   });
 
-  const handoffMissingProof = path.join(
-    fixtureRoot,
-    "handoff-missing-proof.json",
-  );
+  const handoffMissingProof = path.join(fixtureRoot, "handoff-missing-proof.json");
   writeJson(handoffMissingProof, {
     status: "ready_for_explicit_commit",
     dataset_type: "process",
@@ -247,10 +231,7 @@ export function createFixture() {
     },
   });
 
-  const oldCloseoutMissingProof = path.join(
-    fixtureRoot,
-    "old-closeout-missing-proof.json",
-  );
+  const oldCloseoutMissingProof = path.join(fixtureRoot, "old-closeout-missing-proof.json");
   writeJson(oldCloseoutMissingProof, {
     status: "completed",
     dataset_type: "process",
@@ -315,9 +296,7 @@ export function writeDecisionTaskFixture({
 }) {
   const resolvedTaskKind =
     taskKind ??
-    (kind === "location"
-      ? "location_decision_authoring"
-      : "classification_decision_authoring");
+    (kind === "location" ? "location_decision_authoring" : "classification_decision_authoring");
   const taskStatus =
     status ??
     (kind === "location"

@@ -1,3 +1,1 @@
-export {
-  foundryTraceSummary,
-} from "./internal/trace-summary.mjs";
+export { foundryTraceSummary } from "./internal/trace-summary.mjs";

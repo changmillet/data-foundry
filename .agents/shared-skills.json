@@ -36,9 +36,7 @@
       "full_depth": true,
       "install_command": "npx --yes skills@latest add ../tiangong-lca-skills --skill external-dataset-curated-import --agent '*' --yes --full-depth",
       "update_policy": "use current sibling checkout; update the sibling repo first when latest shared workflow instructions are needed",
-      "required_for": [
-        "external-dataset-curated-import"
-      ]
+      "required_for": ["external-dataset-curated-import"]
     },
     {
       "name": "source-evidence-dataset-development",
@@ -48,9 +46,7 @@
       "full_depth": true,
       "install_command": "npx --yes skills@latest add ../tiangong-lca-skills --skill source-evidence-dataset-development --agent '*' --yes --full-depth",
       "update_policy": "use current sibling checkout; update the sibling repo first when latest shared workflow instructions are needed",
-      "required_for": [
-        "source-evidence-dataset-development"
-      ]
+      "required_for": ["source-evidence-dataset-development"]
     },
     {
       "name": "dataset-rls-maintenance",
@@ -60,10 +56,7 @@
       "full_depth": true,
       "install_command": "npx --yes skills@latest add ../tiangong-lca-skills --skill dataset-rls-maintenance --agent '*' --yes --full-depth",
       "update_policy": "use current sibling checkout; update the sibling repo first when latest shared workflow instructions are needed",
-      "required_for": [
-        "bad-import-cleanup",
-        "redo-import"
-      ]
+      "required_for": ["bad-import-cleanup", "redo-import"]
     },
     {
       "name": "document-granular-decompose",
@@ -76,13 +69,8 @@
       "use_command": "npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill document-granular-decompose --full-depth",
       "update_policy": "floating latest from upstream main before source-document fulltext extraction",
       "evidence_channel": "document-fulltext",
-      "required_for": [
-        "source-evidence-dataset-development"
-      ],
-      "output_artifacts": [
-        "evidence/fulltext.txt",
-        "evidence/source-extract.json"
-      ]
+      "required_for": ["source-evidence-dataset-development"],
+      "output_artifacts": ["evidence/fulltext.txt", "evidence/source-extract.json"]
     },
     {
       "name": "tiangong-kb-sci-search",
@@ -95,13 +83,8 @@
       "use_command": "npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --full-depth",
       "update_policy": "floating latest from upstream main before source-evidence SCI retrieval",
       "evidence_channel": "sci",
-      "required_for": [
-        "source-evidence-dataset-development"
-      ],
-      "output_artifacts": [
-        "evidence/sources.jsonl",
-        "evidence/field-evidence.jsonl"
-      ]
+      "required_for": ["source-evidence-dataset-development"],
+      "output_artifacts": ["evidence/sources.jsonl", "evidence/field-evidence.jsonl"]
     }
   ]
 }

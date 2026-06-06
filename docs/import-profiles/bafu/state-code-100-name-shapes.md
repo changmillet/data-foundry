@@ -22,7 +22,7 @@ Query evidence:
 Observed row counts visible from the account:
 
 | Table | Visible `state_code=100` count | Primary name/display shape |
-|---|---:|---|
+| --- | --: | --- |
 | `sources` | 1432 | `sourceDataSet.sourceInformation.dataSetInformation.common:shortName` |
 | `contacts` | 372 | `contactDataSet.contactInformation.dataSetInformation.common:name` and `common:shortName` |
 | `unitgroups` | 14 | `unitGroupDataSet.unitGroupInformation.dataSetInformation.common:name` |

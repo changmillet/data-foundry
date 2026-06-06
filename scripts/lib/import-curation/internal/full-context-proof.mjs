@@ -1,9 +1,9 @@
+import { contextFileDetails } from "./context-inputs.mjs";
 import {
   datasetIdentity,
   detectDatasetType,
   identityFreshnessIdentityKey,
 } from "./dataset-payload.mjs";
-import { contextFileDetails } from "./context-inputs.mjs";
 import { sha256Json, sha256Text } from "./hash-utils.mjs";
 import {
   asText,
@@ -18,13 +18,9 @@ import {
 } from "./runtime-io.mjs";
 
 export function curationGateContextHasKind(curationGateArtifact, kind) {
-  const details = ensureArray(
-    curationGateArtifact?.value?.context?.contract_context_file_details,
-  );
+  const details = ensureArray(curationGateArtifact?.value?.context?.contract_context_file_details);
   if (details.some((file) => asText(file?.kind) === kind)) return true;
-  const contextPaths = ensureArray(
-    curationGateArtifact?.value?.context?.contract_context_files,
-  );
+  const contextPaths = ensureArray(curationGateArtifact?.value?.context?.contract_context_files);
   const expectedFileByKind = {
     schema: "schema.json",
     methodology_yaml: "methodology.yaml",
@@ -42,9 +38,7 @@ export function curationGateContextHasKind(curationGateArtifact, kind) {
 }
 
 export function curationGateContextHasPattern(curationGateArtifact, pattern) {
-  const details = ensureArray(
-    curationGateArtifact?.value?.context?.contract_context_file_details,
-  );
+  const details = ensureArray(curationGateArtifact?.value?.context?.contract_context_file_details);
   if (
     details.some((file) =>
       String(file?.path ?? "")
@@ -54,9 +48,7 @@ export function curationGateContextHasPattern(curationGateArtifact, pattern) {
   ) {
     return true;
   }
-  const contextPaths = ensureArray(
-    curationGateArtifact?.value?.context?.contract_context_files,
-  );
+  const contextPaths = ensureArray(curationGateArtifact?.value?.context?.contract_context_files);
   return contextPaths.some((filePath) =>
     String(filePath ?? "")
       .toLowerCase()
@@ -78,8 +70,7 @@ export function evidenceResolutionMode(entry) {
 
 export function evidenceResolutionContextKinds(entry) {
   return ensureArray(
-    evidenceResolution(entry)?.used_context_kinds ??
-      evidenceResolution(entry)?.usedContextKinds,
+    evidenceResolution(entry)?.used_context_kinds ?? evidenceResolution(entry)?.usedContextKinds,
   )
     .map((kind) => asText(kind))
     .filter(Boolean);
@@ -127,8 +118,7 @@ export function readAuthoringPackageProof(
     proof.blockers.push({
       code: "full_context_authoring_package_missing",
       stage: "full_context_ai_completion",
-      message:
-        "Full-context AI completion evidence references an unreadable authoring package.",
+      message: "Full-context AI completion evidence references an unreadable authoring package.",
       authoring_package: proof.path,
       source,
     });
@@ -151,11 +141,7 @@ export function readAuthoringPackageProof(
     });
     return proof;
   }
-  if (
-    !proof.payload ||
-    typeof proof.payload !== "object" ||
-    Array.isArray(proof.payload)
-  ) {
+  if (!proof.payload || typeof proof.payload !== "object" || Array.isArray(proof.payload)) {
     proof.blockers.push({
       code: "full_context_authoring_package_invalid",
       stage: "full_context_ai_completion",
@@ -165,17 +151,9 @@ export function readAuthoringPackageProof(
     });
     return proof;
   }
-  proof.contract_context_files = ensureArray(
-    proof.payload.contract_context_files,
-  );
-  proof.contract_context_file_details = contextFileDetails(
-    proof.contract_context_files,
-  );
-  if (
-    proof.expected_sha256 &&
-    proof.sha256 &&
-    proof.expected_sha256 !== proof.sha256
-  ) {
+  proof.contract_context_files = ensureArray(proof.payload.contract_context_files);
+  proof.contract_context_file_details = contextFileDetails(proof.contract_context_files);
+  if (proof.expected_sha256 && proof.sha256 && proof.expected_sha256 !== proof.sha256) {
     proof.blockers.push({
       code: "full_context_authoring_package_hash_mismatch",
       stage: "full_context_ai_completion",
@@ -190,10 +168,7 @@ export function readAuthoringPackageProof(
   return proof;
 }
 
-export function authoringPackageProofsFromCurationGate(
-  repoRoot,
-  curationGateArtifact,
-) {
+export function authoringPackageProofsFromCurationGate(repoRoot, curationGateArtifact) {
   const entities = ensureArray(
     curationGateArtifact?.value?.entities ??
       curationGateArtifact?.value?.processes ??
@@ -202,9 +177,7 @@ export function authoringPackageProofsFromCurationGate(
   );
   return entities
     .map((entity) => {
-      const packageRef = asText(
-        entity?.authoring_package ?? entity?.authoringPackage,
-      );
+      const packageRef = asText(entity?.authoring_package ?? entity?.authoringPackage);
       if (!packageRef) return null;
       return readAuthoringPackageProof(
         repoRoot,
@@ -217,10 +190,7 @@ export function authoringPackageProofsFromCurationGate(
 }
 
 // part-09.mjs
-export function authoringPackageProofsFromPatchCollect(
-  repoRoot,
-  patchCollectArtifact,
-) {
+export function authoringPackageProofsFromPatchCollect(repoRoot, patchCollectArtifact) {
   const manifestRef = patchCollectArtifact?.value?.task_manifest;
   const manifestPath = resolveRepoPath(repoRoot, manifestRef);
   if (!manifestRef || !manifestPath || !fileExists(manifestPath)) return [];
@@ -232,9 +202,7 @@ export function authoringPackageProofsFromPatchCollect(
   }
   return ensureArray(manifest?.tasks)
     .map((task) => {
-      const packageRef = asText(
-        task?.files?.authoring_package ?? task?.files?.authoringPackage,
-      );
+      const packageRef = asText(task?.files?.authoring_package ?? task?.files?.authoringPackage);
       if (!packageRef) return null;
       return readAuthoringPackageProof(
         repoRoot,
@@ -308,8 +276,7 @@ export function readDecisionTaskProof(
     exists: false,
     sha256: null,
     expected_sha256: asText(expectedSha256) || null,
-    expected_context_bundle_sha256:
-      asText(expectedContextBundleSha256) || null,
+    expected_context_bundle_sha256: asText(expectedContextBundleSha256) || null,
     payload: null,
     status: null,
     task_kind: null,
@@ -324,8 +291,7 @@ export function readDecisionTaskProof(
     proof.blockers.push({
       code: "full_context_decision_task_missing",
       stage: "full_context_ai_completion",
-      message:
-        "Full-context decision evidence references an unreadable AI decision task.",
+      message: "Full-context decision evidence references an unreadable AI decision task.",
       decision_task: proof.path,
       source,
     });
@@ -348,11 +314,7 @@ export function readDecisionTaskProof(
     });
     return proof;
   }
-  if (
-    !proof.payload ||
-    typeof proof.payload !== "object" ||
-    Array.isArray(proof.payload)
-  ) {
+  if (!proof.payload || typeof proof.payload !== "object" || Array.isArray(proof.payload)) {
     proof.blockers.push({
       code: "full_context_decision_task_invalid",
       stage: "full_context_ai_completion",
@@ -362,13 +324,10 @@ export function readDecisionTaskProof(
     });
     return proof;
   }
-  const contextBundle =
-    proof.payload.context_bundle ?? proof.payload.authoring_context ?? {};
+  const contextBundle = proof.payload.context_bundle ?? proof.payload.authoring_context ?? {};
   proof.status = asText(proof.payload.status);
   proof.task_kind = asText(proof.payload.task_kind);
-  proof.context_bundle_sha256 = asText(
-    contextBundle.sha256 ?? contextBundle.context_bundle_sha256,
-  );
+  proof.context_bundle_sha256 = asText(contextBundle.sha256 ?? contextBundle.context_bundle_sha256);
   proof.shared_context_bundle = readDecisionTaskSharedContextBundleProof(
     repoRoot,
     proof.payload,
@@ -379,16 +338,13 @@ export function readDecisionTaskProof(
     ...ensureArray(proof.payload.contract_context_files),
     ...proof.shared_context_bundle.files,
   ];
-  proof.contract_context_file_details = contextFileDetails(
-    proof.contract_context_files,
-  );
+  proof.contract_context_file_details = contextFileDetails(proof.contract_context_files);
   proof.missing_context_files = ensureArray(proof.payload.missing_context_files);
   if (proof.expected_sha256 && proof.expected_sha256 !== proof.sha256) {
     proof.blockers.push({
       code: "full_context_decision_task_hash_mismatch",
       stage: "full_context_ai_completion",
-      message:
-        "Recorded decision task sha256 does not match the current decision task content.",
+      message: "Recorded decision task sha256 does not match the current decision task content.",
       decision_task: proof.path,
       expected_sha256: proof.expected_sha256,
       actual_sha256: proof.sha256,
@@ -403,8 +359,7 @@ export function readDecisionTaskProof(
     proof.blockers.push({
       code: "full_context_decision_task_context_hash_mismatch",
       stage: "full_context_ai_completion",
-      message:
-        "Recorded decision task context bundle hash does not match the decision task.",
+      message: "Recorded decision task context bundle hash does not match the decision task.",
       decision_task: proof.path,
       expected_context_bundle_sha256: proof.expected_context_bundle_sha256,
       actual_context_bundle_sha256: proof.context_bundle_sha256,
@@ -416,9 +371,7 @@ export function readDecisionTaskProof(
 
 export function decisionTaskProofFromApplyReport(repoRoot, report, source) {
   const task = report?.decision_task ?? report?.decisionTask;
-  const taskRef = asText(
-    task?.path ?? task?.task ?? task?.decision_task ?? task?.decisionTask,
-  );
+  const taskRef = asText(task?.path ?? task?.task ?? task?.decision_task ?? task?.decisionTask);
   if (!taskRef) return null;
   return readDecisionTaskProof(
     repoRoot,
@@ -433,9 +386,7 @@ export function readDecisionTaskSharedContextBundleProof(repoRoot, payload, task
   const contextBundle = payload?.context_bundle ?? payload?.authoring_context ?? {};
   const sharedContext =
     payload?.shared_context_bundle ?? contextBundle?.shared_context_bundle ?? {};
-  const sharedPath = asText(
-    sharedContext?.path ?? payload?.files?.shared_context_bundle,
-  );
+  const sharedPath = asText(sharedContext?.path ?? payload?.files?.shared_context_bundle);
   const expectedSha256 = asText(
     sharedContext?.sha256 ?? contextBundle?.shared_context_bundle_sha256,
   );
@@ -452,8 +403,7 @@ export function readDecisionTaskSharedContextBundleProof(repoRoot, payload, task
     proof.blockers.push({
       code: "full_context_decision_task_shared_context_bundle_missing",
       stage: "full_context_ai_completion",
-      message:
-        "Decision task references an unreadable shared full-context bundle.",
+      message: "Decision task references an unreadable shared full-context bundle.",
       decision_task: taskPath,
       shared_context_bundle: proof.path,
     });
@@ -467,8 +417,7 @@ export function readDecisionTaskSharedContextBundleProof(repoRoot, payload, task
       proof.blockers.push({
         code: "full_context_decision_task_shared_context_bundle_hash_mismatch",
         stage: "full_context_ai_completion",
-        message:
-          "Decision task shared context bundle sha256 no longer matches the task reference.",
+        message: "Decision task shared context bundle sha256 no longer matches the task reference.",
         decision_task: taskPath,
         shared_context_bundle: proof.path,
         expected_sha256: expectedSha256,
@@ -495,9 +444,7 @@ export function decisionTaskProofsFromApplyReport(repoRoot, report, source) {
   }
   return tasks
     .map((task) => {
-      const taskRef = asText(
-        task?.path ?? task?.task ?? task?.decision_task ?? task?.decisionTask,
-      );
+      const taskRef = asText(task?.path ?? task?.task ?? task?.decision_task ?? task?.decisionTask);
       if (!taskRef) return null;
       return readDecisionTaskProof(
         repoRoot,
@@ -540,9 +487,7 @@ export function fullContextDecisionTaskProofBlockers({ requirement, proof, label
   const blockers = [...proof.blockers];
   if (blockers.length > 0 || !proof.payload) return blockers;
   const expectedTaskKind =
-    label === "location"
-      ? "location_decision_authoring"
-      : "classification_decision_authoring";
+    label === "location" ? "location_decision_authoring" : "classification_decision_authoring";
   const expectedStatus =
     label === "location"
       ? "ready_for_ai_location_decisions"
@@ -563,8 +508,7 @@ export function fullContextDecisionTaskProofBlockers({ requirement, proof, label
     blockers.push({
       code: `full_context_ai_${label}_decision_task_status_invalid`,
       stage: "full_context_ai_completion",
-      message:
-        "Decision apply report must reference a ready full-context AI decision task.",
+      message: "Decision apply report must reference a ready full-context AI decision task.",
       decision_task: proof.path,
       expected_status: expectedStatus,
       actual_status: proof.status || null,
@@ -679,7 +623,5 @@ export function decisionTaskRequiredContextFilePatterns({ requirement, proof, la
       }
     }
   }
-  return profilePatterns.filter((pattern) =>
-    required.has(String(pattern).toLowerCase()),
-  );
+  return profilePatterns.filter((pattern) => required.has(String(pattern).toLowerCase()));
 }

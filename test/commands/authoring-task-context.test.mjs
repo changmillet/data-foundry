@@ -5,11 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-const repoRoot = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "..",
-);
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const fixtureRoot = path.join(repoRoot, "tmp", "authoring-task-context-test");
 const processId = "aaaaaaaa-bbbb-5ccc-8ddd-eeeeeeeeeeee";
 
@@ -36,10 +32,7 @@ function actionItem() {
     code: "process_placeholder_content",
     path: "processDataSet.processInformation.quantitativeReference.functionalUnitOrOther",
     message: "Functional unit placeholder requires evidence-backed completion.",
-    allowed_resolution_modes: [
-      "evidence_backed_completion",
-      "deferred_to_common_other",
-    ],
+    allowed_resolution_modes: ["evidence_backed_completion", "deferred_to_common_other"],
   };
 }
 
@@ -103,27 +96,24 @@ function fullContextFiles() {
     {
       kind: "ruleset",
       path: "context/runtime-ruleset.json",
-      text: "{\"rules\":[]}",
+      text: '{"rules":[]}',
     },
     {
       kind: "classification_schema",
       path: "context/tidas_processes_category.json",
-      text: "{\"oneOf\":[]}",
+      text: '{"oneOf":[]}',
     },
     {
       kind: "location_schema",
       path: "context/tidas_locations_category.json",
-      text: "{\"oneOf\":[]}",
+      text: '{"oneOf":[]}',
     },
   ];
 }
 
 test("authoring task build blocks AI patch authoring when full context is incomplete", () => {
   fs.rmSync(fixtureRoot, { recursive: true, force: true });
-  const packagePath = path.join(
-    fixtureRoot,
-    "process.authoring-package.json",
-  );
+  const packagePath = path.join(fixtureRoot, "process.authoring-package.json");
   const taskDir = path.join(fixtureRoot, "authoring-task");
 
   try {
@@ -179,10 +169,7 @@ test("authoring task build blocks AI patch authoring when full context is incomp
 
 test("authoring patch task excludes decision-only identity classification and location items", () => {
   fs.rmSync(fixtureRoot, { recursive: true, force: true });
-  const packagePath = path.join(
-    fixtureRoot,
-    "process.authoring-package.json",
-  );
+  const packagePath = path.join(fixtureRoot, "process.authoring-package.json");
   const taskDir = path.join(fixtureRoot, "authoring-task");
 
   try {
@@ -241,15 +228,12 @@ test("authoring patch task excludes decision-only identity classification and lo
       fs.readFileSync(path.join(repoRoot, task.files.patch_template), "utf8"),
     );
     assert.equal(patchTemplate.patch_sets[0].operations.length, 1);
-    assert.deepEqual(
-      patchTemplate.patch_sets[0].operations[0].closes_action_items,
-      [
-        {
-          code: "process_placeholder_content",
-          path: "processDataSet.processInformation.quantitativeReference.functionalUnitOrOther",
-        },
-      ],
-    );
+    assert.deepEqual(patchTemplate.patch_sets[0].operations[0].closes_action_items, [
+      {
+        code: "process_placeholder_content",
+        path: "processDataSet.processInformation.quantitativeReference.functionalUnitOrOther",
+      },
+    ]);
   } finally {
     fs.rmSync(fixtureRoot, { recursive: true, force: true });
   }
@@ -257,10 +241,7 @@ test("authoring patch task excludes decision-only identity classification and lo
 
 test("authoring patch collect blocks stale manifests that lack full-context task proof", () => {
   fs.rmSync(fixtureRoot, { recursive: true, force: true });
-  const packagePath = path.join(
-    fixtureRoot,
-    "process.authoring-package.json",
-  );
+  const packagePath = path.join(fixtureRoot, "process.authoring-package.json");
   const patchPath = path.join(fixtureRoot, "ai-patches.json");
   const manifestPath = path.join(fixtureRoot, "authoring-task-manifest.json");
 
@@ -324,8 +305,7 @@ test("authoring patch collect blocks stale manifests that lack full-context task
             version: "00.00.001",
           },
           context: {
-            full_context_ai_completion:
-              authoringPackage([]).full_context_ai_completion,
+            full_context_ai_completion: authoringPackage([]).full_context_ai_completion,
             contract_context_files: [
               {
                 kind: "schema",
@@ -347,11 +327,7 @@ test("authoring patch collect blocks stale manifests that lack full-context task
     });
 
     const report = runFoundry(
-      [
-        "dataset-authoring-patch-collect",
-        "--task-manifest",
-        rel(manifestPath),
-      ],
+      ["dataset-authoring-patch-collect", "--task-manifest", rel(manifestPath)],
       1,
     );
 
@@ -372,10 +348,7 @@ test("authoring patch collect blocks stale manifests that lack full-context task
 
 test("authoring patch collect blocks AI patches without completed status", () => {
   fs.rmSync(fixtureRoot, { recursive: true, force: true });
-  const packagePath = path.join(
-    fixtureRoot,
-    "process.authoring-package.json",
-  );
+  const packagePath = path.join(fixtureRoot, "process.authoring-package.json");
   const patchPath = path.join(fixtureRoot, "ai-patches.json");
   const manifestPath = path.join(fixtureRoot, "authoring-task-manifest.json");
 
@@ -442,19 +415,13 @@ test("authoring patch collect blocks AI patches without completed status", () =>
     });
 
     const report = runFoundry(
-      [
-        "dataset-authoring-patch-collect",
-        "--task-manifest",
-        rel(manifestPath),
-      ],
+      ["dataset-authoring-patch-collect", "--task-manifest", rel(manifestPath)],
       1,
     );
 
     assert.equal(report.status, "blocked");
     assert.equal(
-      report.blockers.some(
-        (blocker) => blocker.code === "ai_patch_status_not_completed",
-      ),
+      report.blockers.some((blocker) => blocker.code === "ai_patch_status_not_completed"),
       true,
     );
     assert.equal(report.counts.patch_sets, 0);

@@ -89,19 +89,13 @@ export function exitCodeForCommand(command, result) {
     case "dataset-patch-apply":
       return result?.foundry_wrapper?.exit_code ?? 1;
     case "dataset-curation-gate":
-      return statusIs(result, ["help", "ready", "ready_with_profile_waivers"])
-        ? 0
-        : 1;
+      return statusIs(result, ["help", "ready", "ready_with_profile_waivers"]) ? 0 : 1;
     case "dataset-authoring-plan":
     case "dataset-library-index-build":
     case "dataset-curation-cleanup":
       return 0;
     case "dataset-library-authoring-plan":
-      return statusIs(result, [
-        "help",
-        "ready_for_ai_library_decisions",
-        "ready_no_action_items",
-      ])
+      return statusIs(result, ["help", "ready_for_ai_library_decisions", "ready_no_action_items"])
         ? 0
         : 1;
     case "dataset-authoring-task-build":
@@ -138,13 +132,7 @@ export function exitCodeForCommand(command, result) {
     case "dataset-support-cache-refresh":
     case "dataset-post-write-closeout":
     case "dataset-import-completion-report":
-      return statusIs(result, [
-        "help",
-        "completed",
-        "completed_with_deferred_scopes",
-      ])
-        ? 0
-        : 1;
+      return statusIs(result, ["help", "completed", "completed_with_deferred_scopes"]) ? 0 : 1;
     case "dataset-location-decision-task-build":
       return statusIs(result, [
         "help",
@@ -160,40 +148,18 @@ export function exitCodeForCommand(command, result) {
     case "dataset-identity-preflight-query-audit":
       return statusIs(result, ["help", "passed"]) ? 0 : 1;
     case "dataset-process-scope-run":
-      return statusIs(result, [
-        "help",
-        "completed",
-        "completed_with_deferred_scopes",
-      ])
-        ? 0
-        : 1;
+      return statusIs(result, ["help", "completed", "completed_with_deferred_scopes"]) ? 0 : 1;
     case "dataset-identity-preflight-run":
-      return statusIs(result, [
-        "help",
-        "planned",
-        "completed",
-        "completed_with_identity_findings",
-      ])
+      return statusIs(result, ["help", "planned", "completed", "completed_with_identity_findings"])
         ? 0
         : 1;
     case "dataset-identity-reference-rewrites-apply":
-      return statusIs(result, [
-        "help",
-        "completed",
-        "completed_no_rewrites",
-        "completed_no_index",
-      ])
+      return statusIs(result, ["help", "completed", "completed_no_rewrites", "completed_no_index"])
         ? 0
         : 1;
     case "dataset-post-authoring-finalize":
     case "dataset-mutation-manifest":
-      return statusIs(result, [
-        "help",
-        "ready_for_remote_write",
-        "ready_reference_only",
-      ])
-        ? 0
-        : 1;
+      return statusIs(result, ["help", "ready_for_remote_write", "ready_reference_only"]) ? 0 : 1;
     case "dataset-commit-handoff-plan":
       return statusIs(result, ["help", "ready_for_explicit_commit"]) ? 0 : 1;
     default:

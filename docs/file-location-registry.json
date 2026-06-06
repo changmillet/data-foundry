@@ -11,9 +11,7 @@
       "current_path": ".codex/hooks.json",
       "previous_paths": [],
       "owner": "tiangong-lca-data-foundry",
-      "referenced_by": [
-        "docs/agent-harness-cli-comparison.md"
-      ],
+      "referenced_by": ["docs/agent-harness-cli-comparison.md"],
       "sensitivity": "non-sensitive hook configuration",
       "tracked": true,
       "notes": "Registers the Codex Stop hook for Foundry checks."
@@ -25,10 +23,7 @@
       "current_path": ".codex/hooks/run-foundry-acceptance-check.sh",
       "previous_paths": [],
       "owner": "tiangong-lca-data-foundry",
-      "referenced_by": [
-        ".codex/hooks.json",
-        "docs/agent-harness-cli-comparison.md"
-      ],
+      "referenced_by": [".codex/hooks.json", "docs/agent-harness-cli-comparison.md"],
       "sensitivity": "non-sensitive local hook script; writes runtime logs under ignored .foundry/state/",
       "tracked": true,
       "notes": "Runs Foundry checks before an agent turn finishes."
@@ -40,11 +35,7 @@
       "current_path": "docs/capability-ownership-policy.md",
       "previous_paths": [],
       "owner": "tiangong-lca-data-foundry",
-      "referenced_by": [
-        "WORKFLOW.md",
-        "docs/workspace-project-map.md",
-        "tasks/README.md"
-      ],
+      "referenced_by": ["WORKFLOW.md", "docs/workspace-project-map.md", "tasks/README.md"],
       "sensitivity": "non-sensitive governance policy",
       "tracked": true,
       "notes": "Defines how Foundry distinguishes local orchestration from shared reusable capabilities."
@@ -74,10 +65,7 @@
       "current_path": "specs/automated-lca-capability-registry.json",
       "previous_paths": [],
       "owner": "tiangong-lca-data-foundry",
-      "referenced_by": [
-        "specs/workspace-capability-adapters.md",
-        "scripts/foundry.mjs"
-      ],
+      "referenced_by": ["specs/workspace-capability-adapters.md", "scripts/foundry.mjs"],
       "sensitivity": "non-sensitive command and artifact contracts; no credentials or private payloads",
       "tracked": true,
       "notes": "Routes data import and source-document authoring work to SDK-backed CLI contracts and shared gates."

@@ -1,15 +1,10 @@
+import { fullContextAiCompletionRequirement } from "./context-inputs.mjs";
+import { datasetIdentity, identityKey } from "./dataset-payload.mjs";
 import {
   datasetTypePlural,
   referenceOnlySupportDatasetTypes,
   supportDatasetTypes,
 } from "./dataset-types.mjs";
-import {
-  datasetIdentity,
-  identityKey,
-} from "./dataset-payload.mjs";
-import {
-  fullContextAiCompletionRequirement,
-} from "./context-inputs.mjs";
 import {
   authoringPackageProofsFromCurationGate,
   authoringPackageProofsFromPatchCollect,
@@ -20,38 +15,27 @@ import {
   fullContextPackageProofBlockers,
 } from "./full-context-proof.mjs";
 import {
-  foundryTraceSummary,
-} from "./trace-summary.mjs";
-import {
   asText,
   ensureArray,
   fileExists,
   repoRelativePath,
   resolveRepoPath,
 } from "./runtime-io.mjs";
-import {
-  normalizeDryRunOperation,
-} from "./workflow-dry-run-context.mjs";
-import {
-  hasImportOnlyTrace,
-  patchEvidenceForRow,
-  tracePatchEvidenceBlockers,
-} from "./workflow-patch-evidence-context.mjs";
+import { foundryTraceSummary } from "./trace-summary.mjs";
 import {
   buildClassificationDecisionFullContextBlockers,
   buildIdentityDecisionFullContextBlockers,
   buildLocationDecisionFullContextBlockers,
 } from "./workflow-decision-full-context.mjs";
+import { normalizeDryRunOperation } from "./workflow-dry-run-context.mjs";
+import { prewriteIdentityBlockers } from "./workflow-identity-preflight.mjs";
+import { readJsonLines } from "./workflow-patch-collect.mjs";
 import {
-  prewriteIdentityBlockers,
-} from "./workflow-identity-preflight.mjs";
-import {
-  readJsonLines,
-} from "./workflow-patch-collect.mjs";
-import {
-  allowedPatchResolutionModes,
-  jsonPointerToken,
-} from "./workflow-semantic-actions.mjs";
+  hasImportOnlyTrace,
+  patchEvidenceForRow,
+  tracePatchEvidenceBlockers,
+} from "./workflow-patch-evidence-context.mjs";
+import { allowedPatchResolutionModes, jsonPointerToken } from "./workflow-semantic-actions.mjs";
 
 // part-11.mjs
 export function buildFullContextAiCompletionBlockers({
@@ -76,11 +60,7 @@ export function buildFullContextAiCompletionBlockers({
   canonicalSupportRewriteContext,
   cleanupContext,
 }) {
-  const requirement = fullContextAiCompletionRequirement(
-    profile,
-    datasetType,
-    repoRoot,
-  );
+  const requirement = fullContextAiCompletionRequirement(profile, datasetType, repoRoot);
   if (!requirement) return [];
   const blockers = [];
   const curationPackageProofs = curationGateArtifact
@@ -138,9 +118,7 @@ export function buildFullContextAiCompletionBlockers({
     identityDecisionApplyContext?.status === "completed" &&
     identityDecisionApplyContext.decisions.length > 0;
   const hasDecisionProof =
-    hasClassificationDecisionProof ||
-    hasLocationDecisionProof ||
-    hasIdentityDecisionProof;
+    hasClassificationDecisionProof || hasLocationDecisionProof || hasIdentityDecisionProof;
 
   blockers.push(
     ...buildClassificationDecisionFullContextBlockers({
@@ -221,10 +199,7 @@ export function buildFullContextAiCompletionBlockers({
         "This profile requires full-context AI semantic outputs to be deterministically applied through identity/classification/location decision apply or patch apply before remote write planning.",
       proof: requirement.proof,
     });
-  } else if (
-    patchApplyArtifact &&
-    patchApplyArtifact.value?.status !== "completed"
-  ) {
+  } else if (patchApplyArtifact && patchApplyArtifact.value?.status !== "completed") {
     blockers.push({
       code: "full_context_ai_patch_apply_not_completed",
       stage: "full_context_ai_completion",
@@ -253,9 +228,7 @@ export function buildFullContextAiCompletionBlockers({
       message:
         "Every AI patch evidence row must include authoring_package_sha256 to prove it used the full authoring package context.",
       count: missingPackageHash.length,
-      artifact: patchApplyArtifact
-        ? repoRelativePath(repoRoot, patchApplyArtifact.path)
-        : null,
+      artifact: patchApplyArtifact ? repoRelativePath(repoRoot, patchApplyArtifact.path) : null,
     });
   }
   const knownPackageHashes = new Set(
@@ -274,9 +247,7 @@ export function buildFullContextAiCompletionBlockers({
       message:
         "AI patch evidence authoring_package_sha256 must match a readable full-context authoring package from the patch task manifest or curation gate.",
       count: unknownPackageHash.length,
-      artifact: patchApplyArtifact
-        ? repoRelativePath(repoRoot, patchApplyArtifact.path)
-        : null,
+      artifact: patchApplyArtifact ? repoRelativePath(repoRoot, patchApplyArtifact.path) : null,
     });
   }
   const missingClosures = evidenceRows.filter(
@@ -289,14 +260,10 @@ export function buildFullContextAiCompletionBlockers({
       message:
         "Every AI patch evidence row must close at least one authoring action item for this profile.",
       count: missingClosures.length,
-      artifact: patchApplyArtifact
-        ? repoRelativePath(repoRoot, patchApplyArtifact.path)
-        : null,
+      artifact: patchApplyArtifact ? repoRelativePath(repoRoot, patchApplyArtifact.path) : null,
     });
   }
-  const missingResolution = evidenceRows.filter(
-    (entry) => !evidenceResolutionMode(entry),
-  );
+  const missingResolution = evidenceRows.filter((entry) => !evidenceResolutionMode(entry));
   if (missingResolution.length > 0) {
     blockers.push({
       code: "full_context_ai_patch_resolution_missing",
@@ -304,9 +271,7 @@ export function buildFullContextAiCompletionBlockers({
       message:
         "Every AI patch evidence row must include resolution.mode to explain how the action item was completed or deferred.",
       count: missingResolution.length,
-      artifact: patchApplyArtifact
-        ? repoRelativePath(repoRoot, patchApplyArtifact.path)
-        : null,
+      artifact: patchApplyArtifact ? repoRelativePath(repoRoot, patchApplyArtifact.path) : null,
     });
   }
   const invalidResolutionMode = evidenceRows.filter((entry) => {
@@ -319,9 +284,7 @@ export function buildFullContextAiCompletionBlockers({
       stage: "full_context_ai_completion",
       message: "AI patch evidence contains unsupported resolution.mode values.",
       count: invalidResolutionMode.length,
-      artifact: patchApplyArtifact
-        ? repoRelativePath(repoRoot, patchApplyArtifact.path)
-        : null,
+      artifact: patchApplyArtifact ? repoRelativePath(repoRoot, patchApplyArtifact.path) : null,
     });
   }
   const missingResolutionContext = [];
@@ -341,9 +304,7 @@ export function buildFullContextAiCompletionBlockers({
         "AI patch evidence resolution.used_context_kinds must include every required full-context kind for this profile.",
       count: missingResolutionContext.length,
       required_context_kinds: requirement.requiredContextKinds,
-      artifact: patchApplyArtifact
-        ? repoRelativePath(repoRoot, patchApplyArtifact.path)
-        : null,
+      artifact: patchApplyArtifact ? repoRelativePath(repoRoot, patchApplyArtifact.path) : null,
     });
   }
   return blockers;
@@ -386,9 +347,7 @@ export const referenceTableByPathToken = [
 export function referenceTableFromType(value) {
   const text = asText(value).toLowerCase();
   if (!text) return null;
-  const match = referenceTableByTypeToken.find(([token]) =>
-    text.includes(token),
-  );
+  const match = referenceTableByTypeToken.find(([token]) => text.includes(token));
   return match?.[1] ?? null;
 }
 
@@ -396,9 +355,7 @@ export function referenceTableFromPath(pathSegments) {
   const text = pathSegments.join(".").toLowerCase();
   if (!text) return null;
   const compact = text.replace(/[^a-z0-9]/gu, "");
-  const match = referenceTableByPathToken.find(([token]) =>
-    compact.includes(token),
-  );
+  const match = referenceTableByPathToken.find(([token]) => compact.includes(token));
   return match?.[1] ?? null;
 }
 
@@ -421,9 +378,7 @@ export function plannedRootReferenceKeys(rows, datasetType) {
 
 export function plannedRootReferenceIds(rows, datasetType) {
   return new Set(
-    rows
-      .map((row, index) => datasetIdentity(row, index, datasetType).id)
-      .filter(Boolean),
+    rows.map((row, index) => datasetIdentity(row, index, datasetType).id).filter(Boolean),
   );
 }
 
@@ -438,26 +393,19 @@ export function collectDatasetReferences(value, pathSegments = [], refs = []) {
   if (!value || typeof value !== "object") return refs;
 
   const id = asText(
-    value["@refObjectId"] ??
-      value.refObjectId ??
-      value.ref_object_id ??
-      value.ref_id,
+    value["@refObjectId"] ?? value.refObjectId ?? value.ref_object_id ?? value.ref_id,
   );
   if (id) {
     const version = asText(
       value["@version"] ?? value.version ?? value.refVersion ?? value.ref_version,
     );
     const table =
-      referenceTableFromType(value["@type"] ?? value.type) ??
-      referenceTableFromPath(pathSegments);
+      referenceTableFromType(value["@type"] ?? value.type) ?? referenceTableFromPath(pathSegments);
     refs.push({
       table,
       id,
       version,
-      path:
-        pathSegments.length > 0
-          ? `/${pathSegments.map(jsonPointerToken).join("/")}`
-          : "/",
+      path: pathSegments.length > 0 ? `/${pathSegments.map(jsonPointerToken).join("/")}` : "/",
       type: asText(value["@type"] ?? value.type) || null,
       short_description:
         asText(value["common:shortDescription"]?.["#text"]) ||
@@ -477,8 +425,7 @@ export function isFoundryTracePathSegments(pathSegments) {
     pathSegments.includes("common:other") &&
     pathSegments.some(
       (segment) =>
-        segment.startsWith("tiangongfoundry:") &&
-        segment.toLowerCase().includes("trace"),
+        segment.startsWith("tiangongfoundry:") && segment.toLowerCase().includes("trace"),
     )
   );
 }
@@ -517,19 +464,12 @@ export function identityReferenceRewriteProofKeys(context) {
       .map((row) => row?.canonical)
       .filter(Boolean)
       .map((canonical) => ({
-          table: asText(canonical?.table) || "flows",
-          id: asText(
-            canonical?.ref_object_id ??
-              canonical?.refObjectId ??
-              canonical?.id,
-          ),
-          version:
-            asText(
-              canonical?.version ??
-                canonical?.["@version"] ??
-                canonical?.ref_version,
-            ) || "00.00.001",
-        }))
+        table: asText(canonical?.table) || "flows",
+        id: asText(canonical?.ref_object_id ?? canonical?.refObjectId ?? canonical?.id),
+        version:
+          asText(canonical?.version ?? canonical?.["@version"] ?? canonical?.ref_version) ||
+          "00.00.001",
+      }))
       .filter((reference) => reference.id)
       .map(referenceKey),
   );
@@ -598,15 +538,15 @@ export function buildReferenceClosureBlockers({
 }
 
 export function failureReasons(row) {
-  return ensureArray(
-    row?.reason ?? row?.reasons ?? row?.validation?.issues ?? row?.issues,
-  ).map((item) => ({
-    code: item?.code ?? "failure",
-    stage: item?.stage ?? null,
-    path: item?.path ?? null,
-    message: item?.message ?? item?.error?.message ?? null,
-    validator: item?.validator ?? null,
-  }));
+  return ensureArray(row?.reason ?? row?.reasons ?? row?.validation?.issues ?? row?.issues).map(
+    (item) => ({
+      code: item?.code ?? "failure",
+      stage: item?.stage ?? null,
+      path: item?.path ?? null,
+      message: item?.message ?? item?.error?.message ?? null,
+      validator: item?.validator ?? null,
+    }),
+  );
 }
 
 export function decisionCounts(items) {
@@ -652,15 +592,9 @@ export function buildWriteCandidateItem({
   const invalidDryRunReport = evidenceScopeBlockers.some(
     (blocker) => blocker?.code === "dry_run_report_is_commit_report",
   );
-  const aiPatchEvidence = patchEvidenceForRow(
-    patchApplyContext,
-    identity,
-    rowIndex,
-  );
-  const sourceReferenceRewrites =
-    sourceReferenceRewritesByKey?.get(key) ?? [];
-  const identityReferenceRewrites =
-    identityReferenceRewritesByKey?.get(key) ?? [];
+  const aiPatchEvidence = patchEvidenceForRow(patchApplyContext, identity, rowIndex);
+  const sourceReferenceRewrites = sourceReferenceRewritesByKey?.get(key) ?? [];
+  const identityReferenceRewrites = identityReferenceRewritesByKey?.get(key) ?? [];
   for (const blocker of patchApplyContext?.globalBlockers ?? []) {
     blockers.push(blocker);
   }
@@ -691,10 +625,7 @@ export function buildWriteCandidateItem({
       message: "Curation gate report does not contain this write candidate.",
     });
   }
-  if (
-    curationEntity &&
-    !["ready", "ready_with_profile_waivers"].includes(curationStatus)
-  ) {
+  if (curationEntity && !["ready", "ready_with_profile_waivers"].includes(curationStatus)) {
     blockers.push({
       code: "curation_gate_not_ready",
       stage: "foundry_curation",
@@ -715,8 +646,7 @@ export function buildWriteCandidateItem({
     blockers.push({
       code: "import_only_trace_not_cleaned",
       stage: "prewrite_cleanup",
-      message:
-        "Payload still contains tidasimport:sourceTrace or @xmlns:tidasimport.",
+      message: "Payload still contains tidasimport:sourceTrace or @xmlns:tidasimport.",
     });
   }
 
@@ -788,8 +718,7 @@ export function buildWriteCandidateItem({
       blockers.push({
         code: "dry_run_failed",
         stage: "dry_run",
-        message:
-          "lifecyclemodel save-draft dry-run reported this row as failed.",
+        message: "lifecyclemodel save-draft dry-run reported this row as failed.",
         reasons: failureReasons(failure),
       });
       dryRunEvidence = { reasons: failureReasons(failure) };
@@ -817,8 +746,7 @@ export function buildWriteCandidateItem({
     blockers.push({
       code: "dry_run_evidence_missing",
       stage: "dry_run",
-      message:
-        "No matching dry-run success or failure artifact was found for this row.",
+      message: "No matching dry-run success or failure artifact was found for this row.",
     });
   }
 
@@ -859,10 +787,8 @@ export function buildWriteCandidateItem({
     dry_run_status: dryRunStatus,
     trace_summary_count: traceSummary.import_trace_summary_count,
     unresolved_trace_count: traceSummary.unresolved_trace_count,
-    unresolved_exchange_trace_count:
-      traceSummary.unresolved_exchange_trace_count,
-    source_exchange_completeness_count:
-      traceSummary.source_exchange_completeness_count,
+    unresolved_exchange_trace_count: traceSummary.unresolved_exchange_trace_count,
+    source_exchange_completeness_count: traceSummary.source_exchange_completeness_count,
     foundry_traces: {
       unresolved_traces: traceSummary.unresolved_traces,
       unresolved_exchange_traces: traceSummary.unresolved_exchange_traces,
@@ -913,9 +839,7 @@ export function buildReferenceReuseItems({
       entity_id: identity.id,
       version: identity.version,
       role: "reference_reuse",
-      decision: alreadyWriteCandidate
-        ? "covered_by_write_candidate"
-        : "reuse_existing_reference",
+      decision: alreadyWriteCandidate ? "covered_by_write_candidate" : "reuse_existing_reference",
       operation: null,
       target_user_id: null,
       schema_status: "not_required_for_reference_reuse",
@@ -928,10 +852,8 @@ export function buildReferenceReuseItems({
         .filter(Boolean),
       trace_summary_count: traceSummary.import_trace_summary_count,
       unresolved_trace_count: traceSummary.unresolved_trace_count,
-      unresolved_exchange_trace_count:
-        traceSummary.unresolved_exchange_trace_count,
-      source_exchange_completeness_count:
-        traceSummary.source_exchange_completeness_count,
+      unresolved_exchange_trace_count: traceSummary.unresolved_exchange_trace_count,
+      source_exchange_completeness_count: traceSummary.source_exchange_completeness_count,
       foundry_traces: {
         unresolved_traces: traceSummary.unresolved_traces,
         unresolved_exchange_traces: traceSummary.unresolved_exchange_traces,

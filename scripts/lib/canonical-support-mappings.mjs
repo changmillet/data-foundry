@@ -8,8 +8,7 @@ export function defaultCanonicalFlowPropertyMappings() {
     {
       source_units: ["p", "item", "items", "item(s)", "dozen(s)"],
       canonical_flow_property_id: "01846770-4cfe-4a25-8ad9-919d8d378345",
-      reason:
-        "Countable-item units must reuse the public canonical Number of items flow property.",
+      reason: "Countable-item units must reuse the public canonical Number of items flow property.",
     },
     {
       source_units: ["m", "km", "cm", "mm", "ft", "mi", "in", "yd"],
@@ -37,26 +36,22 @@ export function defaultCanonicalFlowPropertyMappings() {
     {
       source_units: ["m2a", "m2*a", "km2*a", "ha*a", "ft2*a", "mi2*a", "m2*d"],
       canonical_flow_property_id: "93a60a56-a3c8-21da-a746-0800200c9a66",
-      reason:
-        "Area*time units must reuse the public canonical Area*time flow property.",
+      reason: "Area*time units must reuse the public canonical Area*time flow property.",
     },
     {
       source_units: ["kbq", "bq", "ci", "rutherford"],
       canonical_flow_property_id: "93a60a56-a3c8-17da-a746-0800200c9a66",
-      reason:
-        "Radioactivity units must reuse the public canonical Radioactivity flow property.",
+      reason: "Radioactivity units must reuse the public canonical Radioactivity flow property.",
     },
     {
       source_units: ["tkm", "t*km", "kg*km"],
       canonical_flow_property_id: "118f2a40-50ec-457c-aa60-9bc6b6af9931",
-      reason:
-        "Mass*distance units must reuse the public canonical mass*distance flow property.",
+      reason: "Mass*distance units must reuse the public canonical mass*distance flow property.",
     },
     {
       source_units: ["m3a", "m3*a", "l*a"],
       canonical_flow_property_id: "441238a3-ba09-46ec-b35b-c30cfba746d1",
-      reason:
-        "Volume*time units must reuse the public canonical Volume*time flow property.",
+      reason: "Volume*time units must reuse the public canonical Volume*time flow property.",
     },
     {
       source_units: ["mol"],
@@ -66,8 +61,7 @@ export function defaultCanonicalFlowPropertyMappings() {
     {
       source_units: ["kg*a", "t*a", "kg*d", "t*d", "kga", "ta", "kgd", "td"],
       canonical_flow_property_id: "b3f0f892-c5a3-4c66-a432-c09e3d1e9bd6",
-      reason:
-        "Mass*time units must reuse the public canonical Mass*time flow property.",
+      reason: "Mass*time units must reuse the public canonical Mass*time flow property.",
     },
   ];
 }

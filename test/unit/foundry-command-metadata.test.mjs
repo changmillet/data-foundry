@@ -61,17 +61,30 @@ test("foundry command metadata is navigable and evidence backed", () => {
       ["scripts/foundry.mjs", "scripts/lib/foundry-cli.mjs", entry.ownerModule],
       `${entry.command} navigation path should be entrypoint -> dispatcher -> owner`,
     );
-    assert.ok(entry.navigationPath.every(repoFileExists), `${entry.command} navigation path has a missing file`);
+    assert.ok(
+      entry.navigationPath.every(repoFileExists),
+      `${entry.command} navigation path has a missing file`,
+    );
     assert.ok(entry.inputs.length > 0, `${entry.command} should declare input artifacts`);
     assert.ok(entry.outputs.length > 0, `${entry.command} should declare output artifacts`);
     assert.ok(entry.keyTests.length > 0, `${entry.command} should declare key tests`);
     assert.ok(entry.workflowEntry, `${entry.command} should declare workflowEntry audit state`);
     assert.ok(entry.workflowEntry.status, `${entry.command} workflowEntry should declare status`);
-    assert.ok(entry.workflowEntry.entry_kind, `${entry.command} workflowEntry should declare entry_kind`);
-    assert.equal(entry.workflowEntry.status, "active", `${entry.command} should have active workflow audit state`);
+    assert.ok(
+      entry.workflowEntry.entry_kind,
+      `${entry.command} workflowEntry should declare entry_kind`,
+    );
+    assert.equal(
+      entry.workflowEntry.status,
+      "active",
+      `${entry.command} should have active workflow audit state`,
+    );
     for (const keyTest of entry.keyTests) {
       if (keyTest.path) {
-        assert.ok(repoFileExists(keyTest.path), `${entry.command} key test path is missing: ${keyTest.path}`);
+        assert.ok(
+          repoFileExists(keyTest.path),
+          `${entry.command} key test path is missing: ${keyTest.path}`,
+        );
       }
       assert.ok(keyTest.kind, `${entry.command} key test is missing kind`);
     }

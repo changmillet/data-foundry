@@ -77,10 +77,7 @@ export function collectBundledSchemaContextFiles(repoRoot) {
     if (name === "tidas_locations_category.json") continue;
     entries.push(["classification_schema", path.join(schemaDir, name)]);
   }
-  entries.push([
-    "location_schema",
-    path.join(schemaDir, "tidas_locations_category.json"),
-  ]);
+  entries.push(["location_schema", path.join(schemaDir, "tidas_locations_category.json")]);
   return entries;
 }
 
@@ -115,14 +112,11 @@ export function normalizeFullContextAiCompletion(value) {
     datasetTypes: ensureArray(config.dataset_types ?? config.datasetTypes)
       .map((item) => String(item).trim().toLowerCase())
       .filter(Boolean),
-    requiredContextKinds: ensureArray(
-      config.required_context_kinds ?? config.requiredContextKinds,
-    )
+    requiredContextKinds: ensureArray(config.required_context_kinds ?? config.requiredContextKinds)
       .map((item) => String(item).trim())
       .filter(Boolean),
     requiredContextFilePatterns: ensureArray(
-      config.required_context_file_patterns ??
-        config.requiredContextFilePatterns,
+      config.required_context_file_patterns ?? config.requiredContextFilePatterns,
     )
       .map((item) => String(item).trim())
       .filter(Boolean),
@@ -133,13 +127,9 @@ export function normalizeFullContextAiCompletion(value) {
 }
 
 export function fullContextAiCompletionRequirement(profile, datasetType, repoRoot) {
-  const requirement =
-    profile?.fullContextAiCompletion ?? normalizeFullContextAiCompletion(null);
+  const requirement = profile?.fullContextAiCompletion ?? normalizeFullContextAiCompletion(null);
   if (!requirement.required) return null;
-  if (
-    requirement.datasetTypes.length > 0 &&
-    !requirement.datasetTypes.includes(datasetType)
-  ) {
+  if (requirement.datasetTypes.length > 0 && !requirement.datasetTypes.includes(datasetType)) {
     return null;
   }
   const fallbackFilePatterns = [
@@ -156,22 +146,14 @@ export function fullContextAiCompletionRequirement(profile, datasetType, repoRoo
     "tidas_unitgroups_category.json",
     "tidas_locations_category.json",
   ];
-  const categorySchemaFileNames = repoRoot
-    ? bundledCategorySchemaFileNames(repoRoot)
-    : [];
+  const categorySchemaFileNames = repoRoot ? bundledCategorySchemaFileNames(repoRoot) : [];
 
   return {
     ...requirement,
     requiredContextKinds:
       requirement.requiredContextKinds.length > 0
         ? requirement.requiredContextKinds
-        : [
-            "schema",
-            "methodology_yaml",
-            "ruleset",
-            "classification_schema",
-            "location_schema",
-          ],
+        : ["schema", "methodology_yaml", "ruleset", "classification_schema", "location_schema"],
     requiredContextFilePatterns: [
       ...new Set([
         ...(requirement.requiredContextFilePatterns.length > 0
@@ -203,9 +185,7 @@ export function contextHasFilePattern(files, pattern) {
 
 export function fullContextGateItems({ contractContext, requirement }) {
   if (!requirement) return [];
-  const kinds = new Set(
-    contractContext.files.map((file) => asText(file.kind)).filter(Boolean),
-  );
+  const kinds = new Set(contractContext.files.map((file) => asText(file.kind)).filter(Boolean));
   const items = [];
   for (const kind of requirement.requiredContextKinds) {
     if (!kinds.has(kind)) {

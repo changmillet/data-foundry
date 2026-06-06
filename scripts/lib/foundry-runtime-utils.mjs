@@ -65,9 +65,7 @@ export function createFoundryRuntimeUtils({ parseScalar, repoRoot }) {
         try {
           return JSON.parse(line);
         } catch (error) {
-          throw new Error(
-            `Invalid JSONL at ${repoRelativePath(filePath)}:${index + 1}: ${error}`,
-          );
+          throw new Error(`Invalid JSONL at ${repoRelativePath(filePath)}:${index + 1}: ${error}`);
         }
       });
   }
@@ -77,15 +75,11 @@ export function createFoundryRuntimeUtils({ parseScalar, repoRoot }) {
   }
 
   function fileExists(filePath) {
-    return Boolean(
-      filePath && fs.existsSync(filePath) && fs.statSync(filePath).isFile(),
-    );
+    return Boolean(filePath && fs.existsSync(filePath) && fs.statSync(filePath).isFile());
   }
 
   function directoryExists(filePath) {
-    return Boolean(
-      filePath && fs.existsSync(filePath) && fs.statSync(filePath).isDirectory(),
-    );
+    return Boolean(filePath && fs.existsSync(filePath) && fs.statSync(filePath).isDirectory());
   }
 
   function resolveRepoPath(filePath) {
@@ -114,10 +108,7 @@ export function createFoundryRuntimeUtils({ parseScalar, repoRoot }) {
 
   function reportInputPath(report) {
     return asText(
-      report?.input_path ||
-        report?.input_file ||
-        report?.inputPath ||
-        report?.inputFile,
+      report?.input_path || report?.input_file || report?.inputPath || report?.inputFile,
     );
   }
 
@@ -177,8 +168,7 @@ export function createFoundryRuntimeUtils({ parseScalar, repoRoot }) {
   function asText(value) {
     if (value === undefined || value === null) return "";
     if (typeof value === "string") return value.trim();
-    if (typeof value === "number" || typeof value === "boolean")
-      return String(value);
+    if (typeof value === "number" || typeof value === "boolean") return String(value);
     return "";
   }
 
@@ -225,25 +215,18 @@ export function createFoundryRuntimeUtils({ parseScalar, repoRoot }) {
   }
 
   function loadEnvFile(filePath, { override = false } = {}) {
-    if (!filePath || !fs.existsSync(filePath))
-      return { file: filePath, loaded: false, keys: [] };
+    if (!filePath || !fs.existsSync(filePath)) return { file: filePath, loaded: false, keys: [] };
     const keys = [];
     for (const rawLine of readText(filePath).split(/\r?\n/u)) {
       const line = rawLine.trim();
       if (!line || line.startsWith("#")) continue;
-      const match = line
-        .replace(/^export\s+/u, "")
-        .match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/u);
+      const match = line.replace(/^export\s+/u, "").match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/u);
       if (!match) continue;
       const key = match[1];
       const value = String(match[2] ?? "")
         .trim()
         .replace(/^["']|["']$/gu, "");
-      if (
-        override ||
-        process.env[key] === undefined ||
-        isPlaceholderEnvValue(process.env[key])
-      ) {
+      if (override || process.env[key] === undefined || isPlaceholderEnvValue(process.env[key])) {
         process.env[key] = value;
       }
       keys.push(key);
@@ -257,9 +240,7 @@ export function createFoundryRuntimeUtils({ parseScalar, repoRoot }) {
   }
 
   function hasUsableEnvValue(key) {
-    return (
-      process.env[key] !== undefined && !isPlaceholderEnvValue(process.env[key])
-    );
+    return process.env[key] !== undefined && !isPlaceholderEnvValue(process.env[key]);
   }
 
   function ensureArray(value) {
@@ -280,8 +261,7 @@ export function createFoundryRuntimeUtils({ parseScalar, repoRoot }) {
   }
 
   function appendOption(args, flag, value) {
-    if (value === undefined || value === null || value === false || value === "")
-      return;
+    if (value === undefined || value === null || value === false || value === "") return;
     args.push(flag, String(value));
   }
 
@@ -346,9 +326,7 @@ export function createFoundryRuntimeUtils({ parseScalar, repoRoot }) {
       ...blocker,
       code: blocker?.code || "location_audit_blocker",
       stage: "location_audit",
-      message:
-        blocker?.message ||
-        "Location audit reported a blocker before remote write.",
+      message: blocker?.message || "Location audit reported a blocker before remote write.",
     }));
     if (stage?.exit_code !== 0 && blockers.length === 0) {
       blockers.push({
@@ -397,8 +375,7 @@ export function createFoundryRuntimeUtils({ parseScalar, repoRoot }) {
           })
         : null,
       ...locationAuditBlockers,
-      !requireCurationGate ||
-      ["ready", "ready_with_profile_waivers"].includes(curationGate?.status)
+      !requireCurationGate || ["ready", "ready_with_profile_waivers"].includes(curationGate?.status)
         ? null
         : {
             code: "post_authoring_curation_gate_not_ready",
@@ -429,9 +406,7 @@ export function createFoundryRuntimeUtils({ parseScalar, repoRoot }) {
 
   function readJsonArtifactOption(value) {
     const resolved = resolveRepoPath(value);
-    return resolved && fileExists(resolved)
-      ? { path: resolved, value: readJson(resolved) }
-      : null;
+    return resolved && fileExists(resolved) ? { path: resolved, value: readJson(resolved) } : null;
   }
 
   function runTiangongJsonStage(stage, args) {
@@ -485,9 +460,7 @@ export function createFoundryRuntimeUtils({ parseScalar, repoRoot }) {
   }
 
   function hasUnresolvedAiPlaceholder(value) {
-    return /__AI_(?:FILL|SELECT)[A-Z0-9_]*__|requires_ai_completion/iu.test(
-      JSON.stringify(value),
-    );
+    return /__AI_(?:FILL|SELECT)[A-Z0-9_]*__|requires_ai_completion/iu.test(JSON.stringify(value));
   }
 
   function cloneJson(value) {

@@ -15,10 +15,7 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
-const repoRoot = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "..",
-);
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const keepArtifacts = process.argv.includes("--keep");
 const tempRoot = mkdtempSync(path.join(os.tmpdir(), "foundry-golden-diff-"));
 const beforeRoot = path.join(tempRoot, "before-worktree");
@@ -76,8 +73,7 @@ function writeJsonLines(filePath, rows) {
   mkdirSync(path.dirname(filePath), { recursive: true });
   writeFileSync(
     filePath,
-    rows.map((row) => JSON.stringify(row)).join("\n") +
-      (rows.length ? "\n" : ""),
+    rows.map((row) => JSON.stringify(row)).join("\n") + (rows.length ? "\n" : ""),
   );
 }
 
@@ -162,9 +158,7 @@ function processRow() {
           name: { baseName: ml("Fixture process") },
           classificationInformation: {
             "common:classification": {
-              "common:class": [
-                { "@level": "0", "@classId": "1", "#text": "Agriculture" },
-              ],
+              "common:class": [{ "@level": "0", "@classId": "1", "#text": "Agriculture" }],
             },
           },
         },
@@ -192,9 +186,9 @@ function authoringPackage(root) {
   const contextFiles = [
     ["schema", "schema.json", "{}"],
     ["methodology_yaml", "methodology.yaml", "process:\n  required: true\n"],
-    ["ruleset", "runtime-ruleset.json", "{\"rules\":[]}"],
-    ["classification_schema", "tidas_processes_category.json", "{\"oneOf\":[]}"],
-    ["location_schema", "tidas_locations_category.json", "{\"oneOf\":[]}"],
+    ["ruleset", "runtime-ruleset.json", '{"rules":[]}'],
+    ["classification_schema", "tidas_processes_category.json", '{"oneOf":[]}'],
+    ["location_schema", "tidas_locations_category.json", '{"oneOf":[]}'],
   ].map(([kind, fileName, text]) => {
     const filePath = path.join(contextDir, fileName);
     mkdirSync(path.dirname(filePath), { recursive: true });
@@ -233,10 +227,7 @@ function authoringPackage(root) {
         code: "process_placeholder_content",
         path: "processDataSet.processInformation.quantitativeReference.functionalUnitOrOther",
         message: "Functional unit placeholder requires evidence-backed completion.",
-        allowed_resolution_modes: [
-          "evidence_backed_completion",
-          "deferred_to_common_other",
-        ],
+        allowed_resolution_modes: ["evidence_backed_completion", "deferred_to_common_other"],
       },
     ],
     source_row: processRow(),
@@ -412,7 +403,12 @@ function runSide(label, root, fixture, cliPath) {
   foundryCommand(root, ["help"], path.join(commandOut, "help.json"), commonEnv);
   foundryCommand(root, ["doctor"], path.join(commandOut, "doctor.json"), commonEnv);
   foundryCommand(root, ["profiles-list"], path.join(commandOut, "profiles-list.json"), commonEnv);
-  foundryCommand(root, ["capabilities-list"], path.join(commandOut, "capabilities-list.json"), commonEnv);
+  foundryCommand(
+    root,
+    ["capabilities-list"],
+    path.join(commandOut, "capabilities-list.json"),
+    commonEnv,
+  );
   foundryCommand(
     root,
     [
@@ -575,10 +571,7 @@ function normalizeOutputs() {
       "dataset-post-authoring-finalize.json",
       "dataset-mutation-manifest.json",
     ]) {
-      normalizeJsonFile(
-        path.join(commandDir, fileName),
-        path.join(normalizedOut, fileName),
-      );
+      normalizeJsonFile(path.join(commandDir, fileName), path.join(normalizedOut, fileName));
     }
   }
 }

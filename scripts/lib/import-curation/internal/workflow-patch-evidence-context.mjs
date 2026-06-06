@@ -1,14 +1,7 @@
 import path from "node:path";
-import {
-  identityKey,
-} from "./dataset-payload.mjs";
-import {
-  evidenceResolutionMode,
-} from "./full-context-proof.mjs";
-import {
-  sha256Json,
-  sha256Text,
-} from "./hash-utils.mjs";
+import { identityKey } from "./dataset-payload.mjs";
+import { evidenceResolutionMode } from "./full-context-proof.mjs";
+import { sha256Json, sha256Text } from "./hash-utils.mjs";
 import {
   asText,
   ensureArray,
@@ -18,29 +11,20 @@ import {
   resolveRepoPath,
   unique,
 } from "./runtime-io.mjs";
-import {
-  readFileArtifactIfOption,
-  readJsonLines,
-} from "./workflow-patch-collect.mjs";
-import {
-  identityDecisionApplyContextHasDecision,
-} from "./workflow-identity-decision-context.mjs";
-import {
-  isAnnualSupplyTarget,
-} from "./workflow-queue-context.mjs";
+import { identityDecisionApplyContextHasDecision } from "./workflow-identity-decision-context.mjs";
+import { readFileArtifactIfOption, readJsonLines } from "./workflow-patch-collect.mjs";
+import { isAnnualSupplyTarget } from "./workflow-queue-context.mjs";
 
 export function patchEvidenceIdentityKey(entry) {
   const id = asText(entry?.dataset_id ?? entry?.entity_id ?? entry?.id);
-  const version =
-    asText(entry?.dataset_version ?? entry?.version) || "00.00.001";
+  const version = asText(entry?.dataset_version ?? entry?.version) || "00.00.001";
   return id ? `${id}@@${version}` : null;
 }
 
 export function compactPatchEvidenceEntry(entry) {
   return {
     row_index: Number.isInteger(entry?.row_index) ? entry.row_index : null,
-    dataset_id:
-      asText(entry?.dataset_id ?? entry?.entity_id ?? entry?.id) || null,
+    dataset_id: asText(entry?.dataset_id ?? entry?.entity_id ?? entry?.id) || null,
     dataset_version: asText(entry?.dataset_version ?? entry?.version) || null,
     operation: asText(entry?.op ?? entry?.operation) || null,
     path: asText(entry?.path) || null,
@@ -53,17 +37,11 @@ export function compactPatchEvidenceEntry(entry) {
   };
 }
 
-export function readPatchApplyContext(
-  repoRoot,
-  patchApplyArtifact,
-  patchEvidenceFile,
-) {
+export function readPatchApplyContext(repoRoot, patchApplyArtifact, patchEvidenceFile) {
   const report = patchApplyArtifact?.value ?? null;
   const reportPath = patchApplyArtifact?.path ?? null;
   const evidenceFile =
-    patchEvidenceFile ??
-    readFileArtifactIfOption(repoRoot, report?.files?.patch_evidence) ??
-    null;
+    patchEvidenceFile ?? readFileArtifactIfOption(repoRoot, report?.files?.patch_evidence) ?? null;
   const expectedEvidenceCount = Number(report?.evidence_count ?? 0);
   const evidenceRows = evidenceFile ? readJsonLines(evidenceFile) : [];
   const byIdentity = new Map();
@@ -84,9 +62,7 @@ export function readPatchApplyContext(
       code: "patch_apply_not_completed",
       stage: "ai_patch_apply",
       message: `dataset-patch-apply status is ${report.status}.`,
-      patch_apply_report: reportPath
-        ? repoRelativePath(repoRoot, reportPath)
-        : null,
+      patch_apply_report: reportPath ? repoRelativePath(repoRoot, reportPath) : null,
     });
   }
   if ((expectedEvidenceCount > 0 || patchEvidenceFile) && !evidenceFile) {
@@ -95,9 +71,7 @@ export function readPatchApplyContext(
       stage: "ai_patch_apply",
       message:
         "Patch apply report expects patch evidence, but no readable patch evidence JSONL file was provided.",
-      patch_apply_report: reportPath
-        ? repoRelativePath(repoRoot, reportPath)
-        : null,
+      patch_apply_report: reportPath ? repoRelativePath(repoRoot, reportPath) : null,
     });
   }
 
@@ -167,11 +141,11 @@ export function patchEvidenceClosureCodes(entry) {
       asText(
         typeof item === "string"
           ? item
-          : item?.code ??
+          : (item?.code ??
               item?.action_item_code ??
               item?.actionItemCode ??
               item?.rule_id ??
-              item?.ruleId,
+              item?.ruleId),
       ),
     )
     .filter(Boolean);
@@ -183,7 +157,7 @@ export function isDeterministicAnnualSupplyCleanupTrace(trace) {
   const evidence = trace?.evidence ?? {};
   return (
     isAnnualSupplyTarget(actionCode, blockedPath) &&
-      asText(evidence?.source) === "foundry_deterministic_cleanup"
+    asText(evidence?.source) === "foundry_deterministic_cleanup"
   );
 }
 
@@ -194,15 +168,11 @@ export function isDeterministicSourceExchangeCleanupTrace({
   rowIndex,
 }) {
   if (!cleanupContext || cleanupContext.status !== "completed") return false;
-  const status = asText(
-    trace?.status ?? trace?.decision_status ?? trace?.decisionStatus,
-  );
+  const status = asText(trace?.status ?? trace?.decision_status ?? trace?.decisionStatus);
   if (
-    ![
-      "source_only_output_exchange_verified",
-      "accepted_source_only_output",
-      "verified",
-    ].includes(status)
+    !["source_only_output_exchange_verified", "accepted_source_only_output", "verified"].includes(
+      status,
+    )
   ) {
     return false;
   }
@@ -213,25 +183,20 @@ export function isDeterministicSourceExchangeCleanupTrace({
   const id = asText(identity?.id);
   const version = asText(identity?.version) || "00.00.001";
   const traceHash = asText(trace?.trace_sha256) || sha256Json(trace);
-  return ensureArray(cleanupContext.sourceExchangeCompletenessProofs).some(
-    (proof) => {
-      const proofId = asText(
-        proof?.dataset_id ?? proof?.entity_id ?? proof?.id,
-      );
-      const proofVersion =
-        asText(proof?.version ?? proof?.dataset_version) || "00.00.001";
-      const sourceSignature = asText(proof?.source_exchange_signature_hash);
-      const finalSignature = asText(proof?.final_exchange_signature_hash);
-      return (
-        proofId === id &&
-        proofVersion === version &&
-        Number(proof?.row_index) === Number(rowIndex) &&
-        asText(proof?.trace_hash) === traceHash &&
-        sourceSignature &&
-        sourceSignature === finalSignature
-      );
-    },
-  );
+  return ensureArray(cleanupContext.sourceExchangeCompletenessProofs).some((proof) => {
+    const proofId = asText(proof?.dataset_id ?? proof?.entity_id ?? proof?.id);
+    const proofVersion = asText(proof?.version ?? proof?.dataset_version) || "00.00.001";
+    const sourceSignature = asText(proof?.source_exchange_signature_hash);
+    const finalSignature = asText(proof?.final_exchange_signature_hash);
+    return (
+      proofId === id &&
+      proofVersion === version &&
+      Number(proof?.row_index) === Number(rowIndex) &&
+      asText(proof?.trace_hash) === traceHash &&
+      sourceSignature &&
+      sourceSignature === finalSignature
+    );
+  });
 }
 
 export function tracePatchEvidenceBlockers({
@@ -250,9 +215,7 @@ export function tracePatchEvidenceBlockers({
     const actionCode = asText(trace?.action_item_code);
     const matched =
       actionCode &&
-      deferredEvidence.some((entry) =>
-        patchEvidenceClosureCodes(entry).includes(actionCode),
-      );
+      deferredEvidence.some((entry) => patchEvidenceClosureCodes(entry).includes(actionCode));
     const identityMatched =
       actionCode === "elementary_flow_identity_manual_review" &&
       identityDecisionApplyContextHasDecision({
@@ -263,11 +226,7 @@ export function tracePatchEvidenceBlockers({
         decisionValue: "block_unresolved",
         closesAction: "elementary_flow_identity_manual_review",
       });
-    if (
-      !matched &&
-      !identityMatched &&
-      !isDeterministicAnnualSupplyCleanupTrace(trace)
-    ) {
+    if (!matched && !identityMatched && !isDeterministicAnnualSupplyCleanupTrace(trace)) {
       blockers.push({
         code: "unresolved_trace_patch_evidence_required",
         stage: "full_context_ai_completion",
@@ -282,9 +241,7 @@ export function tracePatchEvidenceBlockers({
   const sourceTraceEvidence = aiPatchEvidence.filter(
     (entry) => evidenceResolutionMode(entry) === "source_trace_verified",
   );
-  for (const trace of ensureArray(
-    traceSummary?.source_exchange_completeness,
-  )) {
+  for (const trace of ensureArray(traceSummary?.source_exchange_completeness)) {
     if (
       sourceTraceEvidence.length === 0 &&
       !isDeterministicSourceExchangeCleanupTrace({
@@ -309,10 +266,7 @@ export function tracePatchEvidenceBlockers({
 export function readPolicySnapshots(repoRoot, profile) {
   const entries = [
     ["safety_policy", "docs/safety-policy.md"],
-    ...ensureArray(profile?.docs).map((filePath) => [
-      "profile_context",
-      filePath,
-    ]),
+    ...ensureArray(profile?.docs).map((filePath) => ["profile_context", filePath]),
   ];
   return entries.map(([kind, filePath]) => {
     const resolved = resolveRepoPath(repoRoot, filePath);

@@ -60,10 +60,7 @@ npm run skills:source-evidence:use:document
 npm run skills:source-evidence:use:sci
 ```
 
-Tests are organized by behavior layer in `test/README.md`. Use `npm test` for
-the full suite and `npm run test:unit|test:commands|test:scenarios` for targeted
-checks; old incident-numbered test aliases are not part of the maintained
-surface.
+Tests are organized by behavior layer in `test/README.md`. Use `npm test` for the full suite and `npm run test:unit|test:commands|test:scenarios` for targeted checks; old incident-numbered test aliases are not part of the maintained surface.
 
 Use owner-routed execution commands for dataset work:
 

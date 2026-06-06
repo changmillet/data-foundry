@@ -1,7 +1,7 @@
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
 import { readOnlyStageContract } from "../lib/stage-contract.mjs";
 
 const libraryScopeStageContract = readOnlyStageContract([
@@ -10,7 +10,12 @@ const libraryScopeStageContract = readOnlyStageContract([
     phase: "prepare",
     purpose:
       "Build one root TIDAS entity index so bundle-local copies do not multiply authoring or identity work.",
-    inputs: ["root tidas/processes", "root tidas/flows", "root tidas/flowproperties", "root tidas/unitgroups"],
+    inputs: [
+      "root tidas/processes",
+      "root tidas/flows",
+      "root tidas/flowproperties",
+      "root tidas/unitgroups",
+    ],
     outputs: ["library-entity-index.jsonl"],
     side_effects: ["writes local Foundry artifacts"],
   },
@@ -28,7 +33,11 @@ const libraryScopeStageContract = readOnlyStageContract([
     phase: "gate_validate",
     purpose:
       "Merge AI identity/classification decisions and canonical support mappings into ready or blocked process scopes.",
-    inputs: ["identity-decisions.jsonl", "classification-decisions.jsonl", "canonical-support-mappings.jsonl"],
+    inputs: [
+      "identity-decisions.jsonl",
+      "classification-decisions.jsonl",
+      "canonical-support-mappings.jsonl",
+    ],
     outputs: ["library-resolution.json", "scope-checkpoints.jsonl", "blocked-scope-ledger.jsonl"],
     side_effects: ["writes local Foundry artifacts"],
   },
@@ -129,10 +138,7 @@ export function createLibraryScopeWorkflowCommands({
       return payload?.processDataSet?.processInformation?.dataSetInformation ?? {};
     }
     if (type === "flowproperty") {
-      return (
-        payload?.flowPropertyDataSet?.flowPropertiesInformation
-          ?.dataSetInformation ?? {}
-      );
+      return payload?.flowPropertyDataSet?.flowPropertiesInformation?.dataSetInformation ?? {};
     }
     if (type === "unitgroup") {
       return payload?.unitGroupDataSet?.unitGroupInformation?.dataSetInformation ?? {};
@@ -160,9 +166,7 @@ export function createLibraryScopeWorkflowCommands({
   function referenceRows(value, pathSegments = []) {
     if (!value || typeof value !== "object") return [];
     if (Array.isArray(value)) {
-      return value.flatMap((item, index) =>
-        referenceRows(item, [...pathSegments, index]),
-      );
+      return value.flatMap((item, index) => referenceRows(item, [...pathSegments, index]));
     }
     const rows = [];
     if (value["@refObjectId"]) {
@@ -208,8 +212,8 @@ export function createLibraryScopeWorkflowCommands({
 
   function flowPropertyReferenceUnitGroup(payload) {
     const ref =
-      payload?.flowPropertyDataSet?.flowPropertiesInformation
-        ?.quantitativeReference?.referenceToReferenceUnitGroup ?? {};
+      payload?.flowPropertyDataSet?.flowPropertiesInformation?.quantitativeReference
+        ?.referenceToReferenceUnitGroup ?? {};
     return {
       id: asText(ref["@refObjectId"]),
       version: asText(ref["@version"]) || "00.00.001",
@@ -256,10 +260,12 @@ export function createLibraryScopeWorkflowCommands({
       type === "flow" ? flowTypeOfDataSet(payload) : "",
       type === "flow" ? asText(info.CASNumber) : "",
       classificationPath(payload, type),
-      type === "flowproperty"
-        ? flowPropertyReferenceUnitGroup(payload).short_description
+      type === "flowproperty" ? flowPropertyReferenceUnitGroup(payload).short_description : "",
+      type === "unitgroup"
+        ? unitGroupUnits(payload)
+            .map((u) => u.name)
+            .join(",")
         : "",
-      type === "unitgroup" ? unitGroupUnits(payload).map((u) => u.name).join(",") : "",
     ].map(normalizedText);
     return parts.filter(Boolean).join("|");
   }
@@ -341,10 +347,7 @@ export function createLibraryScopeWorkflowCommands({
     const byTypeId = new Map();
     for (const row of entityRows) {
       byTypeId.set(`${row.dataset_type}:${row.dataset_id}`, row);
-      byTypeId.set(
-        `${row.dataset_type}:${row.dataset_id}:${row.dataset_version}`,
-        row,
-      );
+      byTypeId.set(`${row.dataset_type}:${row.dataset_id}:${row.dataset_version}`, row);
     }
     return { byKey, byTypeId };
   }
@@ -495,12 +498,7 @@ export function createLibraryScopeWorkflowCommands({
       }
     }
     for (const dep of flowPropertyDeps.values()) {
-      const rootFlowProperty = rootEntityForRef(
-        maps,
-        "flowproperty",
-        dep.id,
-        dep.version,
-      );
+      const rootFlowProperty = rootEntityForRef(maps, "flowproperty", dep.id, dep.version);
       const unitGroup = rootFlowProperty?.reference_unit_group;
       if (unitGroup?.id) {
         unitGroupDeps.set(unitGroup.id, {
@@ -535,8 +533,7 @@ export function createLibraryScopeWorkflowCommands({
       const entity = rootEntityForRef(maps, "flowproperty", dep.id, dep.version);
       return {
         ...dep,
-        entity_key:
-          entity?.entity_key ?? entityKeyForRef("flowproperty", dep.id, dep.version),
+        entity_key: entity?.entity_key ?? entityKeyForRef("flowproperty", dep.id, dep.version),
         reference_only: true,
       };
     });
@@ -544,8 +541,7 @@ export function createLibraryScopeWorkflowCommands({
       const entity = rootEntityForRef(maps, "unitgroup", dep.id, dep.version);
       return {
         ...dep,
-        entity_key:
-          entity?.entity_key ?? entityKeyForRef("unitgroup", dep.id, dep.version),
+        entity_key: entity?.entity_key ?? entityKeyForRef("unitgroup", dep.id, dep.version),
         reference_only: true,
       };
     });
@@ -684,7 +680,9 @@ export function createLibraryScopeWorkflowCommands({
     const entityIndexPath = path.join(indexDir, "library-entity-index.jsonl");
     const scopeProjectionPath = path.join(indexDir, "scope-projection.jsonl");
     if (!fileExists(entityIndexPath) || !fileExists(scopeProjectionPath)) {
-      throw new Error("--library-index must contain library-entity-index.jsonl and scope-projection.jsonl.");
+      throw new Error(
+        "--library-index must contain library-entity-index.jsonl and scope-projection.jsonl.",
+      );
     }
     const outDir = resolveRepoPath(
       options.outDir || path.join(path.dirname(indexDir), "authoring-plan"),
@@ -733,8 +731,7 @@ export function createLibraryScopeWorkflowCommands({
         dataset_id: row.dataset_id,
         dataset_version: row.dataset_version,
         entity_key: row.entity_key,
-        category_type:
-          row.dataset_type === "process" ? "process" : "flow-product",
+        category_type: row.dataset_type === "process" ? "process" : "flow-product",
         selected_code: "__AI_SELECT_CLASSIFICATION_CODE__",
         basis: "__AI_WRITE_MEANING_BASED_BASIS__",
         confidence: "__AI_CONFIDENCE__",
@@ -760,48 +757,29 @@ export function createLibraryScopeWorkflowCommands({
         source_reference_unit_group: row.reference_unit_group ?? null,
         canonical_support_id: "__AI_OR_HUMAN_SELECT_CANONICAL_SUPPORT_ID__",
         canonical_support_version: "__AI_OR_HUMAN_SELECT_CANONICAL_SUPPORT_VERSION__",
-        physical_dimension_evidence:
-          "__REQUIRED_FOR_AUTOMATIC_MAPPING_OR_LEAVE_BLOCKED__",
+        physical_dimension_evidence: "__REQUIRED_FOR_AUTOMATIC_MAPPING_OR_LEAVE_BLOCKED__",
         required_resolution:
           "Map generated support to public canonical support only when unit/physical dimension equivalence is proven; otherwise leave blocked for human support authoring.",
       }));
 
     const identityPath = path.join(outDir, "identity-decisions.template.jsonl");
-    const classificationPathOut = path.join(
-      outDir,
-      "classification-decisions.template.jsonl",
-    );
+    const classificationPathOut = path.join(outDir, "classification-decisions.template.jsonl");
     const supportPath = path.join(outDir, "canonical-support-mappings.template.jsonl");
     writeJsonLines(identityPath, identityTemplateRows);
     writeJsonLines(classificationPathOut, classificationTemplateRows);
     writeJsonLines(supportPath, supportTemplateRows);
     const chunkFiles = [
       ...writeChunkFiles(outDir, "identity-decisions", identityTemplateRows, chunkSize),
-      ...writeChunkFiles(
-        outDir,
-        "classification-decisions",
-        classificationTemplateRows,
-        chunkSize,
-      ),
-      ...writeChunkFiles(
-        outDir,
-        "canonical-support-mappings",
-        supportTemplateRows,
-        chunkSize,
-      ),
+      ...writeChunkFiles(outDir, "classification-decisions", classificationTemplateRows, chunkSize),
+      ...writeChunkFiles(outDir, "canonical-support-mappings", supportTemplateRows, chunkSize),
     ];
     const reportPath = path.join(outDir, "dataset-library-authoring-plan-report.json");
     const actionItems =
-      identityTemplateRows.length +
-      classificationTemplateRows.length +
-      supportTemplateRows.length;
+      identityTemplateRows.length + classificationTemplateRows.length + supportTemplateRows.length;
     const report = {
       schema_version: 1,
       generated_at_utc: nowIso(),
-      status:
-        actionItems > 0
-          ? "ready_for_ai_library_decisions"
-          : "ready_no_action_items",
+      status: actionItems > 0 ? "ready_for_ai_library_decisions" : "ready_no_action_items",
       command: "dataset-library-authoring-plan",
       library_index: repoRelativePath(indexDir),
       counts: {
@@ -834,8 +812,7 @@ export function createLibraryScopeWorkflowCommands({
     return [
       "flow",
       asText(row.source_dataset_id || row.dataset_id || row.source_flow_id || row.id),
-      asText(row.source_dataset_version || row.dataset_version || row.version) ||
-        "00.00.001",
+      asText(row.source_dataset_version || row.dataset_version || row.version) || "00.00.001",
     ].join(":");
   }
 
@@ -866,8 +843,7 @@ export function createLibraryScopeWorkflowCommands({
     return [
       asText(row.support_type || row.dataset_type || row.type),
       asText(row.source_support_id || row.dataset_id || row.id),
-      asText(row.source_support_version || row.dataset_version || row.version) ||
-        "00.00.001",
+      asText(row.source_support_version || row.dataset_version || row.version) || "00.00.001",
     ].join(":");
   }
 
@@ -892,9 +868,7 @@ export function createLibraryScopeWorkflowCommands({
         ) || "00.00.001",
       uri: asText(source.canonical_uri || target.uri),
       short_description: textValue(
-        source.canonical_short_description ||
-          source.short_description ||
-          target.short_description,
+        source.canonical_short_description || source.short_description || target.short_description,
       ),
       type,
     };
@@ -904,11 +878,7 @@ export function createLibraryScopeWorkflowCommands({
     const source = row ?? {};
     return Boolean(
       asText(
-        source.selected_code ||
-          source.code ||
-          source.leaf_code ||
-          source.class_id ||
-          source.cat_id,
+        source.selected_code || source.code || source.leaf_code || source.class_id || source.cat_id,
       ),
     );
   }
@@ -969,11 +939,7 @@ export function createLibraryScopeWorkflowCommands({
     if (rewriteRows.length === 0) {
       return { rewritten_process_file: null, rewrite_rows: [] };
     }
-    const rewrittenFile = path.join(
-      outDir,
-      "rewritten-processes",
-      `${scope.process_id}.json`,
-    );
+    const rewrittenFile = path.join(outDir, "rewritten-processes", `${scope.process_id}.json`);
     writeJson(rewrittenFile, payload);
     return {
       rewritten_process_file: repoRelativePath(rewrittenFile),
@@ -1011,8 +977,7 @@ export function createLibraryScopeWorkflowCommands({
     return {
       dataset_type: asText(dependency.dataset_type || dependency.type) || "unknown",
       id: asText(dependency.id || dependency.dataset_id),
-      version:
-        asText(dependency.version || dependency.dataset_version) || "00.00.001",
+      version: asText(dependency.version || dependency.dataset_version) || "00.00.001",
       reason: asText(row.reason) || "unknown",
       message: asText(row.message),
       required_human_action: asText(row.required_human_action),
@@ -1026,12 +991,7 @@ export function createLibraryScopeWorkflowCommands({
     ].join(":");
   }
 
-  function buildBlockedScopeReport({
-    command,
-    blockedRows,
-    blockedLedgerPath,
-    reportPath,
-  }) {
+  function buildBlockedScopeReport({ command, blockedRows, blockedLedgerPath, reportPath }) {
     const sampleLimit = 20;
     const reasonMap = new Map();
     const scopeMap = new Map();
@@ -1063,8 +1023,7 @@ export function createLibraryScopeWorkflowCommands({
       if (reasonEntry.sample_blocking_dependencies.length < sampleLimit) {
         reasonEntry.sample_blocking_dependencies.push({
           process_id: asText(row.blocked_process_id),
-          process_version:
-            asText(row.blocked_process_version) || "00.00.001",
+          process_version: asText(row.blocked_process_version) || "00.00.001",
           ...dependency,
         });
       }
@@ -1073,8 +1032,7 @@ export function createLibraryScopeWorkflowCommands({
       if (!scopeMap.has(scopeKey)) {
         scopeMap.set(scopeKey, {
           process_id: asText(row.blocked_process_id),
-          process_version:
-            asText(row.blocked_process_version) || "00.00.001",
+          process_version: asText(row.blocked_process_version) || "00.00.001",
           blocker_count: 0,
           reasons: new Map(),
           sample_blocking_dependencies: [],
@@ -1150,7 +1108,9 @@ export function createLibraryScopeWorkflowCommands({
     const entityIndexPath = path.join(indexDir, "library-entity-index.jsonl");
     const scopeProjectionPath = path.join(indexDir, "scope-projection.jsonl");
     if (!fileExists(entityIndexPath) || !fileExists(scopeProjectionPath)) {
-      throw new Error("--library-index must contain library-entity-index.jsonl and scope-projection.jsonl.");
+      throw new Error(
+        "--library-index must contain library-entity-index.jsonl and scope-projection.jsonl.",
+      );
     }
     const decisionsDir = resolveRepoPath(options.decisionsDir || options.decisions) || indexDir;
     const outDir = resolveRepoPath(
@@ -1206,10 +1166,7 @@ export function createLibraryScopeWorkflowCommands({
         if (entity && /^elementary flow$/iu.test(entity.flow_type)) {
           const decision = identityByKey.get(`flow:${dep.id}:${dep.version || "00.00.001"}`);
           const target = canonicalTarget(decision, "flow data set");
-          if (
-            asText(decision?.decision) !== "reuse_existing_reference" ||
-            !target.id
-          ) {
+          if (asText(decision?.decision) !== "reuse_existing_reference" || !target.id) {
             blockers.push(
               blockRow(
                 scope,
@@ -1240,9 +1197,7 @@ export function createLibraryScopeWorkflowCommands({
         }
       }
       for (const dep of ensureArray(scope.dependency_ids?.flowproperties)) {
-        const mapping = supportByKey.get(
-          `flowproperty:${dep.id}:${dep.version || "00.00.001"}`,
-        );
+        const mapping = supportByKey.get(`flowproperty:${dep.id}:${dep.version || "00.00.001"}`);
         const target = canonicalTarget(mapping, "flow property data set");
         if (!target.id) {
           blockers.push(
@@ -1257,9 +1212,7 @@ export function createLibraryScopeWorkflowCommands({
         }
       }
       for (const dep of ensureArray(scope.dependency_ids?.unitgroups)) {
-        const mapping = supportByKey.get(
-          `unitgroup:${dep.id}:${dep.version || "00.00.001"}`,
-        );
+        const mapping = supportByKey.get(`unitgroup:${dep.id}:${dep.version || "00.00.001"}`);
         const target = canonicalTarget(mapping, "unit group data set");
         if (!target.id) {
           blockers.push(
@@ -1419,27 +1372,20 @@ export function createLibraryScopeWorkflowCommands({
         ],
       );
     }
-    const processBundlesDir = resolveRepoPath(
-      options.processBundlesDir || options.bundlesDir,
-    );
+    const processBundlesDir = resolveRepoPath(options.processBundlesDir || options.bundlesDir);
     if (!processBundlesDir || !directoryExists(processBundlesDir)) {
       throw new Error("--process-bundles-dir is required.");
     }
-    const libraryResolutionPath = resolveRepoPath(
-      options.libraryResolution || options.resolution,
-    );
+    const libraryResolutionPath = resolveRepoPath(options.libraryResolution || options.resolution);
     if (!libraryResolutionPath || !fileExists(libraryResolutionPath)) {
       throw new Error("--library-resolution is required.");
     }
     const resolution = readJson(libraryResolutionPath);
-    const scopeFile = resolveRepoPath(
-      options.scopeFile || resolution.files?.ready_scopes,
-    );
+    const scopeFile = resolveRepoPath(options.scopeFile || resolution.files?.ready_scopes);
     const scopeRows = scopeRowsFromFile(scopeFile);
     const readyIds = new Set(ensureArray(resolution.ready_scope_ids));
     const outDir = resolveRepoPath(
-      options.outDir ||
-        path.join(path.dirname(libraryResolutionPath), "process-scope-run"),
+      options.outDir || path.join(path.dirname(libraryResolutionPath), "process-scope-run"),
     );
     const parallel = positiveIntegerOption(
       options.parallel,
@@ -1454,16 +1400,15 @@ export function createLibraryScopeWorkflowCommands({
       process_version: asText(scope.process_version || scope.version) || "00.00.001",
       state: asText(scope.state || scope.closure_status || scope.checkpoint?.state),
       bundle_dir: scope.bundle_dir,
-      rewritten_process_file: scope.rewritten_process_file || scope.checkpoint?.rewritten_process_file,
+      rewritten_process_file:
+        scope.rewritten_process_file || scope.checkpoint?.rewritten_process_file,
       commit_command: commandArrayFromScope(scope, "commit_command"),
       verify_command: commandArrayFromScope(scope, "verify_command"),
     }));
     const logDir = path.join(outDir, "logs");
     for (const scope of selectedScopes) {
       const isReady =
-        readyIds.has(scope.process_id) ||
-        scope.state === "ready" ||
-        scope.state === "";
+        readyIds.has(scope.process_id) || scope.state === "ready" || scope.state === "";
       if (!isReady) {
         const row = blockRow(
           scope,
@@ -1558,8 +1503,7 @@ export function createLibraryScopeWorkflowCommands({
         ready_scopes_planned: checkpoints.filter((row) =>
           ["dry_run_planned", "commit_handoff_planned"].includes(row.state),
         ).length,
-        committed: checkpoints.filter((row) => row.state === "committed")
-          .length,
+        committed: checkpoints.filter((row) => row.state === "committed").length,
         verified: checkpoints.filter((row) => row.state === "verified").length,
         command_failures: commandFailures.length,
         blocked_scopes_deferred: blocked.length,

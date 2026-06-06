@@ -1,84 +1,32 @@
 import test from "node:test";
-import {
-  writeReadyFinalizeFixture,
-} from "../fixtures/finalize-fixtures.mjs";
-import {
-  annualSupplyFixtureRoot,
-  classificationFixtureRoot,
-  elementaryFlowManifestFixtureRoot,
-  finalizeAutoQueueFixtureRoot,
-  finalizeCurationGateFixtureRoot,
-  finalizeIdentityPreflightFixtureRoot,
-  finalizeLocationFixtureRoot,
-  fixtureRoot,
-  flowClassificationFixtureRoot,
-  flowIdentityReferenceFixtureRoot,
-  identityPreflightRunFixtureRoot,
-  locationFixtureRoot,
-  mutationFixtureRoot,
-  packageContextFixtureRoot,
-  qaPathFixtureRoot,
-  referenceClosureFixtureRoot,
-  sourceExchangeFixtureRoot,
-  supportManifestFixtureRoot,
-} from "../fixtures/fixture-roots.mjs";
+import { packageContextFixtureRoot } from "../fixtures/fixture-roots.mjs";
 import {
   assert,
-  blockerCodes,
-  bundledCategorySchemaNames,
   contextTextByPathSuffix,
-  crypto,
   fs,
   fullContextKinds,
-  fullContextPatterns,
-  itemBlockerCodes,
   path,
   readJson,
   readJsonLines,
   rel,
   repoRoot,
   runFoundry,
-  scopeBlockerCodes,
   sha256Text,
-  siblingCliBuildAvailable,
-  siblingCliRoot,
-  spawnSync,
-  targetUserId,
   testTmpRoot,
   writeJson,
   writeJsonLines,
-  writeText,
 } from "../fixtures/foundry-core.mjs";
-import {
-  contextFile,
-  createFixture,
-  writeContextPackFiles,
-  writeDecisionTaskFixture,
-} from "../fixtures/full-context-fixtures.mjs";
-import {
-  writeCompletedIdentityPreflightIndex,
-} from "../fixtures/identity-fixtures.mjs";
-import {
-  createMutationManifestFixture,
-} from "../fixtures/mutation-fixtures.mjs";
+import { writeContextPackFiles } from "../fixtures/full-context-fixtures.mjs";
+import { writeCompletedIdentityPreflightIndex } from "../fixtures/identity-fixtures.mjs";
 import {
   flowRow,
   flowRowWithClassification,
-  processRowWithDefaultClassification,
-  processRowWithDeferredTrace,
   processRowWithFlowRef,
-  processRowWithInvalidAnnualSupply,
-  processRowWithInvalidLocation,
-  processRowWithOnlyOutputExchange,
   sourceRow,
 } from "../fixtures/row-builders.mjs";
 
 test("identity decision task deduplicates repeated targets and keeps source evidence", () => {
-  const root = path.join(
-    repoRoot,
-    "tmp",
-    "identity-decision-task-dedupe-test",
-  );
+  const root = path.join(repoRoot, "tmp", "identity-decision-task-dedupe-test");
   fs.rmSync(root, { recursive: true, force: true });
   const flowId = "aaaaaaaa-bbbb-4ccc-8ddd-000000000061";
   const firstProcessId = "aaaaaaaa-bbbb-4ccc-8ddd-000000000062";
@@ -176,21 +124,15 @@ test("identity decision task deduplicates repeated targets and keeps source evid
     assert.equal(identityTask.json.counts.deduplicated_identity_action_items, 1);
     assert.equal(identityTask.json.counts.template_decisions, 1);
 
-    const templateRows = readJsonLines(
-      path.join(repoRoot, identityTask.json.files.template),
-    );
+    const templateRows = readJsonLines(path.join(repoRoot, identityTask.json.files.template));
     assert.equal(templateRows.length, 1);
     assert.equal(templateRows[0].dataset_type, "flow");
     assert.equal(templateRows[0].dataset_id, flowId);
-    assert.deepEqual(templateRows[0].closes_action_items, [
-      "identity_preflight_manual_review",
-    ]);
+    assert.deepEqual(templateRows[0].closes_action_items, ["identity_preflight_manual_review"]);
     assert.equal(templateRows[0].evidence.source_action_item_count, 2);
     assert.equal(templateRows[0].evidence.source_action_items.length, 2);
     assert.deepEqual(
-      templateRows[0].evidence.related_authoring_packages.map(
-        (item) => item.authoring_package,
-      ),
+      templateRows[0].evidence.related_authoring_packages.map((item) => item.authoring_package),
       [firstPackage.packageRef, secondPackage.packageRef],
     );
 
@@ -304,20 +246,10 @@ test("curation gate turns flow identity manual review into an AI action item", (
     assert.equal(gate.code, 1);
     assert.equal(gate.json.status, "blocked_needs_foundry_ai_authoring");
     assert.equal(gate.json.counts.identity_action_items, 1);
-    const authoringPackage = readJson(
-      path.join(repoRoot, gate.json.entities[0].authoring_package),
-    );
-    const actionCodes = new Set(
-      authoringPackage.action_items.map((item) => item.code),
-    );
-    assert.equal(
-      actionCodes.has("elementary_flow_identity_manual_review"),
-      true,
-    );
-    assert.equal(
-      actionCodes.has("elementary_flow_requires_existing_database_match"),
-      true,
-    );
+    const authoringPackage = readJson(path.join(repoRoot, gate.json.entities[0].authoring_package));
+    const actionCodes = new Set(authoringPackage.action_items.map((item) => item.code));
+    assert.equal(actionCodes.has("elementary_flow_identity_manual_review"), true);
+    assert.equal(actionCodes.has("elementary_flow_requires_existing_database_match"), true);
     const identityAction = authoringPackage.action_items.find(
       (item) => item.code === "elementary_flow_identity_manual_review",
     );
@@ -356,11 +288,7 @@ test("curation gate authoring package carries full contract text and queue depen
     assert.equal(queue.code, 0);
     assert.equal(queue.json.status, "ready");
 
-    const schemaReport = path.join(
-      packageContextFixtureRoot,
-      "schema",
-      "validation-report.json",
-    );
+    const schemaReport = path.join(packageContextFixtureRoot, "schema", "validation-report.json");
     writeJson(schemaReport, {
       input_path: rel(processRows),
       status: "completed",
@@ -375,11 +303,7 @@ test("curation gate authoring package carries full contract text and queue depen
         },
       ],
     });
-    const qaReport = path.join(
-      packageContextFixtureRoot,
-      "qa",
-      "process-qa-report.json",
-    );
+    const qaReport = path.join(packageContextFixtureRoot, "qa", "process-qa-report.json");
     writeJson(qaReport, {
       rows_file: rel(processRows),
       status: "completed",
@@ -387,10 +311,7 @@ test("curation gate authoring package carries full contract text and queue depen
       findings: [],
     });
     const context = writeContextPackFiles(packageContextFixtureRoot);
-    const identityPreflightRoot = path.join(
-      packageContextFixtureRoot,
-      "identity-preflight",
-    );
+    const identityPreflightRoot = path.join(packageContextFixtureRoot, "identity-preflight");
     const identityPreflightRequestsRoot = path.join(
       packageContextFixtureRoot,
       "identity-preflight-requests",
@@ -400,11 +321,7 @@ test("curation gate authoring package carries full contract text and queue depen
       "processes",
       `${processId}.json`,
     );
-    const flowRequest = path.join(
-      identityPreflightRequestsRoot,
-      "flows",
-      `${flowId}.json`,
-    );
+    const flowRequest = path.join(identityPreflightRequestsRoot, "flows", `${flowId}.json`);
     writeJson(processRequest, {
       schema_version: 1,
       target: processRowWithFlowRef(processId, flowId),
@@ -412,8 +329,7 @@ test("curation gate authoring package carries full contract text and queue depen
         enabled: true,
         data_source: "tg",
         limit: 20,
-        query:
-          "process name: Fixture process\nreference flow: Fixture flow\ngeography: CH",
+        query: "process name: Fixture process\nreference flow: Fixture flow\ngeography: CH",
       },
     });
     writeJson(flowRequest, {
@@ -424,8 +340,7 @@ test("curation gate authoring package carries full contract text and queue depen
         data_source: "tg",
         limit: 20,
         filter: { flowType: "Product flow" },
-        query:
-          "flow name: Fixture flow\nflow type: Product flow\nreference property: Mass",
+        query: "flow name: Fixture flow\nflow type: Product flow\nreference property: Mass",
       },
     });
     const processPreflightReport = path.join(
@@ -468,8 +383,7 @@ test("curation gate authoring package carries full contract text and queue depen
         {
           kind: "remote_search",
           endpoint: "process_hybrid_search",
-          query:
-            "process name: Fixture process\nreference flow: Fixture flow\ngeography: CH",
+          query: "process name: Fixture process\nreference flow: Fixture flow\ngeography: CH",
           row_count: 0,
           scanned_files: [],
         },
@@ -512,8 +426,7 @@ test("curation gate authoring package carries full contract text and queue depen
         {
           kind: "remote_search",
           endpoint: "flow_hybrid_search",
-          query:
-            "flow name: Fixture flow\nflow type: Product flow\nreference property: Mass",
+          query: "flow name: Fixture flow\nflow type: Product flow\nreference property: Mass",
           filter: { flowType: "Product flow" },
           row_count: 1,
           scanned_files: [],
@@ -557,8 +470,7 @@ test("curation gate authoring package carries full contract text and queue depen
         remote_search: {
           data_source: "tg",
           limit: 20,
-          query:
-            "process name: Fixture process\nreference flow: Fixture flow\ngeography: CH",
+          query: "process name: Fixture process\nreference flow: Fixture flow\ngeography: CH",
         },
       },
       {
@@ -574,8 +486,7 @@ test("curation gate authoring package carries full contract text and queue depen
           data_source: "tg",
           limit: 20,
           filter: { flowType: "Product flow" },
-          query:
-            "flow name: Fixture flow\nflow type: Product flow\nreference property: Mass",
+          query: "flow name: Fixture flow\nflow type: Product flow\nreference property: Mass",
         },
       },
     ]);
@@ -652,88 +563,54 @@ test("curation gate authoring package carries full contract text and queue depen
     assert.equal(gate.json.counts.identity_reference_rewrites, 1);
     assert.equal(gate.json.context.identity_reference_rewrites.scoped_rows, 1);
 
-    const authoringPackage = readJson(
-      path.join(repoRoot, gate.json.entities[0].authoring_package),
-    );
+    const authoringPackage = readJson(path.join(repoRoot, gate.json.entities[0].authoring_package));
     const contextByKind = new Map(
-      authoringPackage.contract_context_files.map((file) => [
-        file.kind,
-        file.text,
-      ]),
+      authoringPackage.contract_context_files.map((file) => [file.kind, file.text]),
     );
     assert.match(contextByKind.get("schema"), /process schema/u);
-    assert.match(
-      contextByKind.get("methodology_yaml"),
-      /source_language_only/u,
-    );
+    assert.match(contextByKind.get("methodology_yaml"), /source_language_only/u);
     assert.match(contextByKind.get("ruleset"), /classification-decision/u);
     assert.match(
-      contextTextByPathSuffix(
-        authoringPackage,
-        "tidas_processes_category.json",
-      ),
+      contextTextByPathSuffix(authoringPackage, "tidas_processes_category.json"),
       /Manufacturing/u,
     );
     assert.match(
-      contextTextByPathSuffix(
-        authoringPackage,
-        "tidas_flows_product_category.json",
-      ),
+      contextTextByPathSuffix(authoringPackage, "tidas_flows_product_category.json"),
       /Electrical energy/u,
     );
     assert.match(
-      contextTextByPathSuffix(
-        authoringPackage,
-        "tidas_locations_category.json",
-      ),
+      contextTextByPathSuffix(authoringPackage, "tidas_locations_category.json"),
       /Switzerland/u,
     );
-    assert.equal(
-      authoringPackage.identity_preflight_context.current.result.decision,
-      "create_new",
-    );
+    assert.equal(authoringPackage.identity_preflight_context.current.result.decision, "create_new");
     assert.match(
       authoringPackage.identity_preflight_context.current.remote_search.query,
       /reference flow: Fixture flow/u,
     );
     assert.equal(
-      authoringPackage.identity_preflight_context.dependencies[0]
-        .identity_preflight.result.decision,
+      authoringPackage.identity_preflight_context.dependencies[0].identity_preflight.result
+        .decision,
       "reuse",
     );
     assert.deepEqual(
-      authoringPackage.identity_preflight_context.dependencies[0]
-        .identity_preflight.result.candidates[0].names,
+      authoringPackage.identity_preflight_context.dependencies[0].identity_preflight.result
+        .candidates[0].names,
       ["Existing fixture flow"],
     );
+    assert.equal(authoringPackage.identity_reference_rewrite_context.status, "attached");
     assert.equal(
-      authoringPackage.identity_reference_rewrite_context.status,
-      "attached",
-    );
-    assert.equal(
-      authoringPackage.identity_reference_rewrite_context.rows[0].canonical
-        .ref_object_id,
+      authoringPackage.identity_reference_rewrite_context.rows[0].canonical.ref_object_id,
       "ffffffff-1111-4222-8333-444444444444",
     );
     assert.equal(authoringPackage.curation_queue_context.status, "attached");
-    assert.equal(
-      authoringPackage.curation_queue_context.dependency_rows.length,
-      1,
-    );
-    assert.equal(
-      authoringPackage.curation_queue_context.support_rows.length,
-      1,
-    );
+    assert.equal(authoringPackage.curation_queue_context.dependency_rows.length, 1);
+    assert.equal(authoringPackage.curation_queue_context.support_rows.length, 1);
     assert.match(
-      JSON.stringify(
-        authoringPackage.curation_queue_context.dependency_rows[0].input_rows,
-      ),
+      JSON.stringify(authoringPackage.curation_queue_context.dependency_rows[0].input_rows),
       new RegExp(flowId, "u"),
     );
     assert.match(
-      JSON.stringify(
-        authoringPackage.curation_queue_context.support_rows[0].input_rows,
-      ),
+      JSON.stringify(authoringPackage.curation_queue_context.support_rows[0].input_rows),
       new RegExp(sourceId, "u"),
     );
   } finally {
@@ -798,9 +675,7 @@ test("curation gate can require completed identity preflight before full-context
     assert.equal(gate.code, 1);
     assert.equal(gate.json.status, "blocked_needs_foundry_ai_authoring");
     assert.equal(gate.json.entities[0].deterministic_cleanup_count, 1);
-    const authoringPackage = readJson(
-      path.join(repoRoot, gate.json.entities[0].authoring_package),
-    );
+    const authoringPackage = readJson(path.join(repoRoot, gate.json.entities[0].authoring_package));
     assert.equal(
       authoringPackage.deterministic_cleanup_items[0].code,
       "identity_preflight_index_required",
@@ -890,19 +765,13 @@ test("curation gate can require completed identity preflight before full-context
       rel(path.join(root, "curation-gate-with-identity")),
     ]);
     assert.equal(gateWithIdentity.code, 1);
-    assert.equal(
-      gateWithIdentity.json.status,
-      "blocked_needs_foundry_ai_authoring",
-    );
+    assert.equal(gateWithIdentity.json.status, "blocked_needs_foundry_ai_authoring");
     assert.equal(gateWithIdentity.json.entities[0].deterministic_cleanup_count, 0);
     assert.equal(gateWithIdentity.json.context.identity_preflight.completed, 1);
 
     writeJson(requestFile, {
       schema_version: 1,
-      target: processRowWithFlowRef(
-        processId,
-        "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
-      ),
+      target: processRowWithFlowRef(processId, "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"),
       remote_candidate_search: {
         enabled: true,
         data_source: "tg",
@@ -934,15 +803,9 @@ test("curation gate can require completed identity preflight before full-context
       rel(path.join(root, "curation-gate-with-stale-identity")),
     ]);
     assert.equal(gateWithStaleIdentity.code, 1);
-    assert.equal(
-      gateWithStaleIdentity.json.entities[0].deterministic_cleanup_count,
-      1,
-    );
+    assert.equal(gateWithStaleIdentity.json.entities[0].deterministic_cleanup_count, 1);
     const staleAuthoringPackage = readJson(
-      path.join(
-        repoRoot,
-        gateWithStaleIdentity.json.entities[0].authoring_package,
-      ),
+      path.join(repoRoot, gateWithStaleIdentity.json.entities[0].authoring_package),
     );
     assert.equal(
       staleAuthoringPackage.deterministic_cleanup_items[0].code,
@@ -989,14 +852,8 @@ test("curation gate can require completed identity preflight before full-context
       rel(path.join(root, "curation-gate-with-required-queue")),
     ]);
     assert.equal(gateWithRequiredQueue.code, 1);
-    assert.equal(
-      gateWithRequiredQueue.json.entities[0].deterministic_cleanup_count,
-      1,
-    );
-    assert.equal(
-      gateWithRequiredQueue.json.context.require_queue_context,
-      true,
-    );
+    assert.equal(gateWithRequiredQueue.json.entities[0].deterministic_cleanup_count, 1);
+    assert.equal(gateWithRequiredQueue.json.context.require_queue_context, true);
     const queuePackage = readJson(
       path.join(repoRoot, gateWithRequiredQueue.json.entities[0].authoring_package),
     );
@@ -1058,13 +915,7 @@ test("bafu curation gate rejects refreshed identity preflight that drops source 
     "outputs",
     "identity-decision.json",
   );
-  const flowReport = path.join(
-    outputRoot,
-    "flows",
-    flowId,
-    "outputs",
-    "identity-decision.json",
-  );
+  const flowReport = path.join(outputRoot, "flows", flowId, "outputs", "identity-decision.json");
   writeJson(processRequest, {
     schema_version: 1,
     target: processPayload,
@@ -1170,16 +1021,11 @@ test("bafu curation gate rejects refreshed identity preflight that drops source 
       rel(path.join(root, "curation-gate")),
     ]);
     assert.equal(gate.code, 1);
-    const authoringPackage = readJson(
-      path.join(repoRoot, gate.json.entities[0].authoring_package),
-    );
+    const authoringPackage = readJson(path.join(repoRoot, gate.json.entities[0].authoring_package));
     const deterministicCodes = new Set(
       authoringPackage.deterministic_cleanup_items.map((item) => item.code),
     );
-    assert.equal(
-      deterministicCodes.has("identity_preflight_current_source_context_missing"),
-      true,
-    );
+    assert.equal(deterministicCodes.has("identity_preflight_current_source_context_missing"), true);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

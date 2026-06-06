@@ -93,11 +93,7 @@ export function createClassificationDecisionCommands({
           continue;
         }
         for (const [index, row] of rows.entries()) {
-          const identity = classificationTaskInputRowIdentity(
-            row,
-            queueRow,
-            index,
-          );
+          const identity = classificationTaskInputRowIdentity(row, queueRow, index);
           if (
             identity.dataset_id === asText(queueRow.dataset_id) &&
             identity.dataset_version === asText(queueRow.dataset_version)
@@ -143,9 +139,7 @@ export function createClassificationDecisionCommands({
     rowLookup = new Map(),
     contextBundle = null,
   ) {
-    const authoringContext = contextBundle
-      ? decisionAuthoringContext(contextBundle)
-      : null;
+    const authoringContext = contextBundle ? decisionAuthoringContext(contextBundle) : null;
     return queueRows.map((row, index) => ({
       dataset_id: row.dataset_id,
       dataset_version: row.dataset_version,
@@ -153,9 +147,7 @@ export function createClassificationDecisionCommands({
       decision_status: "completed",
       code: "__AI_SELECT_TIDAS_CLASSIFICATION_CODE__",
       basis: "__AI_FILL_CLASSIFICATION_DECISION_BASIS__",
-      used_context_kinds: [
-        "__AI_FILL_USED_CONTEXT_KINDS__",
-      ],
+      used_context_kinds: ["__AI_FILL_USED_CONTEXT_KINDS__"],
       ...(authoringContext ? { authoring_context: authoringContext } : {}),
       evidence: classificationTaskEvidenceForQueueRow(row, index, rowLookup),
     }));
@@ -204,11 +196,7 @@ export function createClassificationDecisionCommands({
     };
     if (shouldDeriveQueue) {
       const selected = useSelection
-        ? selectDecisionTaskQueueRows(
-            sourceQueueRows,
-            options,
-            classificationQueueSchemaType,
-          )
+        ? selectDecisionTaskQueueRows(sourceQueueRows, options, classificationQueueSchemaType)
         : {
             selection,
             selected: sourceQueueRows.map((row, sourceIndex) => ({
@@ -218,9 +206,7 @@ export function createClassificationDecisionCommands({
           };
       selection = {
         ...selected.selection,
-        input_rows_override: inputRowsOverride
-          ? repoRelativePath(inputRowsOverride)
-          : null,
+        input_rows_override: inputRowsOverride ? repoRelativePath(inputRowsOverride) : null,
       };
       const chunkLabel = decisionTaskChunkLabel(
         options,
@@ -238,17 +224,11 @@ export function createClassificationDecisionCommands({
         inputRowsOverride,
       });
       selection.chunk_label = chunkLabel;
-      taskQueuePath = path.join(
-        outDir,
-        `classification-authoring-queue.${chunkLabel}.jsonl`,
-      );
+      taskQueuePath = path.join(outDir, `classification-authoring-queue.${chunkLabel}.jsonl`);
       writeJsonLines(taskQueuePath, queueRows);
     }
     const rowLookup = buildClassificationTaskInputRowLookup(queueRows);
-    const templatePath = path.join(
-      outDir,
-      "classification-decisions.template.jsonl",
-    );
+    const templatePath = path.join(outDir, "classification-decisions.template.jsonl");
     const taskPath = path.join(outDir, "classification-decision-task.json");
     const reportPath = path.join(outDir, "classification-decision-task-report.json");
     const decisionFile = path.join(outDir, "classification-decisions.jsonl");
@@ -322,18 +302,14 @@ export function createClassificationDecisionCommands({
       schema_types: schemaTypes,
       row_types: rowTypes,
       selection,
-      source_classification_queue: shouldDeriveQueue
-        ? repoRelativePath(queuePath)
-        : null,
+      source_classification_queue: shouldDeriveQueue ? repoRelativePath(queuePath) : null,
       classification_queue_rows: queueRows,
       attached_input_rows: attachedInputRows,
       provenance_context: provenanceContext,
       context_bundle: contextBundle,
       shared_context_bundle: contextBundle.shared_context_bundle,
       context_files: contextFiles,
-      contract_context_files: contractContext.files.map(
-        decisionTaskContextFileSummary,
-      ),
+      contract_context_files: contractContext.files.map(decisionTaskContextFileSummary),
       missing_context_files: contractContext.missing,
       instructions: [
         "Read shared_context_bundle once for full Foundry/SDK schema, methodology YAML, runtime ruleset, classification/location schema text, then use this task's queue rows, attached payloads, provenance, and source trace before choosing codes.",
@@ -352,7 +328,7 @@ export function createClassificationDecisionCommands({
         apply_decisions: [
           process.execPath,
           path.join(repoRoot, "scripts", "foundry.mjs"),
-  	        "dataset-classification-decisions-apply",
+          "dataset-classification-decisions-apply",
           "--classification-queue",
           taskQueuePath,
           "--decisions",
@@ -368,149 +344,144 @@ export function createClassificationDecisionCommands({
     };
     writeJsonLines(templatePath, templateRows);
     writeJson(taskPath, task);
-  	  writeJson(reportPath, task);
-  	  return task;
-  	}
+    writeJson(reportPath, task);
+    return task;
+  }
 
   function validateClassificationDecisionsForQueue(
     queueRows,
     decisions,
     { decisionTaskProof = null, decisionKind = "classification" } = {},
   ) {
-  const blockers = [];
-  const decisionTaskProofs = decisionTaskProofList(decisionTaskProof);
-  for (const proof of decisionTaskProofs) {
-    blockers.push(...proof.blockers);
-  }
-  const contextBundleHashes =
-    decisionTaskContextBundleHashes(decisionTaskProofs);
-  const queueByKey = new Map(
-    queueRows.map((row) => [classificationQueueTargetKey(row), row]),
-  );
-  const decisionsByKey = new Map();
-  for (const [index, decision] of decisions.entries()) {
-    const schemaType = classificationDecisionSchemaType(decision);
-    const key = classificationDecisionTargetKey(decision);
-    if (hasUnresolvedAiPlaceholder(decision)) {
-      blockers.push({
-        code: "classification_decision_template_incomplete",
-        message: "Classification decision still contains an AI placeholder.",
-        decision_index: index,
-      });
-      continue;
+    const blockers = [];
+    const decisionTaskProofs = decisionTaskProofList(decisionTaskProof);
+    for (const proof of decisionTaskProofs) {
+      blockers.push(...proof.blockers);
     }
-    if (decisionCompletionStatus(decision) !== "completed") {
-      blockers.push({
-        code: `${decisionKind}_decision_status_not_completed`,
-        message:
-          "Classification decision must declare decision_status=completed before deterministic apply.",
-        decision_index: index,
-        decision_status: decisionCompletionStatus(decision) || null,
-      });
+    const contextBundleHashes = decisionTaskContextBundleHashes(decisionTaskProofs);
+    const queueByKey = new Map(queueRows.map((row) => [classificationQueueTargetKey(row), row]));
+    const decisionsByKey = new Map();
+    for (const [index, decision] of decisions.entries()) {
+      const schemaType = classificationDecisionSchemaType(decision);
+      const key = classificationDecisionTargetKey(decision);
+      if (hasUnresolvedAiPlaceholder(decision)) {
+        blockers.push({
+          code: "classification_decision_template_incomplete",
+          message: "Classification decision still contains an AI placeholder.",
+          decision_index: index,
+        });
+        continue;
+      }
+      if (decisionCompletionStatus(decision) !== "completed") {
+        blockers.push({
+          code: `${decisionKind}_decision_status_not_completed`,
+          message:
+            "Classification decision must declare decision_status=completed before deterministic apply.",
+          decision_index: index,
+          decision_status: decisionCompletionStatus(decision) || null,
+        });
+      }
+      if (!schemaType) {
+        blockers.push({
+          code: "classification_decision_schema_type_missing",
+          message: "Classification decision must include category_type.",
+          decision_index: index,
+        });
+        continue;
+      }
+      if (!classificationDecisionCode(decision)) {
+        blockers.push({
+          code: "classification_decision_code_missing",
+          message: "Classification decision must include a TIDAS category code.",
+          decision_index: index,
+        });
+      }
+      if (!asText(decision.basis)) {
+        blockers.push({
+          code: "classification_decision_basis_missing",
+          message: "Classification decision must include basis.",
+          decision_index: index,
+        });
+      }
+      if (!decision.evidence || typeof decision.evidence !== "object") {
+        blockers.push({
+          code: "classification_decision_evidence_missing",
+          message: "Classification decision must include structured evidence.",
+          decision_index: index,
+        });
+      }
+      if (classificationDecisionUsedContextKinds(decision).length === 0) {
+        blockers.push({
+          code: "classification_decision_used_context_missing",
+          message:
+            "Classification decision must include used_context_kinds so full-context AI evidence is auditable.",
+          decision_index: index,
+        });
+      }
+      if (contextBundleHashes.length > 0) {
+        const decisionBundleHash = decisionContextBundleSha256(decision);
+        if (!decisionBundleHash) {
+          blockers.push({
+            code: `${decisionKind}_decision_context_bundle_missing`,
+            message:
+              "Decision must include authoring_context.context_bundle_sha256 from the AI decision task template.",
+            decision_index: index,
+            decision_tasks: decisionTaskProofs.map((proof) => proof.path),
+          });
+        } else if (!contextBundleHashes.includes(decisionBundleHash)) {
+          blockers.push({
+            code: `${decisionKind}_decision_context_bundle_mismatch`,
+            message:
+              "Decision authoring context hash does not match the AI decision task context bundle.",
+            decision_index: index,
+            expected_context_bundle_sha256:
+              contextBundleHashes.length === 1 ? contextBundleHashes[0] : null,
+            expected_context_bundle_sha256_any_of: contextBundleHashes,
+            actual_context_bundle_sha256: decisionBundleHash,
+            decision_tasks: decisionTaskProofs.map((proof) => proof.path),
+          });
+        }
+      }
+      if (!queueByKey.has(key)) {
+        blockers.push({
+          code: "classification_decision_not_in_queue",
+          message:
+            "Classification decision does not match a queued dataset_id/version/category_type.",
+          decision_index: index,
+          decision_key: key,
+        });
+        continue;
+      }
+      if (decisionsByKey.has(key)) {
+        blockers.push({
+          code: "classification_decision_duplicate",
+          message: "More than one decision targets the same queue row.",
+          decision_index: index,
+          decision_key: key,
+        });
+        continue;
+      }
+      decisionsByKey.set(key, { ...decision, category_type: schemaType });
     }
-    if (!schemaType) {
-      blockers.push({
-        code: "classification_decision_schema_type_missing",
-        message: "Classification decision must include category_type.",
-        decision_index: index,
-      });
-      continue;
+    for (const row of queueRows) {
+      const key = classificationQueueTargetKey(row);
+      if (!decisionsByKey.has(key)) {
+        blockers.push({
+          code: "classification_queue_item_unclosed",
+          message: "Every classification queue row must be closed by one decision.",
+          dataset_type: row.dataset_type,
+          dataset_id: row.dataset_id,
+          dataset_version: row.dataset_version,
+          schema_type: classificationQueueSchemaType(row),
+        });
+      }
     }
-    if (!classificationDecisionCode(decision)) {
-      blockers.push({
-        code: "classification_decision_code_missing",
-        message: "Classification decision must include a TIDAS category code.",
-        decision_index: index,
-      });
-    }
-    if (!asText(decision.basis)) {
-      blockers.push({
-        code: "classification_decision_basis_missing",
-        message: "Classification decision must include basis.",
-        decision_index: index,
-      });
-    }
-    if (!decision.evidence || typeof decision.evidence !== "object") {
-      blockers.push({
-        code: "classification_decision_evidence_missing",
-        message: "Classification decision must include structured evidence.",
-        decision_index: index,
-      });
-    }
-	    if (classificationDecisionUsedContextKinds(decision).length === 0) {
-	      blockers.push({
-        code: "classification_decision_used_context_missing",
-        message:
-          "Classification decision must include used_context_kinds so full-context AI evidence is auditable.",
-        decision_index: index,
-	      });
-	    }
-    if (contextBundleHashes.length > 0) {
-	      const decisionBundleHash = decisionContextBundleSha256(decision);
-	      if (!decisionBundleHash) {
-	        blockers.push({
-	          code: `${decisionKind}_decision_context_bundle_missing`,
-	          message:
-	            "Decision must include authoring_context.context_bundle_sha256 from the AI decision task template.",
-	          decision_index: index,
-          decision_tasks: decisionTaskProofs.map((proof) => proof.path),
-	        });
-      } else if (!contextBundleHashes.includes(decisionBundleHash)) {
-	        blockers.push({
-	          code: `${decisionKind}_decision_context_bundle_mismatch`,
-	          message:
-	            "Decision authoring context hash does not match the AI decision task context bundle.",
-	          decision_index: index,
-          expected_context_bundle_sha256:
-            contextBundleHashes.length === 1 ? contextBundleHashes[0] : null,
-          expected_context_bundle_sha256_any_of: contextBundleHashes,
-	          actual_context_bundle_sha256: decisionBundleHash,
-          decision_tasks: decisionTaskProofs.map((proof) => proof.path),
-	        });
-	      }
-	    }
-	    if (!queueByKey.has(key)) {
-      blockers.push({
-        code: "classification_decision_not_in_queue",
-        message:
-          "Classification decision does not match a queued dataset_id/version/category_type.",
-        decision_index: index,
-        decision_key: key,
-      });
-      continue;
-    }
-    if (decisionsByKey.has(key)) {
-      blockers.push({
-        code: "classification_decision_duplicate",
-        message: "More than one decision targets the same queue row.",
-        decision_index: index,
-        decision_key: key,
-      });
-      continue;
-    }
-    decisionsByKey.set(key, { ...decision, category_type: schemaType });
-  }
-  for (const row of queueRows) {
-    const key = classificationQueueTargetKey(row);
-    if (!decisionsByKey.has(key)) {
-      blockers.push({
-        code: "classification_queue_item_unclosed",
-        message: "Every classification queue row must be closed by one decision.",
-        dataset_type: row.dataset_type,
-        dataset_id: row.dataset_id,
-        dataset_version: row.dataset_version,
-        schema_type: classificationQueueSchemaType(row),
-      });
-    }
-  }
-  return { blockers, decisionsByKey };
+    return { blockers, decisionsByKey };
   }
 
   function outputRowsForClassificationGroup(rows, outDir, inputRows, options) {
     if (options.out && rows.length > 0) return resolveRepoPath(options.out);
-    const outputRows = unique(rows.map(classificationQueueOutputRows)).filter(
-      Boolean,
-    );
+    const outputRows = unique(rows.map(classificationQueueOutputRows)).filter(Boolean);
     if (outputRows.length === 1) return resolveRepoPath(outputRows[0]);
     const inputBase = path.basename(inputRows).replace(/\.(jsonl|json)$/iu, "");
     return path.join(outDir, "rows", `${inputBase}.classified.jsonl`);
@@ -521,19 +492,17 @@ export function createClassificationDecisionCommands({
       return {
         schema_version: 1,
         status: "help",
-  	      command: "dataset-classification-decisions-apply",
-  	      wraps: "tiangong-lca dataset classification apply",
-  	      usage: [
-  	        "node scripts/foundry.mjs dataset-classification-decisions-apply --classification-queue <classification-authoring-queue.jsonl> --decisions <classification-decisions.jsonl> --decision-task <classification-decision-task.json> --out-dir <apply-dir>",
-  	      ],
-  	      purpose:
-  	        "Validate AI-authored classification decisions against the Foundry queue and AI context task, then call the CLI classification apply command for each required schema type and row file.",
-  	    };
-  	  }
+        command: "dataset-classification-decisions-apply",
+        wraps: "tiangong-lca dataset classification apply",
+        usage: [
+          "node scripts/foundry.mjs dataset-classification-decisions-apply --classification-queue <classification-authoring-queue.jsonl> --decisions <classification-decisions.jsonl> --decision-task <classification-decision-task.json> --out-dir <apply-dir>",
+        ],
+        purpose:
+          "Validate AI-authored classification decisions against the Foundry queue and AI context task, then call the CLI classification apply command for each required schema type and row file.",
+      };
+    }
 
-    const queuePath = resolveRepoPath(
-      options.classificationQueue || options.queue,
-    );
+    const queuePath = resolveRepoPath(options.classificationQueue || options.queue);
     const decisionsPath = resolveRepoPath(
       options.decisions || options.decisionFile || options.input,
     );
@@ -543,28 +512,21 @@ export function createClassificationDecisionCommands({
       );
     }
     if (!decisionsPath || !fileExists(decisionsPath)) {
-      throw new Error(
-        "--decisions is required and must point to JSON/JSONL decisions.",
-      );
+      throw new Error("--decisions is required and must point to JSON/JSONL decisions.");
     }
     const outDir = resolveRepoPath(
       options.outDir || ".foundry/workspaces/classification-decisions-apply",
     );
-  	  const reportPath = path.join(outDir, "classification-decisions-apply-report.json");
-  	  const queueRows = readJsonOrJsonLines(queuePath);
-  	  const decisions = readJsonOrJsonLines(decisionsPath);
-    const decisionTaskProofs = readDecisionTaskProofs(
-      options,
-      "classification",
-      queuePath,
-    );
-    const decisionTaskProof =
-      decisionTaskProofs.length === 1 ? decisionTaskProofs[0] : null;
+    const reportPath = path.join(outDir, "classification-decisions-apply-report.json");
+    const queueRows = readJsonOrJsonLines(queuePath);
+    const decisions = readJsonOrJsonLines(decisionsPath);
+    const decisionTaskProofs = readDecisionTaskProofs(options, "classification", queuePath);
+    const decisionTaskProof = decisionTaskProofs.length === 1 ? decisionTaskProofs[0] : null;
     const { blockers, decisionsByKey } = validateClassificationDecisionsForQueue(
       queueRows,
       decisions,
       { decisionTaskProof: decisionTaskProofs, decisionKind: "classification" },
-  	  );
+    );
     const stages = [];
     const inputRowsFiles = [];
     const outputRows = [];
@@ -573,9 +535,7 @@ export function createClassificationDecisionCommands({
       const queueRowsByInput = new Map();
       for (const row of queueRows) {
         const inputRows = resolveRepoPath(
-          options.rowsFile ||
-            options.inputRows ||
-            classificationQueueInputRows(row),
+          options.rowsFile || options.inputRows || classificationQueueInputRows(row),
         );
         if (!inputRows || !fileExists(inputRows)) {
           blockers.push({
@@ -629,25 +589,22 @@ export function createClassificationDecisionCommands({
           fs.mkdirSync(path.dirname(decisionFile), { recursive: true });
           fs.mkdirSync(path.dirname(stageOutputRows), { recursive: true });
           writeJsonLines(decisionFile, groupDecisions);
-          const stage = runTiangongJsonStage(
-            `classification_apply_${schemaType}`,
-            [
-              "dataset",
-              "classification",
-              "apply",
-              "--input",
-              currentInput,
-              "--decisions",
-              decisionFile,
-              "--out",
-              stageOutputRows,
-              "--type",
-              schemaType,
-              "--out-dir",
-              path.join(outDir, "classification", schemaType),
-              "--json",
-            ],
-          );
+          const stage = runTiangongJsonStage(`classification_apply_${schemaType}`, [
+            "dataset",
+            "classification",
+            "apply",
+            "--input",
+            currentInput,
+            "--decisions",
+            decisionFile,
+            "--out",
+            stageOutputRows,
+            "--type",
+            schemaType,
+            "--out-dir",
+            path.join(outDir, "classification", schemaType),
+            "--json",
+          ]);
           stage.report_file = resolveRepoPath(stage.report?.files?.report);
           stages.push(stage);
           if (stage.exit_code !== 0) {
@@ -670,14 +627,14 @@ export function createClassificationDecisionCommands({
       schema_version: 1,
       generated_at_utc: nowIso(),
       status: blockers.length > 0 ? "blocked" : "completed",
-  	    command: "dataset-classification-decisions-apply",
-  	    classification_queue: repoRelativePath(queuePath),
-  	    decisions_file: repoRelativePath(decisionsPath),
+      command: "dataset-classification-decisions-apply",
+      classification_queue: repoRelativePath(queuePath),
+      decisions_file: repoRelativePath(decisionsPath),
       decision_task: decisionTaskReportPayload(decisionTaskProof),
       decision_tasks: decisionTaskProofs.map(decisionTaskReportPayload),
-  	    counts: {
-  	      queue_rows: queueRows.length,
-  	      decisions: decisions.length,
+      counts: {
+        queue_rows: queueRows.length,
+        decisions: decisions.length,
         stages: stages.length,
         applied: stages.reduce(
           (total, stage) => total + Number(stage.report?.counts?.applied ?? 0),

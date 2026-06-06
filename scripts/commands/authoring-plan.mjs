@@ -65,11 +65,7 @@ export function createAuthoringPlanCommands({
   writeJson,
 }) {
   function foundryCommand(args) {
-    return [
-      process.execPath,
-      path.join(repoRoot, "scripts", "foundry.mjs"),
-      ...args,
-    ]
+    return [process.execPath, path.join(repoRoot, "scripts", "foundry.mjs"), ...args]
       .map(shellQuote)
       .join(" ");
   }
@@ -78,9 +74,7 @@ export function createAuthoringPlanCommands({
     const explicit = resolveRepoPath(options.workspaceDir || options.workspace);
     if (explicit) return explicit;
     const curationDir = path.dirname(curationGateReportPath);
-    return path.basename(curationDir) === "curation-gate"
-      ? path.dirname(curationDir)
-      : curationDir;
+    return path.basename(curationDir) === "curation-gate" ? path.dirname(curationDir) : curationDir;
   }
 
   function existingArtifact(filePath) {
@@ -106,10 +100,7 @@ export function createAuthoringPlanCommands({
     };
   }
 
-  function aiRowsFileStatus(
-    filePath,
-    { requireCompletedDecision = false } = {},
-  ) {
+  function aiRowsFileStatus(filePath, { requireCompletedDecision = false } = {}) {
     const resolved = resolveRepoPath(filePath);
     if (!resolved || !fileExists(resolved)) {
       return {
@@ -124,8 +115,7 @@ export function createAuthoringPlanCommands({
     const rows = readJsonOrJsonLines(resolved);
     const placeholders = rows.filter(hasUnresolvedAiPlaceholder).length;
     const incompleteDecisions = requireCompletedDecision
-      ? rows.filter((row) => asText(row?.decision_status) !== "completed")
-          .length
+      ? rows.filter((row) => asText(row?.decision_status) !== "completed").length
       : 0;
     return {
       exists: true,
@@ -143,9 +133,7 @@ export function createAuthoringPlanCommands({
   }
 
   function authoringPlanContextPaths(curationGateReport) {
-    const details = ensureArray(
-      curationGateReport?.context?.contract_context_file_details,
-    );
+    const details = ensureArray(curationGateReport?.context?.contract_context_file_details);
     const byKind = new Map();
     for (const detail of details) {
       const kind = asText(detail?.kind);
@@ -168,11 +156,7 @@ export function createAuthoringPlanCommands({
     appendOption(args, "--schema-file", contextPaths.schema);
     appendOption(args, "--yaml-file", contextPaths.methodology_yaml);
     appendOption(args, "--ruleset-file", contextPaths.ruleset);
-    appendRepeatedOptions(
-      args,
-      "--classification-schema",
-      contextPaths.classification_schema,
-    );
+    appendRepeatedOptions(args, "--classification-schema", contextPaths.classification_schema);
     appendOption(args, "--location-schema", contextPaths.location_schema);
   }
 
@@ -190,10 +174,7 @@ export function createAuthoringPlanCommands({
         entities
           .map((entity) =>
             asText(
-              entity?.entity_id ??
-                entity?.dataset_id ??
-                entity?.process_id ??
-                entity?.flow_id,
+              entity?.entity_id ?? entity?.dataset_id ?? entity?.process_id ?? entity?.flow_id,
             ),
           )
           .filter(Boolean),
@@ -289,11 +270,7 @@ export function createAuthoringPlanCommands({
         "authoring-tasks",
         "authoring-patch-collect-report.json",
       ),
-      patchApplyReport: path.join(
-        workspaceDir,
-        "patch-apply",
-        "dataset-patch-apply-report.json",
-      ),
+      patchApplyReport: path.join(workspaceDir, "patch-apply", "dataset-patch-apply-report.json"),
     };
   }
 
@@ -338,9 +315,7 @@ export function createAuthoringPlanCommands({
         decisions,
       };
     }
-    const applyReports = (applyReportPaths ?? [applyReportPath]).map(
-      authoringPlanApplyStatus,
-    );
+    const applyReports = (applyReportPaths ?? [applyReportPath]).map(authoringPlanApplyStatus);
     if (!applyReports.every((report) => report.completed)) {
       return {
         status: "needs_deterministic_apply",
@@ -422,11 +397,7 @@ export function createAuthoringPlanCommands({
     if (required.some((phase) => phase.status === "blocked_task_not_ready")) {
       return "blocked_task_not_ready";
     }
-    if (
-      required.some(
-        (phase) => phase.status === "blocked_patch_collect_not_ready",
-      )
-    ) {
+    if (required.some((phase) => phase.status === "blocked_patch_collect_not_ready")) {
       return "blocked_patch_collect_not_ready";
     }
     if (required.some((phase) => phase.status === "needs_task_build")) {
@@ -434,16 +405,12 @@ export function createAuthoringPlanCommands({
     }
     if (
       required.some((phase) =>
-        ["ready_for_ai_decisions", "ready_for_ai_patches"].includes(
-          phase.status,
-        ),
+        ["ready_for_ai_decisions", "ready_for_ai_patches"].includes(phase.status),
       )
     ) {
       return "ready_for_ai_authoring";
     }
-    if (
-      required.some((phase) => phase.status === "needs_deterministic_apply")
-    ) {
+    if (required.some((phase) => phase.status === "needs_deterministic_apply")) {
       return "needs_deterministic_apply";
     }
     return "ready_for_post_authoring_finalize";
@@ -476,12 +443,7 @@ export function createAuthoringPlanCommands({
     }));
   }
 
-  function authoringPlanDecisionChunkPlan({
-    kind,
-    rows,
-    chunkSize,
-    buildArgsForChunk,
-  }) {
+  function authoringPlanDecisionChunkPlan({ kind, rows, chunkSize, buildArgsForChunk }) {
     if (rows.length === 0) {
       return {
         recommended: false,
@@ -532,18 +494,10 @@ export function createAuthoringPlanCommands({
     return reportType ? [reportType] : ["<flow-or-process>"];
   }
 
-  function authoringPlanRowsFileForDatasetType(
-    datasetType,
-    workspaceDir,
-    curationGateReport,
-  ) {
+  function authoringPlanRowsFileForDatasetType(datasetType, workspaceDir, curationGateReport) {
     const reportType = asText(curationGateReport?.dataset_type).toLowerCase();
     const normalizedType = asText(datasetType).toLowerCase();
-    if (
-      normalizedType &&
-      normalizedType === reportType &&
-      curationGateReport?.rows_file
-    ) {
+    if (normalizedType && normalizedType === reportType && curationGateReport?.rows_file) {
       return curationGateReport.rows_file;
     }
     const queueManifest = existingArtifact(
@@ -564,11 +518,7 @@ export function createAuthoringPlanCommands({
       return "<rows-file-containing-identity-targets>";
     }
     return repoRelativePath(
-      path.join(
-        workspaceDir,
-        "rows",
-        `${datasetRowsFileStem(normalizedType)}.jsonl`,
-      ),
+      path.join(workspaceDir, "rows", `${datasetRowsFileStem(normalizedType)}.jsonl`),
     );
   }
 
@@ -580,29 +530,18 @@ export function createAuthoringPlanCommands({
           curationGateReport?.flows ??
           curationGateReport?.items,
       )
-        .map((entity) =>
-          asText(entity?.authoring_package ?? entity?.authoringPackage),
-        )
+        .map((entity) => asText(entity?.authoring_package ?? entity?.authoringPackage))
         .filter(Boolean)
         .map((packageRef) => path.dirname(packageRef)),
     );
     return packageDirs.length === 1 ? packageDirs[0] : null;
   }
 
-  function authoringPlanIdentityApplyReports(
-    workspaceDir,
-    datasetTypes,
-    explicitReportPath,
-  ) {
-    if (explicitReportPath && datasetTypes.length <= 1)
-      return [explicitReportPath];
+  function authoringPlanIdentityApplyReports(workspaceDir, datasetTypes, explicitReportPath) {
+    if (explicitReportPath && datasetTypes.length <= 1) return [explicitReportPath];
     if (datasetTypes.length <= 1) {
       return [
-        path.join(
-          workspaceDir,
-          "identity-decision-apply",
-          "identity-decisions-apply-report.json",
-        ),
+        path.join(workspaceDir, "identity-decision-apply", "identity-decisions-apply-report.json"),
       ];
     }
     return datasetTypes.map((datasetType) =>
@@ -675,21 +614,14 @@ export function createAuthoringPlanCommands({
       );
     }
     const curationGateReport = readJson(curationGateReportPath);
-    const workspaceDir = authoringPlanWorkspaceDir(
-      curationGateReportPath,
-      options,
-    );
+    const workspaceDir = authoringPlanWorkspaceDir(curationGateReportPath, options);
     const defaults = authoringPlanDefaultPaths(workspaceDir);
-    const outDir = resolveRepoPath(
-      options.outDir || path.join(workspaceDir, "authoring-plan"),
-    );
+    const outDir = resolveRepoPath(options.outDir || path.join(workspaceDir, "authoring-plan"));
     const contextPaths = authoringPlanContextPaths(curationGateReport);
     const classificationQueue = asText(
       curationGateReport?.context?.classification_queue?.queue_file,
     );
-    const locationQueue = asText(
-      curationGateReport?.context?.location_queue?.queue_file,
-    );
+    const locationQueue = asText(curationGateReport?.context?.location_queue?.queue_file);
     const counts = curationGateReport.counts ?? {};
     const gateScope = authoringPlanGateScope(curationGateReport);
     const classificationRows = Number(
@@ -698,9 +630,7 @@ export function createAuthoringPlanCommands({
         0,
     );
     const locationRows = Number(
-      counts.location_queue_action_items ??
-        curationGateReport?.context?.location_queue?.rows ??
-        0,
+      counts.location_queue_action_items ?? curationGateReport?.context?.location_queue?.rows ?? 0,
     );
     const identityActionItems = Number(counts.identity_action_items ?? 0);
     const fieldActionItems = Math.max(
@@ -712,9 +642,7 @@ export function createAuthoringPlanCommands({
     );
 
     const identityTaskPath = resolveRepoPath(
-      options.identityDecisionTask ||
-        options.identityTask ||
-        defaults.identityTask,
+      options.identityDecisionTask || options.identityTask || defaults.identityTask,
     );
     const identityDecisionsPath = resolveRepoPath(
       options.identityDecisions || defaults.identityDecisions,
@@ -747,9 +675,7 @@ export function createAuthoringPlanCommands({
         defaults.locationApplyReport,
     );
     const authoringTaskManifestPath = resolveRepoPath(
-      options.authoringTaskManifest ||
-        options.taskManifest ||
-        defaults.authoringTaskManifest,
+      options.authoringTaskManifest || options.taskManifest || defaults.authoringTaskManifest,
     );
     const patchCollectReportPath = resolveRepoPath(
       options.patchCollectReport || defaults.patchCollectReport,
@@ -766,8 +692,7 @@ export function createAuthoringPlanCommands({
       identityDatasetTypes,
       explicitIdentityApplyReportPath,
     );
-    const authoringPackageDir =
-      authoringPlanAuthoringPackageDir(curationGateReport);
+    const authoringPackageDir = authoringPlanAuthoringPackageDir(curationGateReport);
     const identityApplyCommands = authoringPlanIdentityApplyCommands({
       workspaceDir,
       curationGateReport,
@@ -777,10 +702,7 @@ export function createAuthoringPlanCommands({
       authoringPackageDir,
     });
     const identityChunkSize = authoringPlanChunkSize(options, "identity");
-    const classificationChunkSize = authoringPlanChunkSize(
-      options,
-      "classification",
-    );
+    const classificationChunkSize = authoringPlanChunkSize(options, "classification");
     const locationChunkSize = authoringPlanChunkSize(options, "location");
     const sharedContextCacheDir = resolveRepoPath(
       options.sharedContextCacheDir ||
@@ -806,15 +728,8 @@ export function createAuthoringPlanCommands({
     ];
     appendAuthoringPlanGateScopeOptions(classificationBuildArgs, gateScope);
     appendContextOptions(classificationBuildArgs, contextPaths);
-    appendOption(
-      classificationBuildArgs,
-      "--shared-context-cache-dir",
-      sharedContextCacheDirRef,
-    );
-    classificationBuildArgs.push(
-      "--out-dir",
-      path.dirname(classificationTaskPath),
-    );
+    appendOption(classificationBuildArgs, "--shared-context-cache-dir", sharedContextCacheDirRef);
+    classificationBuildArgs.push("--out-dir", path.dirname(classificationTaskPath));
 
     const locationBuildArgs = [
       "dataset-location-decision-task-build",
@@ -823,11 +738,7 @@ export function createAuthoringPlanCommands({
     ];
     appendAuthoringPlanGateScopeOptions(locationBuildArgs, gateScope);
     appendContextOptions(locationBuildArgs, contextPaths);
-    appendOption(
-      locationBuildArgs,
-      "--shared-context-cache-dir",
-      sharedContextCacheDirRef,
-    );
+    appendOption(locationBuildArgs, "--shared-context-cache-dir", sharedContextCacheDirRef);
     locationBuildArgs.push("--out-dir", path.dirname(locationTaskPath));
     const classificationApplyQueue = authoringPlanScopedDecisionQueuePath({
       taskPath: classificationTaskPath,
@@ -865,10 +776,7 @@ export function createAuthoringPlanCommands({
       dataset_types: identityDatasetTypes,
       chunk_plan: authoringPlanDecisionChunkPlan({
         kind: "identity",
-        rows: authoringPlanDecisionRows(
-          identityTaskPath,
-          "identity_action_items",
-        ),
+        rows: authoringPlanDecisionRows(identityTaskPath, "identity_action_items"),
         chunkSize: identityChunkSize,
         buildArgsForChunk: ({ datasetType, offset, limit, chunkLabel }) => [
           "dataset-identity-decision-task-build",
@@ -891,9 +799,7 @@ export function createAuthoringPlanCommands({
       commands: {
         build_task: foundryCommand(identityBuildArgs),
         apply_decisions:
-          identityApplyCommands.length === 1
-            ? identityApplyCommands[0].command
-            : null,
+          identityApplyCommands.length === 1 ? identityApplyCommands[0].command : null,
         apply_decisions_by_type: identityApplyCommands,
       },
     };
@@ -910,10 +816,7 @@ export function createAuthoringPlanCommands({
       }),
       chunk_plan: authoringPlanDecisionChunkPlan({
         kind: "classification",
-        rows: authoringPlanDecisionRows(
-          classificationTaskPath,
-          "classification_queue_rows",
-        ),
+        rows: authoringPlanDecisionRows(classificationTaskPath, "classification_queue_rows"),
         chunkSize: classificationChunkSize,
         buildArgsForChunk: ({ datasetType, offset, limit, chunkLabel }) => {
           const args = [
@@ -930,11 +833,7 @@ export function createAuthoringPlanCommands({
             chunkLabel,
           ];
           appendContextOptions(args, contextPaths);
-          appendOption(
-            args,
-            "--shared-context-cache-dir",
-            sharedContextCacheDirRef,
-          );
+          appendOption(args, "--shared-context-cache-dir", sharedContextCacheDirRef);
           args.push(
             "--out-dir",
             path.join(path.dirname(classificationTaskPath), "chunks", chunkLabel),
@@ -988,15 +887,8 @@ export function createAuthoringPlanCommands({
             chunkLabel,
           ];
           appendContextOptions(args, contextPaths);
-          appendOption(
-            args,
-            "--shared-context-cache-dir",
-            sharedContextCacheDirRef,
-          );
-          args.push(
-            "--out-dir",
-            path.join(path.dirname(locationTaskPath), "chunks", chunkLabel),
-          );
+          appendOption(args, "--shared-context-cache-dir", sharedContextCacheDirRef);
+          args.push("--out-dir", path.join(path.dirname(locationTaskPath), "chunks", chunkLabel));
           return args;
         },
       }),
@@ -1041,16 +933,10 @@ export function createAuthoringPlanCommands({
           authoringTaskManifestPath,
         ]),
         apply_patches:
-          existingArtifact(authoringTaskManifestPath)?.value?.commands
-            ?.apply_all_patches ?? null,
+          existingArtifact(authoringTaskManifestPath)?.value?.commands?.apply_all_patches ?? null,
       },
     };
-    const phases = [
-      identityPhase,
-      classificationPhase,
-      locationPhase,
-      patchPhase,
-    ];
+    const phases = [identityPhase, classificationPhase, locationPhase, patchPhase];
     const reportPath = path.join(outDir, "dataset-authoring-plan.json");
     const report = {
       schema_version: 1,
@@ -1069,9 +955,7 @@ export function createAuthoringPlanCommands({
         classification_queue_rows: classificationRows,
         location_queue_rows: locationRows,
         field_patch_action_items: fieldActionItems,
-        deterministic_cleanup_items: Number(
-          counts.deterministic_cleanup_items ?? 0,
-        ),
+        deterministic_cleanup_items: Number(counts.deterministic_cleanup_items ?? 0),
         blockers: 0,
       },
       context: {

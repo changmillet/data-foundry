@@ -96,8 +96,7 @@ node scripts/foundry.mjs dataset-classification-decisions-apply \
   --out-dir .foundry/workspaces/<task-id>/classification-decision-apply
 ```
 
-The apply report must be `completed` and include the decision task/context bundle proof; use its output rows as the next rows file for schema validation, QA, curation, and finalize.
-For chunked runs, use the filtered queue emitted by the task for per-chunk apply, or apply a complete decisions file to the original source queue while passing all chunk task files with repeated `--decision-task`.
+The apply report must be `completed` and include the decision task/context bundle proof; use its output rows as the next rows file for schema validation, QA, curation, and finalize. For chunked runs, use the filtered queue emitted by the task for per-chunk apply, or apply a complete decisions file to the original source queue while passing all chunk task files with repeated `--decision-task`.
 
 ## Location Decision Workflow
 
@@ -131,8 +130,7 @@ node scripts/foundry.mjs dataset-location-decisions-apply \
   --out-dir .foundry/workspaces/<task-id>/location-decision-apply
 ```
 
-The apply report must be `completed` and include the decision task/context bundle proof; use its output rows as the next rows file for schema validation, QA, curation, and finalize.
-For chunked runs, use the filtered queue emitted by the task for per-chunk apply, or apply a complete decisions file to the original source queue while passing all chunk task files with repeated `--decision-task`.
+The apply report must be `completed` and include the decision task/context bundle proof; use its output rows as the next rows file for schema validation, QA, curation, and finalize. For chunked runs, use the filtered queue emitted by the task for per-chunk apply, or apply a complete decisions file to the original source queue while passing all chunk task files with repeated `--decision-task`.
 
 ## Patch Workflow
 
@@ -203,8 +201,7 @@ Patch shape:
 }
 ```
 
-Every full-context non-test operation must include `closes_action_items`; supporting cleanup operations should close the same action item they are needed to resolve.
-Classification and location queue decisions should not be encoded as patch operations when the dedicated decision workflows are available.
+Every full-context non-test operation must include `closes_action_items`; supporting cleanup operations should close the same action item they are needed to resolve. Classification and location queue decisions should not be encoded as patch operations when the dedicated decision workflows are available.
 
 4. If a value cannot be inferred safely:
 

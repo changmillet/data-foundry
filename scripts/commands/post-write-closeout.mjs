@@ -54,8 +54,7 @@ export function createPostWriteCloseoutCommands({
     if (Object.hasOwn(commitReport, "commit") && commitReport.commit !== true) {
       blockers.push({
         code: "commit_report_commit_flag_false",
-        message:
-          "Commit report has commit=false; dry-run reports cannot close an import.",
+        message: "Commit report has commit=false; dry-run reports cannot close an import.",
         commit_report: repoRelativePath(commitReportPath),
       });
     }
@@ -74,13 +73,8 @@ export function createPostWriteCloseoutCommands({
       });
     }
 
-    const committedRows =
-      datasetType === "flow" ? successCount : executedCount || successCount;
-    if (
-      !Number.isFinite(committedRows) ||
-      committedRows < expectedRows ||
-      expectedRows <= 0
-    ) {
+    const committedRows = datasetType === "flow" ? successCount : executedCount || successCount;
+    if (!Number.isFinite(committedRows) || committedRows < expectedRows || expectedRows <= 0) {
       blockers.push({
         code: "commit_report_row_count_incomplete",
         message: `Commit report proves ${Number.isFinite(committedRows) ? committedRows : "unknown"} committed rows; expected ${expectedRows}.`,
@@ -107,17 +101,14 @@ export function createPostWriteCloseoutCommands({
   }) {
     const inputPath = resolveRepoPath(reportInputPath(verifyReport));
     const counts = verifyReport.counts ?? {};
-    const blockerCount = Number(
-      counts.blockers ?? verifyReport.blockers?.length ?? 0,
-    );
+    const blockerCount = Number(counts.blockers ?? verifyReport.blockers?.length ?? 0);
     const rootReadbackCount = Number(counts.root_readback_checks ?? 0);
     const rootPayloadMismatches = Number(counts.root_payload_mismatches ?? -1);
 
     if (!inputPath || !sameResolvedPath(inputPath, finalRowsFile)) {
       blockers.push({
         code: "post_write_verify_input_mismatch",
-        message:
-          "Post-write verification input must match the handoff final rows file.",
+        message: "Post-write verification input must match the handoff final rows file.",
         post_write_verify_report: repoRelativePath(verifyReportPath),
         expected_input: repoRelativeMaybe(finalRowsFile),
         actual_input: inputPath ? repoRelativeMaybe(inputPath) : null,
@@ -174,9 +165,7 @@ export function createPostWriteCloseoutCommands({
 
     const checks = readJsonLines(checksFile);
     const readbackChecks = checks.filter(
-      (check) =>
-        check?.role === "root" &&
-        String(check?.path ?? "").endsWith("#readback"),
+      (check) => check?.role === "root" && String(check?.path ?? "").endsWith("#readback"),
     );
     if (readbackChecks.length < expectedRows) {
       blockers.push({
@@ -216,10 +205,7 @@ export function createPostWriteCloseoutCommands({
           row_index: check.row_index ?? null,
         });
       }
-      if (
-        expectedStateCode !== null &&
-        Number(check.remote_state_code) !== expectedStateCode
-      ) {
+      if (expectedStateCode !== null && Number(check.remote_state_code) !== expectedStateCode) {
         blockers.push({
           code: "post_write_verify_state_code_not_proven",
           message: `Readback state_code ${check.remote_state_code ?? "missing"} does not match ${expectedStateCode}.`,
@@ -333,8 +319,7 @@ export function createPostWriteCloseoutCommands({
       counts,
       files: {
         unresolved_traces: traceQueues.unresolved_traces,
-        source_exchange_completeness_traces:
-          traceQueues.source_exchange_completeness_traces,
+        source_exchange_completeness_traces: traceQueues.source_exchange_completeness_traces,
         source_reference_rewrites: traceQueues.source_reference_rewrites,
       },
     };
@@ -362,9 +347,7 @@ export function createPostWriteCloseoutCommands({
       options.commitReport || options.commit || options.writeReport,
     );
     const verifyArtifact = readJsonArtifactOption(
-      options.postWriteVerifyReport ||
-        options.verifyReport ||
-        options.remoteVerifyReport,
+      options.postWriteVerifyReport || options.verifyReport || options.remoteVerifyReport,
     );
     if (!handoffArtifact) {
       throw new Error(
@@ -372,9 +355,7 @@ export function createPostWriteCloseoutCommands({
       );
     }
     if (!commitArtifact) {
-      throw new Error(
-        "--commit-report is required and must point to the CLI commit report JSON.",
-      );
+      throw new Error("--commit-report is required and must point to the CLI commit report JSON.");
     }
     if (!verifyArtifact) {
       throw new Error(
@@ -387,26 +368,16 @@ export function createPostWriteCloseoutCommands({
       .trim()
       .toLowerCase();
     if (
-      ![
-        "support",
-        "contact",
-        "source",
-        "process",
-        "flow",
-        "lifecyclemodel",
-      ].includes(datasetType)
+      !["support", "contact", "source", "process", "flow", "lifecyclemodel"].includes(datasetType)
     ) {
       throw new Error(
         `Unsupported dataset type for post-write closeout: ${datasetType || "(missing)"}.`,
       );
     }
     const outDir = resolveRepoPath(
-      options.outDir ||
-        path.join(path.dirname(handoffArtifact.path), "post-write-closeout"),
+      options.outDir || path.join(path.dirname(handoffArtifact.path), "post-write-closeout"),
     );
-    const finalRowsFile = resolveRepoPath(
-      options.rowsFile || handoffPlan.final_rows_file,
-    );
+    const finalRowsFile = resolveRepoPath(options.rowsFile || handoffPlan.final_rows_file);
     const finalizeArtifact = readJsonArtifactOption(
       options.finalizeReport || handoffPlan.finalize_report,
     );
@@ -415,12 +386,8 @@ export function createPostWriteCloseoutCommands({
     );
     const finalizeReport = finalizeArtifact?.value ?? null;
     const mutationManifest = mutationArtifact?.value ?? null;
-    const targetUserId = asText(
-      options.targetUserId || handoffPlan.target_user_id,
-    );
-    const expectedStateCodeText = asText(
-      options.stateCode ?? handoffPlan.expected_state_code,
-    );
+    const targetUserId = asText(options.targetUserId || handoffPlan.target_user_id);
+    const expectedStateCodeText = asText(options.stateCode ?? handoffPlan.expected_state_code);
     const expectedStateCode =
       expectedStateCodeText === "" || Number.isNaN(Number(expectedStateCodeText))
         ? null
@@ -437,23 +404,20 @@ export function createPostWriteCloseoutCommands({
     if (!finalRowsFile || !fileExists(finalRowsFile)) {
       blockers.push({
         code: "final_rows_missing",
-        message:
-          "Post-write closeout requires the exact final rows file from handoff.",
+        message: "Post-write closeout requires the exact final rows file from handoff.",
         final_rows_file: handoffPlan.final_rows_file ?? null,
       });
     }
     if (!targetUserId) {
       blockers.push({
         code: "target_user_id_missing",
-        message:
-          "Post-write closeout requires target_user_id from handoff or options.",
+        message: "Post-write closeout requires target_user_id from handoff or options.",
       });
     }
     if (expectedStateCodeText === "" || expectedStateCode === null) {
       blockers.push({
         code: "state_code_missing",
-        message:
-          "Post-write closeout requires expected_state_code from handoff or options.",
+        message: "Post-write closeout requires expected_state_code from handoff or options.",
       });
     }
     if (!finalizeArtifact) {
@@ -479,10 +443,7 @@ export function createPostWriteCloseoutCommands({
         finalize_report: repoRelativeMaybe(finalizeArtifact?.path),
       });
     }
-    if (
-      mutationManifest &&
-      mutationManifest.status !== "ready_for_remote_write"
-    ) {
+    if (mutationManifest && mutationManifest.status !== "ready_for_remote_write") {
       blockers.push({
         code: "mutation_manifest_not_ready",
         message: `Mutation manifest status is ${mutationManifest.status ?? "missing"}.`,
@@ -495,19 +456,13 @@ export function createPostWriteCloseoutCommands({
           finalizeReport.final_rows_file ||
           finalizeReport.rows_file,
       );
-      if (
-        !finalizeRowsFile ||
-        !sameResolvedPath(finalizeRowsFile, finalRowsFile)
-      ) {
+      if (!finalizeRowsFile || !sameResolvedPath(finalizeRowsFile, finalRowsFile)) {
         blockers.push({
           code: "finalize_report_rows_mismatch",
-          message:
-            "Finalize report final rows must match the handoff final rows file.",
+          message: "Finalize report final rows must match the handoff final rows file.",
           finalize_report: repoRelativeMaybe(finalizeArtifact?.path),
           expected_rows: repoRelativeMaybe(finalRowsFile),
-          actual_rows: finalizeRowsFile
-            ? repoRelativeMaybe(finalizeRowsFile)
-            : null,
+          actual_rows: finalizeRowsFile ? repoRelativeMaybe(finalizeRowsFile) : null,
         });
       }
     }
@@ -517,26 +472,18 @@ export function createPostWriteCloseoutCommands({
           mutationManifest.files?.final_rows ||
           mutationManifest.files?.rows_file,
       );
-      if (
-        !mutationRowsFile ||
-        !sameResolvedPath(mutationRowsFile, finalRowsFile)
-      ) {
+      if (!mutationRowsFile || !sameResolvedPath(mutationRowsFile, finalRowsFile)) {
         blockers.push({
           code: "mutation_manifest_rows_mismatch",
-          message:
-            "Mutation manifest rows_file must match the handoff final rows file.",
+          message: "Mutation manifest rows_file must match the handoff final rows file.",
           mutation_manifest: repoRelativeMaybe(mutationArtifact?.path),
           expected_rows: repoRelativeMaybe(finalRowsFile),
-          actual_rows: mutationRowsFile
-            ? repoRelativeMaybe(mutationRowsFile)
-            : null,
+          actual_rows: mutationRowsFile ? repoRelativeMaybe(mutationRowsFile) : null,
         });
       }
     }
     const closeoutProfile = asText(
-      handoffPlan.profile ??
-        finalizeReport?.profile ??
-        mutationManifest?.profile,
+      handoffPlan.profile ?? finalizeReport?.profile ?? mutationManifest?.profile,
     );
     const postWriteFullContextCheck = fullContextProofCheck({
       profileId: closeoutProfile,
@@ -547,9 +494,7 @@ export function createPostWriteCloseoutCommands({
     blockers.push(...postWriteFullContextCheck.blockers);
 
     const expectedRows =
-      finalRowsFile && fileExists(finalRowsFile)
-        ? countRowsFile(finalRowsFile)
-        : 0;
+      finalRowsFile && fileExists(finalRowsFile) ? countRowsFile(finalRowsFile) : 0;
     if (expectedRows <= 0) {
       blockers.push({
         code: "final_rows_empty",
@@ -587,28 +532,17 @@ export function createPostWriteCloseoutCommands({
       blockers,
     });
 
-    const reportPath = path.join(
-      outDir,
-      "dataset-post-write-closeout-report.json",
-    );
+    const reportPath = path.join(outDir, "dataset-post-write-closeout-report.json");
     const report = {
       schema_version: 1,
       generated_at_utc: nowIso(),
       status: blockers.length === 0 ? "completed" : "blocked",
       dataset_type: datasetType,
-      profile:
-        handoffPlan.profile ??
-        finalizeReport?.profile ??
-        mutationManifest?.profile ??
-        null,
+      profile: handoffPlan.profile ?? finalizeReport?.profile ?? mutationManifest?.profile ?? null,
       remote_write_mode: "read-only",
       handoff_plan: repoRelativePath(handoffArtifact.path),
-      finalize_report: finalizeArtifact
-        ? repoRelativePath(finalizeArtifact.path)
-        : null,
-      mutation_manifest: mutationArtifact
-        ? repoRelativePath(mutationArtifact.path)
-        : null,
+      finalize_report: finalizeArtifact ? repoRelativePath(finalizeArtifact.path) : null,
+      mutation_manifest: mutationArtifact ? repoRelativePath(mutationArtifact.path) : null,
       commit_report: repoRelativePath(commitArtifact.path),
       post_write_verify_report: repoRelativePath(verifyArtifact.path),
       final_rows_file: repoRelativeMaybe(finalRowsFile),
@@ -633,15 +567,10 @@ export function createPostWriteCloseoutCommands({
           ) || 0,
         post_write_verify_blockers:
           Number(
-            verifyArtifact.value.counts?.blockers ??
-              verifyArtifact.value.blockers?.length ??
-              0,
+            verifyArtifact.value.counts?.blockers ?? verifyArtifact.value.blockers?.length ?? 0,
           ) || 0,
-        root_readback_checks:
-          Number(verifyArtifact.value.counts?.root_readback_checks ?? 0) || 0,
-        root_payload_mismatches: Number(
-          verifyArtifact.value.counts?.root_payload_mismatches ?? -1,
-        ),
+        root_readback_checks: Number(verifyArtifact.value.counts?.root_readback_checks ?? 0) || 0,
+        root_payload_mismatches: Number(verifyArtifact.value.counts?.root_payload_mismatches ?? -1),
         unresolved_trace_entries: traceQueues.counts.unresolved_trace_entries,
         source_exchange_completeness_entries:
           traceQueues.counts.source_exchange_completeness_entries,
@@ -649,26 +578,16 @@ export function createPostWriteCloseoutCommands({
         ai_patch_evidence_entries:
           Number(mutationManifest?.counts?.ai_patch_evidence_entries ?? 0) || 0,
         ai_classification_decision_entries:
-          Number(
-            mutationManifest?.counts?.ai_classification_decision_entries ?? 0,
-          ) || 0,
+          Number(mutationManifest?.counts?.ai_classification_decision_entries ?? 0) || 0,
         ai_location_decision_entries:
-          Number(mutationManifest?.counts?.ai_location_decision_entries ?? 0) ||
-          0,
+          Number(mutationManifest?.counts?.ai_location_decision_entries ?? 0) || 0,
         ai_identity_decision_entries:
-          Number(mutationManifest?.counts?.ai_identity_decision_entries ?? 0) ||
-          0,
+          Number(mutationManifest?.counts?.ai_identity_decision_entries ?? 0) || 0,
         ai_semantic_evidence_entries:
-          (Number(mutationManifest?.counts?.ai_patch_evidence_entries ?? 0) ||
-            0) +
-          (Number(
-            mutationManifest?.counts?.ai_classification_decision_entries ?? 0,
-          ) || 0) +
-          (Number(
-            mutationManifest?.counts?.ai_location_decision_entries ?? 0,
-          ) || 0) +
-          (Number(mutationManifest?.counts?.ai_identity_decision_entries ?? 0) ||
-            0),
+          (Number(mutationManifest?.counts?.ai_patch_evidence_entries ?? 0) || 0) +
+          (Number(mutationManifest?.counts?.ai_classification_decision_entries ?? 0) || 0) +
+          (Number(mutationManifest?.counts?.ai_location_decision_entries ?? 0) || 0) +
+          (Number(mutationManifest?.counts?.ai_identity_decision_entries ?? 0) || 0),
         full_context_ai_completion_required: postWriteFullContextCheck.required,
       },
       blockers,

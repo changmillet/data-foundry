@@ -1,0 +1,8 @@
+/** @type {import("prettier").Config} */
+module.exports = {
+  printWidth: 100,
+  trailingComma: "all",
+  proseWrap: "never",
+  endOfLine: "lf",
+  plugins: ["prettier-plugin-organize-imports"],
+};

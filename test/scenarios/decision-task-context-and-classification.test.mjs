@@ -1,75 +1,21 @@
 import test from "node:test";
-import {
-  writeReadyFinalizeFixture,
-} from "../fixtures/finalize-fixtures.mjs";
-import {
-  annualSupplyFixtureRoot,
-  classificationFixtureRoot,
-  elementaryFlowManifestFixtureRoot,
-  finalizeAutoQueueFixtureRoot,
-  finalizeCurationGateFixtureRoot,
-  finalizeIdentityPreflightFixtureRoot,
-  finalizeLocationFixtureRoot,
-  fixtureRoot,
-  flowClassificationFixtureRoot,
-  flowIdentityReferenceFixtureRoot,
-  identityPreflightRunFixtureRoot,
-  locationFixtureRoot,
-  mutationFixtureRoot,
-  packageContextFixtureRoot,
-  qaPathFixtureRoot,
-  referenceClosureFixtureRoot,
-  sourceExchangeFixtureRoot,
-  supportManifestFixtureRoot,
-} from "../fixtures/fixture-roots.mjs";
+import { classificationFixtureRoot, fixtureRoot } from "../fixtures/fixture-roots.mjs";
 import {
   assert,
-  blockerCodes,
-  bundledCategorySchemaNames,
-  contextTextByPathSuffix,
-  crypto,
   fs,
-  fullContextKinds,
-  fullContextPatterns,
-  itemBlockerCodes,
   path,
   readJson,
-  readJsonLines,
   rel,
   repoRoot,
   runFoundry,
-  scopeBlockerCodes,
-  sha256Text,
-  siblingCliBuildAvailable,
-  siblingCliRoot,
-  spawnSync,
-  targetUserId,
   writeJson,
   writeJsonLines,
   writeText,
 } from "../fixtures/foundry-core.mjs";
+import { writeContextPackFiles } from "../fixtures/full-context-fixtures.mjs";
 import {
-  contextFile,
-  createFixture,
-  writeContextPackFiles,
-  writeDecisionTaskFixture,
-} from "../fixtures/full-context-fixtures.mjs";
-import {
-  writeCompletedIdentityPreflightIndex,
-} from "../fixtures/identity-fixtures.mjs";
-import {
-  createMutationManifestFixture,
-} from "../fixtures/mutation-fixtures.mjs";
-import {
-  flowRow,
-  flowRowWithClassification,
   processRowWithDefaultClassification,
-  processRowWithDeferredTrace,
-  processRowWithFlowRef,
-  processRowWithInvalidAnnualSupply,
   processRowWithInvalidLocation,
-  processRowWithOnlyOutputExchange,
-  sourceRow,
 } from "../fixtures/row-builders.mjs";
 
 test("decision tasks externalize full context into stable shared bundles", () => {
@@ -78,10 +24,7 @@ test("decision tasks externalize full context into stable shared bundles", () =>
   const processId = "33333333-3333-4333-8333-333333333333";
   const rowsFile = path.join(root, "rows", "processes.jsonl");
   writeJsonLines(rowsFile, [processRowWithInvalidLocation(processId)]);
-  const classificationQueue = path.join(
-    root,
-    "classification-authoring-queue.jsonl",
-  );
+  const classificationQueue = path.join(root, "classification-authoring-queue.jsonl");
   const locationQueue = path.join(root, "location-authoring-queue.jsonl");
   writeJsonLines(classificationQueue, [
     {
@@ -93,9 +36,7 @@ test("decision tasks externalize full context into stable shared bundles", () =>
         row_type: "process",
         commands: {
           input_rows: rel(rowsFile),
-          output_rows: rel(
-            path.join(root, "rows", "processes.classified.jsonl"),
-          ),
+          output_rows: rel(path.join(root, "rows", "processes.classified.jsonl")),
         },
       },
     },
@@ -105,8 +46,7 @@ test("decision tasks externalize full context into stable shared bundles", () =>
       dataset_type: "process",
       dataset_id: processId,
       dataset_version: "00.00.001",
-      path:
-        "processDataSet.processInformation.geography.locationOfOperationSupplyOrProduction.@location",
+      path: "processDataSet.processInformation.geography.locationOfOperationSupplyOrProduction.@location",
       location_workflow: {
         schema_type: "location",
         commands: {
@@ -117,24 +57,13 @@ test("decision tasks externalize full context into stable shared bundles", () =>
     },
   ]);
   const context = writeContextPackFiles(root);
-  const classificationSchema = path.join(
-    root,
-    "context",
-    "tidas_processes_category.json",
-  );
-  const locationSchema = path.join(
-    root,
-    "context",
-    "tidas_locations_category.json",
-  );
+  const classificationSchema = path.join(root, "context", "tidas_processes_category.json");
+  const locationSchema = path.join(root, "context", "tidas_locations_category.json");
   writeText(
     classificationSchema,
     '{"categories":[{"code":"1080","name":"Fixture process category"}]}\n',
   );
-  writeText(
-    locationSchema,
-    '{"locations":[{"code":"CH","name":"Switzerland"}]}\n',
-  );
+  writeText(locationSchema, '{"locations":[{"code":"CH","name":"Switzerland"}]}\n');
   const sharedContextCacheDir = path.join(root, "shared-context-cache");
 
   try {
@@ -164,15 +93,8 @@ test("decision tasks externalize full context into stable shared bundles", () =>
       ]);
     const firstClassification = buildClassification("classification-task-a");
     const secondClassification = buildClassification("classification-task-b");
-    assert.equal(
-      firstClassification.code,
-      0,
-      JSON.stringify(firstClassification.json, null, 2),
-    );
-    assert.equal(
-      firstClassification.json.status,
-      "ready_for_ai_classification_decisions",
-    );
+    assert.equal(firstClassification.code, 0, JSON.stringify(firstClassification.json, null, 2));
+    assert.equal(firstClassification.json.status, "ready_for_ai_classification_decisions");
     assert.equal(
       firstClassification.json.context_bundle.sha256,
       secondClassification.json.context_bundle.sha256,
@@ -194,9 +116,7 @@ test("decision tasks externalize full context into stable shared bundles", () =>
     assert.equal(firstClassification.json.shared_context_bundle.cache.reused, false);
     assert.equal(secondClassification.json.shared_context_bundle.cache.reused, true);
     assert.equal(
-      firstClassification.json.contract_context_files.some((file) =>
-        Object.hasOwn(file, "text"),
-      ),
+      firstClassification.json.contract_context_files.some((file) => Object.hasOwn(file, "text")),
       false,
     );
     const classificationBundle = readJson(
@@ -206,18 +126,13 @@ test("decision tasks externalize full context into stable shared bundles", () =>
       classificationBundle.sha256,
       firstClassification.json.shared_context_bundle.sha256,
     );
-    assert.equal(
-      classificationBundle.counts.duplicate_context_bytes_avoided,
-      0,
-    );
+    assert.equal(classificationBundle.counts.duplicate_context_bytes_avoided, 0);
     assert.match(
       classificationBundle.files.find((file) => file.kind === "schema").text,
       /process schema/u,
     );
     assert.match(
-      classificationBundle.files.find(
-        (file) => file.kind === "classification_schema",
-      ).text,
+      classificationBundle.files.find((file) => file.kind === "classification_schema").text,
       /Fixture process category/u,
     );
 
@@ -258,9 +173,7 @@ test("decision tasks externalize full context into stable shared bundles", () =>
     assert.equal(firstLocation.json.shared_context_bundle.cache.enabled, true);
     assert.equal(secondLocation.json.shared_context_bundle.cache.reused, true);
     assert.equal(
-      firstLocation.json.contract_context_files.some((file) =>
-        Object.hasOwn(file, "text"),
-      ),
+      firstLocation.json.contract_context_files.some((file) => Object.hasOwn(file, "text")),
       false,
     );
     const locationBundle = readJson(
@@ -279,22 +192,11 @@ test("authoring plan propagates shared context cache to decision chunks", () => 
   const root = path.join(fixtureRoot, "authoring-plan-shared-context-cache");
   fs.rmSync(root, { recursive: true, force: true });
   const context = writeContextPackFiles(root);
-  const classificationSchema = path.join(
-    root,
-    "context",
-    "tidas_processes_category.json",
-  );
-  const locationSchema = path.join(
-    root,
-    "context",
-    "tidas_locations_category.json",
-  );
+  const classificationSchema = path.join(root, "context", "tidas_processes_category.json");
+  const locationSchema = path.join(root, "context", "tidas_locations_category.json");
   writeText(classificationSchema, '{"categories":[]}\n');
   writeText(locationSchema, '{"locations":[]}\n');
-  const classificationQueue = path.join(
-    root,
-    "classification-authoring-queue.jsonl",
-  );
+  const classificationQueue = path.join(root, "classification-authoring-queue.jsonl");
   const queueRows = [
     {
       dataset_type: "process",
@@ -314,11 +216,7 @@ test("authoring plan propagates shared context cache to decision chunks", () => 
     },
   ];
   writeJsonLines(classificationQueue, queueRows);
-  const curationGateReport = path.join(
-    root,
-    "curation-gate",
-    "dataset-curation-gate-report.json",
-  );
+  const curationGateReport = path.join(root, "curation-gate", "dataset-curation-gate-report.json");
   const contextDetails = [
     { kind: "schema", path: rel(context.schemaFile) },
     { kind: "methodology_yaml", path: rel(context.yamlFile) },
@@ -371,8 +269,8 @@ test("authoring plan propagates shared context cache to decision chunks", () => 
     const expectedCacheDir = rel(path.join(root, "shared-context-cache"));
     assert.equal(plan.json.context.shared_context_cache_dir, expectedCacheDir);
     assert.match(
-      plan.json.phases.find((phase) => phase.phase === "classification_decisions")
-        .commands.build_task,
+      plan.json.phases.find((phase) => phase.phase === "classification_decisions").commands
+        .build_task,
       /--shared-context-cache-dir/u,
     );
     const chunkCommands = plan.json.phases.find(
@@ -380,18 +278,14 @@ test("authoring plan propagates shared context cache to decision chunks", () => 
     ).chunk_plan.commands;
     assert.equal(chunkCommands.length, 2);
     assert.equal(
-      chunkCommands.every((command) =>
-        command.command.includes("--shared-context-cache-dir"),
-      ),
+      chunkCommands.every((command) => command.command.includes("--shared-context-cache-dir")),
       true,
     );
     assert.equal(
       chunkCommands.every((command) => command.command.includes(expectedCacheDir)),
       true,
     );
-    const patchPhase = plan.json.phases.find(
-      (phase) => phase.phase === "field_patches",
-    );
+    const patchPhase = plan.json.phases.find((phase) => phase.phase === "field_patches");
     assert.match(patchPhase.commands.build_task, /--shared-context-cache-dir/u);
     assert.match(patchPhase.commands.build_task, new RegExp(expectedCacheDir, "u"));
   } finally {
@@ -402,17 +296,9 @@ test("authoring plan propagates shared context cache to decision chunks", () => 
 test("curation gate attaches classification queue context as a concrete AI action item", () => {
   fs.rmSync(classificationFixtureRoot, { recursive: true, force: true });
   const processId = "bbbbbbbb-cccc-4ddd-8eee-ffffffffffff";
-  const rowsFile = path.join(
-    classificationFixtureRoot,
-    "rows",
-    "processes.jsonl",
-  );
+  const rowsFile = path.join(classificationFixtureRoot, "rows", "processes.jsonl");
   writeJsonLines(rowsFile, [processRowWithDefaultClassification(processId)]);
-  const schemaReport = path.join(
-    classificationFixtureRoot,
-    "schema",
-    "validation-report.json",
-  );
+  const schemaReport = path.join(classificationFixtureRoot, "schema", "validation-report.json");
   writeJson(schemaReport, {
     input_path: rel(rowsFile),
     status: "completed",
@@ -427,11 +313,7 @@ test("curation gate attaches classification queue context as a concrete AI actio
       },
     ],
   });
-  const qaReport = path.join(
-    classificationFixtureRoot,
-    "qa",
-    "process-qa-report.json",
-  );
+  const qaReport = path.join(classificationFixtureRoot, "qa", "process-qa-report.json");
   writeJson(qaReport, {
     rows_file: rel(rowsFile),
     status: "completed",
@@ -462,8 +344,7 @@ test("curation gate attaches classification queue context as a concrete AI actio
       classification_workflow: {
         schema_type: "process",
         commands: {
-          children_root:
-            "tiangong-lca dataset classification children --type process",
+          children_root: "tiangong-lca dataset classification children --type process",
           apply: "tiangong-lca dataset classification apply --type process",
         },
       },
@@ -502,15 +383,9 @@ test("curation gate attaches classification queue context as a concrete AI actio
     assert.equal(gate.json.counts.action_items, 1);
     assert.equal(gate.json.counts.classification_queue_action_items, 1);
 
-    const packagePath = path.join(
-      repoRoot,
-      gate.json.entities[0].authoring_package,
-    );
+    const packagePath = path.join(repoRoot, gate.json.entities[0].authoring_package);
     const authoringPackage = readJson(packagePath);
-    assert.equal(
-      authoringPackage.classification_authoring_context.rows.length,
-      1,
-    );
+    assert.equal(authoringPackage.classification_authoring_context.rows.length, 1);
     assert.equal(
       authoringPackage.action_items[0].path,
       "processDataSet.processInformation.dataSetInformation.classificationInformation.common:classification",
@@ -527,23 +402,16 @@ test("curation gate attaches classification queue context as a concrete AI actio
     assert.equal(task.json.status, "ready_no_action_items");
     assert.equal(task.json.counts.action_items, 0);
     assert.equal(task.json.counts.decision_only_action_items, 1);
-    assert.equal(
-      task.json.batch_patch_contract.status,
-      "not_required_no_patch_action_items",
-    );
+    assert.equal(task.json.batch_patch_contract.status, "not_required_no_patch_action_items");
     assert.equal(task.json.commands.apply_all_patches, null);
     assert.deepEqual(task.json.tasks[0].action_items, []);
     const decisionItem = task.json.tasks[0].decision_only_action_items[0];
-    assert.deepEqual(decisionItem.allowed_resolution_modes, [
-      "classification_decision",
-    ]);
+    assert.deepEqual(decisionItem.allowed_resolution_modes, ["classification_decision"]);
     assert.equal(
       decisionItem.json_pointer,
       "/processDataSet/processInformation/dataSetInformation/classificationInformation/common:classification",
     );
-    const patchTemplate = readJson(
-      path.join(repoRoot, task.json.tasks[0].files.patch_template),
-    );
+    const patchTemplate = readJson(path.join(repoRoot, task.json.tasks[0].files.patch_template));
     assert.equal(patchTemplate.patch_sets[0].operations.length, 0);
   } finally {
     fs.rmSync(classificationFixtureRoot, { recursive: true, force: true });

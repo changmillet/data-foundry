@@ -23,7 +23,7 @@ checkPaths:
   - specs/workspace-capability-adapters.md
   - docs/safety-policy.md
 lastReviewedAt: 2026-06-06
-lastReviewedCommit: 9d85e4b4e8eaeb38428b2b73873d4af583feb335
+lastReviewedCommit: 0c39afc18f1f2d8e01d2b33a39bdc0e21cea3a8f
 ---
 
 # Capability Ownership Policy

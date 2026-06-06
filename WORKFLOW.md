@@ -49,11 +49,9 @@ policy:
 
 You are working on a TianGong LCA data import task.
 
-Task ID: {{ issue.identifier }}
-Title: {{ issue.title }}
+Task ID: {{ issue.identifier }} Title: {{ issue.title }}
 
-Body:
-{{ issue.description }}
+Body: {{ issue.description }}
 
 ## Classify
 

@@ -5,11 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-const repoRoot = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "..",
-);
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const fixtureRoot = path.join(repoRoot, "tmp", "location-decisions-test");
 const processId = "33333333-4444-5555-8666-777777777777";
 const locationPath =
@@ -30,10 +26,7 @@ function writeJson(filePath, value) {
 
 function writeJsonLines(filePath, rows) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(
-    filePath,
-    `${rows.map((row) => JSON.stringify(row)).join("\n")}\n`,
-  );
+  fs.writeFileSync(filePath, `${rows.map((row) => JSON.stringify(row)).join("\n")}\n`);
 }
 
 function readJsonLines(filePath) {
@@ -91,10 +84,7 @@ test("location decision task and apply route AI location choices through CLI loc
   const schemaFile = path.join(contextDir, "schema.json");
   const yamlFile = path.join(contextDir, "methodology.yaml");
   const rulesetFile = path.join(contextDir, "runtime-ruleset.json");
-  const locationCategoryFile = path.join(
-    contextDir,
-    "tidas_locations_category.json",
-  );
+  const locationCategoryFile = path.join(contextDir, "tidas_locations_category.json");
 
   try {
     writeJsonLines(processRows, [processRow()]);
@@ -150,15 +140,10 @@ test("location decision task and apply route AI location choices through CLI loc
     assert.equal(templateRows[0].decision_status, "completed");
     assert.equal(templateRows[0].code, "__AI_SELECT_TIDAS_LOCATION_CODE__");
     assert.equal(templateRows[0].target_path, locationPath);
-    assert.match(
-      templateRows[0].authoring_context.context_bundle_sha256,
-      /^[a-f0-9]{64}$/u,
-    );
+    assert.match(templateRows[0].authoring_context.context_bundle_sha256, /^[a-f0-9]{64}$/u);
     assert.equal(
-      templateRows[0].evidence.input_row_payload.processDataSet
-        .processInformation.geography.locationOfOperationSupplyOrProduction[
-        "@location"
-      ],
+      templateRows[0].evidence.input_row_payload.processDataSet.processInformation.geography
+        .locationOfOperationSupplyOrProduction["@location"],
       "Switzerland, source text",
     );
 
@@ -217,19 +202,14 @@ test("location decision task and apply route AI location choices through CLI loc
       chunkTask.commands.apply_decisions,
       /location-authoring-queue\.location-chunk\.jsonl/u,
     );
-    const filteredQueue = readJsonLines(
-      path.join(repoRoot, chunkTask.location_queue),
-    );
+    const filteredQueue = readJsonLines(path.join(repoRoot, chunkTask.location_queue));
     assert.equal(filteredQueue.length, 1);
     assert.equal(filteredQueue[0].foundry_selection.source_queue_row_index, 0);
     assert.match(
       filteredQueue[0].location_workflow.commands.output_rows,
       /processes\.location-chunk\.located\.jsonl$/u,
     );
-    assert.notEqual(
-      filteredQueue[0].location_workflow.commands.output_rows,
-      rel(processOut),
-    );
+    assert.notEqual(filteredQueue[0].location_workflow.commands.output_rows, rel(processOut));
 
     writeJsonLines(decisions, [
       {
@@ -242,12 +222,7 @@ test("location decision task and apply route AI location choices through CLI loc
         basis:
           "The source geography states Switzerland and the bundled TIDAS location schema contains CH for Switzerland.",
         authoring_context: templateRows[0].authoring_context,
-        used_context_kinds: [
-          "schema",
-          "methodology_yaml",
-          "ruleset",
-          "location_schema",
-        ],
+        used_context_kinds: ["schema", "methodology_yaml", "ruleset", "location_schema"],
         evidence: {
           source: "location-authoring-queue",
           quote_or_trace: "Source geography is Switzerland.",
@@ -291,12 +266,7 @@ test("location decision task and apply route AI location choices through CLI loc
         target_path: locationPath,
         basis:
           "The source geography states Switzerland and the bundled TIDAS location schema contains CH for Switzerland.",
-        used_context_kinds: [
-          "schema",
-          "methodology_yaml",
-          "ruleset",
-          "location_schema",
-        ],
+        used_context_kinds: ["schema", "methodology_yaml", "ruleset", "location_schema"],
         evidence: {
           source: "location-authoring-queue",
           quote_or_trace: "Source geography is Switzerland.",
@@ -335,12 +305,7 @@ test("location decision task and apply route AI location choices through CLI loc
         basis:
           "The source geography states Switzerland and the bundled TIDAS location schema contains CH for Switzerland.",
         authoring_context: templateRows[0].authoring_context,
-        used_context_kinds: [
-          "schema",
-          "methodology_yaml",
-          "ruleset",
-          "location_schema",
-        ],
+        used_context_kinds: ["schema", "methodology_yaml", "ruleset", "location_schema"],
         evidence: {
           source: "location-authoring-queue",
           quote_or_trace: "Source geography is Switzerland.",
@@ -395,9 +360,7 @@ test("location decision task and apply route AI location choices through CLI loc
     );
     assert.equal(blocked.status, "blocked");
     assert.equal(
-      blocked.blockers.some(
-        (blocker) => blocker.code === "location_decision_target_path_missing",
-      ),
+      blocked.blockers.some((blocker) => blocker.code === "location_decision_target_path_missing"),
       true,
     );
   } finally {

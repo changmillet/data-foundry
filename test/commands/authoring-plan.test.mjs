@@ -5,11 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-const repoRoot = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "..",
-);
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const fixtureRoot = path.join(repoRoot, "tmp", "authoring-plan-test");
 
 function rel(filePath) {
@@ -23,10 +19,7 @@ function writeJson(filePath, value) {
 
 function writeJsonLines(filePath, rows) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(
-    filePath,
-    `${rows.map((row) => JSON.stringify(row)).join("\n")}\n`,
-  );
+  fs.writeFileSync(filePath, `${rows.map((row) => JSON.stringify(row)).join("\n")}\n`);
 }
 
 function runFoundry(args, expectedStatus = 0) {
@@ -39,11 +32,7 @@ function runFoundry(args, expectedStatus = 0) {
 }
 
 function writeCurationGateReport() {
-  const reportPath = path.join(
-    fixtureRoot,
-    "curation-gate",
-    "dataset-curation-gate-report.json",
-  );
+  const reportPath = path.join(fixtureRoot, "curation-gate", "dataset-curation-gate-report.json");
   const queueManifestPath = path.join(
     fixtureRoot,
     "curation-queue",
@@ -133,13 +122,22 @@ test("dataset-authoring-plan aggregates missing AI task builds from curation gat
   assert.equal(plan.counts.identity_action_items, 2);
   assert.equal(plan.counts.classification_queue_rows, 1);
   assert.equal(plan.counts.field_patch_action_items, 3);
-  assert.equal(plan.phases.find((phase) => phase.phase === "location_decisions").status, "not_required");
-  assert.equal(plan.phases.find((phase) => phase.phase === "identity_decisions").status, "needs_task_build");
+  assert.equal(
+    plan.phases.find((phase) => phase.phase === "location_decisions").status,
+    "not_required",
+  );
+  assert.equal(
+    plan.phases.find((phase) => phase.phase === "identity_decisions").status,
+    "needs_task_build",
+  );
   assert.equal(
     plan.phases.find((phase) => phase.phase === "classification_decisions").status,
     "needs_task_build",
   );
-  assert.equal(plan.phases.find((phase) => phase.phase === "field_patches").status, "needs_task_build");
+  assert.equal(
+    plan.phases.find((phase) => phase.phase === "field_patches").status,
+    "needs_task_build",
+  );
   assert.match(
     plan.phases.find((phase) => phase.phase === "classification_decisions").commands.build_task,
     /dataset-classification-decision-task-build/u,
@@ -157,11 +155,13 @@ test("dataset-authoring-plan aggregates missing AI task builds from curation gat
     /33333333-3333-5333-8333-333333333333/u,
   );
   assert.match(
-    plan.phases.find((phase) => phase.phase === "classification_decisions").commands.apply_decisions,
+    plan.phases.find((phase) => phase.phase === "classification_decisions").commands
+      .apply_decisions,
     /classification-authoring-queue\.process\.jsonl/u,
   );
   assert.match(
-    plan.phases.find((phase) => phase.phase === "classification_decisions").commands.apply_decisions,
+    plan.phases.find((phase) => phase.phase === "classification_decisions").commands
+      .apply_decisions,
     /--rows-file tmp\/authoring-plan-test\/rows\/processes\.jsonl/u,
   );
 });
@@ -235,25 +235,26 @@ test("dataset-authoring-plan detects ready tasks and waits for AI outputs", () =
     /rows\/flows\.jsonl/u,
   );
   assert.equal(
-    plan.phases.find((phase) => phase.phase === "identity_decisions").chunk_plan
-      .chunks,
+    plan.phases.find((phase) => phase.phase === "identity_decisions").chunk_plan.chunks,
     2,
   );
   assert.match(
-    plan.phases.find((phase) => phase.phase === "identity_decisions").chunk_plan
-      .commands[0].command,
+    plan.phases.find((phase) => phase.phase === "identity_decisions").chunk_plan.commands[0]
+      .command,
     /--limit 2/u,
   );
   assert.equal(
-    plan.phases.find((phase) => phase.phase === "classification_decisions")
-      .chunk_plan.chunks,
+    plan.phases.find((phase) => phase.phase === "classification_decisions").chunk_plan.chunks,
     2,
   );
   assert.equal(
     plan.phases.find((phase) => phase.phase === "classification_decisions").status,
     "ready_for_ai_decisions",
   );
-  assert.equal(plan.phases.find((phase) => phase.phase === "field_patches").status, "ready_for_ai_patches");
+  assert.equal(
+    plan.phases.find((phase) => phase.phase === "field_patches").status,
+    "ready_for_ai_patches",
+  );
   assert.equal(
     plan.phases.find((phase) => phase.phase === "field_patches").commands.apply_patches,
     "node scripts/foundry.mjs dataset-patch-apply --input rows.jsonl",

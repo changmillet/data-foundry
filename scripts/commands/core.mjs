@@ -46,26 +46,14 @@ const envExampleAllowedKeys = new Set([
 ]);
 const envExampleAllowedPrefixes = ["FOUNDRY_"];
 const envExampleForbiddenKeys = new Map([
-  [
-    "TIANGONG_LCA_COVERAGE",
-    "CLI test-only toggle; keep it in tiangong-lca-cli.",
-  ],
+  ["TIANGONG_LCA_COVERAGE", "CLI test-only toggle; keep it in tiangong-lca-cli."],
   [
     "TIANGONG_LCA_TIDAS_SDK_DIR",
     "CLI development override; Foundry should use CLI contract-pack outputs.",
   ],
-  [
-    "SUPABASE_URL",
-    "Legacy generic Supabase env; use TIANGONG_LCA_API_* instead.",
-  ],
-  [
-    "SUPABASE_KEY",
-    "Legacy generic Supabase env; use TIANGONG_LCA_API_* instead.",
-  ],
-  [
-    "GITHUB_TOKEN",
-    "Tracker or GitHub credentials do not belong in the public env example.",
-  ],
+  ["SUPABASE_URL", "Legacy generic Supabase env; use TIANGONG_LCA_API_* instead."],
+  ["SUPABASE_KEY", "Legacy generic Supabase env; use TIANGONG_LCA_API_* instead."],
+  ["GITHUB_TOKEN", "Tracker or GitHub credentials do not belong in the public env example."],
 ]);
 
 const taskKindRoutes = {
@@ -125,9 +113,7 @@ function parseEnvAssignments(filePath, { fileExists, readText }) {
     .filter(({ raw }) => raw && !raw.startsWith("#"))
     .map(({ raw, line }) => ({
       line,
-      match: raw
-        .replace(/^export\s+/u, "")
-        .match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/u),
+      match: raw.replace(/^export\s+/u, "").match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/u),
     }))
     .filter(({ match }) => match)
     .map(({ line, match }) => ({ line, key: match[1], value: match[2] ?? "" }));
@@ -150,9 +136,7 @@ function capabilityMatchesDatasetType(capability, datasetType) {
   if (datasetType === "process")
     return !id.startsWith("cli.flow.") && !id.startsWith("cli.lifecyclemodel.");
   if (datasetType === "flow")
-    return (
-      !id.startsWith("cli.process.") && !id.startsWith("cli.lifecyclemodel.")
-    );
+    return !id.startsWith("cli.process.") && !id.startsWith("cli.lifecyclemodel.");
   if (datasetType === "lifecyclemodel")
     return !id.startsWith("cli.process.") && !id.startsWith("cli.flow.");
   return true;
@@ -205,8 +189,7 @@ export function createCoreCommands({
         );
       }
       const secretLike = /(?:API_KEY|APIKEY|TOKEN|PASSWORD|SECRET|JWT)$/u.test(row.key);
-      const allowedPublicKey =
-        row.key === "TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY";
+      const allowedPublicKey = row.key === "TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY";
       if (secretLike && !allowedPublicKey && !isPlaceholderEnvValue(row.value)) {
         errors.push(
           `.env.example:${row.line}: ${row.key} looks secret-bearing and must not contain an example value.`,
@@ -225,8 +208,7 @@ export function createCoreCommands({
   }
 
   function initRuntime() {
-    for (const dir of runtimeDirs)
-      fs.mkdirSync(path.join(repoRoot, dir), { recursive: true });
+    for (const dir of runtimeDirs) fs.mkdirSync(path.join(repoRoot, dir), { recursive: true });
     return { repo_root: repoRoot, created_or_verified: runtimeDirs };
   }
 
@@ -247,16 +229,11 @@ export function createCoreCommands({
 
   function storageCheck() {
     const registryPath = path.join(repoRoot, "docs/file-location-registry.json");
-    const allowedRootMarkdown = new Set([
-      "AGENTS.md",
-      "README.md",
-      "WORKFLOW.md",
-    ]);
+    const allowedRootMarkdown = new Set(["AGENTS.md", "README.md", "WORKFLOW.md"]);
     const errors = [];
     const warnings = [];
     const registry = fileExists(registryPath) ? readJson(registryPath) : null;
-    if (!registry)
-      errors.push("docs/file-location-registry.json is missing or invalid.");
+    if (!registry) errors.push("docs/file-location-registry.json is missing or invalid.");
     const entries = Array.isArray(registry?.entries) ? registry.entries : [];
     const ids = new Set();
     for (const entry of entries) {
@@ -264,16 +241,10 @@ export function createCoreCommands({
         errors.push("file-location registry entry is missing id");
         continue;
       }
-      if (ids.has(entry.id))
-        errors.push(`duplicate file-location registry id: ${entry.id}`);
+      if (ids.has(entry.id)) errors.push(`duplicate file-location registry id: ${entry.id}`);
       ids.add(entry.id);
-      if (
-        entry.status !== "retired" &&
-        !fileExists(resolveRepoPath(entry.current_path))
-      ) {
-        errors.push(
-          `${entry.id}: current_path does not exist: ${entry.current_path}`,
-        );
+      if (entry.status !== "retired" && !fileExists(resolveRepoPath(entry.current_path))) {
+        errors.push(`${entry.id}: current_path does not exist: ${entry.current_path}`);
       }
       for (const ref of entry.referenced_by ?? []) {
         if (!fileExists(resolveRepoPath(ref)))
@@ -311,10 +282,7 @@ export function createCoreCommands({
       status: checks.every((check) => check.ok) ? "passed" : "failed",
       checks,
     };
-    writeJson(
-      path.join(repoRoot, ".foundry/state/acceptance/latest.json"),
-      result,
-    );
+    writeJson(path.join(repoRoot, ".foundry/state/acceptance/latest.json"), result);
     return result;
   }
 
@@ -357,8 +325,7 @@ export function createCoreCommands({
       required_remote_env: Object.fromEntries(
         requiredForRemoteWrites.map((key) => [
           key,
-          process.env[key] !== undefined &&
-            !isPlaceholderEnvValue(process.env[key]),
+          process.env[key] !== undefined && !isPlaceholderEnvValue(process.env[key]),
         ]),
       ),
     };
@@ -393,10 +360,7 @@ export function createCoreCommands({
           },
         ]),
       ),
-      import_lanes: [
-        "external-dataset-curated-import",
-        "source-evidence-dataset-development",
-      ],
+      import_lanes: ["external-dataset-curated-import", "source-evidence-dataset-development"],
     };
   }
 
@@ -406,9 +370,7 @@ export function createCoreCommands({
 
   function buildRoutePlan(options = {}) {
     const registry = readCapabilityRegistry();
-    const kind = String(
-      options.kind || options.taskKind || "external-dataset-curated-import",
-    );
+    const kind = String(options.kind || options.taskKind || "external-dataset-curated-import");
     const datasetType = String(options.datasetType || options.type || "all")
       .trim()
       .toLowerCase();
@@ -418,9 +380,9 @@ export function createCoreCommands({
     const defaultClasses = (taskKindRoutes[kind] ?? []).flatMap((className) =>
       expandRouteClass(className, datasetType),
     );
-    const requestedClasses = normalizedList(
-      options.classes || options.capabilityClasses,
-    ).flatMap((className) => expandRouteClass(className, datasetType));
+    const requestedClasses = normalizedList(options.classes || options.capabilityClasses).flatMap(
+      (className) => expandRouteClass(className, datasetType),
+    );
     const requiredClasses = unique([
       ...defaultClasses,
       ...requiredGateClasses,
@@ -428,9 +390,7 @@ export function createCoreCommands({
     ]);
     const capabilities = ensureArray(registry.capabilities)
       .filter((capability) => requiredClasses.includes(capability.class))
-      .filter((capability) =>
-        capabilityMatchesDatasetType(capability, datasetType),
-      );
+      .filter((capability) => capabilityMatchesDatasetType(capability, datasetType));
     const byClass = new Map();
     for (const capability of capabilities) {
       if (!byClass.has(capability.class)) byClass.set(capability.class, []);
@@ -438,22 +398,13 @@ export function createCoreCommands({
     }
     const routes = requiredClasses.map((className) => ({
       class: className,
-      status:
-        (byClass.get(className) ?? []).length > 0
-          ? "routed"
-          : "missing_capability",
-      capability_ids: (byClass.get(className) ?? []).map(
-        (capability) => capability.id,
-      ),
+      status: (byClass.get(className) ?? []).length > 0 ? "routed" : "missing_capability",
+      capability_ids: (byClass.get(className) ?? []).map((capability) => capability.id),
       owner_projects: unique(
-        (byClass.get(className) ?? []).map(
-          (capability) => capability.owner_project,
-        ),
+        (byClass.get(className) ?? []).map((capability) => capability.owner_project),
       ),
     }));
-    const missing = routes.filter(
-      (route) => route.status === "missing_capability",
-    );
+    const missing = routes.filter((route) => route.status === "missing_capability");
     return {
       schema_version: 2,
       generated_at_utc: nowIso(),
@@ -496,9 +447,7 @@ export function createCoreCommands({
     const ownerFilter = options.owner ? String(options.owner) : null;
     const capabilities = ensureArray(registry.capabilities)
       .filter((capability) => !classFilter || capability.class === classFilter)
-      .filter(
-        (capability) => !ownerFilter || capability.owner_project === ownerFilter,
-      );
+      .filter((capability) => !ownerFilter || capability.owner_project === ownerFilter);
     return {
       schema_version: registry.schema_version ?? 1,
       generated_at_utc: nowIso(),

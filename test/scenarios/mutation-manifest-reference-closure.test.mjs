@@ -1,94 +1,33 @@
 import test from "node:test";
 import {
-  writeReadyFinalizeFixture,
-} from "../fixtures/finalize-fixtures.mjs";
-import {
-  annualSupplyFixtureRoot,
-  classificationFixtureRoot,
-  elementaryFlowManifestFixtureRoot,
-  finalizeAutoQueueFixtureRoot,
-  finalizeCurationGateFixtureRoot,
-  finalizeIdentityPreflightFixtureRoot,
-  finalizeLocationFixtureRoot,
-  fixtureRoot,
-  flowClassificationFixtureRoot,
-  flowIdentityReferenceFixtureRoot,
-  identityPreflightRunFixtureRoot,
-  locationFixtureRoot,
-  mutationFixtureRoot,
-  packageContextFixtureRoot,
-  qaPathFixtureRoot,
   referenceClosureFixtureRoot,
-  sourceExchangeFixtureRoot,
   supportManifestFixtureRoot,
 } from "../fixtures/fixture-roots.mjs";
 import {
   assert,
-  blockerCodes,
-  bundledCategorySchemaNames,
-  contextTextByPathSuffix,
-  crypto,
   fs,
-  fullContextKinds,
-  fullContextPatterns,
   itemBlockerCodes,
   path,
-  readJson,
   readJsonLines,
   rel,
   repoRoot,
   runFoundry,
   scopeBlockerCodes,
-  sha256Text,
-  siblingCliBuildAvailable,
-  siblingCliRoot,
-  spawnSync,
   targetUserId,
   writeJson,
   writeJsonLines,
-  writeText,
 } from "../fixtures/foundry-core.mjs";
-import {
-  contextFile,
-  createFixture,
-  writeContextPackFiles,
-  writeDecisionTaskFixture,
-} from "../fixtures/full-context-fixtures.mjs";
-import {
-  writeCompletedIdentityPreflightIndex,
-} from "../fixtures/identity-fixtures.mjs";
-import {
-  createMutationManifestFixture,
-} from "../fixtures/mutation-fixtures.mjs";
-import {
-  flowRow,
-  flowRowWithClassification,
-  processRowWithDefaultClassification,
-  processRowWithDeferredTrace,
-  processRowWithFlowRef,
-  processRowWithInvalidAnnualSupply,
-  processRowWithInvalidLocation,
-  processRowWithOnlyOutputExchange,
-  sourceRow,
-} from "../fixtures/row-builders.mjs";
-
+import { writeCompletedIdentityPreflightIndex } from "../fixtures/identity-fixtures.mjs";
+import { processRowWithFlowRef } from "../fixtures/row-builders.mjs";
 
 test("mutation manifest blocks process writes when referenced datasets are not proven", () => {
   fs.rmSync(referenceClosureFixtureRoot, { recursive: true, force: true });
   const processId = "cccccccc-dddd-4eee-8fff-000000000001";
   const flowId = "dddddddd-eeee-4fff-8000-000000000002";
-  const rowsFile = path.join(
-    referenceClosureFixtureRoot,
-    "rows",
-    "processes.jsonl",
-  );
+  const rowsFile = path.join(referenceClosureFixtureRoot, "rows", "processes.jsonl");
   writeJsonLines(rowsFile, [processRowWithFlowRef(processId, flowId)]);
 
-  const schemaReport = path.join(
-    referenceClosureFixtureRoot,
-    "schema",
-    "validation-report.json",
-  );
+  const schemaReport = path.join(referenceClosureFixtureRoot, "schema", "validation-report.json");
   writeJson(schemaReport, {
     input_path: rel(rowsFile),
     status: "completed",
@@ -103,11 +42,7 @@ test("mutation manifest blocks process writes when referenced datasets are not p
       },
     ],
   });
-  const qaReport = path.join(
-    referenceClosureFixtureRoot,
-    "qa",
-    "process-qa-report.json",
-  );
+  const qaReport = path.join(referenceClosureFixtureRoot, "qa", "process-qa-report.json");
   writeJson(qaReport, {
     rows_file: rel(rowsFile),
     status: "completed_local_process_qa",
@@ -147,16 +82,8 @@ test("mutation manifest blocks process writes when referenced datasets are not p
     rows_file: rel(rowsFile),
     cleaned_rows_file: rel(rowsFile),
   });
-  const progressJsonl = path.join(
-    referenceClosureFixtureRoot,
-    "dry-run",
-    "progress.jsonl",
-  );
-  const failuresJsonl = path.join(
-    referenceClosureFixtureRoot,
-    "dry-run",
-    "failures.jsonl",
-  );
+  const progressJsonl = path.join(referenceClosureFixtureRoot, "dry-run", "progress.jsonl");
+  const failuresJsonl = path.join(referenceClosureFixtureRoot, "dry-run", "failures.jsonl");
   writeJsonLines(progressJsonl, [
     {
       id: processId,
@@ -166,11 +93,7 @@ test("mutation manifest blocks process writes when referenced datasets are not p
     },
   ]);
   writeJsonLines(failuresJsonl, []);
-  const dryRunReport = path.join(
-    referenceClosureFixtureRoot,
-    "dry-run",
-    "summary.json",
-  );
+  const dryRunReport = path.join(referenceClosureFixtureRoot, "dry-run", "summary.json");
   writeJson(dryRunReport, {
     status: "completed",
     mode: "dry-run",
@@ -206,22 +129,10 @@ test("mutation manifest blocks process writes when referenced datasets are not p
     ]);
     assert.equal(missingProof.code, 1);
     assert.equal(missingProof.json.status, "blocked");
-    assert.ok(
-      scopeBlockerCodes(missingProof.json).has(
-        "reference_closure_remote_verify_required",
-      ),
-    );
-    assert.ok(
-      itemBlockerCodes(missingProof.json).has(
-        "reference_closure_remote_verify_required",
-      ),
-    );
+    assert.ok(scopeBlockerCodes(missingProof.json).has("reference_closure_remote_verify_required"));
+    assert.ok(itemBlockerCodes(missingProof.json).has("reference_closure_remote_verify_required"));
 
-    const remoteChecks = path.join(
-      referenceClosureFixtureRoot,
-      "remote-verify",
-      "checks.jsonl",
-    );
+    const remoteChecks = path.join(referenceClosureFixtureRoot, "remote-verify", "checks.jsonl");
     writeJsonLines(remoteChecks, [
       {
         row_index: 0,
@@ -284,31 +195,28 @@ test("mutation manifest blocks process writes when referenced datasets are not p
     assert.equal(proven.json.items[0].blockers.length, 0);
 
     const existingFlowId = "eeeeeeee-ffff-4000-8000-000000000003";
-    const identityIndex = writeCompletedIdentityPreflightIndex(
-      referenceClosureFixtureRoot,
-      [
-        {
-          datasetType: "flow",
-          id: flowId,
-          name: "Methane",
-          decision: "block_duplicate",
-          status: "blocked",
-          candidates: [
-            {
-              index: 0,
-              id: existingFlowId,
-              version: "00.00.001",
-              state_code: 100,
-              names: ["Methane"],
-              fields: { type_of_dataset: "Elementary flow" },
-              match_score: 100,
-              match_reasons: ["equivalent_flow_core_fields"],
-              decision_hint: "block_duplicate",
-            },
-          ],
-        },
-      ],
-    );
+    const identityIndex = writeCompletedIdentityPreflightIndex(referenceClosureFixtureRoot, [
+      {
+        datasetType: "flow",
+        id: flowId,
+        name: "Methane",
+        decision: "block_duplicate",
+        status: "blocked",
+        candidates: [
+          {
+            index: 0,
+            id: existingFlowId,
+            version: "00.00.001",
+            state_code: 100,
+            names: ["Methane"],
+            fields: { type_of_dataset: "Elementary flow" },
+            match_score: 100,
+            match_reasons: ["equivalent_flow_core_fields"],
+            decision_hint: "block_duplicate",
+          },
+        ],
+      },
+    ]);
     const rewriteReport = runFoundry([
       "dataset-identity-reference-rewrites-apply",
       "--type",
@@ -323,14 +231,10 @@ test("mutation manifest blocks process writes when referenced datasets are not p
     assert.equal(rewriteReport.code, 0);
     assert.equal(rewriteReport.json.status, "completed");
     assert.equal(rewriteReport.json.counts.flow_reference_rewrites, 1);
-    const rewrittenRowsFile = path.join(
-      repoRoot,
-      rewriteReport.json.files.output_rows,
-    );
+    const rewrittenRowsFile = path.join(repoRoot, rewriteReport.json.files.output_rows);
     const rewrittenProcess = readJsonLines(rewrittenRowsFile)[0];
     assert.equal(
-      rewrittenProcess.processDataSet.exchanges.exchange[0]
-        .referenceToFlowDataSet["@refObjectId"],
+      rewrittenProcess.processDataSet.exchanges.exchange[0].referenceToFlowDataSet["@refObjectId"],
       existingFlowId,
     );
 
@@ -461,29 +365,17 @@ test("mutation manifest blocks process writes when referenced datasets are not p
         {
           status: provenByIdentityRewrite.json.status,
           counts: provenByIdentityRewrite.json.counts,
-          scope_blockers:
-            provenByIdentityRewrite.json.evidence?.scope_blockers ?? [],
+          scope_blockers: provenByIdentityRewrite.json.evidence?.scope_blockers ?? [],
           item_blockers:
-            provenByIdentityRewrite.json.items?.flatMap(
-              (item) => item.blockers ?? [],
-            ) ?? [],
+            provenByIdentityRewrite.json.items?.flatMap((item) => item.blockers ?? []) ?? [],
         },
         null,
         2,
       ),
     );
-    assert.equal(
-      provenByIdentityRewrite.json.status,
-      "ready_for_remote_write",
-    );
-    assert.equal(
-      provenByIdentityRewrite.json.counts.identity_reference_rewrites,
-      1,
-    );
-    assert.equal(
-      provenByIdentityRewrite.json.items[0].identity_reference_rewrite_count,
-      1,
-    );
+    assert.equal(provenByIdentityRewrite.json.status, "ready_for_remote_write");
+    assert.equal(provenByIdentityRewrite.json.counts.identity_reference_rewrites, 1);
+    assert.equal(provenByIdentityRewrite.json.items[0].identity_reference_rewrite_count, 1);
     assert.equal(provenByIdentityRewrite.json.items[0].blockers.length, 0);
   } finally {
     fs.rmSync(referenceClosureFixtureRoot, { recursive: true, force: true });
@@ -546,11 +438,7 @@ test("mutation manifest accepts mixed support rows with internal reference closu
     },
   };
   writeJsonLines(rowsFile, [contactRow, sourceRow]);
-  const schemaReport = path.join(
-    supportManifestFixtureRoot,
-    "schema",
-    "validation-report.json",
-  );
+  const schemaReport = path.join(supportManifestFixtureRoot, "schema", "validation-report.json");
   writeJson(schemaReport, {
     status: "completed",
     input_path: rel(rowsFile),
@@ -581,16 +469,8 @@ test("mutation manifest accepts mixed support rows with internal reference closu
     rows_file: rel(rowsFile),
     cleaned_rows_file: rel(rowsFile),
   });
-  const progressJsonl = path.join(
-    supportManifestFixtureRoot,
-    "dry-run",
-    "progress.jsonl",
-  );
-  const failuresJsonl = path.join(
-    supportManifestFixtureRoot,
-    "dry-run",
-    "failures.jsonl",
-  );
+  const progressJsonl = path.join(supportManifestFixtureRoot, "dry-run", "progress.jsonl");
+  const failuresJsonl = path.join(supportManifestFixtureRoot, "dry-run", "failures.jsonl");
   writeJsonLines(progressJsonl, [
     {
       id: contactId,
@@ -610,11 +490,7 @@ test("mutation manifest accepts mixed support rows with internal reference closu
     },
   ]);
   writeJsonLines(failuresJsonl, []);
-  const dryRunReport = path.join(
-    supportManifestFixtureRoot,
-    "dry-run",
-    "summary.json",
-  );
+  const dryRunReport = path.join(supportManifestFixtureRoot, "dry-run", "summary.json");
   writeJson(dryRunReport, {
     status: "completed",
     mode: "dry_run",
@@ -653,14 +529,9 @@ test("mutation manifest accepts mixed support rows with internal reference closu
     assert.equal(result.json.items[0].dry_run_status, "success");
     assert.equal(result.json.items[1].operation, "would_sync");
     assert.equal(result.json.items[1].dry_run_status, "success");
+    assert.equal(scopeBlockerCodes(result.json).has("curation_gate_report_required"), false);
     assert.equal(
-      scopeBlockerCodes(result.json).has("curation_gate_report_required"),
-      false,
-    );
-    assert.equal(
-      scopeBlockerCodes(result.json).has(
-        "reference_closure_remote_verify_required",
-      ),
+      scopeBlockerCodes(result.json).has("reference_closure_remote_verify_required"),
       false,
     );
 
@@ -721,41 +592,31 @@ test("mutation manifest accepts mixed support rows with internal reference closu
       rel(path.join(supportManifestFixtureRoot, "manifest-with-remote")),
     ]);
     assert.equal(withInternalRemoteBlockers.code, 0);
+    assert.equal(withInternalRemoteBlockers.json.status, "ready_for_remote_write");
     assert.equal(
-      withInternalRemoteBlockers.json.status,
-      "ready_for_remote_write",
+      itemBlockerCodes(withInternalRemoteBlockers.json).has("remote_reference_closure_blocked"),
+      false,
     );
-	    assert.equal(
-	      itemBlockerCodes(withInternalRemoteBlockers.json).has(
-	        "remote_reference_closure_blocked",
-	      ),
-	      false,
-	    );
 
-    const badSourceRowsFile = path.join(
-      supportManifestFixtureRoot,
-      "bad-source-support.jsonl",
-    );
+    const badSourceRowsFile = path.join(supportManifestFixtureRoot, "bad-source-support.jsonl");
     const badSourceRow = JSON.parse(JSON.stringify(sourceRow));
-    badSourceRow.sourceDataSet.sourceInformation.dataSetInformation[
-      "common:shortName"
-    ] = { "@xml:lang": "en", "#text": "ILCD format" };
-    delete badSourceRow.sourceDataSet.sourceInformation.dataSetInformation
-      .shortName;
-    badSourceRow.sourceDataSet.sourceInformation.dataSetInformation.sourceCitation =
-      "ILCD format";
-    badSourceRow.sourceDataSet.sourceInformation.dataSetInformation.classificationInformation =
-      {
-        "common:classification": {
-          "common:class": [
-            {
-              "@level": "0",
-              "@classId": "data-format",
-              "#text": "Data set formats",
-            },
-          ],
-        },
-      };
+    badSourceRow.sourceDataSet.sourceInformation.dataSetInformation["common:shortName"] = {
+      "@xml:lang": "en",
+      "#text": "ILCD format",
+    };
+    delete badSourceRow.sourceDataSet.sourceInformation.dataSetInformation.shortName;
+    badSourceRow.sourceDataSet.sourceInformation.dataSetInformation.sourceCitation = "ILCD format";
+    badSourceRow.sourceDataSet.sourceInformation.dataSetInformation.classificationInformation = {
+      "common:classification": {
+        "common:class": [
+          {
+            "@level": "0",
+            "@classId": "data-format",
+            "#text": "Data set formats",
+          },
+        ],
+      },
+    };
     writeJsonLines(badSourceRowsFile, [contactRow, badSourceRow]);
     const badSchemaReport = path.join(
       supportManifestFixtureRoot,
@@ -858,18 +719,14 @@ test("mutation manifest accepts mixed support rows with internal reference closu
     assert.equal(badSourceManifest.code, 1);
     assert.equal(badSourceManifest.json.status, "blocked");
     assert.equal(
-      itemBlockerCodes(badSourceManifest.json).has(
-        "source_identity_not_true_source",
-      ),
+      itemBlockerCodes(badSourceManifest.json).has("source_identity_not_true_source"),
       true,
     );
     assert.equal(
-      itemBlockerCodes(badSourceManifest.json).has(
-        "source_classification_not_true_source",
-      ),
+      itemBlockerCodes(badSourceManifest.json).has("source_classification_not_true_source"),
       true,
     );
-	  } finally {
-	    fs.rmSync(supportManifestFixtureRoot, { recursive: true, force: true });
-	  }
-	});
+  } finally {
+    fs.rmSync(supportManifestFixtureRoot, { recursive: true, force: true });
+  }
+});

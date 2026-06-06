@@ -140,9 +140,7 @@ export function createLocationDecisionCommands({
     rowLookup = new Map(),
     contextBundle = null,
   ) {
-    const authoringContext = contextBundle
-      ? decisionAuthoringContext(contextBundle)
-      : null;
+    const authoringContext = contextBundle ? decisionAuthoringContext(contextBundle) : null;
     return queueRows.map((row, index) => ({
       dataset_id: row.dataset_id,
       dataset_version: row.dataset_version,
@@ -162,26 +160,22 @@ export function createLocationDecisionCommands({
       return {
         schema_version: 1,
         status: "help",
-  	      command: "dataset-location-decision-task-build",
-  	      usage: [
-  	        "node scripts/foundry.mjs dataset-location-decision-task-build --location-queue <location-authoring-queue.jsonl> --rows-file <current-rows.jsonl> --schema-file <schema.json> --yaml-file <methodology.yaml> --ruleset-file <runtime-ruleset.json> --classification-schema <tidas_*_category.json> --location-schema <tidas_locations_category.json> --out-dir <task-dir> [--shared-context-cache-dir <cache-dir>]",
-  	      ],
+        command: "dataset-location-decision-task-build",
+        usage: [
+          "node scripts/foundry.mjs dataset-location-decision-task-build --location-queue <location-authoring-queue.jsonl> --rows-file <current-rows.jsonl> --schema-file <schema.json> --yaml-file <methodology.yaml> --ruleset-file <runtime-ruleset.json> --classification-schema <tidas_*_category.json> --location-schema <tidas_locations_category.json> --out-dir <task-dir> [--shared-context-cache-dir <cache-dir>]",
+        ],
         purpose:
           "Build an AI-facing location coding task from Foundry location queue rows. AI fills TIDAS location codes; deterministic apply is handled by dataset-location-decisions-apply.",
       };
     }
 
-    const queuePath = resolveRepoPath(
-      options.locationQueue || options.queue || options.input,
-    );
+    const queuePath = resolveRepoPath(options.locationQueue || options.queue || options.input);
     if (!queuePath || !fileExists(queuePath)) {
       throw new Error(
         "--location-queue is required and must point to location-authoring-queue.jsonl.",
       );
     }
-    const outDir = resolveRepoPath(
-      options.outDir || ".foundry/workspaces/location-decision-task",
-    );
+    const outDir = resolveRepoPath(options.outDir || ".foundry/workspaces/location-decision-task");
     const sharedContextCacheDir = resolveRepoPath(
       options.sharedContextCacheDir || options.contextCacheDir,
     );
@@ -200,11 +194,7 @@ export function createLocationDecisionCommands({
     };
     if (shouldDeriveQueue) {
       const selected = useSelection
-        ? selectDecisionTaskQueueRows(
-            sourceQueueRows,
-            options,
-            () => "location",
-          )
+        ? selectDecisionTaskQueueRows(sourceQueueRows, options, () => "location")
         : {
             selection,
             selected: sourceQueueRows.map((row, sourceIndex) => ({
@@ -214,9 +204,7 @@ export function createLocationDecisionCommands({
           };
       selection = {
         ...selected.selection,
-        input_rows_override: inputRowsOverride
-          ? repoRelativePath(inputRowsOverride)
-          : null,
+        input_rows_override: inputRowsOverride ? repoRelativePath(inputRowsOverride) : null,
       };
       const chunkLabel = decisionTaskChunkLabel(
         options,
@@ -234,10 +222,7 @@ export function createLocationDecisionCommands({
         inputRowsOverride,
       });
       selection.chunk_label = chunkLabel;
-      taskQueuePath = path.join(
-        outDir,
-        `location-authoring-queue.${chunkLabel}.jsonl`,
-      );
+      taskQueuePath = path.join(outDir, `location-authoring-queue.${chunkLabel}.jsonl`);
       writeJsonLines(taskQueuePath, queueRows);
     }
     const rowLookup = buildLocationTaskInputRowLookup(queueRows);
@@ -259,11 +244,7 @@ export function createLocationDecisionCommands({
       provenanceContext,
       attachedInputRows,
     });
-    const templateRows = buildLocationDecisionTemplateRows(
-      queueRows,
-      rowLookup,
-      contextBundle,
-    );
+    const templateRows = buildLocationDecisionTemplateRows(queueRows, rowLookup, contextBundle);
     const queueRowsWithAttachedInput = templateRows.filter(
       (row) => row.evidence?.input_row_payload,
     ).length;
@@ -271,12 +252,7 @@ export function createLocationDecisionCommands({
       kind: "location",
       queueRows,
       contractContext,
-      requiredContextKinds: [
-        "schema",
-        "methodology_yaml",
-        "ruleset",
-        "location_schema",
-      ],
+      requiredContextKinds: ["schema", "methodology_yaml", "ruleset", "location_schema"],
       attachedInputRowCount: queueRowsWithAttachedInput,
     });
     const datasetTypes = unique(queueRows.map((row) => asText(row.dataset_type)));
@@ -317,9 +293,7 @@ export function createLocationDecisionCommands({
       context_bundle: contextBundle,
       shared_context_bundle: contextBundle.shared_context_bundle,
       context_files: contractContext.files.map((file) => file.path),
-      contract_context_files: contractContext.files.map(
-        decisionTaskContextFileSummary,
-      ),
+      contract_context_files: contractContext.files.map(decisionTaskContextFileSummary),
       missing_context_files: contractContext.missing,
       instructions: [
         "Read shared_context_bundle once for full Foundry/SDK schema, methodology YAML, runtime ruleset, tidas_locations_category.json text, then use this task's queue rows, attached payloads, provenance, and source trace before choosing location codes.",
@@ -368,8 +342,7 @@ export function createLocationDecisionCommands({
     for (const proof of decisionTaskProofs) {
       blockers.push(...proof.blockers);
     }
-    const contextBundleHashes =
-      decisionTaskContextBundleHashes(decisionTaskProofs);
+    const contextBundleHashes = decisionTaskContextBundleHashes(decisionTaskProofs);
     const queueByKey = new Map(queueRows.map((row) => [locationQueueTargetKey(row), row]));
     const decisionsByKey = new Map();
     for (const [index, decision] of decisions.entries()) {
@@ -426,43 +399,42 @@ export function createLocationDecisionCommands({
           decision_index: index,
         });
       }
-  	    if (classificationDecisionUsedContextKinds(decision).length === 0) {
-  	      blockers.push({
+      if (classificationDecisionUsedContextKinds(decision).length === 0) {
+        blockers.push({
           code: "location_decision_used_context_missing",
           message:
             "Location decision must include used_context_kinds so full-context AI evidence is auditable.",
           decision_index: index,
-  	      });
-  	    }
+        });
+      }
       if (contextBundleHashes.length > 0) {
-  	      const decisionBundleHash = decisionContextBundleSha256(decision);
-  	      if (!decisionBundleHash) {
-  	        blockers.push({
-  	          code: "location_decision_context_bundle_missing",
-  	          message:
-  	            "Location decision must include authoring_context.context_bundle_sha256 from the AI decision task template.",
-  	          decision_index: index,
+        const decisionBundleHash = decisionContextBundleSha256(decision);
+        if (!decisionBundleHash) {
+          blockers.push({
+            code: "location_decision_context_bundle_missing",
+            message:
+              "Location decision must include authoring_context.context_bundle_sha256 from the AI decision task template.",
+            decision_index: index,
             decision_tasks: decisionTaskProofs.map((proof) => proof.path),
-  	        });
+          });
         } else if (!contextBundleHashes.includes(decisionBundleHash)) {
-  	        blockers.push({
-  	          code: "location_decision_context_bundle_mismatch",
-  	          message:
-  	            "Location decision authoring context hash does not match the AI decision task context bundle.",
-  	          decision_index: index,
+          blockers.push({
+            code: "location_decision_context_bundle_mismatch",
+            message:
+              "Location decision authoring context hash does not match the AI decision task context bundle.",
+            decision_index: index,
             expected_context_bundle_sha256:
               contextBundleHashes.length === 1 ? contextBundleHashes[0] : null,
             expected_context_bundle_sha256_any_of: contextBundleHashes,
-  	          actual_context_bundle_sha256: decisionBundleHash,
+            actual_context_bundle_sha256: decisionBundleHash,
             decision_tasks: decisionTaskProofs.map((proof) => proof.path),
-  	        });
-  	      }
-  	    }
-  	    if (!queueByKey.has(key)) {
+          });
+        }
+      }
+      if (!queueByKey.has(key)) {
         blockers.push({
           code: "location_decision_not_in_queue",
-          message:
-            "Location decision does not match a queued dataset_id/version/target_path.",
+          message: "Location decision does not match a queued dataset_id/version/target_path.",
           decision_index: index,
           decision_key: key,
         });
@@ -508,15 +480,15 @@ export function createLocationDecisionCommands({
       return {
         schema_version: 1,
         status: "help",
-  	      command: "dataset-location-decisions-apply",
-  	      wraps: "tiangong-lca dataset classification apply --type location",
-  	      usage: [
-  	        "node scripts/foundry.mjs dataset-location-decisions-apply --location-queue <location-authoring-queue.jsonl> --decisions <location-decisions.jsonl> --decision-task <location-decision-task.json> --out-dir <apply-dir>",
-  	      ],
-  	      purpose:
-  	        "Validate AI-authored location decisions against the Foundry queue and AI context task, then call the CLI location classification apply command for each required row file.",
-  	    };
-  	  }
+        command: "dataset-location-decisions-apply",
+        wraps: "tiangong-lca dataset classification apply --type location",
+        usage: [
+          "node scripts/foundry.mjs dataset-location-decisions-apply --location-queue <location-authoring-queue.jsonl> --decisions <location-decisions.jsonl> --decision-task <location-decision-task.json> --out-dir <apply-dir>",
+        ],
+        purpose:
+          "Validate AI-authored location decisions against the Foundry queue and AI context task, then call the CLI location classification apply command for each required row file.",
+      };
+    }
 
     const queuePath = resolveRepoPath(options.locationQueue || options.queue);
     const decisionsPath = resolveRepoPath(
@@ -528,24 +500,19 @@ export function createLocationDecisionCommands({
       );
     }
     if (!decisionsPath || !fileExists(decisionsPath)) {
-      throw new Error(
-        "--decisions is required and must point to JSON/JSONL location decisions.",
-      );
+      throw new Error("--decisions is required and must point to JSON/JSONL location decisions.");
     }
     const outDir = resolveRepoPath(
       options.outDir || ".foundry/workspaces/location-decisions-apply",
     );
-  	  const reportPath = path.join(outDir, "location-decisions-apply-report.json");
-  	  const queueRows = readJsonOrJsonLines(queuePath);
-  	  const decisions = readJsonOrJsonLines(decisionsPath);
+    const reportPath = path.join(outDir, "location-decisions-apply-report.json");
+    const queueRows = readJsonOrJsonLines(queuePath);
+    const decisions = readJsonOrJsonLines(decisionsPath);
     const decisionTaskProofs = readDecisionTaskProofs(options, "location", queuePath);
-    const decisionTaskProof =
-      decisionTaskProofs.length === 1 ? decisionTaskProofs[0] : null;
-  	  const { blockers, decisionsByKey } = validateLocationDecisionsForQueue(
-  	    queueRows,
-  	    decisions,
-      { decisionTaskProof: decisionTaskProofs },
-  	  );
+    const decisionTaskProof = decisionTaskProofs.length === 1 ? decisionTaskProofs[0] : null;
+    const { blockers, decisionsByKey } = validateLocationDecisionsForQueue(queueRows, decisions, {
+      decisionTaskProof: decisionTaskProofs,
+    });
     const stages = [];
     const outputRows = [];
 
@@ -580,11 +547,7 @@ export function createLocationDecisionCommands({
         const groupDecisions = group.rows.map((row) =>
           decisionsByKey.get(locationQueueTargetKey(row)),
         );
-        const decisionFile = path.join(
-          outDir,
-          "decisions",
-          "location-decisions.jsonl",
-        );
+        const decisionFile = path.join(outDir, "decisions", "location-decisions.jsonl");
         fs.mkdirSync(path.dirname(decisionFile), { recursive: true });
         fs.mkdirSync(path.dirname(finalOutputRows), { recursive: true });
         writeJsonLines(decisionFile, groupDecisions);
@@ -623,12 +586,12 @@ export function createLocationDecisionCommands({
       schema_version: 1,
       generated_at_utc: nowIso(),
       status: blockers.length > 0 ? "blocked" : "completed",
-  	    command: "dataset-location-decisions-apply",
-  	    location_queue: repoRelativePath(queuePath),
-  	    decisions_file: repoRelativePath(decisionsPath),
+      command: "dataset-location-decisions-apply",
+      location_queue: repoRelativePath(queuePath),
+      decisions_file: repoRelativePath(decisionsPath),
       decision_task: decisionTaskReportPayload(decisionTaskProof),
       decision_tasks: decisionTaskProofs.map(decisionTaskReportPayload),
-  	    counts: {
+      counts: {
         queue_rows: queueRows.length,
         decisions: decisions.length,
         stages: stages.length,
@@ -649,7 +612,6 @@ export function createLocationDecisionCommands({
     writeJson(reportPath, report);
     return report;
   }
-
 
   return {
     runDatasetLocationDecisionTaskBuild,

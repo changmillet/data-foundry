@@ -1,21 +1,12 @@
-import {
-  datasetIdentity,
-  datasetRoot,
-  unwrapDatasetPayload,
-} from "./dataset-payload.mjs";
+import { datasetIdentity, datasetRoot, unwrapDatasetPayload } from "./dataset-payload.mjs";
 import { sha256Json, sha256Text } from "./hash-utils.mjs";
 import { asText, ensureArray } from "./runtime-io.mjs";
 
-export const annualSupplyMissingDataSentinelText =
-  "9999 missing-data-sentinel/year";
+export const annualSupplyMissingDataSentinelText = "9999 missing-data-sentinel/year";
 
-export const foundryTraceNamespace =
-  "https://tiangong-lca.dev/foundry/import-curation/1";
+export const foundryTraceNamespace = "https://tiangong-lca.dev/foundry/import-curation/1";
 
-const datetimeFieldsToNormalize = new Set([
-  "common:timeStamp",
-  "common:dateOfLastRevision",
-]);
+const datetimeFieldsToNormalize = new Set(["common:timeStamp", "common:dateOfLastRevision"]);
 
 const foundryTraceKeys = [
   "tiangongfoundry:unresolvedTrace",
@@ -36,11 +27,7 @@ const localSourceLocatorKeys = new Set([
 export function normalizeUtcDateTimeString(value) {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
-  if (
-    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u.test(
-      trimmed,
-    )
-  ) {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u.test(trimmed)) {
     return null;
   }
   const time = Date.parse(trimmed);
@@ -107,8 +94,7 @@ export function applyAnnualSupplyMissingDataSentinel(row, datasetType) {
   if (datasetType !== "process") return false;
   const payload = unwrapDatasetPayload(row, datasetType);
   const root = datasetRoot(payload, datasetType);
-  const dataSources =
-    root?.modellingAndValidation?.dataSourcesTreatmentAndRepresentativeness;
+  const dataSources = root?.modellingAndValidation?.dataSourcesTreatmentAndRepresentativeness;
   if (!dataSources || typeof dataSources !== "object") return false;
   const current = dataSources.annualSupplyOrProductionVolume;
   if (current !== undefined && !isPlaceholderAnnualSupplyValue(current)) {
@@ -180,11 +166,7 @@ function acceptedSourceExchangeTraceExists(row) {
     info?.["common:other"]?.["tiangongfoundry:sourceExchangeCompleteness"],
   );
   return traces.some((trace) =>
-    [
-      "source_only_output_exchange_verified",
-      "accepted_source_only_output",
-      "verified",
-    ].includes(
+    ["source_only_output_exchange_verified", "accepted_source_only_output", "verified"].includes(
       asText(trace?.status ?? trace?.decision_status ?? trace?.decisionStatus),
     ),
   );
@@ -209,20 +191,13 @@ function sourceRowsByIdentity(sourceRows) {
 export function applyDeterministicSourceExchangeCompletenessProofs(
   row,
   datasetType,
-  {
-    rowIndex,
-    sourceRowsByKey,
-    sourceRowsFile,
-    rowsFile,
-    proofRows,
-  } = {},
+  { rowIndex, sourceRowsByKey, sourceRowsFile, rowsFile, proofRows } = {},
 ) {
   if (datasetType !== "process" || !sourceRowsByKey) return false;
   if (acceptedSourceExchangeTraceExists(row)) return false;
   const identity = datasetIdentity(row, rowIndex ?? 0, "process");
   const sourceEntry =
-    sourceRowsByKey.get(`${identity.id}@@${identity.version}`) ??
-    sourceRowsByKey.get(identity.id);
+    sourceRowsByKey.get(`${identity.id}@@${identity.version}`) ?? sourceRowsByKey.get(identity.id);
   if (!sourceEntry) return false;
   const proof = outputOnlyExchangeProofCandidate({
     row,
@@ -232,9 +207,7 @@ export function applyDeterministicSourceExchangeCompletenessProofs(
   const info = processDataSetInformation(row);
   if (!info || typeof info !== "object" || Array.isArray(info)) return false;
   const commonOther =
-    info["common:other"] && typeof info["common:other"] === "object"
-      ? info["common:other"]
-      : {};
+    info["common:other"] && typeof info["common:other"] === "object" ? info["common:other"] : {};
   commonOther["@xmlns:tiangongfoundry"] =
     commonOther["@xmlns:tiangongfoundry"] ?? foundryTraceNamespace;
   const trace = {
@@ -256,8 +229,7 @@ export function applyDeterministicSourceExchangeCompletenessProofs(
       directions: proof.directions,
       source_exchange_signature_hash: proof.source_exchange_signature_hash,
       final_exchange_signature_hash: proof.final_exchange_signature_hash,
-      proof_kind:
-        "source_output_only_non_flow_reference_exchange_signature_match",
+      proof_kind: "source_output_only_non_flow_reference_exchange_signature_match",
     },
   };
   const traceHash = sha256Text(JSON.stringify(trace));
@@ -267,10 +239,7 @@ export function applyDeterministicSourceExchangeCompletenessProofs(
   } else if (Array.isArray(existing)) {
     existing.push(trace);
   } else {
-    commonOther["tiangongfoundry:sourceExchangeCompleteness"] = [
-      existing,
-      trace,
-    ];
+    commonOther["tiangongfoundry:sourceExchangeCompleteness"] = [existing, trace];
   }
   info["common:other"] = commonOther;
   proofRows?.push({
@@ -325,16 +294,9 @@ export function externalizeImportTraceMetadata(value) {
     }
 
     const commonOther = node["common:other"];
-    if (
-      commonOther &&
-      typeof commonOther === "object" &&
-      !Array.isArray(commonOther)
-    ) {
+    if (commonOther && typeof commonOther === "object" && !Array.isArray(commonOther)) {
       if (Object.hasOwn(commonOther, "tidasimport:sourceTrace")) {
-        appendImportTraceSummary(
-          commonOther,
-          commonOther["tidasimport:sourceTrace"],
-        );
+        appendImportTraceSummary(commonOther, commonOther["tidasimport:sourceTrace"]);
         delete commonOther["tidasimport:sourceTrace"];
         removed += 1;
         summaries += 1;
@@ -363,18 +325,11 @@ export function ensureFoundryTraceNamespaces(value) {
     }
 
     const commonOther = node["common:other"];
-    if (
-      commonOther &&
-      typeof commonOther === "object" &&
-      !Array.isArray(commonOther)
-    ) {
+    if (commonOther && typeof commonOther === "object" && !Array.isArray(commonOther)) {
       const hasFoundryExtension = Object.keys(commonOther).some((key) =>
         key.startsWith("tiangongfoundry:"),
       );
-      if (
-        hasFoundryExtension &&
-        !Object.hasOwn(commonOther, "@xmlns:tiangongfoundry")
-      ) {
+      if (hasFoundryExtension && !Object.hasOwn(commonOther, "@xmlns:tiangongfoundry")) {
         commonOther["@xmlns:tiangongfoundry"] = foundryTraceNamespace;
         added += 1;
       }
@@ -390,9 +345,9 @@ function containsLocalSourceLocator(value) {
   const text = asText(value);
   return Boolean(
     text &&
-      /(?:^|["'\s])(?:\/Users\/|\/Volumes\/|\/private\/|\/tmp\/|file:\/\/|[A-Za-z]:\\)|\.zip:|LCI ecoSpold version2 Files/iu.test(
-        text,
-      ),
+    /(?:^|["'\s])(?:\/Users\/|\/Volumes\/|\/private\/|\/tmp\/|file:\/\/|[A-Za-z]:\\)|\.zip:|LCI ecoSpold version2 Files/iu.test(
+      text,
+    ),
   );
 }
 
@@ -417,8 +372,7 @@ function sanitizeTraceEvidenceValue(value, stats) {
       value[key] = `redacted local source locator sha256:${hash}`;
     }
     value.source_locator_sha256 = value.source_locator_sha256 ?? hash;
-    value.source_locator_status =
-      value.source_locator_status ?? "redacted_before_remote_write";
+    value.source_locator_status = value.source_locator_status ?? "redacted_before_remote_write";
     stats.redacted += 1;
   }
 }
@@ -433,24 +387,14 @@ export function sanitizeFoundryTraceEvidenceLocators(value) {
     }
 
     const commonOther = node["common:other"];
-    if (
-      commonOther &&
-      typeof commonOther === "object" &&
-      !Array.isArray(commonOther)
-    ) {
+    if (commonOther && typeof commonOther === "object" && !Array.isArray(commonOther)) {
       for (const traceKey of foundryTraceKeys) {
         for (const traceEntry of ensureArray(commonOther[traceKey])) {
-          if (
-            !traceEntry ||
-            typeof traceEntry !== "object" ||
-            Array.isArray(traceEntry)
-          ) {
+          if (!traceEntry || typeof traceEntry !== "object" || Array.isArray(traceEntry)) {
             continue;
           }
           const evidence =
-            traceEntry.evidence ??
-            traceEntry.source_evidence ??
-            traceEntry.sourceEvidence;
+            traceEntry.evidence ?? traceEntry.source_evidence ?? traceEntry.sourceEvidence;
           sanitizeTraceEvidenceValue(evidence, stats);
         }
       }

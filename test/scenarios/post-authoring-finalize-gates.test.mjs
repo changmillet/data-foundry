@@ -1,37 +1,12 @@
 import test from "node:test";
 import {
-  writeReadyFinalizeFixture,
-} from "../fixtures/finalize-fixtures.mjs";
-import {
-  annualSupplyFixtureRoot,
-  classificationFixtureRoot,
-  elementaryFlowManifestFixtureRoot,
   finalizeAutoQueueFixtureRoot,
   finalizeCurationGateFixtureRoot,
-  finalizeIdentityPreflightFixtureRoot,
-  finalizeLocationFixtureRoot,
   fixtureRoot,
-  flowClassificationFixtureRoot,
-  flowIdentityReferenceFixtureRoot,
-  identityPreflightRunFixtureRoot,
-  locationFixtureRoot,
-  mutationFixtureRoot,
-  packageContextFixtureRoot,
-  qaPathFixtureRoot,
-  referenceClosureFixtureRoot,
-  sourceExchangeFixtureRoot,
-  supportManifestFixtureRoot,
 } from "../fixtures/fixture-roots.mjs";
 import {
   assert,
-  blockerCodes,
-  bundledCategorySchemaNames,
-  contextTextByPathSuffix,
-  crypto,
   fs,
-  fullContextKinds,
-  fullContextPatterns,
-  itemBlockerCodes,
   path,
   readJson,
   readJsonLines,
@@ -39,36 +14,17 @@ import {
   repoRoot,
   runFoundry,
   scopeBlockerCodes,
-  sha256Text,
-  siblingCliBuildAvailable,
-  siblingCliRoot,
-  spawnSync,
   targetUserId,
-  writeJson,
   writeJsonLines,
   writeText,
 } from "../fixtures/foundry-core.mjs";
-import {
-  contextFile,
-  createFixture,
-  writeContextPackFiles,
-  writeDecisionTaskFixture,
-} from "../fixtures/full-context-fixtures.mjs";
-import {
-  writeCompletedIdentityPreflightIndex,
-} from "../fixtures/identity-fixtures.mjs";
-import {
-  createMutationManifestFixture,
-} from "../fixtures/mutation-fixtures.mjs";
+import { writeContextPackFiles } from "../fixtures/full-context-fixtures.mjs";
+import { writeCompletedIdentityPreflightIndex } from "../fixtures/identity-fixtures.mjs";
 import {
   flowRow,
   flowRowWithClassification,
-  processRowWithDefaultClassification,
-  processRowWithDeferredTrace,
   processRowWithFlowRef,
-  processRowWithInvalidAnnualSupply,
   processRowWithInvalidLocation,
-  processRowWithOnlyOutputExchange,
   sourceRow,
 } from "../fixtures/row-builders.mjs";
 
@@ -258,9 +214,7 @@ process.exit(2);
     assert.ok(publishCall);
     assert.equal(publishCall.args.includes("--target-user-id"), true);
     assert.equal(publishCall.args.includes("--state-code"), false);
-    const mutationManifest = readJson(
-      path.join(repoRoot, finalize.json.files.mutation_manifest),
-    );
+    const mutationManifest = readJson(path.join(repoRoot, finalize.json.files.mutation_manifest));
     assert.equal(mutationManifest.status, "ready_for_remote_write");
     assert.equal(mutationManifest.counts.blockers, 0);
     assert.equal(mutationManifest.items[0].dry_run_status, "success");
@@ -341,15 +295,11 @@ test("post-authoring finalize auto-builds curation queue context from sibling pr
     assert.ok(
       finalize.json.stages.some(
         (stage) =>
-          stage.stage === "curation_queue" &&
-          stage.status === "ready" &&
-          stage.exit_code === 0,
+          stage.stage === "curation_queue" && stage.status === "ready" && stage.exit_code === 0,
       ),
     );
 
-    const gateReport = readJson(
-      path.join(repoRoot, finalize.json.files.curation_gate_report),
-    );
+    const gateReport = readJson(path.join(repoRoot, finalize.json.files.curation_gate_report));
     assert.equal(gateReport.context.require_queue_context, true);
     assert.equal(gateReport.context.curation_queue.status, "ready");
     const authoringPackage = readJson(
@@ -360,14 +310,9 @@ test("post-authoring finalize auto-builds curation queue context from sibling pr
     );
     assert.equal(deterministicCodes.has("curation_queue_context_required"), false);
     assert.equal(authoringPackage.curation_queue_context.status, "attached");
-    assert.equal(
-      authoringPackage.curation_queue_context.dependency_rows.length,
-      1,
-    );
+    assert.equal(authoringPackage.curation_queue_context.dependency_rows.length, 1);
     assert.match(
-      JSON.stringify(
-        authoringPackage.curation_queue_context.dependency_rows[0].input_rows,
-      ),
+      JSON.stringify(authoringPackage.curation_queue_context.dependency_rows[0].input_rows),
       new RegExp(flowId, "u"),
     );
   } finally {
@@ -429,15 +374,11 @@ test("post-authoring finalize declares external process flow refs for remote pro
     assert.ok(
       finalize.json.stages.some(
         (stage) =>
-          stage.stage === "curation_queue" &&
-          stage.status === "ready" &&
-          stage.exit_code === 0,
+          stage.stage === "curation_queue" && stage.status === "ready" && stage.exit_code === 0,
       ),
     );
 
-    const gateReport = readJson(
-      path.join(repoRoot, finalize.json.files.curation_gate_report),
-    );
+    const gateReport = readJson(path.join(repoRoot, finalize.json.files.curation_gate_report));
     assert.equal(gateReport.context.curation_queue.status, "ready");
     const authoringPackage = readJson(
       path.join(repoRoot, gateReport.entities[0].authoring_package),
@@ -447,10 +388,7 @@ test("post-authoring finalize declares external process flow refs for remote pro
     );
     assert.equal(deterministicCodes.has("curation_queue_context_required"), false);
     assert.equal(deterministicCodes.has("curation_queue_not_ready"), false);
-    assert.equal(
-      deterministicCodes.has("curation_queue_dependency_refs_unresolved"),
-      false,
-    );
+    assert.equal(deterministicCodes.has("curation_queue_dependency_refs_unresolved"), false);
     assert.deepEqual(
       authoringPackage.curation_queue_context.closure.dependencies.external_refs.map(
         (ref) => ref.entity_id,
@@ -477,8 +415,7 @@ test("post-authoring finalize externalizes unresolved elementary flow exchanges"
         blocked_path: "processDataSet.exchanges.exchange.0.referenceToFlowDataSet",
         reference_id: missingFlowId,
         reference_version: "00.00.001",
-        reason:
-          "Fixture unresolved elementary flow cannot be safely mapped to a public flow.",
+        reason: "Fixture unresolved elementary flow cannot be safely mapped to a public flow.",
       },
     ],
   };
@@ -533,25 +470,19 @@ test("post-authoring finalize externalizes unresolved elementary flow exchanges"
     const exchanges = externalizedRows[0].processDataSet.exchanges.exchange;
     assert.deepEqual(exchanges, []);
     const traces =
-      externalizedRows[0].processDataSet.processInformation.dataSetInformation[
-        "common:other"
-      ]["tiangongfoundry:unresolvedExchangeTrace"];
+      externalizedRows[0].processDataSet.processInformation.dataSetInformation["common:other"][
+        "tiangongfoundry:unresolvedExchangeTrace"
+      ];
     assert.equal(traces.length, 1);
     assert.equal(traces[0].reference_id, missingFlowId);
-    assert.equal(
-      traces[0].original_exchange.referenceToFlowDataSet["@refObjectId"],
-      missingFlowId,
-    );
+    assert.equal(traces[0].original_exchange.referenceToFlowDataSet["@refObjectId"], missingFlowId);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
 
 test("post-authoring finalize externalizes exchanges for upstream blocked flow dependencies", () => {
-  const root = path.join(
-    finalizeAutoQueueFixtureRoot,
-    "blocked-flow-dependency-trace",
-  );
+  const root = path.join(finalizeAutoQueueFixtureRoot, "blocked-flow-dependency-trace");
   fs.rmSync(root, { recursive: true, force: true });
   const processId = "e2e2e2e2-4444-4555-8666-777777777777";
   const blockedFlowId = "f2f2f2f2-5555-4666-8777-888888888888";
@@ -617,14 +548,11 @@ test("post-authoring finalize externalizes exchanges for upstream blocked flow d
     );
     assert.deepEqual(externalizedRows[0].processDataSet.exchanges.exchange, []);
     const traces =
-      externalizedRows[0].processDataSet.processInformation.dataSetInformation[
-        "common:other"
-      ]["tiangongfoundry:unresolvedExchangeTrace"];
+      externalizedRows[0].processDataSet.processInformation.dataSetInformation["common:other"][
+        "tiangongfoundry:unresolvedExchangeTrace"
+      ];
     assert.equal(traces.length, 1);
-    assert.equal(
-      traces[0].action_item_code,
-      "blocked_flow_dependency_exchange_externalized",
-    );
+    assert.equal(traces[0].action_item_code, "blocked_flow_dependency_exchange_externalized");
     assert.equal(traces[0].reference_id, blockedFlowId);
     assert.equal(
       traces[0].upstream_flow_blockers[0].code,
@@ -641,15 +569,10 @@ test("post-authoring finalize blocks residual BAFU AI action items after locatio
     force: true,
   });
   const processId = "afafafaf-cdcd-4efe-8aaa-bbbbbbbbbbbb";
-  const rowsFile = path.join(
-    finalizeCurationGateFixtureRoot,
-    "rows",
-    "processes.jsonl",
-  );
+  const rowsFile = path.join(finalizeCurationGateFixtureRoot, "rows", "processes.jsonl");
   const row = processRowWithInvalidLocation(processId);
-  row.processDataSet.processInformation.dataSetInformation.name.baseName[
-    "#text"
-  ] = "xx Li salt, hydrometallurgical processing Li-ion batteries, at plant {GLO}";
+  row.processDataSet.processInformation.dataSetInformation.name.baseName["#text"] =
+    "xx Li salt, hydrometallurgical processing Li-ion batteries, at plant {GLO}";
   row.processDataSet.processInformation.geography.locationOfOperationSupplyOrProduction[
     "@location"
   ] = "CH";
@@ -683,43 +606,30 @@ test("post-authoring finalize blocks residual BAFU AI action items after locatio
     assert.equal(finalize.json.counts.location_code_invalid, 0);
     assert.ok(
       finalize.json.stages.some(
-        (stage) =>
-          stage.stage === "post_authoring_curation_gate" &&
-          stage.exit_code === 1,
+        (stage) => stage.stage === "post_authoring_curation_gate" && stage.exit_code === 1,
       ),
     );
     assert.ok(
       finalize.json.stages.some(
-        (stage) =>
-          stage.stage === "process_save_draft_dry_run" &&
-          stage.status === "skipped",
+        (stage) => stage.stage === "process_save_draft_dry_run" && stage.status === "skipped",
       ),
     );
     assert.equal(finalize.json.files.dry_run_report, null);
     assert.ok(finalize.json.files.curation_gate_report);
-    const gateReport = readJson(
-      path.join(repoRoot, finalize.json.files.curation_gate_report),
-    );
+    const gateReport = readJson(path.join(repoRoot, finalize.json.files.curation_gate_report));
     assert.equal(gateReport.status, "blocked_needs_foundry_ai_authoring");
     assert.ok(gateReport.counts.action_items > 0);
 
-    const authoringPackageFile = path.join(
-      repoRoot,
-      gateReport.entities[0].authoring_package,
-    );
+    const authoringPackageFile = path.join(repoRoot, gateReport.entities[0].authoring_package);
     const authoringPackage = readJson(authoringPackageFile);
-    const actionCodes = new Set(
-      authoringPackage.action_items.map((item) => item.code),
-    );
+    const actionCodes = new Set(authoringPackage.action_items.map((item) => item.code));
     assert.ok(actionCodes.has("semantic_name_placeholder_token"));
     assert.ok(actionCodes.has("semantic_geography_token_in_name"));
     assert.ok(
       finalize.json.counts.mutation_manifest_blockers > 0,
       "Mutation manifest must keep residual AI action items out of remote write.",
     );
-    const mutationManifest = readJson(
-      path.join(repoRoot, finalize.json.files.mutation_manifest),
-    );
+    const mutationManifest = readJson(path.join(repoRoot, finalize.json.files.mutation_manifest));
     assert.ok(scopeBlockerCodes(mutationManifest).has("dry_run_report_required"));
   } finally {
     fs.rmSync(finalizeCurationGateFixtureRoot, {

@@ -1,36 +1,9 @@
 import test from "node:test";
-import {
-  writeReadyFinalizeFixture,
-} from "../fixtures/finalize-fixtures.mjs";
-import {
-  annualSupplyFixtureRoot,
-  classificationFixtureRoot,
-  elementaryFlowManifestFixtureRoot,
-  finalizeAutoQueueFixtureRoot,
-  finalizeCurationGateFixtureRoot,
-  finalizeIdentityPreflightFixtureRoot,
-  finalizeLocationFixtureRoot,
-  fixtureRoot,
-  flowClassificationFixtureRoot,
-  flowIdentityReferenceFixtureRoot,
-  identityPreflightRunFixtureRoot,
-  locationFixtureRoot,
-  mutationFixtureRoot,
-  packageContextFixtureRoot,
-  qaPathFixtureRoot,
-  referenceClosureFixtureRoot,
-  sourceExchangeFixtureRoot,
-  supportManifestFixtureRoot,
-} from "../fixtures/fixture-roots.mjs";
+import { mutationFixtureRoot } from "../fixtures/fixture-roots.mjs";
 import {
   assert,
-  blockerCodes,
-  bundledCategorySchemaNames,
-  contextTextByPathSuffix,
-  crypto,
   fs,
   fullContextKinds,
-  fullContextPatterns,
   itemBlockerCodes,
   path,
   readJson,
@@ -39,50 +12,12 @@ import {
   repoRoot,
   runFoundry,
   scopeBlockerCodes,
-  sha256Text,
-  siblingCliBuildAvailable,
-  siblingCliRoot,
-  spawnSync,
   targetUserId,
   writeJson,
   writeJsonLines,
-  writeText,
 } from "../fixtures/foundry-core.mjs";
-import {
-  contextFile,
-  createFixture,
-  writeContextPackFiles,
-  writeDecisionTaskFixture,
-} from "../fixtures/full-context-fixtures.mjs";
-import {
-  writeCompletedIdentityPreflightIndex,
-} from "../fixtures/identity-fixtures.mjs";
-import {
-  createMutationManifestFixture,
-} from "../fixtures/mutation-fixtures.mjs";
-import {
-  flowRow,
-  flowRowWithClassification,
-  processRowWithDefaultClassification,
-  processRowWithDeferredTrace,
-  processRowWithFlowRef,
-  processRowWithInvalidAnnualSupply,
-  processRowWithInvalidLocation,
-  processRowWithOnlyOutputExchange,
-  sourceRow,
-} from "../fixtures/row-builders.mjs";
-import {
-  decisionApplyOutputRowsReachableThroughDeterministicTransforms,
-  readRowsFileTransformContext,
-  rowsFileReachableThroughTransformChain,
-  sameRowsArtifact,
-} from "../../scripts/lib/import-curation/internal/workflow-row-transform-context.mjs";
-import {
-  attachIdentityPreflightFreshness,
-} from "../../scripts/lib/import-curation/internal/workflow-identity-preflight.mjs";
-import {
-  sha256Json,
-} from "../../scripts/lib/import-curation/internal/hash-utils.mjs";
+import { writeDecisionTaskFixture } from "../fixtures/full-context-fixtures.mjs";
+import { createMutationManifestFixture } from "../fixtures/mutation-fixtures.mjs";
 
 test("mutation manifest requires full-context AI evidence and preserves deferred trace queues", () => {
   const fixture = createMutationManifestFixture();
@@ -111,16 +46,8 @@ test("mutation manifest requires full-context AI evidence and preserves deferred
     assert.equal(blocked.code, 1);
     assert.equal(blocked.json.status, "blocked");
     assert.equal(blocked.json.evidence.patch_collect_required, true);
-    assert.ok(
-      itemBlockerCodes(blocked.json).has(
-        "full_context_ai_completion_output_required",
-      ),
-    );
-    assert.ok(
-      itemBlockerCodes(blocked.json).has(
-        "full_context_ai_deterministic_apply_required",
-      ),
-    );
+    assert.ok(itemBlockerCodes(blocked.json).has("full_context_ai_completion_output_required"));
+    assert.ok(itemBlockerCodes(blocked.json).has("full_context_ai_deterministic_apply_required"));
 
     const blockedMissingDryRun = runFoundry([
       "dataset-mutation-manifest",
@@ -144,16 +71,8 @@ test("mutation manifest requires full-context AI evidence and preserves deferred
     assert.equal(blockedMissingDryRun.code, 1);
     assert.equal(blockedMissingDryRun.json.status, "blocked");
     assert.equal(blockedMissingDryRun.json.evidence.dry_run_report, null);
-    assert.ok(
-      scopeBlockerCodes(blockedMissingDryRun.json).has(
-        "dry_run_report_required",
-      ),
-    );
-    assert.ok(
-      itemBlockerCodes(blockedMissingDryRun.json).has(
-        "dry_run_evidence_missing",
-      ),
-    );
+    assert.ok(scopeBlockerCodes(blockedMissingDryRun.json).has("dry_run_report_required"));
+    assert.ok(itemBlockerCodes(blockedMissingDryRun.json).has("dry_run_evidence_missing"));
 
     const dryRunRowsMismatchReport = path.join(
       mutationFixtureRoot,
@@ -191,60 +110,56 @@ test("mutation manifest requires full-context AI evidence and preserves deferred
       rel(path.join(mutationFixtureRoot, "dry-run-mismatch-manifest")),
     ]);
     assert.equal(mismatchedDryRun.code, 1);
-    assert.ok(
-      itemBlockerCodes(mismatchedDryRun.json).has(
-        "dry_run_report_rows_mismatch",
-      ),
-    );
+    assert.ok(itemBlockerCodes(mismatchedDryRun.json).has("dry_run_report_rows_mismatch"));
 
-	    const classificationDecisionsFile = path.join(
-	      mutationFixtureRoot,
-	      "classification-decisions",
-	      "classification-decisions.jsonl",
-	    );
-	    const classificationQueueFile = path.join(
-	      mutationFixtureRoot,
-	      "classification-decisions",
-	      "classification-authoring-queue.jsonl",
-	    );
-	    const decisionOutputBeforeCleanup = path.join(
-	      mutationFixtureRoot,
-	      "patch-apply",
-	      "processes.patched.jsonl",
-	    );
-	    writeJsonLines(classificationQueueFile, [
-	      {
-	        dataset_type: "process",
-	        dataset_id: fixture.processId,
-	        dataset_version: "00.00.001",
-	        classification_workflow: {
-	          schema_type: "process",
-	          row_type: "process",
-	          commands: {
-	            input_rows: rel(decisionOutputBeforeCleanup),
-	            output_rows: rel(decisionOutputBeforeCleanup),
-	          },
-	        },
-	      },
-	    ]);
-	    const classificationDecisionTask = writeDecisionTaskFixture({
-	      root: mutationFixtureRoot,
-	      kind: "classification",
-	      queueFile: classificationQueueFile,
-	      contractContextFiles: fixture.contractContextFiles,
-	    });
-	    writeJsonLines(classificationDecisionsFile, [
-	      {
-	        dataset_id: fixture.processId,
-	        dataset_version: "00.00.001",
-	        category_type: "process",
-	        code: "1080",
-	        basis:
-	          "AI selected the process class from the full schema, methodology YAML, ruleset, classification schema, and location schema context.",
-	        authoring_context: classificationDecisionTask.authoringContext,
-	        evidence: {
-	          source: "classification-authoring-queue",
-	          quote_or_trace: "process baseName Fixture process",
+    const classificationDecisionsFile = path.join(
+      mutationFixtureRoot,
+      "classification-decisions",
+      "classification-decisions.jsonl",
+    );
+    const classificationQueueFile = path.join(
+      mutationFixtureRoot,
+      "classification-decisions",
+      "classification-authoring-queue.jsonl",
+    );
+    const decisionOutputBeforeCleanup = path.join(
+      mutationFixtureRoot,
+      "patch-apply",
+      "processes.patched.jsonl",
+    );
+    writeJsonLines(classificationQueueFile, [
+      {
+        dataset_type: "process",
+        dataset_id: fixture.processId,
+        dataset_version: "00.00.001",
+        classification_workflow: {
+          schema_type: "process",
+          row_type: "process",
+          commands: {
+            input_rows: rel(decisionOutputBeforeCleanup),
+            output_rows: rel(decisionOutputBeforeCleanup),
+          },
+        },
+      },
+    ]);
+    const classificationDecisionTask = writeDecisionTaskFixture({
+      root: mutationFixtureRoot,
+      kind: "classification",
+      queueFile: classificationQueueFile,
+      contractContextFiles: fixture.contractContextFiles,
+    });
+    writeJsonLines(classificationDecisionsFile, [
+      {
+        dataset_id: fixture.processId,
+        dataset_version: "00.00.001",
+        category_type: "process",
+        code: "1080",
+        basis:
+          "AI selected the process class from the full schema, methodology YAML, ruleset, classification schema, and location schema context.",
+        authoring_context: classificationDecisionTask.authoringContext,
+        evidence: {
+          source: "classification-authoring-queue",
+          quote_or_trace: "process baseName Fixture process",
           used_context_kinds: fullContextKinds,
         },
       },
@@ -255,17 +170,16 @@ test("mutation manifest requires full-context AI evidence and preserves deferred
       "classification-decisions-apply-report.json",
     );
     writeJson(classificationDecisionApplyReport, {
-	      schema_version: 1,
-	      status: "completed",
-	      decisions_file: rel(classificationDecisionsFile),
-	      decision_task: {
-	        path: rel(classificationDecisionTask.taskFile),
-	        sha256: classificationDecisionTask.taskSha256,
-	        context_bundle_sha256:
-	          classificationDecisionTask.contextBundleSha256,
-	      },
-	      files: {
-	        output_rows: [rel(decisionOutputBeforeCleanup)],
+      schema_version: 1,
+      status: "completed",
+      decisions_file: rel(classificationDecisionsFile),
+      decision_task: {
+        path: rel(classificationDecisionTask.taskFile),
+        sha256: classificationDecisionTask.taskSha256,
+        context_bundle_sha256: classificationDecisionTask.contextBundleSha256,
+      },
+      files: {
+        output_rows: [rel(decisionOutputBeforeCleanup)],
       },
       counts: {
         applied: 1,
@@ -296,263 +210,234 @@ test("mutation manifest requires full-context AI evidence and preserves deferred
     ]);
     assert.equal(classificationTraceBlocked.code, 1);
     assert.equal(classificationTraceBlocked.json.status, "blocked");
-    assert.equal(
-      classificationTraceBlocked.json.evidence.patch_collect_required,
-      false,
+    assert.equal(classificationTraceBlocked.json.evidence.patch_collect_required, false);
+    assert.equal(classificationTraceBlocked.json.counts.ai_classification_decision_entries, 1);
+    assert.equal(classificationTraceBlocked.json.counts.ai_patch_evidence_entries, 0);
+    assert.ok(
+      itemBlockerCodes(classificationTraceBlocked.json).has(
+        "unresolved_trace_patch_evidence_required",
+      ),
     );
-    assert.equal(
-      classificationTraceBlocked.json.counts.ai_classification_decision_entries,
-      1,
-    );
-    assert.equal(
-      classificationTraceBlocked.json.counts.ai_patch_evidence_entries,
-      0,
-    );
-	    assert.ok(
-	      itemBlockerCodes(classificationTraceBlocked.json).has(
-	        "unresolved_trace_patch_evidence_required",
-	      ),
-	    );
 
-	    writeJsonLines(classificationDecisionsFile, [
-	      {
-	        dataset_id: fixture.processId,
-	        dataset_version: "00.00.001",
-	        category_type: "process",
-	        code: "1080",
-	        basis:
-	          "AI selected the process class from the full schema, methodology YAML, ruleset, classification schema, and location schema context.",
-	        authoring_context: classificationDecisionTask.authoringContext,
-	        evidence: {
-	          source: "classification-authoring-queue",
-	          quote_or_trace: "process baseName Fixture process",
-	          used_context_kinds: fullContextKinds,
-	        },
-	      },
-	    ]);
-	    const classificationStatusBlocked = runFoundry([
-	      "dataset-mutation-manifest",
-	      "--type",
-	      "process",
-	      "--profile",
-	      "bafu",
-	      "--rows-file",
-	      rel(fixture.rowsFile),
-	      "--schema-report",
-	      rel(fixture.schemaReport),
-	      "--curation-gate-report",
-	      rel(fixture.curationGateReport),
-	      "--cleanup-report",
-	      rel(fixture.cleanupReport),
-	      "--dry-run-report",
-	      rel(fixture.dryRunReport),
-	      "--classification-decision-apply-report",
-	      rel(classificationDecisionApplyReport),
-	      "--target-user-id",
-	      targetUserId,
-	      "--out-dir",
-	      rel(
-	        path.join(
-	          mutationFixtureRoot,
-	          "classification-status-blocked-manifest",
-	        ),
-	      ),
-	    ]);
-	    assert.equal(classificationStatusBlocked.code, 1);
-	    assert.ok(
-	      scopeBlockerCodes(classificationStatusBlocked.json).has(
-	        "full_context_ai_classification_decision_status_not_completed",
-	      ),
-	    );
-
-	    const wrongKindClassificationTask = writeDecisionTaskFixture({
-	      root: mutationFixtureRoot,
-	      kind: "location",
-	      queueFile: classificationQueueFile,
-	      contractContextFiles: fixture.contractContextFiles,
-	      dirName: "classification-wrong-kind-decision-task",
-	    });
-	    writeJsonLines(classificationDecisionsFile, [
-	      {
-	        dataset_id: fixture.processId,
-	        dataset_version: "00.00.001",
-	        category_type: "process",
-	        decision_status: "completed",
-	        code: "1080",
-	        basis:
-	          "AI selected the process class from a task with the wrong task kind.",
-	        authoring_context: wrongKindClassificationTask.authoringContext,
-	        evidence: {
-	          source: "classification-authoring-queue",
-	          quote_or_trace: "process baseName Fixture process",
-	          used_context_kinds: fullContextKinds,
-	        },
-	      },
-	    ]);
-	    writeJson(classificationDecisionApplyReport, {
-	      schema_version: 1,
-	      status: "completed",
-	      decisions_file: rel(classificationDecisionsFile),
-	      decision_task: {
-	        path: rel(wrongKindClassificationTask.taskFile),
-	        sha256: wrongKindClassificationTask.taskSha256,
-	        context_bundle_sha256:
-	          wrongKindClassificationTask.contextBundleSha256,
-	      },
-	      files: {
-	        output_rows: [rel(decisionOutputBeforeCleanup)],
-	      },
-	      counts: {
-	        applied: 1,
-	      },
-	    });
-	    const classificationWrongTaskKindBlocked = runFoundry([
-	      "dataset-mutation-manifest",
-	      "--type",
-	      "process",
-	      "--profile",
-	      "bafu",
-	      "--rows-file",
-	      rel(fixture.rowsFile),
-	      "--schema-report",
-	      rel(fixture.schemaReport),
-	      "--curation-gate-report",
-	      rel(fixture.curationGateReport),
-	      "--cleanup-report",
-	      rel(fixture.cleanupReport),
-	      "--dry-run-report",
-	      rel(fixture.dryRunReport),
-	      "--classification-decision-apply-report",
-	      rel(classificationDecisionApplyReport),
-	      "--target-user-id",
-	      targetUserId,
-	      "--out-dir",
-	      rel(
-	        path.join(
-	          mutationFixtureRoot,
-	          "classification-wrong-task-kind-manifest",
-	        ),
-	      ),
-	    ]);
-	    assert.equal(classificationWrongTaskKindBlocked.code, 1);
-	    assert.ok(
-	      scopeBlockerCodes(classificationWrongTaskKindBlocked.json).has(
-	        "full_context_ai_classification_decision_task_kind_invalid",
-	      ),
-	    );
-
-	    const blockedStatusClassificationTask = writeDecisionTaskFixture({
-	      root: mutationFixtureRoot,
-	      kind: "classification",
-	      queueFile: classificationQueueFile,
-	      contractContextFiles: fixture.contractContextFiles,
-	      dirName: "classification-blocked-status-decision-task",
-	      status: "blocked_missing_full_context",
-	    });
-	    writeJsonLines(classificationDecisionsFile, [
-	      {
-	        dataset_id: fixture.processId,
-	        dataset_version: "00.00.001",
-	        category_type: "process",
-	        decision_status: "completed",
-	        code: "1080",
-	        basis:
-	          "AI selected the process class from a task that is not ready.",
-	        authoring_context: blockedStatusClassificationTask.authoringContext,
-	        evidence: {
-	          source: "classification-authoring-queue",
-	          quote_or_trace: "process baseName Fixture process",
-	          used_context_kinds: fullContextKinds,
-	        },
-	      },
-	    ]);
-	    writeJson(classificationDecisionApplyReport, {
-	      schema_version: 1,
-	      status: "completed",
-	      decisions_file: rel(classificationDecisionsFile),
-	      decision_task: {
-	        path: rel(blockedStatusClassificationTask.taskFile),
-	        sha256: blockedStatusClassificationTask.taskSha256,
-	        context_bundle_sha256:
-	          blockedStatusClassificationTask.contextBundleSha256,
-	      },
-	      files: {
-	        output_rows: [rel(decisionOutputBeforeCleanup)],
-	      },
-	      counts: {
-	        applied: 1,
-	      },
-	    });
-	    const classificationTaskStatusBlocked = runFoundry([
-	      "dataset-mutation-manifest",
-	      "--type",
-	      "process",
-	      "--profile",
-	      "bafu",
-	      "--rows-file",
-	      rel(fixture.rowsFile),
-	      "--schema-report",
-	      rel(fixture.schemaReport),
-	      "--curation-gate-report",
-	      rel(fixture.curationGateReport),
-	      "--cleanup-report",
-	      rel(fixture.cleanupReport),
-	      "--dry-run-report",
-	      rel(fixture.dryRunReport),
-	      "--classification-decision-apply-report",
-	      rel(classificationDecisionApplyReport),
-	      "--target-user-id",
-	      targetUserId,
-	      "--out-dir",
-	      rel(
-	        path.join(
-	          mutationFixtureRoot,
-	          "classification-task-status-blocked-manifest",
-	        ),
-	      ),
-	    ]);
-	    assert.equal(classificationTaskStatusBlocked.code, 1);
-	    assert.ok(
-	      scopeBlockerCodes(classificationTaskStatusBlocked.json).has(
-	        "full_context_ai_classification_decision_task_status_invalid",
-	      ),
-	    );
-
-	    writeJson(classificationDecisionApplyReport, {
-	      schema_version: 1,
-	      status: "completed",
-	      decisions_file: rel(classificationDecisionsFile),
-	      decision_task: {
-	        path: rel(classificationDecisionTask.taskFile),
-	        sha256: classificationDecisionTask.taskSha256,
-	        context_bundle_sha256:
-	          classificationDecisionTask.contextBundleSha256,
-	      },
-	      files: {
-	        output_rows: [rel(decisionOutputBeforeCleanup)],
+    writeJsonLines(classificationDecisionsFile, [
+      {
+        dataset_id: fixture.processId,
+        dataset_version: "00.00.001",
+        category_type: "process",
+        code: "1080",
+        basis:
+          "AI selected the process class from the full schema, methodology YAML, ruleset, classification schema, and location schema context.",
+        authoring_context: classificationDecisionTask.authoringContext,
+        evidence: {
+          source: "classification-authoring-queue",
+          quote_or_trace: "process baseName Fixture process",
+          used_context_kinds: fullContextKinds,
+        },
       },
-	      counts: {
-	        applied: 1,
-	      },
-	    });
-	    writeJsonLines(classificationDecisionsFile, [
-	      {
-	        dataset_id: fixture.processId,
-	        dataset_version: "00.00.001",
-	        category_type: "process",
-	        decision_status: "completed",
-	        code: "1080",
-	        basis:
-	          "AI selected the process class from the full schema, methodology YAML, ruleset, classification schema, and location schema context.",
-	        authoring_context: classificationDecisionTask.authoringContext,
-	        evidence: {
-	          source: "classification-authoring-queue",
-	          quote_or_trace: "process baseName Fixture process",
-	          used_context_kinds: fullContextKinds,
-	        },
-	      },
-	    ]);
-	    const classificationChainedThroughCleanup = runFoundry([
+    ]);
+    const classificationStatusBlocked = runFoundry([
+      "dataset-mutation-manifest",
+      "--type",
+      "process",
+      "--profile",
+      "bafu",
+      "--rows-file",
+      rel(fixture.rowsFile),
+      "--schema-report",
+      rel(fixture.schemaReport),
+      "--curation-gate-report",
+      rel(fixture.curationGateReport),
+      "--cleanup-report",
+      rel(fixture.cleanupReport),
+      "--dry-run-report",
+      rel(fixture.dryRunReport),
+      "--classification-decision-apply-report",
+      rel(classificationDecisionApplyReport),
+      "--target-user-id",
+      targetUserId,
+      "--out-dir",
+      rel(path.join(mutationFixtureRoot, "classification-status-blocked-manifest")),
+    ]);
+    assert.equal(classificationStatusBlocked.code, 1);
+    assert.ok(
+      scopeBlockerCodes(classificationStatusBlocked.json).has(
+        "full_context_ai_classification_decision_status_not_completed",
+      ),
+    );
+
+    const wrongKindClassificationTask = writeDecisionTaskFixture({
+      root: mutationFixtureRoot,
+      kind: "location",
+      queueFile: classificationQueueFile,
+      contractContextFiles: fixture.contractContextFiles,
+      dirName: "classification-wrong-kind-decision-task",
+    });
+    writeJsonLines(classificationDecisionsFile, [
+      {
+        dataset_id: fixture.processId,
+        dataset_version: "00.00.001",
+        category_type: "process",
+        decision_status: "completed",
+        code: "1080",
+        basis: "AI selected the process class from a task with the wrong task kind.",
+        authoring_context: wrongKindClassificationTask.authoringContext,
+        evidence: {
+          source: "classification-authoring-queue",
+          quote_or_trace: "process baseName Fixture process",
+          used_context_kinds: fullContextKinds,
+        },
+      },
+    ]);
+    writeJson(classificationDecisionApplyReport, {
+      schema_version: 1,
+      status: "completed",
+      decisions_file: rel(classificationDecisionsFile),
+      decision_task: {
+        path: rel(wrongKindClassificationTask.taskFile),
+        sha256: wrongKindClassificationTask.taskSha256,
+        context_bundle_sha256: wrongKindClassificationTask.contextBundleSha256,
+      },
+      files: {
+        output_rows: [rel(decisionOutputBeforeCleanup)],
+      },
+      counts: {
+        applied: 1,
+      },
+    });
+    const classificationWrongTaskKindBlocked = runFoundry([
+      "dataset-mutation-manifest",
+      "--type",
+      "process",
+      "--profile",
+      "bafu",
+      "--rows-file",
+      rel(fixture.rowsFile),
+      "--schema-report",
+      rel(fixture.schemaReport),
+      "--curation-gate-report",
+      rel(fixture.curationGateReport),
+      "--cleanup-report",
+      rel(fixture.cleanupReport),
+      "--dry-run-report",
+      rel(fixture.dryRunReport),
+      "--classification-decision-apply-report",
+      rel(classificationDecisionApplyReport),
+      "--target-user-id",
+      targetUserId,
+      "--out-dir",
+      rel(path.join(mutationFixtureRoot, "classification-wrong-task-kind-manifest")),
+    ]);
+    assert.equal(classificationWrongTaskKindBlocked.code, 1);
+    assert.ok(
+      scopeBlockerCodes(classificationWrongTaskKindBlocked.json).has(
+        "full_context_ai_classification_decision_task_kind_invalid",
+      ),
+    );
+
+    const blockedStatusClassificationTask = writeDecisionTaskFixture({
+      root: mutationFixtureRoot,
+      kind: "classification",
+      queueFile: classificationQueueFile,
+      contractContextFiles: fixture.contractContextFiles,
+      dirName: "classification-blocked-status-decision-task",
+      status: "blocked_missing_full_context",
+    });
+    writeJsonLines(classificationDecisionsFile, [
+      {
+        dataset_id: fixture.processId,
+        dataset_version: "00.00.001",
+        category_type: "process",
+        decision_status: "completed",
+        code: "1080",
+        basis: "AI selected the process class from a task that is not ready.",
+        authoring_context: blockedStatusClassificationTask.authoringContext,
+        evidence: {
+          source: "classification-authoring-queue",
+          quote_or_trace: "process baseName Fixture process",
+          used_context_kinds: fullContextKinds,
+        },
+      },
+    ]);
+    writeJson(classificationDecisionApplyReport, {
+      schema_version: 1,
+      status: "completed",
+      decisions_file: rel(classificationDecisionsFile),
+      decision_task: {
+        path: rel(blockedStatusClassificationTask.taskFile),
+        sha256: blockedStatusClassificationTask.taskSha256,
+        context_bundle_sha256: blockedStatusClassificationTask.contextBundleSha256,
+      },
+      files: {
+        output_rows: [rel(decisionOutputBeforeCleanup)],
+      },
+      counts: {
+        applied: 1,
+      },
+    });
+    const classificationTaskStatusBlocked = runFoundry([
+      "dataset-mutation-manifest",
+      "--type",
+      "process",
+      "--profile",
+      "bafu",
+      "--rows-file",
+      rel(fixture.rowsFile),
+      "--schema-report",
+      rel(fixture.schemaReport),
+      "--curation-gate-report",
+      rel(fixture.curationGateReport),
+      "--cleanup-report",
+      rel(fixture.cleanupReport),
+      "--dry-run-report",
+      rel(fixture.dryRunReport),
+      "--classification-decision-apply-report",
+      rel(classificationDecisionApplyReport),
+      "--target-user-id",
+      targetUserId,
+      "--out-dir",
+      rel(path.join(mutationFixtureRoot, "classification-task-status-blocked-manifest")),
+    ]);
+    assert.equal(classificationTaskStatusBlocked.code, 1);
+    assert.ok(
+      scopeBlockerCodes(classificationTaskStatusBlocked.json).has(
+        "full_context_ai_classification_decision_task_status_invalid",
+      ),
+    );
+
+    writeJson(classificationDecisionApplyReport, {
+      schema_version: 1,
+      status: "completed",
+      decisions_file: rel(classificationDecisionsFile),
+      decision_task: {
+        path: rel(classificationDecisionTask.taskFile),
+        sha256: classificationDecisionTask.taskSha256,
+        context_bundle_sha256: classificationDecisionTask.contextBundleSha256,
+      },
+      files: {
+        output_rows: [rel(decisionOutputBeforeCleanup)],
+      },
+      counts: {
+        applied: 1,
+      },
+    });
+    writeJsonLines(classificationDecisionsFile, [
+      {
+        dataset_id: fixture.processId,
+        dataset_version: "00.00.001",
+        category_type: "process",
+        decision_status: "completed",
+        code: "1080",
+        basis:
+          "AI selected the process class from the full schema, methodology YAML, ruleset, classification schema, and location schema context.",
+        authoring_context: classificationDecisionTask.authoringContext,
+        evidence: {
+          source: "classification-authoring-queue",
+          quote_or_trace: "process baseName Fixture process",
+          used_context_kinds: fullContextKinds,
+        },
+      },
+    ]);
+    const classificationChainedThroughCleanup = runFoundry([
       "dataset-mutation-manifest",
       "--type",
       "process",
@@ -576,17 +461,10 @@ test("mutation manifest requires full-context AI evidence and preserves deferred
       rel(path.join(mutationFixtureRoot, "classification-cleanup-chain")),
     ]);
     assert.equal(classificationChainedThroughCleanup.code, 1);
+    assert.equal(classificationChainedThroughCleanup.json.status, "blocked");
+    assert.equal(classificationChainedThroughCleanup.json.evidence.patch_collect_required, false);
     assert.equal(
-      classificationChainedThroughCleanup.json.status,
-      "blocked",
-    );
-    assert.equal(
-      classificationChainedThroughCleanup.json.evidence.patch_collect_required,
-      false,
-    );
-    assert.equal(
-      classificationChainedThroughCleanup.json.counts
-        .ai_classification_decision_entries,
+      classificationChainedThroughCleanup.json.counts.ai_classification_decision_entries,
       1,
     );
     assert.ok(
@@ -595,22 +473,13 @@ test("mutation manifest requires full-context AI evidence and preserves deferred
       ),
     );
 
-    const chainDir = path.join(
-      mutationFixtureRoot,
-      "identity-classification-chain",
-    );
+    const chainDir = path.join(mutationFixtureRoot, "identity-classification-chain");
     const identityRowsFile = path.join(chainDir, "processes.identity.jsonl");
     const classifiedRowsFile = path.join(chainDir, "processes.classified.jsonl");
     writeJsonLines(identityRowsFile, readJsonLines(decisionOutputBeforeCleanup));
     writeJsonLines(classifiedRowsFile, readJsonLines(decisionOutputBeforeCleanup));
-    const chainQueueFile = path.join(
-      chainDir,
-      "classification-authoring-queue.jsonl",
-    );
-    const chainClassificationDecisionsFile = path.join(
-      chainDir,
-      "classification-decisions.jsonl",
-    );
+    const chainQueueFile = path.join(chainDir, "classification-authoring-queue.jsonl");
+    const chainClassificationDecisionsFile = path.join(chainDir, "classification-decisions.jsonl");
     writeJsonLines(chainQueueFile, [
       {
         dataset_type: "process",
@@ -674,10 +543,7 @@ test("mutation manifest requires full-context AI evidence and preserves deferred
 
     const curationGate = readJson(fixture.curationGateReport);
     const packageBinding = curationGate.entities[0];
-    const identityDecisionsFile = path.join(
-      chainDir,
-      "identity-decisions.jsonl",
-    );
+    const identityDecisionsFile = path.join(chainDir, "identity-decisions.jsonl");
     writeJsonLines(identityDecisionsFile, [
       {
         dataset_type: "process",
@@ -697,10 +563,7 @@ test("mutation manifest requires full-context AI evidence and preserves deferred
         },
       },
     ]);
-    const identityDecisionApplyReport = path.join(
-      chainDir,
-      "identity-decisions-apply-report.json",
-    );
+    const identityDecisionApplyReport = path.join(chainDir, "identity-decisions-apply-report.json");
     writeJson(identityDecisionApplyReport, {
       schema_version: 1,
       status: "completed",
@@ -720,10 +583,7 @@ test("mutation manifest requires full-context AI evidence and preserves deferred
       "canonical-support-rewrites",
       "processes.canonical-support-rewritten.jsonl",
     );
-    writeJsonLines(
-      chainCanonicalSupportRowsFile,
-      readJsonLines(decisionOutputBeforeCleanup),
-    );
+    writeJsonLines(chainCanonicalSupportRowsFile, readJsonLines(decisionOutputBeforeCleanup));
     const chainCanonicalSupportRewritesFile = path.join(
       chainDir,
       "canonical-support-rewrites",
@@ -847,84 +707,70 @@ test("mutation manifest requires full-context AI evidence and preserves deferred
     assert.equal(chainManifest.code, 0, JSON.stringify(chainManifest.json, null, 2));
     assert.equal(chainManifest.json.status, "ready_for_remote_write");
     assert.equal(
-      scopeBlockerCodes(chainManifest.json).has(
-        "full_context_ai_identity_rows_mismatch",
-      ),
+      scopeBlockerCodes(chainManifest.json).has("full_context_ai_identity_rows_mismatch"),
       false,
     );
     assert.equal(
-      scopeBlockerCodes(chainManifest.json).has(
-        "full_context_ai_classification_rows_mismatch",
-      ),
+      scopeBlockerCodes(chainManifest.json).has("full_context_ai_classification_rows_mismatch"),
       false,
     );
     assert.equal(
       chainManifest.json.evidence.canonical_support_rewrite_status,
       "completed_with_deferred_rows",
     );
-    assert.equal(
-      chainManifest.json.evidence.canonical_support_rewrite_blockers,
-      0,
-    );
-    assert.equal(
-      chainManifest.json.evidence.canonical_support_rewrite_deferred_blockers,
-      1,
-    );
-    assert.equal(
-      chainManifest.json.evidence.canonical_support_rewrite_deferred_row_count,
-      1,
-    );
+    assert.equal(chainManifest.json.evidence.canonical_support_rewrite_blockers, 0);
+    assert.equal(chainManifest.json.evidence.canonical_support_rewrite_deferred_blockers, 1);
+    assert.equal(chainManifest.json.evidence.canonical_support_rewrite_deferred_row_count, 1);
     assert.equal(
       chainManifest.json.evidence.canonical_support_rewrite_deferred_rows,
       rel(chainCanonicalSupportDeferredRowsFile),
     );
 
-	    const locationDecisionsFile = path.join(
-	      mutationFixtureRoot,
-	      "location-decisions",
-	      "location-decisions.jsonl",
-	    );
-	    const locationQueueFile = path.join(
-	      mutationFixtureRoot,
-	      "location-decisions",
-	      "location-authoring-queue.jsonl",
-	    );
-	    writeJsonLines(locationQueueFile, [
-	      {
-	        dataset_type: "process",
-	        dataset_id: fixture.processId,
-	        dataset_version: "00.00.001",
-	        path:
-	          "processDataSet.processInformation.geography.locationOfOperationSupplyOrProduction.@location",
-	        location_workflow: {
-	          schema_type: "location",
-	          commands: {
-	            input_rows: rel(decisionOutputBeforeCleanup),
-	            output_rows: rel(decisionOutputBeforeCleanup),
-	          },
-	        },
-	      },
-	    ]);
-	    const locationDecisionTask = writeDecisionTaskFixture({
-	      root: mutationFixtureRoot,
-	      kind: "location",
-	      queueFile: locationQueueFile,
-	      contractContextFiles: fixture.contractContextFiles,
-	    });
-		    writeJsonLines(locationDecisionsFile, [
-		      {
-		        dataset_id: fixture.processId,
-	        dataset_version: "00.00.001",
-	        category_type: "location",
-	        decision_status: "completed",
-	        code: "CH",
+    const locationDecisionsFile = path.join(
+      mutationFixtureRoot,
+      "location-decisions",
+      "location-decisions.jsonl",
+    );
+    const locationQueueFile = path.join(
+      mutationFixtureRoot,
+      "location-decisions",
+      "location-authoring-queue.jsonl",
+    );
+    writeJsonLines(locationQueueFile, [
+      {
+        dataset_type: "process",
+        dataset_id: fixture.processId,
+        dataset_version: "00.00.001",
+        path: "processDataSet.processInformation.geography.locationOfOperationSupplyOrProduction.@location",
+        location_workflow: {
+          schema_type: "location",
+          commands: {
+            input_rows: rel(decisionOutputBeforeCleanup),
+            output_rows: rel(decisionOutputBeforeCleanup),
+          },
+        },
+      },
+    ]);
+    const locationDecisionTask = writeDecisionTaskFixture({
+      root: mutationFixtureRoot,
+      kind: "location",
+      queueFile: locationQueueFile,
+      contractContextFiles: fixture.contractContextFiles,
+    });
+    writeJsonLines(locationDecisionsFile, [
+      {
+        dataset_id: fixture.processId,
+        dataset_version: "00.00.001",
+        category_type: "location",
+        decision_status: "completed",
+        code: "CH",
         target_path:
           "processDataSet.processInformation.geography.locationOfOperationSupplyOrProduction.@location",
-	        basis:
-	          "AI selected the location code from the full schema, methodology YAML, ruleset, classification schema, and location schema context.",
-	        authoring_context: locationDecisionTask.authoringContext,
-	        evidence: {
-	          source: "location-authoring-queue",
+        basis:
+          "AI selected the location code from the full schema, methodology YAML, ruleset, classification schema, and location schema context.",
+        authoring_context: locationDecisionTask.authoringContext,
+        evidence: {
+          source: "location-authoring-queue",
           quote_or_trace: "source geography Switzerland",
           used_context_kinds: fullContextKinds,
         },
@@ -936,16 +782,16 @@ test("mutation manifest requires full-context AI evidence and preserves deferred
       "location-decisions-apply-report.json",
     );
     writeJson(locationDecisionApplyReport, {
-	      schema_version: 1,
-	      status: "completed",
-	      decisions_file: rel(locationDecisionsFile),
-	      decision_task: {
-	        path: rel(locationDecisionTask.taskFile),
-	        sha256: locationDecisionTask.taskSha256,
-	        context_bundle_sha256: locationDecisionTask.contextBundleSha256,
-	      },
-	      files: {
-	        output_rows: [rel(decisionOutputBeforeCleanup)],
+      schema_version: 1,
+      status: "completed",
+      decisions_file: rel(locationDecisionsFile),
+      decision_task: {
+        path: rel(locationDecisionTask.taskFile),
+        sha256: locationDecisionTask.taskSha256,
+        context_bundle_sha256: locationDecisionTask.contextBundleSha256,
+      },
+      files: {
+        output_rows: [rel(decisionOutputBeforeCleanup)],
       },
       counts: {
         applied: 1,
@@ -977,101 +823,96 @@ test("mutation manifest requires full-context AI evidence and preserves deferred
     assert.equal(locationTraceBlocked.code, 1);
     assert.equal(locationTraceBlocked.json.status, "blocked");
     assert.equal(locationTraceBlocked.json.evidence.patch_collect_required, false);
-    assert.equal(
-      locationTraceBlocked.json.counts.ai_location_decision_entries,
-      1,
-    );
+    assert.equal(locationTraceBlocked.json.counts.ai_location_decision_entries, 1);
     assert.equal(locationTraceBlocked.json.counts.ai_patch_evidence_entries, 0);
-	    assert.ok(
-	      itemBlockerCodes(locationTraceBlocked.json).has(
-	        "unresolved_trace_patch_evidence_required",
-	      ),
-	    );
+    assert.ok(
+      itemBlockerCodes(locationTraceBlocked.json).has("unresolved_trace_patch_evidence_required"),
+    );
 
-	    writeJsonLines(locationDecisionsFile, [
-	      {
-	        dataset_id: fixture.processId,
-	        dataset_version: "00.00.001",
-	        category_type: "location",
-	        code: "CH",
-	        target_path:
-	          "processDataSet.processInformation.geography.locationOfOperationSupplyOrProduction.@location",
-	        basis:
-	          "AI selected the location code from the full schema, methodology YAML, ruleset, classification schema, and location schema context.",
-	        authoring_context: locationDecisionTask.authoringContext,
-	        evidence: {
-	          source: "location-authoring-queue",
-	          quote_or_trace: "source geography Switzerland",
-	          used_context_kinds: fullContextKinds,
-	        },
-	      },
-	    ]);
-	    const locationStatusBlocked = runFoundry([
-	      "dataset-mutation-manifest",
-	      "--type",
-	      "process",
-	      "--profile",
-	      "bafu",
-	      "--rows-file",
-	      rel(fixture.rowsFile),
-	      "--schema-report",
-	      rel(fixture.schemaReport),
-	      "--curation-gate-report",
-	      rel(fixture.curationGateReport),
-	      "--cleanup-report",
-	      rel(fixture.cleanupReport),
-	      "--dry-run-report",
-	      rel(fixture.dryRunReport),
-	      "--location-decision-apply-report",
-	      rel(locationDecisionApplyReport),
-	      "--target-user-id",
-	      targetUserId,
-	      "--out-dir",
-	      rel(path.join(mutationFixtureRoot, "location-status-blocked-manifest")),
-	    ]);
-	    assert.equal(locationStatusBlocked.code, 1);
-	    assert.ok(
-	      scopeBlockerCodes(locationStatusBlocked.json).has(
-	        "full_context_ai_location_decision_status_not_completed",
-	      ),
-	    );
-
-	    writeJson(locationDecisionApplyReport, {
-	      schema_version: 1,
-	      status: "completed",
-	      decisions_file: rel(locationDecisionsFile),
-	      decision_task: {
-	        path: rel(locationDecisionTask.taskFile),
-	        sha256: locationDecisionTask.taskSha256,
-	        context_bundle_sha256: locationDecisionTask.contextBundleSha256,
-	      },
-	      files: {
-	        output_rows: [rel(decisionOutputBeforeCleanup)],
+    writeJsonLines(locationDecisionsFile, [
+      {
+        dataset_id: fixture.processId,
+        dataset_version: "00.00.001",
+        category_type: "location",
+        code: "CH",
+        target_path:
+          "processDataSet.processInformation.geography.locationOfOperationSupplyOrProduction.@location",
+        basis:
+          "AI selected the location code from the full schema, methodology YAML, ruleset, classification schema, and location schema context.",
+        authoring_context: locationDecisionTask.authoringContext,
+        evidence: {
+          source: "location-authoring-queue",
+          quote_or_trace: "source geography Switzerland",
+          used_context_kinds: fullContextKinds,
+        },
       },
-	      counts: {
-	        applied: 1,
-	      },
-	    });
-	    writeJsonLines(locationDecisionsFile, [
-	      {
-	        dataset_id: fixture.processId,
-	        dataset_version: "00.00.001",
-	        category_type: "location",
-	        decision_status: "completed",
-	        code: "CH",
-	        target_path:
-	          "processDataSet.processInformation.geography.locationOfOperationSupplyOrProduction.@location",
-	        basis:
-	          "AI selected the location code from the full schema, methodology YAML, ruleset, classification schema, and location schema context.",
-	        authoring_context: locationDecisionTask.authoringContext,
-	        evidence: {
-	          source: "location-authoring-queue",
-	          quote_or_trace: "source geography Switzerland",
-	          used_context_kinds: fullContextKinds,
-	        },
-	      },
-	    ]);
-	    const locationChainedThroughCleanup = runFoundry([
+    ]);
+    const locationStatusBlocked = runFoundry([
+      "dataset-mutation-manifest",
+      "--type",
+      "process",
+      "--profile",
+      "bafu",
+      "--rows-file",
+      rel(fixture.rowsFile),
+      "--schema-report",
+      rel(fixture.schemaReport),
+      "--curation-gate-report",
+      rel(fixture.curationGateReport),
+      "--cleanup-report",
+      rel(fixture.cleanupReport),
+      "--dry-run-report",
+      rel(fixture.dryRunReport),
+      "--location-decision-apply-report",
+      rel(locationDecisionApplyReport),
+      "--target-user-id",
+      targetUserId,
+      "--out-dir",
+      rel(path.join(mutationFixtureRoot, "location-status-blocked-manifest")),
+    ]);
+    assert.equal(locationStatusBlocked.code, 1);
+    assert.ok(
+      scopeBlockerCodes(locationStatusBlocked.json).has(
+        "full_context_ai_location_decision_status_not_completed",
+      ),
+    );
+
+    writeJson(locationDecisionApplyReport, {
+      schema_version: 1,
+      status: "completed",
+      decisions_file: rel(locationDecisionsFile),
+      decision_task: {
+        path: rel(locationDecisionTask.taskFile),
+        sha256: locationDecisionTask.taskSha256,
+        context_bundle_sha256: locationDecisionTask.contextBundleSha256,
+      },
+      files: {
+        output_rows: [rel(decisionOutputBeforeCleanup)],
+      },
+      counts: {
+        applied: 1,
+      },
+    });
+    writeJsonLines(locationDecisionsFile, [
+      {
+        dataset_id: fixture.processId,
+        dataset_version: "00.00.001",
+        category_type: "location",
+        decision_status: "completed",
+        code: "CH",
+        target_path:
+          "processDataSet.processInformation.geography.locationOfOperationSupplyOrProduction.@location",
+        basis:
+          "AI selected the location code from the full schema, methodology YAML, ruleset, classification schema, and location schema context.",
+        authoring_context: locationDecisionTask.authoringContext,
+        evidence: {
+          source: "location-authoring-queue",
+          quote_or_trace: "source geography Switzerland",
+          used_context_kinds: fullContextKinds,
+        },
+      },
+    ]);
+    const locationChainedThroughCleanup = runFoundry([
       "dataset-mutation-manifest",
       "--type",
       "process",
@@ -1095,18 +936,9 @@ test("mutation manifest requires full-context AI evidence and preserves deferred
       rel(path.join(mutationFixtureRoot, "location-cleanup-chain")),
     ]);
     assert.equal(locationChainedThroughCleanup.code, 1);
-    assert.equal(
-      locationChainedThroughCleanup.json.status,
-      "blocked",
-    );
-    assert.equal(
-      locationChainedThroughCleanup.json.evidence.patch_collect_required,
-      false,
-    );
-    assert.equal(
-      locationChainedThroughCleanup.json.counts.ai_location_decision_entries,
-      1,
-    );
+    assert.equal(locationChainedThroughCleanup.json.status, "blocked");
+    assert.equal(locationChainedThroughCleanup.json.evidence.patch_collect_required, false);
+    assert.equal(locationChainedThroughCleanup.json.counts.ai_location_decision_entries, 1);
     assert.ok(
       itemBlockerCodes(locationChainedThroughCleanup.json).has(
         "unresolved_trace_patch_evidence_required",
@@ -1121,8 +953,7 @@ test("mutation manifest requires full-context AI evidence and preserves deferred
       decision_task: {
         path: rel(classificationDecisionTask.taskFile),
         sha256: classificationDecisionTask.taskSha256,
-        context_bundle_sha256:
-          classificationDecisionTask.contextBundleSha256,
+        context_bundle_sha256: classificationDecisionTask.contextBundleSha256,
       },
       files: {
         output_rows: [patchApplyInputRows],
@@ -1177,10 +1008,7 @@ test("mutation manifest requires full-context AI evidence and preserves deferred
       rel(path.join(mutationFixtureRoot, "classification-patch-chain")),
     ]);
     assert.equal(classificationChainedThroughPatch.code, 0);
-    assert.equal(
-      classificationChainedThroughPatch.json.status,
-      "ready_for_remote_write",
-    );
+    assert.equal(classificationChainedThroughPatch.json.status, "ready_for_remote_write");
     assert.equal(
       scopeBlockerCodes(classificationChainedThroughPatch.json).has(
         "full_context_ai_classification_rows_mismatch",
@@ -1189,10 +1017,7 @@ test("mutation manifest requires full-context AI evidence and preserves deferred
     );
 
     const patchApplyReportPayload = readJson(fixture.patchApplyReport);
-    const patchApplyOutputRows = path.join(
-      repoRoot,
-      patchApplyReportPayload.out_path,
-    );
+    const patchApplyOutputRows = path.join(repoRoot, patchApplyReportPayload.out_path);
     const identityRewriteOutputRows = path.join(
       mutationFixtureRoot,
       "identity-reference-rewrites",
@@ -1271,10 +1096,7 @@ test("mutation manifest requires full-context AI evidence and preserves deferred
       "canonical-support-after-externalization",
       "processes.canonical-support-rewritten.jsonl",
     );
-    writeJsonLines(
-      canonicalSupportAfterExternalizationRows,
-      readJsonLines(externalizedRows),
-    );
+    writeJsonLines(canonicalSupportAfterExternalizationRows, readJsonLines(externalizedRows));
     const canonicalSupportAfterExternalizationRewrites = path.join(
       mutationFixtureRoot,
       "canonical-support-after-externalization",
@@ -1308,12 +1130,8 @@ test("mutation manifest requires full-context AI evidence and preserves deferred
         report: rel(canonicalSupportAfterExternalizationReport),
         input_rows: rel(externalizedRows),
         output_rows: rel(canonicalSupportAfterExternalizationRows),
-        canonical_support_rewrites: rel(
-          canonicalSupportAfterExternalizationRewrites,
-        ),
-        canonical_support_blockers: rel(
-          canonicalSupportAfterExternalizationBlockers,
-        ),
+        canonical_support_rewrites: rel(canonicalSupportAfterExternalizationRewrites),
+        canonical_support_blockers: rel(canonicalSupportAfterExternalizationBlockers),
       },
     });
     const cleanupAfterExternalizationReport = path.join(
@@ -1331,67 +1149,61 @@ test("mutation manifest requires full-context AI evidence and preserves deferred
         cleaned_rows: rel(fixture.rowsFile),
       },
     });
-    const classificationChainedThroughPatchIdentityAndExternalization =
-      runFoundry([
-        "dataset-mutation-manifest",
-        "--type",
-        "process",
-        "--profile",
-        "bafu",
-        "--rows-file",
-        rel(fixture.rowsFile),
-        "--schema-report",
-        rel(fixture.schemaReport),
-        "--curation-gate-report",
-        rel(fixture.curationGateReport),
-        "--cleanup-report",
-        rel(cleanupAfterExternalizationReport),
-        "--dry-run-report",
-        rel(fixture.dryRunReport),
-        "--classification-decision-apply-report",
-        rel(classificationDecisionApplyReport),
-        "--patch-collect-report",
-        rel(fixture.patchCollectReport),
-        "--require-patch-collect-report",
-        "--patch-apply-report",
-        rel(fixture.patchApplyReport),
-        "--identity-reference-rewrite-status",
-        "completed",
-        "--identity-reference-rewrite-input-rows",
-        rel(patchApplyOutputRows),
-        "--identity-reference-rewrite-output-rows",
-        rel(identityRewriteOutputRows),
-        "--identity-reference-rewrites",
-        rel(identityReferenceRewritesFile),
-        "--unresolved-exchange-externalization-report",
-        rel(unresolvedExchangeExternalizationReport),
-        "--canonical-support-rewrite-report",
-        rel(canonicalSupportAfterExternalizationReport),
-        "--target-user-id",
-        targetUserId,
-        "--out-dir",
-        rel(
-          path.join(
-            mutationFixtureRoot,
-            "classification-patch-identity-externalization-chain",
-          ),
-        ),
-      ]);
+    const classificationChainedThroughPatchIdentityAndExternalization = runFoundry([
+      "dataset-mutation-manifest",
+      "--type",
+      "process",
+      "--profile",
+      "bafu",
+      "--rows-file",
+      rel(fixture.rowsFile),
+      "--schema-report",
+      rel(fixture.schemaReport),
+      "--curation-gate-report",
+      rel(fixture.curationGateReport),
+      "--cleanup-report",
+      rel(cleanupAfterExternalizationReport),
+      "--dry-run-report",
+      rel(fixture.dryRunReport),
+      "--classification-decision-apply-report",
+      rel(classificationDecisionApplyReport),
+      "--patch-collect-report",
+      rel(fixture.patchCollectReport),
+      "--require-patch-collect-report",
+      "--patch-apply-report",
+      rel(fixture.patchApplyReport),
+      "--identity-reference-rewrite-status",
+      "completed",
+      "--identity-reference-rewrite-input-rows",
+      rel(patchApplyOutputRows),
+      "--identity-reference-rewrite-output-rows",
+      rel(identityRewriteOutputRows),
+      "--identity-reference-rewrites",
+      rel(identityReferenceRewritesFile),
+      "--unresolved-exchange-externalization-report",
+      rel(unresolvedExchangeExternalizationReport),
+      "--canonical-support-rewrite-report",
+      rel(canonicalSupportAfterExternalizationReport),
+      "--target-user-id",
+      targetUserId,
+      "--out-dir",
+      rel(path.join(mutationFixtureRoot, "classification-patch-identity-externalization-chain")),
+    ]);
     assert.equal(classificationChainedThroughPatchIdentityAndExternalization.code, 0);
     assert.equal(
       classificationChainedThroughPatchIdentityAndExternalization.json.status,
       "ready_for_remote_write",
     );
     assert.equal(
-      scopeBlockerCodes(
-        classificationChainedThroughPatchIdentityAndExternalization.json,
-      ).has("patch_apply_cleanup_input_mismatch"),
+      scopeBlockerCodes(classificationChainedThroughPatchIdentityAndExternalization.json).has(
+        "patch_apply_cleanup_input_mismatch",
+      ),
       false,
     );
     assert.equal(
-      scopeBlockerCodes(
-        classificationChainedThroughPatchIdentityAndExternalization.json,
-      ).has("full_context_ai_classification_rows_mismatch"),
+      scopeBlockerCodes(classificationChainedThroughPatchIdentityAndExternalization.json).has(
+        "full_context_ai_classification_rows_mismatch",
+      ),
       false,
     );
     assert.equal(
@@ -1440,12 +1252,7 @@ test("mutation manifest requires full-context AI evidence and preserves deferred
       "--target-user-id",
       targetUserId,
       "--out-dir",
-      rel(
-        path.join(
-          mutationFixtureRoot,
-          "classification-context-blocked-manifest",
-        ),
-      ),
+      rel(path.join(mutationFixtureRoot, "classification-context-blocked-manifest")),
     ]);
     assert.equal(missingClassificationContext.code, 1);
     assert.ok(
@@ -1495,9 +1302,7 @@ test("mutation manifest requires full-context AI evidence and preserves deferred
     ]);
     assert.equal(missingLocationContext.code, 1);
     assert.ok(
-      itemBlockerCodes(missingLocationContext.json).has(
-        "full_context_ai_location_context_missing",
-      ),
+      itemBlockerCodes(missingLocationContext.json).has("full_context_ai_location_context_missing"),
     );
 
     const passed = runFoundry([
@@ -1534,9 +1339,7 @@ test("mutation manifest requires full-context AI evidence and preserves deferred
     assert.equal(passed.json.items[0].blockers.length, 0);
     assert.equal(passed.json.items[0].source_reference_rewrite_count, 1);
 
-    const traceRows = readJsonLines(
-      path.join(repoRoot, passed.json.files.unresolved_traces),
-    );
+    const traceRows = readJsonLines(path.join(repoRoot, passed.json.files.unresolved_traces));
     assert.equal(traceRows.length, 1);
     assert.equal(traceRows[0].entity_id, fixture.processId);
     assert.equal(traceRows[0].action_item_code, "source_system_boilerplate");
@@ -1551,21 +1354,12 @@ test("mutation manifest requires full-context AI evidence and preserves deferred
     assert.equal(rewriteRows.length, 1);
     assert.equal(rewriteRows[0].dataset_id, fixture.processId);
     assert.equal(rewriteRows[0].relation, "dataset_format_source");
-    assert.equal(
-      rewriteRows[0].canonical.ref_object_id,
-      "a97a0155-0234-4b87-b4ce-a45da52f2a40",
-    );
-    assert.equal(
-      rewriteRows[0].action,
-      "rewrite_to_canonical_source_reference",
-    );
+    assert.equal(rewriteRows[0].canonical.ref_object_id, "a97a0155-0234-4b87-b4ce-a45da52f2a40");
+    assert.equal(rewriteRows[0].action, "rewrite_to_canonical_source_reference");
 
     const manifest = readJson(path.join(repoRoot, passed.json.files.report));
     assert.equal(manifest.evidence.full_context_ai_completion_required, true);
-    assert.equal(
-      manifest.evidence.patch_collect_status,
-      "ready_for_patch_apply",
-    );
+    assert.equal(manifest.evidence.patch_collect_status, "ready_for_patch_apply");
     assert.equal(manifest.evidence.patch_apply_status, "completed");
     assert.equal(manifest.counts.source_reference_rewrites, 1);
     assert.equal(

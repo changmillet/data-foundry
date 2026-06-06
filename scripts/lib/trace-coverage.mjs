@@ -28,10 +28,7 @@ export function createTraceCoverageUtils({
         identity.id ||
         asText(row?.dataset_id ?? row?.entity_id ?? row?.id) ||
         `row-${rowIndex + 1}`,
-      version:
-        identity.version ||
-        asText(row?.dataset_version ?? row?.version) ||
-        "00.00.001",
+      version: identity.version || asText(row?.dataset_version ?? row?.version) || "00.00.001",
     };
   }
 
@@ -150,13 +147,10 @@ export function createTraceCoverageUtils({
       datasetType,
       finalRowsFile,
     });
-    if (
-      expected.unresolved_traces.length !== counts.unresolved_trace_entries
-    ) {
+    if (expected.unresolved_traces.length !== counts.unresolved_trace_entries) {
       blockers.push({
         code: "trace_queue_manifest_count_not_final_rows",
-        message:
-          "Mutation/handoff unresolved trace count does not match the exact final rows.",
+        message: "Mutation/handoff unresolved trace count does not match the exact final rows.",
         trace_queue: "unresolved_traces",
         expected_count: expected.unresolved_traces.length,
         recorded_count: counts.unresolved_trace_entries,
@@ -192,7 +186,6 @@ export function createTraceCoverageUtils({
       blockers,
     });
   }
-
 
   return { validateTraceQueueCoverageForRows };
 }

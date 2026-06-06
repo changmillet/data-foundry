@@ -1,13 +1,7 @@
 import path from "node:path";
-import {
-  identityKey,
-} from "./dataset-payload.mjs";
-import {
-  resolveArtifactPath,
-} from "./artifact-inputs.mjs";
-import {
-  annualSupplyMissingDataSentinelText,
-} from "./prewrite-cleanup.mjs";
+import { resolveArtifactPath } from "./artifact-inputs.mjs";
+import { identityKey } from "./dataset-payload.mjs";
+import { annualSupplyMissingDataSentinelText } from "./prewrite-cleanup.mjs";
 import {
   asText,
   directoryExists,
@@ -92,8 +86,7 @@ export function schemaIssueCurationAction(issue) {
       action_kind: "timestamp_normalization",
       required_owner: "foundry_deterministic_cleanup",
       ai_required: false,
-      instruction:
-        "Normalize the timestamp to the SDK-accepted datetime format before validation.",
+      instruction: "Normalize the timestamp to the SDK-accepted datetime format before validation.",
     };
   }
   return {
@@ -113,20 +106,14 @@ export function readCurationQueueContext(repoRoot, options) {
       `--queue-dir must point to an existing curation queue directory: ${queueDirOption}`,
     );
   }
-  const manifestPath = path.join(
-    queueDir,
-    "outputs",
-    "curation-queue-manifest.json",
-  );
+  const manifestPath = path.join(queueDir, "outputs", "curation-queue-manifest.json");
   if (!fileExists(manifestPath)) {
     throw new Error(
       `--queue-dir is missing outputs/curation-queue-manifest.json: ${queueDirOption}`,
     );
   }
   const manifest = readJson(manifestPath);
-  const tasks = ensureArray(manifest.tasks).filter(
-    (task) => task && typeof task === "object",
-  );
+  const tasks = ensureArray(manifest.tasks).filter((task) => task && typeof task === "object");
   return {
     queueDir,
     manifestPath,
@@ -155,30 +142,14 @@ export function summarizeQueueTask(repoRoot, queueContext, task) {
     version: task.version ?? null,
     lock_key: task.lock_key ?? null,
     depends_on: ensureArray(task.depends_on),
-    input_rows_file: queueFileRelativePath(
-      repoRoot,
-      queueContext,
-      task.input_rows_file,
-    ),
-    closure_file: queueFileRelativePath(
-      repoRoot,
-      queueContext,
-      task.closure_file,
-    ),
-    run_plan_file: queueFileRelativePath(
-      repoRoot,
-      queueContext,
-      task.run_plan_file,
-    ),
+    input_rows_file: queueFileRelativePath(repoRoot, queueContext, task.input_rows_file),
+    closure_file: queueFileRelativePath(repoRoot, queueContext, task.closure_file),
+    run_plan_file: queueFileRelativePath(repoRoot, queueContext, task.run_plan_file),
   };
 }
 
 export function readQueueTaskRows(repoRoot, queueContext, task) {
-  const inputRowsPath = queueFilePath(
-    repoRoot,
-    queueContext,
-    task?.input_rows_file,
-  );
+  const inputRowsPath = queueFilePath(repoRoot, queueContext, task?.input_rows_file);
   return fileExists(inputRowsPath) ? readRows(inputRowsPath) : [];
 }
 
@@ -193,18 +164,12 @@ export function findQueueTask(queueContext, datasetType, identity) {
   if (exact) return exact;
   return (
     queueContext.tasks.find(
-      (task) =>
-        task.entity_type === datasetType && task.entity_id === identity.id,
+      (task) => task.entity_type === datasetType && task.entity_id === identity.id,
     ) ?? null
   );
 }
 
-export function buildQueueAuthoringContext(
-  repoRoot,
-  queueContext,
-  datasetType,
-  identity,
-) {
+export function buildQueueAuthoringContext(repoRoot, queueContext, datasetType, identity) {
   if (!queueContext) return null;
   const base = {
     queue_dir: repoRelativePath(repoRoot, queueContext.queueDir),
@@ -217,8 +182,7 @@ export function buildQueueAuthoringContext(
     return {
       ...base,
       status: "not_applicable",
-      reason:
-        "curation queue currently attaches entity closure for flow and process rows.",
+      reason: "curation queue currently attaches entity closure for flow and process rows.",
     };
   }
 
@@ -235,19 +199,15 @@ export function buildQueueAuthoringContext(
 
   const closurePath = queueFilePath(repoRoot, queueContext, task.closure_file);
   const closure = readJsonIfExists(closurePath);
-  const dependencyRows = ensureArray(closure?.dependencies?.local_tasks).map(
-    (dependency) => {
-      const dependencyTask = queueContext.tasksById.get(
-        String(dependency.task_id ?? ""),
-      );
-      return {
-        ref: dependency.ref ?? null,
-        ref_path: dependency.ref_path ?? null,
-        task: summarizeQueueTask(repoRoot, queueContext, dependencyTask),
-        input_rows: readQueueTaskRows(repoRoot, queueContext, dependencyTask),
-      };
-    },
-  );
+  const dependencyRows = ensureArray(closure?.dependencies?.local_tasks).map((dependency) => {
+    const dependencyTask = queueContext.tasksById.get(String(dependency.task_id ?? ""));
+    return {
+      ref: dependency.ref ?? null,
+      ref_path: dependency.ref_path ?? null,
+      task: summarizeQueueTask(repoRoot, queueContext, dependencyTask),
+      input_rows: readQueueTaskRows(repoRoot, queueContext, dependencyTask),
+    };
+  });
   const supportRows = queueContext.tasks
     .filter((candidate) => candidate.entity_type === "support")
     .map((supportTask) => ({
@@ -276,9 +236,7 @@ export function readAuthoringQueueContext(repoRoot, optionValue, kind) {
     return null;
   }
   if (!queuePath || !fileExists(queuePath)) {
-    throw new Error(
-      `--${kind}-queue must point to a readable JSONL queue file: ${optionValue}`,
-    );
+    throw new Error(`--${kind}-queue must point to a readable JSONL queue file: ${optionValue}`);
   }
   const rows = readRows(queuePath).filter(
     (row) => row && typeof row === "object" && !Array.isArray(row),
@@ -291,14 +249,9 @@ export function readAuthoringQueueContext(repoRoot, optionValue, kind) {
       rows
         .map((row) => {
           const id = asText(
-            row.dataset_id ??
-              row.entity_id ??
-              row.process_id ??
-              row.flow_id ??
-              row.id,
+            row.dataset_id ?? row.entity_id ?? row.process_id ?? row.flow_id ?? row.id,
           );
-          const version =
-            asText(row.dataset_version ?? row.version) || "00.00.001";
+          const version = asText(row.dataset_version ?? row.version) || "00.00.001";
           return [`${id}@@${version}`, row];
         })
         .filter(([key]) => !key.startsWith("@@")),
@@ -312,13 +265,8 @@ export function authoringQueueRowsForIdentity(queueContext, identity) {
   if (exact) return [exact];
   const idOnly = queueContext.rows.filter(
     (row) =>
-      asText(
-        row.dataset_id ??
-          row.entity_id ??
-          row.process_id ??
-          row.flow_id ??
-          row.id,
-      ) === identity.id,
+      asText(row.dataset_id ?? row.entity_id ?? row.process_id ?? row.flow_id ?? row.id) ===
+      identity.id,
   );
   return idOnly;
 }

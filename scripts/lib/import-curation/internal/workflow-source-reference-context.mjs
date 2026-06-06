@@ -1,20 +1,11 @@
-import {
-  asText,
-  fileExists,
-  resolveRepoPath,
-} from "./runtime-io.mjs";
+import { fileExists, resolveRepoPath } from "./runtime-io.mjs";
 import {
   defaultSourceReferenceRewriteFile,
   normalizeSourceReferenceRewriteRow,
   readJsonLines,
 } from "./workflow-patch-collect.mjs";
 
-export function readSourceReferenceRewriteContext({
-  repoRoot,
-  rowsFile,
-  options,
-  writeRows,
-}) {
+export function readSourceReferenceRewriteContext({ repoRoot, rowsFile, options, writeRows }) {
   const configuredFile = resolveRepoPath(
     repoRoot,
     options.sourceReferenceRewrites ??
@@ -32,13 +23,11 @@ export function readSourceReferenceRewriteContext({
   const writeIds = new Set(
     [...writeRows.values()].map(({ identity }) => identity.id).filter(Boolean),
   );
-  const scopedRows = sourceRows
-    .map(normalizeSourceReferenceRewriteRow)
-    .filter((row) => {
-      if (!row.dataset_id) return false;
-      const key = `${row.dataset_id}@@${row.dataset_version || "00.00.001"}`;
-      return writeKeys.has(key) || writeIds.has(row.dataset_id);
-    });
+  const scopedRows = sourceRows.map(normalizeSourceReferenceRewriteRow).filter((row) => {
+    if (!row.dataset_id) return false;
+    const key = `${row.dataset_id}@@${row.dataset_version || "00.00.001"}`;
+    return writeKeys.has(key) || writeIds.has(row.dataset_id);
+  });
   const byIdentity = new Map();
   for (const row of scopedRows) {
     const key = `${row.dataset_id}@@${row.dataset_version || "00.00.001"}`;

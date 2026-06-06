@@ -73,8 +73,7 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
         "node scripts/foundry.mjs dataset-curation-gate --type process --rows-file ./rows/processes.jsonl --schema-report ./schema/report.json --qa-report ./qa/report.json --schema-file ./context/schema.json --yaml-file ./context/methodology.yaml --queue-dir ./curation-queue --classification-queue ./classification-authoring-queue.jsonl --location-queue ./location-authoring-queue.jsonl --identity-preflight-index ./identity-preflight-requests/identity-preflight-requests.jsonl",
       ],
       context: {
-        queue_dir:
-          "optional but required by the Foundry import workflow after queue build",
+        queue_dir: "optional but required by the Foundry import workflow after queue build",
         classification_queue:
           "optional JSONL from dataset-bundle-sample-rows; attached to authoring packages and converted into classification action items",
         location_queue:
@@ -98,30 +97,19 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
     .toLowerCase();
   const profile = profileFor(repoRoot, profileId, options);
   if (!rowsFile || !fileExists(rowsFile)) {
-    throw new Error(
-      "--rows-file is required and must point to a JSON/JSONL dataset row file.",
-    );
+    throw new Error("--rows-file is required and must point to a JSON/JSONL dataset row file.");
   }
   if (!schemaReportPath || !fileExists(schemaReportPath)) {
-    throw new Error(
-      "--schema-report is required and must point to dataset validate report JSON.",
-    );
+    throw new Error("--schema-report is required and must point to dataset validate report JSON.");
   }
   if (!qaReportPath || !fileExists(qaReportPath)) {
-    throw new Error(
-      "--qa-report is required and must point to a QA report JSON.",
-    );
+    throw new Error("--qa-report is required and must point to a QA report JSON.");
   }
 
   const rows = readRows(rowsFile);
   const schemaReport = readJson(schemaReportPath);
   const qaReport = readJson(qaReportPath);
-  const qaFindings = readQaFindings(
-    repoRoot,
-    qaReport,
-    qaReportPath,
-    datasetType,
-  );
+  const qaFindings = readQaFindings(repoRoot, qaReport, qaReportPath, datasetType);
   const profileContext = readContextFiles(
     repoRoot,
     profile.docs.map((filePath) => ["profile", filePath]),
@@ -131,11 +119,7 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
     ...collectContextDirFiles(repoRoot, options.contextDir),
     ...collectBundledSchemaContextFiles(repoRoot),
   ]);
-  const fullContextRequirement = fullContextAiCompletionRequirement(
-    profile,
-    datasetType,
-    repoRoot,
-  );
+  const fullContextRequirement = fullContextAiCompletionRequirement(profile, datasetType, repoRoot);
   const fullContextItems = fullContextGateItems({
     contractContext,
     requirement: fullContextRequirement,
@@ -156,23 +140,14 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
     options.locationQueue ?? options.locationQueueFile,
     "location",
   );
-  const identityPreflightContext = readIdentityPreflightContext(
-    repoRoot,
-    options,
-    rowsFile,
-  );
+  const identityPreflightContext = readIdentityPreflightContext(repoRoot, options, rowsFile);
   const classificationDecisionApplyArtifact = readJsonIfOption(
     repoRoot,
-    options.classificationDecisionApplyReport ??
-      options.classificationDecisionsApplyReport,
+    options.classificationDecisionApplyReport ?? options.classificationDecisionsApplyReport,
   );
-  const classificationDecisionApplyContext =
-    classificationDecisionApplyArtifact
-      ? readClassificationDecisionApplyContext(
-          repoRoot,
-          classificationDecisionApplyArtifact,
-        )
-      : null;
+  const classificationDecisionApplyContext = classificationDecisionApplyArtifact
+    ? readClassificationDecisionApplyContext(repoRoot, classificationDecisionApplyArtifact)
+    : null;
   const identityDecisionApplyArtifacts = readJsonArtifactsIfOption(
     repoRoot,
     identityDecisionApplyReportOptionValues(options),
@@ -186,15 +161,13 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
     repoRoot,
     options.unresolvedExchangeExternalizationReport,
   );
-  const unresolvedExchangeExternalizationContext =
-    readUnresolvedExchangeExternalizationContext(
-      repoRoot,
-      unresolvedExchangeExternalizationArtifact,
-    );
+  const unresolvedExchangeExternalizationContext = readUnresolvedExchangeExternalizationContext(
+    repoRoot,
+    unresolvedExchangeExternalizationArtifact,
+  );
   const sourceContactRewriteArtifact = readJsonIfOption(
     repoRoot,
-    options.sourceContactRewriteReport ??
-      options.sourceContactRewritesReport,
+    options.sourceContactRewriteReport ?? options.sourceContactRewritesReport,
   );
   const sourceContactRewriteContext = readSourceContactRewriteContext(
     repoRoot,
@@ -202,8 +175,7 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
   );
   const canonicalSupportRewriteArtifact = readJsonIfOption(
     repoRoot,
-    options.canonicalSupportRewriteReport ??
-      options.canonicalSupportRewritesReport,
+    options.canonicalSupportRewriteReport ?? options.canonicalSupportRewritesReport,
   );
   const canonicalSupportRewriteContext = readCanonicalSupportRewriteContext(
     repoRoot,
@@ -211,21 +183,16 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
   );
   const cleanupArtifact = readJsonIfOption(repoRoot, options.cleanupReport);
   const cleanupContext = readCleanupTransformContext(repoRoot, cleanupArtifact);
-	  const writeRows = mapRowsByIdentity(rows, datasetType);
-	  const identityReferenceRewriteContext = readIdentityReferenceRewriteContext({
-	    repoRoot,
-	    rowsFile,
-	    options,
+  const writeRows = mapRowsByIdentity(rows, datasetType);
+  const identityReferenceRewriteContext = readIdentityReferenceRewriteContext({
+    repoRoot,
+    rowsFile,
+    options,
     writeRows,
   });
-  const waivedQaCodes = new Set(
-    profile.waivedQaCodesByType?.[datasetType] ?? [],
-  );
+  const waivedQaCodes = new Set(profile.waivedQaCodesByType?.[datasetType] ?? []);
   const schemaRowsById = new Map(
-    ensureArray(schemaReport.rows).map((row) => [
-      String(row.id ?? row.dataset_id ?? ""),
-      row,
-    ]),
+    ensureArray(schemaReport.rows).map((row) => [String(row.id ?? row.dataset_id ?? ""), row]),
   );
   const qaFindingsById = new Map();
   for (const finding of qaFindings) {
@@ -244,40 +211,34 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
       datasetType,
       identity,
     );
-      const identityPreflightAuthoringContext =
-      buildIdentityPreflightAuthoringContext({
-        context: identityPreflightContext,
-        datasetType,
-        identity,
-        curationQueueContext,
-        repoRoot,
-        classificationDecisionApplyContext,
-        identityDecisionApplyContext,
-        identityReferenceRewriteContext,
-        unresolvedExchangeExternalizationContext,
-        sourceContactRewriteContext,
-        canonicalSupportRewriteContext,
-        cleanupContext,
-      });
-    const unresolvedExchangeExternalizationRows =
-      unresolvedExchangeExternalizationRowsForIdentity(
-        unresolvedExchangeExternalizationContext,
-        identity,
-      );
-	    const identityReferenceRewrites =
-	      identityReferenceRewriteContext.byIdentity.get(identityKey(identity)) ??
-	      [];
-    const identityDecisionApplyRows =
-      identityDecisionApplyContextDecisionsForIdentity({
-        context: identityDecisionApplyContext,
-        datasetType,
-        id: identity.id,
-        version: identity.version,
-      });
-	    const identityPreflightGateItemsForEntity = identityPreflightGateItems({
-	      required:
-	        Boolean(fullContextRequirement) &&
-	        ["flow", "process"].includes(datasetType),
+    const identityPreflightAuthoringContext = buildIdentityPreflightAuthoringContext({
+      context: identityPreflightContext,
+      datasetType,
+      identity,
+      curationQueueContext,
+      repoRoot,
+      classificationDecisionApplyContext,
+      identityDecisionApplyContext,
+      identityReferenceRewriteContext,
+      unresolvedExchangeExternalizationContext,
+      sourceContactRewriteContext,
+      canonicalSupportRewriteContext,
+      cleanupContext,
+    });
+    const unresolvedExchangeExternalizationRows = unresolvedExchangeExternalizationRowsForIdentity(
+      unresolvedExchangeExternalizationContext,
+      identity,
+    );
+    const identityReferenceRewrites =
+      identityReferenceRewriteContext.byIdentity.get(identityKey(identity)) ?? [];
+    const identityDecisionApplyRows = identityDecisionApplyContextDecisionsForIdentity({
+      context: identityDecisionApplyContext,
+      datasetType,
+      id: identity.id,
+      version: identity.version,
+    });
+    const identityPreflightGateItemsForEntity = identityPreflightGateItems({
+      required: Boolean(fullContextRequirement) && ["flow", "process"].includes(datasetType),
       context: identityPreflightContext,
       authoringContext: identityPreflightAuthoringContext,
       datasetType,
@@ -286,38 +247,31 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
       profile,
     });
     const identityPreflightActionItems = identityPreflightAuthoringActionItems({
-      required:
-        Boolean(fullContextRequirement) &&
-        ["flow", "process"].includes(datasetType),
-	      authoringContext: identityPreflightAuthoringContext,
-	      datasetType,
-	      identity,
+      required: Boolean(fullContextRequirement) && ["flow", "process"].includes(datasetType),
+      authoringContext: identityPreflightAuthoringContext,
+      datasetType,
+      identity,
       identityDecisionApplyContext,
-	    });
+    });
     const classificationAuthoringRows = authoringQueueRowsForIdentity(
       classificationQueueContext,
       identity,
     );
-    const locationAuthoringRows = authoringQueueRowsForIdentity(
-      locationQueueContext,
-      identity,
+    const locationAuthoringRows = authoringQueueRowsForIdentity(locationQueueContext, identity);
+    const unresolvedClassificationAuthoringRows = classificationAuthoringRows.filter((row) =>
+      classificationQueueRowStillNeedsAuthoring({
+        repoRoot,
+        datasetType,
+        payload: identity.payload,
+        row,
+      }),
     );
-    const unresolvedClassificationAuthoringRows =
-      classificationAuthoringRows.filter((row) =>
-        classificationQueueRowStillNeedsAuthoring({
-          repoRoot,
-          datasetType,
-          payload: identity.payload,
-          row,
-        }),
-      );
-    const unresolvedLocationAuthoringRows = locationAuthoringRows.filter(
-      (row) =>
-        locationQueueRowStillNeedsAuthoring({
-          repoRoot,
-          payload: identity.payload,
-          row,
-        }),
+    const unresolvedLocationAuthoringRows = locationAuthoringRows.filter((row) =>
+      locationQueueRowStillNeedsAuthoring({
+        repoRoot,
+        payload: identity.payload,
+        row,
+      }),
     );
     const schemaRow = schemaRowsById.get(identity.id) ?? null;
     const schemaIssues = ensureArray(schemaRow?.issues);
@@ -328,9 +282,7 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
     const actionableQaFindings = entityQaFindings.filter(
       (finding) => !waivedQaCodes.has(qaFindingCode(finding)),
     );
-    const schemaActionItems = schemaIssues.map((issue) =>
-      schemaIssueCurationAction(issue),
-    );
+    const schemaActionItems = schemaIssues.map((issue) => schemaIssueCurationAction(issue));
     const qaActionItems = actionableQaFindings.map((finding) =>
       qaFindingCurationAction(finding, datasetType),
     );
@@ -338,14 +290,12 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
       profile,
       datasetType,
       payload: identity.payload,
-      hasClassificationQueueContext:
-        unresolvedClassificationAuthoringRows.length > 0,
+      hasClassificationQueueContext: unresolvedClassificationAuthoringRows.length > 0,
     });
-    const classificationQueueActionItems =
-      unresolvedClassificationAuthoringRows.map(classificationQueueActionItem);
-    const locationQueueActionItems = unresolvedLocationAuthoringRows.map(
-      locationQueueActionItem,
+    const classificationQueueActionItems = unresolvedClassificationAuthoringRows.map(
+      classificationQueueActionItem,
     );
+    const locationQueueActionItems = unresolvedLocationAuthoringRows.map(locationQueueActionItem);
     const actionItems = [
       ...schemaActionItems.filter((item) => item.ai_required),
       ...qaActionItems,
@@ -374,8 +324,7 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
           source: "curation_queue",
           code: "curation_queue_task_missing",
           path: null,
-          message:
-            "No matching curation queue task was found for this entity.",
+          message: "No matching curation queue task was found for this entity.",
           action_kind: "queue_rebuild",
           required_owner: "foundry_deterministic_queue_build",
           ai_required: false,
@@ -383,10 +332,7 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
             "Rebuild the curation queue with this entity included before AI authoring or remote write planning.",
         });
       }
-      if (
-        curationQueueContext?.queue_status &&
-        curationQueueContext.queue_status !== "ready"
-      ) {
+      if (curationQueueContext?.queue_status && curationQueueContext.queue_status !== "ready") {
         queueGateItems.push({
           source: "curation_queue",
           code: "curation_queue_not_ready",
@@ -432,8 +378,7 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
       ...fullContextItems,
       ...identityPreflightGateItemsForEntity,
     ];
-    const blockingItemCount =
-      actionItems.length + deterministicCleanupItems.length;
+    const blockingItemCount = actionItems.length + deterministicCleanupItems.length;
     const status =
       actionItems.length > 0
         ? "needs_foundry_ai_authoring"
@@ -462,17 +407,13 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
             required: true,
             proof: fullContextRequirement.proof,
             required_context_kinds: fullContextRequirement.requiredContextKinds,
-            required_context_file_patterns:
-              fullContextRequirement.requiredContextFilePatterns,
+            required_context_file_patterns: fullContextRequirement.requiredContextFilePatterns,
             context_file_details: contextFileDetails(contractContext.files),
           }
         : {
             required: false,
           },
-      missing_context_files: [
-        ...profileContext.missing,
-        ...contractContext.missing,
-      ],
+      missing_context_files: [...profileContext.missing, ...contractContext.missing],
       schema_issues: schemaIssues,
       qa_findings: entityQaFindings,
       waived_findings: waivedFindings.map((finding) => ({
@@ -486,14 +427,10 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
       unresolved_exchange_externalization_context: unresolvedExchangeExternalizationContext
         ? {
             status: unresolvedExchangeExternalizationContext.status,
-            report_file:
-              unresolvedExchangeExternalizationContext.reportPathRelative,
-            input_rows_file:
-              unresolvedExchangeExternalizationContext.inputRowsFileRelative,
-            output_rows_file:
-              unresolvedExchangeExternalizationContext.outputRowsFileRelative,
-            traces_file:
-              unresolvedExchangeExternalizationContext.tracesFileRelative,
+            report_file: unresolvedExchangeExternalizationContext.reportPathRelative,
+            input_rows_file: unresolvedExchangeExternalizationContext.inputRowsFileRelative,
+            output_rows_file: unresolvedExchangeExternalizationContext.outputRowsFileRelative,
+            traces_file: unresolvedExchangeExternalizationContext.tracesFileRelative,
             rows: unresolvedExchangeExternalizationRows,
             policy:
               "Completed entries prove Foundry moved unresolved elementary-flow process exchanges into common:other traces before schema validation and remote write planning; they do not create new elementary flows.",
@@ -501,10 +438,9 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
         : {
             status: "not_provided",
           },
-	      identity_reference_rewrite_context: {
+      identity_reference_rewrite_context: {
         status:
-          identityReferenceRewriteContext.sourceFile &&
-          identityReferenceRewrites.length > 0
+          identityReferenceRewriteContext.sourceFile && identityReferenceRewrites.length > 0
             ? "attached"
             : identityReferenceRewriteContext.sourceFile
               ? "no_rows_for_entity"
@@ -513,13 +449,11 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
           ? repoRelativePath(repoRoot, identityReferenceRewriteContext.sourceFile)
           : null,
         rows: identityReferenceRewrites,
-	        policy:
-	          "These rows prove deterministic process reference rewrites to existing database flow identities selected by CLI identity-preflight before validation and write planning.",
-	      },
+        policy:
+          "These rows prove deterministic process reference rewrites to existing database flow identities selected by CLI identity-preflight before validation and write planning.",
+      },
       identity_decision_apply_context: {
-        status: identityDecisionApplyContext
-          ? identityDecisionApplyContext.status
-          : "not_provided",
+        status: identityDecisionApplyContext ? identityDecisionApplyContext.status : "not_provided",
         report_file: identityDecisionApplyArtifact
           ? repoRelativePath(repoRoot, identityDecisionApplyArtifact.path)
           : null,
@@ -574,16 +508,13 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
       schema_status: schemaRow?.status ?? "not_found",
       schema_issue_count: schemaIssues.length,
       qa_finding_count: entityQaFindings.length,
-      ...(datasetType === "process"
-        ? { process_qa_finding_count: entityQaFindings.length }
-        : {}),
+      ...(datasetType === "process" ? { process_qa_finding_count: entityQaFindings.length } : {}),
       waived_finding_count: waivedFindings.length,
       action_item_count: actionItems.length,
-	      identity_action_item_count: identityPreflightActionItems.length,
+      identity_action_item_count: identityPreflightActionItems.length,
       identity_decision_apply_count: identityDecisionApplyRows.length,
-	      semantic_action_item_count: semanticActionItems.length,
-      classification_queue_action_item_count:
-        classificationQueueActionItems.length,
+      semantic_action_item_count: semanticActionItems.length,
+      classification_queue_action_item_count: classificationQueueActionItems.length,
       location_queue_action_item_count: locationQueueActionItems.length,
       deterministic_cleanup_count: deterministicCleanupItems.length,
       blocking_item_count: blockingItemCount,
@@ -594,10 +525,7 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
     };
   });
 
-  const actionItemCount = entityReports.reduce(
-    (total, item) => total + item.action_item_count,
-    0,
-  );
+  const actionItemCount = entityReports.reduce((total, item) => total + item.action_item_count, 0);
   const semanticActionItemCount = entityReports.reduce(
     (total, item) => total + item.semantic_action_item_count,
     0,
@@ -619,10 +547,7 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
     0,
   );
   const blockingItemCount = actionItemCount + deterministicCleanupCount;
-  const waiverCount = entityReports.reduce(
-    (total, item) => total + item.waived_finding_count,
-    0,
-  );
+  const waiverCount = entityReports.reduce((total, item) => total + item.waived_finding_count, 0);
   const report = {
     schema_version: 2,
     generated_at_utc: nowIso(),
@@ -655,8 +580,7 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
             required: true,
             proof: fullContextRequirement.proof,
             required_context_kinds: fullContextRequirement.requiredContextKinds,
-            required_context_file_patterns:
-              fullContextRequirement.requiredContextFilePatterns,
+            required_context_file_patterns: fullContextRequirement.requiredContextFilePatterns,
           }
         : {
             required: false,
@@ -664,10 +588,7 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
       curation_queue: queueContext
         ? {
             queue_dir: repoRelativePath(repoRoot, queueContext.queueDir),
-            manifest_file: repoRelativePath(
-              repoRoot,
-              queueContext.manifestPath,
-            ),
+            manifest_file: repoRelativePath(repoRoot, queueContext.manifestPath),
             status: queueContext.manifest.status ?? null,
             counts: queueContext.manifest.counts ?? null,
           }
@@ -675,10 +596,7 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
       require_queue_context: requireQueueContext,
       classification_queue: classificationQueueContext
         ? {
-            queue_file: repoRelativePath(
-              repoRoot,
-              classificationQueueContext.path,
-            ),
+            queue_file: repoRelativePath(repoRoot, classificationQueueContext.path),
             rows: classificationQueueContext.rows.length,
           }
         : null,
@@ -688,58 +606,41 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
             rows: locationQueueContext.rows.length,
           }
         : null,
-      unresolved_exchange_externalization:
-        unresolvedExchangeExternalizationContext
-          ? {
-              status: unresolvedExchangeExternalizationContext.status,
-              report_file:
-                unresolvedExchangeExternalizationContext.reportPathRelative,
-              input_rows_file:
-                unresolvedExchangeExternalizationContext.inputRowsFileRelative,
-              output_rows_file:
-                unresolvedExchangeExternalizationContext.outputRowsFileRelative,
-              traces_file:
-                unresolvedExchangeExternalizationContext.tracesFileRelative,
-              externalized_exchanges:
-                unresolvedExchangeExternalizationContext.externalizedExchanges,
-              affected_rows:
-                unresolvedExchangeExternalizationContext.affectedRows,
-            }
-          : null,
+      unresolved_exchange_externalization: unresolvedExchangeExternalizationContext
+        ? {
+            status: unresolvedExchangeExternalizationContext.status,
+            report_file: unresolvedExchangeExternalizationContext.reportPathRelative,
+            input_rows_file: unresolvedExchangeExternalizationContext.inputRowsFileRelative,
+            output_rows_file: unresolvedExchangeExternalizationContext.outputRowsFileRelative,
+            traces_file: unresolvedExchangeExternalizationContext.tracesFileRelative,
+            externalized_exchanges: unresolvedExchangeExternalizationContext.externalizedExchanges,
+            affected_rows: unresolvedExchangeExternalizationContext.affectedRows,
+          }
+        : null,
       identity_preflight: identityPreflightContext
         ? {
-            index_file: repoRelativePath(
-              repoRoot,
-              identityPreflightContext.indexPath,
-            ),
+            index_file: repoRelativePath(repoRoot, identityPreflightContext.indexPath),
             rows: identityPreflightContext.rows.length,
             completed: identityPreflightContext.completed,
             pending: identityPreflightContext.pending,
           }
         : null,
-	      identity_reference_rewrites: identityReferenceRewriteContext.sourceFile
+      identity_reference_rewrites: identityReferenceRewriteContext.sourceFile
         ? {
-            source_file: repoRelativePath(
-              repoRoot,
-              identityReferenceRewriteContext.sourceFile,
-            ),
+            source_file: repoRelativePath(repoRoot, identityReferenceRewriteContext.sourceFile),
             rows: identityReferenceRewriteContext.sourceRows.length,
             scoped_rows: identityReferenceRewriteContext.scopedRows.length,
-	          }
-	        : null,
+          }
+        : null,
       identity_decision_apply: identityDecisionApplyContext
         ? {
             report_file: repoRelativePath(repoRoot, identityDecisionApplyArtifact.path),
             status: identityDecisionApplyContext.status,
             decisions: identityDecisionApplyContext.decisions.length,
-            authoring_package_proofs:
-              identityDecisionApplyContext.authoringPackageProofs.length,
+            authoring_package_proofs: identityDecisionApplyContext.authoringPackageProofs.length,
           }
         : null,
-	      missing_context_files: [
-        ...profileContext.missing,
-        ...contractContext.missing,
-      ],
+      missing_context_files: [...profileContext.missing, ...contractContext.missing],
     },
     counts: {
       entities: entityReports.length,
@@ -755,10 +656,9 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
       identity_preflight_rows: identityPreflightContext?.rows.length ?? 0,
       identity_preflight_completed: identityPreflightContext?.completed ?? 0,
       identity_preflight_pending: identityPreflightContext?.pending ?? 0,
-	      identity_reference_rewrites:
-	        identityReferenceRewriteContext.scopedRows.length,
+      identity_reference_rewrites: identityReferenceRewriteContext.scopedRows.length,
       identity_decisions: identityDecisionApplyContext?.decisions.length ?? 0,
-	    },
+    },
     entities: entityReports,
   };
   if (datasetType === "process") {
@@ -776,9 +676,7 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
     files: {
       report: repoRelativePath(repoRoot, reportPath),
       entities: repoRelativePath(repoRoot, jsonlPath),
-      ...(datasetType === "process"
-        ? { processes: repoRelativePath(repoRoot, jsonlPath) }
-        : {}),
+      ...(datasetType === "process" ? { processes: repoRelativePath(repoRoot, jsonlPath) } : {}),
       authoring_packages_dir: repoRelativePath(repoRoot, packageDir),
     },
   };

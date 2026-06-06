@@ -1,15 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-import {
-  datasetTypePlural,
-  supportedDatasetTypes,
-} from "./dataset-types.mjs";
-import {
-  sha256Text,
-} from "./hash-utils.mjs";
-import {
-  annualSupplyMissingDataSentinelText,
-} from "./prewrite-cleanup.mjs";
+import { datasetTypePlural, supportedDatasetTypes } from "./dataset-types.mjs";
+import { sha256Text } from "./hash-utils.mjs";
+import { annualSupplyMissingDataSentinelText } from "./prewrite-cleanup.mjs";
 import {
   asText,
   ensureArray,
@@ -68,8 +61,7 @@ export function authoringPackageFullContextReadinessBlockers({
     if (!contextSummaryHasNonEmptyPayload(file)) {
       blockers.push({
         code: "authoring_task_context_file_empty",
-        message:
-          "AI authoring task cannot start with an empty contract context file.",
+        message: "AI authoring task cannot start with an empty contract context file.",
         authoring_package: authoringPackage,
         kind: asText(file?.kind) || null,
         path: asText(file?.path) || null,
@@ -105,8 +97,7 @@ export function authoringPackageFullContextReadinessBlockers({
   ) {
     blockers.push({
       code: "authoring_task_source_row_payload_missing",
-      message:
-        "AI authoring task must include the source row payload used as evidence.",
+      message: "AI authoring task must include the source row payload used as evidence.",
       authoring_package: authoringPackage,
     });
   }
@@ -117,8 +108,7 @@ export function authoringPackageFullContextReadinessBlockers({
   ) {
     blockers.push({
       code: "authoring_task_entity_payload_missing",
-      message:
-        "AI authoring task must include the converted TIDAS entity payload to patch.",
+      message: "AI authoring task must include the converted TIDAS entity payload to patch.",
       authoring_package: authoringPackage,
     });
   }
@@ -214,9 +204,7 @@ export function renderAuthoringTaskMarkdown(task) {
     ];
     if (item.instruction) lines.push(`  - instruction: ${item.instruction}`);
     if (ensureArray(item.allowed_resolution_modes).length > 0) {
-      lines.push(
-        `  - allowed_resolution_modes: ${item.allowed_resolution_modes.join(", ")}`,
-      );
+      lines.push(`  - allowed_resolution_modes: ${item.allowed_resolution_modes.join(", ")}`);
     }
     if (item.evidence !== null && item.evidence !== undefined) {
       lines.push(`  - evidence: ${JSON.stringify(item.evidence)}`);
@@ -226,10 +214,7 @@ export function renderAuthoringTaskMarkdown(task) {
   const contextFiles = [
     ...task.context.profile_context_files,
     ...task.context.contract_context_files,
-  ].map(
-    (file) =>
-      `${file.kind}: ${file.path} (${file.bytes} bytes, sha256=${file.sha256})`,
-  );
+  ].map((file) => `${file.kind}: ${file.path} (${file.bytes} bytes, sha256=${file.sha256})`);
   const sharedContextBundle = task.context?.shared_context_bundle;
   const sharedContextLines = sharedContextBundle
     ? [
@@ -325,9 +310,7 @@ export function buildDatasetAuthoringTaskFromPackage({
       `Authoring package dataset_type must be one of ${[...supportedDatasetTypes].join(", ")}.`,
     );
   }
-  const entityId = asText(
-    packagePayload.entity_id ?? packagePayload.process_id,
-  );
+  const entityId = asText(packagePayload.entity_id ?? packagePayload.process_id);
   if (!entityId) {
     throw new Error("Authoring package is missing entity_id.");
   }
@@ -345,10 +328,7 @@ export function buildDatasetAuthoringTaskFromPackage({
       options.out ||
       path.join(outDir, `${datasetTypePlural[datasetType]}.patched.jsonl`),
   );
-  const applyDir = resolveRepoPath(
-    repoRoot,
-    options.applyDir || path.join(outDir, "patch-apply"),
-  );
+  const applyDir = resolveRepoPath(repoRoot, options.applyDir || path.join(outDir, "patch-apply"));
   const packageDir = path.dirname(packagePath);
   const actionItems = patchAuthoringActionItems(packagePayload);
   const decisionOnlyItems = decisionOnlyActionItems(packagePayload);
@@ -360,10 +340,7 @@ export function buildDatasetAuthoringTaskFromPackage({
   });
   const patchTemplate = buildPatchTemplate(packagePayload, packagePath);
   const sourceRowsFile = packagePayload.source_rows_file
-    ? repoRelativePath(
-        repoRoot,
-        resolveRepoPath(repoRoot, packagePayload.source_rows_file),
-      )
+    ? repoRelativePath(repoRoot, resolveRepoPath(repoRoot, packagePayload.source_rows_file))
     : null;
   const applyArgs = [
     "node",
@@ -402,18 +379,13 @@ export function buildDatasetAuthoringTaskFromPackage({
     context: {
       source_rows_file: sourceRowsFile,
       authoring_package_sha256: sha256Text(readText(packagePath)),
-      profile_context_files: packageContextFileSummary(
-        packagePayload.profile_context_files,
-      ),
-      contract_context_files: packageContextFileSummary(
-        packagePayload.contract_context_files,
-      ),
+      profile_context_files: packageContextFileSummary(packagePayload.profile_context_files),
+      contract_context_files: packageContextFileSummary(packagePayload.contract_context_files),
       full_context_ai_completion: packagePayload.full_context_ai_completion ?? {
         required: false,
       },
       missing_context_files: ensureArray(packagePayload.missing_context_files),
-      curation_queue_status:
-        packagePayload.curation_queue_context?.status ?? null,
+      curation_queue_status: packagePayload.curation_queue_context?.status ?? null,
     },
     action_items: actionItems,
     decision_only_action_items: decisionOnlyItems,
@@ -460,9 +432,7 @@ export function buildDatasetAuthoringTaskFromPackage({
 
 export function shouldBuildAuthoringTaskFromEntity(entity, includeReady) {
   if (includeReady) return true;
-  const actionItemCount = Number(
-    entity?.action_item_count ?? entity?.actionItemCount ?? 0,
-  );
+  const actionItemCount = Number(entity?.action_item_count ?? entity?.actionItemCount ?? 0);
   if (actionItemCount > 0) return true;
   return String(entity?.status ?? "").includes("needs_foundry_ai_authoring");
 }
@@ -473,19 +443,13 @@ export function authoringPackageEntriesFromGate(repoRoot, reportPath, includeRea
     report?.entities ?? report?.processes ?? report?.flows ?? report?.items,
   );
   return entities
-    .filter((entity) =>
-      shouldBuildAuthoringTaskFromEntity(entity, includeReady),
-    )
+    .filter((entity) => shouldBuildAuthoringTaskFromEntity(entity, includeReady))
     .map((entity, index) => {
-      const packageRef = asText(
-        entity?.authoring_package ?? entity?.authoringPackage,
-      );
+      const packageRef = asText(entity?.authoring_package ?? entity?.authoringPackage);
       const packagePath = resolveRepoPath(repoRoot, packageRef);
-      const datasetType =
-        asText(entity?.dataset_type ?? entity?.type) || "dataset";
+      const datasetType = asText(entity?.dataset_type ?? entity?.type) || "dataset";
       const entityId =
-        asText(entity?.entity_id ?? entity?.process_id ?? entity?.id) ||
-        `entity-${index + 1}`;
+        asText(entity?.entity_id ?? entity?.process_id ?? entity?.id) || `entity-${index + 1}`;
       return {
         index,
         entity,
@@ -496,13 +460,7 @@ export function authoringPackageEntriesFromGate(repoRoot, reportPath, includeRea
     });
 }
 
-export function buildSharedAuthoringContextBundle(
-  repoRoot,
-  outDir,
-  tasks,
-  source,
-  options = {},
-) {
+export function buildSharedAuthoringContextBundle(repoRoot, outDir, tasks, source, options = {}) {
   const fileMap = new Map();
   const references = [];
   for (const task of tasks) {
@@ -522,8 +480,7 @@ export function buildSharedAuthoringContextBundle(
       for (const contextFile of ensureArray(contextFiles)) {
         const text = String(contextFile?.text ?? "");
         const sha256 = asText(contextFile?.sha256) || sha256Text(text);
-        const bytes =
-          Number(contextFile?.bytes) || Buffer.byteLength(text, "utf8");
+        const bytes = Number(contextFile?.bytes) || Buffer.byteLength(text, "utf8");
         const kind = asText(contextFile?.kind) || "context";
         const contextPath = asText(contextFile?.path) || null;
         const key = JSON.stringify([scope, kind, contextPath, sha256]);
@@ -552,23 +509,16 @@ export function buildSharedAuthoringContextBundle(
     }
   }
   const files = [...fileMap.values()];
-  const uniqueBytes = files.reduce(
-    (total, file) => total + (Number(file.bytes) || 0),
-    0,
-  );
-  const referenceBytes = references.reduce(
-    (total, ref) => total + (Number(ref.bytes) || 0),
-    0,
-  );
+  const uniqueBytes = files.reduce((total, file) => total + (Number(file.bytes) || 0), 0);
+  const referenceBytes = references.reduce((total, ref) => total + (Number(ref.bytes) || 0), 0);
   const stablePayload = {
     schema_version: 1,
     kind: "tiangong_foundry_shared_authoring_context_bundle",
     source,
     counts: {
       tasks: tasks.length,
-      authoring_packages: unique(
-        tasks.map((task) => task.files?.authoring_package).filter(Boolean),
-      ).length,
+      authoring_packages: unique(tasks.map((task) => task.files?.authoring_package).filter(Boolean))
+        .length,
       files: files.length,
       references: references.length,
       duplicate_references: Math.max(0, references.length - files.length),
@@ -634,23 +584,13 @@ export function rewriteAuthoringTaskFile(repoRoot, task) {
   if (markdownFile) writeText(markdownFile, renderAuthoringTaskMarkdown(task));
 }
 
-export function writeAuthoringTaskBatchManifest(
-  repoRoot,
-  outDir,
-  tasks,
-  source,
-  options = {},
-) {
+export function writeAuthoringTaskBatchManifest(repoRoot, outDir, tasks, source, options = {}) {
   const manifestPath = path.join(outDir, "authoring-task-manifest.json");
   const tasksPath = path.join(outDir, "authoring-tasks.jsonl");
   const batchPatchFile = path.join(outDir, "ai-patches.batch.json");
-  const datasetTypes = [
-    ...new Set(tasks.map((task) => task.entity.dataset_type).filter(Boolean)),
-  ];
+  const datasetTypes = [...new Set(tasks.map((task) => task.entity.dataset_type).filter(Boolean))];
   const sourceRowsFiles = [
-    ...new Set(
-      tasks.map((task) => task.context.source_rows_file).filter(Boolean),
-    ),
+    ...new Set(tasks.map((task) => task.context.source_rows_file).filter(Boolean)),
   ];
   const packageDirs = [
     ...new Set(
@@ -665,8 +605,7 @@ export function writeAuthoringTaskBatchManifest(
     0,
   );
   const totalDecisionOnlyActionItems = tasks.reduce(
-    (total, task) =>
-      total + ensureArray(task.decision_only_action_items).length,
+    (total, task) => total + ensureArray(task.decision_only_action_items).length,
     0,
   );
   const canApplyBatch =
@@ -698,9 +637,7 @@ export function writeAuthoringTaskBatchManifest(
         "--require-action-item-closure",
       ]
     : [];
-  const blockedTasks = tasks.filter(
-    (task) => task.status === "blocked_missing_full_context",
-  );
+  const blockedTasks = tasks.filter((task) => task.status === "blocked_missing_full_context");
   const taskBlockers = tasks.flatMap((task, taskIndex) =>
     task.status === "blocked_missing_full_context"
       ? ensureArray(task.blockers).map((blocker) => ({
@@ -711,13 +648,7 @@ export function writeAuthoringTaskBatchManifest(
       : [],
   );
   fs.mkdirSync(outDir, { recursive: true });
-  const sharedContext = buildSharedAuthoringContextBundle(
-    repoRoot,
-    outDir,
-    tasks,
-    source,
-    options,
-  );
+  const sharedContext = buildSharedAuthoringContextBundle(repoRoot, outDir, tasks, source, options);
   const sharedContextBundleRef = {
     path: repoRelativePath(repoRoot, sharedContext.path),
     sha256: sharedContext.bundle.sha256,
@@ -744,22 +675,17 @@ export function writeAuthoringTaskBatchManifest(
     source,
     counts: {
       tasks: tasks.length,
-      ready_for_ai_authoring: tasks.filter(
-        (task) => task.status === "ready_for_ai_authoring",
-      ).length,
-      ready_no_action_items: tasks.filter(
-        (task) => task.status === "ready_no_action_items",
-      ).length,
+      ready_for_ai_authoring: tasks.filter((task) => task.status === "ready_for_ai_authoring")
+        .length,
+      ready_no_action_items: tasks.filter((task) => task.status === "ready_no_action_items").length,
       blocked_missing_full_context: blockedTasks.length,
       action_items: totalActionItems,
       decision_only_action_items: totalDecisionOnlyActionItems,
       blockers: taskBlockers.length,
       shared_context_files: sharedContext.bundle.counts.files,
       shared_context_references: sharedContext.bundle.counts.references,
-      duplicate_context_references:
-        sharedContext.bundle.counts.duplicate_references,
-      duplicate_context_bytes_avoided:
-        sharedContext.bundle.counts.duplicate_context_bytes_avoided,
+      duplicate_context_references: sharedContext.bundle.counts.duplicate_references,
+      duplicate_context_bytes_avoided: sharedContext.bundle.counts.duplicate_context_bytes_avoided,
     },
     blockers: taskBlockers,
     batch_patch_contract: {
@@ -769,24 +695,16 @@ export function writeAuthoringTaskBatchManifest(
           : canApplyBatch
             ? "available"
             : "not_available_mixed_inputs",
-      output_patch_file: canApplyBatch
-        ? repoRelativePath(repoRoot, batchPatchFile)
-        : null,
-      patched_rows: canApplyBatch
-        ? repoRelativePath(repoRoot, batchPatchedRows)
-        : null,
-      apply_dir: canApplyBatch
-        ? repoRelativePath(repoRoot, batchApplyDir)
-        : null,
+      output_patch_file: canApplyBatch ? repoRelativePath(repoRoot, batchPatchFile) : null,
+      patched_rows: canApplyBatch ? repoRelativePath(repoRoot, batchPatchedRows) : null,
+      apply_dir: canApplyBatch ? repoRelativePath(repoRoot, batchApplyDir) : null,
       instruction:
         totalActionItems === 0
           ? "No patch batch is required; resolve decision_only_action_items with the dedicated deterministic decision apply commands."
           : "AI/Codex may combine all per-task patch sets into this batch file, then run apply_all_patches once to produce one patched rows file.",
     },
     commands: {
-      apply_all_patches: canApplyBatch
-        ? applyBatchArgs.map(shellQuote).join(" ")
-        : null,
+      apply_all_patches: canApplyBatch ? applyBatchArgs.map(shellQuote).join(" ") : null,
     },
     shared_context_bundle: sharedContextBundleRef,
     tasks: tasksWithSharedContext.map((task) => ({
@@ -795,9 +713,7 @@ export function writeAuthoringTaskBatchManifest(
       context: task.context,
       action_item_count: ensureArray(task.action_items).length,
       action_items: task.action_items,
-      decision_only_action_item_count: ensureArray(
-        task.decision_only_action_items,
-      ).length,
+      decision_only_action_item_count: ensureArray(task.decision_only_action_items).length,
       decision_only_action_items: task.decision_only_action_items,
       blockers: ensureArray(task.blockers),
       files: task.files,
@@ -823,10 +739,7 @@ export function patchSetOperations(value) {
     : Array.isArray(value.patches)
       ? value.patches
       : null;
-  if (
-    !operations ||
-    !operations.every((operation) => operation && typeof operation === "object")
-  ) {
+  if (!operations || !operations.every((operation) => operation && typeof operation === "object")) {
     return null;
   }
   return operations;
@@ -836,25 +749,14 @@ export function patchPayloadPatchSets(rawPatch) {
   if (Array.isArray(rawPatch)) return rawPatch;
   if (!rawPatch || typeof rawPatch !== "object") return [];
   if (patchSetOperations(rawPatch)) return [rawPatch];
-  for (const key of [
-    "patch_sets",
-    "patchSets",
-    "patches",
-    "suggestions",
-    "items",
-  ]) {
+  for (const key of ["patch_sets", "patchSets", "patches", "suggestions", "items"]) {
     if (Array.isArray(rawPatch[key])) return rawPatch[key];
   }
   return [];
 }
 
 export function patchSetDatasetId(patchSet) {
-  return asText(
-    patchSet?.dataset_id ??
-      patchSet?.id ??
-      patchSet?.uuid ??
-      patchSet?.entity_id,
-  );
+  return asText(patchSet?.dataset_id ?? patchSet?.id ?? patchSet?.uuid ?? patchSet?.entity_id);
 }
 
 export function patchSetDatasetVersion(patchSet) {
@@ -871,8 +773,7 @@ export function operationHasEvidence(operation) {
   if (basis) return true;
   if (typeof evidence === "string") return evidence.trim().length > 0;
   if (Array.isArray(evidence)) return evidence.length > 0;
-  if (evidence && typeof evidence === "object")
-    return Object.keys(evidence).length > 0;
+  if (evidence && typeof evidence === "object") return Object.keys(evidence).length > 0;
   return false;
 }
 
@@ -1007,25 +908,13 @@ export function taskRequiredContextKinds(task) {
   const candidates =
     requiredKinds.length > 0
       ? requiredKinds
-      : [
-          "schema",
-          "methodology_yaml",
-          "ruleset",
-          "classification_schema",
-          "location_schema",
-        ];
-  return candidates.filter(
-    (kind) => kinds.has(kind) || requiredKinds.includes(kind),
-  );
+      : ["schema", "methodology_yaml", "ruleset", "classification_schema", "location_schema"];
+  return candidates.filter((kind) => kinds.has(kind) || requiredKinds.includes(kind));
 }
 
 export function operationTouchesCommonOther(operation) {
   const pointer = asText(operation?.path);
-  if (
-    pointer.includes("/common:other") ||
-    pointer.includes("/tiangongfoundry:")
-  )
-    return true;
+  if (pointer.includes("/common:other") || pointer.includes("/tiangongfoundry:")) return true;
   return (
     JSON.stringify(operation?.value ?? "").includes("common:other") ||
     JSON.stringify(operation?.value ?? "").includes("tiangongfoundry:")
@@ -1034,8 +923,7 @@ export function operationTouchesCommonOther(operation) {
 
 export function hasNonEmptyTraceEvidence(value) {
   if (typeof value === "string") return value.trim().length > 0;
-  if (Array.isArray(value))
-    return value.some((item) => hasNonEmptyTraceEvidence(item));
+  if (Array.isArray(value)) return value.some((item) => hasNonEmptyTraceEvidence(item));
   if (value && typeof value === "object") return Object.keys(value).length > 0;
   return false;
 }

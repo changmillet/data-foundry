@@ -1,6 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import {
+  authoringTaskFullContextReadinessBlockers,
+  patchPayloadPatchSets,
+  patchSetOperations,
+  sharedContextBundleReadinessBlockers,
+  validateCollectedPatchSet,
+} from "./internal/authoring-patch-workflow.mjs";
+import {
   asText,
   ensureArray,
   fileExists,
@@ -10,18 +17,8 @@ import {
   resolveRepoPath,
   writeJson,
 } from "./internal/runtime-io.mjs";
-import {
-  authoringTaskFullContextReadinessBlockers,
-  patchPayloadPatchSets,
-  patchSetOperations,
-  sharedContextBundleReadinessBlockers,
-  validateCollectedPatchSet,
-} from "./internal/authoring-patch-workflow.mjs";
 
-export function runDatasetAuthoringPatchCollect({
-  repoRoot,
-  options = {},
-} = {}) {
+export function runDatasetAuthoringPatchCollect({ repoRoot, options = {} } = {}) {
   if (options.help) {
     return {
       schema_version: 1,
@@ -41,9 +38,7 @@ export function runDatasetAuthoringPatchCollect({
     options.taskManifest ?? options.manifest ?? options.input,
   );
   if (!manifestPath || !fileExists(manifestPath)) {
-    throw new Error(
-      "--task-manifest is required and must point to authoring-task-manifest.json.",
-    );
+    throw new Error("--task-manifest is required and must point to authoring-task-manifest.json.");
   }
   const manifest = readJson(manifestPath);
   const manifestDir = path.dirname(manifestPath);
@@ -57,9 +52,7 @@ export function runDatasetAuthoringPatchCollect({
   );
   const reportPath = path.join(outDir, "authoring-patch-collect-report.json");
   const requiredTasks = ensureArray(manifest.tasks).filter(
-    (task) =>
-      task?.status === "ready_for_ai_authoring" ||
-      Number(task?.action_item_count ?? 0) > 0,
+    (task) => task?.status === "ready_for_ai_authoring" || Number(task?.action_item_count ?? 0) > 0,
   );
   const patchSets = [];
   const patchFiles = [];
@@ -118,8 +111,7 @@ export function runDatasetAuthoringPatchCollect({
     if (asText(rawPatch?.template_status) === "requires_ai_completion") {
       blockers.push({
         code: "ai_patch_template_incomplete",
-        message:
-          "AI patch file still has template_status=requires_ai_completion.",
+        message: "AI patch file still has template_status=requires_ai_completion.",
         task_index: taskIndex,
         entity: task.entity ?? null,
         patch_file: repoRelativePath(repoRoot, patchPath),
@@ -130,8 +122,7 @@ export function runDatasetAuthoringPatchCollect({
     if (patchStatus !== "completed") {
       blockers.push({
         code: "ai_patch_status_not_completed",
-        message:
-          "AI patch file must declare patch_status=completed before collect.",
+        message: "AI patch file must declare patch_status=completed before collect.",
         task_index: taskIndex,
         entity: task.entity ?? null,
         patch_file: repoRelativePath(repoRoot, patchPath),

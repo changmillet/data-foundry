@@ -1,9 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import {
-  commandCategories,
-  commandMetadata,
-} from "./foundry-command-metadata.mjs";
+import { commandCategories, commandMetadata } from "./foundry-command-metadata.mjs";
 import { knownCommands } from "./foundry-command-registry.mjs";
 
 const commandHandlerHelpKeys = new Set(["help", "--help", "-h"]);
@@ -30,9 +27,7 @@ function walkFiles(root, relativeDir, predicate, files = []) {
 
 function readTextIfExists(root, relativePath) {
   const absolutePath = path.join(root, relativePath);
-  return fs.existsSync(absolutePath)
-    ? fs.readFileSync(absolutePath, "utf8")
-    : "";
+  return fs.existsSync(absolutePath) ? fs.readFileSync(absolutePath, "utf8") : "";
 }
 
 function commandHandlerKeys(repoRoot) {
@@ -63,8 +58,7 @@ function auditLegacyAliases(repoRoot) {
     if (deprecatedNamePattern.test(command)) {
       warnings.push({
         code: "deprecated_command_name",
-        message:
-          "Command name looks like a legacy/deprecated compatibility surface.",
+        message: "Command name looks like a legacy/deprecated compatibility surface.",
         command,
       });
     }
@@ -74,8 +68,7 @@ function auditLegacyAliases(repoRoot) {
     if (deprecatedNamePattern.test(scriptName)) {
       warnings.push({
         code: "deprecated_npm_script_name",
-        message:
-          "NPM script name looks like a legacy/deprecated compatibility alias.",
+        message: "NPM script name looks like a legacy/deprecated compatibility alias.",
         script: scriptName,
       });
     }
@@ -92,9 +85,7 @@ function auditMetadataCategories() {
   const errors = [];
   const warnings = [];
   const entries = Object.entries(commandMetadata);
-  const categoryCounts = Object.fromEntries(
-    commandCategories.map((category) => [category, 0]),
-  );
+  const categoryCounts = Object.fromEntries(commandCategories.map((category) => [category, 0]));
   for (const [command, metadata] of entries) {
     if (!metadata?.category) {
       errors.push({
@@ -137,8 +128,7 @@ function registeredDocPaths(repoRoot) {
     registered.add(match[0]);
   }
   const registry = JSON.parse(
-    readTextIfExists(repoRoot, "docs/file-location-registry.json") ||
-      "{\"entries\":[]}",
+    readTextIfExists(repoRoot, "docs/file-location-registry.json") || '{"entries":[]}',
   );
   if (registry.policy_doc) registered.add(registry.policy_doc);
   for (const entry of registry.entries ?? []) {
@@ -161,12 +151,8 @@ function auditOrphanDocs(repoRoot) {
     "WORKFLOW.md",
     ".docpact/config.yaml",
     "docs/file-location-registry.json",
-    ...walkFiles(repoRoot, "docs", (file) =>
-      /\.(?:md|json|ya?ml)$/u.test(file),
-    ),
-    ...walkFiles(repoRoot, "specs", (file) =>
-      /\.(?:md|json|ya?ml)$/u.test(file),
-    ),
+    ...walkFiles(repoRoot, "docs", (file) => /\.(?:md|json|ya?ml)$/u.test(file)),
+    ...walkFiles(repoRoot, "specs", (file) => /\.(?:md|json|ya?ml)$/u.test(file)),
   ];
   for (const doc of docs) {
     const hasInboundReference = searchFiles.some((file) => {

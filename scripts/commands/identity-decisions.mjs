@@ -46,11 +46,8 @@ export function createIdentityDecisionCommands({
 
   function identityDecisionDatasetVersion(decision) {
     return (
-      asText(
-        decision?.dataset_version ??
-          decision?.datasetVersion ??
-          decision?.version,
-      ) || "00.00.001"
+      asText(decision?.dataset_version ?? decision?.datasetVersion ?? decision?.version) ||
+      "00.00.001"
     );
   }
 
@@ -66,22 +63,17 @@ export function createIdentityDecisionCommands({
       return "reuse_existing_reference";
     }
     if (["new", "insert", "write_new"].includes(raw)) return "create_new";
-    if (["block", "blocked", "unresolved"].includes(raw))
-      return "block_unresolved";
+    if (["block", "blocked", "unresolved"].includes(raw)) return "block_unresolved";
     return raw;
   }
 
   function identityDecisionCompletionStatus(decision) {
-    return asText(
-      decision?.decision_status ?? decision?.decisionStatus ?? decision?.status,
-    );
+    return asText(decision?.decision_status ?? decision?.decisionStatus ?? decision?.status);
   }
 
   function identityDecisionUsedContextKinds(decision) {
     return unique([
-      ...normalizedList(
-        decision?.used_context_kinds ?? decision?.usedContextKinds,
-      ),
+      ...normalizedList(decision?.used_context_kinds ?? decision?.usedContextKinds),
       ...normalizedList(decision?.resolution?.used_context_kinds),
       ...normalizedList(decision?.evidence?.used_context_kinds),
     ]);
@@ -97,19 +89,14 @@ export function createIdentityDecisionCommands({
       null;
     if (!canonical || typeof canonical !== "object") return null;
     const id = asText(
-      canonical.ref_object_id ??
-        canonical.refObjectId ??
-        canonical.id ??
-        canonical["@refObjectId"],
+      canonical.ref_object_id ?? canonical.refObjectId ?? canonical.id ?? canonical["@refObjectId"],
     );
     if (!id) return null;
     return {
       table: asText(canonical.table) || "flows",
       ref_object_id: id,
       version:
-        asText(
-          canonical.version ?? canonical.ref_version ?? canonical["@version"],
-        ) || "00.00.001",
+        asText(canonical.version ?? canonical.ref_version ?? canonical["@version"]) || "00.00.001",
       short_description:
         asText(
           canonical.short_description ??
@@ -191,17 +178,10 @@ export function createIdentityDecisionCommands({
       blockers.push({
         code: "identity_decision_status_not_completed",
         dataset_id: id || null,
-        message:
-          "Identity decision must declare decision_status/status = completed.",
+        message: "Identity decision must declare decision_status/status = completed.",
       });
     }
-    if (
-      ![
-        "reuse_existing_reference",
-        "create_new",
-        "block_unresolved",
-      ].includes(value)
-    ) {
+    if (!["reuse_existing_reference", "create_new", "block_unresolved"].includes(value)) {
       blockers.push({
         code: "identity_decision_value_invalid",
         dataset_id: id || null,
@@ -210,15 +190,11 @@ export function createIdentityDecisionCommands({
           "Identity decision must be reuse_existing_reference, create_new, or block_unresolved.",
       });
     }
-    if (
-      value === "reuse_existing_reference" &&
-      !identityDecisionCanonical(decision)
-    ) {
+    if (value === "reuse_existing_reference" && !identityDecisionCanonical(decision)) {
       blockers.push({
         code: "identity_decision_canonical_missing",
         dataset_id: id || null,
-        message:
-          "reuse_existing_reference decisions must include canonical ref_object_id/version.",
+        message: "reuse_existing_reference decisions must include canonical ref_object_id/version.",
       });
     }
     if (!asText(decision?.basis ?? decision?.reason ?? decision?.resolution?.basis)) {
@@ -250,10 +226,7 @@ export function createIdentityDecisionCommands({
     if (datasetType === "flow") {
       const closesManual =
         identityDecisionClosesAction(decision, "identity_preflight_manual_review") ||
-        identityDecisionClosesAction(
-          decision,
-          "elementary_flow_identity_manual_review",
-        );
+        identityDecisionClosesAction(decision, "elementary_flow_identity_manual_review");
       if (!closesManual) {
         blockers.push({
           code: "identity_decision_action_item_closure_missing",
@@ -309,12 +282,8 @@ export function createIdentityDecisionCommands({
           "Validate AI-authored identity decisions and deterministically split rows into write candidates and reference-reuse rows before post-authoring finalize.",
       };
     }
-    const datasetType = asText(
-      options.type || options.datasetType || "flow",
-    ).toLowerCase();
-    const rowsFile = resolveRepoPath(
-      options.rowsFile || options.input || options.rows,
-    );
+    const datasetType = asText(options.type || options.datasetType || "flow").toLowerCase();
+    const rowsFile = resolveRepoPath(options.rowsFile || options.input || options.rows);
     const decisionsFile = resolveRepoPath(
       options.decisions || options.identityDecisions || options.decisionFile,
     );
@@ -327,9 +296,7 @@ export function createIdentityDecisionCommands({
     const outDir = resolveRepoPath(
       options.outDir || path.join(path.dirname(rowsFile), "identity-decisions"),
     );
-    const packageDir = resolveRepoPath(
-      options.authoringPackageDir || options.authoringPackagesDir,
-    );
+    const packageDir = resolveRepoPath(options.authoringPackageDir || options.authoringPackagesDir);
     const rows = readRowsFile(rowsFile);
     const inputDecisions = readDecisionRowsFile(decisionsFile);
     const decisions = inputDecisions.filter((decision) => {
@@ -355,8 +322,7 @@ export function createIdentityDecisionCommands({
           code: "identity_decision_duplicate",
           dataset_id: validation.dataset_id,
           dataset_version: validation.dataset_version,
-          message:
-            "Only one identity decision is allowed per dataset id/version.",
+          message: "Only one identity decision is allowed per dataset id/version.",
         });
         continue;
       }
@@ -406,9 +372,7 @@ export function createIdentityDecisionCommands({
             decision.raw?.closesActionItems ??
             decision.raw?.resolution?.closes_action_items,
         ),
-        authoring_package: decision.package_path
-          ? repoRelativePath(decision.package_path)
-          : null,
+        authoring_package: decision.package_path ? repoRelativePath(decision.package_path) : null,
         authoring_package_sha256: decision.package_path
           ? sha256Text(readText(decision.package_path))
           : null,
@@ -502,10 +466,7 @@ export function createIdentityDecisionCommands({
       `${datasetRowsFileStem(datasetType)}.unresolved-reference.jsonl`,
     );
     const rewritesFile = path.join(outDir, "identity-reference-rewrites.jsonl");
-    const unresolvedReferencesFile = path.join(
-      outDir,
-      "identity-unresolved-references.jsonl",
-    );
+    const unresolvedReferencesFile = path.join(outDir, "identity-unresolved-references.jsonl");
     const evidenceFile = path.join(outDir, "identity-decision-evidence.jsonl");
     const reportFile = path.join(outDir, "identity-decisions-apply-report.json");
     writeJsonLines(outRowsFile, outputRows);
@@ -543,9 +504,7 @@ export function createIdentityDecisionCommands({
         reference_rows: repoRelativePath(referenceRowsFile),
         unresolved_reference_rows: repoRelativePath(unresolvedRowsFile),
         identity_reference_rewrites: repoRelativePath(rewritesFile),
-        identity_unresolved_references: repoRelativePath(
-          unresolvedReferencesFile,
-        ),
+        identity_unresolved_references: repoRelativePath(unresolvedReferencesFile),
         evidence: repoRelativePath(evidenceFile),
       },
     };

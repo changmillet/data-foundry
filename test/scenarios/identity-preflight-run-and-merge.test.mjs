@@ -1,77 +1,18 @@
 import test from "node:test";
-import {
-  writeReadyFinalizeFixture,
-} from "../fixtures/finalize-fixtures.mjs";
-import {
-  annualSupplyFixtureRoot,
-  classificationFixtureRoot,
-  elementaryFlowManifestFixtureRoot,
-  finalizeAutoQueueFixtureRoot,
-  finalizeCurationGateFixtureRoot,
-  finalizeIdentityPreflightFixtureRoot,
-  finalizeLocationFixtureRoot,
-  fixtureRoot,
-  flowClassificationFixtureRoot,
-  flowIdentityReferenceFixtureRoot,
-  identityPreflightRunFixtureRoot,
-  locationFixtureRoot,
-  mutationFixtureRoot,
-  packageContextFixtureRoot,
-  qaPathFixtureRoot,
-  referenceClosureFixtureRoot,
-  sourceExchangeFixtureRoot,
-  supportManifestFixtureRoot,
-} from "../fixtures/fixture-roots.mjs";
+import { identityPreflightRunFixtureRoot } from "../fixtures/fixture-roots.mjs";
 import {
   assert,
-  blockerCodes,
-  bundledCategorySchemaNames,
-  contextTextByPathSuffix,
-  crypto,
   fs,
-  fullContextKinds,
-  fullContextPatterns,
-  itemBlockerCodes,
   path,
   readJson,
   readJsonLines,
   rel,
   repoRoot,
   runFoundry,
-  scopeBlockerCodes,
-  sha256Text,
-  siblingCliBuildAvailable,
-  siblingCliRoot,
-  spawnSync,
-  targetUserId,
-  testTmpRoot,
   writeJson,
   writeJsonLines,
   writeText,
 } from "../fixtures/foundry-core.mjs";
-import {
-  contextFile,
-  createFixture,
-  writeContextPackFiles,
-  writeDecisionTaskFixture,
-} from "../fixtures/full-context-fixtures.mjs";
-import {
-  writeCompletedIdentityPreflightIndex,
-} from "../fixtures/identity-fixtures.mjs";
-import {
-  createMutationManifestFixture,
-} from "../fixtures/mutation-fixtures.mjs";
-import {
-  flowRow,
-  flowRowWithClassification,
-  processRowWithDefaultClassification,
-  processRowWithDeferredTrace,
-  processRowWithFlowRef,
-  processRowWithInvalidAnnualSupply,
-  processRowWithInvalidLocation,
-  processRowWithOnlyOutputExchange,
-  sourceRow,
-} from "../fixtures/row-builders.mjs";
 
 test("identity preflight batch runner records timed-out CLI rows without hanging", () => {
   fs.rmSync(identityPreflightRunFixtureRoot, { recursive: true, force: true });
@@ -95,14 +36,7 @@ test("identity preflight batch runner records timed-out CLI rows without hanging
     "identity-preflight-requests.jsonl",
   );
   const fakeCli = path.join(identityPreflightRunFixtureRoot, "bin", "fake-cli.js");
-  writeText(
-    fakeCli,
-    [
-      "#!/usr/bin/env node",
-      "setTimeout(() => {}, 10_000);",
-      "",
-    ].join("\n"),
-  );
+  writeText(fakeCli, ["#!/usr/bin/env node", "setTimeout(() => {}, 10_000);", ""].join("\n"));
   fs.chmodSync(fakeCli, 0o755);
   writeJson(requestFile, {
     schema_version: 1,
@@ -168,18 +102,10 @@ test("identity preflight batch runner records timed-out CLI rows without hanging
 });
 
 test("identity preflight index merge preserves dependency rows while refreshing current scope", () => {
-  const root = path.join(
-    repoRoot,
-    "tmp",
-    "identity-preflight-index-merge-test",
-  );
+  const root = path.join(repoRoot, "tmp", "identity-preflight-index-merge-test");
   fs.rmSync(root, { recursive: true, force: true });
   const baseIndex = path.join(root, "base", "identity-preflight-requests.jsonl");
-  const updateIndex = path.join(
-    root,
-    "fresh",
-    "identity-preflight-requests.jsonl",
-  );
+  const updateIndex = path.join(root, "fresh", "identity-preflight-requests.jsonl");
   const processId = "aaaaaaaa-bbbb-4ccc-8ddd-000000000501";
   const flowId = "aaaaaaaa-bbbb-4ccc-8ddd-000000000502";
   writeJsonLines(baseIndex, [
@@ -229,9 +155,7 @@ test("identity preflight index merge preserves dependency rows while refreshing 
     assert.equal(merge.json.counts.added_rows, 0);
     assert.equal(merge.json.counts.output_rows, 2);
 
-    const mergedRows = readJsonLines(
-      path.join(repoRoot, merge.json.files.merged_index),
-    );
+    const mergedRows = readJsonLines(path.join(repoRoot, merge.json.files.merged_index));
     assert.equal(mergedRows.length, 2);
     const processRow = mergedRows.find((row) => row.dataset_type === "process");
     const flowRow = mergedRows.find((row) => row.dataset_type === "flow");
@@ -247,11 +171,7 @@ test("identity preflight index merge preserves dependency rows while refreshing 
 });
 
 test("identity preflight request refresh inherits source trace context from source index", () => {
-  const root = path.join(
-    repoRoot,
-    "tmp",
-    "identity-preflight-source-index-test",
-  );
+  const root = path.join(repoRoot, "tmp", "identity-preflight-source-index-test");
   fs.rmSync(root, { recursive: true, force: true });
   const processId = "aaaaaaaa-bbbb-4ccc-8ddd-000000000601";
   const processRow = {
@@ -281,9 +201,7 @@ test("identity preflight request refresh inherits source trace context from sour
     },
   };
   const sourcePayload = JSON.parse(JSON.stringify(processRow));
-  sourcePayload.processDataSet.processInformation.dataSetInformation[
-    "common:other"
-  ] = {
+  sourcePayload.processDataSet.processInformation.dataSetInformation["common:other"] = {
     "tidasimport:sourceTrace": {
       payload: {
         sourceClassification: {

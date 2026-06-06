@@ -169,7 +169,7 @@ related:
   - `Nm3` / `Amount in Nm3` 映射到 TianGong public `Volume` / volume unit group；`Nm3` 作为源单位证据保留在 mapping/provenance 中。不得为 `Nm3` 新建 BAFU 私有 flow property。若 public Volume unit group 暂缺 `Nm3` alias，应记录为公共库 unit alias 后续事项，而不是阻塞 BAFU 私有 property。
 - Flow property / unit group 只能引用现有数据库记录，不能为 BAFU 账号新增 My Data 记录。Foundry 必须使用 `specs/canonical-support/flow-properties-unit-groups.json` 中缓存的 TianGong public canonical support，或先刷新该缓存后再做引用重写；被选中的 flow property 必须在同一缓存中证明其 reference unit group 也来自现有数据库记录。
 - 若源单位可以可靠映射到现有 public canonical support，必须重写 `referenceToFlowPropertyDataSet` / `referenceToReferenceUnitGroup` 到该公开记录，并把源单位、源属性名和映射理由保存在 mapping/provenance 中。
-- 若源单位或量纲没有可辩护的 public canonical support，例如 person transport、duration、length*time 等当前公共库缺口，导入必须阻塞并形成公共库 support/mapping 待办；不得通过 BAFU 私有 flow property / unit group 绕过。
+- 若源单位或量纲没有可辩护的 public canonical support，例如 person transport、duration、length\*time 等当前公共库缺口，导入必须阻塞并形成公共库 support/mapping 待办；不得通过 BAFU 私有 flow property / unit group 绕过。
 - Energy 类 `kWh` / `MJ` 当前可按现有 public `Net calorific value` legacy support 处理并记录 legacy note；后续若公共库新增 generic `Energy` support，再通过迁移映射重写引用。不得创建 BAFU 私有 Energy support。
 - `unitgroups.jsonl` 和 `flowproperties.jsonl` 只能作为转换审计/源包证据输出，不得进入 `support.jsonl`，不得生成 `dataset save-draft` / `publish-support` commit handoff。
 
@@ -233,7 +233,7 @@ related:
   - Codex 只基于 `name_plan_prompt` 和来源证据生成 `name-plan-draft.jsonl`；
   - `validate` 必须阻断分号、`xx/xxx`、trace-only、provenance 说明句和字段缺失说明句；
   - `apply` 必须生成 name-planned rows 和 `outputs/name-plan-evidence.json`；
-	  - 对可写 support rows，`source_full_name` 不拆成 flow/process 四段；draft 只能填写该 unit 的 `target_name_fields`。当前 BAFU 导入的可写 support 字段口径如下：source 用 `sourceInformation.dataSetInformation.common:shortName`；contact 用 `contactInformation.dataSetInformation.common:name` 和 `common:shortName`。unit group / flow property 只引用现有 canonical rows，不做 BAFU 私有 name-plan 写入。
+    - 对可写 support rows，`source_full_name` 不拆成 flow/process 四段；draft 只能填写该 unit 的 `target_name_fields`。当前 BAFU 导入的可写 support 字段口径如下：source 用 `sourceInformation.dataSetInformation.common:shortName`；contact 用 `contactInformation.dataSetInformation.common:name` 和 `common:shortName`。unit group / flow property 只引用现有 canonical rows，不做 BAFU 私有 name-plan 写入。
   - `baseName`：只保留核心产品/废物流/服务/过程名称和必要的基本加工层级；去除前缀 `xx` / `xxx`，并尽量不要混入地点可得性、市场/生产组合、地理代码、路线说明或功能单位属性。
   - `treatmentStandardsRoutes`：放处理方式、标准、质量等级、用途、生产路线、原料/educt、primary / secondary 等技术限定；例如废弃物去向或处理路线若是过程/流的技术路线，应放在此字段。
   - `mixAndLocationTypes`：放 production mix / consumption mix / market mix、location type of availability、origin / destination、`at plant` / `at user` / `at grid` / `to consumer` / `at regional storage` 等可得性和地点类型信息；`工厂端 {KR}` / `at plant {KR}` 这类内容应优先拆入此字段，同时地理代码仍应写入 geography/location 或等价结构。
@@ -308,8 +308,7 @@ related:
 - 完整写入后必须检查 BAFU 账号内是否存在 orphan support records：
   - 任何 BAFU-owned flow property / unit group 都应视为历史残留或错误写入候选；
   - 未被任何 process/flow/source/provenance 引用的 contact/source；
-  - 已被 public canonical 替代但仍残留的旧私有 support。
-    这些记录应进入待人工删除清单，不得混入“本次导入成功”口径。
+  - 已被 public canonical 替代但仍残留的旧私有 support。这些记录应进入待人工删除清单，不得混入“本次导入成功”口径。
 - 完整写入必须保留 source-to-target mapping CSV/JSON：
   - flow mapping；
   - elementary flow mapping；
@@ -317,8 +316,7 @@ related:
   - unit conversion mapping；
   - contact/source mapping；
   - compliance system / data set format reference rewrite mapping；
-  - process exchange rewrite mapping。
-    这些 mapping 是后续审计、回滚和迁移到 public canonical 的依据。
+  - process exchange rewrite mapping。这些 mapping 是后续审计、回滚和迁移到 public canonical 的依据。
 - 大批量写入需要控制批次和失败恢复：
   - 每个批次必须可重跑；
   - commit 报告必须列出成功、失败、跳过、更新和插入；

@@ -131,8 +131,7 @@ export function buildEvidenceScopeBlockers({
         evidenceScopeBlocker({
           code: "curation_gate_rows_mismatch",
           stage: "foundry_curation",
-          message:
-            "Curation gate report rows_file does not match the mutation manifest rows file.",
+          message: "Curation gate report rows_file does not match the mutation manifest rows file.",
           expected: finalRowsFile,
           actual: curationRowsFile,
           artifact: curationGateArtifact.path,
@@ -140,11 +139,7 @@ export function buildEvidenceScopeBlockers({
         }),
       );
     }
-    if (
-      !["ready", "ready_with_profile_waivers"].includes(
-        curationGateArtifact.value?.status,
-      )
-    ) {
+    if (!["ready", "ready_with_profile_waivers"].includes(curationGateArtifact.value?.status)) {
       blockers.push({
         code: "curation_gate_report_not_ready",
         stage: "foundry_curation",
@@ -161,26 +156,19 @@ export function buildEvidenceScopeBlockers({
         artifact: repoRelativePath(repoRoot, curationGateArtifact.path),
       });
     } else {
-      const qaReportPath = resolveRepoPath(
-        repoRoot,
-        curationGateArtifact.value.qa_report,
-      );
+      const qaReportPath = resolveRepoPath(repoRoot, curationGateArtifact.value.qa_report);
       if (!fileExists(qaReportPath)) {
         blockers.push({
           code: "curation_gate_qa_report_not_readable",
           stage: "foundry_curation",
           message: "Curation gate qa_report file is not readable.",
           artifact: repoRelativePath(repoRoot, curationGateArtifact.path),
-          qa_report: repoRelativeArtifactPath(
-            repoRoot,
-            curationGateArtifact.value.qa_report,
-          ),
+          qa_report: repoRelativeArtifactPath(repoRoot, curationGateArtifact.value.qa_report),
         });
       } else {
         try {
           const qaReport = readJson(qaReportPath);
-          const qaRowsFile =
-            qaReport.rows_file ?? qaReport.input_path ?? qaReport.inputPath;
+          const qaRowsFile = qaReport.rows_file ?? qaReport.input_path ?? qaReport.inputPath;
           if (!qaRowsFile) {
             blockers.push({
               code: "curation_gate_qa_rows_missing",
@@ -241,8 +229,7 @@ export function buildEvidenceScopeBlockers({
 
   if (cleanupArtifact) {
     const cleanedRowsFile =
-      cleanupArtifact.value?.cleaned_rows_file ??
-      cleanupArtifact.value?.files?.cleaned_rows;
+      cleanupArtifact.value?.cleaned_rows_file ?? cleanupArtifact.value?.files?.cleaned_rows;
     if (!cleanedRowsFile) {
       blockers.push(
         evidenceScopeBlocker({
@@ -261,8 +248,7 @@ export function buildEvidenceScopeBlockers({
         evidenceScopeBlocker({
           code: "cleanup_cleaned_rows_mismatch",
           stage: "prewrite_cleanup",
-          message:
-            "Cleanup cleaned_rows_file does not match the mutation manifest rows file.",
+          message: "Cleanup cleaned_rows_file does not match the mutation manifest rows file.",
           expected: finalRowsFile,
           actual: cleanedRowsFile,
           artifact: cleanupArtifact.path,
@@ -274,8 +260,7 @@ export function buildEvidenceScopeBlockers({
 
   if (patchApplyArtifact) {
     const patchOut =
-      patchApplyArtifact.value?.out_path ??
-      patchApplyArtifact.value?.files?.patched_rows;
+      patchApplyArtifact.value?.out_path ?? patchApplyArtifact.value?.files?.patched_rows;
     const cleanupInput = cleanupArtifact?.value?.rows_file;
     if (!patchOut) {
       blockers.push(
@@ -337,16 +322,12 @@ export function buildEvidenceScopeBlockers({
           repoRoot,
         }),
       );
-    } else if (
-      !cleanupArtifact &&
-      !sameArtifactPath(repoRoot, patchOut, finalRowsFile)
-    ) {
+    } else if (!cleanupArtifact && !sameArtifactPath(repoRoot, patchOut, finalRowsFile)) {
       blockers.push(
         evidenceScopeBlocker({
           code: "patch_apply_rows_mismatch",
           stage: "ai_patch_apply",
-          message:
-            "Patch apply output does not match the mutation manifest rows file.",
+          message: "Patch apply output does not match the mutation manifest rows file.",
           expected: finalRowsFile,
           actual: patchOut,
           artifact: patchApplyArtifact.path,
@@ -433,8 +414,7 @@ export function buildEvidenceScopeBlockers({
         evidenceScopeBlocker({
           code: "dry_run_report_rows_mismatch",
           stage: "dry_run",
-          message:
-            "Dry-run report input path does not match the mutation manifest rows file.",
+          message: "Dry-run report input path does not match the mutation manifest rows file.",
           expected: finalRowsFile,
           actual: dryRunInput,
           artifact: dryRunReportArtifact.path,

@@ -13,14 +13,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": [
-          "id",
-          "status",
-          "classification",
-          "current_path",
-          "owner",
-          "sensitivity"
-        ],
+        "required": ["id", "status", "classification", "current_path", "owner", "sensitivity"],
         "additionalProperties": true,
         "properties": {
           "id": { "type": "string" },

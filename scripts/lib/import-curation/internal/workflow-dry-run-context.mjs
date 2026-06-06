@@ -1,17 +1,6 @@
-import {
-  curationEntityId,
-  datasetIdentity,
-  identityKey,
-} from "./dataset-payload.mjs";
-import {
-  asText,
-  ensureArray,
-  resolveRepoPath,
-} from "./runtime-io.mjs";
-import {
-  readJsonLines,
-  readRowsIfExists,
-} from "./workflow-patch-collect.mjs";
+import { curationEntityId, datasetIdentity, identityKey } from "./dataset-payload.mjs";
+import { asText, ensureArray, resolveRepoPath } from "./runtime-io.mjs";
+import { readJsonLines, readRowsIfExists } from "./workflow-patch-collect.mjs";
 
 function referenceKey({ table, id, version }) {
   return [asText(table), asText(id), asText(version)].join("\u0000");
@@ -31,9 +20,7 @@ export function mapSchemaRows(schemaReport) {
 
 export function mapCurationEntities(curationGateReport) {
   const map = new Map();
-  for (const entity of ensureArray(
-    curationGateReport?.entities ?? curationGateReport?.processes,
-  )) {
+  for (const entity of ensureArray(curationGateReport?.entities ?? curationGateReport?.processes)) {
     const id = curationEntityId(entity);
     const version = asText(entity?.version) || "00.00.001";
     if (!id) continue;
@@ -57,14 +44,8 @@ export function normalizeDryRunOperation(operation) {
 }
 
 export function readFlowDryRunArtifacts(repoRoot, dryRunReport) {
-  const successFile = resolveRepoPath(
-    repoRoot,
-    dryRunReport?.files?.success_list,
-  );
-  const failureFile = resolveRepoPath(
-    repoRoot,
-    dryRunReport?.files?.remote_failed,
-  );
+  const successFile = resolveRepoPath(repoRoot, dryRunReport?.files?.success_list);
+  const failureFile = resolveRepoPath(repoRoot, dryRunReport?.files?.remote_failed);
   const success = new Map();
   const failures = new Map();
   for (const row of readRowsIfExists(successFile)) {
@@ -73,8 +54,7 @@ export function readFlowDryRunArtifacts(repoRoot, dryRunReport) {
     if (id) success.set(`${id}@@${version}`, row);
   }
   for (const row of readJsonLines(failureFile)) {
-    const payload =
-      row?.json_ordered ?? row?.jsonOrdered ?? row?.json ?? row?.payload ?? row;
+    const payload = row?.json_ordered ?? row?.jsonOrdered ?? row?.json ?? row?.payload ?? row;
     const identity = datasetIdentity(payload, 0, "flow");
     failures.set(identityKey(identity), row);
   }
@@ -82,14 +62,8 @@ export function readFlowDryRunArtifacts(repoRoot, dryRunReport) {
 }
 
 export function readProcessDryRunArtifacts(repoRoot, dryRunReport) {
-  const progressFile = resolveRepoPath(
-    repoRoot,
-    dryRunReport?.files?.progress_jsonl,
-  );
-  const failuresFile = resolveRepoPath(
-    repoRoot,
-    dryRunReport?.files?.failures_jsonl,
-  );
+  const progressFile = resolveRepoPath(repoRoot, dryRunReport?.files?.progress_jsonl);
+  const failuresFile = resolveRepoPath(repoRoot, dryRunReport?.files?.failures_jsonl);
   const prepared = new Map();
   const failures = new Map();
   for (const row of readJsonLines(progressFile)) {
@@ -111,14 +85,8 @@ export function readProcessDryRunArtifacts(repoRoot, dryRunReport) {
 }
 
 export function readLifecyclemodelDryRunArtifacts(repoRoot, dryRunReport) {
-  const progressFile = resolveRepoPath(
-    repoRoot,
-    dryRunReport?.files?.progress_jsonl,
-  );
-  const failuresFile = resolveRepoPath(
-    repoRoot,
-    dryRunReport?.files?.failures_jsonl,
-  );
+  const progressFile = resolveRepoPath(repoRoot, dryRunReport?.files?.progress_jsonl);
+  const failuresFile = resolveRepoPath(repoRoot, dryRunReport?.files?.failures_jsonl);
   const prepared = new Map();
   const failures = new Map();
   for (const row of readJsonLines(progressFile)) {
@@ -140,14 +108,8 @@ export function readLifecyclemodelDryRunArtifacts(repoRoot, dryRunReport) {
 }
 
 export function readDatasetSaveDraftDryRunArtifacts(repoRoot, dryRunReport) {
-  const progressFile = resolveRepoPath(
-    repoRoot,
-    dryRunReport?.files?.progress_jsonl,
-  );
-  const failuresFile = resolveRepoPath(
-    repoRoot,
-    dryRunReport?.files?.failures_jsonl,
-  );
+  const progressFile = resolveRepoPath(repoRoot, dryRunReport?.files?.progress_jsonl);
+  const failuresFile = resolveRepoPath(repoRoot, dryRunReport?.files?.failures_jsonl);
   const prepared = new Map();
   const failures = new Map();
   for (const row of readJsonLines(progressFile)) {

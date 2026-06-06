@@ -1,15 +1,11 @@
 import assert from "node:assert/strict";
-import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const repoRoot = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "..",
-);
+export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const testRunId = process.env.FOUNDRY_FULL_CONTEXT_TEST_RUN_ID || process.pid;
 
 export function testTmpRoot(name) {
@@ -55,8 +51,7 @@ export function writeText(filePath, text) {
 export function writeJsonLines(filePath, rows) {
   writeText(
     filePath,
-    rows.map((row) => JSON.stringify(row)).join("\n") +
-      (rows.length ? "\n" : ""),
+    rows.map((row) => JSON.stringify(row)).join("\n") + (rows.length ? "\n" : ""),
   );
 }
 
@@ -105,41 +100,28 @@ export function blockerCodes(report) {
 
 export function itemBlockerCodes(report) {
   return new Set(
-    (report.items ?? []).flatMap((item) =>
-      (item.blockers ?? []).map((blocker) => blocker.code),
-    ),
+    (report.items ?? []).flatMap((item) => (item.blockers ?? []).map((blocker) => blocker.code)),
   );
 }
 
 export function scopeBlockerCodes(report) {
   return new Set(
-    (report.evidence?.scope_blockers ?? report.scope_blockers ?? []).map(
-      (blocker) => blocker.code,
-    ),
+    (report.evidence?.scope_blockers ?? report.scope_blockers ?? []).map((blocker) => blocker.code),
   );
 }
 
 export function contextTextByPathSuffix(authoringPackage, suffix) {
   return (
-    authoringPackage.contract_context_files.find((file) =>
-      String(file.path ?? "").endsWith(suffix),
-    )?.text ?? ""
+    authoringPackage.contract_context_files.find((file) => String(file.path ?? "").endsWith(suffix))
+      ?.text ?? ""
   );
 }
 
 export function bundledCategorySchemaNames() {
   return fs
-    .readdirSync(
-      path.resolve(
-        repoRoot,
-        "..",
-        "tiangong-lca-cli",
-        "assets",
-        "tidas-schemas",
-      ),
-    )
+    .readdirSync(path.resolve(repoRoot, "..", "tiangong-lca-cli", "assets", "tidas-schemas"))
     .filter((name) => /^tidas_.*_category\.json$/u.test(name))
     .sort();
 }
 
-export { assert, crypto, spawnSync, fs, path };
+export { assert, crypto, fs, path, spawnSync };

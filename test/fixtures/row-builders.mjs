@@ -9,8 +9,7 @@ export function processRowWithDeferredTrace(processId) {
               {
                 status: "unresolved_deferred",
                 action_item_code: "source_system_boilerplate",
-                blocked_path:
-                  "processDataSet.processInformation.dataSetInformation.generalComment",
+                blocked_path: "processDataSet.processInformation.dataSetInformation.generalComment",
                 reason:
                   "The source package did not provide a safe source-language value for this optional descriptive field.",
                 evidence: {
@@ -67,8 +66,7 @@ export function processRowWithDefaultClassification(processId) {
                 {
                   "@level": "3",
                   "@classId": "9499",
-                  "#text":
-                    "Activities of other membership organizations n.e.c.",
+                  "#text": "Activities of other membership organizations n.e.c.",
                 },
               ],
             },
@@ -139,8 +137,7 @@ export function processRowWithInvalidLocation(processId) {
                 {
                   "@level": "0",
                   "@classId": "D",
-                  "#text":
-                    "Electricity, gas, steam and air conditioning supply",
+                  "#text": "Electricity, gas, steam and air conditioning supply",
                 },
               ],
             },
@@ -179,8 +176,7 @@ export function processRowWithInvalidAnnualSupply(processId) {
                 {
                   "@level": "0",
                   "@classId": "D",
-                  "#text":
-                    "Electricity, gas, steam and air conditioning supply",
+                  "#text": "Electricity, gas, steam and air conditioning supply",
                 },
               ],
             },
@@ -344,4 +340,3 @@ export function sourceRow(sourceId) {
     },
   };
 }
-

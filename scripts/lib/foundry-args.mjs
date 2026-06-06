@@ -15,9 +15,7 @@ export function parseArgs(argv) {
       continue;
     }
     const [rawKey, inlineValue] = arg.slice(2).split("=", 2);
-    const key = rawKey.replace(/-([a-z])/gu, (_, letter) =>
-      letter.toUpperCase(),
-    );
+    const key = rawKey.replace(/-([a-z])/gu, (_, letter) => letter.toUpperCase());
     const value = inlineValue ?? argv[index + 1];
     if (inlineValue === undefined && value && !String(value).startsWith("--")) {
       index += 1;

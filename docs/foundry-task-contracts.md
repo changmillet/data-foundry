@@ -161,7 +161,15 @@ Allowed statuses are `pending`, `running`, `passed`, `failed`, and `waived`. A w
 Each line records one durable artifact:
 
 ```json
-{"schema_version":1,"artifact_id":"schema-process","kind":"schema-report","path":"schema/process/outputs/validation-report.json","owner_command":"tiangong-lca dataset validate --type process","sha256":"<sha256>","created_at_utc":"2026-06-04T00:00:00Z"}
+{
+  "schema_version": 1,
+  "artifact_id": "schema-process",
+  "kind": "schema-report",
+  "path": "schema/process/outputs/validation-report.json",
+  "owner_command": "tiangong-lca dataset validate --type process",
+  "sha256": "<sha256>",
+  "created_at_utc": "2026-06-04T00:00:00Z"
+}
 ```
 
 The artifact index is the bridge between Foundry and owner commands. It should point to artifacts; it should not duplicate the artifact payload.

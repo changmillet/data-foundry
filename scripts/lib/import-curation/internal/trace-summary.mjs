@@ -49,17 +49,9 @@ export function collectCommonOtherTraceEntries(value, traceKey, basePath = "$") 
 }
 
 // part-08.mjs
-export function compactFoundryTraceEntry({
-  datasetType,
-  identity,
-  rowIndex,
-  traceKind,
-  trace,
-}) {
+export function compactFoundryTraceEntry({ datasetType, identity, rowIndex, traceKind, trace }) {
   const entry =
-    trace?.entry &&
-    typeof trace.entry === "object" &&
-    !Array.isArray(trace.entry)
+    trace?.entry && typeof trace.entry === "object" && !Array.isArray(trace.entry)
       ? trace.entry
       : { value: trace?.entry ?? null };
   return {
@@ -69,25 +61,14 @@ export function compactFoundryTraceEntry({
     row_index: rowIndex,
     trace_kind: traceKind,
     path: trace?.path ?? null,
-    status:
-      asText(entry.status ?? entry.decision_status ?? entry.decisionStatus) ||
-      null,
-    action_item_code:
-      asText(entry.action_item_code ?? entry.actionItemCode ?? entry.code) ||
-      null,
+    status: asText(entry.status ?? entry.decision_status ?? entry.decisionStatus) || null,
+    action_item_code: asText(entry.action_item_code ?? entry.actionItemCode ?? entry.code) || null,
     reference_id:
-      asText(
-        entry.reference_id ??
-          entry.referenceId ??
-          entry.ref_object_id ??
-          entry.refObjectId,
-      ) || null,
+      asText(entry.reference_id ?? entry.referenceId ?? entry.ref_object_id ?? entry.refObjectId) ||
+      null,
     reference_version:
       asText(
-        entry.reference_version ??
-          entry.referenceVersion ??
-          entry.ref_version ??
-          entry.refVersion,
+        entry.reference_version ?? entry.referenceVersion ?? entry.ref_version ?? entry.refVersion,
       ) || null,
     blocked_path:
       asText(
@@ -97,38 +78,25 @@ export function compactFoundryTraceEntry({
           entry.fieldPath ??
           entry.path,
       ) || null,
-    reason:
-      asText(entry.reason ?? entry.deferred_reason ?? entry.deferredReason) ||
-      null,
+    reason: asText(entry.reason ?? entry.deferred_reason ?? entry.deferredReason) || null,
     next_action:
-      asText(
-        entry.next_action ??
-          entry.nextAction ??
-          entry.follow_up ??
-          entry.followUp,
-      ) || null,
+      asText(entry.next_action ?? entry.nextAction ?? entry.follow_up ?? entry.followUp) || null,
     evidence:
-      entry.evidence ??
-      entry.source_evidence ??
-      entry.sourceEvidence ??
-      entry.trace ??
-      null,
+      entry.evidence ?? entry.source_evidence ?? entry.sourceEvidence ?? entry.trace ?? null,
     trace_sha256: sha256Text(JSON.stringify(entry)),
   };
 }
 
 export function foundryTraceSummary({ datasetType, identity, row, rowIndex }) {
-  const unresolved = collectCommonOtherTraceEntries(
-    row,
-    "tiangongfoundry:unresolvedTrace",
-  ).map((trace) =>
-    compactFoundryTraceEntry({
-      datasetType,
-      identity,
-      rowIndex,
-      traceKind: "unresolved_trace",
-      trace,
-    }),
+  const unresolved = collectCommonOtherTraceEntries(row, "tiangongfoundry:unresolvedTrace").map(
+    (trace) =>
+      compactFoundryTraceEntry({
+        datasetType,
+        identity,
+        rowIndex,
+        traceKind: "unresolved_trace",
+        trace,
+      }),
   );
   const sourceExchangeCompleteness = collectCommonOtherTraceEntries(
     row,

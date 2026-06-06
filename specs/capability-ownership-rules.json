@@ -35,11 +35,7 @@
     },
     {
       "owner_project": "tidas-tools",
-      "owns": [
-        "external LCA package parsing",
-        "format detection",
-        "TIDAS/ILCD conversion reports"
-      ]
+      "owns": ["external LCA package parsing", "format detection", "TIDAS/ILCD conversion reports"]
     },
     {
       "owner_project": "tiangong-lca-cli",
@@ -75,31 +71,19 @@
       "use_when": [
         "AI needs full schema text, methodology YAML, runtime rulesets, or a stable context pack"
       ],
-      "examples": [
-        "dataset context-pack",
-        "SDK getTidasContractPack"
-      ]
+      "examples": ["dataset context-pack", "SDK getTidasContractPack"]
     },
     {
       "id": "source-package-conversion",
       "route_to": "tidas-tools / tiangong-lca-cli",
-      "use_when": [
-        "the input is a supported packaged LCA dataset"
-      ],
-      "examples": [
-        "dataset import-lca convert"
-      ]
+      "use_when": ["the input is a supported packaged LCA dataset"],
+      "examples": ["dataset import-lca convert"]
     },
     {
       "id": "source-document-authoring",
       "route_to": "tiangong-lca-cli / tiangong-lca-skills",
-      "use_when": [
-        "the input is PDF, Excel, image, web export, screenshot, or free text"
-      ],
-      "examples": [
-        "dataset author",
-        "$tidas-data-import"
-      ]
+      "use_when": ["the input is PDF, Excel, image, web export, screenshot, or free text"],
+      "examples": ["dataset author", "$tidas-data-import"]
     },
     {
       "id": "external-source-evidence-skill",
@@ -118,11 +102,7 @@
       "use_when": [
         "the change only selects capabilities, records manifests, updates task state, or checks policy"
       ],
-      "examples": [
-        "route-task",
-        "capability registry update",
-        "dataset-curation-gate"
-      ]
+      "examples": ["route-task", "capability registry update", "dataset-curation-gate"]
     }
   ],
   "required_follow_up_fields": [

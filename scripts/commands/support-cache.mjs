@@ -1,8 +1,7 @@
 import process from "node:process";
 import { defaultCanonicalFlowPropertyMappings } from "../lib/canonical-support-mappings.mjs";
 
-const defaultCanonicalSupportCacheFile =
-  "specs/canonical-support/flow-properties-unit-groups.json";
+const defaultCanonicalSupportCacheFile = "specs/canonical-support/flow-properties-unit-groups.json";
 
 export function createSupportCacheCommands({
   asText,
@@ -17,21 +16,15 @@ export function createSupportCacheCommands({
 }) {
   function deriveSupabaseProjectBaseUrl(apiBaseUrl) {
     const normalized = asText(apiBaseUrl).replace(/\/+$/u, "");
-    if (normalized.endsWith("/functions/v1"))
-      return normalized.replace(/\/functions\/v1$/u, "");
-    if (normalized.endsWith("/rest/v1"))
-      return normalized.replace(/\/rest\/v1$/u, "");
+    if (normalized.endsWith("/functions/v1")) return normalized.replace(/\/functions\/v1$/u, "");
+    if (normalized.endsWith("/rest/v1")) return normalized.replace(/\/rest\/v1$/u, "");
     if (/^https?:\/\/[^/]+$/u.test(normalized)) return normalized;
-    throw new Error(
-      "Cannot derive Supabase project URL from TIANGONG_LCA_API_BASE_URL.",
-    );
+    throw new Error("Cannot derive Supabase project URL from TIANGONG_LCA_API_BASE_URL.");
   }
 
   function decodeUserApiKey(userApiKey) {
     try {
-      const decoded = JSON.parse(
-        Buffer.from(asText(userApiKey), "base64").toString("utf8"),
-      );
+      const decoded = JSON.parse(Buffer.from(asText(userApiKey), "base64").toString("utf8"));
       const email = asText(decoded.email);
       const password = asText(decoded.password);
       if (!email || !password) throw new Error("missing email/password");
@@ -58,18 +51,12 @@ export function createSupportCacheCommands({
       }
     }
     if (!response.ok) {
-      throw new Error(
-        `Supabase request failed ${response.status} ${response.statusText}: ${text}`,
-      );
+      throw new Error(`Supabase request failed ${response.status} ${response.statusText}: ${text}`);
     }
     return { response, payload };
   }
 
-  async function signInSupabaseUser({
-    projectUrl,
-    publishableKey,
-    credentials,
-  }) {
+  async function signInSupabaseUser({ projectUrl, publishableKey, credentials }) {
     const { payload } = await supabaseJsonRequest(
       `${projectUrl}/auth/v1/token?grant_type=password`,
       {
@@ -120,9 +107,7 @@ export function createSupportCacheCommands({
         headers: supabaseRestHeaders({ publishableKey, accessToken }),
       });
       if (!Array.isArray(payload)) {
-        throw new Error(
-          `List rows failed for ${table}: response is not an array.`,
-        );
+        throw new Error(`List rows failed for ${table}: response is not an array.`);
       }
       rows.push(...payload);
       if (payload.length < pageSize) break;
@@ -134,27 +119,20 @@ export function createSupportCacheCommands({
     const root = row?.json?.flowPropertyDataSet ?? {};
     const info = root.flowPropertiesInformation ?? {};
     const data = info.dataSetInformation ?? {};
-    const referenceUnitGroup =
-      info.quantitativeReference?.referenceToReferenceUnitGroup ?? {};
+    const referenceUnitGroup = info.quantitativeReference?.referenceToReferenceUnitGroup ?? {};
     return {
       id: asText(row?.id),
       version: asText(row?.version),
       state_code: typeof row?.state_code === "number" ? row.state_code : null,
       name: supportText(data["common:name"] ?? data["common:shortName"]),
-      short_description: supportText(
-        data["common:shortName"] ?? data["common:name"],
-      ),
+      short_description: supportText(data["common:shortName"] ?? data["common:name"]),
       classification: supportText(
-        data.classificationInformation?.["common:classification"]?.[
-          "common:class"
-        ],
+        data.classificationInformation?.["common:classification"]?.["common:class"],
       ),
       reference_unit_group: {
         id: asText(referenceUnitGroup["@refObjectId"]),
         version: asText(referenceUnitGroup["@version"]),
-        short_description: supportText(
-          referenceUnitGroup["common:shortDescription"],
-        ),
+        short_description: supportText(referenceUnitGroup["common:shortDescription"]),
       },
     };
   }
@@ -173,16 +151,11 @@ export function createSupportCacheCommands({
       version: asText(row?.version),
       state_code: typeof row?.state_code === "number" ? row.state_code : null,
       name: supportText(data["common:name"] ?? data["common:shortName"]),
-      short_description: supportText(
-        data["common:shortName"] ?? data["common:name"],
-      ),
+      short_description: supportText(data["common:shortName"] ?? data["common:name"]),
       classification: supportText(
-        data.classificationInformation?.["common:classification"]?.[
-          "common:class"
-        ],
+        data.classificationInformation?.["common:classification"]?.["common:class"],
       ),
-      reference_unit:
-        info.quantitativeReference?.referenceToReferenceUnit ?? null,
+      reference_unit: info.quantitativeReference?.referenceToReferenceUnit ?? null,
       units,
     };
   }
@@ -202,12 +175,8 @@ export function createSupportCacheCommands({
       };
     }
 
-    const projectUrl = deriveSupabaseProjectBaseUrl(
-      process.env.TIANGONG_LCA_API_BASE_URL,
-    );
-    const publishableKey = asText(
-      process.env.TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY,
-    );
+    const projectUrl = deriveSupabaseProjectBaseUrl(process.env.TIANGONG_LCA_API_BASE_URL);
+    const publishableKey = asText(process.env.TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY);
     const credentials = decodeUserApiKey(process.env.TIANGONG_LCA_API_KEY);
     if (!publishableKey) {
       throw new Error("TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY is required.");
@@ -219,10 +188,7 @@ export function createSupportCacheCommands({
     });
     const stateCode = Number(options.stateCode ?? 100);
     const outPath = resolveRepoPath(
-      options.out ||
-        options.output ||
-        options.cacheFile ||
-        defaultCanonicalSupportCacheFile,
+      options.out || options.output || options.cacheFile || defaultCanonicalSupportCacheFile,
     );
     const existing = fileExists(outPath) ? readJson(outPath) : {};
     const [flowPropertyRows, unitGroupRows] = await Promise.all([

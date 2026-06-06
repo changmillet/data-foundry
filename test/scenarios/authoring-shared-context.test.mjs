@@ -1,76 +1,19 @@
 import test from "node:test";
-import {
-  writeReadyFinalizeFixture,
-} from "../fixtures/finalize-fixtures.mjs";
-import {
-  annualSupplyFixtureRoot,
-  classificationFixtureRoot,
-  elementaryFlowManifestFixtureRoot,
-  finalizeAutoQueueFixtureRoot,
-  finalizeCurationGateFixtureRoot,
-  finalizeIdentityPreflightFixtureRoot,
-  finalizeLocationFixtureRoot,
-  fixtureRoot,
-  flowClassificationFixtureRoot,
-  flowIdentityReferenceFixtureRoot,
-  identityPreflightRunFixtureRoot,
-  locationFixtureRoot,
-  mutationFixtureRoot,
-  packageContextFixtureRoot,
-  qaPathFixtureRoot,
-  referenceClosureFixtureRoot,
-  sourceExchangeFixtureRoot,
-  supportManifestFixtureRoot,
-} from "../fixtures/fixture-roots.mjs";
+import { fixtureRoot } from "../fixtures/fixture-roots.mjs";
 import {
   assert,
   blockerCodes,
-  bundledCategorySchemaNames,
-  contextTextByPathSuffix,
-  crypto,
   fs,
-  fullContextKinds,
-  fullContextPatterns,
-  itemBlockerCodes,
   path,
   readJson,
-  readJsonLines,
   rel,
   repoRoot,
   runFoundry,
-  scopeBlockerCodes,
   sha256Text,
-  siblingCliBuildAvailable,
-  siblingCliRoot,
-  spawnSync,
-  targetUserId,
   writeJson,
-  writeJsonLines,
   writeText,
 } from "../fixtures/foundry-core.mjs";
-import {
-  contextFile,
-  createFixture,
-  writeContextPackFiles,
-  writeDecisionTaskFixture,
-} from "../fixtures/full-context-fixtures.mjs";
-import {
-  writeCompletedIdentityPreflightIndex,
-} from "../fixtures/identity-fixtures.mjs";
-import {
-  createMutationManifestFixture,
-} from "../fixtures/mutation-fixtures.mjs";
-import {
-  flowRow,
-  flowRowWithClassification,
-  processRowWithDefaultClassification,
-  processRowWithDeferredTrace,
-  processRowWithFlowRef,
-  processRowWithInvalidAnnualSupply,
-  processRowWithInvalidLocation,
-  processRowWithOnlyOutputExchange,
-  sourceRow,
-} from "../fixtures/row-builders.mjs";
+import { processRowWithInvalidLocation } from "../fixtures/row-builders.mjs";
 
 test("authoring task batch writes shared full-context bundle for repeated package context", () => {
   const root = path.join(fixtureRoot, "authoring-task-shared-context");
@@ -96,44 +39,38 @@ test("authoring task batch writes shared full-context bundle for repeated packag
     path: "processDataSet.processInformation.dataSetInformation.generalComment",
     ai_required: true,
   };
-  const packages = ["11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222"].map(
-    (processId) => {
-      const row = processRowWithInvalidLocation(processId);
-      row.processDataSet.processInformation.geography.locationOfOperationSupplyOrProduction[
-        "@location"
-      ] = "CH";
-      const packagePath = path.join(
-        packageDir,
-        `process-${processId}.authoring-package.json`,
-      );
-      writeJson(packagePath, {
-        schema_version: 2,
-        profile: "bafu",
-        dataset_type: "process",
-        entity_id: processId,
-        version: "00.00.001",
-        contract_context_files: contextFiles,
-        full_context_ai_completion: {
-          required: true,
-          required_context_kinds: ["schema", "methodology_yaml"],
-        },
-        missing_context_files: [],
-        action_items: [actionItem],
-        source_row: row,
-        entity_payload: row,
-      });
-      return {
-        processId,
-        packagePath,
-        sha256: sha256Text(fs.readFileSync(packagePath, "utf8")),
-      };
-    },
-  );
-  const curationGateReport = path.join(
-    root,
-    "curation-gate",
-    "dataset-curation-gate-report.json",
-  );
+  const packages = [
+    "11111111-1111-4111-8111-111111111111",
+    "22222222-2222-4222-8222-222222222222",
+  ].map((processId) => {
+    const row = processRowWithInvalidLocation(processId);
+    row.processDataSet.processInformation.geography.locationOfOperationSupplyOrProduction[
+      "@location"
+    ] = "CH";
+    const packagePath = path.join(packageDir, `process-${processId}.authoring-package.json`);
+    writeJson(packagePath, {
+      schema_version: 2,
+      profile: "bafu",
+      dataset_type: "process",
+      entity_id: processId,
+      version: "00.00.001",
+      contract_context_files: contextFiles,
+      full_context_ai_completion: {
+        required: true,
+        required_context_kinds: ["schema", "methodology_yaml"],
+      },
+      missing_context_files: [],
+      action_items: [actionItem],
+      source_row: row,
+      entity_payload: row,
+    });
+    return {
+      processId,
+      packagePath,
+      sha256: sha256Text(fs.readFileSync(packagePath, "utf8")),
+    };
+  });
+  const curationGateReport = path.join(root, "curation-gate", "dataset-curation-gate-report.json");
   writeJson(curationGateReport, {
     schema_version: 2,
     status: "blocked_needs_foundry_ai_authoring",
@@ -179,10 +116,7 @@ test("authoring task batch writes shared full-context bundle for repeated packag
     assert.equal(task.json.counts.duplicate_context_references, 2);
     assert.ok(task.json.counts.duplicate_context_bytes_avoided > 0);
     assert.ok(task.json.files.shared_context_bundle);
-    assert.equal(
-      task.json.shared_context_bundle.path,
-      task.json.files.shared_context_bundle,
-    );
+    assert.equal(task.json.shared_context_bundle.path, task.json.files.shared_context_bundle);
     assert.equal(
       task.json.files.shared_context_bundle,
       taskCached.json.files.shared_context_bundle,
@@ -194,46 +128,34 @@ test("authoring task batch writes shared full-context bundle for repeated packag
       task.json.tasks[0].context.shared_context_bundle.path,
       task.json.files.shared_context_bundle,
     );
-    const bundle = readJson(
-      path.join(repoRoot, task.json.files.shared_context_bundle),
-    );
+    const bundle = readJson(path.join(repoRoot, task.json.files.shared_context_bundle));
     assert.equal(bundle.sha256, task.json.shared_context_bundle.sha256);
-    const { generated_at_utc: _generatedAt, hash_scope: _hashScope, sha256, ...stableBundlePayload } = bundle;
+    const {
+      generated_at_utc: _generatedAt,
+      hash_scope: _hashScope,
+      sha256,
+      ...stableBundlePayload
+    } = bundle;
     assert.equal(sha256, sha256Text(JSON.stringify(stableBundlePayload)));
     assert.equal(bundle.counts.files, 2);
     assert.equal(bundle.counts.references, 4);
-    assert.deepEqual(
-      bundle.files.map((file) => file.kind).sort(),
-      ["methodology_yaml", "schema"],
-    );
-    assert.match(
-      bundle.files.find((file) => file.kind === "schema").text,
-      /process schema/u,
-    );
+    assert.deepEqual(bundle.files.map((file) => file.kind).sort(), ["methodology_yaml", "schema"]);
+    assert.match(bundle.files.find((file) => file.kind === "schema").text, /process schema/u);
     assert.equal(
-      task.json.tasks[0].context.contract_context_files.some((file) =>
-        Object.hasOwn(file, "text"),
-      ),
+      task.json.tasks[0].context.contract_context_files.some((file) => Object.hasOwn(file, "text")),
       false,
     );
-    const firstTaskJson = readJson(
-      path.join(repoRoot, task.json.tasks[0].files.task_json),
-    );
+    const firstTaskJson = readJson(path.join(repoRoot, task.json.tasks[0].files.task_json));
     assert.equal(
       firstTaskJson.context.shared_context_bundle.path,
       task.json.files.shared_context_bundle,
     );
     assert.equal(
-      firstTaskJson.context.contract_context_files.some((file) =>
-        Object.hasOwn(file, "text"),
-      ),
+      firstTaskJson.context.contract_context_files.some((file) => Object.hasOwn(file, "text")),
       false,
     );
     assert.match(
-      fs.readFileSync(
-        path.join(repoRoot, task.json.tasks[0].files.task_markdown),
-        "utf8",
-      ),
+      fs.readFileSync(path.join(repoRoot, task.json.tasks[0].files.task_markdown), "utf8"),
       /shared context bundle:/u,
     );
   } finally {
@@ -271,10 +193,7 @@ test("authoring patch collect verifies referenced shared full-context bundle", (
     message: "General comment still contains placeholder-like content.",
     ai_required: true,
   };
-  const packagePath = path.join(
-    packageDir,
-    `process-${processId}.authoring-package.json`,
-  );
+  const packagePath = path.join(packageDir, `process-${processId}.authoring-package.json`);
   writeJson(packagePath, {
     schema_version: 2,
     profile: "bafu",
@@ -291,11 +210,7 @@ test("authoring patch collect verifies referenced shared full-context bundle", (
     source_row: row,
     entity_payload: row,
   });
-  const curationGateReport = path.join(
-    root,
-    "curation-gate",
-    "dataset-curation-gate-report.json",
-  );
+  const curationGateReport = path.join(root, "curation-gate", "dataset-curation-gate-report.json");
   writeJson(curationGateReport, {
     schema_version: 2,
     status: "blocked_needs_foundry_ai_authoring",
@@ -309,9 +224,7 @@ test("authoring patch collect verifies referenced shared full-context bundle", (
         status: "needs_foundry_ai_authoring",
         action_item_count: 1,
         authoring_package: rel(packagePath),
-        authoring_package_sha256: sha256Text(
-          fs.readFileSync(packagePath, "utf8"),
-        ),
+        authoring_package_sha256: sha256Text(fs.readFileSync(packagePath, "utf8")),
       },
     ],
   });
@@ -330,10 +243,7 @@ test("authoring patch collect verifies referenced shared full-context bundle", (
     assert.equal(task.json.status, "ready_for_ai_authoring_batch");
     const taskEntry = task.json.tasks[0];
     const taskActionItem = taskEntry.action_items[0];
-    const outputPatchFile = path.join(
-      repoRoot,
-      taskEntry.files.output_patch_file,
-    );
+    const outputPatchFile = path.join(repoRoot, taskEntry.files.output_patch_file);
     writeJson(outputPatchFile, {
       schema_version: 1,
       kind: "tiangong_foundry_dataset_patch",
@@ -349,7 +259,8 @@ test("authoring patch collect verifies referenced shared full-context bundle", (
               path: "/processDataSet/processInformation/dataSetInformation/generalComment",
               value: {
                 "@xml:lang": "en",
-                "#text": "The source row was reviewed against the process schema and BAFU authoring context.",
+                "#text":
+                  "The source row was reviewed against the process schema and BAFU authoring context.",
               },
               basis:
                 "The converted source row and schema context support replacing placeholder-like prose with source-traced process documentation.",
@@ -397,14 +308,10 @@ test("authoring patch collect verifies referenced shared full-context bundle", (
     assert.equal(missingCollect.code, 1);
     assert.equal(missingCollect.json.status, "blocked");
     assert.ok(
-      blockerCodes(missingCollect.json).has(
-        "authoring_manifest_shared_context_bundle_missing",
-      ),
+      blockerCodes(missingCollect.json).has("authoring_manifest_shared_context_bundle_missing"),
     );
     assert.ok(
-      blockerCodes(missingCollect.json).has(
-        "authoring_task_shared_context_bundle_missing",
-      ),
+      blockerCodes(missingCollect.json).has("authoring_task_shared_context_bundle_missing"),
     );
 
     writeJson(bundlePath, {

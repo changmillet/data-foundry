@@ -107,23 +107,17 @@ export function createPostAuthoringFinalizeCommands({
     return fallbackType;
   }
 
-  function applySourceContactRewrites({
-    datasetType,
-    rowsFile,
-    outDir,
-    options,
-  }) {
-    const profile = String(options.profile || "generic").trim().toLowerCase();
+  function applySourceContactRewrites({ datasetType, rowsFile, outDir, options }) {
+    const profile = String(options.profile || "generic")
+      .trim()
+      .toLowerCase();
     const supportedForProfile = profile === "bafu";
     const outputRowsFile = path.join(
       outDir,
       `${datasetRowsFileStem(datasetType)}.source-contact-rewritten.jsonl`,
     );
     const reportPath = path.join(outDir, "source-contact-rewrites-report.json");
-    const sourceReferenceRewritesPath = path.join(
-      outDir,
-      "source-reference-rewrites.jsonl",
-    );
+    const sourceReferenceRewritesPath = path.join(outDir, "source-reference-rewrites.jsonl");
     const supportRowsPath = path.join(outDir, "support.jsonl");
     fs.mkdirSync(outDir, { recursive: true });
     if (!supportedForProfile || booleanOption(options.skipSourceContactRewrites)) {
@@ -165,9 +159,7 @@ export function createPostAuthoringFinalizeCommands({
     });
     const libraryContactIdentity = datasetIdentity(libraryContact, "contact");
     const libraryContactName = asText(
-      libraryContact.contactDataSet.contactInformation.dataSetInformation[
-        "common:name"
-      ]?.["#text"],
+      libraryContact.contactDataSet.contactInformation.dataSetInformation["common:name"]?.["#text"],
     );
     const libraryContactRef = contactGlobalReference({
       id: libraryContactIdentity.id,
@@ -198,8 +190,7 @@ export function createPostAuthoringFinalizeCommands({
     writeJsonLines(sourceReferenceRewritesPath, sourceReferenceRewriteRows);
     writeJsonLines(supportRowsPath, [libraryContact]);
     const totalRewrites =
-      Number(contactRewriteStats.rewritten ?? 0) +
-      Number(stats.source_reference_rewrites ?? 0);
+      Number(contactRewriteStats.rewritten ?? 0) + Number(stats.source_reference_rewrites ?? 0);
     const report = {
       schema_version: 1,
       status: totalRewrites > 0 ? "completed" : "completed_no_rewrites",
@@ -224,9 +215,7 @@ export function createPostAuthoringFinalizeCommands({
         version: libraryContactIdentity.version,
         name: libraryContactName,
         previous_ids: [...contactRewriteStats.previous_ids].sort(),
-        previous_descriptions: [
-          ...contactRewriteStats.previous_descriptions,
-        ].sort(),
+        previous_descriptions: [...contactRewriteStats.previous_descriptions].sort(),
       },
       files: {
         output_rows: repoRelativePath(outputRowsFile),
@@ -272,28 +261,19 @@ export function createPostAuthoringFinalizeCommands({
       );
     }
 
-    const rowsFile = resolveRepoPath(
-      options.rowsFile || options.input || options.rows,
-    );
+    const rowsFile = resolveRepoPath(options.rowsFile || options.input || options.rows);
     if (!rowsFile || !fileExists(rowsFile)) {
-      throw new Error(
-        "--rows-file is required and must point to patched or authored TIDAS rows.",
-      );
+      throw new Error("--rows-file is required and must point to patched or authored TIDAS rows.");
     }
 
     const outDir = resolveRepoPath(
-      options.outDir ||
-        `.foundry/workspaces/${datasetType}-post-authoring-finalize`,
+      options.outDir || `.foundry/workspaces/${datasetType}-post-authoring-finalize`,
     );
     fs.mkdirSync(outDir, { recursive: true });
-    const fullContextRequirement = profileFullContextRequirement(
-      options.profile,
-      datasetType,
-    );
+    const fullContextRequirement = profileFullContextRequirement(options.profile, datasetType);
     const identityPreflightRequired =
       ["flow", "process"].includes(datasetType) &&
-      (booleanOption(options.requireIdentityPreflight) ||
-        Boolean(fullContextRequirement));
+      (booleanOption(options.requireIdentityPreflight) || Boolean(fullContextRequirement));
     const identityPreflightRunStage = runFinalizeIdentityPreflightStage({
       rowsFile,
       outDir,
@@ -319,22 +299,19 @@ export function createPostAuthoringFinalizeCommands({
       Number(identityReferenceRewriteStage.counts?.flow_reference_rewrites ?? 0) > 0
         ? resolveRepoPath(identityReferenceRewriteStage.output_rows_file)
         : rowsFile;
-    const unresolvedExchangeExternalizeStage =
-      externalizeUnresolvedProcessFlowExchanges({
-        datasetType,
-        rowsFile: identityRewrittenRowsFile,
-        outFile: path.join(
-          outDir,
-          "unresolved-exchange-externalization",
-          `${datasetRowsFileStem(datasetType)}.unresolved-exchanges-externalized.jsonl`,
-        ),
-        outDir: path.join(outDir, "unresolved-exchange-externalization"),
-        options,
-      });
+    const unresolvedExchangeExternalizeStage = externalizeUnresolvedProcessFlowExchanges({
+      datasetType,
+      rowsFile: identityRewrittenRowsFile,
+      outFile: path.join(
+        outDir,
+        "unresolved-exchange-externalization",
+        `${datasetRowsFileStem(datasetType)}.unresolved-exchanges-externalized.jsonl`,
+      ),
+      outDir: path.join(outDir, "unresolved-exchange-externalization"),
+      options,
+    });
     const preCleanupRowsFile =
-      Number(
-        unresolvedExchangeExternalizeStage.counts?.externalized_exchanges ?? 0,
-      ) > 0
+      Number(unresolvedExchangeExternalizeStage.counts?.externalized_exchanges ?? 0) > 0
         ? resolveRepoPath(unresolvedExchangeExternalizeStage.output_rows_file)
         : identityRewrittenRowsFile;
     const sourceContactRewriteStage = applySourceContactRewrites({
@@ -344,8 +321,7 @@ export function createPostAuthoringFinalizeCommands({
       options,
     });
     const sourceContactRowsFile = resolveRepoPath(
-      sourceContactRewriteStage.files?.output_rows ||
-        sourceContactRewriteStage.output_rows_file,
+      sourceContactRewriteStage.files?.output_rows || sourceContactRewriteStage.output_rows_file,
     );
     const sourceContactSupportRowsFile = resolveRepoPath(
       sourceContactRewriteStage.files?.support_rows,
@@ -358,48 +334,45 @@ export function createPostAuthoringFinalizeCommands({
           options.prepareSourceContactSupport ||
           options.autoFinalizeSourceContactSupport,
       );
-    const sourceContactSupportFinalize =
-      sourceContactSupportFinalizeRequested
-        ? runDatasetPostAuthoringFinalize({
-            ...options,
-            type: "contact",
-            rowsFile: sourceContactSupportRowsFile,
-            outDir: path.join(outDir, "source-contact-support-finalize"),
-            skipSourceContactRewrites: true,
-            finalizeSourceContactSupport: false,
-            prepareSourceContactSupport: false,
-            autoFinalizeSourceContactSupport: false,
-            requireIdentityPreflight: false,
-            runIdentityPreflight: false,
-            identityPreflightIndex: null,
-            identityPreflightRequests: null,
-            identityPreflightRequestsIndex: null,
-            classificationDecisionApplyReport: null,
-            classificationDecisionsApplyReport: null,
-            locationDecisionApplyReport: null,
-            locationDecisionsApplyReport: null,
-            identityDecisionApplyReport: null,
-            identityDecisionsApplyReport: null,
-            identityDecisionApplyReports: [],
-            identityDecisionsApplyReports: [],
-            patchCollectReport: null,
-            authoringPatchCollectReport: null,
-            patchApplyReport: null,
-          })
-        : {
-            status: sourceContactSupportRowsFile
-              ? "available_not_requested"
-              : "not_required",
-            counts: { blockers: 0, write_candidates: 0 },
-            files: {
-              report: null,
-              final_rows: sourceContactSupportRowsFile
-                ? repoRelativePath(sourceContactSupportRowsFile)
-                : null,
-            },
-            commit_handoff: { status: "not_requested", blockers: [] },
-            blockers: [],
-          };
+    const sourceContactSupportFinalize = sourceContactSupportFinalizeRequested
+      ? runDatasetPostAuthoringFinalize({
+          ...options,
+          type: "contact",
+          rowsFile: sourceContactSupportRowsFile,
+          outDir: path.join(outDir, "source-contact-support-finalize"),
+          skipSourceContactRewrites: true,
+          finalizeSourceContactSupport: false,
+          prepareSourceContactSupport: false,
+          autoFinalizeSourceContactSupport: false,
+          requireIdentityPreflight: false,
+          runIdentityPreflight: false,
+          identityPreflightIndex: null,
+          identityPreflightRequests: null,
+          identityPreflightRequestsIndex: null,
+          classificationDecisionApplyReport: null,
+          classificationDecisionsApplyReport: null,
+          locationDecisionApplyReport: null,
+          locationDecisionsApplyReport: null,
+          identityDecisionApplyReport: null,
+          identityDecisionsApplyReport: null,
+          identityDecisionApplyReports: [],
+          identityDecisionsApplyReports: [],
+          patchCollectReport: null,
+          authoringPatchCollectReport: null,
+          patchApplyReport: null,
+        })
+      : {
+          status: sourceContactSupportRowsFile ? "available_not_requested" : "not_required",
+          counts: { blockers: 0, write_candidates: 0 },
+          files: {
+            report: null,
+            final_rows: sourceContactSupportRowsFile
+              ? repoRelativePath(sourceContactSupportRowsFile)
+              : null,
+          },
+          commit_handoff: { status: "not_requested", blockers: [] },
+          blockers: [],
+        };
 
     const canonicalSupportRewriteStage = applyCanonicalSupportRewrites({
       datasetType,
@@ -416,17 +389,15 @@ export function createPostAuthoringFinalizeCommands({
       canonicalSupportRewriteStage.files?.output_rows ||
         canonicalSupportRewriteStage.output_rows_file,
     );
-    const canonicalSupportReportFile = resolveRepoPath(
-      canonicalSupportRewriteStage.files?.report,
+    const canonicalSupportReportFile = resolveRepoPath(canonicalSupportRewriteStage.files?.report);
+    const canonicalSupportPrewriteBlockers = ensureArray(canonicalSupportRewriteStage.blockers).map(
+      (blocker) => ({
+        ...blocker,
+        stage: "canonical_support_rewrites",
+        source: "canonical_support_rewrites",
+        severity: blocker.severity || "error",
+      }),
     );
-    const canonicalSupportPrewriteBlockers = ensureArray(
-      canonicalSupportRewriteStage.blockers,
-    ).map((blocker) => ({
-      ...blocker,
-      stage: "canonical_support_rewrites",
-      source: "canonical_support_rewrites",
-      severity: blocker.severity || "error",
-    }));
 
     const cleanup = runDatasetCurationCleanup({
       repoRoot,
@@ -440,8 +411,7 @@ export function createPostAuthoringFinalizeCommands({
           options.originalSourceRowsFile ||
           options.originalRowsFile,
         outDir: path.join(outDir, "cleanup"),
-        outFile:
-          options.cleanedRowsFile || options.cleanedRows || options.outFile,
+        outFile: options.cleanedRowsFile || options.cleanedRows || options.outFile,
       },
     });
     const cleanedRowsFile = resolveRepoPath(
@@ -458,15 +428,14 @@ export function createPostAuthoringFinalizeCommands({
       identityReferenceRewriteStage,
     });
     const curationQueueDir =
-      curationQueueStage.queue_dir ||
-      resolveRepoPath(options.queueDir || options.curationQueueDir);
+      curationQueueStage.queue_dir || resolveRepoPath(options.queueDir || options.curationQueueDir);
 
     const schemaOutDir = path.join(outDir, "schema", datasetType);
     const schemaStage = runTiangongJsonStage("schema_validate", [
-        "dataset",
-        "validate",
-        "--type",
-        datasetType === "support" ? "auto" : datasetType,
+      "dataset",
+      "validate",
+      "--type",
+      datasetType === "support" ? "auto" : datasetType,
       "--input",
       cleanedRowsFile,
       "--out-dir",
@@ -533,8 +502,7 @@ export function createPostAuthoringFinalizeCommands({
       ["files.report"],
       path.join(locationAuditOutDir, "outputs", "location-audit-report.json"),
     );
-    const locationAuditBlockers =
-      blockersFromLocationAuditStage(locationAuditStage);
+    const locationAuditBlockers = blockersFromLocationAuditStage(locationAuditStage);
 
     const curationGate = requiresCurationGate
       ? runDatasetCurationGate({
@@ -545,27 +513,22 @@ export function createPostAuthoringFinalizeCommands({
             rowsFile: cleanedRowsFile,
             schemaReport: schemaStage.report_file,
             qaReport: qaStage.report_file,
-  	          outDir: path.join(outDir, "curation-gate"),
-  		          requireIdentityPreflight: identityPreflightRequired,
+            outDir: path.join(outDir, "curation-gate"),
+            requireIdentityPreflight: identityPreflightRequired,
             identityReferenceRewrites: identityReferenceRewriteFile,
             classificationDecisionApplyReport:
               options.classificationDecisionApplyReport ||
               options.classificationDecisionsApplyReport,
             unresolvedExchangeExternalizationReport:
               unresolvedExchangeExternalizeStage.files?.report,
-            sourceContactRewriteReport:
-              sourceContactRewriteStage.files?.report,
+            sourceContactRewriteReport: sourceContactRewriteStage.files?.report,
             canonicalSupportRewriteReport: canonicalSupportReportFile,
             cleanupReport: cleanupReportFile,
-  	          identityDecisionApplyReport:
-              options.identityDecisionApplyReport ||
-              options.identityDecisionsApplyReport,
-  	          queueDir: curationQueueDir,
+            identityDecisionApplyReport:
+              options.identityDecisionApplyReport || options.identityDecisionsApplyReport,
+            queueDir: curationQueueDir,
             requireQueueContext:
-              booleanOption(
-                options.requireQueueContext ||
-                  options.requireCurationQueueContext,
-              ) ||
+              booleanOption(options.requireQueueContext || options.requireCurationQueueContext) ||
               (Boolean(fullContextRequirement) && datasetType === "process"),
           },
         })
@@ -593,10 +556,10 @@ export function createPostAuthoringFinalizeCommands({
       datasetType === "support" || supportTypes.includes(datasetType)
         ? `${datasetType}-save-draft`
         : datasetType === "flow"
-        ? "flow-publish-version"
-        : datasetType === "lifecyclemodel"
-          ? "lifecyclemodel-save-draft"
-          : "process-save-draft",
+          ? "flow-publish-version"
+          : datasetType === "lifecyclemodel"
+            ? "lifecyclemodel-save-draft"
+            : "process-save-draft",
     );
     const dryRunArgs = (() => {
       if (datasetType === "support" || supportTypes.includes(datasetType)) {
@@ -660,20 +623,20 @@ export function createPostAuthoringFinalizeCommands({
           datasetType === "support" || supportTypes.includes(datasetType)
             ? `${datasetType}_save_draft_dry_run`
             : datasetType === "flow"
-            ? "flow_publish_version_dry_run"
-            : datasetType === "lifecyclemodel"
-              ? "lifecyclemodel_save_draft_dry_run"
-              : "process_save_draft_dry_run",
+              ? "flow_publish_version_dry_run"
+              : datasetType === "lifecyclemodel"
+                ? "lifecyclemodel_save_draft_dry_run"
+                : "process_save_draft_dry_run",
           dryRunArgs,
         )
       : skippedPrewriteStage(
           datasetType === "support" || supportTypes.includes(datasetType)
             ? `${datasetType}_save_draft_dry_run`
             : datasetType === "flow"
-            ? "flow_publish_version_dry_run"
-            : datasetType === "lifecyclemodel"
-              ? "lifecyclemodel_save_draft_dry_run"
-              : "process_save_draft_dry_run",
+              ? "flow_publish_version_dry_run"
+              : datasetType === "lifecyclemodel"
+                ? "lifecyclemodel_save_draft_dry_run"
+                : "process_save_draft_dry_run",
           "Skipped because schema, QA, canonical support, location audit, or post-authoring curation gate is not ready.",
         );
     if (prewriteGateReady) {
@@ -681,30 +644,12 @@ export function createPostAuthoringFinalizeCommands({
         dryRunStage,
         datasetType === "flow" ? ["files.report"] : ["files.summary_json"],
         datasetType === "support" || supportTypes.includes(datasetType)
-          ? path.join(
-              dryRunOutDir,
-              "outputs",
-              "dataset-save-draft",
-              "summary.json",
-            )
+          ? path.join(dryRunOutDir, "outputs", "dataset-save-draft", "summary.json")
           : datasetType === "flow"
-          ? path.join(
-              dryRunOutDir,
-              "flows_tidas_sdk_plus_classification_mcp_sync_report.json",
-            )
-          : datasetType === "lifecyclemodel"
-            ? path.join(
-                dryRunOutDir,
-                "outputs",
-                "save-draft-bundle",
-                "summary.json",
-              )
-            : path.join(
-                dryRunOutDir,
-                "outputs",
-                "save-draft-rpc",
-                "summary.json",
-              ),
+            ? path.join(dryRunOutDir, "flows_tidas_sdk_plus_classification_mcp_sync_report.json")
+            : datasetType === "lifecyclemodel"
+              ? path.join(dryRunOutDir, "outputs", "save-draft-bundle", "summary.json")
+              : path.join(dryRunOutDir, "outputs", "save-draft-rpc", "summary.json"),
       );
     }
 
@@ -723,11 +668,7 @@ export function createPostAuthoringFinalizeCommands({
         String(options.remoteRootPolicy || options.rootPolicy || "candidate"),
         "--json",
       ];
-      if (
-        booleanOption(
-          options.compareRootPayload || options.remoteCompareRootPayload,
-        )
-      ) {
+      if (booleanOption(options.compareRootPayload || options.remoteCompareRootPayload)) {
         remoteArgs.push("--compare-root-payload");
       }
       appendOption(
@@ -735,11 +676,7 @@ export function createPostAuthoringFinalizeCommands({
         "--target-user-id",
         options.remoteTargetUserId || options.targetUserId,
       );
-      appendOption(
-        remoteArgs,
-        "--state-code",
-        options.remoteStateCode || options.stateCode,
-      );
+      appendOption(remoteArgs, "--state-code", options.remoteStateCode || options.stateCode);
       remoteVerifyStage = prewriteGateReady
         ? runTiangongJsonStage("remote_verify_precommit", remoteArgs)
         : skippedPrewriteStage(
@@ -779,31 +716,23 @@ export function createPostAuthoringFinalizeCommands({
           options.reuseRowsFile,
         schemaReport: schemaStage.report_file,
         qaReport: requiresDeterministicQa ? qaStage.report_file : null,
-        curationGateReport: requiresCurationGate
-          ? curationGateReportFile
-          : null,
+        curationGateReport: requiresCurationGate ? curationGateReportFile : null,
         cleanupReport: cleanupReportFile,
         dryRunReport: prewriteGateReady ? dryRunStage.report_file : null,
         remoteVerifyReport: remoteVerifyReportFile,
-        unresolvedExchangeExternalizationReport:
-          unresolvedExchangeExternalizeStage.files?.report,
-        sourceContactRewriteReport:
-          sourceContactRewriteStage.files?.report,
+        unresolvedExchangeExternalizationReport: unresolvedExchangeExternalizeStage.files?.report,
+        sourceContactRewriteReport: sourceContactRewriteStage.files?.report,
         canonicalSupportRewriteReport: canonicalSupportReportFile,
         classificationDecisionApplyReport:
-          options.classificationDecisionApplyReport ||
-          options.classificationDecisionsApplyReport,
+          options.classificationDecisionApplyReport || options.classificationDecisionsApplyReport,
         locationDecisionApplyReport:
-          options.locationDecisionApplyReport ||
-          options.locationDecisionsApplyReport,
+          options.locationDecisionApplyReport || options.locationDecisionsApplyReport,
         identityDecisionApplyReport:
-          options.identityDecisionApplyReport ||
-          options.identityDecisionsApplyReport,
+          options.identityDecisionApplyReport || options.identityDecisionsApplyReport,
         identityDecisionApplyReports: identityDecisionApplyReportOptions,
         identityReferenceRewriteStatus: identityReferenceRewriteStage.status,
         identityReferenceRewriteInputRows: rowsFile,
-        identityReferenceRewriteOutputRows:
-          identityReferenceRewriteStage.output_rows_file,
+        identityReferenceRewriteOutputRows: identityReferenceRewriteStage.output_rows_file,
         sourceReferenceRewrites:
           sourceContactRewriteStage.files?.source_reference_rewrites ||
           sourceReferenceRewritesFileForRowsFile(rowsFile, options),
@@ -817,25 +746,23 @@ export function createPostAuthoringFinalizeCommands({
       options.patchCollectReport || options.authoringPatchCollectReport,
     );
     const classificationDecisionApplyReportFile = resolveRepoPath(
-      options.classificationDecisionApplyReport ||
-        options.classificationDecisionsApplyReport,
+      options.classificationDecisionApplyReport || options.classificationDecisionsApplyReport,
     );
-  	  const locationDecisionApplyReportFile = resolveRepoPath(
-  	    options.locationDecisionApplyReport || options.locationDecisionsApplyReport,
-  	  );
+    const locationDecisionApplyReportFile = resolveRepoPath(
+      options.locationDecisionApplyReport || options.locationDecisionsApplyReport,
+    );
     const stageReports = [
       {
         stage: "identity_preflight_run",
         status: identityPreflightRunStage.status,
-        exit_code:
-          [
-            "not_requested",
-            "planned",
-            "completed",
-            "completed_with_identity_findings",
-          ].includes(identityPreflightRunStage.status)
-            ? 0
-            : 1,
+        exit_code: [
+          "not_requested",
+          "planned",
+          "completed",
+          "completed_with_identity_findings",
+        ].includes(identityPreflightRunStage.status)
+          ? 0
+          : 1,
         command:
           identityPreflightRunStage.status === "not_requested"
             ? "skipped"
@@ -875,8 +802,7 @@ export function createPostAuthoringFinalizeCommands({
         stage: "source_contact_support_finalize",
         status: sourceContactSupportFinalize.status,
         exit_code:
-          sourceContactSupportFinalizeRequested &&
-          sourceContactSupportFinalize.counts?.blockers > 0
+          sourceContactSupportFinalizeRequested && sourceContactSupportFinalize.counts?.blockers > 0
             ? 1
             : 0,
         command: sourceContactSupportFinalizeRequested
@@ -884,15 +810,12 @@ export function createPostAuthoringFinalizeCommands({
           : "skipped",
         args: [],
         stderr: "",
-        report_file: resolveRepoPath(
-          sourceContactSupportFinalize.files?.report,
-        ),
+        report_file: resolveRepoPath(sourceContactSupportFinalize.files?.report),
       },
       {
         stage: "canonical_support_rewrites",
         status: canonicalSupportRewriteStage.status,
-        exit_code:
-          canonicalSupportRewriteStage.counts?.blockers > 0 ? 1 : 0,
+        exit_code: canonicalSupportRewriteStage.counts?.blockers > 0 ? 1 : 0,
         command: "foundry.dataset-canonical-support-rewrites-apply",
         args: [],
         stderr: "",
@@ -917,14 +840,11 @@ export function createPostAuthoringFinalizeCommands({
             ? 0
             : 1,
         command:
-          curationQueueStage.status === "not_required" ||
-          curationQueueStage.status === "provided"
+          curationQueueStage.status === "not_required" || curationQueueStage.status === "provided"
             ? "skipped"
             : "foundry.dataset-curation-queue-build",
         args: [],
-        stderr:
-          curationQueueStage.report?.foundry_wrapper?.stderr ||
-          "",
+        stderr: curationQueueStage.report?.foundry_wrapper?.stderr || "",
         report_file: curationQueueStage.report_file,
       },
       schemaStage,
@@ -1024,10 +944,9 @@ export function createPostAuthoringFinalizeCommands({
         source_language_only_before_import: true,
         full_context_ai_patch_evidence:
           "When the active profile requires full-context AI completion, mutation manifest must prove deterministic AI semantic evidence: classification/location decision apply evidence for queued decisions, or patch collect/apply evidence with authoring package hash, closed action items, resolution.mode, and resolution.used_context_kinds for field patches.",
-        identity_preflight_gate:
-          identityPreflightRequired
-            ? "Process/flow full-context profiles require completed CLI identity-preflight evidence from flow_hybrid_search/process_hybrid_search before post-authoring dry-run or remote write planning."
-            : "Not required for this dataset type/profile unless --require-identity-preflight is provided.",
+        identity_preflight_gate: identityPreflightRequired
+          ? "Process/flow full-context profiles require completed CLI identity-preflight evidence from flow_hybrid_search/process_hybrid_search before post-authoring dry-run or remote write planning."
+          : "Not required for this dataset type/profile unless --require-identity-preflight is provided.",
         location_code_audit:
           "Final rows must pass tiangong-lca dataset classification audit --type location against tidas_locations_category.json before remote write.",
       },
@@ -1035,103 +954,71 @@ export function createPostAuthoringFinalizeCommands({
         blockers: blockerCount,
         mutation_manifest_blockers: mutationBlockerCount,
         prewrite_gate_blockers: prewriteGateBlockers.length,
-        canonical_support_blockers:
-          canonicalSupportRewriteStage.counts?.blockers ?? 0,
-        source_contact_rewrite_input_rows:
-          sourceContactRewriteStage.counts?.input_rows ?? null,
-        source_contact_rewrite_output_rows:
-          sourceContactRewriteStage.counts?.output_rows ?? null,
+        canonical_support_blockers: canonicalSupportRewriteStage.counts?.blockers ?? 0,
+        source_contact_rewrite_input_rows: sourceContactRewriteStage.counts?.input_rows ?? null,
+        source_contact_rewrite_output_rows: sourceContactRewriteStage.counts?.output_rows ?? null,
         source_contact_reference_rewrites:
           sourceContactRewriteStage.counts?.contact_reference_rewrites ?? 0,
         source_contact_source_reference_rewrites:
           sourceContactRewriteStage.counts?.source_reference_rewrites ?? 0,
-        source_contact_support_rows:
-          sourceContactRewriteStage.counts?.support_rows ?? 0,
-        source_contact_support_finalize_status:
-          sourceContactSupportFinalize.status,
+        source_contact_support_rows: sourceContactRewriteStage.counts?.support_rows ?? 0,
+        source_contact_support_finalize_status: sourceContactSupportFinalize.status,
         source_contact_support_finalize_write_candidates:
           sourceContactSupportFinalize.counts?.write_candidates ?? 0,
         source_contact_support_finalize_blockers:
           sourceContactSupportFinalize.counts?.blockers ?? 0,
-        source_contact_support_commit_handoff_blockers:
-          ensureArray(sourceContactSupportFinalize.commit_handoff?.blockers)
-            .length,
-        canonical_support_input_rows:
-          canonicalSupportRewriteStage.counts?.input_rows ?? null,
-        canonical_support_output_rows:
-          canonicalSupportRewriteStage.counts?.output_rows ?? null,
-        canonical_support_deferred_rows:
-          canonicalSupportRewriteStage.counts?.deferred_rows ?? 0,
+        source_contact_support_commit_handoff_blockers: ensureArray(
+          sourceContactSupportFinalize.commit_handoff?.blockers,
+        ).length,
+        canonical_support_input_rows: canonicalSupportRewriteStage.counts?.input_rows ?? null,
+        canonical_support_output_rows: canonicalSupportRewriteStage.counts?.output_rows ?? null,
+        canonical_support_deferred_rows: canonicalSupportRewriteStage.counts?.deferred_rows ?? 0,
         canonical_support_deferred_blockers:
           canonicalSupportRewriteStage.counts?.deferred_blockers ?? 0,
         canonical_flow_property_reference_rewrites:
-          canonicalSupportRewriteStage.counts
-            ?.canonical_flow_property_reference_rewrites ?? 0,
+          canonicalSupportRewriteStage.counts?.canonical_flow_property_reference_rewrites ?? 0,
         canonical_unit_group_reference_proofs:
-          canonicalSupportRewriteStage.counts
-            ?.canonical_unit_group_reference_proofs ?? 0,
+          canonicalSupportRewriteStage.counts?.canonical_unit_group_reference_proofs ?? 0,
         full_context_ai_completion_required: Boolean(fullContextRequirement),
         identity_preflight_required: identityPreflightRequired,
         identity_preflight_run_selected:
           identityPreflightRunStage.report?.counts?.selected_rows ?? 0,
-        identity_preflight_run_completed:
-          identityPreflightRunStage.report?.counts?.completed ?? 0,
+        identity_preflight_run_completed: identityPreflightRunStage.report?.counts?.completed ?? 0,
         identity_preflight_run_skipped_existing:
           identityPreflightRunStage.report?.counts?.skipped_existing_report ?? 0,
-        identity_preflight_run_failed:
-          identityPreflightRunStage.report?.counts?.failed ?? 0,
+        identity_preflight_run_failed: identityPreflightRunStage.report?.counts?.failed ?? 0,
         location_audit_blockers: locationAuditBlockers.length,
-        location_code_targets:
-          locationAuditStage.report?.counts?.location_targets ?? 0,
+        location_code_targets: locationAuditStage.report?.counts?.location_targets ?? 0,
         location_code_invalid: locationAuditStage.report?.counts?.invalid ?? 0,
         write_candidates: mutationManifest.counts?.write_candidates ?? 0,
-        ai_patch_evidence_entries:
-          mutationManifest.counts?.ai_patch_evidence_entries ?? 0,
+        ai_patch_evidence_entries: mutationManifest.counts?.ai_patch_evidence_entries ?? 0,
         ai_classification_decision_entries:
           mutationManifest.counts?.ai_classification_decision_entries ?? 0,
-  	      ai_location_decision_entries:
-  	        mutationManifest.counts?.ai_location_decision_entries ?? 0,
-        ai_identity_decision_entries:
-          mutationManifest.counts?.ai_identity_decision_entries ?? 0,
-  	      ai_semantic_evidence_entries:
-  	        (Number(mutationManifest.counts?.ai_patch_evidence_entries ?? 0) ||
-  	          0) +
-  	        (Number(
-  	          mutationManifest.counts?.ai_classification_decision_entries ?? 0,
-  	        ) || 0) +
-          (Number(mutationManifest.counts?.ai_location_decision_entries ?? 0) ||
-            0) +
-          (Number(mutationManifest.counts?.ai_identity_decision_entries ?? 0) ||
-            0),
-        unresolved_trace_entries:
-          mutationManifest.counts?.unresolved_trace_entries ?? 0,
+        ai_location_decision_entries: mutationManifest.counts?.ai_location_decision_entries ?? 0,
+        ai_identity_decision_entries: mutationManifest.counts?.ai_identity_decision_entries ?? 0,
+        ai_semantic_evidence_entries:
+          (Number(mutationManifest.counts?.ai_patch_evidence_entries ?? 0) || 0) +
+          (Number(mutationManifest.counts?.ai_classification_decision_entries ?? 0) || 0) +
+          (Number(mutationManifest.counts?.ai_location_decision_entries ?? 0) || 0) +
+          (Number(mutationManifest.counts?.ai_identity_decision_entries ?? 0) || 0),
+        unresolved_trace_entries: mutationManifest.counts?.unresolved_trace_entries ?? 0,
         unresolved_exchange_externalized:
           unresolvedExchangeExternalizeStage.counts?.externalized_exchanges ?? 0,
         blocked_flow_dependency_externalized:
-          unresolvedExchangeExternalizeStage.counts
-            ?.blocked_flow_dependency_externalized ?? 0,
+          unresolvedExchangeExternalizeStage.counts?.blocked_flow_dependency_externalized ?? 0,
         source_exchange_completeness_entries:
           mutationManifest.counts?.source_exchange_completeness_entries ?? 0,
-        source_reference_rewrites:
-          mutationManifest.counts?.source_reference_rewrites ?? 0,
-        identity_reference_rewrites:
-          mutationManifest.counts?.identity_reference_rewrites ?? 0,
+        source_reference_rewrites: mutationManifest.counts?.source_reference_rewrites ?? 0,
+        identity_reference_rewrites: mutationManifest.counts?.identity_reference_rewrites ?? 0,
         identity_flow_reference_rewrites:
           identityReferenceRewriteStage.counts?.flow_reference_rewrites ?? 0,
-        identity_reference_reuse_rows:
-          identityReferenceRewriteStage.counts?.reference_rows ?? 0,
+        identity_reference_reuse_rows: identityReferenceRewriteStage.counts?.reference_rows ?? 0,
         curation_queue_status:
-          curationQueueStage.status === "not_required"
-            ? "not_required"
-            : curationQueueStage.status,
-        curation_queue_blockers:
-          curationQueueStage.report?.counts?.blockers ?? 0,
-        curation_queue_tasks:
-          curationQueueStage.report?.counts?.tasks ?? 0,
-        curation_queue_process_rows:
-          curationQueueStage.report?.counts?.process_rows ?? 0,
-        curation_queue_flow_rows:
-          curationQueueStage.report?.counts?.flow_rows ?? 0,
+          curationQueueStage.status === "not_required" ? "not_required" : curationQueueStage.status,
+        curation_queue_blockers: curationQueueStage.report?.counts?.blockers ?? 0,
+        curation_queue_tasks: curationQueueStage.report?.counts?.tasks ?? 0,
+        curation_queue_process_rows: curationQueueStage.report?.counts?.process_rows ?? 0,
+        curation_queue_flow_rows: curationQueueStage.report?.counts?.flow_rows ?? 0,
         curation_queue_external_flow_refs:
           curationQueueStage.report?.counts?.external_flow_refs ?? 0,
         full_context_scope_blockers:
@@ -1142,14 +1029,10 @@ export function createPostAuthoringFinalizeCommands({
       blockers: [...prewriteGateBlockers, ...mutationManifestBlockers],
       stages: stageReports.map(compactStageReport),
       files: {
-        source_contact_rewrite_report:
-          sourceContactRewriteStage.files?.report ?? null,
-        source_contact_rewritten_rows:
-          sourceContactRewriteStage.files?.output_rows ?? null,
-        source_contact_support_rows:
-          sourceContactRewriteStage.files?.support_rows ?? null,
-        source_contact_support_finalize_report:
-          sourceContactSupportFinalize.files?.report ?? null,
+        source_contact_rewrite_report: sourceContactRewriteStage.files?.report ?? null,
+        source_contact_rewritten_rows: sourceContactRewriteStage.files?.output_rows ?? null,
+        source_contact_support_rows: sourceContactRewriteStage.files?.support_rows ?? null,
+        source_contact_support_finalize_report: sourceContactSupportFinalize.files?.report ?? null,
         source_contact_support_finalize_rows:
           sourceContactSupportFinalize.files?.final_rows ?? null,
         source_contact_support_commit_handoff_plan:
@@ -1157,20 +1040,15 @@ export function createPostAuthoringFinalizeCommands({
         source_contact_source_reference_rewrites:
           sourceContactRewriteStage.files?.source_reference_rewrites ?? null,
         cleanup_report: repoRelativeMaybe(cleanupReportFile),
-        canonical_support_rewrite_report:
-          repoRelativeMaybe(canonicalSupportReportFile),
-        canonical_support_rewritten_rows:
-          repoRelativeMaybe(canonicalSupportRowsFile),
-        canonical_support_deferred_rows:
-          canonicalSupportRewriteStage.files?.deferred_rows ?? null,
+        canonical_support_rewrite_report: repoRelativeMaybe(canonicalSupportReportFile),
+        canonical_support_rewritten_rows: repoRelativeMaybe(canonicalSupportRowsFile),
+        canonical_support_deferred_rows: canonicalSupportRewriteStage.files?.deferred_rows ?? null,
         canonical_support_rewrites:
           canonicalSupportRewriteStage.files?.canonical_support_rewrites ?? null,
         canonical_support_blockers:
           canonicalSupportRewriteStage.files?.canonical_support_blockers ?? null,
-        identity_reference_rewrites:
-          identityReferenceRewriteStage.rewrite_file ?? null,
-        identity_preflight_run_report:
-          repoRelativeMaybe(identityPreflightRunStage.report_file),
+        identity_reference_rewrites: identityReferenceRewriteStage.rewrite_file ?? null,
+        identity_preflight_run_report: repoRelativeMaybe(identityPreflightRunStage.report_file),
         identity_rewritten_rows:
           Number(identityReferenceRewriteStage.counts?.flow_reference_rewrites ?? 0) > 0
             ? identityReferenceRewriteStage.output_rows_file
@@ -1178,15 +1056,11 @@ export function createPostAuthoringFinalizeCommands({
         unresolved_exchange_externalization_report:
           unresolvedExchangeExternalizeStage.files?.report ?? null,
         unresolved_exchange_externalized_rows:
-          Number(
-            unresolvedExchangeExternalizeStage.counts?.externalized_exchanges ?? 0,
-          ) > 0
+          Number(unresolvedExchangeExternalizeStage.counts?.externalized_exchanges ?? 0) > 0
             ? unresolvedExchangeExternalizeStage.files?.output_rows
             : null,
-        unresolved_exchange_traces:
-          unresolvedExchangeExternalizeStage.files?.traces ?? null,
-        identity_reference_reuse_rows:
-          identityReferenceRewriteStage.reference_rows_file ?? null,
+        unresolved_exchange_traces: unresolvedExchangeExternalizeStage.files?.traces ?? null,
+        identity_reference_reuse_rows: identityReferenceRewriteStage.reference_rows_file ?? null,
         curation_queue_dir: repoRelativeMaybe(curationQueueDir),
         curation_queue_report: repoRelativeMaybe(curationQueueStage.report_file),
         curation_queue_identity_external_flow_refs:
@@ -1203,42 +1077,30 @@ export function createPostAuthoringFinalizeCommands({
         classification_decision_apply_report: repoRelativeMaybe(
           classificationDecisionApplyReportFile,
         ),
-  	      location_decision_apply_report: repoRelativeMaybe(
-  	        locationDecisionApplyReportFile,
-  	      ),
+        location_decision_apply_report: repoRelativeMaybe(locationDecisionApplyReportFile),
         identity_decision_apply_reports: identityDecisionApplyReportFiles.map((file) =>
           repoRelativePath(file),
         ),
-  	      patch_evidence: mutationManifest.evidence?.patch_evidence_file ?? null,
+        patch_evidence: mutationManifest.evidence?.patch_evidence_file ?? null,
         dry_run_report: repoRelativeMaybe(dryRunStage.report_file),
         remote_verify_report: repoRelativeMaybe(remoteVerifyReportFile),
         mutation_manifest: mutationManifest.files?.report ?? null,
         unresolved_traces: mutationManifest.files?.unresolved_traces ?? null,
         source_exchange_completeness_traces:
           mutationManifest.files?.source_exchange_completeness_traces ?? null,
-        source_reference_rewrites:
-          mutationManifest.files?.source_reference_rewrites ?? null,
+        source_reference_rewrites: mutationManifest.files?.source_reference_rewrites ?? null,
         mutation_identity_reference_rewrites:
           mutationManifest.files?.identity_reference_rewrites ?? null,
       },
     };
-    const reportPath = path.join(
-      outDir,
-      "dataset-post-authoring-finalize-report.json",
-    );
+    const reportPath = path.join(outDir, "dataset-post-authoring-finalize-report.json");
     writeJson(reportPath, report);
     const commitHandoffPlan = runDatasetCommitHandoffPlan({
       finalizeReport: reportPath,
       outDir: path.join(outDir, "commit-handoff"),
-      stateCode:
-        options.commitStateCode ??
-        options.postWriteStateCode ??
-        options.stateCode,
+      stateCode: options.commitStateCode ?? options.postWriteStateCode ?? options.stateCode,
       targetUserId: options.targetUserId,
-      rootPolicy:
-        options.postWriteRootPolicy ||
-        options.rootPolicy ||
-        options.remoteRootPolicy,
+      rootPolicy: options.postWriteRootPolicy || options.rootPolicy || options.remoteRootPolicy,
     });
     const finalReport = {
       ...report,
@@ -1249,8 +1111,7 @@ export function createPostAuthoringFinalizeCommands({
       commit_handoff: {
         status: commitHandoffPlan.status,
         command: commitHandoffPlan.commands?.commit ?? null,
-        post_write_verify_command:
-          commitHandoffPlan.commands?.post_write_verify ?? null,
+        post_write_verify_command: commitHandoffPlan.commands?.post_write_verify ?? null,
         blockers: commitHandoffPlan.blockers ?? [],
       },
       files: {

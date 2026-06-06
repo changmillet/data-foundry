@@ -1,36 +1,8 @@
 import test from "node:test";
 import {
-  writeReadyFinalizeFixture,
-} from "../fixtures/finalize-fixtures.mjs";
-import {
-  annualSupplyFixtureRoot,
-  classificationFixtureRoot,
-  elementaryFlowManifestFixtureRoot,
-  finalizeAutoQueueFixtureRoot,
-  finalizeCurationGateFixtureRoot,
-  finalizeIdentityPreflightFixtureRoot,
-  finalizeLocationFixtureRoot,
-  fixtureRoot,
-  flowClassificationFixtureRoot,
-  flowIdentityReferenceFixtureRoot,
-  identityPreflightRunFixtureRoot,
-  locationFixtureRoot,
-  mutationFixtureRoot,
-  packageContextFixtureRoot,
-  qaPathFixtureRoot,
-  referenceClosureFixtureRoot,
-  sourceExchangeFixtureRoot,
-  supportManifestFixtureRoot,
-} from "../fixtures/fixture-roots.mjs";
-import {
   assert,
-  blockerCodes,
-  bundledCategorySchemaNames,
-  contextTextByPathSuffix,
-  crypto,
   fs,
   fullContextKinds,
-  fullContextPatterns,
   itemBlockerCodes,
   path,
   readJson,
@@ -38,40 +10,15 @@ import {
   rel,
   repoRoot,
   runFoundry,
-  scopeBlockerCodes,
   sha256Text,
-  siblingCliBuildAvailable,
-  siblingCliRoot,
-  spawnSync,
   targetUserId,
   testTmpRoot,
   writeJson,
   writeJsonLines,
-  writeText,
 } from "../fixtures/foundry-core.mjs";
-import {
-  contextFile,
-  createFixture,
-  writeContextPackFiles,
-  writeDecisionTaskFixture,
-} from "../fixtures/full-context-fixtures.mjs";
-import {
-  writeCompletedIdentityPreflightIndex,
-} from "../fixtures/identity-fixtures.mjs";
-import {
-  createMutationManifestFixture,
-} from "../fixtures/mutation-fixtures.mjs";
-import {
-  flowRow,
-  flowRowWithClassification,
-  processRowWithDefaultClassification,
-  processRowWithDeferredTrace,
-  processRowWithFlowRef,
-  processRowWithInvalidAnnualSupply,
-  processRowWithInvalidLocation,
-  processRowWithOnlyOutputExchange,
-  sourceRow,
-} from "../fixtures/row-builders.mjs";
+import { writeContextPackFiles } from "../fixtures/full-context-fixtures.mjs";
+import { writeCompletedIdentityPreflightIndex } from "../fixtures/identity-fixtures.mjs";
+import { flowRowWithClassification, processRowWithFlowRef } from "../fixtures/row-builders.mjs";
 
 test("unresolved elementary flow identity decisions defer references as Foundry traces", () => {
   const root = testTmpRoot("elementary-flow-identity-unresolved-trace-test");
@@ -142,16 +89,10 @@ test("unresolved elementary flow identity decisions defer references as Foundry 
     assert.equal(applyReport.json.counts.output_rows, 0);
     assert.equal(applyReport.json.counts.unresolved_reference_rows, 1);
     assert.equal(applyReport.json.counts.identity_unresolved_references, 1);
-    assert.equal(
-      readJsonLines(path.join(repoRoot, applyReport.json.files.output_rows))
-        .length,
-      0,
-    );
+    assert.equal(readJsonLines(path.join(repoRoot, applyReport.json.files.output_rows)).length, 0);
 
     const processRowsFile = path.join(root, "processes.jsonl");
-    writeJsonLines(processRowsFile, [
-      processRowWithFlowRef(processId, flowId),
-    ]);
+    writeJsonLines(processRowsFile, [processRowWithFlowRef(processId, flowId)]);
     const processRewrite = runFoundry([
       "dataset-identity-reference-rewrites-apply",
       "--type",
@@ -166,26 +107,19 @@ test("unresolved elementary flow identity decisions defer references as Foundry 
     assert.equal(processRewrite.code, 0);
     assert.equal(processRewrite.json.status, "completed");
     assert.equal(processRewrite.json.counts.flow_reference_rewrites, 0);
-    assert.equal(
-      processRewrite.json.counts.flow_reference_unresolved_traces,
-      1,
-    );
+    assert.equal(processRewrite.json.counts.flow_reference_unresolved_traces, 1);
     const rewrittenProcess = readJsonLines(
       path.join(repoRoot, processRewrite.json.files.output_rows),
     )[0];
     assert.equal(
-      rewrittenProcess.processDataSet.exchanges.exchange[0]
-        .referenceToFlowDataSet["@refObjectId"],
+      rewrittenProcess.processDataSet.exchanges.exchange[0].referenceToFlowDataSet["@refObjectId"],
       flowId,
     );
     const trace =
-      rewrittenProcess.processDataSet.processInformation.dataSetInformation[
-        "common:other"
-      ]["tiangongfoundry:unresolvedTrace"][0];
-    assert.equal(
-      trace.action_item_code,
-      "elementary_flow_identity_manual_review",
-    );
+      rewrittenProcess.processDataSet.processInformation.dataSetInformation["common:other"][
+        "tiangongfoundry:unresolvedTrace"
+      ][0];
+    assert.equal(trace.action_item_code, "elementary_flow_identity_manual_review");
     assert.equal(trace.reference_id, flowId);
     assert.equal(trace.evidence.source, "dataset-identity-decisions-apply");
 
@@ -226,15 +160,11 @@ test("unresolved elementary flow identity decisions defer references as Foundry 
     assert.equal(manifest.json.status, "blocked");
     assert.equal(manifest.json.counts.unresolved_trace_entries, 1);
     assert.equal(
-      itemBlockerCodes(manifest.json).has(
-        "reference_closure_remote_verify_required",
-      ),
+      itemBlockerCodes(manifest.json).has("reference_closure_remote_verify_required"),
       false,
     );
     assert.equal(
-      itemBlockerCodes(manifest.json).has(
-        "unresolved_trace_patch_evidence_required",
-      ),
+      itemBlockerCodes(manifest.json).has("unresolved_trace_patch_evidence_required"),
       false,
     );
   } finally {
@@ -244,26 +174,26 @@ test("unresolved elementary flow identity decisions defer references as Foundry 
 
 test("identity decision apply closes flow identity curation and counts as full-context evidence", () => {
   const root = testTmpRoot("flow-identity-decision-proof-test");
-	  fs.rmSync(root, { recursive: true, force: true });
-	  const flowId = "aaaaaaaa-bbbb-4ccc-8ddd-000000000040";
-	  const rowsFile = path.join(root, "rows", "flows.jsonl");
-	  const flowRow = flowRowWithClassification({
-	      flowId,
-	      typeOfDataSet: "Product flow",
-	      classification: {
-        "common:classification": {
-          "common:class": [
-            { "@level": "0", "@classId": "C", "#text": "Manufacturing" },
-            {
-              "@level": "1",
-              "@classId": "20",
-              "#text": "Manufacture of chemicals and chemical products",
-            },
-          ],
-	        },
-	      },
-	    });
-	  writeJsonLines(rowsFile, [flowRow]);
+  fs.rmSync(root, { recursive: true, force: true });
+  const flowId = "aaaaaaaa-bbbb-4ccc-8ddd-000000000040";
+  const rowsFile = path.join(root, "rows", "flows.jsonl");
+  const flowRow = flowRowWithClassification({
+    flowId,
+    typeOfDataSet: "Product flow",
+    classification: {
+      "common:classification": {
+        "common:class": [
+          { "@level": "0", "@classId": "C", "#text": "Manufacturing" },
+          {
+            "@level": "1",
+            "@classId": "20",
+            "#text": "Manufacture of chemicals and chemical products",
+          },
+        ],
+      },
+    },
+  });
+  writeJsonLines(rowsFile, [flowRow]);
 
   try {
     const context = writeContextPackFiles(root);
@@ -289,13 +219,13 @@ test("identity decision apply closes flow identity curation and counts as full-c
       blockers: [],
       findings: [],
     });
-	    const identityIndex = writeCompletedIdentityPreflightIndex(root, [
-	      {
-	        datasetType: "flow",
-	        id: flowId,
-	        target: flowRow,
-	        name: "Natural gas",
-	        decision: "manual_review",
+    const identityIndex = writeCompletedIdentityPreflightIndex(root, [
+      {
+        datasetType: "flow",
+        id: flowId,
+        target: flowRow,
+        name: "Natural gas",
+        decision: "manual_review",
         status: "needs_review",
         fields: { type_of_dataset: "Product flow" },
         candidates: [],
@@ -342,10 +272,7 @@ test("identity decision apply closes flow identity curation and counts as full-c
     assert.equal(identityTask.json.status, "ready_for_ai_identity_decisions");
     assert.equal(identityTask.json.counts.identity_action_items, 1);
     assert.equal(identityTask.json.counts.template_decisions, 1);
-    assert.equal(
-      identityTask.json.identity_action_items[0].authoring_package,
-      packageRef,
-    );
+    assert.equal(identityTask.json.identity_action_items[0].authoring_package, packageRef);
     assert.ok(identityTask.json.files.shared_context_bundle);
     assert.equal(
       identityTask.json.shared_context_bundle.path,
@@ -359,9 +286,7 @@ test("identity decision apply closes flow identity curation and counts as full-c
       identityBundle.files.find((file) => file.kind === "schema").text,
       /process schema/u,
     );
-    const identityTemplate = readJsonLines(
-      path.join(repoRoot, identityTask.json.files.template),
-    );
+    const identityTemplate = readJsonLines(path.join(repoRoot, identityTask.json.files.template));
     assert.equal(identityTemplate.length, 1);
     assert.equal(identityTemplate[0].dataset_id, flowId);
     assert.equal(identityTemplate[0].authoring_package_sha256, packageSha);
@@ -369,9 +294,7 @@ test("identity decision apply closes flow identity curation and counts as full-c
       identityTemplate[0].authoring_context.context_bundle_sha256,
       identityTask.json.context_bundle.sha256,
     );
-    assert.deepEqual(identityTemplate[0].closes_action_items, [
-      "identity_preflight_manual_review",
-    ]);
+    assert.deepEqual(identityTemplate[0].closes_action_items, ["identity_preflight_manual_review"]);
 
     const decisionsFile = path.join(root, "identity-decisions.jsonl");
     writeJsonLines(decisionsFile, [
@@ -430,11 +353,7 @@ test("identity decision apply closes flow identity curation and counts as full-c
         },
       ],
     });
-    const appliedQaReport = path.join(
-      root,
-      "qa-after-identity-decision",
-      "flow_qa_report.json",
-    );
+    const appliedQaReport = path.join(root, "qa-after-identity-decision", "flow_qa_report.json");
     writeJson(appliedQaReport, {
       rows_file: identityApply.json.files.output_rows,
       status: "completed_local_flow_qa",
@@ -474,9 +393,7 @@ test("identity decision apply closes flow identity curation and counts as full-c
 
     const successList = path.join(root, "dry-run", "success-list.jsonl");
     const remoteFailed = path.join(root, "dry-run", "remote-failed.jsonl");
-    writeJsonLines(successList, [
-      { id: flowId, version: "00.00.001", operation: "would_insert" },
-    ]);
+    writeJsonLines(successList, [{ id: flowId, version: "00.00.001", operation: "would_insert" }]);
     writeJsonLines(remoteFailed, []);
     const dryRunReport = path.join(root, "dry-run", "summary.json");
     writeJson(dryRunReport, {
@@ -489,11 +406,7 @@ test("identity decision apply closes flow identity curation and counts as full-c
         remote_failed: rel(remoteFailed),
       },
     });
-    const cleanupReport = path.join(
-      root,
-      "cleanup",
-      "dataset-curation-cleanup-report.json",
-    );
+    const cleanupReport = path.join(root, "cleanup", "dataset-curation-cleanup-report.json");
     writeJson(cleanupReport, {
       schema_version: 2,
       status: "completed",
@@ -531,10 +444,7 @@ test("identity decision apply closes flow identity curation and counts as full-c
     assert.equal(manifest.code, 0);
     assert.equal(manifest.json.status, "ready_for_remote_write");
     assert.equal(manifest.json.counts.ai_identity_decision_entries, 1);
-    assert.equal(
-      manifest.json.evidence.identity_decision_apply_status,
-      "completed",
-    );
+    assert.equal(manifest.json.evidence.identity_decision_apply_status, "completed");
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
@@ -576,9 +486,7 @@ test("identity decision task template uses canonical process table name", () => 
       },
     ],
   });
-  const authoringPackageSha256 = sha256Text(
-    fs.readFileSync(authoringPackage, "utf8"),
-  );
+  const authoringPackageSha256 = sha256Text(fs.readFileSync(authoringPackage, "utf8"));
   const curationGateReport = path.join(root, "dataset-curation-gate-report.json");
   writeJson(curationGateReport, {
     schema_version: 1,
@@ -604,9 +512,7 @@ test("identity decision task template uses canonical process table name", () => 
     ]);
     assert.equal(identityTask.code, 0);
     assert.equal(identityTask.json.status, "ready_for_ai_identity_decisions");
-    const templateRows = readJsonLines(
-      path.join(repoRoot, identityTask.json.files.template),
-    );
+    const templateRows = readJsonLines(path.join(repoRoot, identityTask.json.files.template));
     assert.equal(templateRows.length, 1);
     assert.equal(templateRows[0].dataset_type, "process");
     assert.equal(templateRows[0].canonical.table, "processes");

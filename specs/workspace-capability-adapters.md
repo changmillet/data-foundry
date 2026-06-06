@@ -8,20 +8,20 @@ The local `$foundry-tidas-import` skill is the Foundry orchestration entrypoint 
 
 ## Core Classes
 
-| Class                                          | Purpose                                                                                                                                                                                                                                                          |
-| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `import-orchestration`                         | Foundry-local skill entrypoint that orders shared CLI, curation, AI patch, dry-run, commit, and readback steps without owning database or converter internals.                                                                                                   |
-| `tidas-contract-context`                       | Fetch SDK-backed schema, methodology YAML, runtime ruleset, and AI context artifacts.                                                                                                                                                                            |
-| `external-lca-package-conversion`              | Convert supported packaged LCA data through CLI/tidas-tools.                                                                                                                                                                                                     |
-| `source-document-authoring`                    | Extract source documents and prepare target context packs for AI authoring.                                                                                                                                                                                      |
-| `source-evidence-review`                       | Plan and record public/source evidence for field-level facts.                                                                                                                                                                                                    |
-| `source-evidence-runtime-skill`                | Resolve floating external source-evidence skills, such as document fulltext extraction and SCI literature retrieval, as ignored runtime installs/read prompts plus task-level resolution records.                                                                  |
-| `schema-gate`                                  | Validate generated TIDAS rows.                                                                                                                                                                                                                                   |
-| `process-qa` / `flow-qa` / `lifecyclemodel-qa` | Run target-type deterministic QA gates.                                                                                                                                                                                                                          |
-| `dataset-curation`                             | Build entity-level import queues, build profile-aware AI authoring packages from rows/schema/QA/context, generate Codex/skill authoring tasks, collect AI patch outputs, and deterministically apply AI-authored structured patches before cleanup/revalidation. |
-| `reference-closure`                            | Refresh or verify local references before publish preparation.                                                                                                                                                                                                   |
-| `publish-prep`                                 | Prepare exact-scope publish/import bundles, mutation manifests, commit handoff, and closeout evidence; commit execution remains CLI-owned and task write-policy gated.                                                                                           |
-| `remote-verification`                          | Read back remote rows when a task explicitly reaches that stage.                                                                                                                                                                                                 |
+| Class | Purpose |
+| --- | --- |
+| `import-orchestration` | Foundry-local skill entrypoint that orders shared CLI, curation, AI patch, dry-run, commit, and readback steps without owning database or converter internals. |
+| `tidas-contract-context` | Fetch SDK-backed schema, methodology YAML, runtime ruleset, and AI context artifacts. |
+| `external-lca-package-conversion` | Convert supported packaged LCA data through CLI/tidas-tools. |
+| `source-document-authoring` | Extract source documents and prepare target context packs for AI authoring. |
+| `source-evidence-review` | Plan and record public/source evidence for field-level facts. |
+| `source-evidence-runtime-skill` | Resolve floating external source-evidence skills, such as document fulltext extraction and SCI literature retrieval, as ignored runtime installs/read prompts plus task-level resolution records. |
+| `schema-gate` | Validate generated TIDAS rows. |
+| `process-qa` / `flow-qa` / `lifecyclemodel-qa` | Run target-type deterministic QA gates. |
+| `dataset-curation` | Build entity-level import queues, build profile-aware AI authoring packages from rows/schema/QA/context, generate Codex/skill authoring tasks, collect AI patch outputs, and deterministically apply AI-authored structured patches before cleanup/revalidation. |
+| `reference-closure` | Refresh or verify local references before publish preparation. |
+| `publish-prep` | Prepare exact-scope publish/import bundles, mutation manifests, commit handoff, and closeout evidence; commit execution remains CLI-owned and task write-policy gated. |
+| `remote-verification` | Read back remote rows when a task explicitly reaches that stage. |
 
 ## Route Examples
 

@@ -27,10 +27,19 @@ test("document-granular-decompose is a runtime Tiangong AI skill, not a tracked 
   assert.ok(runtimeSkill, "document-granular-decompose should be configured as a runtime skill");
   assert.equal(runtimeSkill.source, "https://github.com/tiangong-ai/skills");
   assert.equal(runtimeSkill.source_type, "github");
-  assert.match(runtimeSkill.install_command, /skills@latest add https:\/\/github\.com\/tiangong-ai\/skills/);
-  assert.match(runtimeSkill.use_command, /skills@latest use https:\/\/github\.com\/tiangong-ai\/skills/);
+  assert.match(
+    runtimeSkill.install_command,
+    /skills@latest add https:\/\/github\.com\/tiangong-ai\/skills/,
+  );
+  assert.match(
+    runtimeSkill.use_command,
+    /skills@latest use https:\/\/github\.com\/tiangong-ai\/skills/,
+  );
 
   assert.match(packageJson.scripts["skills:install:shared"], /document-granular-decompose/);
-  assert.match(packageJson.scripts["skills:source-evidence:use:document"], /document-granular-decompose/);
+  assert.match(
+    packageJson.scripts["skills:source-evidence:use:document"],
+    /document-granular-decompose/,
+  );
   assert.match(gitignore, /\.agents\/skills\/document-granular-decompose\//);
 });

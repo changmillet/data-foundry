@@ -6,11 +6,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { createFoundryRuntimeUtils } from "../../scripts/lib/foundry-runtime-utils.mjs";
 
-const repoRoot = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "..",
-);
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const fixtureRoot = path.join(repoRoot, "tmp", "library-scope-workflow-test");
 
 const ids = {
@@ -42,8 +38,7 @@ function writeJsonLines(filePath, rows) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(
     filePath,
-    rows.map((row) => JSON.stringify(row)).join("\n") +
-      (rows.length ? "\n" : ""),
+    rows.map((row) => JSON.stringify(row)).join("\n") + (rows.length ? "\n" : ""),
   );
 }
 
@@ -203,9 +198,7 @@ function writeBundle(root, processId, payloads) {
   const files = {
     contacts: [],
     sources: [],
-    unitgroups: Object.keys(payloads.unitgroups ?? {}).map(
-      (id) => `tidas/unitgroups/${id}.json`,
-    ),
+    unitgroups: Object.keys(payloads.unitgroups ?? {}).map((id) => `tidas/unitgroups/${id}.json`),
     flowproperties: Object.keys(payloads.flowproperties ?? {}).map(
       (id) => `tidas/flowproperties/${id}.json`,
     ),
@@ -346,10 +339,7 @@ test("library index deduplicates root TIDAS entities and projects shared depende
 
   const entities = readJsonLines(path.join(outDir, "library-entity-index.jsonl"));
   const scopeProjection = readJsonLines(path.join(outDir, "scope-projection.jsonl"));
-  assert.equal(
-    entities.filter((row) => row.dataset_type === "flow").length,
-    3,
-  );
+  assert.equal(entities.filter((row) => row.dataset_type === "flow").length, 3);
   assert.equal(scopeProjection.length, 2);
   assert.equal(
     scopeProjection
@@ -450,19 +440,18 @@ test("library decisions apply rewrites only elementary flow references and defer
 
   const blocked = readJsonLines(path.join(resolutionDir, "blocked-scope-ledger.jsonl"));
   assert.equal(
-    blocked.some(
-      (row) => row.reason === "elementary_flow_requires_existing_database_match",
-    ),
+    blocked.some((row) => row.reason === "elementary_flow_requires_existing_database_match"),
     true,
   );
   assert.equal(
-    blocked.some(
-      (row) => row.reason === "canonical_flow_property_reference_unresolved",
-    ),
+    blocked.some((row) => row.reason === "canonical_flow_property_reference_unresolved"),
     true,
   );
   const blockedReport = readJson(path.join(resolutionDir, "blocked-scope-report.json"));
-  assert.equal(report.files.blocked_scope_report, rel(path.join(resolutionDir, "blocked-scope-report.json")));
+  assert.equal(
+    report.files.blocked_scope_report,
+    rel(path.join(resolutionDir, "blocked-scope-report.json")),
+  );
   assert.equal(blockedReport.counts.blocked_scopes, 1);
   assert.equal(
     blockedReport.reason_summary.some(
@@ -479,9 +468,7 @@ test("library decisions apply rewrites only elementary flow references and defer
     true,
   );
 
-  const rewritten = readJson(
-    path.join(resolutionDir, "rewritten-processes", `${ids.p1}.json`),
-  );
+  const rewritten = readJson(path.join(resolutionDir, "rewritten-processes", `${ids.p1}.json`));
   const rewrittenExchange = rewritten.processDataSet.exchanges.exchange[1];
   assert.equal(rewrittenExchange.exchangeDirection, "Input");
   assert.equal(rewrittenExchange.meanAmount, "2.5");
@@ -489,9 +476,7 @@ test("library decisions apply rewrites only elementary flow references and defer
     rewrittenExchange.referenceToFlowDataSet["@refObjectId"],
     "aaaaaaaa-aaaa-5aaa-8aaa-aaaaaaaaaaaa",
   );
-  const rewriteRows = readJsonLines(
-    path.join(resolutionDir, "exchange-reference-rewrites.jsonl"),
-  );
+  const rewriteRows = readJsonLines(path.join(resolutionDir, "exchange-reference-rewrites.jsonl"));
   assert.equal(rewriteRows[0].preserved_exchange_fields, true);
 });
 
@@ -552,15 +537,18 @@ test("process scope runner plans only ready scopes and keeps blocked scopes out 
   assert.equal(report.parallel, 5);
   assert.equal(report.counts.ready_scopes_planned, 1);
   assert.equal(report.counts.blocked_scopes_deferred, 1);
-  assert.equal(report.files.blocked_scope_report, rel(path.join(runDir, "blocked-scope-report.json")));
+  assert.equal(
+    report.files.blocked_scope_report,
+    rel(path.join(runDir, "blocked-scope-report.json")),
+  );
   const blockedReport = readJson(path.join(runDir, "blocked-scope-report.json"));
   assert.equal(blockedReport.counts.blocked_scopes, 1);
   assert.equal(blockedReport.reason_summary[0].reason, "scope_not_ready");
   const checkpoints = readJsonLines(path.join(runDir, "scope-checkpoints.jsonl"));
-  assert.deepEqual(
-    checkpoints.map((row) => row.state).sort(),
-    ["blocked_deferred", "dry_run_planned"],
-  );
+  assert.deepEqual(checkpoints.map((row) => row.state).sort(), [
+    "blocked_deferred",
+    "dry_run_planned",
+  ]);
 });
 
 test("process scope runner executes scope-provided handoff commands in commit mode", () => {

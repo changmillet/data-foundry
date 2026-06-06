@@ -1,76 +1,23 @@
 import test from "node:test";
-import {
-  writeReadyFinalizeFixture,
-} from "../fixtures/finalize-fixtures.mjs";
-import {
-  annualSupplyFixtureRoot,
-  classificationFixtureRoot,
-  elementaryFlowManifestFixtureRoot,
-  finalizeAutoQueueFixtureRoot,
-  finalizeCurationGateFixtureRoot,
-  finalizeIdentityPreflightFixtureRoot,
-  finalizeLocationFixtureRoot,
-  fixtureRoot,
-  flowClassificationFixtureRoot,
-  flowIdentityReferenceFixtureRoot,
-  identityPreflightRunFixtureRoot,
-  locationFixtureRoot,
-  mutationFixtureRoot,
-  packageContextFixtureRoot,
-  qaPathFixtureRoot,
-  referenceClosureFixtureRoot,
-  sourceExchangeFixtureRoot,
-  supportManifestFixtureRoot,
-} from "../fixtures/fixture-roots.mjs";
+import { flowIdentityReferenceFixtureRoot } from "../fixtures/fixture-roots.mjs";
 import {
   assert,
   blockerCodes,
-  bundledCategorySchemaNames,
-  contextTextByPathSuffix,
-  crypto,
   fs,
-  fullContextKinds,
-  fullContextPatterns,
-  itemBlockerCodes,
   path,
-  readJson,
   readJsonLines,
   rel,
   repoRoot,
   runFoundry,
-  scopeBlockerCodes,
-  sha256Text,
-  siblingCliBuildAvailable,
-  siblingCliRoot,
-  spawnSync,
-  targetUserId,
   testTmpRoot,
   writeJson,
   writeJsonLines,
-  writeText,
 } from "../fixtures/foundry-core.mjs";
-import {
-  contextFile,
-  createFixture,
-  writeContextPackFiles,
-  writeDecisionTaskFixture,
-} from "../fixtures/full-context-fixtures.mjs";
-import {
-  writeCompletedIdentityPreflightIndex,
-} from "../fixtures/identity-fixtures.mjs";
-import {
-  createMutationManifestFixture,
-} from "../fixtures/mutation-fixtures.mjs";
+import { writeCompletedIdentityPreflightIndex } from "../fixtures/identity-fixtures.mjs";
 import {
   flowRow,
   flowRowWithClassification,
-  processRowWithDefaultClassification,
-  processRowWithDeferredTrace,
   processRowWithFlowRef,
-  processRowWithInvalidAnnualSupply,
-  processRowWithInvalidLocation,
-  processRowWithOnlyOutputExchange,
-  sourceRow,
 } from "../fixtures/row-builders.mjs";
 
 test("identity duplicate flow decisions become reference reuse rows before mutation planning", () => {
@@ -85,39 +32,36 @@ test("identity duplicate flow decisions become reference reuse rows before mutat
   writeJsonLines(rowsFile, [flowRow(duplicateFlowId), flowRow(newFlowId)]);
 
   try {
-    const identityIndex = writeCompletedIdentityPreflightIndex(
-      flowIdentityReferenceFixtureRoot,
-      [
-        {
-          datasetType: "flow",
-          id: duplicateFlowId,
-          name: "Natural gas",
-          decision: "block_duplicate",
-          status: "blocked",
-          candidates: [
-            {
-              index: 0,
-              id: existingFlowId,
-              version: "03.00.004",
-              state_code: 100,
-              names: ["Natural gas"],
-              fields: { type_of_dataset: "Product flow" },
-              match_score: 100,
-              match_reasons: ["equivalent_flow_core_fields"],
-              decision_hint: "block_duplicate",
-            },
-          ],
-        },
-        {
-          datasetType: "flow",
-          id: newFlowId,
-          name: "New product flow",
-          decision: "create_new",
-          status: "passed",
-          candidates: [],
-        },
-      ],
-    );
+    const identityIndex = writeCompletedIdentityPreflightIndex(flowIdentityReferenceFixtureRoot, [
+      {
+        datasetType: "flow",
+        id: duplicateFlowId,
+        name: "Natural gas",
+        decision: "block_duplicate",
+        status: "blocked",
+        candidates: [
+          {
+            index: 0,
+            id: existingFlowId,
+            version: "03.00.004",
+            state_code: 100,
+            names: ["Natural gas"],
+            fields: { type_of_dataset: "Product flow" },
+            match_score: 100,
+            match_reasons: ["equivalent_flow_core_fields"],
+            decision_hint: "block_duplicate",
+          },
+        ],
+      },
+      {
+        datasetType: "flow",
+        id: newFlowId,
+        name: "New product flow",
+        decision: "create_new",
+        status: "passed",
+        candidates: [],
+      },
+    ]);
 
     const rewriteReport = runFoundry([
       "dataset-identity-reference-rewrites-apply",
@@ -137,22 +81,16 @@ test("identity duplicate flow decisions become reference reuse rows before mutat
     assert.equal(rewriteReport.json.counts.reference_rows, 1);
     assert.equal(rewriteReport.json.counts.flow_reference_rewrites, 1);
 
-    const outputRows = readJsonLines(
-      path.join(repoRoot, rewriteReport.json.files.output_rows),
-    );
+    const outputRows = readJsonLines(path.join(repoRoot, rewriteReport.json.files.output_rows));
     const referenceRows = readJsonLines(
       path.join(repoRoot, rewriteReport.json.files.reference_rows),
     );
     assert.equal(
-      outputRows[0].flowDataSet.flowInformation.dataSetInformation[
-        "common:UUID"
-      ],
+      outputRows[0].flowDataSet.flowInformation.dataSetInformation["common:UUID"],
       newFlowId,
     );
     assert.equal(
-      referenceRows[0].flowDataSet.flowInformation.dataSetInformation[
-        "common:UUID"
-      ],
+      referenceRows[0].flowDataSet.flowInformation.dataSetInformation["common:UUID"],
       duplicateFlowId,
     );
 
@@ -206,15 +144,10 @@ test("identity duplicate flow decisions become reference reuse rows before mutat
       manifest.json.items.map((item) => item.role),
       ["write_candidate", "reference_reuse"],
     );
-    const referenceItem = manifest.json.items.find(
-      (item) => item.role === "reference_reuse",
-    );
+    const referenceItem = manifest.json.items.find((item) => item.role === "reference_reuse");
     assert.equal(referenceItem.entity_id, duplicateFlowId);
     assert.equal(referenceItem.identity_reference_rewrite_count, 1);
-    assert.equal(
-      referenceItem.canonical_references[0].ref_object_id,
-      existingFlowId,
-    );
+    assert.equal(referenceItem.canonical_references[0].ref_object_id, existingFlowId);
   } finally {
     fs.rmSync(flowIdentityReferenceFixtureRoot, {
       recursive: true,
@@ -224,19 +157,12 @@ test("identity duplicate flow decisions become reference reuse rows before mutat
 });
 
 test("unresolved root flow identity decisions are deferred before flow write planning", () => {
-  const root = path.join(
-    repoRoot,
-    "tmp",
-    "flow-root-identity-unresolved-reference-test",
-  );
+  const root = path.join(repoRoot, "tmp", "flow-root-identity-unresolved-reference-test");
   fs.rmSync(root, { recursive: true, force: true });
   const unresolvedFlowId = "aaaaaaaa-bbbb-4ccc-8ddd-000000000015";
   const writeFlowId = "aaaaaaaa-bbbb-4ccc-8ddd-000000000016";
   const rowsFile = path.join(root, "flows.jsonl");
-  const unresolvedReferencesFile = path.join(
-    root,
-    "identity-unresolved-references.jsonl",
-  );
+  const unresolvedReferencesFile = path.join(root, "identity-unresolved-references.jsonl");
   writeJsonLines(rowsFile, [flowRow(unresolvedFlowId), flowRow(writeFlowId)]);
   writeJsonLines(unresolvedReferencesFile, [
     {
@@ -282,21 +208,14 @@ test("unresolved root flow identity decisions are deferred before flow write pla
     assert.equal(rewriteReport.json.counts.input_rows, 2);
     assert.equal(rewriteReport.json.counts.output_rows, 1);
     assert.equal(rewriteReport.json.counts.root_flow_unresolved_rows, 1);
-    assert.equal(
-      rewriteReport.json.counts.flow_reference_unresolved_traces,
-      1,
-    );
+    assert.equal(rewriteReport.json.counts.flow_reference_unresolved_traces, 1);
 
-    const outputRows = readJsonLines(
-      path.join(repoRoot, rewriteReport.json.files.output_rows),
-    );
+    const outputRows = readJsonLines(path.join(repoRoot, rewriteReport.json.files.output_rows));
     const unresolvedRows = readJsonLines(
       path.join(repoRoot, rewriteReport.json.files.identity_unresolved_references),
     );
     assert.equal(
-      outputRows[0].flowDataSet.flowInformation.dataSetInformation[
-        "common:UUID"
-      ],
+      outputRows[0].flowDataSet.flowInformation.dataSetInformation["common:UUID"],
       writeFlowId,
     );
     assert.equal(unresolvedRows[0].relation, "root_flow_identity_unresolved");
@@ -307,11 +226,7 @@ test("unresolved root flow identity decisions are deferred before flow write pla
 });
 
 test("identity duplicate flow rewrites require high-confidence preflight evidence", () => {
-  const root = path.join(
-    repoRoot,
-    "tmp",
-    "flow-identity-low-confidence-reference-test",
-  );
+  const root = path.join(repoRoot, "tmp", "flow-identity-low-confidence-reference-test");
   fs.rmSync(root, { recursive: true, force: true });
   const duplicateFlowId = "aaaaaaaa-bbbb-4ccc-8ddd-000000000013";
   const existingFlowId = "aaaaaaaa-bbbb-4ccc-8ddd-000000000014";
@@ -372,10 +287,7 @@ test("AI identity decisions apply split flow rows into writes and reference reus
   const existingFlowId = "aaaaaaaa-bbbb-4ccc-8ddd-000000000032";
   const rowsFile = path.join(root, "flows.jsonl");
   const decisionsFile = path.join(root, "identity-decisions.jsonl");
-  const incompleteDecisionsFile = path.join(
-    root,
-    "identity-decisions-incomplete.jsonl",
-  );
+  const incompleteDecisionsFile = path.join(root, "identity-decisions-incomplete.jsonl");
   writeJsonLines(rowsFile, [flowRow(reuseFlowId), flowRow(createFlowId)]);
   writeJsonLines(incompleteDecisionsFile, [
     {
@@ -483,25 +395,17 @@ test("AI identity decisions apply split flow rows into writes and reference reus
     assert.equal(applyReport.json.counts.identity_reference_rewrites, 1);
     assert.equal(applyReport.json.counts.evidence_rows, 2);
 
-    const outputRows = readJsonLines(
-      path.join(repoRoot, applyReport.json.files.output_rows),
-    );
-    const referenceRows = readJsonLines(
-      path.join(repoRoot, applyReport.json.files.reference_rows),
-    );
+    const outputRows = readJsonLines(path.join(repoRoot, applyReport.json.files.output_rows));
+    const referenceRows = readJsonLines(path.join(repoRoot, applyReport.json.files.reference_rows));
     const rewriteRows = readJsonLines(
       path.join(repoRoot, applyReport.json.files.identity_reference_rewrites),
     );
     assert.equal(
-      outputRows[0].flowDataSet.flowInformation.dataSetInformation[
-        "common:UUID"
-      ],
+      outputRows[0].flowDataSet.flowInformation.dataSetInformation["common:UUID"],
       createFlowId,
     );
     assert.equal(
-      referenceRows[0].flowDataSet.flowInformation.dataSetInformation[
-        "common:UUID"
-      ],
+      referenceRows[0].flowDataSet.flowInformation.dataSetInformation["common:UUID"],
       reuseFlowId,
     );
     assert.equal(rewriteRows[0].canonical.ref_object_id, existingFlowId);
@@ -549,9 +453,7 @@ test("AI identity decisions apply split flow rows into writes and reference reus
 
     const processId = "aaaaaaaa-bbbb-4ccc-8ddd-000000000033";
     const processRowsFile = path.join(root, "processes.jsonl");
-    writeJsonLines(processRowsFile, [
-      processRowWithFlowRef(processId, reuseFlowId),
-    ]);
+    writeJsonLines(processRowsFile, [processRowWithFlowRef(processId, reuseFlowId)]);
     const processRewrite = runFoundry([
       "dataset-identity-reference-rewrites-apply",
       "--type",
@@ -570,8 +472,7 @@ test("AI identity decisions apply split flow rows into writes and reference reus
       path.join(repoRoot, processRewrite.json.files.output_rows),
     )[0];
     assert.equal(
-      rewrittenProcess.processDataSet.exchanges.exchange[0]
-        .referenceToFlowDataSet["@refObjectId"],
+      rewrittenProcess.processDataSet.exchanges.exchange[0].referenceToFlowDataSet["@refObjectId"],
       existingFlowId,
     );
   } finally {
@@ -580,11 +481,7 @@ test("AI identity decisions apply split flow rows into writes and reference reus
 });
 
 test("AI identity decisions apply blocks create_new for elementary flows", () => {
-  const root = path.join(
-    repoRoot,
-    "tmp",
-    "elementary-flow-identity-create-new-block-test",
-  );
+  const root = path.join(repoRoot, "tmp", "elementary-flow-identity-create-new-block-test");
   fs.rmSync(root, { recursive: true, force: true });
   const flowId = "aaaaaaaa-bbbb-4ccc-8ddd-000000000039";
   const rowsFile = path.join(root, "flows.jsonl");
@@ -610,8 +507,7 @@ test("AI identity decisions apply blocks create_new for elementary flows", () =>
       dataset_version: "00.00.001",
       decision_status: "completed",
       identity_decision: "create_new",
-      basis:
-        "The AI could not select an existing elementary flow candidate.",
+      basis: "The AI could not select an existing elementary flow candidate.",
       evidence: {
         used_context_kinds: ["schema", "methodology_yaml", "ruleset"],
         remote_search: {
@@ -638,11 +534,7 @@ test("AI identity decisions apply blocks create_new for elementary flows", () =>
     ]);
     assert.equal(applyReport.code, 1);
     assert.equal(applyReport.json.status, "blocked");
-    assert.ok(
-      blockerCodes(applyReport.json).has(
-        "elementary_flow_identity_create_new_blocked",
-      ),
-    );
+    assert.ok(blockerCodes(applyReport.json).has("elementary_flow_identity_create_new_blocked"));
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

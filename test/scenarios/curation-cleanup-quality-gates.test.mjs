@@ -1,75 +1,30 @@
 import test from "node:test";
 import {
-  writeReadyFinalizeFixture,
-} from "../fixtures/finalize-fixtures.mjs";
-import {
   annualSupplyFixtureRoot,
-  classificationFixtureRoot,
-  elementaryFlowManifestFixtureRoot,
-  finalizeAutoQueueFixtureRoot,
-  finalizeCurationGateFixtureRoot,
-  finalizeIdentityPreflightFixtureRoot,
-  finalizeLocationFixtureRoot,
-  fixtureRoot,
-  flowClassificationFixtureRoot,
-  flowIdentityReferenceFixtureRoot,
-  identityPreflightRunFixtureRoot,
-  locationFixtureRoot,
-  mutationFixtureRoot,
-  packageContextFixtureRoot,
   qaPathFixtureRoot,
-  referenceClosureFixtureRoot,
   sourceExchangeFixtureRoot,
-  supportManifestFixtureRoot,
 } from "../fixtures/fixture-roots.mjs";
 import {
   assert,
   blockerCodes,
-  bundledCategorySchemaNames,
-  contextTextByPathSuffix,
-  crypto,
   fs,
   fullContextKinds,
-  fullContextPatterns,
-  itemBlockerCodes,
   path,
   readJson,
   readJsonLines,
   rel,
   repoRoot,
   runFoundry,
-  scopeBlockerCodes,
-  sha256Text,
-  siblingCliBuildAvailable,
-  siblingCliRoot,
-  spawnSync,
   targetUserId,
   writeJson,
   writeJsonLines,
-  writeText,
 } from "../fixtures/foundry-core.mjs";
+import { writeContextPackFiles } from "../fixtures/full-context-fixtures.mjs";
+import { writeCompletedIdentityPreflightIndex } from "../fixtures/identity-fixtures.mjs";
 import {
-  contextFile,
-  createFixture,
-  writeContextPackFiles,
-  writeDecisionTaskFixture,
-} from "../fixtures/full-context-fixtures.mjs";
-import {
-  writeCompletedIdentityPreflightIndex,
-} from "../fixtures/identity-fixtures.mjs";
-import {
-  createMutationManifestFixture,
-} from "../fixtures/mutation-fixtures.mjs";
-import {
-  flowRow,
-  flowRowWithClassification,
-  processRowWithDefaultClassification,
-  processRowWithDeferredTrace,
-  processRowWithFlowRef,
   processRowWithInvalidAnnualSupply,
   processRowWithInvalidLocation,
   processRowWithOnlyOutputExchange,
-  sourceRow,
 } from "../fixtures/row-builders.mjs";
 
 test("curation gate maps process QA functional unit findings to concrete TIDAS paths", () => {
@@ -77,11 +32,7 @@ test("curation gate maps process QA functional unit findings to concrete TIDAS p
   const processId = "dddddddd-eeee-4fff-8aaa-bbbbbbbbbbbb";
   const rowsFile = path.join(qaPathFixtureRoot, "rows", "processes.jsonl");
   writeJsonLines(rowsFile, [processRowWithInvalidLocation(processId)]);
-  const schemaReport = path.join(
-    qaPathFixtureRoot,
-    "schema",
-    "validation-report.json",
-  );
+  const schemaReport = path.join(qaPathFixtureRoot, "schema", "validation-report.json");
   writeJson(schemaReport, {
     input_path: rel(rowsFile),
     status: "completed",
@@ -154,24 +105,14 @@ test("curation gate maps process QA functional unit findings to concrete TIDAS p
       task.json.tasks[0].action_items[0].json_pointer,
       "/processDataSet/processInformation/quantitativeReference/functionalUnitOrOther",
     );
-    assert.notEqual(
-      task.json.tasks[0].action_items[0].json_pointer,
-      "/__AI_FILL_JSON_POINTER__",
-    );
-    assert.deepEqual(
-      task.json.tasks[0].action_items[0].allowed_resolution_modes,
-      ["evidence_backed_completion"],
-    );
+    assert.notEqual(task.json.tasks[0].action_items[0].json_pointer, "/__AI_FILL_JSON_POINTER__");
+    assert.deepEqual(task.json.tasks[0].action_items[0].allowed_resolution_modes, [
+      "evidence_backed_completion",
+    ]);
 
     const actionItem = task.json.tasks[0].action_items[0];
-    const outputPatchFile = path.join(
-      repoRoot,
-      task.json.tasks[0].files.output_patch_file,
-    );
-    const authoringPackageFile = path.join(
-      repoRoot,
-      task.json.tasks[0].files.authoring_package,
-    );
+    const outputPatchFile = path.join(repoRoot, task.json.tasks[0].files.output_patch_file);
+    const authoringPackageFile = path.join(repoRoot, task.json.tasks[0].files.authoring_package);
     writeJson(outputPatchFile, {
       schema_version: 1,
       kind: "tiangong_foundry_dataset_patch",
@@ -191,8 +132,7 @@ test("curation gate maps process QA functional unit findings to concrete TIDAS p
                     status: "unresolved_deferred",
                     action_item_code: actionItem.code,
                     blocked_path: actionItem.path,
-                    reason:
-                      "This test attempts to defer a required functional unit.",
+                    reason: "This test attempts to defer a required functional unit.",
                     evidence: {
                       source: "test",
                       quote_or_trace:
@@ -203,8 +143,7 @@ test("curation gate maps process QA functional unit findings to concrete TIDAS p
                   },
                 ],
               },
-              basis:
-                "Attempting to defer functionalUnitOrOther should be blocked.",
+              basis: "Attempting to defer functionalUnitOrOther should be blocked.",
               evidence: {
                 source: "test",
                 quote_or_trace: "Functional unit is missing in the QA report.",
@@ -212,8 +151,7 @@ test("curation gate maps process QA functional unit findings to concrete TIDAS p
               resolution: {
                 mode: "deferred_to_common_other",
                 used_context_kinds: fullContextKinds,
-                summary:
-                  "This mode is intentionally invalid for functional unit.",
+                summary: "This mode is intentionally invalid for functional unit.",
               },
               closes_action_items: [
                 {
@@ -248,17 +186,9 @@ test("curation gate maps process QA functional unit findings to concrete TIDAS p
 test("annual supply schema issues route to deterministic missing-data sentinel cleanup", () => {
   fs.rmSync(annualSupplyFixtureRoot, { recursive: true, force: true });
   const processId = "eeeeeeee-ffff-4000-8111-222222222222";
-  const rowsFile = path.join(
-    annualSupplyFixtureRoot,
-    "rows",
-    "processes.jsonl",
-  );
+  const rowsFile = path.join(annualSupplyFixtureRoot, "rows", "processes.jsonl");
   writeJsonLines(rowsFile, [processRowWithInvalidAnnualSupply(processId)]);
-  const schemaReport = path.join(
-    annualSupplyFixtureRoot,
-    "schema",
-    "validation-report.json",
-  );
+  const schemaReport = path.join(annualSupplyFixtureRoot, "schema", "validation-report.json");
   const annualSupplyPath =
     "processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume";
   const annualSupplyTextPath = `${annualSupplyPath}.#text`;
@@ -282,18 +212,13 @@ test("annual supply schema issues route to deterministic missing-data sentinel c
           {
             code: "annual_supply_or_production_volume_invalid",
             path: annualSupplyPath,
-            message:
-              "annualSupplyOrProductionVolume is not an annualized quantity.",
+            message: "annualSupplyOrProductionVolume is not an annualized quantity.",
           },
         ],
       },
     ],
   });
-  const qaReport = path.join(
-    annualSupplyFixtureRoot,
-    "qa",
-    "process-qa-report.json",
-  );
+  const qaReport = path.join(annualSupplyFixtureRoot, "qa", "process-qa-report.json");
   writeJson(qaReport, {
     rows_file: rel(rowsFile),
     status: "completed",
@@ -328,17 +253,13 @@ test("annual supply schema issues route to deterministic missing-data sentinel c
     assert.equal(gate.json.status, "blocked_needs_foundry_deterministic_cleanup");
     assert.equal(gate.json.counts.action_items, 0);
     assert.equal(gate.json.counts.deterministic_cleanup_items, 3);
-    assert.equal(
-      gate.json.processes[0].status,
-      "needs_foundry_deterministic_cleanup",
-    );
+    assert.equal(gate.json.processes[0].status, "needs_foundry_deterministic_cleanup");
     const authoringPackage = readJson(
       path.join(repoRoot, gate.json.processes[0].authoring_package),
     );
-    const annualCleanupItems =
-      authoringPackage.deterministic_cleanup_items.filter(
-        (item) => item.action_kind === "annual_supply_sentinel_completion",
-      );
+    const annualCleanupItems = authoringPackage.deterministic_cleanup_items.filter(
+      (item) => item.action_kind === "annual_supply_sentinel_completion",
+    );
     assert.equal(annualCleanupItems.length, 2);
     assert.deepEqual(
       annualCleanupItems.map((item) => item.sentinel_value),
@@ -357,12 +278,9 @@ test("annual supply schema issues route to deterministic missing-data sentinel c
     assert.equal(cleanup.code, 0);
     assert.equal(cleanup.json.status, "completed");
     assert.equal(cleanup.json.counts.annual_supply_missing_data_sentinels, 1);
-    const cleaned = readJsonLines(
-      path.join(repoRoot, cleanup.json.files.cleaned_rows),
-    )[0];
+    const cleaned = readJsonLines(path.join(repoRoot, cleanup.json.files.cleaned_rows))[0];
     assert.deepEqual(
-      cleaned.processDataSet.modellingAndValidation
-        .dataSourcesTreatmentAndRepresentativeness
+      cleaned.processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness
         .annualSupplyOrProductionVolume,
       {
         "@xml:lang": "en",
@@ -370,9 +288,7 @@ test("annual supply schema issues route to deterministic missing-data sentinel c
       },
     );
     assert.equal(
-      cleaned.processDataSet.processInformation.dataSetInformation[
-        "common:other"
-      ],
+      cleaned.processDataSet.processInformation.dataSetInformation["common:other"],
       undefined,
     );
   } finally {
@@ -381,11 +297,7 @@ test("annual supply schema issues route to deterministic missing-data sentinel c
 });
 
 test("curation cleanup fills placeholder annual supply with searchable sentinel", () => {
-  const root = path.join(
-    repoRoot,
-    "tmp",
-    "annual-supply-deterministic-cleanup-test",
-  );
+  const root = path.join(repoRoot, "tmp", "annual-supply-deterministic-cleanup-test");
   fs.rmSync(root, { recursive: true, force: true });
   const processId = "eeeeeeee-ffff-4000-8111-222222222223";
   const rowsFile = path.join(root, "rows", "processes.jsonl");
@@ -405,12 +317,9 @@ test("curation cleanup fills placeholder annual supply with searchable sentinel"
     assert.equal(cleanup.json.status, "completed");
     assert.equal(cleanup.json.counts.annual_supply_missing_data_sentinels, 1);
 
-    const cleaned = readJsonLines(
-      path.join(repoRoot, cleanup.json.files.cleaned_rows),
-    )[0];
+    const cleaned = readJsonLines(path.join(repoRoot, cleanup.json.files.cleaned_rows))[0];
     assert.deepEqual(
-      cleaned.processDataSet.modellingAndValidation
-        .dataSourcesTreatmentAndRepresentativeness
+      cleaned.processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness
         .annualSupplyOrProductionVolume,
       {
         "@xml:lang": "en",
@@ -418,9 +327,7 @@ test("curation cleanup fills placeholder annual supply with searchable sentinel"
       },
     );
     assert.equal(
-      cleaned.processDataSet.processInformation.dataSetInformation[
-        "common:other"
-      ],
+      cleaned.processDataSet.processInformation.dataSetInformation["common:other"],
       undefined,
     );
   } finally {
@@ -429,18 +336,15 @@ test("curation cleanup fills placeholder annual supply with searchable sentinel"
 });
 
 test("curation cleanup treats unavailable annual production volume as sentinel", () => {
-  const root = path.join(
-    repoRoot,
-    "tmp",
-    "annual-supply-unavailable-cleanup-test",
-  );
+  const root = path.join(repoRoot, "tmp", "annual-supply-unavailable-cleanup-test");
   fs.rmSync(root, { recursive: true, force: true });
   const processId = "eeeeeeee-ffff-4000-8111-222222222224";
   const row = processRowWithInvalidAnnualSupply(processId);
-  row.processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume = {
-    "@xml:lang": "en",
-    "#text": "0 m/year; source production volume unavailable",
-  };
+  row.processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume =
+    {
+      "@xml:lang": "en",
+      "#text": "0 m/year; source production volume unavailable",
+    };
   const rowsFile = path.join(root, "rows", "processes.jsonl");
   writeJsonLines(rowsFile, [row]);
 
@@ -458,12 +362,9 @@ test("curation cleanup treats unavailable annual production volume as sentinel",
     assert.equal(cleanup.json.status, "completed");
     assert.equal(cleanup.json.counts.annual_supply_missing_data_sentinels, 1);
 
-    const cleaned = readJsonLines(
-      path.join(repoRoot, cleanup.json.files.cleaned_rows),
-    )[0];
+    const cleaned = readJsonLines(path.join(repoRoot, cleanup.json.files.cleaned_rows))[0];
     assert.deepEqual(
-      cleaned.processDataSet.modellingAndValidation
-        .dataSourcesTreatmentAndRepresentativeness
+      cleaned.processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness
         .annualSupplyOrProductionVolume,
       {
         "@xml:lang": "en",
@@ -478,17 +379,9 @@ test("curation cleanup treats unavailable annual production volume as sentinel",
 test("output-only process exchanges require source exchange completeness trace", () => {
   fs.rmSync(sourceExchangeFixtureRoot, { recursive: true, force: true });
   const processId = "bbbbbbbb-cccc-4ddd-8eee-ffffffffffff";
-  const rowsFile = path.join(
-    sourceExchangeFixtureRoot,
-    "rows",
-    "processes.jsonl",
-  );
+  const rowsFile = path.join(sourceExchangeFixtureRoot, "rows", "processes.jsonl");
   writeJsonLines(rowsFile, [processRowWithOnlyOutputExchange(processId)]);
-  const schemaReport = path.join(
-    sourceExchangeFixtureRoot,
-    "schema",
-    "validation-report.json",
-  );
+  const schemaReport = path.join(sourceExchangeFixtureRoot, "schema", "validation-report.json");
   writeJson(schemaReport, {
     input_path: rel(rowsFile),
     status: "completed",
@@ -503,11 +396,7 @@ test("output-only process exchanges require source exchange completeness trace",
       },
     ],
   });
-  const qaReport = path.join(
-    sourceExchangeFixtureRoot,
-    "qa",
-    "process-qa-report.json",
-  );
+  const qaReport = path.join(sourceExchangeFixtureRoot, "qa", "process-qa-report.json");
   writeJson(qaReport, {
     rows_file: rel(rowsFile),
     status: "completed",
@@ -562,19 +451,13 @@ test("output-only process exchanges require source exchange completeness trace",
     ]);
     assert.equal(autoCleanup.code, 0);
     assert.equal(autoCleanup.json.status, "completed");
-    assert.equal(
-      autoCleanup.json.counts.source_exchange_completeness_proofs,
-      1,
-    );
-    const autoCleanedRowsFile = path.join(
-      repoRoot,
-      autoCleanup.json.files.cleaned_rows,
-    );
+    assert.equal(autoCleanup.json.counts.source_exchange_completeness_proofs, 1);
+    const autoCleanedRowsFile = path.join(repoRoot, autoCleanup.json.files.cleaned_rows);
     const autoCleanedRow = readJsonLines(autoCleanedRowsFile)[0];
     assert.equal(
-      autoCleanedRow.processDataSet.processInformation.dataSetInformation[
-        "common:other"
-      ]["tiangongfoundry:sourceExchangeCompleteness"][0].evidence.source,
+      autoCleanedRow.processDataSet.processInformation.dataSetInformation["common:other"][
+        "tiangongfoundry:sourceExchangeCompleteness"
+      ][0].evidence.source,
       "foundry_deterministic_cleanup",
     );
     const autoSchemaReport = path.join(
@@ -709,10 +592,7 @@ test("output-only process exchanges require source exchange completeness trace",
     ]);
     assert.equal(autoManifest.code, 0, JSON.stringify(autoManifest.json, null, 2));
     assert.equal(autoManifest.json.status, "ready_for_remote_write");
-    assert.equal(
-      autoManifest.json.counts.source_exchange_completeness_entries,
-      1,
-    );
+    assert.equal(autoManifest.json.counts.source_exchange_completeness_entries, 1);
 
     const task = runFoundry([
       "dataset-authoring-task-build",
@@ -727,21 +607,14 @@ test("output-only process exchanges require source exchange completeness trace",
       "exchange_set_repaired",
     ]);
     const actionItem = task.json.tasks[0].action_items[0];
-    const outputPatchFile = path.join(
-      repoRoot,
-      task.json.tasks[0].files.output_patch_file,
-    );
-    const authoringPackageFile = path.join(
-      repoRoot,
-      task.json.tasks[0].files.authoring_package,
-    );
+    const outputPatchFile = path.join(repoRoot, task.json.tasks[0].files.output_patch_file);
+    const authoringPackageFile = path.join(repoRoot, task.json.tasks[0].files.authoring_package);
     const closes = [{ code: actionItem.code, path: actionItem.path }];
     const sourceCompletenessTrace = {
       status: "source_only_output_exchange_verified",
       action_item_code: actionItem.code,
       source: "source_trace",
-      summary:
-        "The source exchange list contains a product output and no input exchanges.",
+      summary: "The source exchange list contains a product output and no input exchanges.",
       evidence: {
         source: "authoring_package.source_row",
         quote_or_trace:
@@ -793,30 +666,20 @@ test("output-only process exchanges require source exchange completeness trace",
       "--task-manifest",
       task.json.files.manifest,
       "--out-dir",
-      rel(
-        path.join(
-          sourceExchangeFixtureRoot,
-          "authoring-patches-missing-source-trace",
-        ),
-      ),
+      rel(path.join(sourceExchangeFixtureRoot, "authoring-patches-missing-source-trace")),
     ]);
     assert.equal(missingTraceCollect.code, 1);
     assert.equal(missingTraceCollect.json.status, "blocked");
     assert.equal(
-      blockerCodes(missingTraceCollect.json).has(
-        "patch_source_exchange_trace_missing",
-      ),
+      blockerCodes(missingTraceCollect.json).has("patch_source_exchange_trace_missing"),
       true,
     );
 
     writeJson(
       outputPatchFile,
       patchPayload({
-        "@xmlns:tiangongfoundry":
-          "https://tiangong-lca.dev/foundry/import-curation/1",
-        "tiangongfoundry:sourceExchangeCompleteness": [
-          sourceCompletenessTrace,
-        ],
+        "@xmlns:tiangongfoundry": "https://tiangong-lca.dev/foundry/import-curation/1",
+        "tiangongfoundry:sourceExchangeCompleteness": [sourceCompletenessTrace],
       }),
     );
     const collect = runFoundry([
@@ -829,11 +692,7 @@ test("output-only process exchanges require source exchange completeness trace",
     assert.equal(collect.code, 0);
     assert.equal(collect.json.status, "ready_for_patch_apply");
 
-    const patchedRowsFile = path.join(
-      sourceExchangeFixtureRoot,
-      "rows",
-      "processes.patched.jsonl",
-    );
+    const patchedRowsFile = path.join(sourceExchangeFixtureRoot, "rows", "processes.patched.jsonl");
     const apply = runFoundry([
       "dataset-patch-apply",
       "--input",
@@ -854,9 +713,9 @@ test("output-only process exchanges require source exchange completeness trace",
     assert.equal(apply.json.evidence_count, 1);
     const patchedRow = readJsonLines(patchedRowsFile)[0];
     assert.equal(
-      patchedRow.processDataSet.processInformation.dataSetInformation[
-        "common:other"
-      ]["tiangongfoundry:sourceExchangeCompleteness"][0].status,
+      patchedRow.processDataSet.processInformation.dataSetInformation["common:other"][
+        "tiangongfoundry:sourceExchangeCompleteness"
+      ][0].status,
       "source_only_output_exchange_verified",
     );
 
@@ -903,19 +762,15 @@ test("output-only process exchanges require source exchange completeness trace",
       blockers: [],
       findings: [],
     });
-	    const identityPreflightIndex = writeCompletedIdentityPreflightIndex(
-	      sourceExchangeFixtureRoot,
-	      [
-	        {
-	          datasetType: "process",
-	          id: processId,
-	          target: readJsonLines(cleanedRowsFile)[0],
-	          name: "Heat production",
-	          query:
-            "process name: Heat production\nexchange signature: Output heat 1",
-        },
-      ],
-    );
+    const identityPreflightIndex = writeCompletedIdentityPreflightIndex(sourceExchangeFixtureRoot, [
+      {
+        datasetType: "process",
+        id: processId,
+        target: readJsonLines(cleanedRowsFile)[0],
+        name: "Heat production",
+        query: "process name: Heat production\nexchange signature: Output heat 1",
+      },
+    ]);
     const resolvedGate = runFoundry([
       "dataset-curation-gate",
       "--type",
@@ -1012,20 +867,14 @@ test("output-only process exchanges require source exchange completeness trace",
     ]);
     assert.equal(manifest.code, 0);
     assert.equal(manifest.json.status, "ready_for_remote_write");
-    assert.equal(
-      manifest.json.counts.source_exchange_completeness_entries,
-      1,
-    );
+    assert.equal(manifest.json.counts.source_exchange_completeness_entries, 1);
     const traceRows = readJsonLines(
       path.join(repoRoot, manifest.json.files.source_exchange_completeness_traces),
     );
     assert.equal(traceRows.length, 1);
     assert.equal(traceRows[0].entity_id, processId);
     assert.equal(traceRows[0].trace_kind, "source_exchange_completeness");
-    assert.equal(
-      traceRows[0].status,
-      "source_only_output_exchange_verified",
-    );
+    assert.equal(traceRows[0].status, "source_only_output_exchange_verified");
     assert.equal(
       traceRows[0].evidence.quote_or_trace,
       sourceCompletenessTrace.evidence.quote_or_trace,

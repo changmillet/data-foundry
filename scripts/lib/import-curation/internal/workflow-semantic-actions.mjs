@@ -1,20 +1,8 @@
 import path from "node:path";
-import {
-  dataSetInformation,
-  datasetRoot,
-} from "./dataset-payload.mjs";
-import {
-  fullContextAiCompletionRequirement,
-} from "./context-inputs.mjs";
-import {
-  sha256Text,
-} from "./hash-utils.mjs";
-import {
-  collectCommonOtherTraceEntries,
-} from "./trace-summary.mjs";
-import {
-  annualSupplyMissingDataSentinelText,
-} from "./prewrite-cleanup.mjs";
+import { fullContextAiCompletionRequirement } from "./context-inputs.mjs";
+import { dataSetInformation, datasetRoot } from "./dataset-payload.mjs";
+import { sha256Text } from "./hash-utils.mjs";
+import { annualSupplyMissingDataSentinelText } from "./prewrite-cleanup.mjs";
 import {
   asText,
   ensureArray,
@@ -24,15 +12,10 @@ import {
   repoRelativePath,
   resolveRepoPath,
 } from "./runtime-io.mjs";
-import {
-  hasNonEmptyTraceEvidence,
-} from "./workflow-authoring-tasks.mjs";
-import {
-  hasStructuredTraceEvidence,
-} from "./workflow-patch-evidence.mjs";
-import {
-  isAnnualSupplyTarget,
-} from "./workflow-queue-context.mjs";
+import { collectCommonOtherTraceEntries } from "./trace-summary.mjs";
+import { hasNonEmptyTraceEvidence } from "./workflow-authoring-tasks.mjs";
+import { hasStructuredTraceEvidence } from "./workflow-patch-evidence.mjs";
+import { isAnnualSupplyTarget } from "./workflow-queue-context.mjs";
 
 // part-02.mjs
 export function collectTextEntries(value, pathName = "") {
@@ -100,20 +83,14 @@ export function classificationEntriesForPayload(payload, datasetType) {
   if (datasetType === "flow") {
     const classificationInformation = info?.classificationInformation ?? {};
     const categories =
-      classificationInformation?.["common:elementaryFlowCategorization"]?.[
-        "common:category"
-      ] ??
+      classificationInformation?.["common:elementaryFlowCategorization"]?.["common:category"] ??
       classificationInformation?.elementaryFlowCategorization?.category ??
       [];
     const classes =
-      classificationInformation?.["common:classification"]?.[
-        "common:class"
-      ] ??
+      classificationInformation?.["common:classification"]?.["common:class"] ??
       classificationInformation?.classification?.class ??
       [];
-    const items = flowUsesElementaryClassification(payload)
-      ? categories
-      : classes;
+    const items = flowUsesElementaryClassification(payload) ? categories : classes;
     return ensureArray(items)
       .filter((entry) => entry && typeof entry === "object")
       .map((entry, index) => ({
@@ -124,9 +101,7 @@ export function classificationEntriesForPayload(payload, datasetType) {
       }));
   }
   const classes =
-    info?.classificationInformation?.["common:classification"]?.[
-      "common:class"
-    ] ??
+    info?.classificationInformation?.["common:classification"]?.["common:class"] ??
     info?.classificationInformation?.classification?.class ??
     [];
   return ensureArray(classes)
@@ -155,9 +130,7 @@ export function processExchangeList(payload) {
 
 export function hasFoundryOtherEvidence(value, evidenceKey, acceptedStatuses = []) {
   let found = false;
-  const accepted = new Set(
-    acceptedStatuses.map((status) => String(status).toLowerCase()),
-  );
+  const accepted = new Set(acceptedStatuses.map((status) => String(status).toLowerCase()));
   const visit = (node) => {
     if (found || !node || typeof node !== "object") return;
     if (Array.isArray(node)) {
@@ -173,9 +146,7 @@ export function hasFoundryOtherEvidence(value, evidenceKey, acceptedStatuses = [
           return;
         }
         for (const item of ensureArray(evidence)) {
-          const status = asText(
-            item?.status ?? item?.decision_status ?? item?.decisionStatus,
-          );
+          const status = asText(item?.status ?? item?.decision_status ?? item?.decisionStatus);
           if (status && accepted.has(status.toLowerCase())) {
             found = true;
             return;
@@ -296,8 +267,7 @@ export function collectTextQualitySemanticActions(payload, datasetType) {
         semanticActionItem({
           code: "semantic_local_source_path_visible",
           path: entry.path,
-          message:
-            "Payload contains local source path or package trace text in a visible field.",
+          message: "Payload contains local source path or package trace text in a visible field.",
           evidence: { text },
           instruction:
             "Move local/package trace to authoring evidence or safe common:other provenance before remote write.",
@@ -338,16 +308,14 @@ export function collectClassificationSemanticActions(
     return actions;
   }
   const sourceLooksIndustrial =
-    /\b(hydrometallurgical|Li-ion|battery|batteries|Li salt|lithium|processing)\b/iu.test(
-      nameText,
-    );
+    /\b(hydrometallurgical|Li-ion|battery|batteries|Li salt|lithium|processing)\b/iu.test(nameText);
   const classificationLooksService =
     /membership organizations|community, social and personal services|environmental protection services|other service activities/iu.test(
       classificationPath,
     );
   if (
     !hasClassificationQueueContext &&
-    ((datasetType === "process") ||
+    (datasetType === "process" ||
       (datasetType === "flow" && flowUsesProductClassification(payload))) &&
     asText(profile?.id).toLowerCase() === "bafu" &&
     isBafuConvertedDefaultProcessClassification(classificationPath)
@@ -356,14 +324,12 @@ export function collectClassificationSemanticActions(
       semanticActionItem({
         code: "semantic_classification_converted_default",
         path: classificationActionPathForPayload(payload, datasetType),
-        message:
-          `BAFU ${datasetType} classification still has the tidas-tools converted default service path and must be replaced with a target TIDAS classification.`,
+        message: `BAFU ${datasetType} classification still has the tidas-tools converted default service path and must be replaced with a target TIDAS classification.`,
         evidence: {
           name_text: nameText,
           classification_path: classificationPath,
         },
-        instruction:
-          `Use the BAFU source context, classification queue/candidates when available, and the full schema/YAML/context package to choose the target TianGong/TIDAS ${datasetType} classification.`,
+        instruction: `Use the BAFU source context, classification queue/candidates when available, and the full schema/YAML/context package to choose the target TianGong/TIDAS ${datasetType} classification.`,
       }),
     );
   }
@@ -392,25 +358,18 @@ export function collectClassificationSemanticActions(
 export function collectProcessExchangeSemanticActions(payload) {
   const exchanges = processExchangeList(payload);
   if (exchanges.length === 0) return [];
-  const directions = exchanges.map((exchange) =>
-    asText(exchange.exchangeDirection),
-  );
+  const directions = exchanges.map((exchange) => asText(exchange.exchangeDirection));
   const hasInput = directions.some((direction) => /^input$/iu.test(direction));
   const hasOnlyOutput =
-    directions.length > 0 &&
-    directions.every((direction) => /^output$/iu.test(direction));
+    directions.length > 0 && directions.every((direction) => /^output$/iu.test(direction));
   if (
     !hasInput &&
     hasOnlyOutput &&
-    !hasFoundryOtherEvidence(
-      payload,
-      "tiangongfoundry:sourceExchangeCompleteness",
-      [
-        "source_only_output_exchange_verified",
-        "accepted_source_only_output",
-        "verified",
-      ],
-    )
+    !hasFoundryOtherEvidence(payload, "tiangongfoundry:sourceExchangeCompleteness", [
+      "source_only_output_exchange_verified",
+      "accepted_source_only_output",
+      "verified",
+    ])
   ) {
     return [
       semanticActionItem({
@@ -430,10 +389,7 @@ export function collectProcessExchangeSemanticActions(payload) {
 export function collectFoundryTraceSemanticActions(payload, datasetType) {
   const actions = [];
   const add = (item) => actions.push({ ...item, dataset_type: datasetType });
-  for (const trace of collectCommonOtherTraceEntries(
-    payload,
-    "tiangongfoundry:unresolvedTrace",
-  )) {
+  for (const trace of collectCommonOtherTraceEntries(payload, "tiangongfoundry:unresolvedTrace")) {
     const entry = trace.entry;
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
       add(
@@ -450,38 +406,18 @@ export function collectFoundryTraceSemanticActions(payload, datasetType) {
       );
       continue;
     }
-    const status = asText(
-      entry.status ?? entry.decision_status ?? entry.decisionStatus,
-    );
-    const actionCode = asText(
-      entry.action_item_code ?? entry.actionItemCode ?? entry.code,
-    );
+    const status = asText(entry.status ?? entry.decision_status ?? entry.decisionStatus);
+    const actionCode = asText(entry.action_item_code ?? entry.actionItemCode ?? entry.code);
     const blockedPath = asText(
-      entry.blocked_path ??
-        entry.blockedPath ??
-        entry.field_path ??
-        entry.fieldPath ??
-        entry.path,
+      entry.blocked_path ?? entry.blockedPath ?? entry.field_path ?? entry.fieldPath ?? entry.path,
     );
-    const reason = asText(
-      entry.reason ?? entry.deferred_reason ?? entry.deferredReason,
-    );
+    const reason = asText(entry.reason ?? entry.deferred_reason ?? entry.deferredReason);
     const nextAction = asText(
-      entry.next_action ??
-        entry.nextAction ??
-        entry.follow_up ??
-        entry.followUp,
+      entry.next_action ?? entry.nextAction ?? entry.follow_up ?? entry.followUp,
     );
-    const evidence =
-      entry.evidence ?? entry.source_evidence ?? entry.sourceEvidence;
+    const evidence = entry.evidence ?? entry.source_evidence ?? entry.sourceEvidence;
     const invalidReasons = [];
-    if (
-      ![
-        "unresolved_deferred",
-        "deferred_to_common_other",
-        "needs_followup",
-      ].includes(status)
-    ) {
+    if (!["unresolved_deferred", "deferred_to_common_other", "needs_followup"].includes(status)) {
       invalidReasons.push("status");
     }
     if (!actionCode) invalidReasons.push("action_item_code");
@@ -528,21 +464,13 @@ export function collectFoundryTraceSemanticActions(payload, datasetType) {
       );
       continue;
     }
-    const status = asText(
-      entry.status ?? entry.decision_status ?? entry.decisionStatus,
-    );
-    const evidence =
-      entry.evidence ??
-      entry.source_evidence ??
-      entry.sourceEvidence ??
-      entry.trace;
+    const status = asText(entry.status ?? entry.decision_status ?? entry.decisionStatus);
+    const evidence = entry.evidence ?? entry.source_evidence ?? entry.sourceEvidence ?? entry.trace;
     const invalidReasons = [];
     if (
-      ![
-        "source_only_output_exchange_verified",
-        "accepted_source_only_output",
-        "verified",
-      ].includes(status)
+      !["source_only_output_exchange_verified", "accepted_source_only_output", "verified"].includes(
+        status,
+      )
     ) {
       invalidReasons.push("status");
     }
@@ -608,9 +536,7 @@ export function collectProfileSemanticActionItems({
       hasClassificationQueueContext,
     }),
     ...collectFlowReuseSemanticActions(payload, datasetType),
-    ...(datasetType === "process"
-      ? collectProcessExchangeSemanticActions(payload)
-      : []),
+    ...(datasetType === "process" ? collectProcessExchangeSemanticActions(payload) : []),
     ...collectFoundryTraceSemanticActions(payload, datasetType),
   ];
 }
@@ -623,9 +549,7 @@ export function dotPathToJsonPointer(value) {
   const text = asText(value);
   if (!text || text === "<root>") return "/__AI_FILL_JSON_POINTER__";
   if (text.startsWith("/")) return text;
-  const normalized = text
-    .replace(/\[(\d+)\]/gu, ".$1")
-    .replace(/^\.+|\.+$/gu, "");
+  const normalized = text.replace(/\[(\d+)\]/gu, ".$1").replace(/^\.+|\.+$/gu, "");
   const tokens = normalized
     .split(".")
     .map((token) => token.trim())
@@ -635,8 +559,7 @@ export function dotPathToJsonPointer(value) {
 }
 
 export function actionItemClosure(item) {
-  const code =
-    asText(item?.code ?? item?.rule_id ?? item?.ruleId) || "action_item";
+  const code = asText(item?.code ?? item?.rule_id ?? item?.ruleId) || "action_item";
   const itemPath = asText(item?.path) || null;
   return {
     code,
@@ -655,10 +578,7 @@ export const allowedPatchResolutionModes = new Set([
 ]);
 
 export function actionItemAllowsCommonOtherDeferral(item) {
-  if (
-    item?.common_other_deferral_allowed === true ||
-    item?.commonOtherDeferralAllowed === true
-  ) {
+  if (item?.common_other_deferral_allowed === true || item?.commonOtherDeferralAllowed === true) {
     return true;
   }
   const code = asText(item?.code ?? item?.rule_id ?? item?.ruleId);
@@ -685,11 +605,7 @@ export function actionItemResolutionModes(item) {
   if (actionItemAllowsCommonOtherDeferral(item)) {
     return ["source_language_normalization", "deferred_to_common_other"];
   }
-  if (
-    code.includes("placeholder") ||
-    code.includes("geography_token") ||
-    code.includes("name")
-  ) {
+  if (code.includes("placeholder") || code.includes("geography_token") || code.includes("name")) {
     return ["evidence_backed_completion", "source_language_normalization"];
   }
   return ["evidence_backed_completion"];
@@ -792,8 +708,7 @@ export function buildPatchTemplate(packagePayload, packagePath) {
     ],
     patch_sets: [
       {
-        dataset_id:
-          packagePayload.entity_id ?? packagePayload.process_id ?? null,
+        dataset_id: packagePayload.entity_id ?? packagePayload.process_id ?? null,
         version: packagePayload.version ?? "00.00.001",
         authoring_package: packageRef,
         operations: actionItems.map((item) => ({
@@ -824,27 +739,16 @@ export function fullContextAiConfigRequiresAuthoring(value) {
 }
 
 export function requiredFullContextKinds(value) {
-  const kinds = ensureArray(
-    value?.required_context_kinds ?? value?.requiredContextKinds,
-  )
+  const kinds = ensureArray(value?.required_context_kinds ?? value?.requiredContextKinds)
     .map((kind) => asText(kind))
     .filter(Boolean);
   return kinds.length > 0
     ? kinds
-    : [
-        "schema",
-        "methodology_yaml",
-        "ruleset",
-        "classification_schema",
-        "location_schema",
-      ];
+    : ["schema", "methodology_yaml", "ruleset", "classification_schema", "location_schema"];
 }
 
 export function requiredFullContextFilePatterns(value) {
-  return ensureArray(
-    value?.required_context_file_patterns ??
-      value?.requiredContextFilePatterns,
-  )
+  return ensureArray(value?.required_context_file_patterns ?? value?.requiredContextFilePatterns)
     .map((pattern) => asText(pattern))
     .filter(Boolean);
 }
@@ -864,8 +768,9 @@ export function contextSummaryHasPattern(files, pattern) {
   const needle = String(pattern).toLowerCase();
   return ensureArray(files).some(
     (file) =>
-      String(file?.path ?? "").toLowerCase().includes(needle) &&
-      contextSummaryHasNonEmptyPayload(file),
+      String(file?.path ?? "")
+        .toLowerCase()
+        .includes(needle) && contextSummaryHasNonEmptyPayload(file),
   );
 }
 
@@ -897,11 +802,8 @@ export function sharedContextBundleReadinessBlockers({
     sourceKind === "manifest"
       ? "authoring_manifest_shared_context_bundle"
       : "authoring_task_shared_context_bundle";
-  const sourceField =
-    sourceKind === "manifest" ? "task_manifest" : "authoring_task";
-  const sourceValue = sourcePath
-    ? repoRelativeArtifactPath(repoRoot, sourcePath)
-    : null;
+  const sourceField = sourceKind === "manifest" ? "task_manifest" : "authoring_task";
+  const sourceValue = sourcePath ? repoRelativeArtifactPath(repoRoot, sourcePath) : null;
   const base = {
     stage: "ai_patch_collect",
     shared_context_bundle: repoRelativeArtifactPath(repoRoot, sharedPath),
@@ -948,8 +850,7 @@ export function sharedContextBundleReadinessBlockers({
       blockers.push({
         ...base,
         code: `${prefix}_content_hash_mismatch`,
-        message:
-          "Shared full-context bundle content no longer matches its recorded stable sha256.",
+        message: "Shared full-context bundle content no longer matches its recorded stable sha256.",
         expected_sha256: actualSha256,
         actual_sha256: computedSha256,
       });

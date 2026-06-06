@@ -13,12 +13,7 @@
       "output_contract": "capability-route-plan.json when --out-dir is supplied, otherwise JSON on stdout.",
       "remote_write_mode": "read-only",
       "verification_gate": "status must be routed before autonomous adapter execution.",
-      "source_manifest_requirements": [
-        "task id",
-        "kind",
-        "dataset type",
-        "capability registry"
-      ]
+      "source_manifest_requirements": ["task id", "kind", "dataset type", "capability registry"]
     },
     {
       "id": "foundry.skill.tidas-import",
@@ -177,11 +172,7 @@
       "output_contract": "DatasetValidateReport plus split valid/invalid rows under outputs/.",
       "remote_write_mode": "read-only",
       "verification_gate": "counts.invalid must be zero before remote write.",
-      "source_manifest_requirements": [
-        "rows file path",
-        "CLI command record",
-        "validation report"
-      ]
+      "source_manifest_requirements": ["rows file path", "CLI command record", "validation report"]
     },
     {
       "id": "cli.flow.dataset-validate",
@@ -192,11 +183,7 @@
       "output_contract": "DatasetValidateReport plus split valid/invalid rows under outputs/.",
       "remote_write_mode": "read-only",
       "verification_gate": "counts.invalid must be zero before remote write.",
-      "source_manifest_requirements": [
-        "rows file path",
-        "CLI command record",
-        "validation report"
-      ]
+      "source_manifest_requirements": ["rows file path", "CLI command record", "validation report"]
     },
     {
       "id": "cli.lifecyclemodel.dataset-validate",
@@ -207,11 +194,7 @@
       "output_contract": "DatasetValidateReport plus split valid/invalid rows under outputs/.",
       "remote_write_mode": "read-only",
       "verification_gate": "counts.invalid must be zero before remote write.",
-      "source_manifest_requirements": [
-        "rows file path",
-        "CLI command record",
-        "validation report"
-      ]
+      "source_manifest_requirements": ["rows file path", "CLI command record", "validation report"]
     },
     {
       "id": "cli.process.qa",
@@ -222,11 +205,7 @@
       "output_contract": "Deterministic process QA report plus markdown and JSON metric artifacts.",
       "remote_write_mode": "read-only",
       "verification_gate": "command must complete; Foundry owns profile policy, AI authoring packages, waivers, and final blocker decisions.",
-      "source_manifest_requirements": [
-        "rows file path",
-        "CLI command record",
-        "QA report"
-      ]
+      "source_manifest_requirements": ["rows file path", "CLI command record", "QA report"]
     },
     {
       "id": "cli.flow.qa",
@@ -237,11 +216,7 @@
       "output_contract": "Flow QA report plus finding artifacts.",
       "remote_write_mode": "read-only",
       "verification_gate": "command must complete before target-quality readiness.",
-      "source_manifest_requirements": [
-        "rows file path",
-        "CLI command record",
-        "QA report"
-      ]
+      "source_manifest_requirements": ["rows file path", "CLI command record", "QA report"]
     },
     {
       "id": "cli.lifecyclemodel.qa",
@@ -252,11 +227,7 @@
       "output_contract": "Lifecyclemodel QA report plus model summaries, findings, markdown, and timing artifacts.",
       "remote_write_mode": "read-only",
       "verification_gate": "command must complete before target-quality readiness.",
-      "source_manifest_requirements": [
-        "run directory",
-        "CLI command record",
-        "QA report"
-      ]
+      "source_manifest_requirements": ["run directory", "CLI command record", "QA report"]
     },
     {
       "id": "cli.dataset.curation-queue-build",
@@ -389,11 +360,7 @@
       "output_contract": "cleaned dataset JSONL plus dataset-curation-cleanup-report.json.",
       "remote_write_mode": "read-only",
       "verification_gate": "cleaned rows must be revalidated after cleanup and before remote write.",
-      "source_manifest_requirements": [
-        "rows file path",
-        "cleanup report",
-        "cleaned rows path"
-      ]
+      "source_manifest_requirements": ["rows file path", "cleanup report", "cleaned rows path"]
     },
     {
       "id": "foundry.dataset.post-authoring-finalize",

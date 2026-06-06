@@ -1,7 +1,5 @@
 import path from "node:path";
-import {
-  annualSupplyMissingDataSentinelText,
-} from "./prewrite-cleanup.mjs";
+import { annualSupplyMissingDataSentinelText } from "./prewrite-cleanup.mjs";
 import {
   asText,
   ensureArray,
@@ -42,18 +40,10 @@ import {
   validateProcessClassificationDecisionOperation,
   validateSourceExchangeCompletenessTrace,
 } from "./workflow-patch-evidence.mjs";
-import {
-  allowedPatchResolutionModes,
-} from "./workflow-semantic-actions.mjs";
+import { allowedPatchResolutionModes } from "./workflow-semantic-actions.mjs";
 
 // part-05.mjs
-export function validateCollectedPatchSet({
-  repoRoot,
-  task,
-  patchSet,
-  patchSetIndex,
-  patchPath,
-}) {
+export function validateCollectedPatchSet({ repoRoot, task, patchSet, patchSetIndex, patchPath }) {
   const blockers = [];
   const operations = patchSetOperations(patchSet);
   const entity = task.entity ?? {};
@@ -73,9 +63,7 @@ export function validateCollectedPatchSet({
     });
     return blockers;
   }
-  const nonTestOperations = operations.filter(
-    (operation) => asText(operation?.op) !== "test",
-  );
+  const nonTestOperations = operations.filter((operation) => asText(operation?.op) !== "test");
   const deferredAnnualSupply = nonTestOperations.some(
     (operation) =>
       operationResolutionMode(operation) === "deferred_to_common_other" &&
@@ -95,22 +83,16 @@ export function validateCollectedPatchSet({
   if (nonTestOperations.length === 0) {
     blockers.push({
       code: "patch_effective_operation_missing",
-      message:
-        "Patch set must include at least one non-test operation for AI-authored curation.",
+      message: "Patch set must include at least one non-test operation for AI-authored curation.",
       patch_file: patchLocation,
       patch_set_index: patchSetIndex,
       entity,
     });
   }
-  if (
-    !datasetId &&
-    patchSet.row_index === undefined &&
-    patchSet.rowIndex === undefined
-  ) {
+  if (!datasetId && patchSet.row_index === undefined && patchSet.rowIndex === undefined) {
     blockers.push({
       code: "patch_target_missing",
-      message:
-        "Patch set must target a row by dataset_id/id/uuid/entity_id or row_index.",
+      message: "Patch set must target a row by dataset_id/id/uuid/entity_id or row_index.",
       patch_file: patchLocation,
       patch_set_index: patchSetIndex,
       entity,
@@ -142,10 +124,7 @@ export function validateCollectedPatchSet({
       patch_set_index: patchSetIndex,
       entity,
     });
-  } else if (
-    expectedPackage &&
-    path.basename(authoringPackage) !== expectedPackage
-  ) {
+  } else if (expectedPackage && path.basename(authoringPackage) !== expectedPackage) {
     blockers.push({
       code: "patch_authoring_package_mismatch",
       message: `Patch authoring_package ${authoringPackage} does not match ${expectedPackage}.`,
@@ -160,10 +139,7 @@ export function validateCollectedPatchSet({
     const [code, itemPath] = required.split("\u0000");
     const matched = [...closed].some((closure) => {
       const [closedCode, closedPath] = closure.split("\u0000");
-      return (
-        closedCode === code &&
-        (!closedPath || !itemPath || closedPath === itemPath)
-      );
+      return closedCode === code && (!closedPath || !itemPath || closedPath === itemPath);
     });
     if (!matched) {
       blockers.push({
@@ -246,9 +222,7 @@ export function validateCollectedPatchSet({
           }
         }
         if (
-          ["deferred_to_common_other", "source_trace_verified"].includes(
-            mode,
-          ) &&
+          ["deferred_to_common_other", "source_trace_verified"].includes(mode) &&
           !operationTouchesCommonOther(operation)
         ) {
           blockers.push({
@@ -300,8 +274,7 @@ export function validateCollectedPatchSet({
         ) {
           blockers.push({
             code: "patch_resolution_mode_mismatch",
-            message:
-              "Classification action items must be resolved by classification_decision.",
+            message: "Classification action items must be resolved by classification_decision.",
             patch_file: patchLocation,
             patch_set_index: patchSetIndex,
             operation_index: operationIndex,
@@ -345,8 +318,7 @@ export function validateCollectedPatchSet({
         ) {
           blockers.push({
             code: "patch_resolution_mode_mismatch",
-            message:
-              "Location action items must be resolved by location_decision.",
+            message: "Location action items must be resolved by location_decision.",
             patch_file: patchLocation,
             patch_set_index: patchSetIndex,
             operation_index: operationIndex,
@@ -385,8 +357,7 @@ export function validateCollectedPatchSet({
     if (op !== "test" && !operationHasEvidence(operation)) {
       blockers.push({
         code: "patch_evidence_missing",
-        message:
-          "Non-test patch operations need basis or evidence before collect/apply.",
+        message: "Non-test patch operations need basis or evidence before collect/apply.",
         patch_file: patchLocation,
         patch_set_index: patchSetIndex,
         operation_index: operationIndex,
@@ -394,10 +365,7 @@ export function validateCollectedPatchSet({
       });
     }
     if (op !== "test") {
-      if (
-        taskRequiresFullContextEvidence(task) &&
-        operationClosureKeys(operation).length === 0
-      ) {
+      if (taskRequiresFullContextEvidence(task) && operationClosureKeys(operation).length === 0) {
         blockers.push({
           code: "patch_action_item_closure_missing_full_context",
           message:
@@ -408,17 +376,15 @@ export function validateCollectedPatchSet({
           entity,
         });
       }
-      operationFullContextEvidenceBlockers({ operation, task }).forEach(
-        (blocker) => {
-          blockers.push({
-            ...blocker,
-            patch_file: patchLocation,
-            patch_set_index: patchSetIndex,
-            operation_index: operationIndex,
-            entity,
-          });
-        },
-      );
+      operationFullContextEvidenceBlockers({ operation, task }).forEach((blocker) => {
+        blockers.push({
+          ...blocker,
+          patch_file: patchLocation,
+          patch_set_index: patchSetIndex,
+          operation_index: operationIndex,
+          entity,
+        });
+      });
     }
     if (containsAiTemplatePlaceholder(operation)) {
       blockers.push({
@@ -451,9 +417,7 @@ export function readRowsIfExists(filePath) {
 
 export function readJsonIfOption(repoRoot, value) {
   const resolved = resolveRepoPath(repoRoot, value);
-  return resolved && fileExists(resolved)
-    ? { path: resolved, value: readJson(resolved) }
-    : null;
+  return resolved && fileExists(resolved) ? { path: resolved, value: readJson(resolved) } : null;
 }
 
 export function readJsonArtifactsIfOption(repoRoot, value) {
@@ -496,12 +460,10 @@ export function normalizeSourceReferenceRewriteRow(row) {
     dataset_type: asText(row?.dataset_type ?? row?.datasetType) || null,
     dataset_id: asText(row?.dataset_id ?? row?.datasetId ?? row?.entity_id),
     dataset_version:
-      asText(row?.dataset_version ?? row?.datasetVersion ?? row?.version) ||
-      "00.00.001",
+      asText(row?.dataset_version ?? row?.datasetVersion ?? row?.version) || "00.00.001",
     relation: asText(row?.relation) || null,
     path: asText(row?.path) || null,
-    action:
-      asText(row?.action) || "rewrite_to_canonical_source_reference",
+    action: asText(row?.action) || "rewrite_to_canonical_source_reference",
     reason: asText(row?.reason) || null,
   };
   normalized.evidence = {

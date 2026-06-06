@@ -1,16 +1,11 @@
 import path from "node:path";
+import { readJsonLinesIfExists, resolveArtifactPath } from "./artifact-inputs.mjs";
 import {
   dataSetInformation,
   datasetRoot,
   identityFreshnessIdentityKey,
 } from "./dataset-payload.mjs";
-import {
-  readJsonLinesIfExists,
-  resolveArtifactPath,
-} from "./artifact-inputs.mjs";
-import {
-  sha256Json,
-} from "./hash-utils.mjs";
+import { sha256Json } from "./hash-utils.mjs";
 import {
   asText,
   ensureArray,
@@ -19,12 +14,7 @@ import {
   repoRelativePath,
   resolveRepoPath,
 } from "./runtime-io.mjs";
-import {
-  identityDecisionApplyContextClosesAction,
-} from "./workflow-identity-decision-context.mjs";
-import {
-  deterministicRowsFileTransformEntries,
-} from "./workflow-row-transform-context.mjs";
+import { identityDecisionApplyContextClosesAction } from "./workflow-identity-decision-context.mjs";
 import {
   classCode,
   classLevel,
@@ -32,9 +22,8 @@ import {
   locationCodeMapForPatch,
   processCategoryPathForCode,
 } from "./workflow-patch-evidence.mjs";
-import {
-  identityPreflightIndexPath,
-} from "./workflow-queue-context.mjs";
+import { identityPreflightIndexPath } from "./workflow-queue-context.mjs";
+import { deterministicRowsFileTransformEntries } from "./workflow-row-transform-context.mjs";
 import {
   classificationEntriesForPayload,
   flowTypeForPayload,
@@ -57,16 +46,9 @@ export function identityPreflightResultFile(repoRoot, indexPath, row) {
   const resolvedOutputDir = path.isAbsolute(outputDir)
     ? outputDir
     : path.resolve(baseDir, outputDir);
-  const fromIndexBase = path.join(
-    resolvedOutputDir,
-    "outputs",
-    "identity-decision.json",
-  );
+  const fromIndexBase = path.join(resolvedOutputDir, "outputs", "identity-decision.json");
   if (fileExists(fromIndexBase)) return fromIndexBase;
-  return resolveRepoPath(
-    repoRoot,
-    path.join(outputDir, "outputs", "identity-decision.json"),
-  );
+  return resolveRepoPath(repoRoot, path.join(outputDir, "outputs", "identity-decision.json"));
 }
 
 export function identityPreflightCandidatesFile(repoRoot, indexPath, row, result) {
@@ -83,24 +65,18 @@ export function readIdentityPreflightIndexRow(repoRoot, indexPath, row) {
   const baseDir = path.dirname(indexPath);
   const datasetType = asText(row?.dataset_type ?? row?.type);
   const datasetId = asText(row?.dataset_id ?? row?.entity_id ?? row?.id);
-  const datasetVersion =
-    asText(row?.dataset_version ?? row?.version) || "00.00.001";
+  const datasetVersion = asText(row?.dataset_version ?? row?.version) || "00.00.001";
   if (!datasetType || !datasetId) return null;
   const requestPath = resolveArtifactPath(repoRoot, row?.request_file, baseDir);
   const request = readJsonIfExists(requestPath);
   const resultPath = identityPreflightResultFile(repoRoot, indexPath, row);
   const result = readJsonIfExists(resultPath);
-  const candidatesPath = identityPreflightCandidatesFile(
-    repoRoot,
-    indexPath,
-    row,
-    result,
-  );
+  const candidatesPath = identityPreflightCandidatesFile(repoRoot, indexPath, row, result);
   const candidateRows = readJsonLinesIfExists(candidatesPath);
   const outputDir = row?.output_dir
-    ? resolveArtifactPath(repoRoot, row.output_dir, baseDir) ??
-      resolveRepoPath(repoRoot, row.output_dir)
-    : result?.out_dir ?? null;
+    ? (resolveArtifactPath(repoRoot, row.output_dir, baseDir) ??
+      resolveRepoPath(repoRoot, row.output_dir))
+    : (result?.out_dir ?? null);
   return {
     dataset_type: datasetType,
     dataset_id: datasetId,
@@ -115,9 +91,7 @@ export function readIdentityPreflightIndexRow(repoRoot, indexPath, row) {
           schema_version: request.schema_version ?? null,
           remote_candidate_search: request.remote_candidate_search ?? null,
           target_sha256:
-            row?.target_sha256 ??
-            row?.targetSha256 ??
-            sha256Json(request.target ?? null),
+            row?.target_sha256 ?? row?.targetSha256 ?? sha256Json(request.target ?? null),
         }
       : row?.target_sha256 || row?.targetSha256
         ? {
@@ -133,8 +107,7 @@ export function readIdentityPreflightIndexRow(repoRoot, indexPath, row) {
           confidence: result.confidence ?? null,
           next_action: result.next_action ?? null,
           target: result.target ?? null,
-          candidates:
-            candidateRows.length > 0 ? candidateRows : ensureArray(result.candidates),
+          candidates: candidateRows.length > 0 ? candidateRows : ensureArray(result.candidates),
           candidate_sources: result.candidate_sources ?? null,
           findings: result.findings ?? [],
           blockers: result.blockers ?? [],
@@ -149,9 +122,7 @@ export function readIdentityPreflightContext(repoRoot, options, rowsFile) {
   const indexPath = identityPreflightIndexPath(repoRoot, options, rowsFile);
   if (!indexPath) return null;
   if (!fileExists(indexPath)) {
-    throw new Error(
-      `--identity-preflight-index must point to a readable JSONL file: ${indexPath}`,
-    );
+    throw new Error(`--identity-preflight-index must point to a readable JSONL file: ${indexPath}`);
   }
   const rows = readJsonLinesIfExists(indexPath)
     .map((row) => readIdentityPreflightIndexRow(repoRoot, indexPath, row))
@@ -191,13 +162,10 @@ export function identityPreflightFreshness(row, payload) {
     current_payload_sha256: currentPayloadSha256,
     request_target_sha256: requestTargetSha256,
     current_payload_matches_request: Boolean(
-      currentPayloadSha256 &&
-        requestTargetSha256 &&
-        currentPayloadSha256 === requestTargetSha256,
+      currentPayloadSha256 && requestTargetSha256 && currentPayloadSha256 === requestTargetSha256,
     ),
   };
 }
-
 
 export function classificationFreshnessAllowance({
   repoRoot,
@@ -215,20 +183,18 @@ export function classificationFreshnessAllowance({
   const key = identityFreshnessIdentityKey({ datasetType, identity });
   if (!key) return null;
   const classificationInputPayloadSha256 =
-    classificationDecisionApplyContext.inputPayloadSha256ByIdentity?.get(key) ??
-    null;
+    classificationDecisionApplyContext.inputPayloadSha256ByIdentity?.get(key) ?? null;
   const classificationOutputPayloadSha256 =
-    classificationDecisionApplyContext.outputPayloadSha256ByIdentity?.get(key) ??
-    null;
+    classificationDecisionApplyContext.outputPayloadSha256ByIdentity?.get(key) ?? null;
   const requestMatchesClassificationInput = Boolean(
     freshness?.request_target_sha256 &&
-      classificationInputPayloadSha256 &&
-      freshness.request_target_sha256 === classificationInputPayloadSha256,
+    classificationInputPayloadSha256 &&
+    freshness.request_target_sha256 === classificationInputPayloadSha256,
   );
   const currentMatchesClassificationOutput = Boolean(
     freshness?.current_payload_sha256 &&
-      classificationOutputPayloadSha256 &&
-      freshness.current_payload_sha256 === classificationOutputPayloadSha256,
+    classificationOutputPayloadSha256 &&
+    freshness.current_payload_sha256 === classificationOutputPayloadSha256,
   );
   if (!requestMatchesClassificationInput || !currentMatchesClassificationOutput) {
     return null;
@@ -244,10 +210,8 @@ export function classificationFreshnessAllowance({
     output_rows_files: classificationDecisionApplyContext.outputRows.map((file) =>
       repoRelativePath(repoRoot, file),
     ),
-    request_payload_matches_classification_input:
-      requestMatchesClassificationInput,
-    current_payload_matches_classification_output:
-      currentMatchesClassificationOutput,
+    request_payload_matches_classification_input: requestMatchesClassificationInput,
+    current_payload_matches_classification_output: currentMatchesClassificationOutput,
     classification_input_payload_sha256: classificationInputPayloadSha256,
     classification_output_payload_sha256: classificationOutputPayloadSha256,
   };
@@ -293,15 +257,9 @@ export function deterministicTransformFreshnessAllowance({
   for (let pass = 0; pass <= transforms.length; pass += 1) {
     let changed = false;
     for (const transform of transforms) {
-      const inputPayloadSha256 =
-        transform.inputPayloadSha256ByIdentity?.get(key) ?? null;
-      const outputPayloadSha256 =
-        transform.outputPayloadSha256ByIdentity?.get(key) ?? null;
-      if (
-        !inputPayloadSha256 ||
-        !outputPayloadSha256 ||
-        !reachable.has(inputPayloadSha256)
-      ) {
+      const inputPayloadSha256 = transform.inputPayloadSha256ByIdentity?.get(key) ?? null;
+      const outputPayloadSha256 = transform.outputPayloadSha256ByIdentity?.get(key) ?? null;
+      if (!inputPayloadSha256 || !outputPayloadSha256 || !reachable.has(inputPayloadSha256)) {
         continue;
       }
       if (!reachable.has(outputPayloadSha256)) {
@@ -361,25 +319,19 @@ export function externalizationFreshnessAllowance({
     return null;
   }
   const externalizedPayloadSha256 =
-    unresolvedExchangeExternalizationContext.outputPayloadSha256ByIdentity.get(
-      key,
-    ) ?? null;
+    unresolvedExchangeExternalizationContext.outputPayloadSha256ByIdentity.get(key) ?? null;
   return {
     reason: "unresolved_exchange_externalization",
     report: unresolvedExchangeExternalizationContext.reportPathRelative,
-    input_rows_file:
-      unresolvedExchangeExternalizationContext.inputRowsFileRelative,
-    output_rows_file:
-      unresolvedExchangeExternalizationContext.outputRowsFileRelative,
+    input_rows_file: unresolvedExchangeExternalizationContext.inputRowsFileRelative,
+    output_rows_file: unresolvedExchangeExternalizationContext.outputRowsFileRelative,
     traces_file: unresolvedExchangeExternalizationContext.tracesFileRelative,
     externalized_exchange_count:
-      unresolvedExchangeExternalizationContext.externalizedExchangeCountByIdentity.get(
-        key,
-      ) ?? 0,
+      unresolvedExchangeExternalizationContext.externalizedExchangeCountByIdentity.get(key) ?? 0,
     current_payload_matches_externalized_output: Boolean(
       freshness?.current_payload_sha256 &&
-        externalizedPayloadSha256 &&
-        freshness.current_payload_sha256 === externalizedPayloadSha256,
+      externalizedPayloadSha256 &&
+      freshness.current_payload_sha256 === externalizedPayloadSha256,
     ),
     externalized_payload_sha256: externalizedPayloadSha256,
   };
@@ -394,15 +346,13 @@ export function attachIdentityPreflightFreshness(row, payload, options = {}) {
       freshness,
       datasetType: options.datasetType,
       identity: options.identity,
-      classificationDecisionApplyContext:
-        options.classificationDecisionApplyContext,
+      classificationDecisionApplyContext: options.classificationDecisionApplyContext,
     }),
     externalizationFreshnessAllowance({
       freshness,
       datasetType: options.datasetType,
       identity: options.identity,
-      unresolvedExchangeExternalizationContext:
-        options.unresolvedExchangeExternalizationContext,
+      unresolvedExchangeExternalizationContext: options.unresolvedExchangeExternalizationContext,
     }),
     deterministicTransformFreshnessAllowance({
       repoRoot: options.repoRoot,
@@ -410,13 +360,11 @@ export function attachIdentityPreflightFreshness(row, payload, options = {}) {
       datasetType: options.datasetType,
       identity: options.identity,
       patchApplyContext: options.patchApplyContext,
-      classificationDecisionApplyContext:
-        options.classificationDecisionApplyContext,
+      classificationDecisionApplyContext: options.classificationDecisionApplyContext,
       locationDecisionApplyContext: options.locationDecisionApplyContext,
       identityDecisionApplyContext: options.identityDecisionApplyContext,
       identityReferenceRewriteContext: options.identityReferenceRewriteContext,
-      unresolvedExchangeExternalizationContext:
-        options.unresolvedExchangeExternalizationContext,
+      unresolvedExchangeExternalizationContext: options.unresolvedExchangeExternalizationContext,
       sourceContactRewriteContext: options.sourceContactRewriteContext,
       canonicalSupportRewriteContext: options.canonicalSupportRewriteContext,
       cleanupContext: options.cleanupContext,
@@ -429,8 +377,7 @@ export function attachIdentityPreflightFreshness(row, payload, options = {}) {
       deterministic_transform_allowance: deterministicAllowances[0] ?? null,
       deterministic_transform_allowances: deterministicAllowances,
       current_payload_scope_accepted: Boolean(
-        freshness.current_payload_matches_request ||
-          deterministicAllowances.length > 0,
+        freshness.current_payload_matches_request || deterministicAllowances.length > 0,
       ),
     },
   };
@@ -439,7 +386,7 @@ export function attachIdentityPreflightFreshness(row, payload, options = {}) {
 export function identityPreflightFreshnessAccepted(freshness) {
   return Boolean(
     freshness?.current_payload_matches_request === true ||
-      freshness?.current_payload_scope_accepted === true,
+    freshness?.current_payload_scope_accepted === true,
   );
 }
 
@@ -451,9 +398,9 @@ export function identityPreflightSourceContextRequired({
 }) {
   return Boolean(
     asText(profile?.id).toLowerCase() === "bafu" &&
-      ["flow", "process"].includes(datasetType) &&
-      curationQueueContext?.status === "attached" &&
-      ensureArray(context?.rows).some((row) => asText(row?.source_file)),
+    ["flow", "process"].includes(datasetType) &&
+    curationQueueContext?.status === "attached" &&
+    ensureArray(context?.rows).some((row) => asText(row?.source_file)),
   );
 }
 
@@ -471,11 +418,7 @@ export function dependencyPayloadForFreshness(dependency) {
   return rows[0] ?? dependency?.payload ?? null;
 }
 
-export function dependencyIdentityPreflightRows(
-  context,
-  curationQueueContext,
-  options = {},
-) {
+export function dependencyIdentityPreflightRows(context, curationQueueContext, options = {}) {
   if (!context || !curationQueueContext) return [];
   const rows = [];
   const seen = new Set();
@@ -502,8 +445,7 @@ export function dependencyIdentityPreflightRows(
           datasetType,
           identity,
           repoRoot: options.repoRoot,
-          classificationDecisionApplyContext:
-            options.classificationDecisionApplyContext,
+          classificationDecisionApplyContext: options.classificationDecisionApplyContext,
           locationDecisionApplyContext: options.locationDecisionApplyContext,
           identityDecisionApplyContext: options.identityDecisionApplyContext,
           identityReferenceRewriteContext: options.identityReferenceRewriteContext,
@@ -552,25 +494,22 @@ export function buildIdentityPreflightAuthoringContext({
       cleanupContext,
     },
   );
-  const dependencies = dependencyIdentityPreflightRows(
-    context,
-    curationQueueContext,
-    {
-      repoRoot,
-      classificationDecisionApplyContext,
-      locationDecisionApplyContext,
-      identityDecisionApplyContext,
-      identityReferenceRewriteContext,
-      unresolvedExchangeExternalizationContext,
-      sourceContactRewriteContext,
-      canonicalSupportRewriteContext,
-      cleanupContext,
-    },
-  );
+  const dependencies = dependencyIdentityPreflightRows(context, curationQueueContext, {
+    repoRoot,
+    classificationDecisionApplyContext,
+    locationDecisionApplyContext,
+    identityDecisionApplyContext,
+    identityReferenceRewriteContext,
+    unresolvedExchangeExternalizationContext,
+    sourceContactRewriteContext,
+    canonicalSupportRewriteContext,
+    cleanupContext,
+  });
   return {
     index_file: repoRelativePath(repoRoot, context.indexPath),
     status:
-      current?.status === "completed" && dependencies.every((row) => row.identity_preflight.status === "completed")
+      current?.status === "completed" &&
+      dependencies.every((row) => row.identity_preflight.status === "completed")
         ? "completed"
         : "pending_or_partial",
     current,
@@ -631,8 +570,7 @@ export function identityPreflightGateItems({
       source: "identity_preflight",
       code: "identity_preflight_current_result_missing",
       path: null,
-      message:
-        "No identity-preflight result is attached for the current entity.",
+      message: "No identity-preflight result is attached for the current entity.",
       action_kind: "identity_preflight_required",
       required_owner: "foundry_identity_preflight_run",
       ai_required: false,
@@ -693,9 +631,9 @@ export function identityPreflightGateItems({
   }
 
   if (datasetType === "process" && curationQueueContext?.status === "attached") {
-    const dependencyPreflightRows = ensureArray(
-      authoringContext?.dependencies,
-    ).map((dependency) => dependency?.identity_preflight);
+    const dependencyPreflightRows = ensureArray(authoringContext?.dependencies).map(
+      (dependency) => dependency?.identity_preflight,
+    );
     const dependencyRows = ensureArray(curationQueueContext.dependency_rows);
     for (const dependency of dependencyRows) {
       const task = dependency?.task;
@@ -723,8 +661,7 @@ export function identityPreflightGateItems({
           source: "identity_preflight",
           code: "identity_preflight_dependency_result_missing",
           path: dependency?.ref_path ?? null,
-          message:
-            "No identity-preflight result is attached for a referenced dependency entity.",
+          message: "No identity-preflight result is attached for a referenced dependency entity.",
           action_kind: "identity_preflight_required",
           required_owner: "foundry_identity_preflight_run",
           ai_required: false,
@@ -749,9 +686,7 @@ export function identityPreflightGateItems({
         });
       } else if (
         dependencyPreflightWithFreshness.freshness &&
-        !identityPreflightFreshnessAccepted(
-          dependencyPreflightWithFreshness.freshness,
-        )
+        !identityPreflightFreshnessAccepted(dependencyPreflightWithFreshness.freshness)
       ) {
         items.push({
           source: "identity_preflight",
@@ -819,8 +754,7 @@ export function identityPreflightAiDecisionActionItem({
   const resultFlowType = asText(result?.target?.fields?.type_of_dataset);
   const isElementaryFlow =
     (dependencyType || datasetType) === "flow" &&
-    (flowUsesElementaryClassification(identity.payload) ||
-      resultFlowType === "Elementary flow");
+    (flowUsesElementaryClassification(identity.payload) || resultFlowType === "Elementary flow");
   return {
     source: "identity_preflight",
     code: isElementaryFlow
@@ -922,12 +856,8 @@ export function comparableText(value) {
 export function classificationClassesForPayload(payload, datasetType) {
   const root = datasetRoot(payload, datasetType);
   const info = dataSetInformation(root, datasetType);
-  const classification =
-    info?.classificationInformation?.["common:classification"] ?? null;
-  const classes =
-    classification?.["common:class"] ??
-    classification?.["common:category"] ??
-    null;
+  const classification = info?.classificationInformation?.["common:classification"] ?? null;
+  const classes = classification?.["common:class"] ?? classification?.["common:category"] ?? null;
   return ensureArray(classes).filter(
     (item) => item && typeof item === "object" && !Array.isArray(item),
   );
@@ -955,9 +885,7 @@ export function sourcePrewriteIdentityBlockers(payload, datasetType) {
   const root = datasetRoot(payload, "source");
   const info = dataSetInformation(root, "source");
   const shortName = textContent(info?.["common:shortName"] ?? info?.shortName);
-  const sourceCitation = textContent(
-    info?.sourceCitation ?? info?.["common:sourceCitation"],
-  );
+  const sourceCitation = textContent(info?.sourceCitation ?? info?.["common:sourceCitation"]);
   const classification = classificationDisplayForPayload(payload, "source");
   const blockers = [];
   if (/^(ILCD format|Not specified|Not declared|Unspecified)$/iu.test(shortName)) {
@@ -971,11 +899,7 @@ export function sourcePrewriteIdentityBlockers(payload, datasetType) {
       classification: classification || null,
     });
   }
-  if (
-    /^(ILCD format|Not specified|Not declared|Unspecified)$/iu.test(
-      sourceCitation,
-    )
-  ) {
+  if (/^(ILCD format|Not specified|Not declared|Unspecified)$/iu.test(sourceCitation)) {
     blockers.push({
       code: "source_citation_not_true_source",
       stage: "source_semantics",
@@ -1037,9 +961,7 @@ export function processClassificationClassesAreCanonical(repoRoot, classes) {
   const canonical = processCategoryPathForCode(repoRoot, leafCode);
   if (!leafCode || canonical.length === 0) return false;
   const canonicalPrefix = canonical.slice(0, rawCodes.length);
-  if (
-    rawCodes.join("/") !== canonicalPrefix.map((entry) => entry.code).join("/")
-  ) {
+  if (rawCodes.join("/") !== canonicalPrefix.map((entry) => entry.code).join("/")) {
     return false;
   }
   return classes.every((item, index) => {
@@ -1047,24 +969,14 @@ export function processClassificationClassesAreCanonical(repoRoot, classes) {
     if (!expected) return false;
     const level = classLevel(item);
     const text = classText(item);
-    return (
-      (level === null || level === expected.level) &&
-      (!text || text === expected.text)
-    );
+    return (level === null || level === expected.level) && (!text || text === expected.text);
   });
 }
 
-export function classificationQueueRowStillNeedsAuthoring({
-  repoRoot,
-  datasetType,
-  payload,
-  row,
-}) {
+export function classificationQueueRowStillNeedsAuthoring({ repoRoot, datasetType, payload, row }) {
   const expectedDisplay = comparableText(row?.current_classification);
   if (!expectedDisplay) return true;
-  const currentDisplay = comparableText(
-    classificationDisplayForPayload(payload, datasetType),
-  );
+  const currentDisplay = comparableText(classificationDisplayForPayload(payload, datasetType));
   if (!currentDisplay) return true;
   if (currentDisplay === expectedDisplay) return true;
   if (
@@ -1117,8 +1029,7 @@ export function classificationQueueActionItem(row) {
     code: asText(row?.code) || "process_classification_requires_authoring",
     path: classificationPath,
     message:
-      asText(row?.message) ||
-      "Converted classification requires AI authoring before remote write.",
+      asText(row?.message) || "Converted classification requires AI authoring before remote write.",
     evidence: {
       current_classification: row?.current_classification ?? null,
       source_classification: row?.source_classification ?? null,

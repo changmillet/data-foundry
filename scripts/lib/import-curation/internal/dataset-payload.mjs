@@ -2,20 +2,9 @@ import { asText } from "./runtime-io.mjs";
 
 export function unwrapDatasetPayload(row, datasetType) {
   if (row && typeof row === "object" && !Array.isArray(row)) {
-    const typedKey =
-      datasetType === "lifecyclemodel" ? "lifecyclemodel" : datasetType;
-    for (const key of [
-      typedKey,
-      "json_ordered",
-      "jsonOrdered",
-      "json",
-      "payload",
-    ]) {
-      if (
-        row[key] &&
-        typeof row[key] === "object" &&
-        !Array.isArray(row[key])
-      ) {
+    const typedKey = datasetType === "lifecyclemodel" ? "lifecyclemodel" : datasetType;
+    for (const key of [typedKey, "json_ordered", "jsonOrdered", "json", "payload"]) {
+      if (row[key] && typeof row[key] === "object" && !Array.isArray(row[key])) {
         return row[key];
       }
     }
@@ -25,19 +14,13 @@ export function unwrapDatasetPayload(row, datasetType) {
 
 export function datasetRoot(payload, datasetType) {
   const effectiveDatasetType =
-    datasetType === "support"
-      ? detectSupportDatasetType(payload) || datasetType
-      : datasetType;
+    datasetType === "support" ? detectSupportDatasetType(payload) || datasetType : datasetType;
   const rootKeys = {
     contact: ["contactDataSet"],
     process: ["processDataSet"],
     flow: ["flowDataSet"],
     flowproperty: ["flowPropertyDataSet"],
-    lifecyclemodel: [
-      "lifeCycleModelDataSet",
-      "lifecycleModelDataSet",
-      "lifecyclemodelDataSet",
-    ],
+    lifecyclemodel: ["lifeCycleModelDataSet", "lifecycleModelDataSet", "lifecyclemodelDataSet"],
     source: ["sourceDataSet"],
     unitgroup: ["unitGroupDataSet"],
   };
@@ -103,11 +86,7 @@ export function dataSetInformation(root, datasetType) {
     root?.[`${datasetType}Information`]?.dataSetInformation,
     root?.dataSetInformation,
   ];
-  return (
-    candidates.find(
-      (candidate) => candidate && typeof candidate === "object",
-    ) ?? {}
-  );
+  return candidates.find((candidate) => candidate && typeof candidate === "object") ?? {};
 }
 
 export function datasetIdentity(row, index, datasetType) {
@@ -118,12 +97,10 @@ export function datasetIdentity(row, index, datasetType) {
       : datasetType;
   const root = datasetRoot(payload, effectiveDatasetType);
   const info = dataSetInformation(root, effectiveDatasetType);
-  const publication =
-    root?.administrativeInformation?.publicationAndOwnership ?? {};
+  const publication = root?.administrativeInformation?.publicationAndOwnership ?? {};
   const directId = row?.id ?? row?.[`${datasetType}_id`] ?? row?.dataset_id;
   const id = asText(directId ?? info["common:UUID"]) || `row-${index + 1}`;
-  const version =
-    asText(row?.version ?? publication["common:dataSetVersion"]) || "00.00.001";
+  const version = asText(row?.version ?? publication["common:dataSetVersion"]) || "00.00.001";
   return { id, version, payload, dataset_type: effectiveDatasetType };
 }
 

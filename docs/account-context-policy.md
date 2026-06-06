@@ -3,7 +3,23 @@ title: Account Context Policy
 docType: policy
 scope: runtime-account-context
 status: active
+authoritative: true
 owner: tiangong-lca-data-foundry
+language: en
+whenToUse:
+  - when configuring local account labels, account profiles, or remote-write account context
+  - when deciding whether a Foundry report or mutation plan may rely on a display account label
+whenToUpdate:
+  - when account profile, credential, task manifest, or remote-write account guard behavior changes
+checkPaths:
+  - docs/account-context-policy.md
+  - AGENTS.md
+  - WORKFLOW.md
+  - package.json
+  - scripts/with-lca-account.mjs
+  - scripts/commands/commit-handoff.mjs
+lastReviewedAt: 2026-06-06
+lastReviewedCommit: 0c39afc18f1f2d8e01d2b33a39bdc0e21cea3a8f
 ---
 
 # Account Context Policy
@@ -54,9 +70,7 @@ The wrapper loads the selected profile into the child process using the same `TI
 
 ## Codex Thread Guards
 
-When parallel Codex conversations use different account profiles in the same checkout, bind the
-profile to the actual `CODEX_THREAD_ID` instead of relying on chat memory or a generic
-"current conversation" note.
+When parallel Codex conversations use different account profiles in the same checkout, bind the profile to the actual `CODEX_THREAD_ID` instead of relying on chat memory or a generic "current conversation" note.
 
 Use an ignored guard file:
 
@@ -77,10 +91,7 @@ Minimum shape:
 }
 ```
 
-`scripts/with-lca-account.mjs` reads this file when `CODEX_THREAD_ID` is present. If a guard exists
-for the active thread, the wrapper refuses any different profile before running the child command.
-This makes account selection survive context compaction and prevents cross-talk between two active
-Codex threads in the same repository.
+`scripts/with-lca-account.mjs` reads this file when `CODEX_THREAD_ID` is present. If a guard exists for the active thread, the wrapper refuses any different profile before running the child command. This makes account selection survive context compaction and prevents cross-talk between two active Codex threads in the same repository.
 
 ## Private vs Public Surfaces
 

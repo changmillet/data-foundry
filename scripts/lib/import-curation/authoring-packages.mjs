@@ -1,5 +1,10 @@
 import path from "node:path";
 import {
+  authoringPackageEntriesFromGate,
+  buildDatasetAuthoringTaskFromPackage,
+  writeAuthoringTaskBatchManifest,
+} from "./internal/authoring-task-workflow.mjs";
+import {
   asText,
   fileExists,
   nowIso,
@@ -8,11 +13,6 @@ import {
   resolveRepoPath,
   sanitizeFileName,
 } from "./internal/runtime-io.mjs";
-import {
-  authoringPackageEntriesFromGate,
-  buildDatasetAuthoringTaskFromPackage,
-  writeAuthoringTaskBatchManifest,
-} from "./internal/authoring-task-workflow.mjs";
 
 export function runDatasetAuthoringTaskBuild({ repoRoot, options = {} } = {}) {
   if (options.help) {
@@ -32,15 +32,10 @@ export function runDatasetAuthoringTaskBuild({ repoRoot, options = {} } = {}) {
 
   const curationGateReportInput =
     options.curationGateReport ?? options.gateReport ?? options.report;
-  const curationGateReportPath = resolveRepoPath(
-    repoRoot,
-    curationGateReportInput,
-  );
+  const curationGateReportPath = resolveRepoPath(repoRoot, curationGateReportInput);
   if (curationGateReportPath) {
     if (!fileExists(curationGateReportPath)) {
-      throw new Error(
-        "--curation-gate-report must point to dataset-curation-gate-report.json.",
-      );
+      throw new Error("--curation-gate-report must point to dataset-curation-gate-report.json.");
     }
     const outDir = resolveRepoPath(
       repoRoot,
@@ -50,13 +45,8 @@ export function runDatasetAuthoringTaskBuild({ repoRoot, options = {} } = {}) {
       repoRoot,
       options.sharedContextCacheDir || options.contextCacheDir,
     );
-    const includeReady =
-      options.includeReady === true || options.includeReady === "true";
-    const entries = authoringPackageEntriesFromGate(
-      repoRoot,
-      curationGateReportPath,
-      includeReady,
-    );
+    const includeReady = options.includeReady === true || options.includeReady === "true";
+    const entries = authoringPackageEntriesFromGate(repoRoot, curationGateReportPath, includeReady);
     const missingPackages = entries.filter(
       (entry) => !entry.package_path || !fileExists(entry.package_path),
     );
@@ -65,10 +55,7 @@ export function runDatasetAuthoringTaskBuild({ repoRoot, options = {} } = {}) {
         schema_version: 1,
         generated_at_utc: nowIso(),
         status: "blocked_missing_authoring_packages",
-        curation_gate_report: repoRelativePath(
-          repoRoot,
-          curationGateReportPath,
-        ),
+        curation_gate_report: repoRelativePath(repoRoot, curationGateReportPath),
         missing_packages: missingPackages.map((entry) => ({
           entity: entry.entity,
           authoring_package: entry.package_ref,
@@ -97,15 +84,11 @@ export function runDatasetAuthoringTaskBuild({ repoRoot, options = {} } = {}) {
     );
   }
 
-  const authoringPackageInput =
-    options.authoringPackage ?? options.package ?? options.input;
+  const authoringPackageInput = options.authoringPackage ?? options.package ?? options.input;
   const packagePath = resolveRepoPath(repoRoot, authoringPackageInput);
-  const packagePayload =
-    packagePath && fileExists(packagePath) ? readJson(packagePath) : null;
+  const packagePayload = packagePath && fileExists(packagePath) ? readJson(packagePath) : null;
   const datasetType = asText(packagePayload?.dataset_type);
-  const entityId = asText(
-    packagePayload?.entity_id ?? packagePayload?.process_id,
-  );
+  const entityId = asText(packagePayload?.entity_id ?? packagePayload?.process_id);
   const defaultOut = `.foundry/workspaces/dataset-authoring-task/${datasetType || "dataset"}-${sanitizeFileName(entityId || "entity")}`;
   const outDir = resolveRepoPath(repoRoot, options.outDir || defaultOut);
   return buildDatasetAuthoringTaskFromPackage({

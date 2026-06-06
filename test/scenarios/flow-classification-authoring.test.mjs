@@ -1,36 +1,13 @@
 import test from "node:test";
 import {
-  writeReadyFinalizeFixture,
-} from "../fixtures/finalize-fixtures.mjs";
-import {
-  annualSupplyFixtureRoot,
-  classificationFixtureRoot,
   elementaryFlowManifestFixtureRoot,
-  finalizeAutoQueueFixtureRoot,
-  finalizeCurationGateFixtureRoot,
-  finalizeIdentityPreflightFixtureRoot,
-  finalizeLocationFixtureRoot,
-  fixtureRoot,
   flowClassificationFixtureRoot,
-  flowIdentityReferenceFixtureRoot,
-  identityPreflightRunFixtureRoot,
-  locationFixtureRoot,
-  mutationFixtureRoot,
-  packageContextFixtureRoot,
-  qaPathFixtureRoot,
-  referenceClosureFixtureRoot,
-  sourceExchangeFixtureRoot,
-  supportManifestFixtureRoot,
 } from "../fixtures/fixture-roots.mjs";
 import {
   assert,
   blockerCodes,
-  bundledCategorySchemaNames,
-  contextTextByPathSuffix,
-  crypto,
   fs,
   fullContextKinds,
-  fullContextPatterns,
   itemBlockerCodes,
   path,
   readJson,
@@ -38,40 +15,13 @@ import {
   rel,
   repoRoot,
   runFoundry,
-  scopeBlockerCodes,
-  sha256Text,
-  siblingCliBuildAvailable,
-  siblingCliRoot,
-  spawnSync,
   targetUserId,
-  testTmpRoot,
   writeJson,
   writeJsonLines,
-  writeText,
 } from "../fixtures/foundry-core.mjs";
-import {
-  contextFile,
-  createFixture,
-  writeContextPackFiles,
-  writeDecisionTaskFixture,
-} from "../fixtures/full-context-fixtures.mjs";
-import {
-  writeCompletedIdentityPreflightIndex,
-} from "../fixtures/identity-fixtures.mjs";
-import {
-  createMutationManifestFixture,
-} from "../fixtures/mutation-fixtures.mjs";
-import {
-  flowRow,
-  flowRowWithClassification,
-  processRowWithDefaultClassification,
-  processRowWithDeferredTrace,
-  processRowWithFlowRef,
-  processRowWithInvalidAnnualSupply,
-  processRowWithInvalidLocation,
-  processRowWithOnlyOutputExchange,
-  sourceRow,
-} from "../fixtures/row-builders.mjs";
+import { writeContextPackFiles } from "../fixtures/full-context-fixtures.mjs";
+import { writeCompletedIdentityPreflightIndex } from "../fixtures/identity-fixtures.mjs";
+import { flowRowWithClassification } from "../fixtures/row-builders.mjs";
 
 test("flow curation gate distinguishes elementary and product category schemas", () => {
   fs.rmSync(flowClassificationFixtureRoot, {
@@ -130,11 +80,7 @@ test("flow curation gate distinguishes elementary and product category schemas",
         },
       ],
     });
-    const qaReport = path.join(
-      flowClassificationFixtureRoot,
-      "qa",
-      "flow-qa-report.json",
-    );
+    const qaReport = path.join(flowClassificationFixtureRoot, "qa", "flow-qa-report.json");
     writeJson(qaReport, {
       rows_file: rel(elementaryRowsFile),
       status: "completed",
@@ -163,31 +109,18 @@ test("flow curation gate distinguishes elementary and product category schemas",
       rel(path.join(flowClassificationFixtureRoot, "elementary-gate")),
     ]);
     assert.equal(elementaryGate.code, 1);
-    assert.equal(
-      elementaryGate.json.status,
-      "blocked_needs_foundry_ai_authoring",
-    );
+    assert.equal(elementaryGate.json.status, "blocked_needs_foundry_ai_authoring");
     assert.equal(elementaryGate.json.counts.action_items, 1);
-    assert.equal(
-      elementaryGate.json.entities[0].status,
-      "needs_foundry_ai_authoring",
-    );
+    assert.equal(elementaryGate.json.entities[0].status, "needs_foundry_ai_authoring");
     const elementaryPackage = readJson(
-      path.join(
-        repoRoot,
-        elementaryGate.json.entities[0].authoring_package,
-      ),
+      path.join(repoRoot, elementaryGate.json.entities[0].authoring_package),
     );
     assert.equal(
       elementaryPackage.action_items[0].code,
       "elementary_flow_requires_existing_database_match",
     );
 
-    const productRowsFile = path.join(
-      flowClassificationFixtureRoot,
-      "rows",
-      "product-flows.jsonl",
-    );
+    const productRowsFile = path.join(flowClassificationFixtureRoot, "rows", "product-flows.jsonl");
     writeJsonLines(productRowsFile, [
       flowRowWithClassification({
         flowId: productId,
@@ -272,10 +205,7 @@ test("flow curation gate distinguishes elementary and product category schemas",
     const productPackage = readJson(
       path.join(repoRoot, productGate.json.entities[0].authoring_package),
     );
-    assert.equal(
-      productPackage.action_items[0].code,
-      "semantic_classification_converted_default",
-    );
+    assert.equal(productPackage.action_items[0].code, "semantic_classification_converted_default");
     assert.equal(
       productPackage.action_items[0].path,
       "flowDataSet.flowInformation.dataSetInformation.classificationInformation.common:classification",
@@ -294,14 +224,8 @@ test("flow curation gate distinguishes elementary and product category schemas",
       actionItem.json_pointer,
       "/flowDataSet/flowInformation/dataSetInformation/classificationInformation/common:classification",
     );
-    const outputPatchFile = path.join(
-      repoRoot,
-      task.json.tasks[0].files.output_patch_file,
-    );
-    const authoringPackageFile = path.join(
-      repoRoot,
-      task.json.tasks[0].files.authoring_package,
-    );
+    const outputPatchFile = path.join(repoRoot, task.json.tasks[0].files.output_patch_file);
+    const authoringPackageFile = path.join(repoRoot, task.json.tasks[0].files.authoring_package);
     const patchPayload = (value) => ({
       schema_version: 1,
       kind: "tiangong_foundry_dataset_patch",
@@ -319,8 +243,7 @@ test("flow curation gate distinguishes elementary and product category schemas",
               basis:
                 "The product flow is natural gas and the selected path is the canonical bundled product-flow category path.",
               evidence: {
-                source:
-                  "source_row.flowDataSet.flowInformation.dataSetInformation.name.baseName",
+                source: "source_row.flowDataSet.flowInformation.dataSetInformation.name.baseName",
                 quote_or_trace: "Natural gas",
               },
               resolution: {
@@ -343,9 +266,7 @@ test("flow curation gate distinguishes elementary and product category schemas",
     writeJson(
       outputPatchFile,
       patchPayload({
-        "common:class": [
-          { "@level": "0", "@classId": "9", "#text": "Wrong root" },
-        ],
+        "common:class": [{ "@level": "0", "@classId": "9", "#text": "Wrong root" }],
       }),
     );
     const invalidCollect = runFoundry([
@@ -358,9 +279,7 @@ test("flow curation gate distinguishes elementary and product category schemas",
     assert.equal(invalidCollect.code, 1);
     assert.equal(invalidCollect.json.status, "blocked");
     assert.equal(
-      blockerCodes(invalidCollect.json).has(
-        "patch_classification_decision_entry_invalid",
-      ),
+      blockerCodes(invalidCollect.json).has("patch_classification_decision_entry_invalid"),
       true,
     );
 
@@ -429,10 +348,9 @@ test("flow curation gate distinguishes elementary and product category schemas",
     assert.equal(apply.code, 0);
     const patchedRow = readJsonLines(patchedRowsFile)[0];
     assert.equal(
-      patchedRow.flowDataSet.flowInformation.dataSetInformation
-        .classificationInformation["common:classification"][
-        "common:class"
-      ][4]["@classId"],
+      patchedRow.flowDataSet.flowInformation.dataSetInformation.classificationInformation[
+        "common:classification"
+      ]["common:class"][4]["@classId"],
       "12020",
     );
 
@@ -455,16 +373,16 @@ test("flow curation gate distinguishes elementary and product category schemas",
         },
       ],
     });
-	    const identityPreflightIndex = writeCompletedIdentityPreflightIndex(
-	      flowClassificationFixtureRoot,
-	      [
-	        {
-	          datasetType: "flow",
-	          id: productId,
-	          target: patchedRow,
-	          name: "Fixture product flow",
-	          filter: { flowType: "Product flow" },
-	          query:
+    const identityPreflightIndex = writeCompletedIdentityPreflightIndex(
+      flowClassificationFixtureRoot,
+      [
+        {
+          datasetType: "flow",
+          id: productId,
+          target: patchedRow,
+          name: "Fixture product flow",
+          filter: { flowType: "Product flow" },
+          query:
             "flow name: Fixture product flow\nflow type: Product flow\nreference property: Mass",
         },
       ],
@@ -508,11 +426,7 @@ test("mutation manifest blocks elementary flow write candidates", () => {
     force: true,
   });
   const flowId = "33333333-4444-4555-8666-777777777777";
-  const rowsFile = path.join(
-    elementaryFlowManifestFixtureRoot,
-    "rows",
-    "elementary-flows.jsonl",
-  );
+  const rowsFile = path.join(elementaryFlowManifestFixtureRoot, "rows", "elementary-flows.jsonl");
   writeJsonLines(rowsFile, [
     flowRowWithClassification({
       flowId,
@@ -571,11 +485,7 @@ test("mutation manifest blocks elementary flow write candidates", () => {
       },
     ]);
     writeJsonLines(remoteFailed, []);
-    const dryRunReport = path.join(
-      elementaryFlowManifestFixtureRoot,
-      "dry-run",
-      "summary.json",
-    );
+    const dryRunReport = path.join(elementaryFlowManifestFixtureRoot, "dry-run", "summary.json");
     writeJson(dryRunReport, {
       status: "completed",
       mode: "dry-run",
@@ -625,22 +535,15 @@ test("mutation manifest blocks elementary flow write candidates", () => {
     ]);
     assert.equal(manifest.code, 1);
     assert.equal(manifest.json.status, "blocked");
-    assert.equal(
-      itemBlockerCodes(manifest.json).has("elementary_flow_write_blocked"),
-      true,
-    );
+    assert.equal(itemBlockerCodes(manifest.json).has("elementary_flow_write_blocked"), true);
     assert.equal(manifest.json.items[0].decision, "blocked");
     assert.equal(manifest.json.counts.write_candidates, 0);
     assert.equal(manifest.json.counts.planned_write_candidates, 1);
     assert.equal(manifest.json.counts.blocked_write_candidates, 1);
-    assert.deepEqual(
-      readJsonLines(path.join(repoRoot, manifest.json.files.write_candidates)),
-      [],
-    );
+    assert.deepEqual(readJsonLines(path.join(repoRoot, manifest.json.files.write_candidates)), []);
     assert.equal(
-      readJsonLines(
-        path.join(repoRoot, manifest.json.files.blocked_write_candidates),
-      )[0].flowDataSet.flowInformation.dataSetInformation["common:UUID"],
+      readJsonLines(path.join(repoRoot, manifest.json.files.blocked_write_candidates))[0]
+        .flowDataSet.flowInformation.dataSetInformation["common:UUID"],
       flowId,
     );
   } finally {

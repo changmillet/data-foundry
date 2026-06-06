@@ -5,11 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-const repoRoot = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "..",
-);
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const fixtureRoot = path.join(repoRoot, "tmp", "classification-decisions-test");
 const processId = "11111111-2222-5333-8444-555555555555";
 const flowId = "22222222-3333-5444-8555-666666666666";
@@ -29,10 +25,7 @@ function writeJson(filePath, value) {
 
 function writeJsonLines(filePath, rows) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(
-    filePath,
-    `${rows.map((row) => JSON.stringify(row)).join("\n")}\n`,
-  );
+  fs.writeFileSync(filePath, `${rows.map((row) => JSON.stringify(row)).join("\n")}\n`);
 }
 
 function readJson(filePath) {
@@ -131,14 +124,8 @@ test("classification decision task and apply route AI choices through CLI classi
   const schemaFile = path.join(contextDir, "schema.json");
   const yamlFile = path.join(contextDir, "methodology.yaml");
   const rulesetFile = path.join(contextDir, "runtime-ruleset.json");
-  const processCategoryFile = path.join(
-    contextDir,
-    "tidas_processes_category.json",
-  );
-  const locationCategoryFile = path.join(
-    contextDir,
-    "tidas_locations_category.json",
-  );
+  const processCategoryFile = path.join(contextDir, "tidas_processes_category.json");
+  const locationCategoryFile = path.join(contextDir, "tidas_locations_category.json");
 
   try {
     writeJsonLines(processRows, [processRow()]);
@@ -206,27 +193,22 @@ test("classification decision task and apply route AI choices through CLI classi
     assert.equal(task.counts.blockers, 0);
     assert.equal(task.counts.attached_input_rows, 2);
     assert.equal(task.contract_context_files[0].kind, "schema");
-    const sharedBundle = readJson(
-      path.join(repoRoot, task.files.shared_context_bundle),
-    );
+    const sharedBundle = readJson(path.join(repoRoot, task.files.shared_context_bundle));
     assert.match(sharedBundle.files[1].text, /process:/u);
     assert.equal(task.classification_queue_rows.length, 2);
     assert.equal(
-      task.attached_input_rows[0].payload.processDataSet.processInformation
-        .dataSetInformation.name.baseName["#text"],
+      task.attached_input_rows[0].payload.processDataSet.processInformation.dataSetInformation.name
+        .baseName["#text"],
       "Fava beans IP, at feed mill",
     );
     assert.match(task.commands.apply_decisions, /dataset-classification-decisions-apply/u);
     const templateRows = readJsonLines(path.join(repoRoot, task.files.template));
     assert.equal(templateRows[0].decision_status, "completed");
     assert.equal(templateRows[0].code, "__AI_SELECT_TIDAS_CLASSIFICATION_CODE__");
-    assert.match(
-      templateRows[0].authoring_context.context_bundle_sha256,
-      /^[a-f0-9]{64}$/u,
-    );
+    assert.match(templateRows[0].authoring_context.context_bundle_sha256, /^[a-f0-9]{64}$/u);
     assert.equal(
-      templateRows[0].evidence.input_row_payload.processDataSet
-        .processInformation.dataSetInformation.name.baseName["#text"],
+      templateRows[0].evidence.input_row_payload.processDataSet.processInformation
+        .dataSetInformation.name.baseName["#text"],
       "Fava beans IP, at feed mill",
     );
 
@@ -252,8 +234,7 @@ test("classification decision task and apply route AI choices through CLI classi
     assert.equal(
       missingContextTask.blockers.some(
         (blocker) =>
-          blocker.code ===
-            "classification_decision_task_required_context_missing" &&
+          blocker.code === "classification_decision_task_required_context_missing" &&
           blocker.kind === "location_schema",
       ),
       true,
@@ -327,23 +308,18 @@ test("classification decision task and apply route AI choices through CLI classi
       classifiedProcess.processDataSet.processInformation.dataSetInformation
         .classificationInformation["common:classification"]["common:class"];
     assert.equal(processClasses.at(-1)["@classId"], "1080");
-    assert.equal(
-      processClasses.at(-1)["#text"],
-      "Manufacture of prepared animal feeds",
-    );
+    assert.equal(processClasses.at(-1)["#text"], "Manufacture of prepared animal feeds");
 
     const classifiedFlow = readJsonLines(flowOut)[0];
     const flowClasses =
-      classifiedFlow.flowDataSet.flowInformation.dataSetInformation
-        .classificationInformation["common:classification"]["common:class"];
+      classifiedFlow.flowDataSet.flowInformation.dataSetInformation.classificationInformation[
+        "common:classification"
+      ]["common:class"];
     assert.equal(flowClasses.at(-1)["@classId"], "0111");
-	    assert.equal(flowClasses.at(-1)["#text"], "Wheat");
+    assert.equal(flowClasses.at(-1)["#text"], "Wheat");
 
     const chunkTaskDir = path.join(fixtureRoot, "classification-task-flow-chunk");
-    const chunkDecisions = path.join(
-      chunkTaskDir,
-      "classification-decisions.jsonl",
-    );
+    const chunkDecisions = path.join(chunkTaskDir, "classification-decisions.jsonl");
     const chunkApplyDir = path.join(fixtureRoot, "classification-apply-flow-chunk");
     const chunkTask = runFoundry([
       "dataset-classification-decision-task-build",
@@ -368,10 +344,7 @@ test("classification decision task and apply route AI choices through CLI classi
       "--out-dir",
       rel(chunkTaskDir),
     ]);
-    assert.equal(
-      chunkTask.status,
-      "ready_for_ai_classification_decisions",
-    );
+    assert.equal(chunkTask.status, "ready_for_ai_classification_decisions");
     assert.equal(chunkTask.counts.template_decisions, 1);
     assert.equal(chunkTask.selection.selected_queue_rows, 1);
     assert.equal(chunkTask.source_classification_queue, rel(queue));
@@ -380,9 +353,7 @@ test("classification decision task and apply route AI choices through CLI classi
       chunkTask.commands.apply_decisions,
       /classification-authoring-queue\.flow-chunk\.jsonl/u,
     );
-    const filteredQueue = readJsonLines(
-      path.join(repoRoot, chunkTask.classification_queue),
-    );
+    const filteredQueue = readJsonLines(path.join(repoRoot, chunkTask.classification_queue));
     assert.equal(filteredQueue.length, 1);
     assert.equal(filteredQueue[0].dataset_type, "flow");
     assert.equal(filteredQueue[0].foundry_selection.source_queue_row_index, 1);
@@ -390,13 +361,8 @@ test("classification decision task and apply route AI choices through CLI classi
       filteredQueue[0].classification_workflow.commands.output_rows,
       /flows\.flow-chunk\.classified\.jsonl$/u,
     );
-    assert.notEqual(
-      filteredQueue[0].classification_workflow.commands.output_rows,
-      rel(flowOut),
-    );
-    const chunkTemplateRows = readJsonLines(
-      path.join(repoRoot, chunkTask.files.template),
-    );
+    assert.notEqual(filteredQueue[0].classification_workflow.commands.output_rows, rel(flowOut));
+    const chunkTemplateRows = readJsonLines(path.join(repoRoot, chunkTask.files.template));
     writeJsonLines(chunkDecisions, [
       {
         dataset_id: flowId,
@@ -435,10 +401,7 @@ test("classification decision task and apply route AI choices through CLI classi
       filteredQueue[0].classification_workflow.commands.output_rows,
     ]);
 
-    const processChunkTaskDir = path.join(
-      fixtureRoot,
-      "classification-task-process-chunk",
-    );
+    const processChunkTaskDir = path.join(fixtureRoot, "classification-task-process-chunk");
     const processChunkTask = runFoundry([
       "dataset-classification-decision-task-build",
       "--classification-queue",
@@ -467,15 +430,9 @@ test("classification decision task and apply route AI choices through CLI classi
     );
     assert.equal(processChunkTask.selection.selected_queue_rows, 1);
     assert.equal(processChunkTask.source_classification_queue, rel(queue));
-    assert.notEqual(
-      processChunkTemplateRows[0].authoring_context.context_bundle_sha256,
-      "",
-    );
+    assert.notEqual(processChunkTemplateRows[0].authoring_context.context_bundle_sha256, "");
 
-    const multiTaskDecisions = path.join(
-      fixtureRoot,
-      "classification-decisions.multi-task.jsonl",
-    );
+    const multiTaskDecisions = path.join(fixtureRoot, "classification-decisions.multi-task.jsonl");
     writeJsonLines(multiTaskDecisions, [
       {
         dataset_id: processId,
@@ -537,9 +494,7 @@ test("classification decision task and apply route AI choices through CLI classi
     assert.equal(multiTaskApply.decision_task, null);
     assert.equal(multiTaskApply.decision_tasks.length, 2);
     assert.deepEqual(
-      multiTaskApply.decision_tasks
-        .map((decisionTask) => decisionTask.source_queue)
-        .sort(),
+      multiTaskApply.decision_tasks.map((decisionTask) => decisionTask.source_queue).sort(),
       [rel(queue), rel(queue)].sort(),
     );
     assert.deepEqual(
@@ -555,17 +510,17 @@ test("classification decision task and apply route AI choices through CLI classi
         code: "1080",
         basis: "The source process is a feed mill activity.",
         used_context_kinds: [
-	          "schema",
-	          "methodology_yaml",
-	          "ruleset",
-	          "classification_schema",
-	          "location_schema",
-	        ],
-	        evidence: {
-	          source: "classification-authoring-queue",
-	          quote_or_trace: "process baseName Fava beans IP, at feed mill",
-	        },
-	      },
+          "schema",
+          "methodology_yaml",
+          "ruleset",
+          "classification_schema",
+          "location_schema",
+        ],
+        evidence: {
+          source: "classification-authoring-queue",
+          quote_or_trace: "process baseName Fava beans IP, at feed mill",
+        },
+      },
       {
         dataset_id: flowId,
         dataset_version: "00.00.001",
@@ -574,17 +529,17 @@ test("classification decision task and apply route AI choices through CLI classi
         code: "0111",
         basis: "The source flow is wheat grain.",
         used_context_kinds: [
-	          "schema",
-	          "methodology_yaml",
-	          "ruleset",
-	          "classification_schema",
-	          "location_schema",
-	        ],
-	        evidence: {
-	          source: "classification-authoring-queue",
-	          quote_or_trace: "flow baseName Wheat grain",
-	        },
-	      },
+          "schema",
+          "methodology_yaml",
+          "ruleset",
+          "classification_schema",
+          "location_schema",
+        ],
+        evidence: {
+          source: "classification-authoring-queue",
+          quote_or_trace: "flow baseName Wheat grain",
+        },
+      },
     ]);
     const missingContextBundle = runFoundry(
       [
@@ -603,8 +558,7 @@ test("classification decision task and apply route AI choices through CLI classi
     assert.equal(missingContextBundle.status, "blocked");
     assert.equal(
       missingContextBundle.blockers.some(
-        (blocker) =>
-          blocker.code === "classification_decision_context_bundle_missing",
+        (blocker) => blocker.code === "classification_decision_context_bundle_missing",
       ),
       true,
     );
@@ -667,8 +621,7 @@ test("classification decision task and apply route AI choices through CLI classi
     assert.equal(missingDecisionStatus.status, "blocked");
     assert.equal(
       missingDecisionStatus.blockers.some(
-        (blocker) =>
-          blocker.code === "classification_decision_status_not_completed",
+        (blocker) => blocker.code === "classification_decision_status_not_completed",
       ),
       true,
     );
@@ -699,9 +652,7 @@ test("classification decision task and apply route AI choices through CLI classi
     );
     assert.equal(blocked.status, "blocked");
     assert.equal(
-      blocked.blockers.some(
-        (blocker) => blocker.code === "classification_queue_item_unclosed",
-      ),
+      blocked.blockers.some((blocker) => blocker.code === "classification_queue_item_unclosed"),
       true,
     );
   } finally {

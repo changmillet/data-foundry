@@ -11,10 +11,7 @@ export const supportedDatasetTypes = new Set([
 
 export const supportDatasetTypes = new Set(["contact", "source"]);
 
-export const referenceOnlySupportDatasetTypes = new Set([
-  "unitgroup",
-  "flowproperty",
-]);
+export const referenceOnlySupportDatasetTypes = new Set(["unitgroup", "flowproperty"]);
 
 export const datasetTypePlural = {
   contact: "contacts",
@@ -45,11 +42,7 @@ export const fallbackProfiles = {
 
 export function datasetTypeFromOptions(options, forcedType = null) {
   const datasetType = String(
-    forcedType ??
-      options.type ??
-      options.datasetType ??
-      options.kind ??
-      "process",
+    forcedType ?? options.type ?? options.datasetType ?? options.kind ?? "process",
   )
     .trim()
     .toLowerCase();

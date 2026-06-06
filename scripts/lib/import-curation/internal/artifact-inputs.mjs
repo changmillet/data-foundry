@@ -15,13 +15,7 @@ export function idFromArtifactFile(fileName) {
 
 export function entityIdFromFinding(finding, datasetType) {
   if (!finding || typeof finding !== "object") return "";
-  const directKeys = [
-    `${datasetType}_id`,
-    "entity_id",
-    "dataset_id",
-    "row_id",
-    "id",
-  ];
+  const directKeys = [`${datasetType}_id`, "entity_id", "dataset_id", "row_id", "id"];
   for (const key of directKeys) {
     const value = asText(finding[key]);
     if (value) return value;
@@ -60,9 +54,7 @@ export function resolveArtifactPath(repoRoot, filePath, baseDir) {
 
 export function qaFindingCode(finding) {
   return (
-    asText(
-      finding?.code ?? finding?.rule_code ?? finding?.rule_id ?? finding?.id,
-    ) || "qa_finding"
+    asText(finding?.code ?? finding?.rule_code ?? finding?.rule_id ?? finding?.id) || "qa_finding"
   );
 }
 
@@ -74,16 +66,14 @@ export const qaFindingPathDefaults = {
       "processDataSet.processInformation.quantitativeReference.functionalUnitOrOther",
     process_missing_system_boundary:
       "processDataSet.processInformation.dataSetInformation.common:generalComment",
-    process_missing_time:
-      "processDataSet.processInformation.time.common:referenceYear",
+    process_missing_time: "processDataSet.processInformation.time.common:referenceYear",
     process_missing_geography:
       "processDataSet.processInformation.geography.locationOfOperationSupplyOrProduction",
     process_missing_technology:
       "processDataSet.processInformation.technology.technologyDescriptionAndIncludedProcesses",
   },
   flow: {
-    flow_missing_base_name:
-      "flowDataSet.flowInformation.dataSetInformation.name.baseName",
+    flow_missing_base_name: "flowDataSet.flowInformation.dataSetInformation.name.baseName",
     flow_missing_classification:
       "flowDataSet.flowInformation.dataSetInformation.classificationInformation",
     flow_missing_reference_flow_property:
@@ -110,10 +100,7 @@ export function qaFindingInstruction(finding, datasetType) {
   if (datasetType === "process" && code === "process_missing_functional_unit") {
     return "Use the source row, reference exchange, source unit, process name, SDK schema, and methodology YAML quantitativeReference rules to write source-language functionalUnitOrOther. Do not invent a value when source evidence is absent.";
   }
-  if (
-    datasetType === "process" &&
-    code === "process_missing_source_base_name"
-  ) {
+  if (datasetType === "process" && code === "process_missing_source_base_name") {
     return "Use source-language evidence and methodology YAML naming rules to write name.baseName without placeholder tokens, geography braces, or bilingual requirements.";
   }
   if (datasetType === "process" && code === "process_missing_geography") {

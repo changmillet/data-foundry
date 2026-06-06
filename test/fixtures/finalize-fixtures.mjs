@@ -1,9 +1,4 @@
-import {
-  path,
-  rel,
-  targetUserId,
-  writeJson,
-} from "./foundry-core.mjs";
+import { path, rel, targetUserId, writeJson } from "./foundry-core.mjs";
 
 export function writeReadyFinalizeFixture({
   root,
@@ -12,10 +7,7 @@ export function writeReadyFinalizeFixture({
   profile = "generic",
   finalizeReportPath = null,
 }) {
-  const mutationReport = path.join(
-    root,
-    `${datasetType}-mutation-manifest.json`,
-  );
+  const mutationReport = path.join(root, `${datasetType}-mutation-manifest.json`);
   writeJson(mutationReport, {
     status: "ready_for_remote_write",
     dataset_type: datasetType,

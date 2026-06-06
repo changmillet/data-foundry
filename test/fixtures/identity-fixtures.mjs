@@ -1,9 +1,4 @@
-import {
-  path,
-  rel,
-  writeJson,
-  writeJsonLines,
-} from "./foundry-core.mjs";
+import { path, rel, writeJson, writeJsonLines } from "./foundry-core.mjs";
 
 export function writeCompletedIdentityPreflightIndex(root, rows) {
   const requestsRoot = path.join(root, "identity-preflight-requests");
@@ -14,13 +9,7 @@ export function writeCompletedIdentityPreflightIndex(root, rows) {
     const version = row.version || row.dataset_version || "00.00.001";
     const plural = datasetType === "flow" ? "flows" : "processes";
     const requestFile = path.join(requestsRoot, plural, `${id}.json`);
-    const reportFile = path.join(
-      outputsRoot,
-      plural,
-      id,
-      "outputs",
-      "identity-decision.json",
-    );
+    const reportFile = path.join(outputsRoot, plural, id, "outputs", "identity-decision.json");
     const candidates = Array.isArray(row.candidates) ? row.candidates : [];
     const decision = row.decision || "create_new";
     const blocked = decision === "block_duplicate";
@@ -53,10 +42,7 @@ export function writeCompletedIdentityPreflightIndex(root, rows) {
       candidate_sources: [
         {
           kind: "remote_search",
-          endpoint:
-            datasetType === "flow"
-              ? "flow_hybrid_search"
-              : "process_hybrid_search",
+          endpoint: datasetType === "flow" ? "flow_hybrid_search" : "process_hybrid_search",
           query: row.query || `${datasetType} name: ${row.name || "Fixture"}`,
           ...(row.filter ? { filter: row.filter } : {}),
           row_count: candidates.length,

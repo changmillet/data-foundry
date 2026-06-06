@@ -26,9 +26,7 @@ export function createImportCompletionCommands({
     const finalizeArtifact = readJsonArtifactOption(closeout.finalize_report);
     const mutationArtifact = readJsonArtifactOption(closeout.mutation_manifest);
     const finalRowsCount =
-      finalRowsFile && fileExists(finalRowsFile)
-        ? countRowsFile(finalRowsFile)
-        : 0;
+      finalRowsFile && fileExists(finalRowsFile) ? countRowsFile(finalRowsFile) : 0;
     const prefix = {
       closeout_report: repoRelativePath(closeoutPath),
       dataset_type: datasetType || null,
@@ -41,9 +39,7 @@ export function createImportCompletionCommands({
         message: `Closeout status is ${closeout.status ?? "missing"}.`,
       });
     }
-    if (
-      !["process", "flow", "lifecyclemodel", "support"].includes(datasetType)
-    ) {
+    if (!["process", "flow", "lifecyclemodel", "support"].includes(datasetType)) {
       blockers.push({
         ...prefix,
         code: "closeout_dataset_type_invalid",
@@ -62,8 +58,7 @@ export function createImportCompletionCommands({
       blockers.push({
         ...prefix,
         code: "closeout_finalize_report_missing",
-        message:
-          "Task completion requires the finalize report referenced by each closeout.",
+        message: "Task completion requires the finalize report referenced by each closeout.",
         finalize_report: closeout.finalize_report ?? null,
       });
     } else if (finalizeArtifact.value?.status !== "ready_for_remote_write") {
@@ -78,8 +73,7 @@ export function createImportCompletionCommands({
       blockers.push({
         ...prefix,
         code: "closeout_mutation_manifest_missing",
-        message:
-          "Task completion requires the mutation manifest referenced by each closeout.",
+        message: "Task completion requires the mutation manifest referenced by each closeout.",
         mutation_manifest: closeout.mutation_manifest ?? null,
       });
     } else if (mutationArtifact.value?.status !== "ready_for_remote_write") {
@@ -129,12 +123,8 @@ export function createImportCompletionCommands({
     }
 
     const closeoutBlockers = Number(closeout.counts?.blockers ?? 0);
-    const rootPayloadMismatches = Number(
-      closeout.counts?.root_payload_mismatches ?? -1,
-    );
-    const rootReadbackChecks = Number(
-      closeout.counts?.root_readback_checks ?? 0,
-    );
+    const rootPayloadMismatches = Number(closeout.counts?.root_payload_mismatches ?? -1);
+    const rootReadbackChecks = Number(closeout.counts?.root_readback_checks ?? 0);
     const mutationCounts = mutationArtifact?.value?.counts ?? {};
     if (!Number.isFinite(closeoutBlockers) || closeoutBlockers !== 0) {
       blockers.push({
@@ -143,10 +133,7 @@ export function createImportCompletionCommands({
         message: `Closeout still records ${Number.isFinite(closeoutBlockers) ? closeoutBlockers : "unknown"} blockers.`,
       });
     }
-    if (
-      !Number.isFinite(rootPayloadMismatches) ||
-      rootPayloadMismatches !== 0
-    ) {
+    if (!Number.isFinite(rootPayloadMismatches) || rootPayloadMismatches !== 0) {
       blockers.push({
         ...prefix,
         code: "closeout_payload_mismatches_present",
@@ -167,9 +154,7 @@ export function createImportCompletionCommands({
 
     const unresolvedTraceCount =
       Number(
-        closeout.counts?.unresolved_trace_entries ??
-          mutationCounts.unresolved_trace_entries ??
-          0,
+        closeout.counts?.unresolved_trace_entries ?? mutationCounts.unresolved_trace_entries ?? 0,
       ) || 0;
     const sourceExchangeCompletenessCount =
       Number(
@@ -224,43 +209,29 @@ export function createImportCompletionCommands({
       status: closeout.status ?? null,
       final_rows_file: repoRelativeMaybe(finalRowsFile),
       final_rows: finalRowsCount,
-      target_user_id:
-        closeout.target_user_id ??
-        mutationArtifact?.value?.target_user_id ??
-        null,
+      target_user_id: closeout.target_user_id ?? mutationArtifact?.value?.target_user_id ?? null,
       expected_state_code: closeout.expected_state_code ?? null,
-      finalize_report: finalizeArtifact
-        ? repoRelativePath(finalizeArtifact.path)
-        : null,
-      mutation_manifest: mutationArtifact
-        ? repoRelativePath(mutationArtifact.path)
-        : null,
+      finalize_report: finalizeArtifact ? repoRelativePath(finalizeArtifact.path) : null,
+      mutation_manifest: mutationArtifact ? repoRelativePath(mutationArtifact.path) : null,
       commit_report: closeout.commit_report ?? null,
       post_write_verify_report: closeout.post_write_verify_report ?? null,
       counts: {
         blockers: closeoutBlockers,
-        root_readback_checks: Number.isFinite(rootReadbackChecks)
-          ? rootReadbackChecks
-          : 0,
+        root_readback_checks: Number.isFinite(rootReadbackChecks) ? rootReadbackChecks : 0,
         root_payload_mismatches: Number.isFinite(rootPayloadMismatches)
           ? rootPayloadMismatches
           : -1,
         unresolved_trace_entries: unresolvedTraceCount,
         source_exchange_completeness_entries: sourceExchangeCompletenessCount,
-        source_reference_rewrites:
-          Number(mutationCounts.source_reference_rewrites ?? 0) || 0,
-        ai_patch_evidence_entries:
-          Number(mutationCounts.ai_patch_evidence_entries ?? 0) || 0,
+        source_reference_rewrites: Number(mutationCounts.source_reference_rewrites ?? 0) || 0,
+        ai_patch_evidence_entries: Number(mutationCounts.ai_patch_evidence_entries ?? 0) || 0,
         ai_classification_decision_entries:
           Number(mutationCounts.ai_classification_decision_entries ?? 0) || 0,
-        ai_location_decision_entries:
-          Number(mutationCounts.ai_location_decision_entries ?? 0) || 0,
-        ai_identity_decision_entries:
-          Number(mutationCounts.ai_identity_decision_entries ?? 0) || 0,
+        ai_location_decision_entries: Number(mutationCounts.ai_location_decision_entries ?? 0) || 0,
+        ai_identity_decision_entries: Number(mutationCounts.ai_identity_decision_entries ?? 0) || 0,
         ai_semantic_evidence_entries:
           (Number(mutationCounts.ai_patch_evidence_entries ?? 0) || 0) +
-          (Number(mutationCounts.ai_classification_decision_entries ?? 0) ||
-            0) +
+          (Number(mutationCounts.ai_classification_decision_entries ?? 0) || 0) +
           (Number(mutationCounts.ai_location_decision_entries ?? 0) || 0) +
           (Number(mutationCounts.ai_identity_decision_entries ?? 0) || 0),
         full_context_ai_completion_required: fullContextCheck.required,
@@ -294,9 +265,7 @@ export function createImportCompletionCommands({
     const discoveredCloseouts = taskDir
       ? findFilesByName(taskDir, "dataset-post-write-closeout-report.json")
       : [];
-    const closeoutPaths = unique(
-      [...explicitCloseouts, ...discoveredCloseouts].filter(Boolean),
-    );
+    const closeoutPaths = unique([...explicitCloseouts, ...discoveredCloseouts].filter(Boolean));
     const requiredTypes = unique(
       [
         ...normalizedList(options.requireType),
@@ -327,14 +296,10 @@ export function createImportCompletionCommands({
     if (closeoutPaths.length === 0) {
       blockers.push({
         code: "completion_closeout_reports_missing",
-        message:
-          "Task completion requires at least one dataset-post-write-closeout-report.json.",
+        message: "Task completion requires at least one dataset-post-write-closeout-report.json.",
       });
     }
-    if (
-      expectedCloseoutCount !== null &&
-      closeoutPaths.length !== expectedCloseoutCount
-    ) {
+    if (expectedCloseoutCount !== null && closeoutPaths.length !== expectedCloseoutCount) {
       blockers.push({
         code: "completion_closeout_count_mismatch",
         message: `Expected ${expectedCloseoutCount} closeout reports but found ${closeoutPaths.length}.`,
@@ -347,9 +312,7 @@ export function createImportCompletionCommands({
         blockers.push({
           code: "completion_closeout_report_unreadable",
           message: "Closeout report is not readable.",
-          closeout_report: closeoutPath
-            ? repoRelativeMaybe(closeoutPath)
-            : null,
+          closeout_report: closeoutPath ? repoRelativeMaybe(closeoutPath) : null,
         });
         continue;
       }
@@ -362,9 +325,7 @@ export function createImportCompletionCommands({
     const closeouts = closeoutArtifacts.map((artifact) =>
       closeoutCompletionSummary({ artifact, blockers }),
     );
-    const datasetTypes = unique(
-      closeouts.map((closeout) => closeout.dataset_type),
-    );
+    const datasetTypes = unique(closeouts.map((closeout) => closeout.dataset_type));
     const closeoutsByScope = new Map();
     for (const closeout of closeouts) {
       const scopeKey = `${closeout.dataset_type || "unknown"}::${closeout.final_rows_file || "missing"}`;
@@ -380,9 +341,7 @@ export function createImportCompletionCommands({
           message:
             "Multiple closeout reports point to the same dataset type and final rows file; task completion requires one closeout per committed write scope.",
           scope_key: scopeKey,
-          closeout_reports: scopeCloseouts.map(
-            (closeout) => closeout.closeout_report,
-          ),
+          closeout_reports: scopeCloseouts.map((closeout) => closeout.closeout_report),
         });
       }
     }
@@ -401,9 +360,7 @@ export function createImportCompletionCommands({
       schema_version: 1,
       generated_at_utc: nowIso(),
       status: blockers.length === 0 ? "completed" : "blocked",
-      task_id:
-        asText(options.taskId || options.id) ||
-        (taskDir ? path.basename(taskDir) : null),
+      task_id: asText(options.taskId || options.id) || (taskDir ? path.basename(taskDir) : null),
       task_dir: repoRelativeMaybe(taskDir),
       remote_write_mode: "read-only",
       policy: {
@@ -417,10 +374,7 @@ export function createImportCompletionCommands({
       counts: {
         closeout_reports: closeouts.length,
         blockers: blockers.length,
-        final_rows: closeouts.reduce(
-          (total, closeout) => total + closeout.final_rows,
-          0,
-        ),
+        final_rows: closeouts.reduce((total, closeout) => total + closeout.final_rows, 0),
         dataset_types: datasetTypes.length,
         unique_write_scopes: closeoutsByScope.size,
         unresolved_trace_entries: closeouts.reduce(
@@ -428,45 +382,37 @@ export function createImportCompletionCommands({
           0,
         ),
         source_exchange_completeness_entries: closeouts.reduce(
-          (total, closeout) =>
-            total + closeout.counts.source_exchange_completeness_entries,
+          (total, closeout) => total + closeout.counts.source_exchange_completeness_entries,
           0,
         ),
         source_reference_rewrites: closeouts.reduce(
           (total, closeout) =>
-            total +
-            (Number(closeout.counts.source_reference_rewrites ?? 0) || 0),
+            total + (Number(closeout.counts.source_reference_rewrites ?? 0) || 0),
           0,
         ),
         ai_patch_evidence_entries: closeouts.reduce(
           (total, closeout) =>
-            total +
-            (Number(closeout.counts.ai_patch_evidence_entries ?? 0) || 0),
+            total + (Number(closeout.counts.ai_patch_evidence_entries ?? 0) || 0),
           0,
         ),
         ai_classification_decision_entries: closeouts.reduce(
           (total, closeout) =>
-            total +
-            (Number(closeout.counts.ai_classification_decision_entries ?? 0) ||
-              0),
+            total + (Number(closeout.counts.ai_classification_decision_entries ?? 0) || 0),
           0,
         ),
         ai_location_decision_entries: closeouts.reduce(
           (total, closeout) =>
-            total +
-            (Number(closeout.counts.ai_location_decision_entries ?? 0) || 0),
+            total + (Number(closeout.counts.ai_location_decision_entries ?? 0) || 0),
           0,
         ),
         ai_identity_decision_entries: closeouts.reduce(
           (total, closeout) =>
-            total +
-            (Number(closeout.counts.ai_identity_decision_entries ?? 0) || 0),
+            total + (Number(closeout.counts.ai_identity_decision_entries ?? 0) || 0),
           0,
         ),
         ai_semantic_evidence_entries: closeouts.reduce(
           (total, closeout) =>
-            total +
-            (Number(closeout.counts.ai_semantic_evidence_entries ?? 0) || 0),
+            total + (Number(closeout.counts.ai_semantic_evidence_entries ?? 0) || 0),
           0,
         ),
         full_context_scopes: closeouts.filter(

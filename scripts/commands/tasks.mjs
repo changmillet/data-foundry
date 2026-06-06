@@ -24,16 +24,13 @@ export function createTaskCommands({
   writeText,
 }) {
   function listTaskFiles(queue = null) {
-    const queueEntries = queue
-      ? [[queue, taskQueues[queue]]]
-      : Object.entries(taskQueues);
+    const queueEntries = queue ? [[queue, taskQueues[queue]]] : Object.entries(taskQueues);
     const files = [];
     for (const [queueName, dir] of queueEntries) {
       const absDir = path.join(repoRoot, dir);
       if (!directoryExists(absDir)) continue;
       for (const name of fs.readdirSync(absDir).sort()) {
-        if (name.endsWith(".md"))
-          files.push({ queue: queueName, path: path.join(absDir, name) });
+        if (name.endsWith(".md")) files.push({ queue: queueName, path: path.join(absDir, name) });
       }
     }
     return files;
@@ -56,10 +53,7 @@ export function createTaskCommands({
     const activeRoot = resolveRepoPath(taskQueues.active);
     if (directPath && fileExists(directPath)) {
       const relativeToActive = path.relative(activeRoot, directPath);
-      if (
-        !relativeToActive.startsWith("..") &&
-        !path.isAbsolute(relativeToActive)
-      ) {
+      if (!relativeToActive.startsWith("..") && !path.isAbsolute(relativeToActive)) {
         return directPath;
       }
     }
@@ -94,12 +88,9 @@ export function createTaskCommands({
       };
     }
 
-    const taskSelector =
-      options.task || options.taskId || options.id || options.taskFile;
+    const taskSelector = options.task || options.taskId || options.id || options.taskFile;
     const completionArtifact = readJsonArtifactOption(
-      options.completionReport ||
-        options.importCompletionReport ||
-        options.report,
+      options.completionReport || options.importCompletionReport || options.report,
     );
     const blockers = [];
     const taskMatch = findActiveTask(taskSelector);
@@ -155,8 +146,7 @@ export function createTaskCommands({
       if (completionBlockers.length > 0) {
         blockers.push({
           code: "completion_report_blockers_present",
-          message:
-            "Completion report status is completed but still carries blockers.",
+          message: "Completion report status is completed but still carries blockers.",
           completion_report: repoRelativePath(completionArtifact.path),
           blocker_count: completionBlockers.length,
         });
@@ -172,11 +162,7 @@ export function createTaskCommands({
         task_file: repoRelativePath(taskPath),
       });
     }
-    if (
-      task &&
-      completionArtifact &&
-      (!reportTaskId || reportTaskId !== taskId)
-    ) {
+    if (task && completionArtifact && (!reportTaskId || reportTaskId !== taskId)) {
       blockers.push({
         code: "completion_report_task_id_mismatch",
         message: "Completion report task_id must match the active task id.",
@@ -212,20 +198,12 @@ export function createTaskCommands({
       schema_version: 1,
       generated_at_utc: nowIso(),
       status:
-        blockers.length === 0
-          ? booleanOption(options.dryRun)
-            ? "ready"
-            : "completed"
-          : "blocked",
+        blockers.length === 0 ? (booleanOption(options.dryRun) ? "ready" : "completed") : "blocked",
       remote_write_mode: "read-only",
       task_id: taskId || null,
       task_file: taskPath ? repoRelativePath(taskPath) : null,
-      destination_file: destinationPath
-        ? repoRelativePath(destinationPath)
-        : null,
-      completion_report: completionArtifact
-        ? repoRelativePath(completionArtifact.path)
-        : null,
+      destination_file: destinationPath ? repoRelativePath(destinationPath) : null,
+      completion_report: completionArtifact ? repoRelativePath(completionArtifact.path) : null,
       dry_run: booleanOption(options.dryRun),
       policy: {
         completion_gate:
@@ -266,8 +244,7 @@ export function createTaskCommands({
         if (!task.meta[key]) errors.push(`${task.path}: missing ${key}`);
       }
       if (task.meta.id) {
-        if (ids.has(task.meta.id))
-          errors.push(`${task.path}: duplicate id ${task.meta.id}`);
+        if (ids.has(task.meta.id)) errors.push(`${task.path}: duplicate id ${task.meta.id}`);
         ids.add(task.meta.id);
       }
     }

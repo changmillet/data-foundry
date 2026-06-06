@@ -1,9 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import {
-  bundleRowTypeOrder,
-  bundleRowTypes,
-} from "../lib/bundle-row-types.mjs";
+import { bundleRowTypeOrder, bundleRowTypes } from "../lib/bundle-row-types.mjs";
 import { readOnlyStageContract } from "../lib/stage-contract.mjs";
 
 const bundleSampleStageContract = readOnlyStageContract([
@@ -18,8 +15,7 @@ const bundleSampleStageContract = readOnlyStageContract([
   {
     stage: "materialize_rows",
     phase: "rewrite_cleanup",
-    purpose:
-      "Read selected bundle dependencies and materialize source-language JSONL rows.",
+    purpose: "Read selected bundle dependencies and materialize source-language JSONL rows.",
     inputs: ["selected manifests", "bundle TIDAS payload files"],
     outputs: ["rows/*.jsonl", "support.jsonl"],
     side_effects: ["writes local .foundry artifact files"],
@@ -123,14 +119,11 @@ export function createBundleSampleRowsCommands({
     }
 
     const bundlesDir =
-      options.bundlesDir ||
-      options.input ||
-      "tmp/bafu-2025-v2-tidas/process-bundles";
+      options.bundlesDir || options.input || "tmp/bafu-2025-v2-tidas/process-bundles";
     const allBundleDirs = listProcessBundleDirs(bundlesDir);
     const selection = selectProcessBundleDirs(allBundleDirs, options);
     const outDir = resolveRepoPath(
-      options.outDir ||
-        `.foundry/workspaces/bafu-bundle-sample-rows/${Date.now()}`,
+      options.outDir || `.foundry/workspaces/bafu-bundle-sample-rows/${Date.now()}`,
     );
     const rowsDir = path.join(outDir, "rows");
     const cliBin = resolveTiangongLcaCliBin();
@@ -208,9 +201,7 @@ export function createBundleSampleRowsCommands({
     });
     const libraryContactIdentity = datasetIdentity(libraryContact, "contact");
     const libraryContactName = asText(
-      libraryContact.contactDataSet.contactInformation.dataSetInformation[
-        "common:name"
-      ]?.["#text"],
+      libraryContact.contactDataSet.contactInformation.dataSetInformation["common:name"]?.["#text"],
     );
     const libraryContactRef = contactGlobalReference({
       id: libraryContactIdentity.id,
@@ -219,12 +210,8 @@ export function createBundleSampleRowsCommands({
       language: asText(options.language || options.lang || "en") || "en",
     });
 
-    const rowsByType = Object.fromEntries(
-      bundleRowTypeOrder.map((type) => [type, new Map()]),
-    );
-    const sourceByType = Object.fromEntries(
-      bundleRowTypeOrder.map((type) => [type, new Map()]),
-    );
+    const rowsByType = Object.fromEntries(bundleRowTypeOrder.map((type) => [type, new Map()]));
+    const sourceByType = Object.fromEntries(bundleRowTypeOrder.map((type) => [type, new Map()]));
     rowsByType.contact.set(
       `${libraryContactIdentity.id}::${libraryContactIdentity.version}`,
       libraryContact,
@@ -252,9 +239,7 @@ export function createBundleSampleRowsCommands({
         bundle_dir: repoRelativeMaybe(bundleDir),
         manifest: repoRelativeMaybe(manifestPath),
       });
-      for (const type of bundleRowTypeOrder.filter(
-        (rowType) => rowType !== "contact",
-      )) {
+      for (const type of bundleRowTypeOrder.filter((rowType) => rowType !== "contact")) {
         const plural = bundleRowTypes[type].plural;
         for (const relativeFile of ensureArray(manifest.files?.[plural])) {
           const sourceFile = path.join(bundleDir, relativeFile);
@@ -270,14 +255,7 @@ export function createBundleSampleRowsCommands({
           const payload = cloneJson(readJson(sourceFile));
           const sourceTraces = collectSourceTracePayloads(payload);
           rewriteContactReferences(payload, libraryContactRef, rewriteStats);
-          sanitizeBundlePayload(
-            payload,
-            type,
-            sourceFile,
-            sanitizeStats,
-            traceRows,
-            sourceTraces,
-          );
+          sanitizeBundlePayload(payload, type, sourceFile, sanitizeStats, traceRows, sourceTraces);
           if (type === "source") {
             repairTrueSourceIdentity(payload, {
               sourceFile,
@@ -353,33 +331,22 @@ export function createBundleSampleRowsCommands({
       }
     }
 
-    let sourceSemanticsRows = [...rowsByType.source.entries()].map(
-      ([key, payload]) =>
-        sourceSemanticSummary(payload, sourceByType.source.get(key)),
+    let sourceSemanticsRows = [...rowsByType.source.entries()].map(([key, payload]) =>
+      sourceSemanticSummary(payload, sourceByType.source.get(key)),
     );
     const sourceLookup = new Map(
-      sourceSemanticsRows
-        .filter((row) => row.dataset_id)
-        .map((row) => [row.dataset_id, row]),
+      sourceSemanticsRows.filter((row) => row.dataset_id).map((row) => [row.dataset_id, row]),
     );
     const processSourceReplacement = (() => {
-      const trueSources = sourceSemanticsRows.filter(
-        (row) => row.kind === "true_source",
-      );
+      const trueSources = sourceSemanticsRows.filter((row) => row.kind === "true_source");
       if (trueSources.length === 1) return trueSources[0];
       return null;
     })();
-    const needsFallbackSource = [...rowsByType.process.entries()].some(
-      ([key, payload]) =>
-        processSourceReferenceRows(
-          payload,
-          sourceLookup,
-          sourceByType.process.get(key),
-        ).some(
-          (row) =>
-            row.relation === "process_data_source" &&
-            row.referenced_source_kind !== "true_source",
-        ),
+    const needsFallbackSource = [...rowsByType.process.entries()].some(([key, payload]) =>
+      processSourceReferenceRows(payload, sourceLookup, sourceByType.process.get(key)).some(
+        (row) =>
+          row.relation === "process_data_source" && row.referenced_source_kind !== "true_source",
+      ),
     );
     let fallbackSourceSummary = null;
     if (!processSourceReplacement && needsFallbackSource) {
@@ -393,10 +360,7 @@ export function createBundleSampleRowsCommands({
       rowsByType.source.set(fallbackKey, fallbackSource);
       sourceByType.source.set(fallbackKey, "foundry:bafu-database-fallback-source");
       fallbackSourceSummary = {
-        ...sourceSemanticSummary(
-          fallbackSource,
-          "foundry:bafu-database-fallback-source",
-        ),
+        ...sourceSemanticSummary(fallbackSource, "foundry:bafu-database-fallback-source"),
         fallback_database_source: true,
       };
       sourceSemanticsRows = [...sourceSemanticsRows, fallbackSourceSummary];
@@ -416,11 +380,7 @@ export function createBundleSampleRowsCommands({
     const allProcessSourceReferenceRows = [];
     for (const [key, payload] of rowsByType.process.entries()) {
       allProcessSourceReferenceRows.push(
-        ...processSourceReferenceRows(
-          payload,
-          sourceLookup,
-          sourceByType.process.get(key),
-        ),
+        ...processSourceReferenceRows(payload, sourceLookup, sourceByType.process.get(key)),
       );
     }
     const processSourceReferenceQueueRows = allProcessSourceReferenceRows.filter(
@@ -432,12 +392,8 @@ export function createBundleSampleRowsCommands({
     );
     for (const row of omittedSourceSemanticsRows) {
       if (!row.dataset_id) continue;
-      rowsByType.source.delete(
-        `${row.dataset_id}::${row.dataset_version || ""}`,
-      );
-      sourceByType.source.delete(
-        `${row.dataset_id}::${row.dataset_version || ""}`,
-      );
+      rowsByType.source.delete(`${row.dataset_id}::${row.dataset_version || ""}`);
+      sourceByType.source.delete(`${row.dataset_id}::${row.dataset_version || ""}`);
     }
 
     const identityPreflightArtifacts = buildIdentityPreflightArtifacts({
@@ -446,24 +402,15 @@ export function createBundleSampleRowsCommands({
       outDir,
       cliBin,
     });
-    attachIdentityPreflightRows(
-      elementaryFlowReuseRows,
-      identityPreflightArtifacts,
-    );
+    attachIdentityPreflightRows(elementaryFlowReuseRows, identityPreflightArtifacts);
 
     const traceQueuePath = path.join(outDir, "import-traces.jsonl");
     writeJsonLines(traceQueuePath, traceRows);
-    const classificationQueuePath = path.join(
-      outDir,
-      "classification-authoring-queue.jsonl",
-    );
+    const classificationQueuePath = path.join(outDir, "classification-authoring-queue.jsonl");
     writeJsonLines(classificationQueuePath, classificationQueueRows);
     const locationQueuePath = path.join(outDir, "location-authoring-queue.jsonl");
     writeJsonLines(locationQueuePath, locationQueueRows);
-    const elementaryFlowReuseQueuePath = path.join(
-      outDir,
-      "elementary-flow-reuse-queue.jsonl",
-    );
+    const elementaryFlowReuseQueuePath = path.join(outDir, "elementary-flow-reuse-queue.jsonl");
     writeJsonLines(elementaryFlowReuseQueuePath, elementaryFlowReuseRows);
     const sourceSemanticsPath = path.join(outDir, "source-semantics.jsonl");
     writeJsonLines(sourceSemanticsPath, sourceSemanticsRows);
@@ -472,20 +419,11 @@ export function createBundleSampleRowsCommands({
       "source-classification-repairs.jsonl",
     );
     writeJsonLines(sourceClassificationRepairsPath, sourceClassificationRepairRows);
-    const processSourceReferencesPath = path.join(
-      outDir,
-      "process-source-references.jsonl",
-    );
+    const processSourceReferencesPath = path.join(outDir, "process-source-references.jsonl");
     writeJsonLines(processSourceReferencesPath, processSourceReferenceQueueRows);
-    const sourceReferenceRewritesPath = path.join(
-      outDir,
-      "source-reference-rewrites.jsonl",
-    );
+    const sourceReferenceRewritesPath = path.join(outDir, "source-reference-rewrites.jsonl");
     writeJsonLines(sourceReferenceRewritesPath, sourceReferenceRewriteRows);
-    const canonicalSupportRewritesPath = path.join(
-      outDir,
-      "canonical-support-rewrites.jsonl",
-    );
+    const canonicalSupportRewritesPath = path.join(outDir, "canonical-support-rewrites.jsonl");
     writeJsonLines(canonicalSupportRewritesPath, canonicalSupportRewriteRows);
 
     const rowFiles = {};
@@ -497,9 +435,7 @@ export function createBundleSampleRowsCommands({
       writeJsonLines(filePath, rows);
       rowFiles[type] = repoRelativePath(filePath);
     }
-    const supportRows = ["contact", "source"].flatMap(
-      (type) => [...rowsByType[type].values()],
-    );
+    const supportRows = ["contact", "source"].flatMap((type) => [...rowsByType[type].values()]);
     countsByType.support = supportRows.length;
     const supportRowsPath = path.join(rowsDir, "support.jsonl");
     writeJsonLines(supportRowsPath, supportRows);
@@ -515,8 +451,7 @@ export function createBundleSampleRowsCommands({
     if (!libraryContactIdentity.id || !libraryContactIdentity.version) {
       blockers.push({
         code: "library_contact_identity_missing",
-        message:
-          "Generated library contact is missing common:UUID or common:dataSetVersion.",
+        message: "Generated library contact is missing common:UUID or common:dataSetVersion.",
         id: libraryContactIdentity.id,
         version: libraryContactIdentity.version,
       });
@@ -623,10 +558,7 @@ export function createBundleSampleRowsCommands({
         .join(" "),
     };
 
-    const reportPath = path.join(
-      outDir,
-      "dataset-bundle-sample-rows-report.json",
-    );
+    const reportPath = path.join(outDir, "dataset-bundle-sample-rows-report.json");
     const report = {
       schema_version: 1,
       generated_at_utc: nowIso(),
@@ -636,8 +568,7 @@ export function createBundleSampleRowsCommands({
       source_bundles_dir: repoRelativeMaybe(resolveRepoPath(bundlesDir)),
       sample: {
         seed: selection.seed,
-        requested_count:
-          selection.selected.length + selection.missing_process_ids.length,
+        requested_count: selection.selected.length + selection.missing_process_ids.length,
         selected_count: selection.selected.length,
         selected_bundles: selectedBundles,
         missing_process_ids: selection.missing_process_ids,
@@ -647,13 +578,10 @@ export function createBundleSampleRowsCommands({
         version: libraryContactIdentity.version,
         name: libraryContactName,
         website:
-          libraryContact.contactDataSet.contactInformation.dataSetInformation
-            .WWWAddress ?? null,
+          libraryContact.contactDataSet.contactInformation.dataSetInformation.WWWAddress ?? null,
         policy: "one_shared_contact_per_source_library",
         replaced_contact_ids: [...rewriteStats.previous_ids].sort(),
-        replaced_contact_descriptions: [
-          ...rewriteStats.previous_descriptions,
-        ].sort(),
+        replaced_contact_descriptions: [...rewriteStats.previous_descriptions].sort(),
       },
       policy: {
         source_language_only: true,
@@ -699,9 +627,7 @@ export function createBundleSampleRowsCommands({
         identity_preflight_request_rows: identityPreflightArtifacts.rows.length,
         source_semantics_rows: sourceSemanticsRows.length,
         source_classification_repair_rows: sourceClassificationRepairRows.length,
-        true_source_rows: sourceSemanticsRows.filter(
-          (row) => row.kind === "true_source",
-        ).length,
+        true_source_rows: sourceSemanticsRows.filter((row) => row.kind === "true_source").length,
         format_support_source_rows: sourceSemanticsRows.filter(
           (row) => row.kind === "format_support_source",
         ).length,
@@ -717,18 +643,13 @@ export function createBundleSampleRowsCommands({
         canonical_support_rewrite_rows: canonicalSupportRewriteRows.length,
         reference_only_unitgroup_rows: countsByType.unitgroup,
         reference_only_flowproperty_rows: countsByType.flowproperty,
-        true_source_identity_repairs:
-          sanitizeStats.true_source_identity_repairs,
-        true_source_description_repairs:
-          sanitizeStats.true_source_description_repairs,
+        true_source_identity_repairs: sanitizeStats.true_source_identity_repairs,
+        true_source_description_repairs: sanitizeStats.true_source_description_repairs,
         true_source_reference_description_repairs:
           sanitizeStats.true_source_reference_description_repairs,
         ...sanitizeStats,
         ...Object.fromEntries(
-          Object.entries(countsByType).map(([type, count]) => [
-            `${type}_rows`,
-            count,
-          ]),
+          Object.entries(countsByType).map(([type, count]) => [`${type}_rows`, count]),
         ),
       },
       files: {
@@ -737,16 +658,10 @@ export function createBundleSampleRowsCommands({
         import_traces: repoRelativePath(traceQueuePath),
         classification_authoring_queue: repoRelativePath(classificationQueuePath),
         location_authoring_queue: repoRelativePath(locationQueuePath),
-        elementary_flow_reuse_queue: repoRelativePath(
-          elementaryFlowReuseQueuePath,
-        ),
-        identity_preflight_requests: repoRelativePath(
-          identityPreflightArtifacts.indexPath,
-        ),
+        elementary_flow_reuse_queue: repoRelativePath(elementaryFlowReuseQueuePath),
+        identity_preflight_requests: repoRelativePath(identityPreflightArtifacts.indexPath),
         source_semantics: repoRelativePath(sourceSemanticsPath),
-        source_classification_repairs: repoRelativePath(
-          sourceClassificationRepairsPath,
-        ),
+        source_classification_repairs: repoRelativePath(sourceClassificationRepairsPath),
         process_source_references: repoRelativePath(processSourceReferencesPath),
         source_reference_rewrites: repoRelativePath(sourceReferenceRewritesPath),
         canonical_support_rewrites: repoRelativePath(canonicalSupportRewritesPath),

@@ -1,8 +1,5 @@
 import path from "node:path";
-import {
-  datasetIdentity,
-  identityKey,
-} from "./dataset-payload.mjs";
+import { datasetIdentity, identityKey } from "./dataset-payload.mjs";
 import {
   normalizeClassificationDecisionRows,
   payloadSha256ByIdentityForRows,
@@ -17,14 +14,10 @@ import {
   resolveRepoPath,
   unique,
 } from "./runtime-io.mjs";
-import {
-  readJsonLines,
-} from "./workflow-patch-collect.mjs";
+import { readJsonLines } from "./workflow-patch-collect.mjs";
 
 function identityDecisionCompletionStatus(decision) {
-  return asText(
-    decision?.decision_status ?? decision?.decisionStatus ?? decision?.status,
-  );
+  return asText(decision?.decision_status ?? decision?.decisionStatus ?? decision?.status);
 }
 
 function referenceKey({ table, id, version }) {
@@ -50,15 +43,10 @@ export function normalizeIdentityReferenceRewriteRow(row) {
     dataset_type: asText(row?.dataset_type ?? row?.datasetType) || null,
     dataset_id: asText(row?.dataset_id ?? row?.datasetId ?? row?.entity_id),
     dataset_version:
-      asText(row?.dataset_version ?? row?.datasetVersion ?? row?.version) ||
-      "00.00.001",
-    relation:
-      asText(row?.relation) ||
-      "flow_reference_to_identity_preflight_duplicate",
+      asText(row?.dataset_version ?? row?.datasetVersion ?? row?.version) || "00.00.001",
+    relation: asText(row?.relation) || "flow_reference_to_identity_preflight_duplicate",
     path: asText(row?.path) || null,
-    action:
-      asText(row?.action) ||
-      "rewrite_to_identity_preflight_duplicate_reference",
+    action: asText(row?.action) || "rewrite_to_identity_preflight_duplicate_reference",
     reason: asText(row?.reason) || null,
     original,
     canonical,
@@ -95,21 +83,15 @@ export function readIdentityReferenceRewriteContext({
   const sourceRows = sourceFile ? readJsonLines(sourceFile) : [];
   const scopeIdentities = [
     ...[...writeRows.values()].map(({ identity }) => identity),
-    ...ensureArray(referenceRows).map((row, index) =>
-      datasetIdentity(row, index, datasetType),
-    ),
+    ...ensureArray(referenceRows).map((row, index) => datasetIdentity(row, index, datasetType)),
   ];
   const writeKeys = new Set(scopeIdentities.map(identityKey));
-  const writeIds = new Set(
-    scopeIdentities.map((identity) => identity.id).filter(Boolean),
-  );
-  const scopedRows = sourceRows
-    .map(normalizeIdentityReferenceRewriteRow)
-    .filter((row) => {
-      if (!row.dataset_id) return false;
-      const key = `${row.dataset_id}@@${row.dataset_version || "00.00.001"}`;
-      return writeKeys.has(key) || writeIds.has(row.dataset_id);
-    });
+  const writeIds = new Set(scopeIdentities.map((identity) => identity.id).filter(Boolean));
+  const scopedRows = sourceRows.map(normalizeIdentityReferenceRewriteRow).filter((row) => {
+    if (!row.dataset_id) return false;
+    const key = `${row.dataset_id}@@${row.dataset_version || "00.00.001"}`;
+    return writeKeys.has(key) || writeIds.has(row.dataset_id);
+  });
   const byIdentity = new Map();
   for (const row of scopedRows) {
     const key = `${row.dataset_id}@@${row.dataset_version || "00.00.001"}`;
@@ -124,23 +106,19 @@ export function readIdentityReferenceRewriteContext({
     scopedRows,
     byIdentity,
     status: asText(
-      options.identityReferenceRewriteStatus ??
-        options.identityReferenceRewritesStatus,
+      options.identityReferenceRewriteStatus ?? options.identityReferenceRewritesStatus,
     ),
     inputRowsFile: resolveRepoPath(
       repoRoot,
-      options.identityReferenceRewriteInputRows ??
-        options.identityReferenceRewriteInputRowsFile,
+      options.identityReferenceRewriteInputRows ?? options.identityReferenceRewriteInputRowsFile,
     ),
     outputRowsFile: resolveRepoPath(
       repoRoot,
-      options.identityReferenceRewriteOutputRows ??
-        options.identityReferenceRewriteOutputRowsFile,
+      options.identityReferenceRewriteOutputRows ?? options.identityReferenceRewriteOutputRowsFile,
     ),
     inputPayloadSha256ByIdentity: payloadSha256ByIdentityForRows(
       repoRoot,
-      options.identityReferenceRewriteInputRows ||
-        options.identityReferenceRewriteInputRowsFile
+      options.identityReferenceRewriteInputRows || options.identityReferenceRewriteInputRowsFile
         ? [
             options.identityReferenceRewriteInputRows ??
               options.identityReferenceRewriteInputRowsFile,
@@ -150,8 +128,7 @@ export function readIdentityReferenceRewriteContext({
     ),
     outputPayloadSha256ByIdentity: payloadSha256ByIdentityForRows(
       repoRoot,
-      options.identityReferenceRewriteOutputRows ||
-        options.identityReferenceRewriteOutputRowsFile
+      options.identityReferenceRewriteOutputRows || options.identityReferenceRewriteOutputRowsFile
         ? [
             options.identityReferenceRewriteOutputRows ??
               options.identityReferenceRewriteOutputRowsFile,
@@ -237,18 +214,14 @@ export function identityDecisionCanonical(decision) {
     null;
   if (!canonical || typeof canonical !== "object") return null;
   const id = asText(
-    canonical.ref_object_id ??
-      canonical.refObjectId ??
-      canonical.id ??
-      canonical["@refObjectId"],
+    canonical.ref_object_id ?? canonical.refObjectId ?? canonical.id ?? canonical["@refObjectId"],
   );
   if (!id) return null;
   return {
     table: asText(canonical.table) || "flows",
     ref_object_id: id,
     version:
-      asText(canonical.version ?? canonical.ref_version ?? canonical["@version"]) ||
-      "00.00.001",
+      asText(canonical.version ?? canonical.ref_version ?? canonical["@version"]) || "00.00.001",
   };
 }
 
@@ -289,8 +262,7 @@ export function readIdentityDecisionApplyContext(repoRoot, identityDecisionApply
   }
   const byIdentity = new Map();
   for (const decision of decisions) {
-    const datasetType =
-      identityDecisionDatasetType(decision) || asText(report.dataset_type);
+    const datasetType = identityDecisionDatasetType(decision) || asText(report.dataset_type);
     const id = identityDecisionDatasetId(decision);
     const version = identityDecisionDatasetVersion(decision);
     for (const key of identityDecisionIdentityKeys({ datasetType, id, version })) {
@@ -315,9 +287,7 @@ export function readIdentityDecisionApplyContext(repoRoot, identityDecisionApply
       ),
     );
   }
-  const inputRows = ensureArray(
-    report.rows_file ?? report.rowsFile ?? report.files?.input_rows,
-  )
+  const inputRows = ensureArray(report.rows_file ?? report.rowsFile ?? report.files?.input_rows)
     .map((filePath) => resolveRepoPath(repoRoot, filePath))
     .filter(Boolean);
   const outputRows = ensureArray(report.files?.output_rows)
@@ -396,9 +366,7 @@ export function mergeIdentityDecisionApplyContexts(contexts) {
   }
   const uniqueIdentityRewriteFiles = unique(identityReferenceRewritesFiles);
   return {
-    status: available.every((context) => context.status === "completed")
-      ? "completed"
-      : "mixed",
+    status: available.every((context) => context.status === "completed") ? "completed" : "mixed",
     reportPath: reportPaths[0],
     reportPaths,
     decisionsFile: null,
@@ -417,9 +385,7 @@ export function readIdentityDecisionApplyContexts(repoRoot, artifacts) {
   const artifactList = ensureArray(artifacts).filter(Boolean);
   if (artifactList.length === 0) return null;
   return mergeIdentityDecisionApplyContexts(
-    artifactList.map((artifact) =>
-      readIdentityDecisionApplyContext(repoRoot, artifact),
-    ),
+    artifactList.map((artifact) => readIdentityDecisionApplyContext(repoRoot, artifact)),
   );
 }
 
@@ -480,16 +446,10 @@ export function identityDecisionApplyContextHasDecision({
 export function identityDecisionUnresolvedReferenceKeys(context) {
   const keys = new Set();
   for (const decision of ensureArray(context?.decisions)) {
-    const datasetType =
-      identityDecisionDatasetType(decision) || asText(decision?.dataset_type);
+    const datasetType = identityDecisionDatasetType(decision) || asText(decision?.dataset_type);
     if (datasetType !== "flow") continue;
     if (identityDecisionValue(decision) !== "block_unresolved") continue;
-    if (
-      !identityDecisionClosesAction(
-        decision,
-        "elementary_flow_identity_manual_review",
-      )
-    ) {
+    if (!identityDecisionClosesAction(decision, "elementary_flow_identity_manual_review")) {
       continue;
     }
     const id = identityDecisionDatasetId(decision);

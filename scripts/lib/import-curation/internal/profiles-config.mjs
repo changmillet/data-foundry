@@ -1,25 +1,14 @@
 import { normalizeFullContextAiCompletion } from "./context-inputs.mjs";
-import {
-  datasetTypeFromOptions,
-  defaultProfilesFile,
-  fallbackProfiles,
-} from "./dataset-types.mjs";
-import {
-  ensureArray,
-  optionList,
-  readJsonIfExists,
-  resolveRepoPath,
-} from "./runtime-io.mjs";
+import { datasetTypeFromOptions, defaultProfilesFile, fallbackProfiles } from "./dataset-types.mjs";
+import { ensureArray, optionList, readJsonIfExists, resolveRepoPath } from "./runtime-io.mjs";
 
 export function normalizeProfile(rawProfile, profileId) {
-  const profile =
-    rawProfile && typeof rawProfile === "object" ? rawProfile : {};
+  const profile = rawProfile && typeof rawProfile === "object" ? rawProfile : {};
   return {
     id: String(profile.id ?? profileId ?? "generic"),
     description: profile.description ?? "",
     docs: ensureArray(profile.docs),
-    waivedQaCodesByType:
-      profile.waivedQaCodesByType ?? profile.waived_qa_codes_by_type ?? {},
+    waivedQaCodesByType: profile.waivedQaCodesByType ?? profile.waived_qa_codes_by_type ?? {},
     waiverReasons: profile.waiverReasons ?? profile.waiver_reasons ?? {},
     fullContextAiCompletion: normalizeFullContextAiCompletion(
       profile.fullContextAiCompletion ?? profile.full_context_ai_completion,
@@ -39,15 +28,10 @@ export function profileFor(repoRoot, profileId, options = {}) {
     .trim()
     .toLowerCase();
   const profiles = config.profiles ?? {};
-  const selected =
-    profiles[requestedId] ??
-    profiles.generic ??
-    fallbackProfiles.profiles.generic;
+  const selected = profiles[requestedId] ?? profiles.generic ?? fallbackProfiles.profiles.generic;
   const profile = normalizeProfile(selected, requestedId);
   const extraDocs = optionList(options.profileDoc ?? options.profileDocs);
-  const extraWaivers = optionList(
-    options.waiveQa ?? options.waiveQaCode ?? options.waivedQaCode,
-  );
+  const extraWaivers = optionList(options.waiveQa ?? options.waiveQaCode ?? options.waivedQaCode);
   return {
     ...profile,
     docs: [...profile.docs, ...extraDocs],
@@ -56,9 +40,7 @@ export function profileFor(repoRoot, profileId, options = {}) {
       ...(extraWaivers.length > 0
         ? {
             [datasetTypeFromOptions(options)]: [
-              ...ensureArray(
-                profile.waivedQaCodesByType?.[datasetTypeFromOptions(options)],
-              ),
+              ...ensureArray(profile.waivedQaCodesByType?.[datasetTypeFromOptions(options)]),
               ...extraWaivers,
             ],
           }

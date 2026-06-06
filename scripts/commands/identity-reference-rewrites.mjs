@@ -23,27 +23,19 @@ export function createIdentityReferenceRewriteCommands({
           "Apply completed identity-preflight block_duplicate flow decisions to local process exchange references before validation and write planning.",
       };
     }
-    const datasetType = asText(
-      options.type || options.datasetType || "process",
-    ).toLowerCase();
-    const rowsFile = resolveRepoPath(
-      options.rowsFile || options.input || options.rows,
-    );
+    const datasetType = asText(options.type || options.datasetType || "process").toLowerCase();
+    const rowsFile = resolveRepoPath(options.rowsFile || options.input || options.rows);
     if (!rowsFile || !fileExists(rowsFile)) {
       throw new Error("--rows-file is required and must point to process rows.");
     }
     const outDir = resolveRepoPath(
-      options.outDir ||
-        path.join(path.dirname(rowsFile), "identity-reference-rewrites"),
+      options.outDir || path.join(path.dirname(rowsFile), "identity-reference-rewrites"),
     );
     const outFile = resolveRepoPath(
       options.out ||
         options.output ||
         options.outputRows ||
-        path.join(
-          outDir,
-          `${datasetRowsFileStem(datasetType)}.identity-rewritten.jsonl`,
-        ),
+        path.join(outDir, `${datasetRowsFileStem(datasetType)}.identity-rewritten.jsonl`),
     );
     const result = applyIdentityReferenceRewrites({
       datasetType,
@@ -53,10 +45,7 @@ export function createIdentityReferenceRewriteCommands({
       options,
       allowMissingIndex: false,
     });
-    const reportPath = path.join(
-      outDir,
-      "identity-reference-rewrites-apply-report.json",
-    );
+    const reportPath = path.join(outDir, "identity-reference-rewrites-apply-report.json");
     const report = {
       schema_version: 1,
       generated_at_utc: nowIso(),

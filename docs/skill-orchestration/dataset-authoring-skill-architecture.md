@@ -5,6 +5,7 @@ scope: skill-orchestration
 status: draft
 owner: tiangong-lca-data-foundry
 lastReviewedAt: 2026-05-29
+lastReviewedCommit: 0c39afc18f1f2d8e01d2b33a39bdc0e21cea3a8f
 related:
   - docs/runtime-skill-management.md
   - docs/capability-ownership-policy.md
@@ -60,30 +61,30 @@ CLI and owned runtime repositories own:
 
 The latest checked-out `tiangong-lca-cli` already implements the following primitives that older BAFU notes treated as missing or Foundry-local:
 
-| Area                                         | Current command surface                                                                                                                                                             |
-| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Local schema gates                           | `tiangong-lca dataset validate`                                                                                                                                                     |
-| Remote readback/reference checks             | `tiangong-lca dataset verify-remote`                                                                                                                                                |
-| Reference refresh                            | `tiangong-lca dataset references refresh-remote`                                                                                                                                    |
-| Reference rewrite                            | `tiangong-lca dataset references rewrite`                                                                                                                                           |
-| Evidence search artifacting                  | `tiangong-lca dataset evidence-search plan/run`                                                                                                                                     |
-| Flow identity and generation gates           | `tiangong-lca flow identity-preflight`, `tiangong-lca flow build-plan validate/materialize`                                                                                         |
-| Process identity and generation gates        | `tiangong-lca process identity-preflight`, `tiangong-lca process build-plan validate/materialize`                                                                                   |
-| Process required fields                      | `tiangong-lca process complete-required-fields`                                                                                                                                     |
-| Entity-level import queue                    | `tiangong-lca dataset curation-queue build`                                                                                                                                         |
+| Area | Current command surface |
+| --- | --- |
+| Local schema gates | `tiangong-lca dataset validate` |
+| Remote readback/reference checks | `tiangong-lca dataset verify-remote` |
+| Reference refresh | `tiangong-lca dataset references refresh-remote` |
+| Reference rewrite | `tiangong-lca dataset references rewrite` |
+| Evidence search artifacting | `tiangong-lca dataset evidence-search plan/run` |
+| Flow identity and generation gates | `tiangong-lca flow identity-preflight`, `tiangong-lca flow build-plan validate/materialize` |
+| Process identity and generation gates | `tiangong-lca process identity-preflight`, `tiangong-lca process build-plan validate/materialize` |
+| Process required fields | `tiangong-lca process complete-required-fields` |
+| Entity-level import queue | `tiangong-lca dataset curation-queue build` |
 | Flow/process governance and reference repair | `tiangong-lca flow fetch-rows`, `materialize-decisions`, `scan-process-flow-refs`, `plan-process-flow-repairs`, `apply-process-flow-repairs`, `regen-product`, `validate-processes` |
-| Official writes already exposed              | `tiangong-lca dataset publish-support`, `tiangong-lca publish run`, `process save-draft`, `flow publish-version`, `flow publish-reviewed-data`, lifecyclemodel publish/save-draft commands |
+| Official writes already exposed | `tiangong-lca dataset publish-support`, `tiangong-lca publish run`, `process save-draft`, `flow publish-version`, `flow publish-reviewed-data`, lifecyclemodel publish/save-draft commands |
 
 The latest checked-out `tiangong-lca-skills` already has reusable skills that should be composed before creating new ones:
 
-| Skill                                                                         | Current role in this architecture                                                                                                                                             |
-| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `flow-governance-review`                                                      | Current flow child skill. It already wraps flow identity preflight, build-plan, QA, repair, publish-version, and publish-reviewed-data commands.                              |
-| `process-automated-builder`                                                   | Current process child skill. It already wraps process identity preflight, evidence search, build-plan, required-field completion, and publish preparation. |
-| `tidas-data-import`                                                           | Top-level CLI orchestration skill for package conversion and source-document authoring lanes.                                                                                 |
-| `lca-publish-executor`                                                        | Current unified publish request facade over `tiangong-lca publish run`.                                                                                                       |
-| `tiangong-lca-remote-ops`                                                     | Process-focused remote maintenance and verification wrapper. Use only where process-specific remote maintenance is required.                                                  |
-| `flow-hybrid-search`, `process-hybrid-search`, `lifecyclemodel-hybrid-search` | Retrieval helpers only. They produce candidates; they do not decide authoring or mapping.                                                                                     |
+| Skill | Current role in this architecture |
+| --- | --- |
+| `flow-governance-review` | Current flow child skill. It already wraps flow identity preflight, build-plan, QA, repair, publish-version, and publish-reviewed-data commands. |
+| `process-automated-builder` | Current process child skill. It already wraps process identity preflight, evidence search, build-plan, required-field completion, and publish preparation. |
+| `tidas-data-import` | Top-level CLI orchestration skill for package conversion and source-document authoring lanes. |
+| `lca-publish-executor` | Current unified publish request facade over `tiangong-lca publish run`. |
+| `tiangong-lca-remote-ops` | Process-focused remote maintenance and verification wrapper. Use only where process-specific remote maintenance is required. |
+| `flow-hybrid-search`, `process-hybrid-search`, `lifecyclemodel-hybrid-search` | Retrieval helpers only. They produce candidates; they do not decide authoring or mapping. |
 
 External source-evidence skills can also be used, but they are a different dependency class. They are resolved through `npx skills` at runtime and should not be copied into Foundry:
 
@@ -159,17 +160,17 @@ Use when a structured external LCA package already exists and must be converted,
 
 Default stages:
 
-| Stage                                                | Owner                                                                                           | Current reusable surface                                                                                                                  |
-| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| 1. Source intake                                     | Foundry + top-level skill                                                                       | Foundry source manifest and checksum checkpoint.                                                                                          |
-| 2. Normalize                                         | top-level skill -> normalization child skill                                                    | `tidas-tools import-lca` or equivalent source-format tool.                                                                                |
-| 3. Conversion QA                                     | top-level skill + CLI                                                                           | `dataset validate`, conversion mapping checks, source trace checks.                                                                       |
-| 4. Contact/source/unit group/flow property authoring | child skills or top-level until split                                                           | Prefer existing records; use public CLI validation and evidence artifacts.                                                                |
-| 5. Flow authoring                                    | `flow-governance-review` now; future `flow-authoring` alias/name                                | `flow identity-preflight`, `flow build-plan`, flow candidate search, flow QA/repair, source-language name-plan.                                           |
-| 6. Process authoring                                 | `process-automated-builder` plus dataset/process commands                                       | `process identity-preflight`, `process complete-required-fields`, `dataset references refresh-remote`, QA gates.     |
-| 7. Mapping/report                                    | future `dataset-mapping`                                                                        | Merge conversion mapping, source-language curation evidence, reference changes, write/readback reports.                                                  |
-| 8. Remote write                                      | `lca-publish-executor`, `dataset publish-support`, flow/process publish commands | Official CLI/platform write paths only. No direct table writes.                                                                           |
-| 9. Readback verify                                   | CLI/remote verification child skill                                                             | `dataset verify-remote`, targeted row fetch/verification, accepted-difference report.                                                     |
+| Stage | Owner | Current reusable surface |
+| --- | --- | --- |
+| 1. Source intake | Foundry + top-level skill | Foundry source manifest and checksum checkpoint. |
+| 2. Normalize | top-level skill -> normalization child skill | `tidas-tools import-lca` or equivalent source-format tool. |
+| 3. Conversion QA | top-level skill + CLI | `dataset validate`, conversion mapping checks, source trace checks. |
+| 4. Contact/source/unit group/flow property authoring | child skills or top-level until split | Prefer existing records; use public CLI validation and evidence artifacts. |
+| 5. Flow authoring | `flow-governance-review` now; future `flow-authoring` alias/name | `flow identity-preflight`, `flow build-plan`, flow candidate search, flow QA/repair, source-language name-plan. |
+| 6. Process authoring | `process-automated-builder` plus dataset/process commands | `process identity-preflight`, `process complete-required-fields`, `dataset references refresh-remote`, QA gates. |
+| 7. Mapping/report | future `dataset-mapping` | Merge conversion mapping, source-language curation evidence, reference changes, write/readback reports. |
+| 8. Remote write | `lca-publish-executor`, `dataset publish-support`, flow/process publish commands | Official CLI/platform write paths only. No direct table writes. |
+| 9. Readback verify | CLI/remote verification child skill | `dataset verify-remote`, targeted row fetch/verification, accepted-difference report. |
 
 The top-level skill must not hand-edit entity rows directly. It prepares structured requests, invokes child skills or public CLI commands, records checkpoints, and stops when gates fail.
 

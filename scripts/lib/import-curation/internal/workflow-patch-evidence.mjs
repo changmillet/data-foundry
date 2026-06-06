@@ -1,12 +1,6 @@
 import path from "node:path";
-import {
-  loadTidasSchema,
-} from "./context-inputs.mjs";
-import {
-  asText,
-  ensureArray,
-  resolveRepoPath,
-} from "./runtime-io.mjs";
+import { loadTidasSchema } from "./context-inputs.mjs";
+import { asText, ensureArray, resolveRepoPath } from "./runtime-io.mjs";
 import {
   evidenceEntries,
   evidenceSourceKeys,
@@ -14,16 +8,12 @@ import {
   firstNonEmptyEvidenceValue,
   hasNonEmptyTraceEvidence,
 } from "./workflow-authoring-tasks.mjs";
-import {
-  isAnnualSupplyTarget,
-} from "./workflow-queue-context.mjs";
+import { isAnnualSupplyTarget } from "./workflow-queue-context.mjs";
 
 // part-04.mjs
 export function hasStructuredTraceEvidence(value) {
   return evidenceEntries(value)
-    .filter(
-      (entry) => entry && typeof entry === "object" && !Array.isArray(entry),
-    )
+    .filter((entry) => entry && typeof entry === "object" && !Array.isArray(entry))
     .some(
       (entry) =>
         firstNonEmptyEvidenceValue(entry, evidenceSourceKeys) &&
@@ -43,11 +33,7 @@ export function objectTraceEntries(value, traceKey) {
       entries.push(...ensureArray(node[traceKey]));
     }
     const commonOther = node["common:other"];
-    if (
-      commonOther &&
-      typeof commonOther === "object" &&
-      !Array.isArray(commonOther)
-    ) {
+    if (commonOther && typeof commonOther === "object" && !Array.isArray(commonOther)) {
       if (Object.hasOwn(commonOther, traceKey)) {
         entries.push(...ensureArray(commonOther[traceKey]));
       }
@@ -62,16 +48,12 @@ export function operationTraceEntries(operation, traceKey) {
   const pointer = asText(operation?.path);
   const value = operation?.value;
   if (pointer.includes(`/${traceKey}`)) return ensureArray(value);
-  if (pointer.includes("/common:other"))
-    return objectTraceEntries(value, traceKey);
+  if (pointer.includes("/common:other")) return objectTraceEntries(value, traceKey);
   return objectTraceEntries(value, traceKey);
 }
 
 export function validateDeferredCommonOtherTrace({ operation, actionItems }) {
-  const traceEntries = operationTraceEntries(
-    operation,
-    "tiangongfoundry:unresolvedTrace",
-  );
+  const traceEntries = operationTraceEntries(operation, "tiangongfoundry:unresolvedTrace");
   const closureCodes = new Set(operationClosureCodes(operation));
   const actionCodes = new Set(
     ensureArray(actionItems)
@@ -91,9 +73,7 @@ export function validateDeferredCommonOtherTrace({ operation, actionItems }) {
   const closureCodesOnly = new Set([...closureCodes].filter(Boolean));
   const tracedActionCodes = new Set(
     traceEntries
-      .map((entry) =>
-        asText(entry?.action_item_code ?? entry?.actionItemCode ?? entry?.code),
-      )
+      .map((entry) => asText(entry?.action_item_code ?? entry?.actionItemCode ?? entry?.code))
       .filter(Boolean),
   );
   for (const closureCode of closureCodesOnly) {
@@ -110,41 +90,21 @@ export function validateDeferredCommonOtherTrace({ operation, actionItems }) {
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
       blockers.push({
         code: "patch_deferred_trace_invalid",
-        message:
-          "tiangongfoundry:unresolvedTrace entries must be JSON objects.",
+        message: "tiangongfoundry:unresolvedTrace entries must be JSON objects.",
         trace_index: index,
       });
       return;
     }
-    const status = asText(
-      entry.status ?? entry.decision_status ?? entry.decisionStatus,
-    );
-    const actionCode = asText(
-      entry.action_item_code ?? entry.actionItemCode ?? entry.code,
-    );
+    const status = asText(entry.status ?? entry.decision_status ?? entry.decisionStatus);
+    const actionCode = asText(entry.action_item_code ?? entry.actionItemCode ?? entry.code);
     const blockedPath = asText(
-      entry.blocked_path ??
-        entry.blockedPath ??
-        entry.field_path ??
-        entry.fieldPath ??
-        entry.path,
+      entry.blocked_path ?? entry.blockedPath ?? entry.field_path ?? entry.fieldPath ?? entry.path,
     );
-    const reason = asText(
-      entry.reason ?? entry.deferred_reason ?? entry.deferredReason,
-    );
+    const reason = asText(entry.reason ?? entry.deferred_reason ?? entry.deferredReason);
     const nextAction = asText(
-      entry.next_action ??
-        entry.nextAction ??
-        entry.follow_up ??
-        entry.followUp,
+      entry.next_action ?? entry.nextAction ?? entry.follow_up ?? entry.followUp,
     );
-    if (
-      ![
-        "unresolved_deferred",
-        "deferred_to_common_other",
-        "needs_followup",
-      ].includes(status)
-    ) {
+    if (!["unresolved_deferred", "deferred_to_common_other", "needs_followup"].includes(status)) {
       blockers.push({
         code: "patch_deferred_trace_status_invalid",
         message:
@@ -152,10 +112,7 @@ export function validateDeferredCommonOtherTrace({ operation, actionItems }) {
         trace_index: index,
       });
     }
-    if (
-      !actionCode ||
-      (acceptedCodes.size > 0 && !acceptedCodes.has(actionCode))
-    ) {
+    if (!actionCode || (acceptedCodes.size > 0 && !acceptedCodes.has(actionCode))) {
       blockers.push({
         code: "patch_deferred_trace_action_item_missing",
         message:
@@ -166,8 +123,7 @@ export function validateDeferredCommonOtherTrace({ operation, actionItems }) {
     if (!blockedPath) {
       blockers.push({
         code: "patch_deferred_trace_path_missing",
-        message:
-          "tiangongfoundry:unresolvedTrace must record the blocked field/path.",
+        message: "tiangongfoundry:unresolvedTrace must record the blocked field/path.",
         trace_index: index,
       });
     }
@@ -179,8 +135,7 @@ export function validateDeferredCommonOtherTrace({ operation, actionItems }) {
         trace_index: index,
       });
     }
-    const evidence =
-      entry.evidence ?? entry.source_evidence ?? entry.sourceEvidence;
+    const evidence = entry.evidence ?? entry.source_evidence ?? entry.sourceEvidence;
     if (!hasNonEmptyTraceEvidence(evidence)) {
       blockers.push({
         code: "patch_deferred_trace_evidence_missing",
@@ -199,8 +154,7 @@ export function validateDeferredCommonOtherTrace({ operation, actionItems }) {
     if (!nextAction) {
       blockers.push({
         code: "patch_deferred_trace_next_action_missing",
-        message:
-          "tiangongfoundry:unresolvedTrace must record a concrete next_action/follow_up.",
+        message: "tiangongfoundry:unresolvedTrace must record a concrete next_action/follow_up.",
         trace_index: index,
       });
     }
@@ -226,21 +180,16 @@ export function validateSourceExchangeCompletenessTrace(operation) {
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
       blockers.push({
         code: "patch_source_exchange_trace_invalid",
-        message:
-          "tiangongfoundry:sourceExchangeCompleteness entries must be JSON objects.",
+        message: "tiangongfoundry:sourceExchangeCompleteness entries must be JSON objects.",
         trace_index: index,
       });
       return;
     }
-    const status = asText(
-      entry.status ?? entry.decision_status ?? entry.decisionStatus,
-    );
+    const status = asText(entry.status ?? entry.decision_status ?? entry.decisionStatus);
     if (
-      ![
-        "source_only_output_exchange_verified",
-        "accepted_source_only_output",
-        "verified",
-      ].includes(status)
+      !["source_only_output_exchange_verified", "accepted_source_only_output", "verified"].includes(
+        status,
+      )
     ) {
       blockers.push({
         code: "patch_source_exchange_trace_status_invalid",
@@ -249,11 +198,7 @@ export function validateSourceExchangeCompletenessTrace(operation) {
         trace_index: index,
       });
     }
-    const evidence =
-      entry.evidence ??
-      entry.source_evidence ??
-      entry.sourceEvidence ??
-      entry.trace;
+    const evidence = entry.evidence ?? entry.source_evidence ?? entry.sourceEvidence ?? entry.trace;
     if (!hasNonEmptyTraceEvidence(evidence)) {
       blockers.push({
         code: "patch_source_exchange_trace_evidence_missing",
@@ -283,12 +228,9 @@ export function containsAiTemplatePlaceholder(value) {
   if (typeof value === "string") {
     return /__AI_FILL_[A-Z0-9_]*__|\/__AI_FILL_JSON_POINTER__/u.test(value);
   }
-  if (Array.isArray(value))
-    return value.some((item) => containsAiTemplatePlaceholder(item));
+  if (Array.isArray(value)) return value.some((item) => containsAiTemplatePlaceholder(item));
   if (value && typeof value === "object") {
-    return Object.values(value).some((item) =>
-      containsAiTemplatePlaceholder(item),
-    );
+    return Object.values(value).some((item) => containsAiTemplatePlaceholder(item));
   }
   return false;
 }
@@ -336,9 +278,7 @@ export function categoryEntries(repoRoot, schemaFile) {
       );
       const text = asText(properties?.["#text"]?.const);
       const level = levelText === "" ? Number.NaN : Number(levelText);
-      return Number.isInteger(level) && code && text
-        ? { level, code, text }
-        : null;
+      return Number.isInteger(level) && code && text ? { level, code, text } : null;
     })
     .filter(Boolean);
   const byCode = new Map(entries.map((entry) => [entry.code, entry]));
@@ -408,8 +348,7 @@ export function classificationItemsFromOperation(operation) {
   if (commonClass && typeof commonClass === "object") return [commonClass];
   const commonCategory = value["common:category"];
   if (Array.isArray(commonCategory)) return commonCategory;
-  if (commonCategory && typeof commonCategory === "object")
-    return [commonCategory];
+  if (commonCategory && typeof commonCategory === "object") return [commonCategory];
   const wrappedClassification = value["common:classification"];
   if (
     wrappedClassification &&
@@ -418,8 +357,7 @@ export function classificationItemsFromOperation(operation) {
   ) {
     const wrappedClass = wrappedClassification["common:class"];
     if (Array.isArray(wrappedClass)) return wrappedClass;
-    if (wrappedClass && typeof wrappedClass === "object")
-      return [wrappedClass];
+    if (wrappedClass && typeof wrappedClass === "object") return [wrappedClass];
   }
   const wrappedElementary = value["common:elementaryFlowCategorization"];
   if (
@@ -429,8 +367,7 @@ export function classificationItemsFromOperation(operation) {
   ) {
     const wrappedCategory = wrappedElementary["common:category"];
     if (Array.isArray(wrappedCategory)) return wrappedCategory;
-    if (wrappedCategory && typeof wrappedCategory === "object")
-      return [wrappedCategory];
+    if (wrappedCategory && typeof wrappedCategory === "object") return [wrappedCategory];
   }
   const classes = value.classes ?? value.classification_classes;
   if (Array.isArray(classes)) return classes;
@@ -452,8 +389,7 @@ export function validateClassificationDecisionOperation({
     return [
       {
         code: "patch_classification_decision_value_missing",
-        message:
-          `${datasetLabel} classification_decision operations must write ${itemLabel} from the bundled TIDAS category schema.`,
+        message: `${datasetLabel} classification_decision operations must write ${itemLabel} from the bundled TIDAS category schema.`,
       },
     ];
   }
@@ -464,8 +400,7 @@ export function validateClassificationDecisionOperation({
     return [
       {
         code: "patch_classification_decision_code_invalid",
-        message:
-          `${datasetLabel} classification_decision leaf code is not present in ${schemaFile}.`,
+        message: `${datasetLabel} classification_decision leaf code is not present in ${schemaFile}.`,
         leaf_code: leafCode || null,
       },
     ];
@@ -476,8 +411,7 @@ export function validateClassificationDecisionOperation({
     return [
       {
         code: "patch_classification_decision_path_invalid",
-        message:
-          `${datasetLabel} classification_decision path does not match the canonical TIDAS category path.`,
+        message: `${datasetLabel} classification_decision path does not match the canonical TIDAS category path.`,
         expected_codes: canonical.map((entry) => entry.code),
         actual_codes: rawCodes,
       },
@@ -511,21 +445,16 @@ export function validateClassificationDecisionOperation({
     .filter(Boolean);
   return invalidEntries.length > 0
     ? [
-      {
-        code: "patch_classification_decision_entry_invalid",
-        message:
-          `${datasetLabel} classification_decision entries must use canonical @level/${codeAttribute}/#text values from ${schemaFile}.`,
-        invalid_entries: invalidEntries,
-      },
-    ]
+        {
+          code: "patch_classification_decision_entry_invalid",
+          message: `${datasetLabel} classification_decision entries must use canonical @level/${codeAttribute}/#text values from ${schemaFile}.`,
+          invalid_entries: invalidEntries,
+        },
+      ]
     : [];
 }
 
-export function validateProcessClassificationDecisionOperation({
-  repoRoot,
-  task,
-  operation,
-}) {
+export function validateProcessClassificationDecisionOperation({ repoRoot, task, operation }) {
   if (asText(task?.entity?.dataset_type) !== "process") return [];
   return validateClassificationDecisionOperation({
     repoRoot,
@@ -537,11 +466,7 @@ export function validateProcessClassificationDecisionOperation({
   });
 }
 
-export function validateFlowClassificationDecisionOperation({
-  repoRoot,
-  task,
-  operation,
-}) {
+export function validateFlowClassificationDecisionOperation({ repoRoot, task, operation }) {
   if (asText(task?.entity?.dataset_type) !== "flow") return [];
   const actionPaths = ensureArray(task?.action_items)
     .map((item) => asText(item?.path))
@@ -549,9 +474,7 @@ export function validateFlowClassificationDecisionOperation({
   const operationPath = asText(operation?.path);
   const isElementary =
     operationPath.includes("elementaryFlowCategorization") ||
-    actionPaths.some((itemPath) =>
-      itemPath.includes("elementaryFlowCategorization"),
-    );
+    actionPaths.some((itemPath) => itemPath.includes("elementaryFlowCategorization"));
   return validateClassificationDecisionOperation({
     repoRoot,
     operation,
@@ -608,8 +531,7 @@ export function validateLocationDecisionOperation({ repoRoot, operation }) {
     return [
       {
         code: "patch_location_decision_code_invalid",
-        message:
-          "location_decision code is not present in tidas_locations_category.json.",
+        message: "location_decision code is not present in tidas_locations_category.json.",
         location_code: code,
       },
     ];
@@ -637,8 +559,7 @@ export function taskActionItemsForOperation(task, operation) {
     const itemPath = asText(item?.path) || null;
     return closures.some(
       (closure) =>
-        closure.code === code &&
-        (!closure.path || !itemPath || closure.path === itemPath),
+        closure.code === code && (!closure.path || !itemPath || closure.path === itemPath),
     );
   });
 }

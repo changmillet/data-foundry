@@ -130,9 +130,7 @@ export function createIdentityPreflightRunCommands({
     const datasetTypes = new Set(
       normalizedList(options.datasetType || options.datasetTypes || options.type),
     );
-    const ids = new Set(
-      normalizedList(options.id || options.ids || options.datasetId),
-    );
+    const ids = new Set(normalizedList(options.id || options.ids || options.datasetId));
     const offset = Math.max(0, integerOption(options.offset, 0) ?? 0);
     const limit = positiveIntegerOption(options.limit || options.count, null);
     const filtered = rows.filter((row) => {
@@ -167,16 +165,10 @@ export function createIdentityPreflightRunCommands({
     if (typeof value !== "object") return [];
     const directStatus = asText(value.status);
     const hasFailure =
-      directStatus === "failed" ||
-      Boolean(value.failure_code) ||
-      Boolean(value.failed === true);
-    const nested = [
-      value.results,
-      value.rows,
-      value.items,
-      value.blockers,
-      value.failures,
-    ].flatMap(retryFailedRowsFromArtifact);
+      directStatus === "failed" || Boolean(value.failure_code) || Boolean(value.failed === true);
+    const nested = [value.results, value.rows, value.items, value.blockers, value.failures].flatMap(
+      retryFailedRowsFromArtifact,
+    );
     return hasFailure ? [value, ...nested] : nested;
   }
 
@@ -192,10 +184,9 @@ export function createIdentityPreflightRunCommands({
   }
 
   function retriableIdentityPreflightFailure(row) {
-    return [
-      "identity_preflight_timeout",
-      "identity_preflight_report_missing_or_non_json",
-    ].includes(row?.failure_code);
+    return ["identity_preflight_timeout", "identity_preflight_report_missing_or_non_json"].includes(
+      row?.failure_code,
+    );
   }
 
   function runDatasetIdentityPreflightRun(options) {
@@ -216,24 +207,16 @@ export function createIdentityPreflightRunCommands({
     }
     const indexPath = identityPreflightRunIndexPath(options);
     if (!indexPath || !fileExists(indexPath)) {
-      throw new Error(
-        "--index is required and must point to identity-preflight-requests.jsonl.",
-      );
+      throw new Error("--index is required and must point to identity-preflight-requests.jsonl.");
     }
     const outDir = resolveRepoPath(
-      options.outDir ||
-        path.join(
-          path.dirname(path.dirname(indexPath)),
-          "identity-preflight-run",
-        ),
+      options.outDir || path.join(path.dirname(path.dirname(indexPath)), "identity-preflight-run"),
     );
     const rows = readJsonLines(indexPath);
     const retryFailedPath = resolveRepoPath(
       options.retryFailed || options.retryFailedReport || options.retryLedger,
     );
-    const retryFailedKeys = retryFailedPath
-      ? retryFailedKeysFromArtifact(retryFailedPath)
-      : null;
+    const retryFailedKeys = retryFailedPath ? retryFailedKeysFromArtifact(retryFailedPath) : null;
     const initiallySelectedRows = selectIdentityPreflightRunRows(rows, options);
     const selectedRows = retryFailedKeys
       ? initiallySelectedRows.filter((row) =>
@@ -253,15 +236,19 @@ export function createIdentityPreflightRunCommands({
     const spawnTimeoutMs = identityPreflightSpawnTimeoutMs(timeoutMs);
     const cli = resolveTiangongLcaCliCommand
       ? resolveTiangongLcaCliCommand()
-      : { command: resolveTiangongLcaCliBin(), args: [], display: resolveTiangongLcaCliBin(), package: null };
+      : {
+          command: resolveTiangongLcaCliBin(),
+          args: [],
+          display: resolveTiangongLcaCliBin(),
+          package: null,
+        };
     const logDir = path.join(outDir, "logs");
     const resultRows = [];
 
     selectedRows.forEach((row, selectedIndex) => {
       const datasetType = asText(row.dataset_type || row.type);
       const datasetId = asText(row.dataset_id || row.entity_id || row.id);
-      const datasetVersion =
-        asText(row.dataset_version || row.version) || "00.00.001";
+      const datasetVersion = asText(row.dataset_version || row.version) || "00.00.001";
       const requestFile = identityPreflightRunRequestFile(row);
       const outputDir = identityPreflightRunOutputDir(row);
       const reportFile = identityPreflightRunReportFile(row);
@@ -363,12 +350,12 @@ export function createIdentityPreflightRunCommands({
       const attemptRows = [];
       for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
         const attemptSuffix = maxAttempts > 1 ? `.attempt-${attempt}` : "";
-        const attemptStdoutLog = maxAttempts > 1
-          ? path.join(logDir, `${logToken}${attemptSuffix}.stdout.json`)
-          : stdoutLog;
-        const attemptStderrLog = maxAttempts > 1
-          ? path.join(logDir, `${logToken}${attemptSuffix}.stderr.log`)
-          : stderrLog;
+        const attemptStdoutLog =
+          maxAttempts > 1
+            ? path.join(logDir, `${logToken}${attemptSuffix}.stdout.json`)
+            : stdoutLog;
+        const attemptStderrLog =
+          maxAttempts > 1 ? path.join(logDir, `${logToken}${attemptSuffix}.stderr.log`) : stderrLog;
         const spawnArgs = [...cli.args, ...cliArgs];
         const result = spawnSync(cli.command, spawnArgs, {
           cwd: repoRoot,
@@ -379,14 +366,11 @@ export function createIdentityPreflightRunCommands({
         });
         writeText(attemptStdoutLog, result.stdout || "");
         writeText(attemptStderrLog, result.stderr || "");
-        const timedOut =
-          result.error?.code === "ETIMEDOUT" || result.signal === "SIGTERM";
+        const timedOut = result.error?.code === "ETIMEDOUT" || result.signal === "SIGTERM";
         if (result.error && !timedOut) throw result.error;
-        const cliExitCode =
-          typeof result.status === "number" ? result.status : 1;
+        const cliExitCode = typeof result.status === "number" ? result.status : 1;
         const stdoutReport = parseJsonMaybe(result.stdout);
-        const diskReport =
-          reportFile && fileExists(reportFile) ? readJson(reportFile) : null;
+        const diskReport = reportFile && fileExists(reportFile) ? readJson(reportFile) : null;
         const report = stdoutReport || diskReport;
         const attemptRow = timedOut
           ? {
@@ -404,8 +388,7 @@ export function createIdentityPreflightRunCommands({
               next_action: report?.next_action ?? null,
               blocker_count: ensureArray(report?.blockers).length,
               candidate_count: ensureArray(report?.candidates).length,
-              candidate_source_count: ensureArray(report?.candidate_sources)
-                .length,
+              candidate_source_count: ensureArray(report?.candidate_sources).length,
               signal: result.signal ?? null,
               timeout_ms: timeoutMs,
               spawn_timeout_ms: spawnTimeoutMs,
@@ -417,9 +400,7 @@ export function createIdentityPreflightRunCommands({
               stdout_log: repoRelativePath(attemptStdoutLog),
               stderr_log: repoRelativePath(attemptStderrLog),
               status: report ? "completed" : "failed",
-              failure_code: report
-                ? null
-                : "identity_preflight_report_missing_or_non_json",
+              failure_code: report ? null : "identity_preflight_report_missing_or_non_json",
               cli_exit_code: cliExitCode,
               report_status: report?.status ?? null,
               decision: report?.decision ?? null,
@@ -427,8 +408,7 @@ export function createIdentityPreflightRunCommands({
               next_action: report?.next_action ?? null,
               blocker_count: ensureArray(report?.blockers).length,
               candidate_count: ensureArray(report?.candidates).length,
-              candidate_source_count: ensureArray(report?.candidate_sources)
-                .length,
+              candidate_source_count: ensureArray(report?.candidate_sources).length,
             };
         attemptRows.push(attemptRow);
         if (!retriableIdentityPreflightFailure(attemptRow)) break;
@@ -469,14 +449,8 @@ export function createIdentityPreflightRunCommands({
         : identityFindingRows.length > 0
           ? "completed_with_identity_findings"
           : "completed";
-    const resultsPath = path.join(
-      outDir,
-      "identity-preflight-run-results.jsonl",
-    );
-    const reportPath = path.join(
-      outDir,
-      "dataset-identity-preflight-run-report.json",
-    );
+    const resultsPath = path.join(outDir, "identity-preflight-run-results.jsonl");
+    const reportPath = path.join(outDir, "dataset-identity-preflight-run-report.json");
     writeJsonLines(resultsPath, resultRows);
     const report = {
       schema_version: 1,
@@ -490,9 +464,7 @@ export function createIdentityPreflightRunCommands({
         spawn_timeout_ms: spawnTimeoutMs,
         max_attempts: maxAttempts,
         retry_failed:
-          retryFailedPath && fileExists(retryFailedPath)
-            ? repoRelativePath(retryFailedPath)
-            : null,
+          retryFailedPath && fileExists(retryFailedPath) ? repoRelativePath(retryFailedPath) : null,
         cli: {
           command: cli.display,
           executable: cli.command,
@@ -506,26 +478,18 @@ export function createIdentityPreflightRunCommands({
         initially_selected_rows: initiallySelectedRows.length,
         retry_failed_input_rows: retryFailedKeys ? retryFailedKeys.size : 0,
         selected_rows: selectedRows.length,
-        attempts: resultRows.reduce(
-          (total, row) => total + Number(row.attempts ?? 0),
-          0,
-        ),
+        attempts: resultRows.reduce((total, row) => total + Number(row.attempts ?? 0), 0),
         planned: resultRows.filter((row) => row.status === "planned").length,
-        completed: resultRows.filter((row) => row.status === "completed")
-          .length,
+        completed: resultRows.filter((row) => row.status === "completed").length,
         skipped_existing_report: resultRows.filter(
           (row) => row.status === "skipped_existing_report",
         ).length,
         failed: failedRows.length,
-        identity_blocked: resultRows.filter(
-          (row) => row.report_status === "blocked",
-        ).length,
-        identity_needs_review: resultRows.filter(
-          (row) => row.report_status === "needs_review",
-        ).length,
+        identity_blocked: resultRows.filter((row) => row.report_status === "blocked").length,
+        identity_needs_review: resultRows.filter((row) => row.report_status === "needs_review")
+          .length,
         cli_exit_nonzero: resultRows.filter(
-          (row) =>
-            Number.isInteger(row.cli_exit_code) && row.cli_exit_code !== 0,
+          (row) => Number.isInteger(row.cli_exit_code) && row.cli_exit_code !== 0,
         ).length,
         blockers: blockers.length,
       },
@@ -549,8 +513,7 @@ export function createIdentityPreflightRunCommands({
   function identityPreflightIndexMergeKey(row) {
     const datasetType = asText(row?.dataset_type || row?.type);
     const datasetId = asText(row?.dataset_id || row?.entity_id || row?.id);
-    const datasetVersion =
-      asText(row?.dataset_version || row?.version) || "00.00.001";
+    const datasetVersion = asText(row?.dataset_version || row?.version) || "00.00.001";
     if (!datasetType || !datasetId || !datasetVersion) return null;
     return `${datasetType}::${datasetId}::${datasetVersion}`;
   }
@@ -570,9 +533,7 @@ export function createIdentityPreflightRunCommands({
         remote_write_mode: "read-only",
       };
     }
-    const baseIndex = resolveRepoPath(
-      options.baseIndex || options.base || options.index,
-    );
+    const baseIndex = resolveRepoPath(options.baseIndex || options.base || options.index);
     if (!baseIndex || !fileExists(baseIndex)) {
       throw new Error(
         "--base-index is required and must point to identity-preflight-requests.jsonl.",
@@ -584,30 +545,17 @@ export function createIdentityPreflightRunCommands({
         options.refreshIndex ||
         options.refreshIndexes,
     ).map(resolveRepoPath);
-    if (
-      updateIndexes.length === 0 ||
-      updateIndexes.some((file) => !fileExists(file))
-    ) {
-      throw new Error(
-        "--update-index is required and every update index must be readable.",
-      );
+    if (updateIndexes.length === 0 || updateIndexes.some((file) => !fileExists(file))) {
+      throw new Error("--update-index is required and every update index must be readable.");
     }
     const outDir = resolveRepoPath(
       options.outDir ||
-        path.join(
-          path.dirname(path.dirname(baseIndex)),
-          "identity-preflight-index-merge",
-        ),
+        path.join(path.dirname(path.dirname(baseIndex)), "identity-preflight-index-merge"),
     );
     const outPath = resolveRepoPath(
-      options.out ||
-        options.output ||
-        path.join(outDir, "identity-preflight-requests.jsonl"),
+      options.out || options.output || path.join(outDir, "identity-preflight-requests.jsonl"),
     );
-    const reportPath = path.join(
-      outDir,
-      "dataset-identity-preflight-index-merge-report.json",
-    );
+    const reportPath = path.join(outDir, "dataset-identity-preflight-index-merge-report.json");
     const blockers = [];
     const mergedRows = [];
     const rowIndexByKey = new Map();
@@ -648,8 +596,7 @@ export function createIdentityPreflightRunCommands({
       if (mode === "base") {
         blockers.push({
           code: "identity_preflight_index_base_duplicate_key",
-          message:
-            "Base identity preflight index contains duplicate dataset identity rows.",
+          message: "Base identity preflight index contains duplicate dataset identity rows.",
           key,
           source_file: repoRelativeMaybe(sourceFile),
           source_index: sourceIndex,
@@ -670,9 +617,7 @@ export function createIdentityPreflightRunCommands({
     for (const updateIndex of updateIndexes) {
       const updateRows = readJsonLines(updateIndex);
       stats.update_rows += updateRows.length;
-      updateRows.forEach((row, index) =>
-        addRow(row, updateIndex, index, "update"),
-      );
+      updateRows.forEach((row, index) => addRow(row, updateIndex, index, "update"));
     }
 
     if (blockers.length === 0) writeJsonLines(outPath, mergedRows);
@@ -724,26 +669,17 @@ export function createIdentityPreflightRunCommands({
       };
     }
 
-    const datasetType = asText(
-      options.type || options.datasetType,
-    ).toLowerCase();
+    const datasetType = asText(options.type || options.datasetType).toLowerCase();
     if (!["flow", "process"].includes(datasetType)) {
       throw new Error("--type must be flow or process.");
     }
-    const rowsFile = resolveRepoPath(
-      options.rowsFile || options.input || options.inputRows,
-    );
+    const rowsFile = resolveRepoPath(options.rowsFile || options.input || options.inputRows);
     if (!rowsFile || !fileExists(rowsFile)) {
-      throw new Error(
-        "--rows-file must point to a readable process/flow rows file.",
-      );
+      throw new Error("--rows-file must point to a readable process/flow rows file.");
     }
     const outDir = resolveRepoPath(
       options.outDir ||
-        path.join(
-          path.dirname(path.dirname(rowsFile)),
-          "identity-preflight-refresh",
-        ),
+        path.join(path.dirname(path.dirname(rowsFile)), "identity-preflight-refresh"),
     );
     const cliBin = resolveTiangongLcaCliBin();
     const rows = readRowsFile(rowsFile);
@@ -775,8 +711,7 @@ export function createIdentityPreflightRunCommands({
       }
       const key = `${identity.id}::${identity.version}`;
       const sourceIndexKey = `${datasetType}:${identity.id}:${identity.version}`;
-      const inheritedSourceFile =
-        sourceContext.sourceFilesByIdentity.get(sourceIndexKey) ?? null;
+      const inheritedSourceFile = sourceContext.sourceFilesByIdentity.get(sourceIndexKey) ?? null;
       if (sourceIndexPaths.length > 0) {
         if (inheritedSourceFile) {
           sourceByType[datasetType].set(key, inheritedSourceFile);
@@ -802,8 +737,7 @@ export function createIdentityPreflightRunCommands({
           dataset_type: datasetType,
           dataset_id: identity.id,
           dataset_version: identity.version,
-          message:
-            "The rows file contains duplicate identity keys with different payloads.",
+          message: "The rows file contains duplicate identity keys with different payloads.",
         });
         return;
       }
@@ -816,10 +750,7 @@ export function createIdentityPreflightRunCommands({
       outDir,
       cliBin,
     });
-    const reportPath = path.join(
-      outDir,
-      "dataset-identity-preflight-requests-build-report.json",
-    );
+    const reportPath = path.join(outDir, "dataset-identity-preflight-requests-build-report.json");
     const report = {
       schema_version: 1,
       generated_at_utc: nowIso(),
@@ -892,28 +823,19 @@ export function createIdentityPreflightRunCommands({
   function identityPreflightEdgeBodyForAudit(row) {
     const body = row?.remote_search?.edge_request?.body;
     if (body && typeof body === "object" && !Array.isArray(body)) return body;
-    const request =
-      row?.remote_candidate_search ?? row?.request?.remote_candidate_search;
+    const request = row?.remote_candidate_search ?? row?.request?.remote_candidate_search;
     if (request && typeof request === "object" && !Array.isArray(request)) {
       return {
         query: request.query,
         ...(request.filter ? { filter: request.filter } : {}),
-        ...(request.limit
-          ? { match_count: request.limit, page_size: request.limit }
-          : {}),
+        ...(request.limit ? { match_count: request.limit, page_size: request.limit } : {}),
         ...(request.data_source ? { data_source: request.data_source } : {}),
-        ...(request.match_threshold
-          ? { match_threshold: request.match_threshold }
-          : {}),
-        ...(request.full_text_weight
-          ? { full_text_weight: request.full_text_weight }
-          : {}),
+        ...(request.match_threshold ? { match_threshold: request.match_threshold } : {}),
+        ...(request.full_text_weight ? { full_text_weight: request.full_text_weight } : {}),
         ...(request.extracted_text_weight
           ? { extracted_text_weight: request.extracted_text_weight }
           : {}),
-        ...(request.semantic_weight
-          ? { semantic_weight: request.semantic_weight }
-          : {}),
+        ...(request.semantic_weight ? { semantic_weight: request.semantic_weight } : {}),
         ...(request.rrf_k ? { rrf_k: request.rrf_k } : {}),
       };
     }
@@ -933,10 +855,9 @@ export function createIdentityPreflightRunCommands({
   }
 
   function hasQueryLabel(query, label) {
-    return new RegExp(
-      `(?:^|\\n)${label.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}:`,
-      "iu",
-    ).test(query);
+    return new RegExp(`(?:^|\\n)${label.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}:`, "iu").test(
+      query,
+    );
   }
 
   function flowTypeFromQuery(query) {
@@ -945,9 +866,7 @@ export function createIdentityPreflightRunCommands({
   }
 
   function identityPreflightRequiredQueryLabels(row, query) {
-    const datasetType = asText(
-      row?.dataset_type ?? row?.datasetType,
-    ).toLowerCase();
+    const datasetType = asText(row?.dataset_type ?? row?.datasetType).toLowerCase();
     if (datasetType === "process") {
       return [
         "process name",
@@ -958,12 +877,7 @@ export function createIdentityPreflightRunCommands({
       ];
     }
     if (datasetType === "flow") {
-      const labels = [
-        "flow name",
-        "flow type",
-        "reference property",
-        "category or compartment",
-      ];
+      const labels = ["flow name", "flow type", "reference property", "category or compartment"];
       if (/^elementary flow$/iu.test(flowTypeFromQuery(query))) {
         labels.push("compartment aliases");
         if (row?.source_file) labels.push("source classification or compartment");
@@ -984,20 +898,15 @@ export function createIdentityPreflightRunCommands({
   function auditIdentityPreflightQueryRow({ row, index, indexPath }) {
     const blockers = [];
     const warnings = [];
-    const datasetType = asText(
-      row?.dataset_type ?? row?.datasetType,
-    ).toLowerCase();
+    const datasetType = asText(row?.dataset_type ?? row?.datasetType).toLowerCase();
     const datasetId = asText(row?.dataset_id ?? row?.datasetId ?? row?.id);
-    const datasetVersion = asText(
-      row?.dataset_version ?? row?.datasetVersion ?? row?.version,
-    );
+    const datasetVersion = asText(row?.dataset_version ?? row?.datasetVersion ?? row?.version);
     const request = identityPreflightRequestForAudit(indexPath, row);
     const mergedRow = request
       ? {
           ...row,
           request,
-          remote_candidate_search:
-            row?.remote_candidate_search ?? request.remote_candidate_search,
+          remote_candidate_search: row?.remote_candidate_search ?? request.remote_candidate_search,
         }
       : row;
     const query = identityPreflightQueryForAudit(mergedRow);
@@ -1016,16 +925,14 @@ export function createIdentityPreflightRunCommands({
       blockers.push({
         ...base,
         code: "identity_preflight_query_dataset_type_invalid",
-        message:
-          "Identity-preflight query audit only supports process and flow rows.",
+        message: "Identity-preflight query audit only supports process and flow rows.",
       });
     }
     if (!query) {
       blockers.push({
         ...base,
         code: "identity_preflight_query_missing",
-        message:
-          "Identity-preflight row must send a non-empty query to hybrid search.",
+        message: "Identity-preflight row must send a non-empty query to hybrid search.",
       });
     }
     if (query.length > 1800) {
@@ -1033,8 +940,7 @@ export function createIdentityPreflightRunCommands({
         ...base,
         code: "identity_preflight_query_too_long",
         query_length: query.length,
-        message:
-          "Hybrid search query must stay within the Foundry compact query limit.",
+        message: "Hybrid search query must stay within the Foundry compact query limit.",
       });
     }
     if (expectedEndpoint && actualEndpoint && actualEndpoint !== expectedEndpoint) {
@@ -1043,8 +949,7 @@ export function createIdentityPreflightRunCommands({
         code: "identity_preflight_query_endpoint_mismatch",
         expected_endpoint: expectedEndpoint,
         actual_endpoint: actualEndpoint,
-        message:
-          "Identity-preflight edge request endpoint does not match the dataset type.",
+        message: "Identity-preflight edge request endpoint does not match the dataset type.",
       });
     }
     for (const label of identityPreflightRequiredQueryLabels(row, query)) {
@@ -1097,8 +1002,7 @@ export function createIdentityPreflightRunCommands({
           code: "identity_preflight_query_flow_type_filter_mismatch",
           flow_type: flowType,
           filter_flow_type: filterFlowType,
-          message:
-            "Flow hybrid search flowType filter does not match the query flow type.",
+          message: "Flow hybrid search flowType filter does not match the query flow type.",
         });
       }
     }
@@ -1106,16 +1010,14 @@ export function createIdentityPreflightRunCommands({
       warnings.push({
         ...base,
         code: "identity_preflight_query_data_source_missing",
-        message:
-          "Hybrid search data_source is not explicit; Edge will use its default.",
+        message: "Hybrid search data_source is not explicit; Edge will use its default.",
       });
     }
     if (!edgeBody.match_count || !edgeBody.page_size) {
       warnings.push({
         ...base,
         code: "identity_preflight_query_result_limit_missing",
-        message:
-          "Hybrid search match_count/page_size is not explicit; Edge will use its default.",
+        message: "Hybrid search match_count/page_size is not explicit; Edge will use its default.",
       });
     }
     return {
@@ -1160,16 +1062,11 @@ export function createIdentityPreflightRunCommands({
         options.identityPreflightRequestsIndex,
     );
     if (!indexPath || !fileExists(indexPath)) {
-      throw new Error(
-        "--index must point to a readable identity-preflight index.",
-      );
+      throw new Error("--index must point to a readable identity-preflight index.");
     }
     const outDir = resolveRepoPath(
       options.outDir ||
-        path.join(
-          path.dirname(path.dirname(indexPath)),
-          "identity-preflight-query-audit",
-        ),
+        path.join(path.dirname(path.dirname(indexPath)), "identity-preflight-query-audit"),
     );
     const rows = readJsonLines(indexPath);
     const auditedRows = rows.map((row, index) =>
@@ -1177,10 +1074,7 @@ export function createIdentityPreflightRunCommands({
     );
     const blockers = auditedRows.flatMap((row) => row.blockers);
     const warnings = auditedRows.flatMap((row) => row.warnings);
-    const reportPath = path.join(
-      outDir,
-      "dataset-identity-preflight-query-audit-report.json",
-    );
+    const reportPath = path.join(outDir, "dataset-identity-preflight-query-audit-report.json");
     const rowsPath = path.join(outDir, "identity-preflight-query-audit.jsonl");
     writeJsonLines(rowsPath, auditedRows);
     const report = {
@@ -1200,19 +1094,13 @@ export function createIdentityPreflightRunCommands({
       },
       counts: {
         rows: rows.length,
-        passed_rows: auditedRows.filter((row) => row.status === "passed")
-          .length,
-        blocked_rows: auditedRows.filter((row) => row.status === "blocked")
-          .length,
+        passed_rows: auditedRows.filter((row) => row.status === "passed").length,
+        blocked_rows: auditedRows.filter((row) => row.status === "blocked").length,
         process_rows: rows.filter(
-          (row) =>
-            asText(row?.dataset_type ?? row?.datasetType).toLowerCase() ===
-            "process",
+          (row) => asText(row?.dataset_type ?? row?.datasetType).toLowerCase() === "process",
         ).length,
         flow_rows: rows.filter(
-          (row) =>
-            asText(row?.dataset_type ?? row?.datasetType).toLowerCase() ===
-            "flow",
+          (row) => asText(row?.dataset_type ?? row?.datasetType).toLowerCase() === "flow",
         ).length,
         blockers: blockers.length,
         warnings: warnings.length,

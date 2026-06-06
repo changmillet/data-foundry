@@ -13,21 +13,10 @@ export {
   fullContextGateItems,
   readContextFiles,
 } from "./context-inputs.mjs";
-export {
-  datasetIdentity,
-  identityKey,
-  mapRowsByIdentity,
-} from "./dataset-payload.mjs";
-export {
-  datasetTypeFromOptions,
-  datasetTypePlural,
-} from "./dataset-types.mjs";
-export {
-  sha256Text,
-} from "./hash-utils.mjs";
-export {
-  profileFor,
-} from "./profiles-config.mjs";
+export { datasetIdentity, identityKey, mapRowsByIdentity } from "./dataset-payload.mjs";
+export { datasetTypeFromOptions, datasetTypePlural } from "./dataset-types.mjs";
+export { sha256Text } from "./hash-utils.mjs";
+export { profileFor } from "./profiles-config.mjs";
 export {
   ensureArray,
   fileExists,
@@ -42,21 +31,12 @@ export {
   writeJson,
   writeText,
 } from "./runtime-io.mjs";
+export { readClassificationDecisionApplyContext } from "./workflow-decision-apply-context.mjs";
 export {
+  identityDecisionApplyContextDecisionsForIdentity,
   readIdentityDecisionApplyContexts,
   readIdentityReferenceRewriteContext,
-  identityDecisionApplyContextDecisionsForIdentity,
 } from "./workflow-identity-decision-context.mjs";
-export {
-  readCanonicalSupportRewriteContext,
-  readCleanupTransformContext,
-  readSourceContactRewriteContext,
-  readUnresolvedExchangeExternalizationContext,
-  unresolvedExchangeExternalizationRowsForIdentity,
-} from "./workflow-row-transform-context.mjs";
-export {
-  readClassificationDecisionApplyContext,
-} from "./workflow-decision-apply-context.mjs";
 export {
   buildIdentityPreflightAuthoringContext,
   classificationQueueActionItem,
@@ -80,5 +60,10 @@ export {
   schemaIssueCurationAction,
 } from "./workflow-queue-context.mjs";
 export {
-  collectProfileSemanticActionItems,
-} from "./workflow-semantic-actions.mjs";
+  readCanonicalSupportRewriteContext,
+  readCleanupTransformContext,
+  readSourceContactRewriteContext,
+  readUnresolvedExchangeExternalizationContext,
+  unresolvedExchangeExternalizationRowsForIdentity,
+} from "./workflow-row-transform-context.mjs";
+export { collectProfileSemanticActionItems } from "./workflow-semantic-actions.mjs";

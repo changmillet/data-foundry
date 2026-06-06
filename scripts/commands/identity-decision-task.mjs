@@ -33,9 +33,7 @@ export function createIdentityDecisionTaskCommands({
   ]);
 
   function curationGateEntities(report) {
-    return ensureArray(
-      report?.entities ?? report?.processes ?? report?.flows ?? report?.items,
-    );
+    return ensureArray(report?.entities ?? report?.processes ?? report?.flows ?? report?.items);
   }
 
   function readAuthoringPackageForIdentityTask(entity) {
@@ -53,8 +51,7 @@ export function createIdentityDecisionTaskCommands({
     if (!packageRef || !packagePath || !fileExists(packagePath)) {
       proof.blockers.push({
         code: "identity_decision_authoring_package_missing",
-        message:
-          "Identity decision task requires a readable full-context authoring package.",
+        message: "Identity decision task requires a readable full-context authoring package.",
         authoring_package: packageRef || null,
       });
       return proof;
@@ -94,14 +91,11 @@ export function createIdentityDecisionTaskCommands({
 
   function requiredIdentityContextKinds(packagePayload) {
     const fullContext =
-      packagePayload?.full_context_ai_completion ??
-      packagePayload?.fullContextAiCompletion;
+      packagePayload?.full_context_ai_completion ?? packagePayload?.fullContextAiCompletion;
     const required = normalizedList(
       fullContext?.required_context_kinds ?? fullContext?.requiredContextKinds,
     );
-    return required.length > 0
-      ? required
-      : ["schema", "methodology_yaml", "ruleset"];
+    return required.length > 0 ? required : ["schema", "methodology_yaml", "ruleset"];
   }
 
   function identityTaskPackageContextBlockers(proof) {
@@ -219,10 +213,7 @@ export function createIdentityDecisionTaskCommands({
   function identityDecisionTaskPackageRefs(rows) {
     const byKey = new Map();
     for (const row of ensureArray(rows)) {
-      const key = JSON.stringify([
-        row.authoring_package,
-        row.authoring_package_sha256,
-      ]);
+      const key = JSON.stringify([row.authoring_package, row.authoring_package_sha256]);
       if (!byKey.has(key)) {
         byKey.set(key, {
           authoring_package: row.authoring_package,
@@ -235,9 +226,7 @@ export function createIdentityDecisionTaskCommands({
   }
 
   function identityDecisionTaskRawRows(row) {
-    return ensureArray(row?.source_task_rows).length > 0
-      ? row.source_task_rows
-      : ensureArray(row);
+    return ensureArray(row?.source_task_rows).length > 0 ? row.source_task_rows : ensureArray(row);
   }
 
   function identityDecisionTaskActionCodes(row) {
@@ -275,17 +264,10 @@ export function createIdentityDecisionTaskCommands({
       const previousPrimaryCode = merged.action_item_code;
       merged.source_task_rows.push(row);
       merged.source_action_items.push(identityDecisionTaskSourceItem(row));
-      merged.action_item_codes = unique([
-        ...merged.action_item_codes,
-        row.action_item_code,
-      ]);
-      merged.related_authoring_packages = identityDecisionTaskPackageRefs(
-        merged.source_task_rows,
-      );
+      merged.action_item_codes = unique([...merged.action_item_codes, row.action_item_code]);
+      merged.related_authoring_packages = identityDecisionTaskPackageRefs(merged.source_task_rows);
       merged.source_action_item_count = merged.source_action_items.length;
-      merged.action_item_code = primaryIdentityDecisionActionCode(
-        merged.action_item_codes,
-      );
+      merged.action_item_code = primaryIdentityDecisionActionCode(merged.action_item_codes);
       if (
         previousPrimaryCode !== merged.action_item_code &&
         row.action_item_code === merged.action_item_code &&
@@ -304,14 +286,10 @@ export function createIdentityDecisionTaskCommands({
   }
 
   function buildIdentityDecisionTemplateRows(taskRows, contextBundle = null) {
-    const authoringContext = contextBundle
-      ? decisionAuthoringContext(contextBundle)
-      : null;
+    const authoringContext = contextBundle ? decisionAuthoringContext(contextBundle) : null;
     return taskRows.map((row, index) => {
       const actionCodes = identityDecisionTaskActionCodes(row);
-      const isElementaryDecision = actionCodes.includes(
-        "elementary_flow_identity_manual_review",
-      );
+      const isElementaryDecision = actionCodes.includes("elementary_flow_identity_manual_review");
       return {
         dataset_type: row.dataset_type,
         dataset_id: row.dataset_id,
@@ -339,8 +317,7 @@ export function createIdentityDecisionTaskCommands({
           action_item_code: row.action_item_code,
           action_item_codes: actionCodes,
           source_action_item_count:
-            Number(row.source_action_item_count) ||
-            identityDecisionTaskRawRows(row).length,
+            Number(row.source_action_item_count) || identityDecisionTaskRawRows(row).length,
           source_action_items: ensureArray(row.source_action_items),
           related_authoring_packages: ensureArray(row.related_authoring_packages),
           identity_preflight: row.action_item?.evidence ?? null,
@@ -374,21 +351,17 @@ export function createIdentityDecisionTaskCommands({
         "--curation-gate-report is required and must point to dataset-curation-gate-report.json.",
       );
     }
-    const outDir = resolveRepoPath(
-      options.outDir || ".foundry/workspaces/identity-decision-task",
-    );
+    const outDir = resolveRepoPath(options.outDir || ".foundry/workspaces/identity-decision-task");
     const sharedContextCacheDir = resolveRepoPath(
       options.sharedContextCacheDir || options.contextCacheDir,
     );
     fs.mkdirSync(outDir, { recursive: true });
     const curationGateReport = readJson(curationGateReportPath);
     const entities = curationGateEntities(curationGateReport);
-    const packageProofs = entities
-      .map(readAuthoringPackageForIdentityTask)
-      .filter((proof) => {
-        if (!proof.package) return proof.blockers.length > 0;
-        return identityActionItemsFromPackage(proof).length > 0;
-      });
+    const packageProofs = entities.map(readAuthoringPackageForIdentityTask).filter((proof) => {
+      if (!proof.package) return proof.blockers.length > 0;
+      return identityActionItemsFromPackage(proof).length > 0;
+    });
     const sourceTaskRows = identityDecisionTaskRowsFromPackages(packageProofs);
     const uniqueTaskRows = mergeIdentityDecisionTaskRows(sourceTaskRows);
     const selected = selectDecisionTaskQueueRows(
@@ -414,16 +387,10 @@ export function createIdentityDecisionTaskCommands({
     const decisionFile = path.join(outDir, "identity-decisions.jsonl");
     const reportPath = path.join(outDir, "identity-decision-task-report.json");
     const contractContext = {
-      files: selectedRawRows.flatMap((row) =>
-        ensureArray(row.package?.contract_context_files),
-      ),
-      missing: selectedRawRows.flatMap((row) =>
-        ensureArray(row.package?.missing_context_files),
-      ),
+      files: selectedRawRows.flatMap((row) => ensureArray(row.package?.contract_context_files)),
+      missing: selectedRawRows.flatMap((row) => ensureArray(row.package?.missing_context_files)),
     };
-    const identityContextFiles = dedupeDecisionTaskContextFiles(
-      contractContext.files,
-    );
+    const identityContextFiles = dedupeDecisionTaskContextFiles(contractContext.files);
     const identityContextReferences = selectedRows.flatMap((row) =>
       identityDecisionTaskRawRows(row).flatMap((rawRow) =>
         ensureArray(rawRow.package?.contract_context_files).map((file) => {
@@ -452,9 +419,7 @@ export function createIdentityDecisionTaskCommands({
       source_curation_gate_report: repoRelativePath(curationGateReportPath),
       task_rows: selectedRows.length,
       source_identity_action_items: selectedSourceRows.length,
-      contract_context_files: identityContextFiles.map(
-        decisionTaskContextFileSummary,
-      ),
+      contract_context_files: identityContextFiles.map(decisionTaskContextFileSummary),
       missing_context_files: contractContext.missing,
       authoring_packages: selectedRawRows.map((row) => ({
         authoring_package: row.authoring_package,
@@ -474,18 +439,14 @@ export function createIdentityDecisionTaskCommands({
         "task_kind, source_curation_gate_report, task_rows, source_identity_action_items, contract_context_files, missing_context_files, authoring_packages, and shared_context_bundle_sha256; task path and generated_at_utc are excluded.",
       sha256: sha256Text(JSON.stringify(contextBundleStablePayload)),
     };
-    const templateRows = buildIdentityDecisionTemplateRows(
-      selectedRows,
-      contextBundle,
-    );
+    const templateRows = buildIdentityDecisionTemplateRows(selectedRows, contextBundle);
     const blockers = [
       ...packageProofs.flatMap(identityTaskPackageContextBlockers),
       ...selectedRows
         .filter((row) => !row.dataset_type || !row.dataset_id)
         .map((row) => ({
           code: "identity_decision_target_missing",
-          message:
-            "Identity action item does not identify the flow/process target to decide.",
+          message: "Identity action item does not identify the flow/process target to decide.",
           authoring_package: row.authoring_package,
           action_item_code: row.action_item_code,
         })),
@@ -508,12 +469,9 @@ export function createIdentityDecisionTaskCommands({
         unique_identity_targets: uniqueTaskRows.length,
         selected_identity_action_items: selectedSourceRows.length,
         selected_unique_identity_targets: selectedRows.length,
-        deduplicated_identity_action_items:
-          selectedSourceRows.length - selectedRows.length,
+        deduplicated_identity_action_items: selectedSourceRows.length - selectedRows.length,
         template_decisions: templateRows.length,
-        authoring_packages: unique(
-          selectedRawRows.map((row) => row.authoring_package),
-        ).length,
+        authoring_packages: unique(selectedRawRows.map((row) => row.authoring_package)).length,
         dataset_types: datasetTypes.length,
         blockers: blockers.length,
       },
@@ -530,8 +488,7 @@ export function createIdentityDecisionTaskCommands({
         authoring_package_sha256: row.authoring_package_sha256,
         action_item_codes: identityDecisionTaskActionCodes(row),
         source_action_item_count:
-          Number(row.source_action_item_count) ||
-          identityDecisionTaskRawRows(row).length,
+          Number(row.source_action_item_count) || identityDecisionTaskRawRows(row).length,
         source_action_items: ensureArray(row.source_action_items),
         related_authoring_packages: ensureArray(row.related_authoring_packages),
         evidence: row.action_item?.evidence ?? null,

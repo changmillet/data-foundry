@@ -18,6 +18,9 @@
     "storage:check": "node scripts/foundry.mjs storage-check",
     "surface:audit": "node scripts/foundry.mjs surface-audit",
     "acceptance:check": "node scripts/foundry.mjs acceptance-check",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check",
+    "lint-staged": "lint-staged",
     "skills:list": "npx --yes skills@latest list --json",
     "skills:update": "npx --yes skills@latest update --project --yes",
     "skills:install:shared": "npx --yes skills@latest add ../tiangong-lca-skills --skill external-dataset-curated-import source-evidence-dataset-development dataset-rls-maintenance --agent '*' --yes --full-depth && npx --yes skills@latest add https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search document-granular-decompose --agent '*' --yes --full-depth",
@@ -29,6 +32,9 @@
     "test:commands": "node --test \"test/commands/*.test.mjs\"",
     "test:scenarios": "node --test \"test/scenarios/*.test.mjs\"",
     "golden:diff": "node scripts/foundry-golden-diff.mjs",
+    "ncu": "ncu",
+    "ncu:update": "ncu -u",
+    "prepare": "husky",
     "tasks:list": "node scripts/foundry.mjs tasks-list",
     "tasks:check": "node scripts/foundry.mjs tasks-check",
     "task:complete": "node scripts/foundry.mjs task-complete"
@@ -36,5 +42,17 @@
   "engines": {
     "node": ">=24"
   },
-  "license": "UNLICENSED"
+  "license": "MIT",
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.7",
+    "npm-check-updates": "^22.2.3",
+    "prettier": "^3.8.3",
+    "prettier-plugin-organize-imports": "^4.3.0"
+  },
+  "lint-staged": {
+    "*.{js,mjs,cjs,json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  }
 }

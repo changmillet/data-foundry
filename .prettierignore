@@ -1,0 +1,15 @@
+node_modules/
+package-lock.json
+
+.foundry/
+.docpact/runs/
+artifacts/
+reports/
+tmp/
+inputs/
+
+.agents/skills/external-dataset-curated-import/
+.agents/skills/source-evidence-dataset-development/
+.agents/skills/dataset-rls-maintenance/
+.agents/skills/document-granular-decompose/
+.agents/skills/tiangong-kb-*/

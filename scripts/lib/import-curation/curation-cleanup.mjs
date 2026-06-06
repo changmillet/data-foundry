@@ -1,6 +1,16 @@
 import path from "node:path";
 import { datasetTypeFromOptions, datasetTypePlural } from "./internal/dataset-types.mjs";
 import {
+  annualSupplyMissingDataSentinelText,
+  applyAnnualSupplyMissingDataSentinel,
+  applyDeterministicSourceExchangeCompletenessProofs,
+  buildSourceRowsByIdentity,
+  ensureFoundryTraceNamespaces,
+  externalizeImportTraceMetadata,
+  normalizeDateTimeMetadata,
+  sanitizeFoundryTraceEvidenceLocators,
+} from "./internal/prewrite-cleanup.mjs";
+import {
   fileExists,
   jsonLines,
   nowIso,
@@ -10,16 +20,6 @@ import {
   writeJson,
   writeText,
 } from "./internal/runtime-io.mjs";
-import {
-  annualSupplyMissingDataSentinelText,
-  applyDeterministicSourceExchangeCompletenessProofs,
-  applyAnnualSupplyMissingDataSentinel,
-  buildSourceRowsByIdentity,
-  ensureFoundryTraceNamespaces,
-  externalizeImportTraceMetadata,
-  normalizeDateTimeMetadata,
-  sanitizeFoundryTraceEvidenceLocators,
-} from "./internal/prewrite-cleanup.mjs";
 
 export function runDatasetCurationCleanup({ repoRoot, options = {} } = {}) {
   const datasetType = datasetTypeFromOptions(options);
@@ -40,16 +40,10 @@ export function runDatasetCurationCleanup({ repoRoot, options = {} } = {}) {
   const rowsFile = resolveRepoPath(repoRoot, options.rowsFile || options.input);
   const defaultOut = `.foundry/workspaces/${datasetType}-dataset-curation-cleanup`;
   const outDir = resolveRepoPath(repoRoot, options.outDir || defaultOut);
-  const defaultOutFile = path.join(
-    outDir,
-    `${datasetTypePlural[datasetType]}.cleaned.jsonl`,
-  );
-  const outFile =
-    resolveRepoPath(repoRoot, options.out || options.outFile) || defaultOutFile;
+  const defaultOutFile = path.join(outDir, `${datasetTypePlural[datasetType]}.cleaned.jsonl`);
+  const outFile = resolveRepoPath(repoRoot, options.out || options.outFile) || defaultOutFile;
   if (!rowsFile || !fileExists(rowsFile)) {
-    throw new Error(
-      "--rows-file is required and must point to a JSON/JSONL dataset row file.",
-    );
+    throw new Error("--rows-file is required and must point to a JSON/JSONL dataset row file.");
   }
   const sourceRowsFile = resolveRepoPath(
     repoRoot,
@@ -62,8 +56,7 @@ export function runDatasetCurationCleanup({ repoRoot, options = {} } = {}) {
     datasetType === "process" && sourceRowsFile && fileExists(sourceRowsFile)
       ? readRows(sourceRowsFile)
       : [];
-  const sourceRowsByKey =
-    sourceRows.length > 0 ? buildSourceRowsByIdentity(sourceRows) : null;
+  const sourceRowsByKey = sourceRows.length > 0 ? buildSourceRowsByIdentity(sourceRows) : null;
 
   const rows = readRows(rowsFile);
   let removedSourceTraceBlocks = 0;
@@ -83,9 +76,7 @@ export function runDatasetCurationCleanup({ repoRoot, options = {} } = {}) {
       applyDeterministicSourceExchangeCompletenessProofs(cleaned, datasetType, {
         rowIndex,
         sourceRowsByKey,
-        sourceRowsFile: sourceRowsFile
-          ? repoRelativePath(repoRoot, sourceRowsFile)
-          : null,
+        sourceRowsFile: sourceRowsFile ? repoRelativePath(repoRoot, sourceRowsFile) : null,
         rowsFile: repoRelativePath(repoRoot, rowsFile),
         proofRows: sourceExchangeProofRows,
       })
@@ -96,8 +87,7 @@ export function runDatasetCurationCleanup({ repoRoot, options = {} } = {}) {
     const traceResult = externalizeImportTraceMetadata(cleaned);
     removedSourceTraceBlocks += traceResult.removed;
     externalizedSourceTraceSummaries += traceResult.summaries;
-    redactedFoundryTraceEvidenceLocators +=
-      sanitizeFoundryTraceEvidenceLocators(cleaned);
+    redactedFoundryTraceEvidenceLocators += sanitizeFoundryTraceEvidenceLocators(cleaned);
     addedFoundryTraceNamespaces += ensureFoundryTraceNamespaces(cleaned);
     return cleaned;
   });
@@ -117,8 +107,7 @@ export function runDatasetCurationCleanup({ repoRoot, options = {} } = {}) {
       blockers: 0,
       removed_source_trace_blocks: removedSourceTraceBlocks,
       externalized_source_trace_summaries: externalizedSourceTraceSummaries,
-      redacted_foundry_trace_evidence_locators:
-        redactedFoundryTraceEvidenceLocators,
+      redacted_foundry_trace_evidence_locators: redactedFoundryTraceEvidenceLocators,
       added_foundry_trace_namespaces: addedFoundryTraceNamespaces,
       normalized_datetime_values: normalizedDateTimeValues,
       annual_supply_missing_data_sentinels: annualSupplyMissingDataSentinels,
@@ -142,8 +131,7 @@ export function runDatasetCurationCleanup({ repoRoot, options = {} } = {}) {
         "Local machine paths from tiangongfoundry:* trace evidence are redacted from write payloads; authoring packages and patch evidence retain the full local context.",
       datetime_policy:
         "TIDAS/ILCD dateTime values with timezone offsets are normalized to UTC Z form.",
-      annual_supply_placeholder_policy:
-        `annualSupplyOrProductionVolume is schema-required. If source evidence is missing or converted as a placeholder such as 'Not specified', Foundry writes '${annualSupplyMissingDataSentinelText}' so the row remains importable and later database-side curation can bulk-locate the intentionally non-physical sentinel.`,
+      annual_supply_placeholder_policy: `annualSupplyOrProductionVolume is schema-required. If source evidence is missing or converted as a placeholder such as 'Not specified', Foundry writes '${annualSupplyMissingDataSentinelText}' so the row remains importable and later database-side curation can bulk-locate the intentionally non-physical sentinel.`,
       source_exchange_completeness_policy:
         "For process rows, if an explicit source rows file is supplied and the source process row is Output-only with the same non-flow-reference exchange signature as the final row, Foundry may write deterministic tiangongfoundry:sourceExchangeCompleteness proof. Otherwise source-only-output acceptance still requires AI source_trace_verified evidence or exchange repair.",
     },

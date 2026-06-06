@@ -153,10 +153,7 @@ Minimum fields:
   "use_command": "npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill document-granular-decompose --full-depth",
   "evidence_channel": "document-fulltext",
   "local_install_path": ".agents/skills/document-granular-decompose",
-  "output_artifacts": [
-    "evidence/fulltext.txt",
-    "evidence/source-extract.json"
-  ]
+  "output_artifacts": ["evidence/fulltext.txt", "evidence/source-extract.json"]
 }
 ```
 

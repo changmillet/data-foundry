@@ -34,15 +34,15 @@ Upstream references:
 
 ## Mapping
 
-| Symphony concept | Data Foundry equivalent |
-| --- | --- |
-| Issue tracker | filesystem task queue first; Linear/GitHub later |
-| Issue | data task |
-| Per-issue workspace | per-data-task workspace |
-| `WORKFLOW.md` | data task runtime contract |
-| Coding agent | LCA data worker agent |
-| PR proof | schema/source/reference/dry-run/verification proof |
-| Terminal issue state | done/cancelled/duplicate task state |
+| Symphony concept     | Data Foundry equivalent                            |
+| -------------------- | -------------------------------------------------- |
+| Issue tracker        | filesystem task queue first; Linear/GitHub later   |
+| Issue                | data task                                          |
+| Per-issue workspace  | per-data-task workspace                            |
+| `WORKFLOW.md`        | data task runtime contract                         |
+| Coding agent         | LCA data worker agent                              |
+| PR proof             | schema/source/reference/dry-run/verification proof |
+| Terminal issue state | done/cancelled/duplicate task state                |
 
 ## Data-Specific Extensions
 

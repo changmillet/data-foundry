@@ -1,17 +1,7 @@
-import {
-  datasetIdentity,
-  identityFreshnessIdentityKey,
-} from "./dataset-payload.mjs";
-import {
-  readJsonLinesIfExists,
-} from "./artifact-inputs.mjs";
-import {
-  sha256Json,
-  sha256Text,
-} from "./hash-utils.mjs";
-import {
-  payloadSha256ByIdentityForRows,
-} from "./full-context-proof.mjs";
+import { readJsonLinesIfExists } from "./artifact-inputs.mjs";
+import { datasetIdentity, identityFreshnessIdentityKey } from "./dataset-payload.mjs";
+import { payloadSha256ByIdentityForRows } from "./full-context-proof.mjs";
+import { sha256Json, sha256Text } from "./hash-utils.mjs";
 import {
   asText,
   ensureArray,
@@ -23,9 +13,7 @@ import {
   resolveRepoPath,
   sameArtifactPath,
 } from "./runtime-io.mjs";
-import {
-  readRowsIfExists,
-} from "./workflow-patch-collect.mjs";
+import { readRowsIfExists } from "./workflow-patch-collect.mjs";
 
 export function readUnresolvedExchangeExternalizationContext(repoRoot, artifact) {
   if (!artifact) return null;
@@ -123,9 +111,7 @@ export function readCanonicalSupportRewriteContext(repoRoot, artifact) {
   );
   const blockersFile = resolveRepoPath(
     repoRoot,
-    report.files?.canonical_support_blockers ??
-      report.files?.blockers ??
-      report.blockers_file,
+    report.files?.canonical_support_blockers ?? report.files?.blockers ?? report.blockers_file,
   );
   const deferredRowsFile = resolveRepoPath(
     repoRoot,
@@ -136,9 +122,7 @@ export function readCanonicalSupportRewriteContext(repoRoot, artifact) {
   );
   const rewritesFile = resolveRepoPath(
     repoRoot,
-    report.files?.canonical_support_rewrites ??
-      report.files?.rewrites ??
-      report.rewrites_file,
+    report.files?.canonical_support_rewrites ?? report.files?.rewrites ?? report.rewrites_file,
   );
   const blockerRows = readJsonLinesIfExists(blockersFile);
   const hardBlockers = Array.isArray(report.blockers)
@@ -212,8 +196,7 @@ export function readRowsFileTransformContext(repoRoot, artifact, kind) {
     status: asText(report.status),
     counts: report.counts && typeof report.counts === "object" ? report.counts : {},
     sourceExchangeCompletenessProofs: ensureArray(
-      report.source_exchange_completeness_proofs ??
-        report.proofs?.source_exchange_completeness,
+      report.source_exchange_completeness_proofs ?? report.proofs?.source_exchange_completeness,
     ),
     inputRowsFile,
     outputRowsFile,
@@ -244,8 +227,7 @@ export function unresolvedExchangeExternalizationRowsForIdentity(context, identi
   const key = `process:${identity.id}@@${identity.version || "00.00.001"}`;
   return context.traces.filter((trace) => {
     const id = asText(trace?.dataset_id ?? trace?.entity_id);
-    const version =
-      asText(trace?.dataset_version ?? trace?.version) || "00.00.001";
+    const version = asText(trace?.dataset_version ?? trace?.version) || "00.00.001";
     return key === `process:${id}@@${version}`;
   });
 }
@@ -258,20 +240,16 @@ export function rowsFileChainsThroughUnresolvedExchangeExternalization({
 }) {
   return Boolean(
     upstreamFile &&
-      finalFile &&
-      unresolvedExchangeExternalizationContext?.status === "completed" &&
-      unresolvedExchangeExternalizationContext.inputRowsFile &&
-      unresolvedExchangeExternalizationContext.outputRowsFile &&
-      sameArtifactPath(
-        repoRoot,
-        upstreamFile,
-        unresolvedExchangeExternalizationContext.inputRowsFile,
-      ) &&
-      sameArtifactPath(
-        repoRoot,
-        unresolvedExchangeExternalizationContext.outputRowsFile,
-        finalFile,
-      ),
+    finalFile &&
+    unresolvedExchangeExternalizationContext?.status === "completed" &&
+    unresolvedExchangeExternalizationContext.inputRowsFile &&
+    unresolvedExchangeExternalizationContext.outputRowsFile &&
+    sameArtifactPath(
+      repoRoot,
+      upstreamFile,
+      unresolvedExchangeExternalizationContext.inputRowsFile,
+    ) &&
+    sameArtifactPath(repoRoot, unresolvedExchangeExternalizationContext.outputRowsFile, finalFile),
   );
 }
 
@@ -285,26 +263,20 @@ export function cleanupInputRowsFile(repoRoot, cleanupArtifact) {
 }
 
 export function decisionApplyExpectedRowsFile({ repoRoot, rowsFile, cleanupArtifact }) {
-  return cleanupArtifact
-    ? cleanupInputRowsFile(repoRoot, cleanupArtifact)
-    : rowsFile;
+  return cleanupArtifact ? cleanupInputRowsFile(repoRoot, cleanupArtifact) : rowsFile;
 }
 
 export function decisionApplyOutputRowsMatch(repoRoot, context, expectedRowsFile) {
   return Boolean(
     expectedRowsFile &&
-      context?.outputRows.some((filePath) =>
-        sameRowsArtifact(repoRoot, filePath, expectedRowsFile),
-      ),
+    context?.outputRows.some((filePath) => sameRowsArtifact(repoRoot, filePath, expectedRowsFile)),
   );
 }
 
 export function decisionApplyInputRowsMatch(repoRoot, context, expectedRowsFile) {
   return Boolean(
     expectedRowsFile &&
-      context?.inputRows.some((filePath) =>
-        sameRowsArtifact(repoRoot, filePath, expectedRowsFile),
-      ),
+    context?.inputRows.some((filePath) => sameRowsArtifact(repoRoot, filePath, expectedRowsFile)),
   );
 }
 
@@ -349,11 +321,7 @@ export function rowsFileTransformEntryFromIdentityReferenceRewrite(context) {
 }
 
 export function rowsFileTransformEntryFromUnresolvedExchangeExternalization(context) {
-  if (
-    context?.status !== "completed" ||
-    !context.inputRowsFile ||
-    !context.outputRowsFile
-  ) {
+  if (context?.status !== "completed" || !context.inputRowsFile || !context.outputRowsFile) {
     return [];
   }
   return [
@@ -372,12 +340,9 @@ export function rowsFileTransformEntryFromCanonicalSupportRewrite(context) {
   const status = asText(context.status);
   if (
     status &&
-    ![
-      "completed",
-      "completed_no_rewrites",
-      "completed_with_deferred_rows",
-      "blocked",
-    ].includes(status)
+    !["completed", "completed_no_rewrites", "completed_with_deferred_rows", "blocked"].includes(
+      status,
+    )
   ) {
     return [];
   }
@@ -443,9 +408,7 @@ export function deterministicRowsFileTransformEntries({
       identityDecisionApplyContext,
       "identity_decision_apply",
     ),
-    ...rowsFileTransformEntryFromIdentityReferenceRewrite(
-      identityReferenceRewriteContext,
-    ),
+    ...rowsFileTransformEntryFromIdentityReferenceRewrite(identityReferenceRewriteContext),
     ...rowsFileTransformEntryFromUnresolvedExchangeExternalization(
       unresolvedExchangeExternalizationContext,
     ),
@@ -453,13 +416,8 @@ export function deterministicRowsFileTransformEntries({
       sourceContactRewriteContext,
       "source_contact_rewrite",
     ),
-    ...rowsFileTransformEntryFromCanonicalSupportRewrite(
-      canonicalSupportRewriteContext,
-    ),
-    ...rowsFileTransformEntryFromRowsFileContext(
-      cleanupContext,
-      "curation_cleanup",
-    ),
+    ...rowsFileTransformEntryFromCanonicalSupportRewrite(canonicalSupportRewriteContext),
+    ...rowsFileTransformEntryFromRowsFileContext(cleanupContext, "curation_cleanup"),
   ].filter((entry) => entry.inputRowsFile && entry.outputRowsFile);
 }
 
@@ -467,19 +425,11 @@ export function sameRowsArtifact(repoRoot, left, right) {
   if (sameArtifactPath(repoRoot, left, right)) return true;
   const resolvedLeft = normalizedArtifactPath(repoRoot, left);
   const resolvedRight = normalizedArtifactPath(repoRoot, right);
-  if (
-    !resolvedLeft ||
-    !resolvedRight ||
-    !fileExists(resolvedLeft) ||
-    !fileExists(resolvedRight)
-  ) {
+  if (!resolvedLeft || !resolvedRight || !fileExists(resolvedLeft) || !fileExists(resolvedRight)) {
     return false;
   }
   try {
-    return (
-      sha256Text(readText(resolvedLeft)) ===
-      sha256Text(readText(resolvedRight))
-    );
+    return sha256Text(readText(resolvedLeft)) === sha256Text(readText(resolvedRight));
   } catch {
     return false;
   }
@@ -563,15 +513,11 @@ export function decisionApplyOutputRowsChainThroughPatch(
 ) {
   return Boolean(
     expectedRowsFile &&
-      patchApplyContext?.inputRowsFile &&
-      decisionApplyOutputRowsMatch(
-        repoRoot,
-        context,
-        patchApplyContext.inputRowsFile,
-      ) &&
-      patchApplyContext.outputRows.some((filePath) =>
-        sameArtifactPath(repoRoot, filePath, expectedRowsFile),
-      ),
+    patchApplyContext?.inputRowsFile &&
+    decisionApplyOutputRowsMatch(repoRoot, context, patchApplyContext.inputRowsFile) &&
+    patchApplyContext.outputRows.some((filePath) =>
+      sameArtifactPath(repoRoot, filePath, expectedRowsFile),
+    ),
   );
 }
 
@@ -583,19 +529,11 @@ export function patchApplyOutputChainsThroughIdentityRewrite({
 }) {
   return Boolean(
     patchOut &&
-      cleanupInput &&
-      identityReferenceRewriteContext?.inputRowsFile &&
-      identityReferenceRewriteContext?.outputRowsFile &&
-      sameArtifactPath(
-        repoRoot,
-        patchOut,
-        identityReferenceRewriteContext.inputRowsFile,
-      ) &&
-      sameArtifactPath(
-        repoRoot,
-        identityReferenceRewriteContext.outputRowsFile,
-        cleanupInput,
-      ),
+    cleanupInput &&
+    identityReferenceRewriteContext?.inputRowsFile &&
+    identityReferenceRewriteContext?.outputRowsFile &&
+    sameArtifactPath(repoRoot, patchOut, identityReferenceRewriteContext.inputRowsFile) &&
+    sameArtifactPath(repoRoot, identityReferenceRewriteContext.outputRowsFile, cleanupInput),
   );
 }
 
@@ -627,12 +565,12 @@ export function patchApplyOutputChainsThroughIdentityRewriteAndUnresolvedExchang
       cleanupInput: unresolvedExchangeExternalizationContext?.inputRowsFile,
       identityReferenceRewriteContext,
     }) &&
-      rowsFileChainsThroughUnresolvedExchangeExternalization({
-        repoRoot,
-        upstreamFile: identityReferenceRewriteContext?.outputRowsFile,
-        finalFile: cleanupInput,
-        unresolvedExchangeExternalizationContext,
-      }),
+    rowsFileChainsThroughUnresolvedExchangeExternalization({
+      repoRoot,
+      upstreamFile: identityReferenceRewriteContext?.outputRowsFile,
+      finalFile: cleanupInput,
+      unresolvedExchangeExternalizationContext,
+    }),
   );
 }
 
@@ -645,26 +583,14 @@ export function decisionApplyOutputRowsChainThroughPatchAndIdentityRewrite(
 ) {
   return Boolean(
     expectedRowsFile &&
-      patchApplyContext?.inputRowsFile &&
-      identityReferenceRewriteContext?.inputRowsFile &&
-      identityReferenceRewriteContext?.outputRowsFile &&
-      decisionApplyOutputRowsMatch(
-        repoRoot,
-        context,
-        patchApplyContext.inputRowsFile,
-      ) &&
-      patchApplyContext.outputRows.some((filePath) =>
-        sameArtifactPath(
-          repoRoot,
-          filePath,
-          identityReferenceRewriteContext.inputRowsFile,
-        ),
-      ) &&
-      sameArtifactPath(
-        repoRoot,
-        identityReferenceRewriteContext.outputRowsFile,
-        expectedRowsFile,
-      ),
+    patchApplyContext?.inputRowsFile &&
+    identityReferenceRewriteContext?.inputRowsFile &&
+    identityReferenceRewriteContext?.outputRowsFile &&
+    decisionApplyOutputRowsMatch(repoRoot, context, patchApplyContext.inputRowsFile) &&
+    patchApplyContext.outputRows.some((filePath) =>
+      sameArtifactPath(repoRoot, filePath, identityReferenceRewriteContext.inputRowsFile),
+    ) &&
+    sameArtifactPath(repoRoot, identityReferenceRewriteContext.outputRowsFile, expectedRowsFile),
   );
 }
 
@@ -676,18 +602,14 @@ export function decisionApplyOutputRowsChainThroughIdentityRewrite(
 ) {
   return Boolean(
     expectedRowsFile &&
-      identityReferenceRewriteContext?.inputRowsFile &&
-      identityReferenceRewriteContext?.outputRowsFile &&
-      decisionApplyOutputRowsMatch(
-        repoRoot,
-        context,
-        identityReferenceRewriteContext.inputRowsFile,
-      ) &&
-      sameArtifactPath(
-        repoRoot,
-        identityReferenceRewriteContext.outputRowsFile,
-        expectedRowsFile,
-      ),
+    identityReferenceRewriteContext?.inputRowsFile &&
+    identityReferenceRewriteContext?.outputRowsFile &&
+    decisionApplyOutputRowsMatch(
+      repoRoot,
+      context,
+      identityReferenceRewriteContext.inputRowsFile,
+    ) &&
+    sameArtifactPath(repoRoot, identityReferenceRewriteContext.outputRowsFile, expectedRowsFile),
   );
 }
 
@@ -700,25 +622,25 @@ export function decisionApplyOutputRowsChainThroughIdentityRewriteAndUnresolvedE
 ) {
   return Boolean(
     expectedRowsFile &&
-      identityReferenceRewriteContext?.inputRowsFile &&
-      identityReferenceRewriteContext?.outputRowsFile &&
-      unresolvedExchangeExternalizationContext?.inputRowsFile &&
-      decisionApplyOutputRowsMatch(
-        repoRoot,
-        context,
-        identityReferenceRewriteContext.inputRowsFile,
-      ) &&
-      sameArtifactPath(
-        repoRoot,
-        identityReferenceRewriteContext.outputRowsFile,
-        unresolvedExchangeExternalizationContext.inputRowsFile,
-      ) &&
-      rowsFileChainsThroughUnresolvedExchangeExternalization({
-        repoRoot,
-        upstreamFile: unresolvedExchangeExternalizationContext.inputRowsFile,
-        finalFile: expectedRowsFile,
-        unresolvedExchangeExternalizationContext,
-      }),
+    identityReferenceRewriteContext?.inputRowsFile &&
+    identityReferenceRewriteContext?.outputRowsFile &&
+    unresolvedExchangeExternalizationContext?.inputRowsFile &&
+    decisionApplyOutputRowsMatch(
+      repoRoot,
+      context,
+      identityReferenceRewriteContext.inputRowsFile,
+    ) &&
+    sameArtifactPath(
+      repoRoot,
+      identityReferenceRewriteContext.outputRowsFile,
+      unresolvedExchangeExternalizationContext.inputRowsFile,
+    ) &&
+    rowsFileChainsThroughUnresolvedExchangeExternalization({
+      repoRoot,
+      upstreamFile: unresolvedExchangeExternalizationContext.inputRowsFile,
+      finalFile: expectedRowsFile,
+      unresolvedExchangeExternalizationContext,
+    }),
   );
 }
 
@@ -730,14 +652,10 @@ export function decisionApplyOutputRowsChainThroughClassification(
 ) {
   return Boolean(
     expectedRowsFile &&
-      classificationDecisionApplyContext?.inputRows.some((filePath) =>
-        decisionApplyOutputRowsMatch(repoRoot, context, filePath),
-      ) &&
-      decisionApplyOutputRowsMatch(
-        repoRoot,
-        classificationDecisionApplyContext,
-        expectedRowsFile,
-      ),
+    classificationDecisionApplyContext?.inputRows.some((filePath) =>
+      decisionApplyOutputRowsMatch(repoRoot, context, filePath),
+    ) &&
+    decisionApplyOutputRowsMatch(repoRoot, classificationDecisionApplyContext, expectedRowsFile),
   );
 }
 
@@ -750,26 +668,18 @@ export function decisionApplyOutputRowsChainThroughClassificationAndIdentityRewr
 ) {
   return Boolean(
     expectedRowsFile &&
-      identityReferenceRewriteContext?.inputRowsFile &&
-      identityReferenceRewriteContext?.outputRowsFile &&
-      classificationDecisionApplyContext?.outputRows.some((filePath) =>
-        sameArtifactPath(
-          repoRoot,
-          filePath,
-          identityReferenceRewriteContext.inputRowsFile,
-        ),
-      ) &&
-      decisionApplyOutputRowsChainThroughClassification(
-        repoRoot,
-        context,
-        classificationDecisionApplyContext,
-        identityReferenceRewriteContext.inputRowsFile,
-      ) &&
-      sameArtifactPath(
-        repoRoot,
-        identityReferenceRewriteContext.outputRowsFile,
-        expectedRowsFile,
-      ),
+    identityReferenceRewriteContext?.inputRowsFile &&
+    identityReferenceRewriteContext?.outputRowsFile &&
+    classificationDecisionApplyContext?.outputRows.some((filePath) =>
+      sameArtifactPath(repoRoot, filePath, identityReferenceRewriteContext.inputRowsFile),
+    ) &&
+    decisionApplyOutputRowsChainThroughClassification(
+      repoRoot,
+      context,
+      classificationDecisionApplyContext,
+      identityReferenceRewriteContext.inputRowsFile,
+    ) &&
+    sameArtifactPath(repoRoot, identityReferenceRewriteContext.outputRowsFile, expectedRowsFile),
   );
 }
 
@@ -783,19 +693,19 @@ export function decisionApplyOutputRowsChainThroughClassificationIdentityRewrite
 ) {
   return Boolean(
     expectedRowsFile &&
-      unresolvedExchangeExternalizationContext?.inputRowsFile &&
-      decisionApplyOutputRowsChainThroughClassificationAndIdentityRewrite(
-        repoRoot,
-        context,
-        classificationDecisionApplyContext,
-        identityReferenceRewriteContext,
-        unresolvedExchangeExternalizationContext.inputRowsFile,
-      ) &&
-      rowsFileChainsThroughUnresolvedExchangeExternalization({
-        repoRoot,
-        upstreamFile: unresolvedExchangeExternalizationContext.inputRowsFile,
-        finalFile: expectedRowsFile,
-        unresolvedExchangeExternalizationContext,
-      }),
+    unresolvedExchangeExternalizationContext?.inputRowsFile &&
+    decisionApplyOutputRowsChainThroughClassificationAndIdentityRewrite(
+      repoRoot,
+      context,
+      classificationDecisionApplyContext,
+      identityReferenceRewriteContext,
+      unresolvedExchangeExternalizationContext.inputRowsFile,
+    ) &&
+    rowsFileChainsThroughUnresolvedExchangeExternalization({
+      repoRoot,
+      upstreamFile: unresolvedExchangeExternalizationContext.inputRowsFile,
+      finalFile: expectedRowsFile,
+      unresolvedExchangeExternalizationContext,
+    }),
   );
 }

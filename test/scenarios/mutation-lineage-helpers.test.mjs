@@ -1,88 +1,25 @@
 import test from "node:test";
-import {
-  writeReadyFinalizeFixture,
-} from "../fixtures/finalize-fixtures.mjs";
-import {
-  annualSupplyFixtureRoot,
-  classificationFixtureRoot,
-  elementaryFlowManifestFixtureRoot,
-  finalizeAutoQueueFixtureRoot,
-  finalizeCurationGateFixtureRoot,
-  finalizeIdentityPreflightFixtureRoot,
-  finalizeLocationFixtureRoot,
-  fixtureRoot,
-  flowClassificationFixtureRoot,
-  flowIdentityReferenceFixtureRoot,
-  identityPreflightRunFixtureRoot,
-  locationFixtureRoot,
-  mutationFixtureRoot,
-  packageContextFixtureRoot,
-  qaPathFixtureRoot,
-  referenceClosureFixtureRoot,
-  sourceExchangeFixtureRoot,
-  supportManifestFixtureRoot,
-} from "../fixtures/fixture-roots.mjs";
-import {
-  assert,
-  blockerCodes,
-  bundledCategorySchemaNames,
-  contextTextByPathSuffix,
-  crypto,
-  fs,
-  fullContextKinds,
-  fullContextPatterns,
-  itemBlockerCodes,
-  path,
-  readJson,
-  readJsonLines,
-  rel,
-  repoRoot,
-  runFoundry,
-  scopeBlockerCodes,
-  sha256Text,
-  siblingCliBuildAvailable,
-  siblingCliRoot,
-  spawnSync,
-  targetUserId,
-  writeJson,
-  writeJsonLines,
-  writeText,
-} from "../fixtures/foundry-core.mjs";
-import {
-  contextFile,
-  createFixture,
-  writeContextPackFiles,
-  writeDecisionTaskFixture,
-} from "../fixtures/full-context-fixtures.mjs";
-import {
-  writeCompletedIdentityPreflightIndex,
-} from "../fixtures/identity-fixtures.mjs";
-import {
-  createMutationManifestFixture,
-} from "../fixtures/mutation-fixtures.mjs";
-import {
-  flowRow,
-  flowRowWithClassification,
-  processRowWithDefaultClassification,
-  processRowWithDeferredTrace,
-  processRowWithFlowRef,
-  processRowWithInvalidAnnualSupply,
-  processRowWithInvalidLocation,
-  processRowWithOnlyOutputExchange,
-  sourceRow,
-} from "../fixtures/row-builders.mjs";
+import { sha256Json } from "../../scripts/lib/import-curation/internal/hash-utils.mjs";
+import { attachIdentityPreflightFreshness } from "../../scripts/lib/import-curation/internal/workflow-identity-preflight.mjs";
 import {
   decisionApplyOutputRowsReachableThroughDeterministicTransforms,
   readRowsFileTransformContext,
   rowsFileReachableThroughTransformChain,
   sameRowsArtifact,
 } from "../../scripts/lib/import-curation/internal/workflow-row-transform-context.mjs";
+import { fixtureRoot } from "../fixtures/fixture-roots.mjs";
 import {
-  attachIdentityPreflightFreshness,
-} from "../../scripts/lib/import-curation/internal/workflow-identity-preflight.mjs";
-import {
-  sha256Json,
-} from "../../scripts/lib/import-curation/internal/hash-utils.mjs";
+  assert,
+  fs,
+  path,
+  readJson,
+  rel,
+  repoRoot,
+  writeJson,
+  writeJsonLines,
+  writeText,
+} from "../fixtures/foundry-core.mjs";
+import { flowRowWithClassification } from "../fixtures/row-builders.mjs";
 
 test("rows artifact lineage accepts content-equivalent no-op transform files", () => {
   const root = path.join(fixtureRoot, "content-equivalent-row-artifacts");
@@ -147,9 +84,7 @@ test("full-context lineage accepts deterministic source contact support and clea
       "#text": "Federal Office for the Environment FOEN (BAFU)",
     },
   };
-  const canonicalSupportRewritten = JSON.parse(
-    JSON.stringify(sourceContactRewritten),
-  );
+  const canonicalSupportRewritten = JSON.parse(JSON.stringify(sourceContactRewritten));
   canonicalSupportRewritten.flowDataSet.flowProperties = {
     flowProperty: {
       referenceToFlowPropertyDataSet: {
@@ -223,23 +158,15 @@ test("full-context lineage accepts deterministic source contact support and clea
     status: "completed",
     inputRows: [rel(classifiedRows)],
     outputRows: [rel(classifiedRows)],
-    inputPayloadSha256ByIdentity: new Map([
-      [key, sha256Json(classified)],
-    ]),
-    outputPayloadSha256ByIdentity: new Map([
-      [key, sha256Json(classified)],
-    ]),
+    inputPayloadSha256ByIdentity: new Map([[key, sha256Json(classified)]]),
+    outputPayloadSha256ByIdentity: new Map([[key, sha256Json(classified)]]),
   };
   const identityDecisionApplyContext = {
     status: "completed",
     inputRows: [rel(classifiedRows)],
     outputRows: [rel(identityRows)],
-    inputPayloadSha256ByIdentity: new Map([
-      [key, sha256Json(classified)],
-    ]),
-    outputPayloadSha256ByIdentity: new Map([
-      [key, sha256Json(identityApplied)],
-    ]),
+    inputPayloadSha256ByIdentity: new Map([[key, sha256Json(classified)]]),
+    outputPayloadSha256ByIdentity: new Map([[key, sha256Json(identityApplied)]]),
   };
 
   assert.equal(
