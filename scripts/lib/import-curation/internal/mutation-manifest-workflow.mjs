@@ -56,6 +56,7 @@ export {
   operationCounts,
   plannedRootReferenceIds,
   plannedRootReferenceKeys,
+  sourceContactRewriteSemanticEvidenceCount,
 } from "./workflow-reference-closure.mjs";
 export {
   readCanonicalSupportRewriteContext,

@@ -967,7 +967,8 @@ export function createFullContextProofUtils({
       (Number(counts?.ai_patch_evidence_entries ?? 0) || 0) +
       (Number(counts?.ai_classification_decision_entries ?? 0) || 0) +
       (Number(counts?.ai_location_decision_entries ?? 0) || 0) +
-      (Number(counts?.ai_identity_decision_entries ?? 0) || 0);
+      (Number(counts?.ai_identity_decision_entries ?? 0) || 0) +
+      (Number(counts?.source_contact_rewrite_semantic_evidence_entries ?? 0) || 0);
     const blockers = [];
     if (closeoutCounts) {
       if (closeoutCounts.full_context_ai_completion_required !== true) {

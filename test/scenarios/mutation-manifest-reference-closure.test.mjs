@@ -6,6 +6,8 @@ import {
 import {
   assert,
   fs,
+  fullContextKinds,
+  fullContextPatterns,
   itemBlockerCodes,
   path,
   readJsonLines,
@@ -728,5 +730,229 @@ test("mutation manifest accepts mixed support rows with internal reference closu
     );
   } finally {
     fs.rmSync(supportManifestFixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test("BAFU support manifest accepts source-contact rewrite as deterministic semantic evidence", () => {
+  const root = path.join(supportManifestFixtureRoot, "bafu-source-contact-proof");
+  fs.rmSync(root, { recursive: true, force: true });
+  const contactId = "11111111-2222-4333-8444-555555555555";
+  const sourceId = "22222222-3333-4444-8555-666666666666";
+  const originalRowsFile = path.join(root, "original-support.jsonl");
+  const rewrittenRowsFile = path.join(root, "source-contact-rewritten.jsonl");
+  const finalRowsFile = path.join(root, "support.cleaned.jsonl");
+  const contactRow = {
+    contactDataSet: {
+      contactInformation: {
+        dataSetInformation: {
+          "common:UUID": contactId,
+          shortName: { "@xml:lang": "en", "#text": "BAFU" },
+        },
+      },
+      administrativeInformation: {
+        publicationAndOwnership: {
+          "common:dataSetVersion": "00.00.001",
+        },
+      },
+    },
+  };
+  const sourceRow = {
+    sourceDataSet: {
+      sourceInformation: {
+        dataSetInformation: {
+          "common:UUID": sourceId,
+          shortName: { "@xml:lang": "en", "#text": "BAFU 2025 LCI database" },
+          sourceCitation: "Federal Office for the Environment FOEN, BAFU 2025 LCI database.",
+          sourceDescriptionOrComment: {
+            "@xml:lang": "en",
+            "#text":
+              "Fallback database-level source for BAFU 2025 Version 2 rows where the converted source trace does not identify a more specific report or publication.",
+          },
+        },
+      },
+      administrativeInformation: {
+        publicationAndOwnership: {
+          "common:dataSetVersion": "00.00.001",
+          "common:referenceToOwnershipOfDataSet": {
+            "@type": "contact data set",
+            refObjectId: contactId,
+            version: "00.00.001",
+            "common:shortDescription": {
+              "@xml:lang": "en",
+              "#text": "BAFU",
+            },
+          },
+        },
+      },
+    },
+  };
+  writeJsonLines(originalRowsFile, [contactRow, sourceRow]);
+  writeJsonLines(rewrittenRowsFile, [contactRow, sourceRow]);
+  writeJsonLines(finalRowsFile, [contactRow, sourceRow]);
+
+  const schemaReport = path.join(root, "schema", "validation-report.json");
+  writeJson(schemaReport, {
+    status: "completed",
+    input_path: rel(finalRowsFile),
+    rows: [
+      { index: 0, id: contactId, version: "00.00.001", status: "valid", issues: [] },
+      { index: 1, id: sourceId, version: "00.00.001", status: "valid", issues: [] },
+    ],
+  });
+  const qaReport = path.join(root, "qa", "support-qa-report.json");
+  writeJson(qaReport, {
+    status: "not_required_for_support_rows",
+    rows_file: rel(finalRowsFile),
+    blockers: [],
+    findings: [],
+  });
+  const curationGateReport = path.join(root, "curation", "dataset-curation-gate-report.json");
+  writeJson(curationGateReport, {
+    schema_version: 2,
+    status: "ready",
+    profile: "bafu",
+    dataset_type: "support",
+    rows_file: rel(finalRowsFile),
+    schema_report: rel(schemaReport),
+    qa_report: rel(qaReport),
+    context: {
+      contract_context_file_details: [
+        ...fullContextKinds.map((kind) => ({
+          kind,
+          path: `${kind}.fixture`,
+          sha256: `${kind}-sha`,
+          bytes: 12,
+        })),
+        ...fullContextPatterns.map((pattern) => ({
+          kind:
+            pattern === "tidas_locations_category.json"
+              ? "location_schema"
+              : "classification_schema",
+          path: `/fixture/${pattern}`,
+          sha256: `${pattern}-sha`,
+          bytes: 12,
+        })),
+      ],
+      contract_context_files: fullContextPatterns.map((pattern) => `/fixture/${pattern}`),
+    },
+    entities: [
+      {
+        dataset_type: "contact",
+        entity_id: contactId,
+        version: "00.00.001",
+        status: "ready",
+      },
+      {
+        dataset_type: "source",
+        entity_id: sourceId,
+        version: "00.00.001",
+        status: "ready",
+      },
+    ],
+  });
+  const sourceContactRewriteReport = path.join(
+    root,
+    "source-contact-rewrites",
+    "source-contact-rewrites-report.json",
+  );
+  writeJson(sourceContactRewriteReport, {
+    schema_version: 1,
+    status: "completed",
+    profile: "bafu",
+    rows_file: rel(originalRowsFile),
+    output_rows_file: rel(rewrittenRowsFile),
+    policy: {
+      contact: "BAFU imports use one database-level FOEN/BAFU ownership contact.",
+      source: "Use true source rows when present; otherwise use the BAFU database-level source.",
+    },
+    counts: {
+      input_rows: 2,
+      output_rows: 2,
+      contact_reference_rewrites: 1,
+      source_reference_rewrites: 1,
+    },
+    files: {
+      output_rows: rel(rewrittenRowsFile),
+      report: rel(sourceContactRewriteReport),
+    },
+  });
+  const cleanupReport = path.join(root, "cleanup", "dataset-curation-cleanup-report.json");
+  writeJson(cleanupReport, {
+    status: "completed",
+    rows_file: rel(rewrittenRowsFile),
+    cleaned_rows_file: rel(finalRowsFile),
+  });
+  const progressJsonl = path.join(root, "dry-run", "progress.jsonl");
+  const failuresJsonl = path.join(root, "dry-run", "failures.jsonl");
+  writeJsonLines(progressJsonl, [
+    {
+      id: contactId,
+      version: "00.00.001",
+      type: "contact",
+      table: "contacts",
+      status: "prepared",
+      operation: "would_sync",
+    },
+    {
+      id: sourceId,
+      version: "00.00.001",
+      type: "source",
+      table: "sources",
+      status: "prepared",
+      operation: "would_sync",
+    },
+  ]);
+  writeJsonLines(failuresJsonl, []);
+  const dryRunReport = path.join(root, "dry-run", "summary.json");
+  writeJson(dryRunReport, {
+    status: "completed",
+    mode: "dry_run",
+    commit: false,
+    input_path: rel(finalRowsFile),
+    files: {
+      progress_jsonl: rel(progressJsonl),
+      failures_jsonl: rel(failuresJsonl),
+    },
+  });
+
+  try {
+    const result = runFoundry([
+      "dataset-mutation-manifest",
+      "--type",
+      "support",
+      "--profile",
+      "bafu",
+      "--rows-file",
+      rel(finalRowsFile),
+      "--schema-report",
+      rel(schemaReport),
+      "--qa-report",
+      rel(qaReport),
+      "--curation-gate-report",
+      rel(curationGateReport),
+      "--source-contact-rewrite-report",
+      rel(sourceContactRewriteReport),
+      "--cleanup-report",
+      rel(cleanupReport),
+      "--dry-run-report",
+      rel(dryRunReport),
+      "--target-user-id",
+      targetUserId,
+      "--out-dir",
+      rel(path.join(root, "manifest")),
+    ]);
+    assert.equal(result.code, 0, JSON.stringify(result.json, null, 2));
+    assert.equal(result.json.status, "ready_for_remote_write");
+    assert.equal(result.json.counts.source_contact_rewrite_semantic_evidence_entries, 2);
+    assert.equal(
+      scopeBlockerCodes(result.json).has("full_context_ai_completion_output_required"),
+      false,
+    );
+    assert.equal(
+      scopeBlockerCodes(result.json).has("full_context_ai_deterministic_apply_required"),
+      false,
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
   }
 });

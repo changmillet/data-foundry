@@ -492,6 +492,7 @@ export function createPostAuthoringFinalizeCommands({
         schema_version: 1,
         status: "not_required_for_support_rows",
         dataset_type: datasetType,
+        rows_file: repoRelativePath(cleanedRowsFile),
         findings: [],
         blockers: [],
         counts: {
@@ -1024,11 +1025,15 @@ export function createPostAuthoringFinalizeCommands({
           mutationManifest.counts?.ai_classification_decision_entries ?? 0,
         ai_location_decision_entries: mutationManifest.counts?.ai_location_decision_entries ?? 0,
         ai_identity_decision_entries: mutationManifest.counts?.ai_identity_decision_entries ?? 0,
+        source_contact_rewrite_semantic_evidence_entries:
+          mutationManifest.counts?.source_contact_rewrite_semantic_evidence_entries ?? 0,
         ai_semantic_evidence_entries:
           (Number(mutationManifest.counts?.ai_patch_evidence_entries ?? 0) || 0) +
           (Number(mutationManifest.counts?.ai_classification_decision_entries ?? 0) || 0) +
           (Number(mutationManifest.counts?.ai_location_decision_entries ?? 0) || 0) +
-          (Number(mutationManifest.counts?.ai_identity_decision_entries ?? 0) || 0),
+          (Number(mutationManifest.counts?.ai_identity_decision_entries ?? 0) || 0) +
+          (Number(mutationManifest.counts?.source_contact_rewrite_semantic_evidence_entries ?? 0) ||
+            0),
         unresolved_trace_entries: mutationManifest.counts?.unresolved_trace_entries ?? 0,
         unresolved_exchange_externalized:
           unresolvedExchangeExternalizeStage.counts?.externalized_exchanges ?? 0,

@@ -583,11 +583,17 @@ export function createPostWriteCloseoutCommands({
           Number(mutationManifest?.counts?.ai_location_decision_entries ?? 0) || 0,
         ai_identity_decision_entries:
           Number(mutationManifest?.counts?.ai_identity_decision_entries ?? 0) || 0,
+        source_contact_rewrite_semantic_evidence_entries:
+          Number(mutationManifest?.counts?.source_contact_rewrite_semantic_evidence_entries ?? 0) ||
+          0,
         ai_semantic_evidence_entries:
           (Number(mutationManifest?.counts?.ai_patch_evidence_entries ?? 0) || 0) +
           (Number(mutationManifest?.counts?.ai_classification_decision_entries ?? 0) || 0) +
           (Number(mutationManifest?.counts?.ai_location_decision_entries ?? 0) || 0) +
-          (Number(mutationManifest?.counts?.ai_identity_decision_entries ?? 0) || 0),
+          (Number(mutationManifest?.counts?.ai_identity_decision_entries ?? 0) || 0) +
+          (Number(
+            mutationManifest?.counts?.source_contact_rewrite_semantic_evidence_entries ?? 0,
+          ) || 0),
         full_context_ai_completion_required: postWriteFullContextCheck.required,
       },
       blockers,

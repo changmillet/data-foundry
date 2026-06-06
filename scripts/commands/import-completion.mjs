@@ -229,11 +229,14 @@ export function createImportCompletionCommands({
           Number(mutationCounts.ai_classification_decision_entries ?? 0) || 0,
         ai_location_decision_entries: Number(mutationCounts.ai_location_decision_entries ?? 0) || 0,
         ai_identity_decision_entries: Number(mutationCounts.ai_identity_decision_entries ?? 0) || 0,
+        source_contact_rewrite_semantic_evidence_entries:
+          Number(mutationCounts.source_contact_rewrite_semantic_evidence_entries ?? 0) || 0,
         ai_semantic_evidence_entries:
           (Number(mutationCounts.ai_patch_evidence_entries ?? 0) || 0) +
           (Number(mutationCounts.ai_classification_decision_entries ?? 0) || 0) +
           (Number(mutationCounts.ai_location_decision_entries ?? 0) || 0) +
-          (Number(mutationCounts.ai_identity_decision_entries ?? 0) || 0),
+          (Number(mutationCounts.ai_identity_decision_entries ?? 0) || 0) +
+          (Number(mutationCounts.source_contact_rewrite_semantic_evidence_entries ?? 0) || 0),
         full_context_ai_completion_required: fullContextCheck.required,
       },
       trace_queues: closeout.files?.trace_queues ?? null,
@@ -408,6 +411,12 @@ export function createImportCompletionCommands({
         ai_identity_decision_entries: closeouts.reduce(
           (total, closeout) =>
             total + (Number(closeout.counts.ai_identity_decision_entries ?? 0) || 0),
+          0,
+        ),
+        source_contact_rewrite_semantic_evidence_entries: closeouts.reduce(
+          (total, closeout) =>
+            total +
+            (Number(closeout.counts.source_contact_rewrite_semantic_evidence_entries ?? 0) || 0),
           0,
         ),
         ai_semantic_evidence_entries: closeouts.reduce(

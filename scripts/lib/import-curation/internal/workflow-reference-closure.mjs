@@ -35,9 +35,46 @@ import {
   patchEvidenceForRow,
   tracePatchEvidenceBlockers,
 } from "./workflow-patch-evidence-context.mjs";
+import {
+  deterministicRowsFileTransformEntries,
+  rowsFileReachableThroughTransformChain,
+} from "./workflow-row-transform-context.mjs";
 import { allowedPatchResolutionModes, jsonPointerToken } from "./workflow-semantic-actions.mjs";
 
 // part-11.mjs
+export function sourceContactRewriteSemanticEvidenceCount({
+  repoRoot,
+  datasetType,
+  rowsFile,
+  sourceContactRewriteContext,
+  canonicalSupportRewriteContext,
+  cleanupContext,
+}) {
+  if (!["support", "source", "contact"].includes(asText(datasetType).toLowerCase())) return 0;
+  if (sourceContactRewriteContext?.status !== "completed") return 0;
+  if (!sourceContactRewriteContext?.inputRowsFile || !sourceContactRewriteContext?.outputRowsFile) {
+    return 0;
+  }
+  const reachesFinalRows = rowsFileReachableThroughTransformChain({
+    repoRoot,
+    startFiles: [sourceContactRewriteContext.outputRowsFile],
+    expectedRowsFile: rowsFile,
+    transforms: deterministicRowsFileTransformEntries({
+      sourceContactRewriteContext,
+      canonicalSupportRewriteContext,
+      cleanupContext,
+    }),
+  });
+  if (!reachesFinalRows) return 0;
+  const counts = sourceContactRewriteContext.counts ?? {};
+  return Math.max(
+    Number(counts.output_rows ?? 0) || 0,
+    Number(counts.contact_reference_rewrites ?? 0) || 0,
+    Number(counts.source_reference_rewrites ?? 0) || 0,
+    1,
+  );
+}
+
 export function buildFullContextAiCompletionBlockers({
   repoRoot,
   profile,
@@ -119,6 +156,15 @@ export function buildFullContextAiCompletionBlockers({
     identityDecisionApplyContext.decisions.length > 0;
   const hasDecisionProof =
     hasClassificationDecisionProof || hasLocationDecisionProof || hasIdentityDecisionProof;
+  const hasSourceContactRewriteProof =
+    sourceContactRewriteSemanticEvidenceCount({
+      repoRoot,
+      datasetType,
+      rowsFile,
+      sourceContactRewriteContext,
+      canonicalSupportRewriteContext,
+      cleanupContext,
+    }) > 0;
 
   blockers.push(
     ...buildClassificationDecisionFullContextBlockers({
@@ -171,7 +217,7 @@ export function buildFullContextAiCompletionBlockers({
     }),
   );
 
-  if (!patchCollectArtifact && !hasDecisionProof) {
+  if (!patchCollectArtifact && !hasDecisionProof && !hasSourceContactRewriteProof) {
     blockers.push({
       code: "full_context_ai_completion_output_required",
       stage: "full_context_ai_completion",
@@ -191,7 +237,7 @@ export function buildFullContextAiCompletionBlockers({
     });
   }
 
-  if (!patchApplyArtifact && !hasDecisionProof) {
+  if (!patchApplyArtifact && !hasDecisionProof && !hasSourceContactRewriteProof) {
     blockers.push({
       code: "full_context_ai_deterministic_apply_required",
       stage: "full_context_ai_completion",

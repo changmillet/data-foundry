@@ -53,6 +53,7 @@ const {
   remoteVerifyBlockerKeys,
   repoRelativePath,
   resolveRepoPath,
+  sourceContactRewriteSemanticEvidenceCount,
   supportDatasetTypes,
   writeJson,
   writeText,
@@ -158,6 +159,14 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
     sourceContactRewriteArtifact,
   );
   const cleanupContext = readCleanupTransformContext(repoRoot, cleanupArtifact);
+  const sourceContactRewriteSemanticEvidenceEntries = sourceContactRewriteSemanticEvidenceCount({
+    repoRoot,
+    datasetType,
+    rowsFile,
+    sourceContactRewriteContext,
+    canonicalSupportRewriteContext,
+    cleanupContext,
+  });
   const hasClassificationDecisionProof =
     classificationDecisionApplyContext?.status === "completed" &&
     classificationDecisionApplyContext.decisions.length > 0;
@@ -173,7 +182,8 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
     (Boolean(fullContextRequirement) &&
       !hasClassificationDecisionProof &&
       !hasLocationDecisionProof &&
-      !hasIdentityDecisionProof);
+      !hasIdentityDecisionProof &&
+      sourceContactRewriteSemanticEvidenceEntries <= 0);
 
   if (!rowsFile || !fileExists(rowsFile)) {
     throw new Error("--rows-file is required and must point to JSON/JSONL write-candidate rows.");
@@ -510,6 +520,7 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
       ai_classification_decision_entries: classificationDecisionApplyContext?.decisions.length ?? 0,
       ai_location_decision_entries: locationDecisionApplyContext?.decisions.length ?? 0,
       ai_identity_decision_entries: identityDecisionApplyContext?.decisions.length ?? 0,
+      source_contact_rewrite_semantic_evidence_entries: sourceContactRewriteSemanticEvidenceEntries,
       unresolved_trace_entries: unresolvedTraceItems.length,
       unresolved_exchange_trace_entries: unresolvedExchangeTraceItems.length,
       source_exchange_completeness_entries: sourceExchangeCompletenessItems.length,
