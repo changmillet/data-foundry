@@ -274,12 +274,6 @@ export function createPostAuthoringFinalizeCommands({
     const identityPreflightRequired =
       ["flow", "process"].includes(datasetType) &&
       (booleanOption(options.requireIdentityPreflight) || Boolean(fullContextRequirement));
-    const identityPreflightRunStage = runFinalizeIdentityPreflightStage({
-      rowsFile,
-      outDir,
-      options,
-    });
-
     const identityReferenceRewriteStage = applyIdentityReferenceRewrites({
       datasetType,
       rowsFile,
@@ -418,6 +412,14 @@ export function createPostAuthoringFinalizeCommands({
       cleanup.files?.cleaned_rows || cleanup.cleaned_rows_file,
     );
     const cleanupReportFile = resolveRepoPath(cleanup.files?.report);
+    const identityPreflightRunStage = runFinalizeIdentityPreflightStage({
+      rowsFile: cleanedRowsFile,
+      outDir,
+      options: {
+        ...options,
+        type: datasetType,
+      },
+    });
     const curationQueueStage = runFinalizeAutoCurationQueue({
       datasetType,
       rowsFile,
@@ -515,6 +517,11 @@ export function createPostAuthoringFinalizeCommands({
             qaReport: qaStage.report_file,
             outDir: path.join(outDir, "curation-gate"),
             requireIdentityPreflight: identityPreflightRequired,
+            identityPreflightIndex:
+              identityPreflightRunStage.index_file ||
+              options.identityPreflightIndex ||
+              options.identityPreflightRequests ||
+              options.identityPreflightRequestsIndex,
             identityReferenceRewrites: identityReferenceRewriteFile,
             classificationDecisionApplyReport:
               options.classificationDecisionApplyReport ||
@@ -1049,6 +1056,10 @@ export function createPostAuthoringFinalizeCommands({
           canonicalSupportRewriteStage.files?.canonical_support_blockers ?? null,
         identity_reference_rewrites: identityReferenceRewriteStage.rewrite_file ?? null,
         identity_preflight_run_report: repoRelativeMaybe(identityPreflightRunStage.report_file),
+        identity_preflight_index: identityPreflightRunStage.index_file ?? null,
+        identity_preflight_base_index: identityPreflightRunStage.base_index_file ?? null,
+        identity_preflight_refresh_report: identityPreflightRunStage.refresh_report_file ?? null,
+        identity_preflight_merge_report: identityPreflightRunStage.merge_report_file ?? null,
         identity_rewritten_rows:
           Number(identityReferenceRewriteStage.counts?.flow_reference_rewrites ?? 0) > 0
             ? identityReferenceRewriteStage.output_rows_file

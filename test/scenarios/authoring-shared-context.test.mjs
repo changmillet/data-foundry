@@ -243,6 +243,7 @@ test("authoring patch collect verifies referenced shared full-context bundle", (
     assert.equal(task.json.status, "ready_for_ai_authoring_batch");
     const taskEntry = task.json.tasks[0];
     const taskActionItem = taskEntry.action_items[0];
+    const patchTemplate = readJson(path.join(repoRoot, taskEntry.files.patch_template));
     const outputPatchFile = path.join(repoRoot, taskEntry.files.output_patch_file);
     writeJson(outputPatchFile, {
       schema_version: 1,
@@ -252,7 +253,7 @@ test("authoring patch collect verifies referenced shared full-context bundle", (
         {
           dataset_id: processId,
           version: "00.00.001",
-          authoring_package: path.basename(packagePath),
+          authoring_package: patchTemplate.patch_sets[0].authoring_package,
           operations: [
             {
               op: "add",

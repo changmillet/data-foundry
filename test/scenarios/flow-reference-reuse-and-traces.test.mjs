@@ -172,6 +172,83 @@ test("unresolved elementary flow identity decisions defer references as Foundry 
   }
 });
 
+test("same-reference identity rewrites preserve curated process exchange descriptions", () => {
+  const root = testTmpRoot("same-reference-description-preservation-test");
+  fs.rmSync(root, { recursive: true, force: true });
+  const flowId = "aaaaaaaa-bbbb-4ccc-8ddd-000000000045";
+  const processId = "aaaaaaaa-bbbb-4ccc-8ddd-000000000046";
+  const rowsFile = path.join(root, "processes.jsonl");
+  const processRow = processRowWithFlowRef(processId, flowId);
+  processRow.processDataSet.exchanges.exchange[0].referenceToFlowDataSet[
+    "common:shortDescription"
+  ] = {
+    "@xml:lang": "en",
+    "#text": "Electricity, lignite, at power plant",
+  };
+  writeJsonLines(rowsFile, [processRow]);
+  const rewritesFile = path.join(root, "identity-reference-rewrites.jsonl");
+  writeJsonLines(rewritesFile, [
+    {
+      relation: "flow_identity_ai_decision_reference",
+      action: "reuse_ai_selected_existing_reference",
+      dataset_type: "flow",
+      dataset_id: flowId,
+      dataset_version: "00.00.001",
+      original: {
+        table: "flows",
+        ref_object_id: flowId,
+        version: "00.00.001",
+      },
+      canonical: {
+        table: "flows",
+        ref_object_id: flowId,
+        version: "00.00.001",
+        short_description: "Electricity, lignite, at power plant {DE}",
+      },
+      identity_decision: {
+        source: "dataset-identity-decisions-apply",
+        decision: "reuse_existing_reference",
+        basis:
+          "The same BAFU product flow was already committed and verified in the preceding flow write stage.",
+      },
+    },
+  ]);
+
+  try {
+    const rewrite = runFoundry([
+      "dataset-identity-reference-rewrites-apply",
+      "--type",
+      "process",
+      "--rows-file",
+      rel(rowsFile),
+      "--identity-reference-rewrites",
+      rel(rewritesFile),
+      "--out-dir",
+      rel(path.join(root, "process-identity-rewrites")),
+    ]);
+    assert.equal(rewrite.code, 0);
+    assert.equal(rewrite.json.status, "completed");
+    assert.equal(rewrite.json.counts.flow_reference_rewrites, 1);
+
+    const rewrittenProcess = readJsonLines(path.join(repoRoot, rewrite.json.files.output_rows))[0];
+    const rewrittenRef =
+      rewrittenProcess.processDataSet.exchanges.exchange[0].referenceToFlowDataSet;
+    assert.equal(rewrittenRef["@refObjectId"], flowId);
+    assert.equal(rewrittenRef["@version"], "00.00.001");
+    assert.equal(
+      rewrittenRef["common:shortDescription"]["#text"],
+      "Electricity, lignite, at power plant",
+    );
+    const rewriteTrace = readJsonLines(path.join(repoRoot, rewrite.json.rewrite_file))[0];
+    assert.equal(
+      rewriteTrace.canonical.short_description_source,
+      "existing_reference_display_text",
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("identity decision apply closes flow identity curation and counts as full-context evidence", () => {
   const root = testTmpRoot("flow-identity-decision-proof-test");
   fs.rmSync(root, { recursive: true, force: true });
@@ -272,7 +349,14 @@ test("identity decision apply closes flow identity curation and counts as full-c
     assert.equal(identityTask.json.status, "ready_for_ai_identity_decisions");
     assert.equal(identityTask.json.counts.identity_action_items, 1);
     assert.equal(identityTask.json.counts.template_decisions, 1);
-    assert.equal(identityTask.json.identity_action_items[0].authoring_package, packageRef);
+    const snapshotPackageRef = identityTask.json.identity_action_items[0].authoring_package;
+    assert.notEqual(snapshotPackageRef, packageRef);
+    assert.match(snapshotPackageRef, /authoring-package-snapshots/u);
+    assert.equal(identityTask.json.identity_action_items[0].authoring_package_sha256, packageSha);
+    assert.equal(
+      sha256Text(fs.readFileSync(path.join(repoRoot, snapshotPackageRef), "utf8")),
+      packageSha,
+    );
     assert.ok(identityTask.json.files.shared_context_bundle);
     assert.equal(
       identityTask.json.shared_context_bundle.path,
@@ -304,8 +388,8 @@ test("identity decision apply closes flow identity curation and counts as full-c
         dataset_version: "00.00.001",
         decision_status: "completed",
         identity_decision: "create_new",
-        authoring_package: packageRef,
-        authoring_package_sha256: packageSha,
+        authoring_package: identityTemplate[0].authoring_package,
+        authoring_package_sha256: identityTemplate[0].authoring_package_sha256,
         basis:
           "The full authoring package and identity-preflight candidates show no existing TianGong flow is identity-equivalent, so this product flow remains a write candidate.",
         evidence: {

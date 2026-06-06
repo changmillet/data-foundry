@@ -274,13 +274,68 @@ export function createPostAuthoringFinalizeUtils({
         report_file: null,
       };
     }
-    const indexPath =
+    const baseIndexPath =
       identityPreflightCommands.identityPreflightRunIndexPath(options) ||
       identityReferenceRewriteIndexPath(options, rowsFile);
-    if (!indexPath || !fileExists(indexPath)) {
+    if (!baseIndexPath || !fileExists(baseIndexPath)) {
       throw new Error(
         "--run-identity-preflight requires --identity-preflight-index, --index, or a sibling identity-preflight-requests/identity-preflight-requests.jsonl.",
       );
+    }
+    const refreshRequested =
+      options.refreshIdentityPreflight === undefined
+        ? true
+        : booleanOption(options.refreshIdentityPreflight);
+    let indexPath = baseIndexPath;
+    let refreshReport = null;
+    let mergeReport = null;
+    if (
+      refreshRequested &&
+      ["flow", "process"].includes(String(options.type || "").toLowerCase())
+    ) {
+      const baseIndexHasSourceContext = readRowsFile(baseIndexPath).some((row) =>
+        asText(row?.source_file ?? row?.sourceFile),
+      );
+      refreshReport = identityPreflightCommands.runDatasetIdentityPreflightRequestsBuild({
+        type: options.type,
+        rowsFile,
+        ...(baseIndexHasSourceContext ? { sourceIndex: baseIndexPath } : {}),
+        outDir: path.join(outDir, "identity-preflight-current-scope", "requests"),
+      });
+      const refreshIndex = resolveRepoPath(refreshReport.files?.identity_preflight_requests);
+      if (refreshReport.status === "ready" && refreshIndex && fileExists(refreshIndex)) {
+        mergeReport = identityPreflightCommands.runDatasetIdentityPreflightIndexMerge({
+          baseIndex: baseIndexPath,
+          updateIndex: refreshIndex,
+          outDir: path.join(outDir, "identity-preflight-current-scope", "merge"),
+        });
+        const mergedIndex = resolveRepoPath(mergeReport.files?.merged_index);
+        if (mergeReport.status === "ready" && mergedIndex && fileExists(mergedIndex)) {
+          indexPath = mergedIndex;
+        }
+      }
+    }
+    if (refreshReport && refreshReport.status !== "ready") {
+      return {
+        stage: "identity_preflight_run",
+        status: "blocked_current_scope_refresh",
+        report: refreshReport,
+        report_file: resolveRepoPath(refreshReport.files?.report),
+        index_file: repoRelativeMaybe(indexPath),
+        refresh_report_file: repoRelativeMaybe(resolveRepoPath(refreshReport.files?.report)),
+        merge_report_file: null,
+      };
+    }
+    if (mergeReport && mergeReport.status !== "ready") {
+      return {
+        stage: "identity_preflight_run",
+        status: "blocked_current_scope_merge",
+        report: mergeReport,
+        report_file: resolveRepoPath(mergeReport.files?.report),
+        index_file: repoRelativeMaybe(indexPath),
+        refresh_report_file: repoRelativeMaybe(resolveRepoPath(refreshReport?.files?.report)),
+        merge_report_file: repoRelativeMaybe(resolveRepoPath(mergeReport.files?.report)),
+      };
     }
     const report = identityPreflightCommands.runDatasetIdentityPreflightRun({
       index: indexPath,
@@ -298,6 +353,10 @@ export function createPostAuthoringFinalizeUtils({
       status: report.status,
       report,
       report_file: resolveRepoPath(report.files?.report),
+      index_file: repoRelativeMaybe(indexPath),
+      base_index_file: repoRelativeMaybe(baseIndexPath),
+      refresh_report_file: repoRelativeMaybe(resolveRepoPath(refreshReport?.files?.report)),
+      merge_report_file: repoRelativeMaybe(resolveRepoPath(mergeReport?.files?.report)),
     };
   }
 

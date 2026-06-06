@@ -467,6 +467,7 @@ export function buildSharedAuthoringContextBundle(repoRoot, outDir, tasks, sourc
     const packageRef = task.files?.authoring_package;
     const packagePath = resolveRepoPath(repoRoot, packageRef);
     if (!packagePath || !fileExists(packagePath)) continue;
+    const stablePackageRef = packageRef ? path.basename(packageRef) : null;
     let packagePayload = null;
     try {
       packagePayload = readJson(packagePath);
@@ -495,7 +496,8 @@ export function buildSharedAuthoringContextBundle(repoRoot, outDir, tasks, sourc
           });
         }
         references.push({
-          authoring_package: packageRef,
+          authoring_package: stablePackageRef,
+          authoring_package_sha256: task.context?.authoring_package_sha256 ?? null,
           dataset_type: task.entity?.dataset_type ?? null,
           entity_id: task.entity?.entity_id ?? null,
           dataset_version: task.entity?.version ?? null,
@@ -517,8 +519,9 @@ export function buildSharedAuthoringContextBundle(repoRoot, outDir, tasks, sourc
     source,
     counts: {
       tasks: tasks.length,
-      authoring_packages: unique(tasks.map((task) => task.files?.authoring_package).filter(Boolean))
-        .length,
+      authoring_packages: unique(
+        tasks.map((task) => path.basename(task.files?.authoring_package ?? "")).filter(Boolean),
+      ).length,
       files: files.length,
       references: references.length,
       duplicate_references: Math.max(0, references.length - files.length),

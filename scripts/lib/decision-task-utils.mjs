@@ -126,17 +126,17 @@ export function createDecisionTaskUtils({
     if (options.chunkLabel || options.chunk || options.label) {
       return safeFileToken(options.chunkLabel || options.chunk || options.label, fallback);
     }
-    if (selection.bundle_ids.length === 1) {
-      return safeFileToken(`bundle-${selection.bundle_ids[0]}`, fallback);
+    const bundleIds = ensureArray(selection.bundle_ids);
+    const datasetTypes = ensureArray(selection.dataset_types);
+    const categoryTypes = ensureArray(selection.category_types);
+    if (bundleIds.length === 1) {
+      return safeFileToken(`bundle-${bundleIds[0]}`, fallback);
     }
-    if (selection.dataset_types.length === 1 && selection.category_types.length === 1) {
-      return safeFileToken(
-        `${selection.dataset_types[0]}-${selection.category_types[0]}`,
-        fallback,
-      );
+    if (datasetTypes.length === 1 && categoryTypes.length === 1) {
+      return safeFileToken(`${datasetTypes[0]}-${categoryTypes[0]}`, fallback);
     }
-    if (selection.dataset_types.length === 1) {
-      return safeFileToken(selection.dataset_types[0], fallback);
+    if (datasetTypes.length === 1) {
+      return safeFileToken(datasetTypes[0], fallback);
     }
     return safeFileToken(`offset-${selection.offset}-limit-${selection.limit ?? "all"}`, fallback);
   }

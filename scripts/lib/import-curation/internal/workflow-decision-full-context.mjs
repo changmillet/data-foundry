@@ -30,6 +30,7 @@ import {
   decisionApplyOutputRowsMatch,
   decisionApplyOutputRowsReachableThroughDeterministicTransforms,
   rowsFileChainsThroughUnresolvedExchangeExternalization,
+  sameRowsArtifact,
 } from "./workflow-row-transform-context.mjs";
 
 // part-10.mjs
@@ -77,6 +78,16 @@ export function decisionApplyOutputRowsChainThroughPatchAndUnresolvedExchangeExt
       finalFile: expectedRowsFile,
       unresolvedExchangeExternalizationContext,
     }),
+  );
+}
+
+function decisionApplyRowsEquivalentToExpected(repoRoot, context, expectedRowsFile) {
+  return Boolean(
+    expectedRowsFile &&
+    context?.inputRows?.some((filePath) =>
+      sameRowsArtifact(repoRoot, filePath, expectedRowsFile),
+    ) &&
+    context?.outputRows?.some((filePath) => sameRowsArtifact(repoRoot, filePath, expectedRowsFile)),
   );
 }
 
@@ -243,6 +254,7 @@ export function buildClassificationDecisionFullContextBlockers({
     });
   } else if (
     !decisionApplyOutputRowsMatch(repoRoot, context, expectedRowsFile) &&
+    !decisionApplyRowsEquivalentToExpected(repoRoot, context, expectedRowsFile) &&
     !decisionApplyOutputRowsChainThroughPatch(
       repoRoot,
       context,
@@ -506,6 +518,7 @@ export function buildLocationDecisionFullContextBlockers({
     });
   } else if (
     !decisionApplyOutputRowsMatch(repoRoot, context, expectedRowsFile) &&
+    !decisionApplyRowsEquivalentToExpected(repoRoot, context, expectedRowsFile) &&
     !decisionApplyOutputRowsChainThroughPatch(
       repoRoot,
       context,

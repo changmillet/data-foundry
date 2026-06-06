@@ -81,6 +81,27 @@ export function createIdentityDecisionTaskCommands({
     return proof;
   }
 
+  function snapshotAuthoringPackageProof(proof, snapshotDir) {
+    if (!proof?.package || proof.blockers.length > 0) return proof;
+    fs.mkdirSync(snapshotDir, { recursive: true });
+    const parsed = path.parse(path.basename(proof.package_path || proof.package_ref));
+    const snapshotPath = path.join(
+      snapshotDir,
+      `${parsed.name}.${proof.package_sha256}.snapshot${parsed.ext || ".json"}`,
+    );
+    if (!fileExists(snapshotPath)) {
+      fs.copyFileSync(proof.package_path, snapshotPath);
+    }
+    return {
+      ...proof,
+      live_package_ref: proof.package_ref,
+      live_package_path: proof.package_path,
+      package_ref: repoRelativePath(snapshotPath),
+      package_path: snapshotPath,
+      expected_sha256: proof.package_sha256,
+    };
+  }
+
   function contractContextKindsForPackage(packagePayload) {
     return new Set(
       ensureArray(packagePayload?.contract_context_files)
@@ -356,12 +377,16 @@ export function createIdentityDecisionTaskCommands({
       options.sharedContextCacheDir || options.contextCacheDir,
     );
     fs.mkdirSync(outDir, { recursive: true });
+    const snapshotDir = path.join(outDir, "authoring-package-snapshots");
     const curationGateReport = readJson(curationGateReportPath);
     const entities = curationGateEntities(curationGateReport);
-    const packageProofs = entities.map(readAuthoringPackageForIdentityTask).filter((proof) => {
-      if (!proof.package) return proof.blockers.length > 0;
-      return identityActionItemsFromPackage(proof).length > 0;
-    });
+    const packageProofs = entities
+      .map(readAuthoringPackageForIdentityTask)
+      .filter((proof) => {
+        if (!proof.package) return proof.blockers.length > 0;
+        return identityActionItemsFromPackage(proof).length > 0;
+      })
+      .map((proof) => snapshotAuthoringPackageProof(proof, snapshotDir));
     const sourceTaskRows = identityDecisionTaskRowsFromPackages(packageProofs);
     const uniqueTaskRows = mergeIdentityDecisionTaskRows(sourceTaskRows);
     const selected = selectDecisionTaskQueueRows(
@@ -496,7 +521,8 @@ export function createIdentityDecisionTaskCommands({
       context_bundle: contextBundle,
       shared_context_bundle: sharedContextBundle,
       instructions: [
-        "Read shared_context_bundle once for full schema/YAML/ruleset/category/location text, then read each full authoring package for source row, identity-preflight candidates, action items, and package-specific evidence.",
+        "Read shared_context_bundle once for full schema/YAML/ruleset/category/location text, then read each snapshotted full authoring package for source row, identity-preflight candidates, action items, and package-specific evidence.",
+        "Use the task-local authoring-package snapshot paths in decisions. Do not replace them with live curation-gate package paths, because finalize can regenerate live packages after decisions are applied.",
         "For product/process identity_preflight_manual_review, choose reuse_existing_reference, create_new, or block_unresolved with evidence.",
         "For elementary_flow_identity_manual_review, do not choose create_new. Choose reuse_existing_reference with canonical id/version, or block_unresolved with searched candidate evidence.",
         "Every decision must include dataset_type, dataset_id, dataset_version, decision_status=completed, identity_decision, basis, used_context_kinds, structured evidence, closes_action_items, authoring_package, and authoring_package_sha256.",
@@ -508,6 +534,7 @@ export function createIdentityDecisionTaskCommands({
         expected_decisions: repoRelativePath(decisionFile),
         report: repoRelativePath(reportPath),
         shared_context_bundle: sharedContextBundle.path,
+        authoring_package_snapshots_dir: repoRelativePath(snapshotDir),
       },
       commands: {
         apply_decisions: [
@@ -522,6 +549,8 @@ export function createIdentityDecisionTaskCommands({
           decisionFile,
           "--out-dir",
           path.join(outDir, "apply"),
+          "--authoring-package-dir",
+          snapshotDir,
         ]
           .map(shellQuote)
           .join(" "),

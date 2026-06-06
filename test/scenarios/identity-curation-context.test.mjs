@@ -131,10 +131,20 @@ test("identity decision task deduplicates repeated targets and keeps source evid
     assert.deepEqual(templateRows[0].closes_action_items, ["identity_preflight_manual_review"]);
     assert.equal(templateRows[0].evidence.source_action_item_count, 2);
     assert.equal(templateRows[0].evidence.source_action_items.length, 2);
+    const relatedPackages = templateRows[0].evidence.related_authoring_packages;
+    assert.equal(relatedPackages.length, 2);
     assert.deepEqual(
-      templateRows[0].evidence.related_authoring_packages.map((item) => item.authoring_package),
-      [firstPackage.packageRef, secondPackage.packageRef],
+      relatedPackages.map((item) => item.authoring_package_sha256),
+      [firstPackage.packageSha, secondPackage.packageSha],
     );
+    for (const item of relatedPackages) {
+      assert.match(item.authoring_package, /authoring-package-snapshots/u);
+      assert.ok(fs.existsSync(path.join(repoRoot, item.authoring_package)));
+      assert.equal(
+        sha256Text(fs.readFileSync(path.join(repoRoot, item.authoring_package), "utf8")),
+        item.authoring_package_sha256,
+      );
+    }
 
     const identityBundle = readJson(
       path.join(repoRoot, identityTask.json.files.shared_context_bundle),

@@ -279,7 +279,8 @@ test("post-authoring finalize auto-builds curation queue context from sibling pr
     assert.equal(finalize.code, 1);
     assert.equal(finalize.json.status, "blocked");
     assert.equal(finalize.json.counts.identity_preflight_run_selected, 2);
-    assert.equal(finalize.json.counts.identity_preflight_run_skipped_existing, 2);
+    assert.equal(finalize.json.counts.identity_preflight_run_completed, 1);
+    assert.equal(finalize.json.counts.identity_preflight_run_skipped_existing, 1);
     assert.equal(finalize.json.counts.curation_queue_status, "ready");
     assert.equal(finalize.json.counts.curation_queue_process_rows, 1);
     assert.equal(finalize.json.counts.curation_queue_flow_rows, 1);
@@ -288,7 +289,7 @@ test("post-authoring finalize auto-builds curation queue context from sibling pr
       finalize.json.stages.some(
         (stage) =>
           stage.stage === "identity_preflight_run" &&
-          stage.status === "completed" &&
+          ["completed", "completed_with_identity_findings"].includes(stage.status) &&
           stage.exit_code === 0,
       ),
     );

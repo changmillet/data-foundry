@@ -588,10 +588,19 @@ export function createIdentityReferenceRewriteUtils({
         const mapping =
           mappings.get(`${originalId}@@${originalVersion}`) ?? mappings.get(originalId);
         if (mapping) {
+          const canonicalId = mapping.canonical.ref_object_id;
+          const canonicalVersion = mapping.canonical.version || "00.00.001";
+          const originalShortDescription = referenceShortDescription(child);
+          const preservesExistingShortDescription =
+            originalShortDescription &&
+            originalId === canonicalId &&
+            originalVersion === canonicalVersion;
           const next = flowGlobalReference({
-            id: mapping.canonical.ref_object_id,
-            version: mapping.canonical.version,
-            shortDescription: mapping.canonical.short_description,
+            id: canonicalId,
+            version: canonicalVersion,
+            shortDescription: preservesExistingShortDescription
+              ? originalShortDescription
+              : mapping.canonical.short_description,
           });
           value[key] = next;
           stats.rewrites += 1;
@@ -616,6 +625,9 @@ export function createIdentityReferenceRewriteUtils({
               ref_object_id: next["@refObjectId"],
               version: next["@version"],
               short_description: next["common:shortDescription"]?.["#text"] ?? null,
+              short_description_source: preservesExistingShortDescription
+                ? "existing_reference_display_text"
+                : "canonical_reference",
             },
             identity_preflight: mapping.identity_preflight,
             identity_decision: mapping.identity_decision ?? null,

@@ -1,18 +1,36 @@
+import fs from "node:fs";
 import path from "node:path";
 import {
   authoringPackageEntriesFromGate,
   buildDatasetAuthoringTaskFromPackage,
   writeAuthoringTaskBatchManifest,
 } from "./internal/authoring-task-workflow.mjs";
+import { sha256Text } from "./internal/hash-utils.mjs";
 import {
   asText,
   fileExists,
   nowIso,
   readJson,
+  readText,
   repoRelativePath,
   resolveRepoPath,
   sanitizeFileName,
 } from "./internal/runtime-io.mjs";
+
+function snapshotAuthoringPackage(repoRoot, packagePath, snapshotDir) {
+  const text = readText(packagePath);
+  const sha256 = sha256Text(text);
+  const parsed = path.parse(path.basename(packagePath));
+  const snapshotPath = path.join(
+    snapshotDir,
+    `${parsed.name}.${sha256}.snapshot${parsed.ext || ".json"}`,
+  );
+  fs.mkdirSync(snapshotDir, { recursive: true });
+  if (!fileExists(snapshotPath)) {
+    fs.copyFileSync(packagePath, snapshotPath);
+  }
+  return snapshotPath;
+}
 
 export function runDatasetAuthoringTaskBuild({ repoRoot, options = {} } = {}) {
   if (options.help) {
@@ -62,7 +80,14 @@ export function runDatasetAuthoringTaskBuild({ repoRoot, options = {} } = {}) {
         })),
       };
     }
-    const tasks = entries.map((entry) =>
+    const snapshotDir = path.join(outDir, "authoring-package-snapshots");
+    const snapshottedEntries = entries.map((entry) => ({
+      ...entry,
+      live_package_ref: entry.package_ref,
+      live_package_path: entry.package_path,
+      package_path: snapshotAuthoringPackage(repoRoot, entry.package_path, snapshotDir),
+    }));
+    const tasks = snapshottedEntries.map((entry) =>
       buildDatasetAuthoringTaskFromPackage({
         repoRoot,
         packagePath: entry.package_path,
@@ -91,9 +116,16 @@ export function runDatasetAuthoringTaskBuild({ repoRoot, options = {} } = {}) {
   const entityId = asText(packagePayload?.entity_id ?? packagePayload?.process_id);
   const defaultOut = `.foundry/workspaces/dataset-authoring-task/${datasetType || "dataset"}-${sanitizeFileName(entityId || "entity")}`;
   const outDir = resolveRepoPath(repoRoot, options.outDir || defaultOut);
+  const snapshotPath = packagePath
+    ? snapshotAuthoringPackage(
+        repoRoot,
+        packagePath,
+        path.join(outDir, "authoring-package-snapshots"),
+      )
+    : packagePath;
   return buildDatasetAuthoringTaskFromPackage({
     repoRoot,
-    packagePath,
+    packagePath: snapshotPath,
     outDir,
     options,
   });
