@@ -22,7 +22,7 @@
       },
       "full_context_ai_completion": {
         "required": true,
-        "dataset_types": ["support", "contact", "source", "flow", "process", "lifecyclemodel"],
+        "dataset_types": ["flow", "process", "lifecyclemodel"],
         "required_context_kinds": [
           "schema",
           "methodology_yaml",

@@ -590,6 +590,469 @@ export function createAuthoringPlanCommands({
     });
   }
 
+  function authoringPlanRowsFileRef(fileRef) {
+    const text = asText(fileRef);
+    if (!text) return null;
+    const resolved = resolveRepoPath(text);
+    return resolved ? repoRelativePath(resolved) : text;
+  }
+
+  function authoringPlanRowsFiles(values) {
+    return unique(
+      ensureArray(values)
+        .flatMap((value) => ensureArray(value))
+        .map(authoringPlanRowsFileRef)
+        .filter(Boolean),
+    );
+  }
+
+  function authoringPlanSingleRowsFile(values) {
+    const rowsFiles = authoringPlanRowsFiles(values);
+    return rowsFiles.length === 1 ? rowsFiles[0] : null;
+  }
+
+  function authoringPlanCompletedOutputRows(reportPath, kind) {
+    const artifact = existingArtifact(reportPath);
+    if (!artifact || artifact.value?.status !== "completed") return [];
+    const report = artifact.value;
+    if (kind === "patch") {
+      return authoringPlanRowsFiles([
+        report.files?.output_rows,
+        report.files?.patched_rows,
+        report.output_rows,
+        report.out_path,
+      ]);
+    }
+    return authoringPlanRowsFiles([report.files?.output_rows, report.output_rows]);
+  }
+
+  function authoringPlanPlannedTransformOutputRows(currentRows, reportPath, suffix) {
+    const resolvedReport = resolveRepoPath(reportPath);
+    const resolvedCurrentRows = resolveRepoPath(currentRows);
+    if (!resolvedReport || !resolvedCurrentRows) return null;
+    const inputBase = path.basename(resolvedCurrentRows).replace(/\.(jsonl|json)$/iu, "");
+    return repoRelativePath(
+      path.join(path.dirname(resolvedReport), "rows", `${inputBase}.${suffix}.jsonl`),
+    );
+  }
+
+  function authoringPlanPlannedPatchOutputRows(currentRows, patchApplyReportPath) {
+    return authoringPlanPlannedTransformOutputRows(currentRows, patchApplyReportPath, "patched");
+  }
+
+  function authoringPlanPlannedIdentityOutputRows(identityApplyReportPath, datasetType) {
+    const resolvedReport = resolveRepoPath(identityApplyReportPath);
+    const normalizedType = asText(datasetType);
+    if (!resolvedReport || !normalizedType) return null;
+    return repoRelativePath(
+      path.join(
+        path.dirname(resolvedReport),
+        `${datasetRowsFileStem(normalizedType)}.identity-decisions-applied.jsonl`,
+      ),
+    );
+  }
+
+  function authoringPlanChainedClassificationCommand({
+    queue,
+    decisionsPath,
+    taskPath,
+    inputRows,
+    outputRows,
+    reportPath,
+  }) {
+    if (!inputRows || !outputRows) return null;
+    return foundryCommand([
+      "dataset-classification-decisions-apply",
+      "--classification-queue",
+      queue,
+      "--decisions",
+      decisionsPath,
+      "--decision-task",
+      taskPath,
+      "--rows-file",
+      inputRows,
+      "--out",
+      outputRows,
+      "--out-dir",
+      path.dirname(reportPath),
+    ]);
+  }
+
+  function authoringPlanChainedLocationCommand({
+    queue,
+    decisionsPath,
+    taskPath,
+    inputRows,
+    outputRows,
+    reportPath,
+  }) {
+    if (!inputRows || !outputRows) return null;
+    return foundryCommand([
+      "dataset-location-decisions-apply",
+      "--location-queue",
+      queue,
+      "--decisions",
+      decisionsPath,
+      "--decision-task",
+      taskPath,
+      "--rows-file",
+      inputRows,
+      "--out",
+      outputRows,
+      "--out-dir",
+      path.dirname(reportPath),
+    ]);
+  }
+
+  function authoringPlanChainedPatchCommand({
+    manifestPath,
+    patchApplyReportPath,
+    authoringPackageDir,
+    inputRows,
+    outputRows,
+  }) {
+    const manifest = existingArtifact(manifestPath)?.value;
+    const patchFile = authoringPlanRowsFileRef(
+      manifest?.batch_patch_contract?.output_patch_file ||
+        path.join(path.dirname(resolveRepoPath(manifestPath)), "ai-patches.batch.json"),
+    );
+    if (!inputRows || !outputRows || !patchFile || !authoringPackageDir) return null;
+    return foundryCommand([
+      "dataset-patch-apply",
+      "--input",
+      inputRows,
+      "--patch",
+      patchFile,
+      "--out",
+      outputRows,
+      "--out-dir",
+      path.dirname(patchApplyReportPath),
+      "--authoring-package-dir",
+      authoringPackageDir,
+      "--require-authoring-package",
+      "--require-action-item-closure",
+    ]);
+  }
+
+  function authoringPlanChainedIdentityCommands({
+    datasetTypes,
+    decisionsPath,
+    applyReportPaths,
+    authoringPackageDir,
+    inputRows,
+  }) {
+    if (!inputRows || datasetTypes.length !== 1) return [];
+    return datasetTypes.map((datasetType, index) => {
+      const reportPath = applyReportPaths[index];
+      const args = [
+        "dataset-identity-decisions-apply",
+        "--type",
+        datasetType,
+        "--rows-file",
+        inputRows,
+        "--decisions",
+        decisionsPath,
+        "--out-dir",
+        path.dirname(reportPath),
+      ];
+      appendOption(args, "--authoring-package-dir", authoringPackageDir);
+      return {
+        dataset_type: datasetType,
+        rows_file: inputRows,
+        authoring_package_dir: authoringPackageDir,
+        output_rows: authoringPlanPlannedIdentityOutputRows(reportPath, datasetType),
+        command: foundryCommand(args),
+      };
+    });
+  }
+
+  function authoringPlanRowsChain({
+    baseRows,
+    classificationPhase,
+    classificationApplyReportPath,
+    classificationApplyQueue,
+    classificationDecisionsPath,
+    classificationTaskPath,
+    locationPhase,
+    locationApplyReportPath,
+    locationApplyQueue,
+    locationDecisionsPath,
+    locationTaskPath,
+    patchPhase,
+    authoringTaskManifestPath,
+    patchApplyReportPath,
+    authoringPackageDir,
+    identityPhase,
+    identityDatasetTypes,
+    identityDecisionsPath,
+    identityApplyReportPaths,
+  }) {
+    let currentRows = authoringPlanRowsFileRef(baseRows);
+    const steps = [];
+    const commands = {};
+    const blockers = [];
+    const pending = [];
+
+    function requireCurrentRows(phase) {
+      if (currentRows) return true;
+      blockers.push({
+        code: "authoring_rows_chain_current_rows_missing",
+        phase,
+        message: "Cannot build chained apply commands without a current rows file.",
+      });
+      return false;
+    }
+
+    function recordNoChange(phase, status) {
+      steps.push({
+        phase,
+        status,
+        required: false,
+        input_rows: currentRows,
+        output_rows: currentRows,
+        command: null,
+      });
+    }
+
+    function recordTransformStep({
+      phaseName,
+      phase,
+      reportPath,
+      outputSuffix,
+      outputKind,
+      buildCommand,
+    }) {
+      if (!phase.required) {
+        recordNoChange(phaseName, phase.status);
+        return;
+      }
+      if (["completed_no_actions", "not_required"].includes(phase.status)) {
+        recordNoChange(phaseName, phase.status);
+        return;
+      }
+      const inputRows = currentRows;
+      if (!requireCurrentRows(phaseName)) return;
+      if (phase.status === "completed") {
+        const outputRows = authoringPlanSingleRowsFile(
+          authoringPlanCompletedOutputRows(reportPath, outputKind),
+        );
+        if (!outputRows) {
+          blockers.push({
+            code: "authoring_rows_chain_output_rows_ambiguous",
+            phase: phaseName,
+            report: repoRelativeMaybe(reportPath),
+            message: "Completed apply report must expose exactly one output rows file.",
+          });
+          return;
+        }
+        steps.push({
+          phase: phaseName,
+          status: phase.status,
+          required: true,
+          input_rows: inputRows,
+          output_rows: outputRows,
+          report: repoRelativeMaybe(reportPath),
+          command: null,
+        });
+        currentRows = outputRows;
+        return;
+      }
+      if (phase.status === "needs_deterministic_apply") {
+        const outputRows =
+          outputKind === "patch"
+            ? authoringPlanPlannedPatchOutputRows(inputRows, reportPath)
+            : authoringPlanPlannedTransformOutputRows(inputRows, reportPath, outputSuffix);
+        const command = buildCommand({ inputRows, outputRows });
+        if (!outputRows || !command) {
+          blockers.push({
+            code: "authoring_rows_chain_command_unavailable",
+            phase: phaseName,
+            message: "The authoring plan could not build a safe chained apply command.",
+          });
+          return;
+        }
+        steps.push({
+          phase: phaseName,
+          status: phase.status,
+          required: true,
+          input_rows: inputRows,
+          output_rows: outputRows,
+          report: repoRelativeMaybe(reportPath),
+          command,
+        });
+        commands[phaseName] = { command, input_rows: inputRows, output_rows: outputRows };
+        currentRows = outputRows;
+        return;
+      }
+      pending.push({
+        phase: phaseName,
+        status: phase.status,
+      });
+      steps.push({
+        phase: phaseName,
+        status: phase.status,
+        required: true,
+        input_rows: inputRows,
+        output_rows: null,
+        command: null,
+      });
+    }
+
+    recordTransformStep({
+      phaseName: "classification_decisions",
+      phase: classificationPhase,
+      reportPath: classificationApplyReportPath,
+      outputSuffix: "classified",
+      outputKind: "decision",
+      buildCommand: ({ inputRows, outputRows }) =>
+        authoringPlanChainedClassificationCommand({
+          queue: classificationApplyQueue,
+          decisionsPath: classificationDecisionsPath,
+          taskPath: classificationTaskPath,
+          inputRows,
+          outputRows,
+          reportPath: classificationApplyReportPath,
+        }),
+    });
+    recordTransformStep({
+      phaseName: "location_decisions",
+      phase: locationPhase,
+      reportPath: locationApplyReportPath,
+      outputSuffix: "located",
+      outputKind: "decision",
+      buildCommand: ({ inputRows, outputRows }) =>
+        authoringPlanChainedLocationCommand({
+          queue: locationApplyQueue,
+          decisionsPath: locationDecisionsPath,
+          taskPath: locationTaskPath,
+          inputRows,
+          outputRows,
+          reportPath: locationApplyReportPath,
+        }),
+    });
+    recordTransformStep({
+      phaseName: "field_patches",
+      phase: patchPhase,
+      reportPath: patchApplyReportPath,
+      outputSuffix: "patched",
+      outputKind: "patch",
+      buildCommand: ({ inputRows, outputRows }) =>
+        authoringPlanChainedPatchCommand({
+          manifestPath: authoringTaskManifestPath,
+          patchApplyReportPath,
+          authoringPackageDir,
+          inputRows,
+          outputRows,
+        }),
+    });
+
+    if (identityPhase.required) {
+      const inputRows = currentRows;
+      if (requireCurrentRows("identity_decisions")) {
+        if (identityPhase.status === "completed") {
+          const outputs = identityApplyReportPaths.flatMap((reportPath) =>
+            authoringPlanCompletedOutputRows(reportPath, "decision"),
+          );
+          const outputRows = authoringPlanSingleRowsFile(outputs);
+          if (!outputRows) {
+            blockers.push({
+              code: "authoring_rows_chain_output_rows_ambiguous",
+              phase: "identity_decisions",
+              message: "Completed identity apply reports must expose exactly one output rows file.",
+            });
+          } else {
+            steps.push({
+              phase: "identity_decisions",
+              status: identityPhase.status,
+              required: true,
+              input_rows: inputRows,
+              output_rows: outputRows,
+              reports: identityApplyReportPaths.map(repoRelativeMaybe),
+              command: null,
+            });
+            currentRows = outputRows;
+          }
+        } else if (identityPhase.status === "needs_deterministic_apply") {
+          const chainedCommands = authoringPlanChainedIdentityCommands({
+            datasetTypes: identityDatasetTypes,
+            decisionsPath: identityDecisionsPath,
+            applyReportPaths: identityApplyReportPaths,
+            authoringPackageDir,
+            inputRows,
+          });
+          const outputRows = authoringPlanSingleRowsFile(
+            chainedCommands.map((command) => command.output_rows),
+          );
+          if (chainedCommands.length !== 1 || !outputRows) {
+            blockers.push({
+              code: "authoring_rows_chain_identity_command_unavailable",
+              phase: "identity_decisions",
+              dataset_types: identityDatasetTypes,
+              message:
+                "Chained identity apply currently requires one dataset type and one current rows file.",
+            });
+          } else {
+            steps.push({
+              phase: "identity_decisions",
+              status: identityPhase.status,
+              required: true,
+              input_rows: inputRows,
+              output_rows: outputRows,
+              reports: identityApplyReportPaths.map(repoRelativeMaybe),
+              commands: chainedCommands,
+            });
+            commands.identity_decisions = {
+              commands: chainedCommands,
+              input_rows: inputRows,
+              output_rows: outputRows,
+            };
+            currentRows = outputRows;
+          }
+        } else {
+          pending.push({
+            phase: "identity_decisions",
+            status: identityPhase.status,
+          });
+          steps.push({
+            phase: "identity_decisions",
+            status: identityPhase.status,
+            required: true,
+            input_rows: inputRows,
+            output_rows: null,
+            command: null,
+          });
+        }
+      }
+    } else {
+      recordNoChange("identity_decisions", identityPhase.status);
+    }
+
+    return {
+      status:
+        blockers.length > 0
+          ? "blocked_ambiguous_rows_chain"
+          : pending.length > 0
+            ? "waiting_for_prior_phase_completion"
+            : steps.some((step) => step.command || step.commands)
+              ? "needs_deterministic_apply"
+              : "ready",
+      order: [
+        "classification_decisions",
+        "location_decisions",
+        "field_patches",
+        "identity_decisions",
+      ],
+      base_rows: authoringPlanRowsFileRef(baseRows),
+      current_rows: currentRows,
+      pending,
+      blockers,
+      commands,
+      steps,
+      instruction:
+        "Run chained commands in order and rerun dataset-authoring-plan after each deterministic apply. Downstream phases must use the previous step's output rows.",
+    };
+  }
+
   function runDatasetAuthoringPlan(options) {
     if (options.help) {
       return {
@@ -937,6 +1400,59 @@ export function createAuthoringPlanCommands({
       },
     };
     const phases = [identityPhase, classificationPhase, locationPhase, patchPhase];
+    const rowsChain = authoringPlanRowsChain({
+      baseRows: scopedApplyRowsFile || curationGateReport.rows_file,
+      classificationPhase,
+      classificationApplyReportPath,
+      classificationApplyQueue,
+      classificationDecisionsPath,
+      classificationTaskPath,
+      locationPhase,
+      locationApplyReportPath,
+      locationApplyQueue,
+      locationDecisionsPath,
+      locationTaskPath,
+      patchPhase,
+      authoringTaskManifestPath,
+      patchApplyReportPath,
+      authoringPackageDir,
+      identityPhase,
+      identityDatasetTypes,
+      identityDecisionsPath,
+      identityApplyReportPaths,
+    });
+    if (rowsChain.commands.classification_decisions?.command) {
+      classificationPhase.commands.apply_decisions =
+        rowsChain.commands.classification_decisions.command;
+    }
+    if (rowsChain.commands.location_decisions?.command) {
+      locationPhase.commands.apply_decisions = rowsChain.commands.location_decisions.command;
+    }
+    const manifestPatchApplyCommand = patchPhase.commands.apply_patches;
+    if (manifestPatchApplyCommand) {
+      patchPhase.commands.apply_patches_manifest = manifestPatchApplyCommand;
+    }
+    if (rowsChain.commands.field_patches?.command) {
+      patchPhase.commands.apply_patches = rowsChain.commands.field_patches.command;
+    } else if (
+      patchPhase.required &&
+      rowsChain.steps.some(
+        (step) =>
+          ["classification_decisions", "location_decisions"].includes(step.phase) &&
+          step.required &&
+          !step.output_rows,
+      )
+    ) {
+      patchPhase.commands.apply_patches = null;
+      patchPhase.commands.apply_patches_unavailable_reason =
+        "Earlier classification/location phases have not produced a current rows file yet; rerun dataset-authoring-plan after those applies complete.";
+    }
+    if (rowsChain.commands.identity_decisions?.commands?.length > 0) {
+      const chainedIdentityCommands = rowsChain.commands.identity_decisions.commands;
+      identityPhase.commands.apply_decisions =
+        chainedIdentityCommands.length === 1 ? chainedIdentityCommands[0].command : null;
+      identityPhase.commands.apply_decisions_by_type = chainedIdentityCommands;
+    }
     const reportPath = path.join(outDir, "dataset-authoring-plan.json");
     const report = {
       schema_version: 1,
@@ -967,11 +1483,13 @@ export function createAuthoringPlanCommands({
         authoring_package_dir: authoringPackageDir,
         shared_context_cache_dir: sharedContextCacheDirRef,
       },
+      rows_chain: rowsChain,
       phases,
       blockers: [],
       instructions: [
         "Run any needs_task_build command first; task status must be ready before AI authoring.",
         "AI/Codex/skills must read the task JSON and referenced authoring packages before writing decisions or patches.",
+        "When multiple authoring phases touch the same rows, follow rows_chain order and use the chained apply commands so classification/location/patch/identity evidence references one current rows lineage.",
         "Run deterministic apply commands after decisions/patches are completed; do not edit row JSON directly.",
         "After all required phases are completed, rerun SDK validation, deterministic QA, curation gate, post-authoring finalize, mutation manifest, and only then remote write planning.",
       ],

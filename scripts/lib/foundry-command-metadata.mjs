@@ -397,6 +397,7 @@ export const commandMetadata = {
       "classification-authoring-queue.jsonl",
       "location-authoring-queue.jsonl",
       "identity-preflight-requests.jsonl",
+      "process-scope-ledger.jsonl",
       "dataset-bundle-sample-rows-report.json",
     ],
     keyTests: [

@@ -214,6 +214,9 @@ test("dataset-bundle-sample-rows creates one shared library contact and rewrites
   assert.equal(report.counts.source_rows, 1);
   assert.equal(report.counts.support_rows, 2);
   assert.equal(report.counts.process_rows, 1);
+  assert.equal(report.counts.process_scopes_ready, 1);
+  assert.equal(report.counts.process_scopes_needs_ai_authoring, 0);
+  assert.equal(report.counts.process_scopes_blocked_deferred, 0);
   assert.equal(report.counts.rewritten_contact_refs, 3);
   assert.equal(report.counts.true_source_rows, 1);
   assert.equal(report.counts.true_source_classification_repairs, 1);
@@ -248,6 +251,11 @@ test("dataset-bundle-sample-rows creates one shared library contact and rewrites
   assert.equal(JSON.stringify(sources).includes(newContactId), true);
   assert.equal(JSON.stringify(processes).includes(oldContactId), false);
   assert.equal(JSON.stringify(sources).includes(oldContactId), false);
+  const processScopeLedger = readJsonLines(path.join(repoRoot, report.files.process_scope_ledger));
+  assert.equal(processScopeLedger.length, 1);
+  assert.equal(processScopeLedger[0].process_id, processId);
+  assert.equal(processScopeLedger[0].status, "ready");
+  assert.match(processScopeLedger[0].rerun_command, /--process-id/u);
   assert.equal(
     sources[0].sourceDataSet.sourceInformation.dataSetInformation.classificationInformation[
       "common:classification"
@@ -1757,6 +1765,9 @@ test("dataset-bundle-sample-rows blocks converted default process classification
   assert.equal(report.counts.classification_authoring_queue_rows, 2);
   assert.equal(report.counts.location_code_blockers, 2);
   assert.equal(report.counts.location_authoring_queue_rows, 2);
+  assert.equal(report.counts.process_scopes_ready, 0);
+  assert.equal(report.counts.process_scopes_needs_ai_authoring, 1);
+  assert.equal(report.counts.process_scopes_blocked_deferred, 0);
   assert.ok(
     report.blockers.some((blocker) => blocker.code === "process_classification_requires_authoring"),
   );
@@ -1766,6 +1777,12 @@ test("dataset-bundle-sample-rows blocks converted default process classification
   assert.ok(report.blockers.some((blocker) => blocker.code === "location_code_requires_authoring"));
 
   const queue = readJsonLines(path.join(repoRoot, report.files.classification_authoring_queue));
+  const processScopeLedger = readJsonLines(path.join(repoRoot, report.files.process_scope_ledger));
+  assert.equal(processScopeLedger[0].status, "needs_ai_authoring");
+  assert.equal(
+    processScopeLedger[0].blocker_counts_by_code.process_classification_requires_authoring,
+    1,
+  );
   const processQueueRow = queue.find((row) => row.dataset_type === "process");
   const flowQueueRow = queue.find((row) => row.dataset_type === "flow");
   assert.equal(processQueueRow.source_classification.category, "material, obsolete");

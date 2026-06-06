@@ -6,8 +6,6 @@ import {
 import {
   assert,
   fs,
-  fullContextKinds,
-  fullContextPatterns,
   itemBlockerCodes,
   path,
   readJsonLines,
@@ -816,24 +814,8 @@ test("BAFU support manifest accepts source-contact rewrite as deterministic sema
     schema_report: rel(schemaReport),
     qa_report: rel(qaReport),
     context: {
-      contract_context_file_details: [
-        ...fullContextKinds.map((kind) => ({
-          kind,
-          path: `${kind}.fixture`,
-          sha256: `${kind}-sha`,
-          bytes: 12,
-        })),
-        ...fullContextPatterns.map((pattern) => ({
-          kind:
-            pattern === "tidas_locations_category.json"
-              ? "location_schema"
-              : "classification_schema",
-          path: `/fixture/${pattern}`,
-          sha256: `${pattern}-sha`,
-          bytes: 12,
-        })),
-      ],
-      contract_context_files: fullContextPatterns.map((pattern) => `/fixture/${pattern}`),
+      contract_context_file_details: [],
+      contract_context_files: [],
     },
     entities: [
       {
@@ -943,6 +925,7 @@ test("BAFU support manifest accepts source-contact rewrite as deterministic sema
     ]);
     assert.equal(result.code, 0, JSON.stringify(result.json, null, 2));
     assert.equal(result.json.status, "ready_for_remote_write");
+    assert.equal(result.json.evidence.full_context_ai_completion_required, false);
     assert.equal(result.json.counts.source_contact_rewrite_semantic_evidence_entries, 2);
     assert.equal(
       scopeBlockerCodes(result.json).has("full_context_ai_completion_output_required"),

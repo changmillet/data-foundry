@@ -255,10 +255,145 @@ test("dataset-authoring-plan detects ready tasks and waits for AI outputs", () =
     plan.phases.find((phase) => phase.phase === "field_patches").status,
     "ready_for_ai_patches",
   );
+  const patchPhase = plan.phases.find((phase) => phase.phase === "field_patches");
+  assert.equal(patchPhase.commands.apply_patches, null);
   assert.equal(
-    plan.phases.find((phase) => phase.phase === "field_patches").commands.apply_patches,
+    patchPhase.commands.apply_patches_manifest,
     "node scripts/foundry.mjs dataset-patch-apply --input rows.jsonl",
   );
+  assert.match(
+    patchPhase.commands.apply_patches_unavailable_reason,
+    /Earlier classification\/location phases/u,
+  );
+  assert.equal(plan.rows_chain.status, "waiting_for_prior_phase_completion");
+});
+
+test("dataset-authoring-plan chains classification output through patch and identity apply", () => {
+  fs.rmSync(fixtureRoot, { recursive: true, force: true });
+  const reportPath = writeCurationGateReport();
+  const sourceRows = path.join(fixtureRoot, "rows", "processes.jsonl");
+  const classifiedRows = path.join(
+    fixtureRoot,
+    "classification-decision-apply",
+    "rows",
+    "processes.classified.jsonl",
+  );
+  const batchPatchFile = path.join(fixtureRoot, "authoring-tasks", "ai-patches.batch.json");
+  writeJsonLines(sourceRows, [
+    {
+      processDataSet: {
+        processInformation: {
+          dataSetInformation: {
+            "common:UUID": "33333333-3333-5333-8333-333333333333",
+          },
+        },
+      },
+    },
+  ]);
+  writeJsonLines(classifiedRows, [
+    {
+      processDataSet: {
+        processInformation: {
+          dataSetInformation: {
+            "common:UUID": "33333333-3333-5333-8333-333333333333",
+          },
+        },
+      },
+    },
+  ]);
+  writeJsonLines(batchPatchFile, []);
+  writeJson(
+    path.join(fixtureRoot, "classification-decision-task", "classification-decision-task.json"),
+    {
+      status: "ready_for_ai_classification_decisions",
+      classification_queue: rel(path.join(fixtureRoot, "classification-authoring-queue.jsonl")),
+      classification_queue_rows: [{ dataset_type: "process", dataset_id: "process-1" }],
+    },
+  );
+  writeJsonLines(
+    path.join(fixtureRoot, "classification-decision-task", "classification-decisions.jsonl"),
+    [
+      {
+        dataset_type: "process",
+        dataset_id: "process-1",
+        dataset_version: "00.00.001",
+        category_type: "process",
+        decision_status: "completed",
+      },
+    ],
+  );
+  writeJson(
+    path.join(
+      fixtureRoot,
+      "classification-decision-apply",
+      "classification-decisions-apply-report.json",
+    ),
+    {
+      status: "completed",
+      files: {
+        input_rows: [rel(sourceRows)],
+        output_rows: [rel(classifiedRows)],
+      },
+    },
+  );
+  writeJson(path.join(fixtureRoot, "authoring-tasks", "authoring-task-manifest.json"), {
+    status: "ready_for_ai_authoring_batch",
+    counts: { action_items: 3 },
+    batch_patch_contract: {
+      status: "available",
+      output_patch_file: rel(batchPatchFile),
+    },
+    commands: {
+      apply_all_patches:
+        "node scripts/foundry.mjs dataset-patch-apply --input tmp/old/processes.jsonl",
+    },
+  });
+  writeJson(path.join(fixtureRoot, "authoring-tasks", "authoring-patch-collect-report.json"), {
+    status: "ready_for_patch_apply",
+  });
+  writeJson(path.join(fixtureRoot, "identity-decision-task", "identity-decision-task.json"), {
+    status: "ready_for_ai_identity_decisions",
+    dataset_types: ["process"],
+    identity_action_items: [{ dataset_type: "process", dataset_id: "process-1" }],
+  });
+  writeJsonLines(path.join(fixtureRoot, "identity-decision-task", "identity-decisions.jsonl"), [
+    {
+      dataset_type: "process",
+      dataset_id: "process-1",
+      dataset_version: "00.00.001",
+      decision_status: "completed",
+      identity_decision: "create_new",
+      basis: "No existing process is physically equivalent.",
+    },
+  ]);
+
+  const plan = runFoundry([
+    "dataset-authoring-plan",
+    "--curation-gate-report",
+    rel(reportPath),
+    "--out-dir",
+    rel(path.join(fixtureRoot, "authoring-plan")),
+  ]);
+
+  const patchOutput = rel(
+    path.join(fixtureRoot, "patch-apply", "rows", "processes.classified.patched.jsonl"),
+  );
+  const identityOutput = rel(
+    path.join(fixtureRoot, "identity-decision-apply", "processes.identity-decisions-applied.jsonl"),
+  );
+  const chainedPatchPhase = plan.phases.find((phase) => phase.phase === "field_patches");
+  assert.match(chainedPatchPhase.commands.apply_patches, new RegExp(rel(classifiedRows), "u"));
+  assert.match(chainedPatchPhase.commands.apply_patches, new RegExp(patchOutput, "u"));
+  assert.doesNotMatch(chainedPatchPhase.commands.apply_patches, /tmp\/old\/processes\.jsonl/u);
+
+  const identityPhase = plan.phases.find((phase) => phase.phase === "identity_decisions");
+  assert.equal(identityPhase.commands.apply_decisions_by_type[0].rows_file, patchOutput);
+  assert.match(
+    identityPhase.commands.apply_decisions_by_type[0].command,
+    new RegExp(patchOutput, "u"),
+  );
+  assert.equal(plan.rows_chain.status, "needs_deterministic_apply");
+  assert.equal(plan.rows_chain.current_rows, identityOutput);
 });
 
 test("dataset-identity-decisions-apply filters mixed decisions by requested type", () => {

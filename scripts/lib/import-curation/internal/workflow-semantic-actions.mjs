@@ -985,7 +985,10 @@ export function collectProfileSemanticActionItems({
   hasClassificationQueueContext = false,
 }) {
   const requirement = fullContextAiCompletionRequirement(profile, datasetType);
-  if (!requirement) return [];
+  const profileId = asText(profile?.id).toLowerCase();
+  const requiresBafuSupportSemanticGate =
+    profileId === "bafu" && ["support", "contact", "source"].includes(datasetType);
+  if (!requirement && !requiresBafuSupportSemanticGate) return [];
   return [
     ...collectTextQualitySemanticActions(payload, datasetType),
     ...collectClassificationSemanticActions(payload, datasetType, {

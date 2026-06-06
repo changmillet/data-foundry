@@ -54,7 +54,7 @@ const bundleSampleStageContract = readOnlyStageContract([
     purpose:
       "Emit a command report with row files, generated handoff commands, counts, and blockers.",
     inputs: ["all generated local artifacts"],
-    outputs: ["dataset-bundle-sample-rows-report.json"],
+    outputs: ["dataset-bundle-sample-rows-report.json", "process-scope-ledger.jsonl"],
     side_effects: ["writes local .foundry artifact files"],
   },
 ]);
@@ -238,6 +238,155 @@ export function createBundleSampleRowsCommands({
         stats.flow_location_context_traces += 1;
       }
     }
+  }
+
+  function processIdFromBundleRef(value) {
+    const text = asText(value);
+    if (!text) return "";
+    const match = text.match(/(?:^|\/)process-bundles\/([^/]+)/u);
+    return match?.[1] ?? "";
+  }
+
+  function blockerProcessId(blocker) {
+    return (
+      asText(blocker?.process_id) ||
+      processIdFromBundleRef(blocker?.source_file) ||
+      processIdFromBundleRef(blocker?.bundle) ||
+      processIdFromBundleRef(blocker?.file) ||
+      processIdFromBundleRef(blocker?.manifest)
+    );
+  }
+
+  function blockerCountsByCode(blockersForScope) {
+    const counts = new Map();
+    for (const blocker of blockersForScope) {
+      const code = asText(blocker?.code) || "unknown_blocker";
+      counts.set(code, (counts.get(code) ?? 0) + 1);
+    }
+    return Object.fromEntries(
+      [...counts.entries()].sort(([left], [right]) => left.localeCompare(right)),
+    );
+  }
+
+  function isHumanDependencyBlocker(blocker) {
+    const code = asText(blocker?.code);
+    return [
+      "canonical_flow_property_reference_unresolved",
+      "canonical_unit_group_reference_unresolved",
+      "flow_property_reference_unresolved",
+      "unit_group_reference_unresolved",
+      "library_contact_count_invalid",
+      "library_contact_identity_missing",
+      "source_reference_semantics_unresolved",
+      "process_data_source_reference_unresolved",
+      "bundle_manifest_file_missing",
+      "process_rows_missing",
+    ].includes(code);
+  }
+
+  function scopeRerunCommand({ bundlesDir, outDir, profile, processId }) {
+    return [
+      "node",
+      "scripts/foundry.mjs",
+      "dataset-bundle-sample-rows",
+      "--bundles-dir",
+      repoRelativeMaybe(resolveRepoPath(bundlesDir)) || bundlesDir,
+      "--process-id",
+      processId,
+      "--out-dir",
+      repoRelativePath(path.join(outDir, "scopes", processId)),
+      "--profile",
+      profile,
+    ]
+      .map(shellQuote)
+      .join(" ");
+  }
+
+  function buildProcessScopeLedger({ selectedBundles, blockers, bundlesDir, outDir, profile }) {
+    const blockersByProcess = new Map();
+    const globalBlockers = [];
+    for (const blocker of blockers) {
+      const processId = blockerProcessId(blocker);
+      if (!processId) {
+        globalBlockers.push(blocker);
+        continue;
+      }
+      const rows = blockersByProcess.get(processId) ?? [];
+      rows.push(blocker);
+      blockersByProcess.set(processId, rows);
+    }
+    const ledger = selectedBundles.map((bundle) => {
+      const processBlockers = blockersByProcess.get(bundle.process_id) ?? [];
+      const humanDependencyBlockers = processBlockers.filter(isHumanDependencyBlocker);
+      const scopedGlobalBlockers =
+        globalBlockers.length > 0
+          ? globalBlockers.map((blocker) => ({
+              code: blocker.code,
+              message: blocker.message,
+            }))
+          : [];
+      const status =
+        processBlockers.length === 0 && globalBlockers.length === 0
+          ? "ready"
+          : humanDependencyBlockers.length > 0 || globalBlockers.length > 0
+            ? "blocked_deferred"
+            : "needs_ai_authoring";
+      return {
+        process_id: bundle.process_id,
+        bundle_dir: bundle.bundle_dir,
+        manifest: bundle.manifest,
+        status,
+        blocker_count: processBlockers.length + globalBlockers.length,
+        ai_authoring_blockers: processBlockers.length - humanDependencyBlockers.length,
+        human_dependency_blockers: humanDependencyBlockers.length + globalBlockers.length,
+        blocker_counts_by_code: blockerCountsByCode([...processBlockers, ...globalBlockers]),
+        blocker_examples: processBlockers.slice(0, 5).map((blocker) => ({
+          code: blocker.code,
+          dataset_type: blocker.dataset_type ?? null,
+          dataset_id: blocker.dataset_id ?? null,
+          message: blocker.message,
+        })),
+        global_blockers: scopedGlobalBlockers,
+        next_step:
+          status === "ready"
+            ? "ready_for_validation_and_write_planning"
+            : status === "needs_ai_authoring"
+              ? "run classification/location/identity authoring, deterministic apply, then rerun this process scope"
+              : "defer this scope until human/canonical dependency blockers are resolved",
+        rerun_command: scopeRerunCommand({
+          bundlesDir,
+          outDir,
+          profile,
+          processId: bundle.process_id,
+        }),
+      };
+    });
+    const summaryCounts = ledger.reduce(
+      (counts, row) => {
+        counts[row.status] = (counts[row.status] ?? 0) + 1;
+        return counts;
+      },
+      { ready: 0, needs_ai_authoring: 0, blocked_deferred: 0 },
+    );
+    return {
+      ledger,
+      summary: {
+        ...summaryCounts,
+        selected_scopes: ledger.length,
+        global_blockers: globalBlockers.length,
+        recommended_next_process_ids: [...ledger]
+          .filter((row) => row.status !== "blocked_deferred")
+          .sort((left, right) => {
+            const statusRank = { ready: 0, needs_ai_authoring: 1, blocked_deferred: 2 };
+            return (
+              (statusRank[left.status] ?? 99) - (statusRank[right.status] ?? 99) ||
+              left.blocker_count - right.blocker_count ||
+              left.process_id.localeCompare(right.process_id)
+            );
+          })
+          .map((row) => row.process_id),
+      },
+    };
   }
 
   function runDatasetBundleSampleRows(options) {
@@ -616,6 +765,17 @@ export function createBundleSampleRowsCommands({
       });
     }
 
+    const profile = asText(options.profile || "bafu");
+    const processScopeProjection = buildProcessScopeLedger({
+      selectedBundles,
+      blockers,
+      bundlesDir,
+      outDir,
+      profile,
+    });
+    const processScopeLedgerPath = path.join(outDir, "process-scope-ledger.jsonl");
+    writeJsonLines(processScopeLedgerPath, processScopeProjection.ledger);
+
     const rowTypeCommand = (type, mode) => {
       const modeFlag = mode === "commit" ? "--commit" : "--dry-run";
       if (type === "lifecyclemodel") {
@@ -709,7 +869,7 @@ export function createBundleSampleRowsCommands({
       generated_at_utc: nowIso(),
       status: blockers.length === 0 ? "ready" : "blocked",
       command: "dataset-bundle-sample-rows",
-      profile: asText(options.profile || "bafu"),
+      profile,
       source_bundles_dir: repoRelativeMaybe(resolveRepoPath(bundlesDir)),
       sample: {
         seed: selection.seed,
@@ -764,6 +924,9 @@ export function createBundleSampleRowsCommands({
         blockers: blockers.length,
         total_available_bundles: allBundleDirs.length,
         selected_bundles: selection.selected.length,
+        process_scopes_ready: processScopeProjection.summary.ready,
+        process_scopes_needs_ai_authoring: processScopeProjection.summary.needs_ai_authoring,
+        process_scopes_blocked_deferred: processScopeProjection.summary.blocked_deferred,
         rewritten_contact_refs: rewriteStats.rewritten,
         import_trace_queue_rows: traceRows.length,
         classification_authoring_queue_rows: classificationQueueRows.length,
@@ -797,9 +960,11 @@ export function createBundleSampleRowsCommands({
           Object.entries(countsByType).map(([type, count]) => [`${type}_rows`, count]),
         ),
       },
+      process_scope_summary: processScopeProjection.summary,
       files: {
         report: repoRelativePath(reportPath),
         rows: rowFiles,
+        process_scope_ledger: repoRelativePath(processScopeLedgerPath),
         import_traces: repoRelativePath(traceQueuePath),
         classification_authoring_queue: repoRelativePath(classificationQueuePath),
         location_authoring_queue: repoRelativePath(locationQueuePath),
