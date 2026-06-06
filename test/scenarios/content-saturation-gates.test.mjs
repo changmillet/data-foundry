@@ -96,8 +96,12 @@ function runGate(input) {
 }
 
 function actionCodesFor(report) {
+  return actionItemsFor(report).map((item) => item.code);
+}
+
+function actionItemsFor(report) {
   const packagePath = path.join(repoRoot, report.entities[0].authoring_package);
-  return readJson(packagePath).action_items.map((item) => item.code);
+  return readJson(packagePath).action_items;
 }
 
 test("BAFU process curation gate blocks when source-backed content fields are not saturated", () => {
@@ -202,6 +206,92 @@ test("BAFU flow curation gate blocks when source-backed flow descriptors are not
     true,
   );
   assert.equal(codes.includes("semantic_content_saturation_flow_general_comment_missing"), true);
+});
+
+test("BAFU flow curation gate treats mixAndLocationTypes codes as locationOfSupply evidence", () => {
+  const flowId = "bbbbbbbb-2222-4222-8333-444444444444";
+  const input = writeGateInputs(path.join(fixtureRoot, "flow-mix-location"), "flow", [
+    {
+      flowDataSet: {
+        flowInformation: {
+          dataSetInformation: {
+            "common:UUID": flowId,
+            name: {
+              baseName: ml("Lignite, burned in power plant"),
+              mixAndLocationTypes: ml("DE"),
+            },
+            classificationInformation: classification(),
+          },
+        },
+        modellingAndValidation: {
+          LCIMethod: { typeOfDataSet: "Product flow" },
+        },
+        administrativeInformation: {
+          publicationAndOwnership: { "common:dataSetVersion": "00.00.001" },
+        },
+      },
+    },
+  ]);
+
+  const report = runGate(input);
+
+  assert.equal(report.status, "blocked_needs_foundry_ai_authoring");
+  const action = actionItemsFor(report).find(
+    (item) => item.code === "semantic_content_saturation_flow_location_of_supply_missing",
+  );
+  assert.ok(action);
+  assert.equal(action.path, "flowDataSet.flowInformation.geography.locationOfSupply");
+  assert.equal(action.evidence.source_kind, "flow_name_mix_and_location_types");
+  assert.equal(action.evidence.suggested_value, "DE");
+});
+
+test("BAFU flow curation gate uses process geography trace as locationOfSupply evidence", () => {
+  const flowId = "bbbbbbbb-3333-4222-8333-444444444444";
+  const input = writeGateInputs(path.join(fixtureRoot, "flow-process-geography"), "flow", [
+    {
+      flowDataSet: {
+        flowInformation: {
+          dataSetInformation: {
+            "common:UUID": flowId,
+            name: {
+              baseName: ml("Heat, poultry litter pellets"),
+            },
+            classificationInformation: classification(),
+            "common:other": sourceTrace({
+              geography: {
+                name: "geography",
+                attributes: [
+                  {
+                    name: "locationOfOperationSupplyOrProduction",
+                    value: "CH",
+                  },
+                ],
+              },
+            }),
+          },
+        },
+        modellingAndValidation: {
+          LCIMethod: { typeOfDataSet: "Product flow" },
+        },
+        administrativeInformation: {
+          publicationAndOwnership: { "common:dataSetVersion": "00.00.001" },
+        },
+      },
+    },
+  ]);
+
+  const report = runGate(input);
+
+  assert.equal(report.status, "blocked_needs_foundry_ai_authoring");
+  const action = actionItemsFor(report).find(
+    (item) => item.code === "semantic_content_saturation_flow_location_of_supply_missing",
+  );
+  assert.ok(action);
+  assert.equal(action.evidence.suggested_value, "CH");
+  assert.equal(
+    action.evidence.candidate_sources[0].attribute_name,
+    "locationOfOperationSupplyOrProduction",
+  );
 });
 
 test("BAFU support curation gate blocks incomplete source bibliographic descriptions", () => {

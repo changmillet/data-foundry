@@ -691,6 +691,94 @@ test("dataset-bundle-sample-rows writes executable identity preflight requests f
   assert.ok(request.remote_candidate_search.profile_hints);
 });
 
+test("dataset-bundle-sample-rows projects process geography into referenced flow location evidence", () => {
+  createBundleFixture();
+  const outDir = path.join(fixtureRoot, "out-flow-location-context");
+  const bundleDir = path.join(fixtureRoot, "process-bundles", processId);
+  const processPath = path.join(bundleDir, "tidas", "processes", `${processId}.json`);
+  const processPayload = JSON.parse(fs.readFileSync(processPath, "utf8"));
+  processPayload.processDataSet.exchanges = {
+    exchange: {
+      "@dataSetInternalID": "1",
+      exchangeDirection: "Output",
+      meanAmount: "1",
+      referenceToFlowDataSet: {
+        "@type": "flow data set",
+        "@refObjectId": flowId,
+        "@version": "00.00.001",
+        "@uri": `../flows/${flowId}.json`,
+        "common:shortDescription": ml("Fixture heat"),
+      },
+    },
+  };
+  writeJson(processPath, processPayload);
+  writeJson(path.join(bundleDir, "tidas", "flows", `${flowId}.json`), {
+    flowDataSet: {
+      flowInformation: {
+        dataSetInformation: {
+          "common:UUID": flowId,
+          name: { baseName: ml("Fixture heat") },
+          classificationInformation: {
+            "common:classification": {
+              "common:class": [{ "@level": "0", "@classId": "D", "#text": "Energy" }],
+            },
+          },
+          "common:other": {
+            "@xmlns:tidasimport": "https://tiangong.earth/tidas/import-trace/1.0",
+            "tidasimport:sourceTrace": {
+              "@marker": "TIDAS_IMPORT_TRACE_V1",
+              payload: {
+                source: {
+                  name: "source",
+                  attributes: [{ name: "citation", value: "Fixture source" }],
+                },
+              },
+            },
+          },
+        },
+      },
+      modellingAndValidation: {
+        LCIMethod: { typeOfDataSet: "Product flow" },
+      },
+      administrativeInformation: {
+        publicationAndOwnership: {
+          "common:dataSetVersion": "00.00.001",
+        },
+      },
+    },
+  });
+  const manifestPath = path.join(bundleDir, "manifest.json");
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  manifest.files.flows.push(`tidas/flows/${flowId}.json`);
+  writeJson(manifestPath, manifest);
+
+  const report = runFoundry([
+    "dataset-bundle-sample-rows",
+    "--bundles-dir",
+    path.join(fixtureRoot, "process-bundles"),
+    "--process-id",
+    processId,
+    "--out-dir",
+    outDir,
+    "--contact-id",
+    newContactId,
+  ]);
+
+  assert.equal(report.counts.flow_location_context_traces, 1);
+  const flows = readJsonLines(path.join(repoRoot, report.files.rows.flow));
+  const trace =
+    flows[0].flowDataSet.flowInformation.dataSetInformation["common:other"][
+      "tidasimport:sourceTrace"
+    ];
+  const locationPayload = trace.payload.flowLocationEvidence ?? trace.payload;
+  assert.equal(
+    locationPayload.geography.attributes[0].name,
+    "locationOfOperationSupplyOrProduction",
+  );
+  assert.equal(locationPayload.geography.attributes[0].value, "CH");
+  assert.equal(locationPayload.exchange.attributes[0].value, flowId);
+});
+
 test("dataset-identity-preflight-requests-build creates a fresh exact-row request index", () => {
   fs.rmSync(fixtureRoot, { recursive: true, force: true });
   const outDir = path.join(fixtureRoot, "identity-preflight-requests-build");

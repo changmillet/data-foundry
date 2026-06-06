@@ -307,6 +307,57 @@ export function sourceTraceEvidence(attribute, extra = {}) {
   };
 }
 
+export function locationCodeCandidate(value) {
+  const text = textValue(value);
+  if (!text) return null;
+  const normalized = text.replace(/[{}]/gu, "").trim();
+  if (/^RoW$/u.test(normalized)) return normalized;
+  if (/^[A-Z0-9]{2,}(?:[-+&][A-Z0-9]{2,})*$/u.test(normalized)) {
+    return normalized;
+  }
+  return null;
+}
+
+export function flowNameLocationEvidence(root) {
+  const value = root?.flowInformation?.dataSetInformation?.name?.mixAndLocationTypes;
+  const code = locationCodeCandidate(value);
+  if (!code) return null;
+  return {
+    source: "flowDataSet.flowInformation.dataSetInformation.name.mixAndLocationTypes",
+    source_kind: "flow_name_mix_and_location_types",
+    value: textValue(value),
+    suggested_value: code,
+  };
+}
+
+export function sourceTraceLocationEvidence(traces) {
+  const candidates = [
+    firstTraceAttribute(traces, "exchange", "location"),
+    firstTraceAttribute(
+      traces,
+      ["flow", "flowInformation", "dataSetInformation"],
+      ["locationOfSupply", "mixAndLocationTypes", "location"],
+    ),
+    firstTraceAttribute(
+      traces,
+      ["process", "processInformation", "geography"],
+      ["locationOfOperationSupplyOrProduction", "@location", "location"],
+    ),
+  ].filter(Boolean);
+  if (candidates.length === 0) return null;
+  const primary = candidates[0];
+  return sourceTraceEvidence(primary, {
+    suggested_value: locationCodeCandidate(primary.value) ?? primary.value,
+    candidate_sources: candidates.map((candidate) => ({
+      object_name: candidate.object_name,
+      attribute_name: candidate.attribute_name,
+      value: candidate.value,
+      trace_path: candidate.trace_path,
+      location_code_candidate: locationCodeCandidate(candidate.value),
+    })),
+  });
+}
+
 export function collectTextQualitySemanticActions(payload, datasetType) {
   const entries = collectTextEntries(payload);
   const actions = [];
@@ -598,19 +649,21 @@ export function collectFlowContentSaturationActions(payload) {
   const info = root?.flowInformation?.dataSetInformation ?? {};
   const traces = sourceTracePayloads(payload);
   const actions = [];
-  const location = firstTraceAttribute(traces, "exchange", "location");
-  if (location && !hasMeaningfulFieldValue(root?.flowInformation?.geography?.locationOfSupply)) {
+  const locationEvidence = sourceTraceLocationEvidence(traces) ?? flowNameLocationEvidence(root);
+  if (
+    locationEvidence &&
+    !hasMeaningfulFieldValue(root?.flowInformation?.geography?.locationOfSupply)
+  ) {
     actions.push(
       contentSaturationAction({
         datasetType: "flow",
         code: "semantic_content_saturation_flow_location_of_supply_missing",
         path: "flowDataSet.flowInformation.geography.locationOfSupply",
-        message: "Source trace contains exchange.location, but flow locationOfSupply is empty.",
-        evidence: sourceTraceEvidence(location, {
-          suggested_value: multiLangSuggestion(location.value, "en"),
-        }),
+        message:
+          "Flow context contains a location-of-supply candidate, but flow locationOfSupply is empty.",
+        evidence: locationEvidence,
         instruction:
-          "Fill locationOfSupply with the source-backed TIDAS/ILCD location code when it is a valid location code. If the trace value is not a valid code, keep the scope blocked for location authoring.",
+          "Fill locationOfSupply with the source-backed TIDAS/ILCD location code when the candidate is valid. If the candidate is not a valid code or conflicts with process/exchange geography, keep the scope blocked for location authoring.",
       }),
     );
   }

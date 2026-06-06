@@ -30,6 +30,7 @@ const bundleSampleStageContract = readOnlyStageContract([
       "source-reference-rewrites.jsonl",
       "canonical-support-rewrites.jsonl",
       "source-semantics.jsonl",
+      "flow location context traces embedded in flow rows",
     ],
     side_effects: ["writes local .foundry artifact files"],
   },
@@ -103,6 +104,142 @@ export function createBundleSampleRowsCommands({
   writeJson,
   writeJsonLines,
 }) {
+  function locationCodeFromValue(value, locationCodeMap) {
+    const code = asText(value);
+    return code && locationCodeMap.has(code) ? code : null;
+  }
+
+  function processLocationCode(payload, locationCodeMap) {
+    return locationCodeFromValue(
+      payload?.processDataSet?.processInformation?.geography
+        ?.locationOfOperationSupplyOrProduction?.["@location"],
+      locationCodeMap,
+    );
+  }
+
+  function exchangeLocationCode(exchange, locationCodeMap) {
+    return locationCodeFromValue(
+      exchange?.location ?? exchange?.["@location"] ?? exchange?.locationOfSupply,
+      locationCodeMap,
+    );
+  }
+
+  function flowLocationOfSupply(payload) {
+    return asText(payload?.flowDataSet?.flowInformation?.geography?.locationOfSupply);
+  }
+
+  function flowDataSetInformation(payload) {
+    return payload?.flowDataSet?.flowInformation?.dataSetInformation ?? null;
+  }
+
+  function buildFlowLocationTracePayload(evidence) {
+    return {
+      process: {
+        name: "process",
+        attributes: [
+          { name: "processId", value: evidence.process_id },
+          { name: "processVersion", value: evidence.process_version },
+        ].filter((item) => item.value),
+      },
+      geography: evidence.process_location
+        ? {
+            name: "geography",
+            attributes: [
+              {
+                name: "locationOfOperationSupplyOrProduction",
+                value: evidence.process_location,
+              },
+            ],
+          }
+        : undefined,
+      exchange: {
+        name: "exchange",
+        attributes: [
+          { name: "referenceToFlowDataSet", value: evidence.flow_id },
+          { name: "referenceToFlowDataSetVersion", value: evidence.flow_version },
+          evidence.exchange_location
+            ? { name: "location", value: evidence.exchange_location }
+            : null,
+        ].filter(Boolean),
+      },
+    };
+  }
+
+  function appendFlowLocationSourceTrace(flowPayload, evidence) {
+    if (!flowPayload?.flowDataSet || flowLocationOfSupply(flowPayload)) return false;
+    const dataSetInformation = flowDataSetInformation(flowPayload);
+    if (!dataSetInformation || typeof dataSetInformation !== "object") return false;
+    if (
+      dataSetInformation["common:other"] &&
+      (typeof dataSetInformation["common:other"] !== "object" ||
+        Array.isArray(dataSetInformation["common:other"]))
+    ) {
+      return false;
+    }
+    const commonOther = (dataSetInformation["common:other"] ??= {});
+    commonOther["@xmlns:tidasimport"] = "https://tiangong.earth/tidas/import-trace/1.0";
+    const locationTrace = buildFlowLocationTracePayload(evidence);
+    if (commonOther["tidasimport:sourceTrace"]) {
+      const existingTrace = commonOther["tidasimport:sourceTrace"];
+      if (!existingTrace || typeof existingTrace !== "object" || Array.isArray(existingTrace)) {
+        return false;
+      }
+      const payload = existingTrace.payload;
+      if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
+      if (payload.flowLocationEvidence) return false;
+      payload.flowLocationEvidence = locationTrace;
+      return true;
+    }
+    commonOther["tidasimport:sourceTrace"] = {
+      "@marker": "TIDAS_IMPORT_TRACE_V1",
+      payload: locationTrace,
+    };
+    return true;
+  }
+
+  function projectProcessFlowLocationEvidence({
+    rowsByType,
+    sourceByType,
+    locationCodeMap,
+    stats,
+  }) {
+    const evidenceByFlowKey = new Map();
+    for (const [processKey, processPayload] of rowsByType.process.entries()) {
+      const processIdentity = datasetIdentity(processPayload, "process");
+      const processLocation = processLocationCode(processPayload, locationCodeMap);
+      const exchanges = ensureArray(processPayload?.processDataSet?.exchanges?.exchange).filter(
+        (exchange) => exchange && typeof exchange === "object",
+      );
+      for (const exchange of exchanges) {
+        const reference = exchange.referenceToFlowDataSet ?? {};
+        const flowId = asText(reference["@refObjectId"]);
+        const flowVersion = asText(reference["@version"]) || "00.00.001";
+        if (!flowId) continue;
+        const exchangeLocation = exchangeLocationCode(exchange, locationCodeMap);
+        if (!exchangeLocation && !processLocation) continue;
+        const flowKey = `${flowId}::${flowVersion}`;
+        if (evidenceByFlowKey.has(flowKey)) continue;
+        evidenceByFlowKey.set(flowKey, {
+          flow_id: flowId,
+          flow_version: flowVersion,
+          process_id: processIdentity.id,
+          process_version: processIdentity.version,
+          process_source_file: sourceByType.process.get(processKey) ?? null,
+          process_location: processLocation,
+          exchange_location: exchangeLocation,
+        });
+      }
+    }
+
+    for (const [flowKey, evidence] of evidenceByFlowKey.entries()) {
+      const flowPayload = rowsByType.flow.get(flowKey);
+      if (!flowPayload) continue;
+      if (appendFlowLocationSourceTrace(flowPayload, evidence)) {
+        stats.flow_location_context_traces += 1;
+      }
+    }
+  }
+
   function runDatasetBundleSampleRows(options) {
     if (options.help) {
       return {
@@ -190,6 +327,7 @@ export function createBundleSampleRowsCommands({
       canonical_flow_property_reference_rewrites: 0,
       canonical_unit_group_reference_proofs: 0,
       elementary_flow_reuse_blockers: 0,
+      flow_location_context_traces: 0,
     };
     const sourceReferenceRewriteRows = [];
     const canonicalSupportRewriteRows = [];
@@ -395,6 +533,13 @@ export function createBundleSampleRowsCommands({
       rowsByType.source.delete(`${row.dataset_id}::${row.dataset_version || ""}`);
       sourceByType.source.delete(`${row.dataset_id}::${row.dataset_version || ""}`);
     }
+
+    projectProcessFlowLocationEvidence({
+      rowsByType,
+      sourceByType,
+      locationCodeMap,
+      stats: sanitizeStats,
+    });
 
     const identityPreflightArtifacts = buildIdentityPreflightArtifacts({
       rowsByType,

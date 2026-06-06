@@ -409,6 +409,10 @@ export const commandMetadata = {
         "test/commands/bundle-sample-rows.test.mjs",
         "dataset-bundle-sample-rows writes executable identity preflight requests for process and elementary flow matching",
       ),
+      nodeTest(
+        "test/commands/bundle-sample-rows.test.mjs",
+        "dataset-bundle-sample-rows projects process geography into referenced flow location evidence",
+      ),
     ],
   }),
   "dataset-identity-preflight-requests-build": metadata({
