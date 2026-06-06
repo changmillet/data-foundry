@@ -89,6 +89,7 @@ External source-evidence skills can also be used, but they are a different depen
 
 | Skill | Source | Current role in this architecture |
 | --- | --- | --- |
+| `document-granular-decompose` | `https://github.com/tiangong-ai/skills` | Floating document fulltext extraction skill for source-evidence dataset development. It returns source text candidates; Foundry/CLI still own field evidence capture, row authoring gates, and publish handoff. |
 | `tiangong-kb-sci-search` | `https://github.com/tiangong-ai/skills` | Floating SCI literature evidence retrieval skill for source-evidence dataset development. It returns paper evidence candidates; Foundry/CLI still own evidence capture, field mapping, row authoring gates, and publish handoff. |
 
 ## Remaining Gaps
@@ -224,7 +225,7 @@ Default stages:
 
 This skill should reuse the same child skills as `external-dataset-curated-import`, with `mode=evidence_development`.
 
-For SCI literature evidence, resolve the latest `tiangong-kb-sci-search` with `npx skills` and record the upstream ref under the task workspace before retrieval. This keeps fast-moving research capability outside Foundry while preserving run-level auditability.
+For document fulltext extraction, resolve the latest `document-granular-decompose` with `npx skills` and record the upstream ref under the task workspace before parsing. For SCI literature evidence, resolve `tiangong-kb-sci-search` the same way before retrieval. This keeps fast-moving evidence capability outside Foundry while preserving run-level auditability.
 
 ## Child Skill Responsibilities
 
@@ -305,7 +306,7 @@ On restart, the top-level skill resumes from the first missing, failed, stale, o
 3. Foundry routes structured import and source-evidence tasks to those skills and CLI commands instead of expanding its public `dataset:*` command surface.
 4. Existing child skills remain the first reuse targets: `tidas-contract-context`, `tidas-data-import`, `flow-governance-review`, `process-automated-builder`, and `lca-publish-executor`.
 5. New child aliases should be added only where naming or scope blocks clear composition.
-6. Source-evidence research dependencies use `.agents/shared-skills.json` plus the npm `skills` package and runtime `npx skills` resolution records instead of committing external skill repositories as Foundry-owned code.
+6. Source-evidence extraction and research dependencies use `.agents/shared-skills.json` plus the npm `skills` package and runtime `npx skills` resolution records instead of committing external skill repositories as Foundry-owned code.
 7. Remaining Foundry-local dataset wrappers are migration shims until equivalent CLI/skill owner surfaces exist.
 
 ## Retired Local-Adapter Assumption

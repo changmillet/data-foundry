@@ -16,6 +16,7 @@ catalog:
         - docs/architecture.md
         - docs/capability-ownership-policy.md
         - docs/runtime-skill-management.md
+        - docs/env-surface-policy.md
         - docs/foundry-task-contracts.md
         - docs/safety-policy.md
         - docs/foundry-ai-navigation.md
@@ -58,6 +59,7 @@ ownership:
     - id: foundry-local-skills
       paths:
         include:
+          - .agents/shared-skills.json
           - .agents/skills/**
       ownerRepo: data-foundry
     - id: runtime-skill-cache-boundary
@@ -78,6 +80,7 @@ coverage:
     - test/**
     - specs/**
     - docs/**
+    - .agents/shared-skills.json
     - .agents/skills/**
   exclude:
     - .git/**
@@ -117,6 +120,7 @@ routing:
     runtime-skills:
       paths:
         - .gitignore
+        - .agents/shared-skills.json
         - docs/runtime-skill-management.md
         - .agents/skills/**
     workspace-ledger:
@@ -139,6 +143,7 @@ docInventory:
     - docs/architecture.md
     - docs/capability-ownership-policy.md
     - docs/runtime-skill-management.md
+    - docs/env-surface-policy.md
     - docs/foundry-task-contracts.md
     - docs/safety-policy.md
     - docs/foundry-ai-navigation.md
@@ -258,8 +263,12 @@ rules:
     scope: repo
     repo: data-foundry
     triggers:
+      - path: .agents/shared-skills.json
+        kind: runtime-skill-config
       - path: .agents/skills/**
         kind: local-skill
+      - path: docs/env-surface-policy.md
+        kind: runtime-env-policy
       - path: docs/skill-orchestration/**
         kind: skill-orchestration-doc
     requiredDocs:

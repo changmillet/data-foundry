@@ -33,7 +33,7 @@ Foundry should route reusable work to the owning repository instead of copying i
 | TIDAS schema, methodology YAML, runtime rulesets | `tidas-sdk` | SDK contract API, `npx --yes @tiangong-lca/cli@latest dataset context-pack` |
 | Source package conversion | `tidas-tools` and `tiangong-lca-cli` | `npx --yes @tiangong-lca/cli@latest dataset import-lca convert` |
 | Entity curation queue state | `tiangong-lca-cli` | `npx --yes @tiangong-lca/cli@latest dataset curation-queue build/next/verify` |
-| PDF/Excel/source extraction and authoring setup | `tiangong-lca-cli` and `tiangong-lca-skills` | `npx --yes @tiangong-lca/cli@latest dataset author`, `$tidas-data-import` |
+| PDF/Excel/source extraction and authoring setup | `tiangong-lca-cli`, `tiangong-lca-skills`, and `tiangong-ai/skills` | `npx --yes @tiangong-lca/cli@latest dataset author`, `$tidas-data-import`, `npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill document-granular-decompose --full-depth` |
 | SCI literature evidence retrieval for source-evidence tasks | `tiangong-ai/skills` | `npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --full-depth`; install/update with the npm `skills` package |
 | Agent workflow instructions | `tiangong-lca-skills` | `$tidas-contract-context`, `$tidas-data-import` |
 | Schema validation and QA gates | `tiangong-lca-cli` | `npx --yes @tiangong-lca/cli@latest dataset validate`, `npx --yes @tiangong-lca/cli@latest qa` |

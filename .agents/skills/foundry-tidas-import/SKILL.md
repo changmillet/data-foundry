@@ -50,7 +50,7 @@ For packaged imports, keep the CLI default process bundle generation enabled. Th
 
 ### Source Document Authoring
 
-Use this lane for PDF, Excel, office exports, screenshots, or free text that must become candidate TIDAS rows. Extract document text with `$document-granular-decompose` when needed, then use CLI/Foundry authoring commands to materialize candidate rows.
+Use this lane for PDF, Excel, office exports, screenshots, or free text that must become candidate TIDAS rows. Resolve the latest runtime `$document-granular-decompose` skill from `https://github.com/tiangong-ai/skills` when document fulltext extraction is needed, then use CLI/Foundry authoring commands to materialize candidate rows.
 
 ```bash
 tiangong-lca dataset author \

@@ -6,13 +6,6 @@
   "default_agent": "*",
   "local_project_skills": [
     {
-      "name": "document-granular-decompose",
-      "owner": "tiangong-lca-data-foundry",
-      "path": ".agents/skills/document-granular-decompose",
-      "tracked": true,
-      "purpose": "Foundry-local document fulltext extraction wrapper for source-document tasks."
-    },
-    {
       "name": "foundry-tidas-authoring",
       "owner": "tiangong-lca-data-foundry",
       "path": ".agents/skills/foundry-tidas-authoring",
@@ -31,7 +24,8 @@
     "list_installed": "npx --yes skills@latest list --json",
     "update_project": "npx --yes skills@latest update --project --yes",
     "use_sci_runtime_skill": "npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --full-depth",
-    "install_all_shared_runtime": "npx --yes skills@latest add ../tiangong-lca-skills --skill external-dataset-curated-import source-evidence-dataset-development dataset-rls-maintenance --agent '*' --yes --full-depth && npx --yes skills@latest add https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --agent '*' --yes --full-depth"
+    "use_document_runtime_skill": "npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill document-granular-decompose --full-depth",
+    "install_all_shared_runtime": "npx --yes skills@latest add ../tiangong-lca-skills --skill external-dataset-curated-import source-evidence-dataset-development dataset-rls-maintenance --agent '*' --yes --full-depth && npx --yes skills@latest add https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search document-granular-decompose --agent '*' --yes --full-depth"
   },
   "shared_runtime_skills": [
     {
@@ -69,6 +63,25 @@
       "required_for": [
         "bad-import-cleanup",
         "redo-import"
+      ]
+    },
+    {
+      "name": "document-granular-decompose",
+      "source": "https://github.com/tiangong-ai/skills",
+      "source_type": "github",
+      "source_ref": "refs/heads/main",
+      "agent": "*",
+      "full_depth": true,
+      "install_command": "npx --yes skills@latest add https://github.com/tiangong-ai/skills --skill document-granular-decompose --agent '*' --yes --full-depth",
+      "use_command": "npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill document-granular-decompose --full-depth",
+      "update_policy": "floating latest from upstream main before source-document fulltext extraction",
+      "evidence_channel": "document-fulltext",
+      "required_for": [
+        "source-evidence-dataset-development"
+      ],
+      "output_artifacts": [
+        "evidence/fulltext.txt",
+        "evidence/source-extract.json"
       ]
     },
     {

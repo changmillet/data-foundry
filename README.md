@@ -55,6 +55,7 @@ npm run capabilities:list -- --class tidas-contract-context
 npm run profiles:list
 npm run task:route -- --kind external-dataset-curated-import --dataset-type process --required-gates contract,schema,qa,curation
 npm run task:route -- --kind source-evidence-dataset-development --dataset-type process --required-gates context,schema,qa,curation
+npm run skills:source-evidence:use:document
 npm run skills:source-evidence:use:sci
 ```
 
@@ -147,9 +148,13 @@ npm run skills:list
 
 For deleting, retiring, repairing, or redoing rows from a bad import under current-user RLS, route to the checked-in `tiangong-lca-skills` `$dataset-rls-maintenance` workflow and the CLI-owned `npx --yes @tiangong-lca/cli@latest dataset maintenance plan/apply/verify` surface. Do not add Foundry-local Supabase delete or redo commands.
 
-For SCI literature evidence, use the latest remote `tiangong-kb-sci-search` skill from `https://github.com/tiangong-ai/skills`:
+For document fulltext extraction and SCI literature evidence, use the latest remote skills from `https://github.com/tiangong-ai/skills`:
 
 ```bash
+npx --yes skills@latest use https://github.com/tiangong-ai/skills \
+  --skill document-granular-decompose \
+  --full-depth
+
 npx --yes skills@latest use https://github.com/tiangong-ai/skills \
   --skill tiangong-kb-sci-search \
   --full-depth
@@ -161,14 +166,14 @@ Persistent local installs are optional operator state:
 
 ```bash
 npx --yes skills@latest add https://github.com/tiangong-ai/skills \
-  --skill tiangong-kb-sci-search \
+  --skill tiangong-kb-sci-search document-granular-decompose \
   --agent '*' \
   --yes \
   --full-depth
 npm run skills:update
 ```
 
-Installed shared runtime skills such as `.agents/skills/tiangong-kb-sci-search/`, `.agents/skills/external-dataset-curated-import/`, and `skills-lock.json` remain ignored by default. Source-evidence tasks should record the resolved upstream ref, `npx skills` command, and evidence artifacts under `.foundry/workspaces/<task-id>/runtime-skills/`.
+Installed shared runtime skills such as `.agents/skills/tiangong-kb-sci-search/`, `.agents/skills/document-granular-decompose/`, `.agents/skills/external-dataset-curated-import/`, and `skills-lock.json` remain ignored by default. Source-evidence tasks should record the resolved upstream ref, `npx skills` command, and evidence artifacts under `.foundry/workspaces/<task-id>/runtime-skills/`.
 
 ## Repository Shape
 

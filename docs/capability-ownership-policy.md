@@ -66,7 +66,7 @@ Use this order before adding code:
 1. If the change only coordinates existing commands or checks foundry task artifacts, implement it in foundry.
 2. If the change is a reusable primitive command with stable input/output and remote access, create a development request for `tiangong-lca-cli`.
 3. If the change is a reusable agent workflow that composes CLI commands, create a development request for `tiangong-lca-skills`.
-4. If the change is a fast-moving external source-evidence retrieval workflow, consume it as a runtime `npx skills` dependency and record the resolved ref instead of copying it into Foundry.
+4. If the change is a fast-moving external source-evidence extraction or retrieval workflow, consume it as a runtime `npx skills` dependency and record the resolved ref instead of copying it into Foundry.
 5. If the change depends on database, Edge Function, converter, SDK, or schema internals, route it to that owning repo.
 
 Bad-import cleanup and redo must be routed to `tiangong-lca dataset maintenance plan/apply/verify` plus the `$dataset-rls-maintenance` skill. Foundry may store the maintenance scope, plan, and verification reports in the task workspace, but must not own direct delete logic, service-role access, or broad current-account cleanup filters.

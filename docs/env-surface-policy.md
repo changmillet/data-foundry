@@ -4,6 +4,9 @@ docType: policy
 scope: runtime-env
 status: active
 owner: tiangong-lca-data-foundry
+language: en
+lastReviewedAt: 2026-06-06
+lastReviewedCommit: 631bd2273fc14e55802301d211beaf968646340b
 ---
 
 # Environment Surface Policy
@@ -24,7 +27,7 @@ Allowed families:
 - `FOUNDRY_*` for foundry-owned gates, paths, labels, and observability controls;
 - public `TIANGONG_LCA_API_*`, session, QA LLM, KB search, and unstructured-document runtime keys used by CLI-backed workflows;
 - `TIANGONG_AI_*` keys used by runtime-installed Tiangong AI KB skills such as `tiangong-kb-sci-search`;
-- `UNSTRUCTURED_*` aliases used by the Foundry-local `$document-granular-decompose` skill;
+- `UNSTRUCTURED_*` aliases used by the runtime-installed Tiangong AI `$document-granular-decompose` skill;
 - `LCA_DATA_AGENT_*`, `TIANGONG_LCA_CLI_BIN`, `TIANGONG_LCA_CLI_DIR`, `TIANGONG_LCA_SKILLS_ROOT`, and `LCA_SKILLS_ROOT` path indirection keys.
 
 ## Forbidden Variables

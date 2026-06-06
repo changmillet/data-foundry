@@ -47,6 +47,9 @@ tiangong-lca-cli
 tiangong-lca-skills
   = top-level workflows + child semantic authoring skills
 
+tiangong-ai/skills
+  = floating source-evidence and document-extraction runtime skills resolved with npx skills
+
 profiles
   = generic / bafu / uslci constraints
 ```
@@ -123,6 +126,7 @@ The foundry should call the owning workspace surface instead of absorbing implem
 
 - `tiangong-lca-cli`: default command surface for data operations
 - `tiangong-lca-skills`: agent-facing wrappers over CLI commands
+- `tiangong-ai/skills`: runtime-only source-evidence and document extraction skills such as `document-granular-decompose` and `tiangong-kb-sci-search`
 - `tiangong-lca-edge-functions`: Edge Function runtime, including hybrid search and embedding jobs
 - `database-engine`: database RPCs, triggers, vector indexes, and schema governance
 - `tidas`, `tidas-sdk`, `tidas-tools`: schema and validation contracts
