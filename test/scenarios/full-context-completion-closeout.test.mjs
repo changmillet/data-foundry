@@ -721,3 +721,88 @@ test("flow commit handoff includes target user id on publish-version command", (
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("process commit handoff defaults draft state code and records account guard", () => {
+  const root = path.join(fixtureRoot, "process-commit-handoff-account-guard");
+  fs.rmSync(root, { recursive: true, force: true });
+  const rowsFile = path.join(root, "processes.jsonl");
+  writeJsonLines(rowsFile, [
+    {
+      processDataSet: {
+        processInformation: {
+          dataSetInformation: {
+            "common:UUID": "11111111-1111-4111-8111-111111111111",
+          },
+        },
+        administrativeInformation: {
+          publicationAndOwnership: {
+            "common:dataSetVersion": "00.00.001",
+          },
+        },
+      },
+    },
+  ]);
+  const mutationReport = path.join(root, "dataset-mutation-manifest.json");
+  writeJson(mutationReport, {
+    status: "ready_for_remote_write",
+    dataset_type: "process",
+    profile: "generic",
+    target_user_id: targetUserId,
+    counts: {
+      blockers: 0,
+      write_candidates: 1,
+      unresolved_trace_entries: 0,
+      source_exchange_completeness_entries: 0,
+      source_reference_rewrites: 0,
+    },
+    files: {},
+  });
+  const finalizeReport = path.join(root, "dataset-post-authoring-finalize-report.json");
+  writeJson(finalizeReport, {
+    status: "ready_for_remote_write",
+    dataset_type: "process",
+    profile: "generic",
+    target_user_id: targetUserId,
+    files: {
+      final_rows: rel(rowsFile),
+      mutation_manifest: rel(mutationReport),
+    },
+    counts: {
+      blockers: 0,
+      location_audit_blockers: 0,
+      write_candidates: 1,
+      unresolved_trace_entries: 0,
+      source_exchange_completeness_entries: 0,
+      source_reference_rewrites: 0,
+    },
+  });
+
+  try {
+    const handoff = runFoundry([
+      "dataset-commit-handoff-plan",
+      "--finalize-report",
+      rel(finalizeReport),
+      "--out-dir",
+      rel(path.join(root, "handoff")),
+    ]);
+    assert.equal(handoff.code, 0, JSON.stringify(handoff.json, null, 2));
+    assert.equal(handoff.json.status, "ready_for_explicit_commit");
+    assert.equal(handoff.json.expected_state_code, "0");
+    assert.equal(handoff.json.expected_state_code_source, "default_draft_write_state");
+    assert.match(handoff.json.commands.commit, / process save-draft /);
+    assert.doesNotMatch(handoff.json.commands.commit, /--target-user-id/);
+    assert.doesNotMatch(handoff.json.commands.commit, /--state-code/);
+    assert.match(
+      handoff.json.commands.post_write_verify,
+      new RegExp(`--target-user-id ${targetUserId}`),
+    );
+    assert.match(handoff.json.commands.post_write_verify, /--state-code 0/);
+    assert.equal(handoff.json.account_write_guard.commit_command_supports_target_user_id, false);
+    assert.equal(
+      handoff.json.account_write_guard.commit_account_binding,
+      "current_cli_auth_session",
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

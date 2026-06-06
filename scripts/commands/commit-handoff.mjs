@@ -176,6 +176,7 @@ export function createCommitHandoffCommands({
         status: "help",
         command: "dataset-commit-handoff-plan",
         usage: [
+          "node scripts/foundry.mjs dataset-commit-handoff-plan --finalize-report <dataset-post-authoring-finalize-report.json> --out-dir <handoff-dir>",
           "node scripts/foundry.mjs dataset-commit-handoff-plan --finalize-report <dataset-post-authoring-finalize-report.json> --state-code <expected-state-code> --out-dir <handoff-dir>",
         ],
         purpose:
@@ -221,7 +222,10 @@ export function createCommitHandoffCommands({
         finalizeReport.target_user_id ||
         process.env.FOUNDRY_TARGET_USER_ID,
     );
-    const stateCode = asText(options.stateCode ?? options.expectedStateCode);
+    const explicitStateCode = asText(options.stateCode ?? options.expectedStateCode);
+    const stateCode = explicitStateCode || "0";
+    const stateCodeSource = explicitStateCode ? "explicit_option" : "default_draft_write_state";
+    const commitSupportsTargetUserId = datasetType === "flow";
     const blockers = [];
 
     if (finalizeReport.status !== "ready_for_remote_write") {
@@ -266,13 +270,6 @@ export function createCommitHandoffCommands({
         code: "target_user_id_required",
         message:
           "Commit handoff requires explicit target_user_id evidence from mutation manifest or options.",
-      });
-    }
-    if (!stateCode) {
-      blockers.push({
-        code: "state_code_required_for_post_write_verify",
-        message:
-          "Commit handoff requires --state-code so post-write verify can prove the exact committed scope.",
       });
     }
     const handoffFullContextCheck = fullContextProofCheck({
@@ -366,6 +363,19 @@ export function createCommitHandoffCommands({
       final_rows_file: finalRowsFile ? repoRelativePath(finalRowsFile) : null,
       target_user_id: targetUserId || null,
       expected_state_code: stateCode || null,
+      expected_state_code_source: stateCodeSource,
+      account_write_guard: {
+        target_user_id_required: true,
+        target_user_id: targetUserId || null,
+        commit_command_supports_target_user_id: commitSupportsTargetUserId,
+        commit_account_binding: commitSupportsTargetUserId
+          ? "target_user_id_cli_argument"
+          : "current_cli_auth_session",
+        verify_account_binding: "target_user_id_cli_argument",
+        execution_precondition: commitSupportsTargetUserId
+          ? "Run the commit command with the target-user-id argument emitted in this plan."
+          : "Run the commit command only in a CLI session authenticated as the recorded target_user_id; this published CLI commit command does not accept --target-user-id.",
+      },
       policy: {
         commit_boundary:
           "This plan does not write the database. The user must explicitly run the commit command, then run the post_write_verify command.",

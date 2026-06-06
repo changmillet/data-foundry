@@ -237,11 +237,14 @@ test("post-authoring finalize auto-builds curation queue context from sibling pr
   writeJsonLines(flowsFile, [flowRow(flowId)]);
   writeJsonLines(supportFile, [sourceRow(sourceId)]);
   const context = writeContextPackFiles(root);
+  const staleProcessTarget = processRowWithFlowRef(processId, flowId);
+  staleProcessTarget.processDataSet.processInformation.dataSetInformation.name.baseName["#text"] =
+    "Stale heat production";
   const identityPreflightIndex = writeCompletedIdentityPreflightIndex(root, [
     {
       datasetType: "process",
       id: processId,
-      target: processRowWithFlowRef(processId, flowId),
+      target: staleProcessTarget,
       name: "Heat production",
     },
     {
@@ -264,6 +267,8 @@ test("post-authoring finalize auto-builds curation queue context from sibling pr
       "--identity-preflight-index",
       rel(identityPreflightIndex),
       "--run-identity-preflight",
+      "--refresh-identity-preflight",
+      "false",
       "--schema-file",
       rel(context.schemaFile),
       "--yaml-file",
@@ -281,6 +286,15 @@ test("post-authoring finalize auto-builds curation queue context from sibling pr
     assert.equal(finalize.json.counts.identity_preflight_run_selected, 2);
     assert.equal(finalize.json.counts.identity_preflight_run_completed, 1);
     assert.equal(finalize.json.counts.identity_preflight_run_skipped_existing, 1);
+    assert.equal(finalize.json.counts.identity_preflight_refresh_required, true);
+    assert.equal(
+      finalize.json.counts.identity_preflight_refresh_reason,
+      "current_scope_index_not_exact",
+    );
+    assert.equal(finalize.json.counts.identity_preflight_refreshed_current_rows, 1);
+    assert.equal(finalize.json.counts.identity_preflight_merge_replaced_rows, 1);
+    assert.ok(finalize.json.files.identity_preflight_refresh_report);
+    assert.ok(finalize.json.files.identity_preflight_merge_report);
     assert.equal(finalize.json.counts.curation_queue_status, "ready");
     assert.equal(finalize.json.counts.curation_queue_process_rows, 1);
     assert.equal(finalize.json.counts.curation_queue_flow_rows, 1);

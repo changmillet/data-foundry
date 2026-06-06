@@ -705,7 +705,7 @@ export function createPostAuthoringFinalizeCommands({
         "--target-user-id",
         options.remoteTargetUserId || options.targetUserId,
       );
-      appendOption(remoteArgs, "--state-code", options.remoteStateCode || options.stateCode);
+      appendOption(remoteArgs, "--state-code", options.remoteStateCode || options.stateCode || "0");
       remoteVerifyStage = prewriteGateReady
         ? runTiangongJsonStage("remote_verify_precommit", remoteArgs)
         : skippedPrewriteStage(
@@ -780,6 +780,27 @@ export function createPostAuthoringFinalizeCommands({
     const locationDecisionApplyReportFile = resolveRepoPath(
       options.locationDecisionApplyReport || options.locationDecisionsApplyReport,
     );
+    const sourceContactSupportFinalizeRawBlockers = Number(
+      sourceContactSupportFinalize.counts?.blockers ?? 0,
+    );
+    const sourceContactSupportCommitHandoffRawBlockers = ensureArray(
+      sourceContactSupportFinalize.commit_handoff?.blockers,
+    ).length;
+    const sourceContactSupportFinalizeAdvisory = Boolean(
+      sourceContactSupportFinalizeRequested &&
+      sourceContactSupportFinalize.status === "blocked" &&
+      mutationManifest.status === "ready_for_remote_write" &&
+      Number(mutationManifest.counts?.blockers ?? 0) === 0,
+    );
+    const sourceContactSupportFinalizeStatus = sourceContactSupportFinalizeAdvisory
+      ? "advisory_blocked_top_level_remote_verified"
+      : sourceContactSupportFinalize.status;
+    const sourceContactSupportFinalizeBlockers = sourceContactSupportFinalizeAdvisory
+      ? 0
+      : sourceContactSupportFinalizeRawBlockers;
+    const sourceContactSupportCommitHandoffBlockers = sourceContactSupportFinalizeAdvisory
+      ? 0
+      : sourceContactSupportCommitHandoffRawBlockers;
     const stageReports = [
       {
         stage: "identity_preflight_run",
@@ -829,11 +850,8 @@ export function createPostAuthoringFinalizeCommands({
       },
       {
         stage: "source_contact_support_finalize",
-        status: sourceContactSupportFinalize.status,
-        exit_code:
-          sourceContactSupportFinalizeRequested && sourceContactSupportFinalize.counts?.blockers > 0
-            ? 1
-            : 0,
+        status: sourceContactSupportFinalizeStatus,
+        exit_code: sourceContactSupportFinalizeBlockers > 0 ? 1 : 0,
         command: sourceContactSupportFinalizeRequested
           ? "foundry.dataset-post-authoring-finalize"
           : "skipped",
@@ -991,14 +1009,16 @@ export function createPostAuthoringFinalizeCommands({
         source_contact_source_reference_rewrites:
           sourceContactRewriteStage.counts?.source_reference_rewrites ?? 0,
         source_contact_support_rows: sourceContactRewriteStage.counts?.support_rows ?? 0,
-        source_contact_support_finalize_status: sourceContactSupportFinalize.status,
+        source_contact_support_finalize_status: sourceContactSupportFinalizeStatus,
+        source_contact_support_finalize_raw_status: sourceContactSupportFinalize.status,
+        source_contact_support_finalize_advisory: sourceContactSupportFinalizeAdvisory,
         source_contact_support_finalize_write_candidates:
           sourceContactSupportFinalize.counts?.write_candidates ?? 0,
-        source_contact_support_finalize_blockers:
-          sourceContactSupportFinalize.counts?.blockers ?? 0,
-        source_contact_support_commit_handoff_blockers: ensureArray(
-          sourceContactSupportFinalize.commit_handoff?.blockers,
-        ).length,
+        source_contact_support_finalize_blockers: sourceContactSupportFinalizeBlockers,
+        source_contact_support_finalize_raw_blockers: sourceContactSupportFinalizeRawBlockers,
+        source_contact_support_commit_handoff_blockers: sourceContactSupportCommitHandoffBlockers,
+        source_contact_support_commit_handoff_raw_blockers:
+          sourceContactSupportCommitHandoffRawBlockers,
         canonical_support_input_rows: canonicalSupportRewriteStage.counts?.input_rows ?? null,
         canonical_support_output_rows: canonicalSupportRewriteStage.counts?.output_rows ?? null,
         canonical_support_deferred_rows: canonicalSupportRewriteStage.counts?.deferred_rows ?? 0,
@@ -1016,6 +1036,13 @@ export function createPostAuthoringFinalizeCommands({
         identity_preflight_run_skipped_existing:
           identityPreflightRunStage.report?.counts?.skipped_existing_report ?? 0,
         identity_preflight_run_failed: identityPreflightRunStage.report?.counts?.failed ?? 0,
+        identity_preflight_refresh_required: Boolean(identityPreflightRunStage.refresh_required),
+        identity_preflight_refresh_forced: Boolean(identityPreflightRunStage.refresh_forced),
+        identity_preflight_refresh_reason: identityPreflightRunStage.refresh_plan?.reason ?? null,
+        identity_preflight_refreshed_current_rows:
+          identityPreflightRunStage.refresh_report?.counts?.request_rows ?? 0,
+        identity_preflight_merge_replaced_rows:
+          identityPreflightRunStage.merge_report?.counts?.replaced_rows ?? 0,
         location_audit_blockers: locationAuditBlockers.length,
         location_code_targets: locationAuditStage.report?.counts?.location_targets ?? 0,
         location_code_invalid: locationAuditStage.report?.counts?.invalid ?? 0,
@@ -1135,7 +1162,7 @@ export function createPostAuthoringFinalizeCommands({
     const commitHandoffPlan = runDatasetCommitHandoffPlan({
       finalizeReport: reportPath,
       outDir: path.join(outDir, "commit-handoff"),
-      stateCode: options.commitStateCode ?? options.postWriteStateCode ?? options.stateCode,
+      stateCode: options.commitStateCode ?? options.postWriteStateCode ?? options.stateCode ?? "0",
       targetUserId: options.targetUserId,
       rootPolicy: options.postWriteRootPolicy || options.rootPolicy || options.remoteRootPolicy,
     });

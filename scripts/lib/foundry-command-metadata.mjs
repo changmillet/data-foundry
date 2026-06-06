@@ -624,6 +624,10 @@ export const commandMetadata = {
         "test/scenarios/post-authoring-finalize-gates.test.mjs",
         "post-authoring finalize declares external process flow refs for remote proof",
       ),
+      nodeTest(
+        "test/scenarios/post-authoring-finalize-gates.test.mjs",
+        "post-authoring finalize auto-builds curation queue context from sibling process bundle rows",
+      ),
     ],
   }),
   "dataset-commit-handoff-plan": metadata({
@@ -636,6 +640,10 @@ export const commandMetadata = {
       nodeTest(
         "test/scenarios/full-context-completion-closeout.test.mjs",
         "commit handoff blocks nonzero location audit blockers",
+      ),
+      nodeTest(
+        "test/scenarios/full-context-completion-closeout.test.mjs",
+        "process commit handoff defaults draft state code and records account guard",
       ),
     ],
   }),

@@ -1,4 +1,6 @@
+import fs from "node:fs";
 import path from "node:path";
+import { sha256Json } from "./import-curation/internal/hash-utils.mjs";
 
 export function createPostAuthoringFinalizeUtils({
   asText,
@@ -178,6 +180,98 @@ export function createPostAuthoringFinalizeUtils({
     return rows.length > 0 ? outFile : null;
   }
 
+  function readJsonIfExists(filePath) {
+    if (!filePath || !fileExists(filePath)) return null;
+    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+  }
+
+  function resolveIndexArtifact(indexPath, artifactPath) {
+    const text = asText(artifactPath);
+    if (!text) return null;
+    if (path.isAbsolute(text)) return text;
+    const repoPath = resolveRepoPath(text);
+    if (fileExists(repoPath)) return repoPath;
+    return path.resolve(path.dirname(indexPath), text);
+  }
+
+  function identityPreflightIndexTargetSha(indexPath, row) {
+    const direct = asText(row?.target_sha256 ?? row?.targetSha256);
+    if (direct) return direct;
+    const requestPath = resolveIndexArtifact(indexPath, row?.request_file ?? row?.requestFile);
+    const request = readJsonIfExists(requestPath);
+    return request?.target ? sha256Json(request.target) : null;
+  }
+
+  function currentScopeIdentityPreflightRefreshPlan({ datasetType, rowsFile, indexPath }) {
+    const normalizedType = String(datasetType || "").toLowerCase();
+    if (!["flow", "process"].includes(normalizedType)) {
+      return {
+        required: false,
+        reason: "dataset_type_not_identity_preflight_refreshable",
+        current_rows: 0,
+        index_rows: 0,
+        stale_rows: 0,
+        missing_rows: 0,
+        missing_target_hash_rows: 0,
+      };
+    }
+    const currentRows = readRowsFile(rowsFile);
+    const indexRows = readRowsFile(indexPath);
+    const indexByKey = new Map();
+    for (const row of indexRows) {
+      const type = String(row?.dataset_type ?? row?.type ?? "").toLowerCase();
+      const id = asText(row?.dataset_id ?? row?.entity_id ?? row?.id);
+      const version = asText(row?.dataset_version ?? row?.version) || "00.00.001";
+      if (!type || !id) continue;
+      indexByKey.set(`${type}:${id}@@${version}`, row);
+      if (!indexByKey.has(`${type}:${id}`)) {
+        indexByKey.set(`${type}:${id}`, row);
+      }
+    }
+
+    const staleRows = [];
+    const missingRows = [];
+    const missingTargetHashRows = [];
+    for (const payload of currentRows) {
+      const identity = datasetIdentity(payload, normalizedType);
+      if (!identity.id) continue;
+      const version = identity.version || "00.00.001";
+      const row =
+        indexByKey.get(`${normalizedType}:${identity.id}@@${version}`) ??
+        indexByKey.get(`${normalizedType}:${identity.id}`);
+      if (!row) {
+        missingRows.push({ id: identity.id, version });
+        continue;
+      }
+      const targetSha = identityPreflightIndexTargetSha(indexPath, row);
+      if (!targetSha) {
+        missingTargetHashRows.push({ id: identity.id, version });
+        continue;
+      }
+      const currentSha = sha256Json(payload);
+      if (targetSha !== currentSha) {
+        staleRows.push({
+          id: identity.id,
+          version,
+          request_target_sha256: targetSha,
+          current_payload_sha256: currentSha,
+        });
+      }
+    }
+    const required =
+      missingRows.length > 0 || missingTargetHashRows.length > 0 || staleRows.length > 0;
+    return {
+      required,
+      reason: required ? "current_scope_index_not_exact" : "current_scope_index_exact",
+      current_rows: currentRows.length,
+      index_rows: indexRows.length,
+      stale_rows: staleRows.length,
+      missing_rows: missingRows.length,
+      missing_target_hash_rows: missingTargetHashRows.length,
+      examples: [...missingRows, ...missingTargetHashRows, ...staleRows].slice(0, 5),
+    };
+  }
+
   function runFinalizeAutoCurationQueue({
     datasetType,
     rowsFile,
@@ -284,13 +378,22 @@ export function createPostAuthoringFinalizeUtils({
     }
     const refreshRequested =
       options.refreshIdentityPreflight === undefined
-        ? true
+        ? false
         : booleanOption(options.refreshIdentityPreflight);
+    const allowStaleIdentityPreflight = booleanOption(
+      options.allowStaleIdentityPreflight || options.allowStaleIdentityPreflightIndex,
+    );
+    const refreshPlan = currentScopeIdentityPreflightRefreshPlan({
+      datasetType: options.type,
+      rowsFile,
+      indexPath: baseIndexPath,
+    });
     let indexPath = baseIndexPath;
     let refreshReport = null;
     let mergeReport = null;
     if (
-      refreshRequested &&
+      !allowStaleIdentityPreflight &&
+      (refreshRequested || refreshPlan.required) &&
       ["flow", "process"].includes(String(options.type || "").toLowerCase())
     ) {
       const baseIndexHasSourceContext = readRowsFile(baseIndexPath).some((row) =>
@@ -355,8 +458,13 @@ export function createPostAuthoringFinalizeUtils({
       report_file: resolveRepoPath(report.files?.report),
       index_file: repoRelativeMaybe(indexPath),
       base_index_file: repoRelativeMaybe(baseIndexPath),
+      refresh_required: Boolean(!allowStaleIdentityPreflight && refreshPlan.required),
+      refresh_forced: Boolean(refreshRequested),
+      refresh_plan: refreshPlan,
       refresh_report_file: repoRelativeMaybe(resolveRepoPath(refreshReport?.files?.report)),
       merge_report_file: repoRelativeMaybe(resolveRepoPath(mergeReport?.files?.report)),
+      refresh_report: refreshReport,
+      merge_report: mergeReport,
     };
   }
 
