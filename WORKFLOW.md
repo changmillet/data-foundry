@@ -188,4 +188,4 @@ Foundry tests are organized by behavior layer, not by historical incident number
 - `test/scenarios/` for multi-command import workflows and gate behavior.
 - `test/fixtures/` for shared Foundry row, report, and command harness helpers.
 
-Use `npm test` for the full suite, or `npm run test:unit`, `npm run test:commands`, and `npm run test:scenarios` for targeted checks. Legacy aliases may point at these layers, but new tests should be named after the behavior they protect rather than `full-context-gate-N`.
+Use `npm test` for the full suite, or `npm run test:unit`, `npm run test:commands`, and `npm run test:scenarios` for targeted checks. New tests should be named after the behavior they protect rather than `full-context-gate-N`.

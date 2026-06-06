@@ -68,16 +68,7 @@ test("foundry command metadata is navigable and evidence backed", () => {
     assert.ok(entry.workflowEntry, `${entry.command} should declare workflowEntry audit state`);
     assert.ok(entry.workflowEntry.status, `${entry.command} workflowEntry should declare status`);
     assert.ok(entry.workflowEntry.entry_kind, `${entry.command} workflowEntry should declare entry_kind`);
-    if (entry.category === "candidate-deprecate") {
-      assert.equal(entry.workflowEntry.status, "candidate-deprecate");
-      assert.ok(
-        entry.deprecation?.deletionConditions?.length > 0,
-        `${entry.command} candidate-deprecate command should declare deletion conditions`,
-      );
-    } else {
-      assert.equal(entry.workflowEntry.status, "active", `${entry.command} should have active workflow audit state`);
-      assert.equal(entry.deprecation, null, `${entry.command} active command should not carry deprecation conditions`);
-    }
+    assert.equal(entry.workflowEntry.status, "active", `${entry.command} should have active workflow audit state`);
     for (const keyTest of entry.keyTests) {
       if (keyTest.path) {
         assert.ok(repoFileExists(keyTest.path), `${entry.command} key test path is missing: ${keyTest.path}`);

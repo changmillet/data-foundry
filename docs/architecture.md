@@ -89,6 +89,10 @@ profiles
    - keep unit tests, command contract tests, multi-command scenarios, and shared fixtures in the `test/README.md` layout
    - protect Foundry orchestration and artifact contracts locally without absorbing reusable CLI, skill, SDK, database, or Edge behavior
 
+8. Surface cleanup
+   - remove compatibility aliases, empty command categories, and draft orchestration references once current commands, metadata, tests, docs, and docpact show no remaining consumer
+   - keep historical or dataset-specific guidance only when it has an active route, profile, task, or retained reference role
+
 ## v0 Runtime
 
 The v0 runtime is intentionally small:

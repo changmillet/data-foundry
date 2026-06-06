@@ -125,6 +125,15 @@ Layer rules:
 Dependencies should point downward only. Internal low-level modules must not
 import semantic command modules.
 
+## Cleanup Checks
+
+Before deleting a Foundry-local surface, prove the current replacement path and
+check command metadata, tests, docs, and docpact coverage. Safe deletions include
+old npm aliases, empty metadata categories, and draft orchestration docs with no
+remaining consumer. Do not delete runtime skills, task templates, profile docs,
+or account-safety docs only because they are low-frequency; those may be agent
+entrypoints rather than code imports.
+
 ## Behavior Freeze
 
 The test tree is split by behavior layer:
@@ -139,7 +148,6 @@ Before and after structural changes, run:
 ```bash
 npm run golden:diff
 npm test
-npm run test:full-context-gate
 node scripts/foundry.mjs doctor
 git diff --check
 ```

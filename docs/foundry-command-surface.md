@@ -38,12 +38,9 @@ artifacts, workflow entry audit state, and key behavior checks.
 - `public`: stable operator-facing commands for runtime setup, diagnostics, task routing, profile listing, and task state.
 - `workflow-internal`: Foundry policy or artifact helpers used inside the import/authoring workflow.
 - `cli-wrapper`: compatibility wrappers over sibling `tiangong-lca` CLI behavior that Foundry does not own.
-- `candidate-deprecate`: commands that may be deprecated only after evidence shows no command, test, doc, or artifact dependency still requires them.
 
-Every non-deprecated command must have `workflowEntry.status: "active"` and at
-least one key behavior check. A `candidate-deprecate` command must instead carry
-explicit `deprecation.deletionConditions`, so unused surface area cannot hide as
-an unreviewed command.
+Every command must have `workflowEntry.status: "active"` and at least one key
+behavior check, so unused surface area cannot hide as an unreviewed command.
 
 ## Navigation Contract
 

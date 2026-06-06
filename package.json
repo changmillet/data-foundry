@@ -26,7 +26,6 @@
     "test:unit": "node --test \"test/unit/*.test.mjs\"",
     "test:commands": "node --test \"test/commands/*.test.mjs\"",
     "test:scenarios": "node --test \"test/scenarios/*.test.mjs\"",
-    "test:full-context-gate": "npm run test:scenarios",
     "golden:diff": "node scripts/foundry-golden-diff.mjs",
     "tasks:list": "node scripts/foundry.mjs tasks-list",
     "tasks:check": "node scripts/foundry.mjs tasks-check",

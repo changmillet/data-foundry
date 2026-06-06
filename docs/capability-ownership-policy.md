@@ -91,6 +91,8 @@ Treat a capability as foundry-specific when all of these are true:
 
 Foundry tests follow the same boundary. Unit tests cover local metadata and helpers, command tests cover Foundry command artifacts, scenario tests cover multi-command orchestration, and fixtures remain local harness data rather than fake implementations of sibling project ownership.
 
+Deletion follows the same ownership rule. Remove Foundry-local aliases, empty categories, draft docs, or helpers only after command metadata, import references, tests, docs, and docpact show no remaining Foundry-owned consumer. If the surface is a shared CLI/skill/database concern, route the cleanup to the owning project instead of deleting local evidence first.
+
 ## Follow-Up Requirement
 
 Every missing shared capability follow-up must include:

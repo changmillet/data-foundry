@@ -2,7 +2,6 @@ export const commandCategories = [
   "public",
   "workflow-internal",
   "cli-wrapper",
-  "candidate-deprecate",
 ];
 
 const commandSmoke = (command) => ({
@@ -43,11 +42,6 @@ function workflowEntryForCategory(category) {
         status: "active",
         entry_kind: "sibling_cli_policy_wrapper",
       };
-    case "candidate-deprecate":
-      return {
-        status: "candidate-deprecate",
-        entry_kind: "pending_deprecation_review",
-      };
     default:
       return {
         status: "unknown",
@@ -64,7 +58,6 @@ function metadata({
   outputs,
   keyTests,
   workflowEntry,
-  deprecation = null,
 }) {
   return {
     category,
@@ -79,7 +72,6 @@ function metadata({
     outputs,
     keyTests,
     workflowEntry: workflowEntry ?? workflowEntryForCategory(category),
-    deprecation,
   };
 }
 

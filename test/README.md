@@ -42,5 +42,3 @@ Test files should name the behavior surface they cover, for example `post-author
 - `npm run test:unit`: run pure logic and metadata tests.
 - `npm run test:commands`: run command contract tests.
 - `npm run test:scenarios`: run workflow scenario tests.
-
-The legacy `npm run test:full-context-gate` alias intentionally points to scenario tests while older gate regressions are being retained under behavior-based names.
