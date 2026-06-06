@@ -183,6 +183,130 @@ export function semanticActionItem({
   };
 }
 
+export function textValue(value) {
+  if (value === undefined || value === null) return "";
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) return value.map(textValue).filter(Boolean).join(" | ");
+  if (typeof value !== "object") return "";
+  const direct = value["#text"] ?? value.text ?? value.value;
+  if (direct !== undefined && direct !== value) return textValue(direct);
+  return Object.entries(value)
+    .filter(([key]) => !key.startsWith("@"))
+    .map(([, child]) => textValue(child))
+    .filter(Boolean)
+    .join(" | ");
+}
+
+export function isPlaceholderishText(value, { allowNone = false } = {}) {
+  const text = textValue(value);
+  if (!text) return true;
+  if (allowNone && /^none$/iu.test(text)) return false;
+  return /^(na|n\/a|not specified|not declared|unspecified|undefined|-|--|unknown)$/iu.test(text);
+}
+
+export function hasMeaningfulFieldValue(value) {
+  return !isPlaceholderishText(value);
+}
+
+export function sourceTracePayloads(value) {
+  const payloads = [];
+  const visit = (node) => {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) {
+      for (const item of node) visit(item);
+      return;
+    }
+    const trace = node["tidasimport:sourceTrace"];
+    if (trace && typeof trace === "object" && !Array.isArray(trace) && trace.payload) {
+      payloads.push(trace.payload);
+    }
+    for (const child of Object.values(node)) visit(child);
+  };
+  visit(value);
+  return payloads;
+}
+
+export function traceObjectsNamed(value, names) {
+  const wanted = new Set(
+    ensureArray(names)
+      .map((name) => asText(name))
+      .filter(Boolean),
+  );
+  const found = [];
+  const visit = (node, pathParts = []) => {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) {
+      node.forEach((item, index) => visit(item, [...pathParts, String(index)]));
+      return;
+    }
+    const name = asText(node.name);
+    if (wanted.has(name) && Array.isArray(node.attributes)) {
+      found.push({ node, trace_path: pathParts.join(".") || "<root>" });
+    }
+    for (const [key, child] of Object.entries(node)) visit(child, [...pathParts, key]);
+  };
+  for (const payload of ensureArray(value)) visit(payload);
+  return found;
+}
+
+export function traceAttributeMap(traceObject) {
+  return new Map(
+    ensureArray(traceObject?.attributes)
+      .map((attribute) => [asText(attribute?.name), textValue(attribute?.value)])
+      .filter(([name, value]) => name && value),
+  );
+}
+
+export function firstTraceAttribute(payloads, objectNames, attributeNames, options = {}) {
+  const names = ensureArray(attributeNames)
+    .map((name) => asText(name))
+    .filter(Boolean);
+  for (const traceObject of traceObjectsNamed(payloads, objectNames)) {
+    const attributes = traceAttributeMap(traceObject.node);
+    for (const name of names) {
+      const value = attributes.get(name);
+      if (value && !isPlaceholderishText(value, options)) {
+        return {
+          object_name: asText(traceObject.node.name),
+          attribute_name: name,
+          value,
+          trace_path: traceObject.trace_path,
+        };
+      }
+    }
+  }
+  return null;
+}
+
+export function sourceTraceLanguage(payloads, fallback = "en") {
+  return (
+    firstTraceAttribute(payloads, "dataSetInformation", "localLanguageCode")?.value ||
+    firstTraceAttribute(payloads, "dataSetInformation", "languageCode")?.value ||
+    fallback
+  )
+    .slice(0, 8)
+    .toLowerCase();
+}
+
+export function multiLangSuggestion(value, language = "en") {
+  return {
+    "@xml:lang": language || "en",
+    "#text": textValue(value),
+  };
+}
+
+export function sourceTraceEvidence(attribute, extra = {}) {
+  return {
+    source: "tidasimport:sourceTrace",
+    trace_path: attribute?.trace_path ?? null,
+    object_name: attribute?.object_name ?? null,
+    attribute_name: attribute?.attribute_name ?? null,
+    value: attribute?.value ?? null,
+    ...extra,
+  };
+}
+
 export function collectTextQualitySemanticActions(payload, datasetType) {
   const entries = collectTextEntries(payload);
   const actions = [];
@@ -353,6 +477,286 @@ export function collectClassificationSemanticActions(
     );
   }
   return actions;
+}
+
+export function effectiveContentDatasetType(payload, datasetType) {
+  if (payload?.processDataSet) return "process";
+  if (payload?.flowDataSet) return "flow";
+  if (payload?.sourceDataSet) return "source";
+  if (payload?.contactDataSet) return "contact";
+  return datasetType;
+}
+
+export function contentSaturationAction({
+  datasetType,
+  code,
+  path: itemPath,
+  message,
+  evidence,
+  instruction,
+  common_other_deferral_allowed = false,
+}) {
+  return {
+    ...semanticActionItem({
+      code,
+      path: itemPath,
+      message,
+      evidence,
+      instruction,
+      common_other_deferral_allowed,
+    }),
+    dataset_type: datasetType,
+    saturation_gate: true,
+  };
+}
+
+export function collectProcessContentSaturationActions(payload) {
+  const root = datasetRoot(payload, "process");
+  const info = root?.processInformation?.dataSetInformation ?? {};
+  const representativeness =
+    root?.modellingAndValidation?.dataSourcesTreatmentAndRepresentativeness ?? {};
+  const traces = sourceTracePayloads(payload);
+  if (traces.length === 0) return [];
+
+  const actions = [];
+  const localName = firstTraceAttribute(traces, "referenceFunction", "localName");
+  if (localName && !hasMeaningfulFieldValue(info["common:synonyms"])) {
+    const language = sourceTraceLanguage(traces, "de");
+    actions.push(
+      contentSaturationAction({
+        datasetType: "process",
+        code: "semantic_content_saturation_process_synonyms_missing",
+        path: "processDataSet.processInformation.dataSetInformation.common:synonyms",
+        message:
+          "Source trace contains a local/alternative process name, but process synonyms are empty.",
+        evidence: sourceTraceEvidence(localName, {
+          suggested_value: multiLangSuggestion(localName.value, language),
+        }),
+        instruction:
+          "Use source trace and TIDAS process schema semantics to add the source-local process name as common:synonyms. Preserve the source language; do not invent translations.",
+      }),
+    );
+  }
+
+  const percent = firstTraceAttribute(traces, "representativeness", "percent");
+  if (percent && !hasMeaningfulFieldValue(representativeness.percentageSupplyOrProductionCovered)) {
+    actions.push(
+      contentSaturationAction({
+        datasetType: "process",
+        code: "semantic_content_saturation_process_percentage_missing",
+        path: "processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.percentageSupplyOrProductionCovered",
+        message:
+          "Source trace contains representativeness.percent, but percentageSupplyOrProductionCovered is empty.",
+        evidence: sourceTraceEvidence(percent, { suggested_value: percent.value }),
+        instruction:
+          "Fill percentageSupplyOrProductionCovered from representativeness.percent when the value is physically meaningful for the represented market/location.",
+      }),
+    );
+  }
+
+  const uncertaintyAdjustments = firstTraceAttribute(
+    traces,
+    "representativeness",
+    "uncertaintyAdjustments",
+    { allowNone: true },
+  );
+  if (
+    uncertaintyAdjustments &&
+    !hasMeaningfulFieldValue(representativeness.uncertaintyAdjustments)
+  ) {
+    actions.push(
+      contentSaturationAction({
+        datasetType: "process",
+        code: "semantic_content_saturation_process_uncertainty_adjustments_missing",
+        path: "processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.uncertaintyAdjustments",
+        message:
+          "Source trace contains uncertainty adjustment information, but uncertaintyAdjustments is empty.",
+        evidence: sourceTraceEvidence(uncertaintyAdjustments, {
+          suggested_value: multiLangSuggestion(uncertaintyAdjustments.value, "en"),
+        }),
+        instruction:
+          "Fill uncertaintyAdjustments from source trace when the source explicitly states a value such as none; preserve source wording.",
+      }),
+    );
+  }
+  return actions;
+}
+
+export function flowReferencePropertyNames(root) {
+  return ensureArray(root?.flowProperties?.flowProperty)
+    .map((property) =>
+      textValue(
+        property?.referenceToFlowPropertyDataSet?.["common:shortDescription"] ??
+          property?.referenceToFlowPropertyDataSet?.shortDescription,
+      ),
+    )
+    .filter(Boolean);
+}
+
+export function collectFlowContentSaturationActions(payload) {
+  const root = datasetRoot(payload, "flow");
+  const info = root?.flowInformation?.dataSetInformation ?? {};
+  const traces = sourceTracePayloads(payload);
+  const actions = [];
+  const location = firstTraceAttribute(traces, "exchange", "location");
+  if (location && !hasMeaningfulFieldValue(root?.flowInformation?.geography?.locationOfSupply)) {
+    actions.push(
+      contentSaturationAction({
+        datasetType: "flow",
+        code: "semantic_content_saturation_flow_location_of_supply_missing",
+        path: "flowDataSet.flowInformation.geography.locationOfSupply",
+        message: "Source trace contains exchange.location, but flow locationOfSupply is empty.",
+        evidence: sourceTraceEvidence(location, {
+          suggested_value: multiLangSuggestion(location.value, "en"),
+        }),
+        instruction:
+          "Fill locationOfSupply with the source-backed TIDAS/ILCD location code when it is a valid location code. If the trace value is not a valid code, keep the scope blocked for location authoring.",
+      }),
+    );
+  }
+
+  const propertyNames = flowReferencePropertyNames(root);
+  if (propertyNames.length > 0 && !hasMeaningfulFieldValue(info.name?.flowProperties)) {
+    actions.push(
+      contentSaturationAction({
+        datasetType: "flow",
+        code: "semantic_content_saturation_flow_quantitative_properties_missing",
+        path: "flowDataSet.flowInformation.dataSetInformation.name.flowProperties",
+        message:
+          "Flow reference property evidence exists, but the name.flowProperties descriptor is empty.",
+        evidence: {
+          source: "flowDataSet.flowProperties.flowProperty.referenceToFlowPropertyDataSet",
+          reference_flow_properties: propertyNames,
+          suggested_value: multiLangSuggestion(propertyNames.join(", "), "en"),
+        },
+        instruction:
+          "Fill the TIDAS flow name.flowProperties descriptor from the referenced quantitative flow property names when the values are not redundant with the base name.",
+      }),
+    );
+  }
+
+  const generalComment = firstTraceAttribute(traces, "exchange", "generalComment", {
+    allowNone: true,
+  });
+  if (generalComment && !hasMeaningfulFieldValue(info["common:generalComment"])) {
+    actions.push(
+      contentSaturationAction({
+        datasetType: "flow",
+        code: "semantic_content_saturation_flow_general_comment_missing",
+        path: "flowDataSet.flowInformation.dataSetInformation.common:generalComment",
+        message: "Source trace contains exchange.generalComment, but flow generalComment is empty.",
+        evidence: sourceTraceEvidence(generalComment, {
+          suggested_value: multiLangSuggestion(generalComment.value, "en"),
+        }),
+        instruction:
+          "Promote source-backed exchange generalComment into the product/waste flow comment when it describes the flow meaning, assumptions, or geography; otherwise preserve a structured reason in patch evidence.",
+      }),
+    );
+  }
+  return actions;
+}
+
+export function collectSourceContentSaturationActions(payload) {
+  const root = datasetRoot(payload, "source");
+  const info = root?.sourceInformation?.dataSetInformation ?? {};
+  const traces = sourceTracePayloads(payload);
+  if (traces.length === 0) return [];
+  const sourceObjects = traceObjectsNamed(traces, "source");
+  if (sourceObjects.length === 0) return [];
+  const description = textValue(info.sourceDescriptionOrComment);
+  const requiredAttributes = [
+    "firstAuthor",
+    "additionalAuthors",
+    "year",
+    "title",
+    "titleOfAnthology",
+    "placeOfPublications",
+    "publisher",
+    "volumeNo",
+  ];
+  const missing = [];
+  for (const traceObject of sourceObjects) {
+    const attributes = traceAttributeMap(traceObject.node);
+    for (const attributeName of requiredAttributes) {
+      const value = attributes.get(attributeName);
+      if (!value || isPlaceholderishText(value)) continue;
+      if (!description.toLowerCase().includes(value.toLowerCase())) {
+        missing.push({
+          object_name: asText(traceObject.node.name),
+          attribute_name: attributeName,
+          value,
+          trace_path: traceObject.trace_path,
+        });
+      }
+    }
+  }
+  if (missing.length === 0) return [];
+  return [
+    contentSaturationAction({
+      datasetType: "source",
+      code: "semantic_content_saturation_source_description_incomplete",
+      path: "sourceDataSet.sourceInformation.dataSetInformation.sourceDescriptionOrComment",
+      message:
+        "Source trace contains bibliographic fields that are not represented in sourceDescriptionOrComment.",
+      evidence: {
+        source: "tidasimport:sourceTrace",
+        missing_bibliographic_fields: missing,
+        current_description: description || null,
+      },
+      instruction:
+        "Expand sourceDescriptionOrComment from the trace-backed bibliographic fields in one evidence-backed patch. Preserve source wording and do not invent DOI/URL values that are absent from context.",
+    }),
+  ];
+}
+
+export function collectContactContentSaturationActions(payload, { profile = null } = {}) {
+  const root = datasetRoot(payload, "contact");
+  const info = root?.contactInformation?.dataSetInformation ?? {};
+  if (asText(profile?.id).toLowerCase() !== "bafu") return [];
+  const name = textValue(info["common:name"] ?? info["common:shortName"]);
+  if (!/\b(BAFU|FOEN|Federal Office for the Environment)\b/iu.test(name)) return [];
+  const required = [
+    ["WWWAddress", "contactDataSet.contactInformation.dataSetInformation.WWWAddress"],
+    ["email", "contactDataSet.contactInformation.dataSetInformation.email"],
+    ["telephone", "contactDataSet.contactInformation.dataSetInformation.telephone"],
+    ["contactAddress", "contactDataSet.contactInformation.dataSetInformation.contactAddress"],
+    [
+      "centralContactPoint",
+      "contactDataSet.contactInformation.dataSetInformation.centralContactPoint",
+    ],
+  ].filter(([field]) => !hasMeaningfulFieldValue(info[field]));
+  if (required.length === 0) return [];
+  return [
+    contentSaturationAction({
+      datasetType: "contact",
+      code: "semantic_content_saturation_bafu_contact_incomplete",
+      path: "contactDataSet.contactInformation.dataSetInformation",
+      message:
+        "BAFU/FOEN library contact is missing one or more official contact fields required by the BAFU import profile.",
+      evidence: {
+        contact_name: name,
+        missing_fields: required.map(([field, itemPath]) => ({ field, path: itemPath })),
+        profile_source: "docs/import-profiles/bafu/constraints.md",
+      },
+      instruction:
+        "Fill the shared BAFU/FOEN contact fields from the profile-approved official contact evidence: website, email, telephone, postal address, and central contact point.",
+    }),
+  ];
+}
+
+export function collectContentSaturationSemanticActions(
+  payload,
+  datasetType,
+  { profile = null } = {},
+) {
+  const effectiveDatasetType = effectiveContentDatasetType(payload, datasetType);
+  if (effectiveDatasetType === "process") return collectProcessContentSaturationActions(payload);
+  if (effectiveDatasetType === "flow") return collectFlowContentSaturationActions(payload);
+  if (effectiveDatasetType === "source") return collectSourceContentSaturationActions(payload);
+  if (effectiveDatasetType === "contact") {
+    return collectContactContentSaturationActions(payload, { profile });
+  }
+  return [];
 }
 
 export function collectProcessExchangeSemanticActions(payload) {
@@ -535,6 +939,7 @@ export function collectProfileSemanticActionItems({
       profile,
       hasClassificationQueueContext,
     }),
+    ...collectContentSaturationSemanticActions(payload, datasetType, { profile }),
     ...collectFlowReuseSemanticActions(payload, datasetType),
     ...(datasetType === "process" ? collectProcessExchangeSemanticActions(payload) : []),
     ...collectFoundryTraceSemanticActions(payload, datasetType),

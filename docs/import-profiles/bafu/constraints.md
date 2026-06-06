@@ -196,7 +196,7 @@ related:
 ## Contact 与归属约束
 
 - BAFU 2025 数据导入不得继续使用占位联系人，例如 `BAFU 2025 package import contact`。
-- BAFU contact 可以由 AI 生成/修复，但只能作为一次性的 canonical support authoring task，而不是每个 bundle 自由生成。AI 任务必须带 FOEN/BAFU 官方来源证据、当前转换 contact payload、SDK/schema、profile constraints 和固定 UUID/version；输出必须经过 patch collect/apply、schema/name-plan/location/manifest/readback 门禁后再被所有 bundle 复用。
+- BAFU contact 可以由 AI 生成/修复，且必须作为一次性的 canonical support authoring task 被所有 bundle 复用。AI 任务必须带 FOEN/BAFU 官方来源证据、当前转换 contact payload、SDK/schema、profile constraints 和固定 UUID/version；输出必须经过 patch collect/apply、schema/name-plan/location/manifest/readback 门禁后再被所有 bundle 复用。
 - 本批 BAFU / FOEN 数据的 canonical contact 使用：
   - UUID：`a6db11f5-1cb4-579a-b503-bd17c361b8c2`
   - version：`00.00.001`
@@ -224,8 +224,9 @@ related:
 - 若源数据没有单独声明地理或供应场景字段，只能在 generalComment、mapping 或其他 provenance 字段说明，不得写入 `name.mixAndLocationTypes` 或任何 `name.*` 字段。`name.mixAndLocationTypes` 必须是可得性/地点/组合类型的名称片段，例如 `at plant {RER}`、`at grid {ENTSO-E}`、`at user {CH}`、`production mix, Switzerland {CH}`；无法从证据拆出时应形成 review blocker。
 - process 正文中的通用字段缺失、补齐或代表性说明应使用“源数据”而不是反复写 “EcoSpold1”，例如 `源数据未声明...`、`基于源数据定量参考流...`、`源数据的 startDate/endDate...`。但用于溯源的具体证据必须保留原始格式名，例如 exchange generalComment 中的 `Source EcoSpold1 exchange number`、源包未声明 ILCD compliance system 的 dataEntryBy provenance、以及明确说明由 EcoSpold1 转换的 intended application。
 - 可见业务字段不得保留导入占位或源系统噪声：`xx`、`{GLO}` 这类未拆分 name token、`Not declared in source package`、`Not specified by the BAFU ecoSpold1 source.`、`No ... BAFU ecoSpold1 source.`、本地路径、zip 内路径等必须进入 Foundry AI authoring action item。若字段确实未知，用户可见文本只写 `Not specified` 或按 schema 省略；BAFU/ecoSpold 只作为 provenance/evidence，不作为业务字段 filler。
+- BAFU 的 full-context AI completion 要求写入规划前完成内容字段饱和。`tidasimport:sourceTrace`、TIDAS schema/YAML、分类/location schema 或 profile context 能证明正式字段值时，必须在同一次 AI authoring package 中尽量补全，不能先写库再靠人工巡检补。典型字段包括 process `common:synonyms`、`percentageSupplyOrProductionCovered`、`uncertaintyAdjustments`，flow `locationOfSupply`、`name.flowProperties`、source-backed `common:generalComment`，source `sourceDescriptionOrComment` 中的作者/年份/标题/出版地/出版社/卷号，以及 FOEN/BAFU contact 的官网、邮箱、电话、地址和 central contact point。无法证明或候选冲突时才 block/review；可证明字段缺失时 curation gate 必须阻断。
 - `common:other` 只能保存不能安全推断的 provenance/trace，不得替代 schema 必填字段或正式名称、functional unit、classification、reference flow 等业务字段。只有 action item 的 `allowed_resolution_modes` 明确包含 `deferred_to_common_other` 时，才允许延期；functional unit / classification / reference flow 这类正式字段必须补 evidence-backed 真值或保持阻塞。`annualSupplyOrProductionVolume` 是 schema 必填项，不得转入 `common:other`；若原始数据缺少年供应量，Foundry deterministic cleanup 写入 `9999 missing-data-sentinel/year`，这是有意无物理意义、便于批量查询定位的占位值，后续由数据库侧 curation 替换为真实值。允许 `resolution.mode=deferred_to_common_other` 的 action item 必须写入 `common:other.tiangongfoundry:unresolvedTrace`，且包含 `status`、`action_item_code`、`blocked_path`、`reason`、结构化 `evidence` 和 `next_action`；`evidence` 必须包含 source 以及 quote / trace / path / citation 等可追踪指针。
-- 最终 rows 中的 `common:other.tiangongfoundry:unresolvedTrace` 和 `common:other.tiangongfoundry:sourceExchangeCompleteness` 不能靠手工预置或 identity/classification/location 决策间接放行；mutation manifest 必须看到同一行的 AI patch evidence，或看到 cleanup report 为同一 final row 生成的确定性 proof。其中 unresolved trace 使用 `resolution.mode=deferred_to_common_other` 并关闭匹配 action item；source-only-output 接受使用 `resolution.mode=source_trace_verified`，或由 `dataset-curation-cleanup --source-rows-file <source rows>` 证明源 process row 本身 Output-only 且最终 row 保留非 `referenceToFlowDataSet` exchange signature。Commit handoff 必须先从最终 rows 推导这些 trace，并逐条匹配 mutation/finalize 保留的 trace queue JSONL；队列只存在或行数相等不够，stale/extra/missing trace 都不能生成可执行 commit 命令。Post-write closeout 必须在读回验证后复核同一覆盖关系。
+- 最终 rows 中的 `common:other.tiangongfoundry:unresolvedTrace` 和 `common:other.tiangongfoundry:sourceExchangeCompleteness` 必须由同一行的 AI patch evidence，或由 cleanup report 为同一 final row 生成的确定性 proof 放行；手工预置或 identity/classification/location 决策不能替代该证据。其中 unresolved trace 使用 `resolution.mode=deferred_to_common_other` 并关闭匹配 action item；source-only-output 接受使用 `resolution.mode=source_trace_verified`，或由 `dataset-curation-cleanup --source-rows-file <source rows>` 证明源 process row 本身 Output-only 且最终 row 保留非 `referenceToFlowDataSet` exchange signature。Commit handoff 必须先从最终 rows 推导这些 trace，并逐条匹配 mutation/finalize 保留的 trace queue JSONL；stale/extra/missing trace 都不能生成可执行 commit 命令。Post-write closeout 必须在读回验证后复核同一覆盖关系。
 - process / flow / lifecycle model 的 `name` 子字段是名称片段，不是 provenance 或字段缺失说明，不得写入 `源数据未声明...`、`no separate ... was declared...` 这类句子。若源数据未单独给出某个 name 子字段，应从源全名、分类、地理代码、技术描述和来源字段中做可辩护拆分；仍无法确定时形成 review blocker，或在非 name 的 provenance 字段说明，不得用说明句占位。
 - 所有 `name.*` LangText 中不得出现 `xx` / `xxx` / `XX` 等源数据标记或导入标记，不得出现 `TIDAS_IMPORT_PLACEHOLDER`、trace-only 文本、本地路径，也不得出现中文分号 `；` 或英文分号 `;`。TIDAS/ILCD name 子字段应使用逗号分隔的技术短语，不能使用分号连接说明句。
 - `name` / name-like display 字段必须先使用 `tidas-name-plan-authoring` skill + `tiangong-lca dataset name-plan extract/validate/apply` 流程生成 source-language `name_plan`。不能靠穷举词表、简单正则替换或 Foundry-local 字典脚本完成：
@@ -242,7 +243,7 @@ related:
 
 ## QA 与验证门禁
 
-- process 的 QA YAML 是质量门禁，不只是附属报告。必须至少检查：
+- process 的 QA YAML 是独立质量门禁，必须至少检查：
   - 必填字段是否结构和语义都完整；
   - 是否仍有 placeholder、trace-only 文本、本地路径；
   - flow 引用是否真实存在；

@@ -856,7 +856,7 @@ export function operationFullContextEvidenceBlockers({ operation, task }) {
     blockers.push({
       code: "patch_structured_evidence_required_full_context",
       message:
-        "Full-context AI patch operations must include structured evidence, not only a free-text basis.",
+        "Full-context AI patch operations require structured evidence; a free-text basis alone is invalid.",
     });
     return blockers;
   }

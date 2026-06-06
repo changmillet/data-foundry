@@ -234,11 +234,6 @@ test("full-context import completion gates block missing proof and pass evidence
     writeJson(supportMutationReport, {
       ...readJson(fixture.mutationWithProof),
       dataset_type: "support",
-      evidence: {},
-      counts: {
-        ...readJson(fixture.mutationWithProof).counts,
-        ai_patch_evidence_entries: 0,
-      },
     });
     writeJson(supportCloseoutReport, {
       ...passedCloseout.json,
@@ -247,8 +242,8 @@ test("full-context import completion gates block missing proof and pass evidence
       mutation_manifest: rel(supportMutationReport),
       counts: {
         ...passedCloseout.json.counts,
-        full_context_ai_completion_required: false,
-        ai_patch_evidence_entries: 0,
+        full_context_ai_completion_required: true,
+        ai_patch_evidence_entries: 1,
       },
     });
 
@@ -271,6 +266,7 @@ test("full-context import completion gates block missing proof and pass evidence
       new Set(supportCompletion.json.dataset_types),
       new Set(["process", "support"]),
     );
+    assert.equal(supportCompletion.json.counts.full_context_scopes, 2);
 
     const passedCompletion = runFoundry([
       "dataset-import-completion-report",

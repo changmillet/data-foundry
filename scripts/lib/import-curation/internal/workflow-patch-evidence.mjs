@@ -507,6 +507,7 @@ export function locationCodeFromOperation(operation) {
         value.location ??
         value["@location"] ??
         value["@subLocation"] ??
+        value["#text"] ??
         value.impactLocation ??
         value.interventionLocation ??
         value.intervensionSubLocation ??

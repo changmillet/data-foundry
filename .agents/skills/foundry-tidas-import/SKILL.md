@@ -347,5 +347,5 @@ npm run task:complete -- \
 - Database candidate search, reference refresh, write execution, and readback are CLI or shared-skill responsibilities.
 - Use query/search skills only as evidence or candidate-discovery helpers, and only when their outputs are captured into Foundry artifacts.
 - Do not harden hybrid-search skills into this Foundry `.agents/skills` tree. If Foundry needs a stable data access capability, add or extend a public CLI command first, then call that command from this skill.
-- A successful HTTP response is not enough. Completion requires post-write remote verification with root payload comparison, then `dataset-post-write-closeout` with equal local/remote payload hashes and matching owner/state evidence.
-- A single successful closeout is not enough for a multi-scope import. Use `dataset-import-completion-report` to aggregate all closeouts and preserve trace queues before marking the task complete; duplicate closeouts for the same final rows are not additional scope evidence.
+- Completion requires post-write remote verification with root payload comparison, then `dataset-post-write-closeout` with equal local/remote payload hashes and matching owner/state evidence.
+- Multi-scope imports require `dataset-import-completion-report` to aggregate all closeouts and preserve trace queues before marking the task complete; duplicate closeouts for the same final rows are not additional scope evidence.

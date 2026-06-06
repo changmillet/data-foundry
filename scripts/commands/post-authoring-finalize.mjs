@@ -238,9 +238,10 @@ export function createPostAuthoringFinalizeCommands({
     const supportTypes = ["contact", "source"];
     const mixedSupportTypes = ["support"];
     const authoredTypes = ["process", "flow", "lifecyclemodel"];
+    const curationGateTypes = [...supportTypes, ...mixedSupportTypes, ...authoredTypes];
     const supportedTypes = [...supportTypes, ...mixedSupportTypes, ...authoredTypes];
     const requiresDeterministicQa = authoredTypes.includes(datasetType);
-    const requiresCurationGate = authoredTypes.includes(datasetType);
+    const requiresCurationGate = curationGateTypes.includes(datasetType);
     if (options.help) {
       return {
         schema_version: 1,
@@ -250,7 +251,7 @@ export function createPostAuthoringFinalizeCommands({
           "node scripts/foundry.mjs dataset-post-authoring-finalize --type <support|contact|source|process|flow|lifecyclemodel> --rows-file <patched-or-classified-rows.jsonl> --out-dir <finalize-dir> --profile <profile> --queue-dir <queue-dir> --classification-queue <classification-authoring-queue.jsonl> --location-queue <location-authoring-queue.jsonl> --identity-preflight-index <identity-preflight-requests.jsonl> --run-identity-preflight --schema-file <schema.json> --yaml-file <methodology.yaml> --ruleset-file <ruleset.json> --classification-decision-apply-report <classification-decisions-apply-report.json> --location-decision-apply-report <location-decisions-apply-report.json> --patch-collect-report <authoring-patch-collect-report.json> --patch-apply-report <dataset-patch-apply-report.json> --require-patch-collect-report --target-user-id <uuid> --verify-remote --finalize-source-contact-support",
         ],
         purpose:
-          "Run the post-AI authoring prewrite chain for support, process, flow, or lifecyclemodel rows: cleanup, SDK validate, location audit, dry-run publish/save, optional remote reference verification, and mutation manifest. Process/flow/lifecyclemodel rows additionally run deterministic QA and post-authoring curation gate. This command never commits rows.",
+          "Run the post-AI authoring prewrite chain for support, process, flow, or lifecyclemodel rows: cleanup, SDK validate, location audit, post-authoring curation gate, dry-run publish/save, optional remote reference verification, and mutation manifest. Process/flow/lifecyclemodel rows additionally run deterministic QA. This command never commits rows.",
         ...postAuthoringFinalizeStageContract,
         supported_types: supportedTypes,
       };
@@ -484,6 +485,26 @@ export function createPostAuthoringFinalizeCommands({
               : "process-qa-report.json",
         ),
       );
+    } else {
+      const supportQaOutDir = path.join(outDir, "qa", datasetType);
+      const supportQaReportFile = path.join(supportQaOutDir, `${datasetType}-qa-report.json`);
+      const supportQaReport = {
+        schema_version: 1,
+        status: "not_required_for_support_rows",
+        dataset_type: datasetType,
+        findings: [],
+        blockers: [],
+        counts: {
+          blockers: 0,
+          findings: 0,
+        },
+        files: {
+          report: repoRelativePath(supportQaReportFile),
+        },
+      };
+      writeJson(supportQaReportFile, supportQaReport);
+      qaStage.report = supportQaReport;
+      qaStage.report_file = supportQaReportFile;
     }
 
     const locationAuditOutDir = path.join(outDir, "location-audit", datasetType);

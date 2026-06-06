@@ -116,7 +116,7 @@ npx --yes @tiangong-lca/cli@latest dataset curation-queue verify \
   --out-dir .foundry/workspaces/<task-id>/prewrite-evidence-gate
 ```
 
-The gate report must be `passed` and referenced by the stage 8 checkpoint. It must check action lineage for the current queue task, not only artifact filenames. It is not enough for a runtime script to write `checkpoints/*.json` or for schema validation, name-quality validation, remote dry-run, or readback verification to pass afterward. Those gates validate rows; they do not prove that the required entity closure and name-plan authoring steps actually happened.
+The gate report must be `passed` and referenced by the stage 8 checkpoint. It must check action lineage for the current queue task. Artifact filenames, runtime-written `checkpoints/*.json`, schema validation, name-quality validation, remote dry-run, and readback verification cannot substitute for required entity closure and name-plan authoring proof.
 
 If the gate is blocked, do not publish. Resume the missing support/flow/process entity tasks from their queue work directories and regenerate the affected stage checkpoints. Task-local report finalizers may summarize completed gates, but they must not synthesize passed checkpoints without the child artifacts named by the prewrite evidence gate.
 
