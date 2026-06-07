@@ -1,6 +1,6 @@
 import path from "node:path";
 import { identityKey } from "./dataset-payload.mjs";
-import { evidenceResolutionMode } from "./full-context-proof.mjs";
+import { evidenceResolutionMode, payloadSha256ByIdentityForRows } from "./full-context-proof.mjs";
 import { sha256Json, sha256Text } from "./hash-utils.mjs";
 import {
   asText,
@@ -92,25 +92,33 @@ export function readPatchApplyContext(repoRoot, patchApplyArtifact, patchEvidenc
     }
   }
 
+  const inputRowsFile = resolveRepoPath(
+    repoRoot,
+    report?.input_path ?? report?.inputPath ?? report?.files?.input_rows,
+  );
+  const outputRows = unique([
+    report?.out_path,
+    report?.outPath,
+    report?.output_path,
+    report?.outputPath,
+    report?.files?.patched_rows,
+    report?.files?.output_rows,
+  ])
+    .flatMap((filePath) => ensureArray(filePath))
+    .map((filePath) => resolveRepoPath(repoRoot, filePath))
+    .filter(Boolean);
+
   return {
     status: report?.status ?? "not_provided",
     report,
     reportPath,
-    inputRowsFile: resolveRepoPath(
+    inputRowsFile,
+    outputRows,
+    inputPayloadSha256ByIdentity: payloadSha256ByIdentityForRows(
       repoRoot,
-      report?.input_path ?? report?.inputPath ?? report?.files?.input_rows,
+      inputRowsFile ? [inputRowsFile] : [],
     ),
-    outputRows: unique([
-      report?.out_path,
-      report?.outPath,
-      report?.output_path,
-      report?.outputPath,
-      report?.files?.patched_rows,
-      report?.files?.output_rows,
-    ])
-      .flatMap((filePath) => ensureArray(filePath))
-      .map((filePath) => resolveRepoPath(repoRoot, filePath))
-      .filter(Boolean),
+    outputPayloadSha256ByIdentity: payloadSha256ByIdentityForRows(repoRoot, outputRows),
     evidenceFile,
     evidenceRows,
     byIdentity,

@@ -174,6 +174,7 @@ export function buildFullContextAiCompletionBlockers({
       requirement,
       classificationDecisionApplyArtifact,
       classificationDecisionApplyContext,
+      locationDecisionApplyContext,
       patchApplyContext,
       identityDecisionApplyContext,
       identityReferenceRewriteContext,

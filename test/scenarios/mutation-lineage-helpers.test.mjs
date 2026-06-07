@@ -49,7 +49,7 @@ test("rows artifact lineage accepts content-equivalent no-op transform files", (
   );
 });
 
-test("full-context lineage accepts deterministic source contact support and cleanup transforms", () => {
+test("full-context lineage accepts deterministic location patch source contact support and cleanup transforms", () => {
   const root = path.join(fixtureRoot, "source-contact-transform-lineage");
   fs.rmSync(root, { recursive: true, force: true });
   fs.mkdirSync(root, { recursive: true });
@@ -71,7 +71,17 @@ test("full-context lineage accepts deterministic source contact support and clea
     typeOfDataSet: "Product flow",
     classification,
   });
-  const identityApplied = JSON.parse(JSON.stringify(classified));
+  const located = JSON.parse(JSON.stringify(classified));
+  located.flowDataSet.flowInformation.geography = {
+    locationOfSupply: { "@location": "CH" },
+  };
+  const patched = JSON.parse(JSON.stringify(located));
+  patched.flowDataSet.flowInformation.name = {
+    baseName: { "#text": "Electricity" },
+    mixAndLocationTypes: { "#text": "Swiss production mix" },
+    flowProperties: { "#text": "Net calorific value" },
+  };
+  const identityApplied = JSON.parse(JSON.stringify(patched));
   const sourceContactRewritten = JSON.parse(JSON.stringify(identityApplied));
   sourceContactRewritten.flowDataSet.administrativeInformation.publicationAndOwnership[
     "common:referenceToOwnershipOfDataSet"
@@ -108,11 +118,15 @@ test("full-context lineage accepts deterministic source contact support and clea
   };
 
   const classifiedRows = path.join(root, "flows.classified.jsonl");
+  const locatedRows = path.join(root, "flows.located.jsonl");
+  const patchedRows = path.join(root, "flows.patched.jsonl");
   const identityRows = path.join(root, "flows.identity-applied.jsonl");
   const sourceContactRows = path.join(root, "flows.source-contact.jsonl");
   const canonicalRows = path.join(root, "flows.canonical-support.jsonl");
   const cleanedRows = path.join(root, "flows.cleaned.jsonl");
   writeJsonLines(classifiedRows, [classified]);
+  writeJsonLines(locatedRows, [located]);
+  writeJsonLines(patchedRows, [patched]);
   writeJsonLines(identityRows, [identityApplied]);
   writeJsonLines(sourceContactRows, [sourceContactRewritten]);
   writeJsonLines(canonicalRows, [canonicalSupportRewritten]);
@@ -161,11 +175,25 @@ test("full-context lineage accepts deterministic source contact support and clea
     inputPayloadSha256ByIdentity: new Map([[key, sha256Json(classified)]]),
     outputPayloadSha256ByIdentity: new Map([[key, sha256Json(classified)]]),
   };
-  const identityDecisionApplyContext = {
+  const locationDecisionApplyContext = {
     status: "completed",
     inputRows: [rel(classifiedRows)],
-    outputRows: [rel(identityRows)],
+    outputRows: [rel(locatedRows)],
     inputPayloadSha256ByIdentity: new Map([[key, sha256Json(classified)]]),
+    outputPayloadSha256ByIdentity: new Map([[key, sha256Json(located)]]),
+  };
+  const patchApplyContext = {
+    status: "completed",
+    inputRowsFile: rel(locatedRows),
+    outputRows: [rel(patchedRows)],
+    inputPayloadSha256ByIdentity: new Map([[key, sha256Json(located)]]),
+    outputPayloadSha256ByIdentity: new Map([[key, sha256Json(patched)]]),
+  };
+  const identityDecisionApplyContext = {
+    status: "completed",
+    inputRows: [rel(patchedRows)],
+    outputRows: [rel(identityRows)],
+    inputPayloadSha256ByIdentity: new Map([[key, sha256Json(patched)]]),
     outputPayloadSha256ByIdentity: new Map([[key, sha256Json(identityApplied)]]),
   };
 
@@ -174,6 +202,8 @@ test("full-context lineage accepts deterministic source contact support and clea
       repoRoot,
       context: classificationDecisionApplyContext,
       expectedRowsFile: rel(cleanedRows),
+      locationDecisionApplyContext,
+      patchApplyContext,
       identityDecisionApplyContext,
       sourceContactRewriteContext,
       canonicalSupportRewriteContext,
@@ -192,6 +222,8 @@ test("full-context lineage accepts deterministic source contact support and clea
       repoRoot,
       datasetType: "flow",
       identity: { id: flowId, version: "00.00.001" },
+      locationDecisionApplyContext,
+      patchApplyContext,
       identityDecisionApplyContext,
       sourceContactRewriteContext,
       canonicalSupportRewriteContext,

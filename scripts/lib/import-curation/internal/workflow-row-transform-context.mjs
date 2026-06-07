@@ -304,6 +304,8 @@ export function rowsFileTransformEntriesFromPatchApply(context) {
     kind: "patch_apply",
     inputRowsFile: context.inputRowsFile,
     outputRowsFile,
+    inputPayloadSha256ByIdentity: context.inputPayloadSha256ByIdentity,
+    outputPayloadSha256ByIdentity: context.outputPayloadSha256ByIdentity,
   }));
 }
 

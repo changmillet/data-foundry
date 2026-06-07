@@ -248,6 +248,7 @@ test("location decision task and apply route AI location choices through CLI loc
       templateRows[0].authoring_context.context_bundle_sha256,
     );
     assert.deepEqual(apply.files.output_rows, [rel(processOut)]);
+    assert.deepEqual(apply.files.input_rows, [rel(processRows)]);
 
     const locatedProcess = readJsonLines(processOut)[0];
     assert.equal(

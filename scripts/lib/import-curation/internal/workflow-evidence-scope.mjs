@@ -346,7 +346,7 @@ export function buildEvidenceScopeBlockers({
     }
   }
 
-  if (requirePatchCollectReport && !patchCollectArtifact) {
+  if (requirePatchCollectReport && patchApplyArtifact && !patchCollectArtifact) {
     blockers.push({
       code: "patch_collect_report_required",
       stage: "ai_patch_collect",

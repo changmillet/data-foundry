@@ -704,6 +704,7 @@ export function createLocationDecisionCommands({
       decisionTaskProof: decisionTaskProofs,
     });
     const stages = [];
+    const inputRows = [];
     const outputRows = [];
 
     if (blockers.length === 0 && queueRows.length > 0) {
@@ -728,6 +729,7 @@ export function createLocationDecisionCommands({
       }
 
       for (const group of queueRowsByInput.values()) {
+        inputRows.push(repoRelativePath(group.inputRows));
         const finalOutputRows = outputRowsForLocationGroup(
           group.rows,
           outDir,
@@ -795,6 +797,7 @@ export function createLocationDecisionCommands({
       stages: stages.map(compactStageReport),
       files: {
         report: repoRelativePath(reportPath),
+        input_rows: inputRows,
         output_rows: outputRows,
       },
     };
