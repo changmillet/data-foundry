@@ -11,6 +11,7 @@ import { createIdentityDecisionCommands } from "./commands/identity-decisions.mj
 import { createIdentityPreflightRunCommands } from "./commands/identity-preflight-run.mjs";
 import { createIdentityReferenceRewriteCommands } from "./commands/identity-reference-rewrites.mjs";
 import { createImportCompletionCommands } from "./commands/import-completion.mjs";
+import { createImportLedgerCommands } from "./commands/import-ledger.mjs";
 import { createLibraryScopeWorkflowCommands } from "./commands/library-scope-workflow.mjs";
 import { createPostAuthoringFinalizeCommands } from "./commands/post-authoring-finalize.mjs";
 import { createPostWriteCloseoutCommands } from "./commands/post-write-closeout.mjs";
@@ -36,6 +37,7 @@ import {
   runDatasetCurationGate,
   runDatasetMutationManifest,
 } from "./lib/import-curation.mjs";
+import { createImportLedgerUtils } from "./lib/import-ledger.mjs";
 import { createLocationQualityUtils } from "./lib/location-quality-utils.mjs";
 import { createPostAuthoringFinalizeUtils } from "./lib/post-authoring-finalize-utils.mjs";
 import { createSourceSemanticUtils } from "./lib/source-semantics.mjs";
@@ -309,6 +311,22 @@ const commitHandoffCommands = createCommitHandoffCommands({
   writeJson,
 });
 
+const importLedgerUtils = createImportLedgerUtils({
+  asText,
+  datasetIdentity,
+  fileExists,
+  nowIso,
+  readJson,
+  readJsonLines,
+  repoRelativePath,
+  resolveRepoPath,
+  writeJson,
+});
+
+const importLedgerCommands = createImportLedgerCommands({
+  runDatasetImportLedgerReport: importLedgerUtils.runDatasetImportLedgerReport,
+});
+
 const postWriteCloseoutCommands = createPostWriteCloseoutCommands({
   asText,
   countJsonLinesFile,
@@ -325,6 +343,7 @@ const postWriteCloseoutCommands = createPostWriteCloseoutCommands({
   resolveRepoPath,
   sameResolvedPath,
   validateTraceQueueCoverageForRows,
+  writeCloseoutImportLedger: importLedgerUtils.writeCloseoutImportLedger,
   writeJson,
 });
 
@@ -718,6 +737,7 @@ const postAuthoringFinalizeCommands = createPostAuthoringFinalizeCommands({
   sourceReferenceRewritesFileForRowsFile,
   readRowsFile,
   unique,
+  writeFinalizeImportLedger: importLedgerUtils.writeFinalizeImportLedger,
   writeJson,
   writeJsonLines,
 });
@@ -783,6 +803,7 @@ runFoundryCli({
     identityPreflightCommands,
     identityReferenceRewriteCommands,
     importCompletionCommands,
+    importLedgerCommands,
     libraryScopeWorkflowCommands,
     listImportProfiles,
     postAuthoringFinalizeCommands,

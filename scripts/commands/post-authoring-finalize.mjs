@@ -93,6 +93,7 @@ export function createPostAuthoringFinalizeCommands({
   skippedPrewriteStage,
   sourceReferenceRewritesFileForRowsFile,
   unique,
+  writeFinalizeImportLedger,
   writeJson,
   writeJsonLines,
 }) {
@@ -248,7 +249,7 @@ export function createPostAuthoringFinalizeCommands({
         status: "help",
         command: "dataset-post-authoring-finalize",
         usage: [
-          "node scripts/foundry.mjs dataset-post-authoring-finalize --type <support|contact|source|process|flow|lifecyclemodel> --rows-file <patched-or-classified-rows.jsonl> --out-dir <finalize-dir> --profile <profile> --queue-dir <queue-dir> --classification-queue <classification-authoring-queue.jsonl> --location-queue <location-authoring-queue.jsonl> --identity-preflight-index <identity-preflight-requests.jsonl> --run-identity-preflight --schema-file <schema.json> --yaml-file <methodology.yaml> --ruleset-file <ruleset.json> --classification-decision-apply-report <classification-decisions-apply-report.json> --location-decision-apply-report <location-decisions-apply-report.json> --patch-collect-report <authoring-patch-collect-report.json> --patch-apply-report <dataset-patch-apply-report.json> --require-patch-collect-report --target-user-id <uuid> --verify-remote --finalize-source-contact-support",
+          "node scripts/foundry.mjs dataset-post-authoring-finalize --type <support|contact|source|process|flow|lifecyclemodel> --rows-file <patched-or-classified-rows.jsonl> --out-dir <finalize-dir> --profile <profile> --queue-dir <queue-dir> --classification-queue <classification-authoring-queue.jsonl> --location-queue <location-authoring-queue.jsonl> --identity-preflight-index <identity-preflight-requests.jsonl> --run-identity-preflight --schema-file <schema.json> --yaml-file <methodology.yaml> --ruleset-file <ruleset.json> --classification-decision-apply-report <classification-decisions-apply-report.json> --location-decision-apply-report <location-decisions-apply-report.json> --patch-collect-report <authoring-patch-collect-report.json> --patch-apply-report <dataset-patch-apply-report.json> --require-patch-collect-report --target-user-id <uuid> --verify-remote --finalize-source-contact-support --ledger-dir <task-import-ledger-dir>",
         ],
         purpose:
           "Run the post-AI authoring prewrite chain for support, process, flow, or lifecyclemodel rows: cleanup, SDK validate, location audit, post-authoring curation gate, dry-run publish/save, optional remote reference verification, and mutation manifest. Process/flow/lifecyclemodel rows additionally run deterministic QA. This command never commits rows.",
@@ -1166,7 +1167,7 @@ export function createPostAuthoringFinalizeCommands({
       targetUserId: options.targetUserId,
       rootPolicy: options.postWriteRootPolicy || options.rootPolicy || options.remoteRootPolicy,
     });
-    const finalReport = {
+    const finalReportBase = {
       ...report,
       counts: {
         ...report.counts,
@@ -1181,6 +1182,26 @@ export function createPostAuthoringFinalizeCommands({
       files: {
         ...report.files,
         commit_handoff_plan: commitHandoffPlan.files?.report ?? null,
+      },
+    };
+    const importLedger = writeFinalizeImportLedger
+      ? writeFinalizeImportLedger({
+          report: finalReportBase,
+          reportPath,
+          ledgerDir: resolveRepoPath(
+            options.ledgerDir || options.importLedgerDir || path.join(outDir, "import-ledger"),
+          ),
+        })
+      : { status: "skipped", files: {}, counts: { entries_written: 0 } };
+    const finalReport = {
+      ...finalReportBase,
+      counts: {
+        ...finalReportBase.counts,
+        import_ledger_entries: importLedger.counts?.entries_written ?? 0,
+      },
+      files: {
+        ...finalReportBase.files,
+        import_ledger: importLedger.files ?? {},
       },
     };
     writeJson(reportPath, finalReport);

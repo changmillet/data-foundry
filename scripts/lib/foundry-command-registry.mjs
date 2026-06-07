@@ -44,6 +44,7 @@ export const datasetPolicyCommands = [
   "dataset-commit-handoff-plan",
   "dataset-post-write-closeout",
   "dataset-import-completion-report",
+  "dataset-import-ledger-report",
   "dataset-mutation-manifest",
 ];
 
@@ -132,7 +133,15 @@ export function exitCodeForCommand(command, result) {
     case "dataset-support-cache-refresh":
     case "dataset-post-write-closeout":
     case "dataset-import-completion-report":
-      return statusIs(result, ["help", "completed", "completed_with_deferred_scopes"]) ? 0 : 1;
+    case "dataset-import-ledger-report":
+      return statusIs(result, [
+        "help",
+        "completed",
+        "completed_with_deferred_scopes",
+        "completed_with_blocked_scopes",
+      ])
+        ? 0
+        : 1;
     case "dataset-location-decision-task-build":
       return statusIs(result, [
         "help",

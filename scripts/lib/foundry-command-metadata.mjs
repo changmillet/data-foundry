@@ -678,6 +678,23 @@ export const commandMetadata = {
       ),
     ],
   }),
+  "dataset-import-ledger-report": metadata({
+    category: "workflow-internal",
+    ownerModule: "scripts/commands/import-ledger.mjs",
+    ownerExport: "createImportLedgerCommands().runDatasetImportLedgerReport",
+    inputs: ["task import ledger directory with ok/blocked/retry JSONL files"],
+    outputs: [
+      "dataset-import-ledger-report.json",
+      "resume.plan.jsonl",
+      "resume.skipped-verified.jsonl",
+    ],
+    keyTests: [
+      nodeTest(
+        "test/commands/import-ledger.test.mjs",
+        "import ledger report separates verified rows from human-review resume scopes",
+      ),
+    ],
+  }),
   "dataset-mutation-manifest": metadata({
     category: "workflow-internal",
     ownerModule: importOwner("mutation-manifest"),

@@ -16,6 +16,7 @@ export function createPostWriteCloseoutCommands({
   resolveRepoPath,
   sameResolvedPath,
   validateTraceQueueCoverageForRows,
+  writeCloseoutImportLedger,
   writeJson,
 }) {
   function validateCommitReportForCloseout({
@@ -332,7 +333,7 @@ export function createPostWriteCloseoutCommands({
         status: "help",
         command: "dataset-post-write-closeout",
         usage: [
-          "node scripts/foundry.mjs dataset-post-write-closeout --handoff-plan <dataset-commit-handoff-plan.json> --commit-report <summary-or-sync-report.json> --post-write-verify-report <remote-verification-report.json> --out-dir <closeout-dir>",
+          "node scripts/foundry.mjs dataset-post-write-closeout --handoff-plan <dataset-commit-handoff-plan.json> --commit-report <summary-or-sync-report.json> --post-write-verify-report <remote-verification-report.json> --out-dir <closeout-dir> --ledger-dir <task-import-ledger-dir>",
         ],
         purpose:
           "Close an explicit remote write only after Foundry handoff, CLI commit report, and post-write verify-root-payload evidence prove the exact same final rows were written and read back.",
@@ -605,8 +606,28 @@ export function createPostWriteCloseoutCommands({
           : null,
       },
     };
-    writeJson(reportPath, report);
-    return report;
+    const importLedger = writeCloseoutImportLedger
+      ? writeCloseoutImportLedger({
+          report,
+          reportPath,
+          ledgerDir: resolveRepoPath(
+            options.ledgerDir || options.importLedgerDir || path.join(outDir, "import-ledger"),
+          ),
+        })
+      : { status: "skipped", files: {}, counts: { entries_written: 0 } };
+    const finalReport = {
+      ...report,
+      counts: {
+        ...report.counts,
+        import_ledger_entries: importLedger.counts?.entries_written ?? 0,
+      },
+      files: {
+        ...report.files,
+        import_ledger: importLedger.files ?? {},
+      },
+    };
+    writeJson(reportPath, finalReport);
+    return finalReport;
   }
 
   return { runDatasetPostWriteCloseout };

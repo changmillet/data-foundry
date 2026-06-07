@@ -22,6 +22,7 @@ async function runFoundryCliMain({ argv, commandDeps, decisionDeps, runtime }) {
     identityPreflightCommands,
     identityReferenceRewriteCommands,
     importCompletionCommands,
+    importLedgerCommands,
     libraryScopeWorkflowCommands,
     listImportProfiles,
     postAuthoringFinalizeCommands,
@@ -108,6 +109,8 @@ async function runFoundryCliMain({ argv, commandDeps, decisionDeps, runtime }) {
       postWriteCloseoutCommands.runDatasetPostWriteCloseout(options),
     "dataset-import-completion-report": (options) =>
       importCompletionCommands.runDatasetImportCompletionReport(options),
+    "dataset-import-ledger-report": (options) =>
+      importLedgerCommands.runDatasetImportLedgerReport(options),
     "dataset-mutation-manifest": (options) => runDatasetMutationManifest({ repoRoot, options }),
   };
 
