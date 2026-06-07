@@ -1,6 +1,7 @@
 import {
   fullContextDecisionTaskProofBlockers,
   fullContextPackageProofBlockers,
+  payloadSha256ByIdentityForRows,
 } from "./full-context-proof.mjs";
 import {
   asText,
@@ -20,6 +21,7 @@ import {
 } from "./workflow-identity-decision-context.mjs";
 import {
   decisionApplyExpectedRowsFile,
+  decisionApplyInputRowsMatch,
   decisionApplyOutputRowsChainThroughClassification,
   decisionApplyOutputRowsChainThroughClassificationAndIdentityRewrite,
   decisionApplyOutputRowsChainThroughClassificationIdentityRewriteAndUnresolvedExchangeExternalization,
@@ -89,6 +91,83 @@ function decisionApplyRowsEquivalentToExpected(repoRoot, context, expectedRowsFi
     ) &&
     context?.outputRows?.some((filePath) => sameRowsArtifact(repoRoot, filePath, expectedRowsFile)),
   );
+}
+
+function decisionDatasetType(decision) {
+  const explicit = asText(decision?.dataset_type ?? decision?.datasetType);
+  if (explicit) return explicit;
+  const categoryType = asText(decision?.category_type ?? decision?.categoryType);
+  if (categoryType === "process") return "process";
+  if (categoryType.startsWith("flow")) return "flow";
+  if (["source", "contact", "flowproperty", "unitgroup", "lifecyclemodel"].includes(categoryType)) {
+    return categoryType;
+  }
+  return null;
+}
+
+function decisionTargetIdentityKeys(context) {
+  return ensureArray(context?.decisions)
+    .map((decision) => {
+      const datasetType = decisionDatasetType(decision);
+      const id = asText(decision?.dataset_id ?? decision?.datasetId ?? decision?.id);
+      const version =
+        asText(decision?.dataset_version ?? decision?.datasetVersion ?? decision?.version) ||
+        "00.00.001";
+      return datasetType && id ? `${datasetType}:${id}@@${version}` : null;
+    })
+    .filter(Boolean);
+}
+
+export function decisionApplyContextRelevantToExpectedRowsFile({
+  repoRoot,
+  context,
+  expectedRowsFile,
+}) {
+  if (!context || !expectedRowsFile) return true;
+  if (
+    decisionApplyInputRowsMatch(repoRoot, context, expectedRowsFile) ||
+    decisionApplyOutputRowsMatch(repoRoot, context, expectedRowsFile)
+  ) {
+    return true;
+  }
+  const expectedKeys = new Set(payloadSha256ByIdentityForRows(repoRoot, [expectedRowsFile]).keys());
+  if (expectedKeys.size === 0) return true;
+  if (decisionTargetIdentityKeys(context).some((key) => expectedKeys.has(key))) return true;
+  const contextKeys = [
+    ...Array.from(context.inputPayloadSha256ByIdentity?.keys?.() ?? []),
+    ...Array.from(context.outputPayloadSha256ByIdentity?.keys?.() ?? []),
+  ];
+  return contextKeys.some((key) => expectedKeys.has(key));
+}
+
+export function decisionApplyContextCoversExpectedRowsIdentity({
+  repoRoot,
+  context,
+  expectedRowsFile,
+}) {
+  if (!context || !expectedRowsFile) return false;
+  const expectedKeys = new Set(payloadSha256ByIdentityForRows(repoRoot, [expectedRowsFile]).keys());
+  if (expectedKeys.size === 0) return false;
+  const contextKeys = new Set([
+    ...decisionTargetIdentityKeys(context),
+    ...Array.from(context.inputPayloadSha256ByIdentity?.keys?.() ?? []),
+    ...Array.from(context.outputPayloadSha256ByIdentity?.keys?.() ?? []),
+  ]);
+  if (contextKeys.size === 0) return false;
+  return Array.from(expectedKeys).every((key) => contextKeys.has(key));
+}
+
+export function decisionApplyContextRelevantToRowsFile({
+  repoRoot,
+  rowsFile,
+  cleanupArtifact,
+  context,
+}) {
+  return decisionApplyContextRelevantToExpectedRowsFile({
+    repoRoot,
+    context,
+    expectedRowsFile: decisionApplyExpectedRowsFile({ repoRoot, rowsFile, cleanupArtifact }),
+  });
 }
 
 export function decisionApplyOutputRowsChainThroughPatchIdentityRewriteAndUnresolvedExchangeExternalization(
@@ -210,6 +289,20 @@ export function buildClassificationDecisionFullContextBlockers({
   const blockers = [];
   if (!classificationDecisionApplyArtifact) return blockers;
   const context = classificationDecisionApplyContext;
+  const expectedRowsFile = decisionApplyExpectedRowsFile({
+    repoRoot,
+    rowsFile,
+    cleanupArtifact,
+  });
+  if (
+    !decisionApplyContextRelevantToExpectedRowsFile({
+      repoRoot,
+      context,
+      expectedRowsFile,
+    })
+  ) {
+    return blockers;
+  }
   if (context?.status !== "completed") {
     blockers.push({
       code: "full_context_ai_classification_apply_not_completed",
@@ -238,11 +331,6 @@ export function buildClassificationDecisionFullContextBlockers({
       );
     }
   }
-  const expectedRowsFile = decisionApplyExpectedRowsFile({
-    repoRoot,
-    rowsFile,
-    cleanupArtifact,
-  });
   if (cleanupArtifact && !expectedRowsFile) {
     blockers.push({
       code: "full_context_ai_classification_cleanup_input_missing",
@@ -256,6 +344,11 @@ export function buildClassificationDecisionFullContextBlockers({
   } else if (
     !decisionApplyOutputRowsMatch(repoRoot, context, expectedRowsFile) &&
     !decisionApplyRowsEquivalentToExpected(repoRoot, context, expectedRowsFile) &&
+    !decisionApplyContextCoversExpectedRowsIdentity({
+      repoRoot,
+      context,
+      expectedRowsFile,
+    }) &&
     !decisionApplyOutputRowsChainThroughPatch(
       repoRoot,
       context,
@@ -475,6 +568,20 @@ export function buildLocationDecisionFullContextBlockers({
   const blockers = [];
   if (!locationDecisionApplyArtifact) return blockers;
   const context = locationDecisionApplyContext;
+  const expectedRowsFile = decisionApplyExpectedRowsFile({
+    repoRoot,
+    rowsFile,
+    cleanupArtifact,
+  });
+  if (
+    !decisionApplyContextRelevantToExpectedRowsFile({
+      repoRoot,
+      context,
+      expectedRowsFile,
+    })
+  ) {
+    return blockers;
+  }
   if (context?.status !== "completed") {
     blockers.push({
       code: "full_context_ai_location_apply_not_completed",
@@ -503,11 +610,6 @@ export function buildLocationDecisionFullContextBlockers({
       );
     }
   }
-  const expectedRowsFile = decisionApplyExpectedRowsFile({
-    repoRoot,
-    rowsFile,
-    cleanupArtifact,
-  });
   if (cleanupArtifact && !expectedRowsFile) {
     blockers.push({
       code: "full_context_ai_location_cleanup_input_missing",
@@ -521,6 +623,11 @@ export function buildLocationDecisionFullContextBlockers({
   } else if (
     !decisionApplyOutputRowsMatch(repoRoot, context, expectedRowsFile) &&
     !decisionApplyRowsEquivalentToExpected(repoRoot, context, expectedRowsFile) &&
+    !decisionApplyContextCoversExpectedRowsIdentity({
+      repoRoot,
+      context,
+      expectedRowsFile,
+    }) &&
     !decisionApplyOutputRowsChainThroughPatch(
       repoRoot,
       context,
@@ -755,6 +862,11 @@ export function buildIdentityDecisionFullContextBlockers({
     });
   } else if (
     !decisionApplyOutputRowsMatch(repoRoot, context, expectedRowsFile) &&
+    !decisionApplyContextCoversExpectedRowsIdentity({
+      repoRoot,
+      context,
+      expectedRowsFile,
+    }) &&
     !decisionApplyOutputRowsChainThroughIdentityRewrite(
       repoRoot,
       context,

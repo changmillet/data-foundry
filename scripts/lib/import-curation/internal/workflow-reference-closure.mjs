@@ -26,6 +26,7 @@ import {
   buildClassificationDecisionFullContextBlockers,
   buildIdentityDecisionFullContextBlockers,
   buildLocationDecisionFullContextBlockers,
+  decisionApplyContextRelevantToRowsFile,
 } from "./workflow-decision-full-context.mjs";
 import { normalizeDryRunOperation } from "./workflow-dry-run-context.mjs";
 import { prewriteIdentityBlockers } from "./workflow-identity-preflight.mjs";
@@ -145,15 +146,33 @@ export function buildFullContextAiCompletionBlockers({
   const hasClassificationDecisionProof =
     classificationDecisionApplyArtifact &&
     classificationDecisionApplyContext?.status === "completed" &&
-    classificationDecisionApplyContext.decisions.length > 0;
+    classificationDecisionApplyContext.decisions.length > 0 &&
+    decisionApplyContextRelevantToRowsFile({
+      repoRoot,
+      rowsFile,
+      cleanupArtifact,
+      context: classificationDecisionApplyContext,
+    });
   const hasLocationDecisionProof =
     locationDecisionApplyArtifact &&
     locationDecisionApplyContext?.status === "completed" &&
-    locationDecisionApplyContext.decisions.length > 0;
+    locationDecisionApplyContext.decisions.length > 0 &&
+    decisionApplyContextRelevantToRowsFile({
+      repoRoot,
+      rowsFile,
+      cleanupArtifact,
+      context: locationDecisionApplyContext,
+    });
   const hasIdentityDecisionProof =
     identityDecisionApplyArtifact &&
     identityDecisionApplyContext?.status === "completed" &&
-    identityDecisionApplyContext.decisions.length > 0;
+    identityDecisionApplyContext.decisions.length > 0 &&
+    decisionApplyContextRelevantToRowsFile({
+      repoRoot,
+      rowsFile,
+      cleanupArtifact,
+      context: identityDecisionApplyContext,
+    });
   const hasDecisionProof =
     hasClassificationDecisionProof || hasLocationDecisionProof || hasIdentityDecisionProof;
   const hasSourceContactRewriteProof =

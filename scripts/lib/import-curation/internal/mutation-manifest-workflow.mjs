@@ -20,6 +20,7 @@ export {
 } from "./runtime-io.mjs";
 export { readClassificationDecisionApplyContext } from "./workflow-decision-apply-context.mjs";
 export {
+  decisionApplyContextRelevantToRowsFile,
   decisionTaskContextBundleHashesFromContext,
   readLocationDecisionApplyContext,
 } from "./workflow-decision-full-context.mjs";

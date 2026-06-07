@@ -1,5 +1,9 @@
 import test from "node:test";
 import { sha256Json } from "../../scripts/lib/import-curation/internal/hash-utils.mjs";
+import {
+  decisionApplyContextCoversExpectedRowsIdentity,
+  decisionApplyContextRelevantToRowsFile,
+} from "../../scripts/lib/import-curation/internal/workflow-decision-full-context.mjs";
 import { attachIdentityPreflightFreshness } from "../../scripts/lib/import-curation/internal/workflow-identity-preflight.mjs";
 import {
   decisionApplyOutputRowsReachableThroughDeterministicTransforms,
@@ -19,7 +23,10 @@ import {
   writeJsonLines,
   writeText,
 } from "../fixtures/foundry-core.mjs";
-import { flowRowWithClassification } from "../fixtures/row-builders.mjs";
+import {
+  flowRowWithClassification,
+  processRowWithDefaultClassification,
+} from "../fixtures/row-builders.mjs";
 
 test("rows artifact lineage accepts content-equivalent no-op transform files", () => {
   const root = path.join(fixtureRoot, "content-equivalent-row-artifacts");
@@ -44,6 +51,68 @@ test("rows artifact lineage accepts content-equivalent no-op transform files", (
         },
       ],
       expectedRowsFile: rel(finalRows),
+    }),
+    true,
+  );
+});
+
+test("decision apply context relevance ignores unrelated dataset identities", () => {
+  const root = path.join(fixtureRoot, "decision-context-identity-overlap");
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.mkdirSync(root, { recursive: true });
+  const flowId = "aaaaaaaa-bbbb-4ccc-8ddd-000000000911";
+  const processId = "aaaaaaaa-bbbb-4ccc-8ddd-000000000912";
+  const flowRows = path.join(root, "flows.located.jsonl");
+  const processRows = path.join(root, "processes.cleaned.jsonl");
+  writeJsonLines(flowRows, [
+    flowRowWithClassification({
+      flowId,
+      typeOfDataSet: "Product flow",
+      classification: {
+        "common:classification": {
+          "common:class": [{ "@level": "0", "@classId": "1", "#text": "Products" }],
+        },
+      },
+    }),
+  ]);
+  writeJsonLines(processRows, [processRowWithDefaultClassification(processId)]);
+  const locationDecisionApplyContext = {
+    status: "completed",
+    inputRows: [rel(flowRows)],
+    outputRows: [rel(flowRows)],
+    inputPayloadSha256ByIdentity: new Map([[`flow:${flowId}@@00.00.001`, "input"]]),
+    outputPayloadSha256ByIdentity: new Map([[`flow:${flowId}@@00.00.001`, "output"]]),
+  };
+
+  assert.equal(
+    decisionApplyContextRelevantToRowsFile({
+      repoRoot,
+      rowsFile: rel(processRows),
+      context: locationDecisionApplyContext,
+    }),
+    false,
+  );
+  assert.equal(
+    decisionApplyContextRelevantToRowsFile({
+      repoRoot,
+      rowsFile: rel(flowRows),
+      context: locationDecisionApplyContext,
+    }),
+    true,
+  );
+  assert.equal(
+    decisionApplyContextCoversExpectedRowsIdentity({
+      repoRoot,
+      expectedRowsFile: rel(processRows),
+      context: locationDecisionApplyContext,
+    }),
+    false,
+  );
+  assert.equal(
+    decisionApplyContextCoversExpectedRowsIdentity({
+      repoRoot,
+      expectedRowsFile: rel(flowRows),
+      context: locationDecisionApplyContext,
     }),
     true,
   );

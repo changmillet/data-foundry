@@ -11,6 +11,7 @@ const {
   buildWriteCandidateItem,
   datasetTypeFromOptions,
   datasetTypePlural,
+  decisionApplyContextRelevantToRowsFile,
   decisionCounts,
   decisionTaskContextBundleHashesFromContext,
   ensureArray,
@@ -169,13 +170,31 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
   });
   const hasClassificationDecisionProof =
     classificationDecisionApplyContext?.status === "completed" &&
-    classificationDecisionApplyContext.decisions.length > 0;
+    classificationDecisionApplyContext.decisions.length > 0 &&
+    decisionApplyContextRelevantToRowsFile({
+      repoRoot,
+      rowsFile,
+      cleanupArtifact,
+      context: classificationDecisionApplyContext,
+    });
   const hasLocationDecisionProof =
     locationDecisionApplyContext?.status === "completed" &&
-    locationDecisionApplyContext.decisions.length > 0;
+    locationDecisionApplyContext.decisions.length > 0 &&
+    decisionApplyContextRelevantToRowsFile({
+      repoRoot,
+      rowsFile,
+      cleanupArtifact,
+      context: locationDecisionApplyContext,
+    });
   const hasIdentityDecisionProof =
     identityDecisionApplyContext?.status === "completed" &&
-    identityDecisionApplyContext.decisions.length > 0;
+    identityDecisionApplyContext.decisions.length > 0 &&
+    decisionApplyContextRelevantToRowsFile({
+      repoRoot,
+      rowsFile,
+      cleanupArtifact,
+      context: identityDecisionApplyContext,
+    });
   const requirePatchCollectReport =
     options.requirePatchCollectReport === true ||
     options.requirePatchCollectReport === "true" ||

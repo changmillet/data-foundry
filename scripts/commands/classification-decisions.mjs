@@ -490,6 +490,15 @@ export function createClassificationDecisionCommands({
     return `${schemaType}::${datasetId}::${version}`;
   }
 
+  function processClassificationDecisionIsTooBroad(queueRow, decision, code) {
+    if (classificationQueueSchemaType(queueRow) !== "process") return false;
+    const level = asText(
+      decision?.classification_decision_level ?? decision?.classificationDecisionLevel,
+    );
+    if (level === "broad_section") return true;
+    return /^[A-Z]$/u.test(code) || /^\d{1,3}$/u.test(code);
+  }
+
   function decisionTaskAuthoringContext(task, taskPath) {
     const contextBundle = task?.context_bundle ?? task?.contextBundle;
     const contractFiles = contextBundle?.contract_context_files ?? [];
@@ -594,6 +603,23 @@ export function createClassificationDecisionCommands({
           category_type: classificationQueueSchemaType(queueRow) || null,
           required_human_action:
             "Provide a completed library-level classification decision, then rerun this projection and deterministic classification apply.",
+        });
+        continue;
+      }
+      if (processClassificationDecisionIsTooBroad(queueRow, decision, code)) {
+        manualReview.push({
+          schema_version: 1,
+          status: "manual_review",
+          reason: "library_classification_decision_not_leaf",
+          queue_row_index: index,
+          decision_key: key,
+          dataset_type: queueRow.dataset_type ?? null,
+          dataset_id: queueRow.dataset_id ?? null,
+          dataset_version: queueRow.dataset_version ?? null,
+          category_type: classificationQueueSchemaType(queueRow) || null,
+          selected_code: code,
+          required_human_action:
+            "Replace the broad process classification with a full TIDAS leaf code selected through dataset classification children/path, then rerun this projection and deterministic classification apply.",
         });
         continue;
       }

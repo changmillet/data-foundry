@@ -777,6 +777,37 @@ test("library classification decisions project into task-bound apply decisions",
     ]);
     assert.equal(apply.status, "completed");
     assert.deepEqual(apply.files.output_rows, [rel(processOut)]);
+
+    writeJsonLines(libraryDecisions, [
+      {
+        dataset_type: "process",
+        dataset_id: processId,
+        dataset_version: "00.00.001",
+        category_type: "process",
+        selected_code: "D",
+        decision_status: "completed",
+        classification_decision_level: "broad_section",
+        basis: "Only a broad section was selected.",
+        confidence: "high",
+      },
+    ]);
+    const broadProjection = runFoundry(
+      [
+        "dataset-library-classification-decisions-project",
+        "--classification-queue",
+        rel(queue),
+        "--library-decisions",
+        rel(libraryDecisions),
+        "--decision-task",
+        task.files.task,
+        "--out-dir",
+        rel(path.join(root, "projection-broad")),
+      ],
+      1,
+    );
+    assert.equal(broadProjection.status, "blocked");
+    assert.equal(broadProjection.counts.manual_review, 1);
+    assert.equal(broadProjection.blockers[0].code, "library_classification_decision_not_leaf");
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

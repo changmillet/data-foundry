@@ -74,15 +74,20 @@ export function createPostAuthoringFinalizeCommands({
   normalizedList,
   nowIso,
   postAuthoringPrewriteGateBlockers,
+  processSourceReferenceRows,
   profileFullContextRequirement,
   repoRelativeMaybe,
   repoRelativePath,
   repoRoot,
   reportFileFromCliStage,
   readRowsFile,
+  repairTrueSourceClassification,
+  repairTrueSourceDescription,
+  repairTrueSourceIdentity,
   resolveRepoPath,
   rewriteCanonicalSourceReferences,
   rewriteContactReferences,
+  rewriteTrueSourceReferenceDescriptions,
   runDatasetCommitHandoffPlan,
   runDatasetCurationCleanup,
   runDatasetCurationGate,
@@ -91,7 +96,9 @@ export function createPostAuthoringFinalizeCommands({
   runFinalizeIdentityPreflightStage,
   runTiangongJsonStage,
   skippedPrewriteStage,
+  sourceReferenceSemanticBlockers,
   sourceReferenceRewritesFileForRowsFile,
+  sourceSemanticSummary,
   unique,
   writeFinalizeImportLedger,
   writeJson,
@@ -153,7 +160,13 @@ export function createPostAuthoringFinalizeCommands({
     const sourceReferenceRewriteRows = [];
     const stats = {
       source_reference_rewrites: 0,
+      true_source_identity_repairs: 0,
+      true_source_description_repairs: 0,
+      true_source_classification_repairs: 0,
+      true_source_reference_description_repairs: 0,
     };
+    const sourceSupportRepairRows = [];
+    const sourceSupportSemanticsRows = [];
     const libraryContact = buildLibraryContactPayload(options, null, {
       rewriteRows: sourceReferenceRewriteRows,
       stats,
@@ -168,6 +181,55 @@ export function createPostAuthoringFinalizeCommands({
       shortDescription: libraryContactName,
       language: asText(options.language || options.lang || "en") || "en",
     });
+    const sourceSupportRowsFile = resolveRepoPath(
+      options.sourceSupportRowsFile || options.supportSourceRowsFile || options.sourceSupportRows,
+    );
+    const sourceSupportPayloads = new Map();
+    const sourceLookup = new Map();
+    if (fileExists(sourceSupportRowsFile)) {
+      const supportContactRewriteStats = {
+        rewritten: 0,
+        previous_ids: new Set(),
+        previous_descriptions: new Set(),
+      };
+      for (const sourceRow of readRowsFile(sourceSupportRowsFile)) {
+        if (!sourceRow?.sourceDataSet) continue;
+        const payload = cloneJson(sourceRow);
+        const identity = datasetIdentity(payload, "source");
+        if (!identity.id) continue;
+        rewriteContactReferences(payload, libraryContactRef, supportContactRewriteStats);
+        repairTrueSourceIdentity(payload, {
+          sourceFile: sourceSupportRowsFile,
+          stats,
+          repairRows: sourceSupportRepairRows,
+        });
+        repairTrueSourceDescription(payload, {
+          sourceFile: sourceSupportRowsFile,
+          stats,
+          repairRows: sourceSupportRepairRows,
+        });
+        repairTrueSourceClassification(payload, {
+          sourceFile: sourceSupportRowsFile,
+          stats,
+          repairRows: sourceSupportRepairRows,
+        });
+        rewriteCanonicalSourceReferences(payload, {
+          datasetType: "source",
+          sourceFile: sourceSupportRowsFile,
+          stats,
+          rewriteRows: sourceReferenceRewriteRows,
+          datasetIdentityCache: datasetIdentity(payload, "source"),
+        });
+        const repairedIdentity = datasetIdentity(payload, "source");
+        const summary = sourceSemanticSummary(payload, sourceSupportRowsFile);
+        sourceSupportSemanticsRows.push(summary);
+        sourceLookup.set(summary.dataset_id, summary);
+        sourceSupportPayloads.set(
+          `${repairedIdentity.id}::${repairedIdentity.version || "00.00.001"}`,
+          payload,
+        );
+      }
+    }
     const contactRewriteStats = {
       rewritten: 0,
       previous_ids: new Set(),
@@ -184,17 +246,58 @@ export function createPostAuthoringFinalizeCommands({
         rewriteRows: sourceReferenceRewriteRows,
         datasetIdentityCache: datasetIdentity(payload, type),
       });
+      if (type === "process" && sourceLookup.size > 0) {
+        rewriteTrueSourceReferenceDescriptions(payload.processDataSet, {
+          sourceLookup,
+          sourceFile: rowsFile,
+          stats,
+          rewriteRows: sourceReferenceRewriteRows,
+          datasetIdentityCache: datasetIdentity(payload, type),
+        });
+      }
       return payload;
     });
+    const processSourceReferenceRowsForScope =
+      sourceLookup.size > 0
+        ? rewrittenRows.flatMap((payload) => {
+            const type = rowDatasetType(payload, datasetType);
+            return type === "process"
+              ? processSourceReferenceRows(payload, sourceLookup, rowsFile).filter(
+                  (row) => row.relation === "process_data_source",
+                )
+              : [];
+          })
+        : [];
+    const sourceSemanticBlockers =
+      typeof sourceReferenceSemanticBlockers === "function"
+        ? sourceReferenceSemanticBlockers(processSourceReferenceRowsForScope)
+        : [];
+    const referencedTrueSourceKeys = new Set(
+      processSourceReferenceRowsForScope
+        .filter((row) => row.referenced_source_kind === "true_source" && row.ref_object_id)
+        .map((row) => `${row.ref_object_id}::${row.version || "00.00.001"}`),
+    );
+    const referencedTrueSourceRows = [...referencedTrueSourceKeys]
+      .map((key) => sourceSupportPayloads.get(key))
+      .filter(Boolean);
 
     writeJsonLines(outputRowsFile, rewrittenRows);
     writeJsonLines(sourceReferenceRewritesPath, sourceReferenceRewriteRows);
-    writeJsonLines(supportRowsPath, [libraryContact]);
+    const sourceSupportSemanticsPath = path.join(outDir, "source-support-semantics.jsonl");
+    const sourceSupportRepairsPath = path.join(outDir, "source-support-repairs.jsonl");
+    writeJsonLines(sourceSupportSemanticsPath, sourceSupportSemanticsRows);
+    writeJsonLines(sourceSupportRepairsPath, sourceSupportRepairRows);
+    writeJsonLines(supportRowsPath, [libraryContact, ...referencedTrueSourceRows]);
     const totalRewrites =
       Number(contactRewriteStats.rewritten ?? 0) + Number(stats.source_reference_rewrites ?? 0);
     const report = {
       schema_version: 1,
-      status: totalRewrites > 0 ? "completed" : "completed_no_rewrites",
+      status:
+        sourceSemanticBlockers.length > 0
+          ? "blocked"
+          : totalRewrites > 0
+            ? "completed"
+            : "completed_no_rewrites",
       profile,
       rows_file: repoRelativePath(rowsFile),
       output_rows_file: repoRelativePath(outputRowsFile),
@@ -208,8 +311,15 @@ export function createPostAuthoringFinalizeCommands({
         input_rows: rows.length,
         output_rows: rewrittenRows.length,
         contact_reference_rewrites: contactRewriteStats.rewritten,
-        source_reference_rewrites: stats.source_reference_rewrites,
-        support_rows: 1,
+        source_reference_rewrites: sourceReferenceRewriteRows.length,
+        support_rows: 1 + referencedTrueSourceRows.length,
+        support_contact_rows: 1,
+        support_source_rows: referencedTrueSourceRows.length,
+        source_support_candidate_rows: sourceSupportSemanticsRows.length,
+        true_source_identity_repairs: stats.true_source_identity_repairs,
+        true_source_description_repairs: stats.true_source_description_repairs,
+        true_source_classification_repairs: stats.true_source_classification_repairs,
+        true_source_reference_description_repairs: stats.true_source_reference_description_repairs,
       },
       contact: {
         id: libraryContactIdentity.id,
@@ -218,12 +328,23 @@ export function createPostAuthoringFinalizeCommands({
         previous_ids: [...contactRewriteStats.previous_ids].sort(),
         previous_descriptions: [...contactRewriteStats.previous_descriptions].sort(),
       },
+      source_support: {
+        source_support_rows_file: fileExists(sourceSupportRowsFile)
+          ? repoRelativePath(sourceSupportRowsFile)
+          : null,
+        referenced_true_source_ids: referencedTrueSourceRows.map(
+          (payload) => datasetIdentity(payload, "source").id,
+        ),
+      },
       files: {
         output_rows: repoRelativePath(outputRowsFile),
         source_reference_rewrites: repoRelativePath(sourceReferenceRewritesPath),
         support_rows: repoRelativePath(supportRowsPath),
+        source_support_semantics: repoRelativePath(sourceSupportSemanticsPath),
+        source_support_repairs: repoRelativePath(sourceSupportRepairsPath),
         report: repoRelativePath(reportPath),
       },
+      blockers: sourceSemanticBlockers,
     };
     writeJson(reportPath, report);
     return {
@@ -330,10 +451,14 @@ export function createPostAuthoringFinalizeCommands({
           options.prepareSourceContactSupport ||
           options.autoFinalizeSourceContactSupport,
       );
+    const sourceContactSupportFinalizeType =
+      Number(sourceContactRewriteStage.counts?.support_source_rows ?? 0) > 0
+        ? "support"
+        : "contact";
     const sourceContactSupportFinalize = sourceContactSupportFinalizeRequested
       ? runDatasetPostAuthoringFinalize({
           ...options,
-          type: "contact",
+          type: sourceContactSupportFinalizeType,
           rowsFile: sourceContactSupportRowsFile,
           outDir: path.join(outDir, "source-contact-support-finalize"),
           skipSourceContactRewrites: true,

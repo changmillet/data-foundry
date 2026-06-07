@@ -23,6 +23,7 @@ import { writeCompletedIdentityPreflightIndex } from "../fixtures/identity-fixtu
 import {
   flowRow,
   flowRowWithClassification,
+  processRowWithDefaultClassification,
   processRowWithFlowRef,
   processRowWithInvalidLocation,
   sourceRow,
@@ -329,6 +330,79 @@ test("post-authoring finalize auto-builds curation queue context from sibling pr
     assert.match(
       JSON.stringify(authoringPackage.curation_queue_context.dependency_rows[0].input_rows),
       new RegExp(flowId, "u"),
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("post-authoring finalize includes referenced true sources in source/contact support rows", () => {
+  const root = path.join(finalizeAutoQueueFixtureRoot, "source-contact-support-true-source");
+  fs.rmSync(root, { recursive: true, force: true });
+  const processId = "a1111111-2222-4333-8444-555555555555";
+  const sourceId = "b1111111-2222-4333-8444-555555555555";
+  const rowsFile = path.join(root, "rows", "processes.jsonl");
+  const sourceSupportRowsFile = path.join(root, "rows", "sources.jsonl");
+  const processRow = processRowWithDefaultClassification(processId);
+  processRow.processDataSet.modellingAndValidation = {
+    dataSourcesTreatmentAndRepresentativeness: {
+      referenceToDataSource: {
+        "@type": "source data set",
+        "@refObjectId": sourceId,
+        "@version": "00.00.001",
+        "common:shortDescription": {
+          "@xml:lang": "en",
+          "#text": "Converted short name",
+        },
+      },
+    },
+  };
+  writeJsonLines(rowsFile, [processRow]);
+  const trueSourceRow = sourceRow(sourceId);
+  trueSourceRow.sourceDataSet.sourceInformation.dataSetInformation.sourceCitation =
+    "Fixture report, 2026";
+  writeJsonLines(sourceSupportRowsFile, [trueSourceRow]);
+
+  try {
+    const finalize = runFoundry([
+      "dataset-post-authoring-finalize",
+      "--type",
+      "process",
+      "--profile",
+      "bafu",
+      "--rows-file",
+      rel(rowsFile),
+      "--source-support-rows-file",
+      rel(sourceSupportRowsFile),
+      "--out-dir",
+      rel(path.join(root, "finalize")),
+    ]);
+
+    assert.equal(finalize.json.counts.source_contact_support_rows, 2);
+    assert.equal(
+      finalize.json.counts.source_contact_support_finalize_status,
+      "available_not_requested",
+    );
+    assert.equal(finalize.json.counts.source_contact_source_reference_rewrites, 2);
+    const supportRows = readJsonLines(
+      path.join(repoRoot, finalize.json.files.source_contact_support_rows),
+    );
+    assert.equal(supportRows.filter((row) => row.contactDataSet).length, 1);
+    assert.equal(supportRows.filter((row) => row.sourceDataSet).length, 1);
+    assert.equal(
+      supportRows.find((row) => row.sourceDataSet)?.sourceDataSet.sourceInformation
+        .dataSetInformation["common:UUID"],
+      sourceId,
+    );
+    const rewrittenRows = readJsonLines(
+      path.join(repoRoot, finalize.json.files.source_contact_rewritten_rows),
+    );
+    assert.equal(
+      rewrittenRows[0].processDataSet.modellingAndValidation
+        .dataSourcesTreatmentAndRepresentativeness.referenceToDataSource["common:shortDescription"][
+        "#text"
+      ],
+      "Fixture report",
     );
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
