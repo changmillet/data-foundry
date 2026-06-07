@@ -330,6 +330,138 @@ export function flowNameLocationEvidence(root) {
   };
 }
 
+export function nameFieldPath(datasetType, field) {
+  const prefix =
+    datasetType === "flow"
+      ? "flowDataSet.flowInformation.dataSetInformation.name"
+      : datasetType === "lifecyclemodel"
+        ? "lifeCycleModelDataSet.lifeCycleModelInformation.dataSetInformation.name"
+        : "processDataSet.processInformation.dataSetInformation.name";
+  return `${prefix}.${field}`;
+}
+
+export function namePlanQualityFindings(name) {
+  const baseName = textValue(name?.baseName);
+  const treatment = textValue(name?.treatmentStandardsRoutes);
+  const mix = textValue(name?.mixAndLocationTypes);
+  const quantitative =
+    textValue(name?.functionalUnitFlowProperties) || textValue(name?.flowProperties);
+  const findings = [];
+
+  const basePatterns = [
+    {
+      kind: "availability_or_location_phrase",
+      regex:
+        /\b(?:at|to)\s+(?:freight ship|ship|plant|user|grid|market|sawmill|refinery|warehouse|consumer|regional storage|power plant|feed mill)\b/iu,
+    },
+    {
+      kind: "mix_phrase",
+      regex: /\b(?:production|market|consumption)\s+mix\b/iu,
+    },
+    {
+      kind: "source_location_after_production",
+      regex: /\bproduction\s+[A-Z]{2,3}\b/u,
+    },
+    {
+      kind: "braced_location_or_qualifier",
+      regex: /\{[A-Z0-9][A-Z0-9+&-]*\}/u,
+    },
+  ];
+  const baseMatches = basePatterns
+    .filter((pattern) => pattern.regex.test(baseName))
+    .map((pattern) => pattern.kind);
+  if (baseMatches.length > 0) {
+    findings.push({
+      code: "semantic_name_base_contains_unsplit_segments",
+      field: "baseName",
+      path_field: "baseName",
+      text: baseName,
+      evidence_kind: "name_plan_base_segment_scan",
+      detected_segments: baseMatches,
+    });
+  }
+
+  const quantitativeBaseMatches = [
+    /\b(?:wet|dry mass|measured as dry mass|moisture|water content|allocation exergy)\b/iu,
+    /\b(?:net calorific value|gross calorific value|lower heating value|upper heating value)\b/iu,
+  ]
+    .filter((regex) => regex.test(baseName))
+    .map((regex) => regex.source);
+  const quantitativeContainsSpecificQualifier =
+    /\b(?:wet|dry mass|measured as dry mass|moisture|water content|allocation exergy|net calorific value|gross calorific value|lower heating value|upper heating value)\b/iu.test(
+      quantitative,
+    );
+  if (quantitativeBaseMatches.length > 0 && !quantitativeContainsSpecificQualifier) {
+    findings.push({
+      code: "semantic_name_quantitative_property_not_split",
+      field: "baseName",
+      path_field: "baseName",
+      text: baseName,
+      evidence_kind: "name_plan_quantitative_segment_scan",
+      detected_segments: quantitativeBaseMatches,
+    });
+  }
+
+  if (/^source-described route$/iu.test(treatment)) {
+    findings.push({
+      code: "semantic_name_treatment_placeholder",
+      field: "treatmentStandardsRoutes",
+      path_field: "treatmentStandardsRoutes",
+      text: treatment,
+      evidence_kind: "name_plan_placeholder_scan",
+    });
+  }
+
+  const mixCode = locationCodeCandidate(mix);
+  if (mixCode && mix === mixCode) {
+    findings.push({
+      code: "semantic_name_mix_location_too_bare",
+      field: "mixAndLocationTypes",
+      path_field: "mixAndLocationTypes",
+      text: mix,
+      evidence_kind: "name_plan_mix_location_scan",
+      location_code_candidate: mixCode,
+    });
+  }
+
+  return findings;
+}
+
+export function collectNamePlanQualitySemanticActions(payload, datasetType) {
+  if (!["flow", "process", "lifecyclemodel"].includes(datasetType)) return [];
+  const root = datasetRoot(payload, datasetType);
+  const name = nameCarrier(root, datasetType);
+  const findings = namePlanQualityFindings(name);
+  return findings.map((finding) =>
+    semanticActionItem({
+      code: finding.code,
+      path: nameFieldPath(datasetType, finding.path_field),
+      message:
+        finding.code === "semantic_name_treatment_placeholder"
+          ? "name.treatmentStandardsRoutes still contains the generated placeholder source-described route."
+          : finding.code === "semantic_name_mix_location_too_bare"
+            ? "name.mixAndLocationTypes contains only a bare location code; the name plan should include the availability/mix/location-type phrase and keep the code in the formal geography/location field."
+            : finding.code === "semantic_name_quantitative_property_not_split"
+              ? "name.baseName contains quantitative or allocation qualifiers that should be split into the formal name property field when source-backed."
+              : "name.baseName contains route, mix, availability, or location segments that should be split into the structured TIDAS name fields.",
+      evidence: {
+        ...finding,
+        current_name: {
+          baseName: textValue(name?.baseName) || null,
+          treatmentStandardsRoutes: textValue(name?.treatmentStandardsRoutes) || null,
+          mixAndLocationTypes: textValue(name?.mixAndLocationTypes) || null,
+          functionalUnitFlowProperties:
+            textValue(name?.functionalUnitFlowProperties) ||
+            textValue(name?.flowProperties) ||
+            null,
+        },
+      },
+      instruction:
+        "Use the source-language name-plan workflow and full source context to split the name once: baseName keeps only the core product/process/service name; treatmentStandardsRoutes receives production/treatment/route qualifiers; mixAndLocationTypes receives availability, mix, and location-type phrases such as at plant {CH}; functionalUnitFlowProperties or flowProperties receives quantitative qualifiers. Preserve the original full source name in provenance/mapping, not in baseName.",
+    }),
+  );
+}
+
 export function sourceTraceLocationEvidence(traces) {
   const candidates = [
     firstTraceAttribute(traces, "exchange", "location"),
@@ -991,6 +1123,7 @@ export function collectProfileSemanticActionItems({
   if (!requirement && !requiresBafuSupportSemanticGate) return [];
   return [
     ...collectTextQualitySemanticActions(payload, datasetType),
+    ...collectNamePlanQualitySemanticActions(payload, datasetType),
     ...collectClassificationSemanticActions(payload, datasetType, {
       profile,
       hasClassificationQueueContext,

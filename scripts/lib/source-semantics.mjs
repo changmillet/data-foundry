@@ -72,6 +72,112 @@ export function createSourceSemanticUtils({
     };
   }
 
+  function normalizeDoi(value) {
+    const text = asText(value);
+    const doi = text.match(/\b10\.\d{4,9}\/[-._;()/:A-Z0-9]+/iu)?.[0];
+    return doi ? doi.replace(/[),.;\s]+$/u, "") : "";
+  }
+
+  function cleanOriginalSourceText(value) {
+    return asText(value)
+      .replace(/\s+/gu, " ")
+      .replace(/\s*UUID:\s*[0-9a-f-]{36}\b.*$/iu, "")
+      .replace(/\s*$/u, "")
+      .trim();
+  }
+
+  function processSourceContextTexts(payload) {
+    const process = payload?.processDataSet ?? payload;
+    const dataSetInformation = process?.processInformation?.dataSetInformation ?? {};
+    const treatment =
+      process?.modellingAndValidation?.dataSourcesTreatmentAndRepresentativeness ?? {};
+    return [
+      textValue(dataSetInformation["common:generalComment"]),
+      textValue(process?.processInformation?.technology?.technologyDescriptionAndIncludedProcesses),
+      textValue(treatment.dataCutOffAndCompletenessPrinciples),
+      textValue(treatment.useAdviceForDataSet),
+    ]
+      .map(cleanOriginalSourceText)
+      .filter((text) => text && !/^(Unspecified|Not specified|Not declared)$/iu.test(text));
+  }
+
+  function authorLastName(value) {
+    const firstAuthor = asText(value)
+      .split(/\s*(?:,| and )\s*/u)
+      .find(Boolean);
+    if (!firstAuthor) return "";
+    const particles = new Set(["de", "del", "der", "di", "dos", "du", "la", "le", "van", "von"]);
+    const tokens = firstAuthor
+      .replace(/\b[A-Z]\./gu, "")
+      .trim()
+      .split(/\s+/u)
+      .filter(Boolean);
+    if (tokens.length === 0) return "";
+    const last = tokens[tokens.length - 1];
+    if (particles.has(last.toLowerCase()) && tokens.length > 1) return tokens[tokens.length - 2];
+    return last;
+  }
+
+  function originalSourceMetadataFromText(value) {
+    const text = cleanOriginalSourceText(value);
+    if (!text) return null;
+    const markerMatch = text.match(/Original source:\s*(.+)$/isu);
+    const sourceText = cleanOriginalSourceText(markerMatch?.[1] ?? text);
+    if (!markerMatch && !/\bdoi\s*:/iu.test(sourceText)) return null;
+    const doi = normalizeDoi(sourceText);
+    const withoutDoi = cleanOriginalSourceText(
+      sourceText.replace(/\s*,?\s*doi\s*:\s*10\.\d{4,9}\/[-._;()/:A-Z0-9]+/iu, ""),
+    );
+    const sourcePattern =
+      /^(?<authors>.+),\s*(?<title>[^,]+),\s*(?<container>.+?)\s+(?<year>(?:19|20)\d{2})\s*(?<details>.*)$/u;
+    const match = withoutDoi.match(sourcePattern);
+    const year = match?.groups?.year ?? withoutDoi.match(/\b((?:19|20)\d{2})\b/u)?.[1] ?? "";
+    const title = cleanOriginalSourceText(match?.groups?.title ?? "");
+    const authors = cleanOriginalSourceText(match?.groups?.authors ?? "");
+    const container = cleanOriginalSourceText(match?.groups?.container ?? "");
+    const details = cleanOriginalSourceText(match?.groups?.details ?? "");
+    if (!doi || !year || !title || !authors) return null;
+    const firstAuthorLastName = authorLastName(authors);
+    return {
+      shortName: [year, title, firstAuthorLastName].filter(Boolean).join(" - "),
+      citation: sourceText,
+      description: [container || null, year || null, details || null, doi ? `DOI: ${doi}` : null]
+        .filter(Boolean)
+        .join("; "),
+      doi,
+      title,
+      year,
+      authors,
+      container: container || null,
+      details: details || null,
+    };
+  }
+
+  function processOriginalSourceMetadata(payload) {
+    for (const text of processSourceContextTexts(payload)) {
+      const metadata = originalSourceMetadataFromText(text);
+      if (metadata) return metadata;
+    }
+    return null;
+  }
+
+  function sourceSummaryMatchesOriginalMetadata(source, metadata) {
+    if (!source?.dataset_id || !metadata) return false;
+    const haystack = [
+      source.short_name,
+      source.source_citation,
+      source.source_description,
+      source.classification_path,
+    ]
+      .map(asText)
+      .join(" ")
+      .toLowerCase();
+    const doi = normalizeDoi(metadata.doi).toLowerCase();
+    if (doi && haystack.includes(doi)) return true;
+    const title = asText(metadata.title).toLowerCase();
+    return Boolean(title && haystack.includes(title));
+  }
+
   function repairTrueSourceIdentity(payload, { sourceFile, stats, repairRows }) {
     if (sourceSemanticKind(payload) !== "true_source") return;
     const dataSetInformation = sourceDataSetInformation(payload);
@@ -221,6 +327,74 @@ export function createSourceSemanticUtils({
     return "7d6cb661-93f8-5c42-b23f-c3b73f8a6f97";
   }
 
+  function processContextSourceId(metadata) {
+    const identityText =
+      normalizeDoi(metadata?.doi) || asText(metadata?.citation) || asText(metadata?.shortName);
+    if (typeof deterministicUuid === "function") {
+      return deterministicUuid(`tiangong-lca-foundry:bafu:process-context-source:${identityText}`);
+    }
+    return identityText;
+  }
+
+  function buildBafuProcessContextSourcePayload({
+    metadata,
+    contactReference,
+    id = null,
+    version = "00.00.001",
+    language = "en",
+    timestamp = null,
+  } = {}) {
+    if (!metadata?.shortName || !metadata?.citation) return null;
+    const sourceId = asText(id) || processContextSourceId(metadata);
+    const dataEntryBy = {
+      "common:referenceToDataSetFormat":
+        canonicalSourceReferenceForRelation("dataset_format_source"),
+    };
+    if (timestamp) {
+      dataEntryBy["common:timeStamp"] = timestamp;
+    }
+    const publicationAndOwnership = {
+      "common:dataSetVersion": version,
+      "common:permanentDataSetURI": `https://www.bafu.admin.ch/bafu-2025-v2/sources/${sourceId}`,
+    };
+    if (contactReference) {
+      publicationAndOwnership["common:referenceToOwnershipOfDataSet"] = cloneJson(contactReference);
+    }
+    return {
+      sourceDataSet: {
+        "@xmlns": "http://lca.jrc.it/ILCD/Source",
+        "@xmlns:common": "http://lca.jrc.it/ILCD/Common",
+        "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+        "@version": "1.1",
+        "@xsi:schemaLocation": "http://lca.jrc.it/ILCD/Source ../../schemas/ILCD_SourceDataSet.xsd",
+        sourceInformation: {
+          dataSetInformation: {
+            "common:UUID": sourceId,
+            "common:shortName": multiLang(metadata.shortName, language),
+            classificationInformation: {
+              "common:classification": {
+                "common:class": {
+                  "@level": "0",
+                  "@classId": "5",
+                  "#text": "Publications and communications",
+                },
+              },
+            },
+            sourceCitation: metadata.citation,
+            sourceDescriptionOrComment: multiLang(
+              metadata.description || `Report/publication: ${metadata.citation}.`,
+              language,
+            ),
+          },
+        },
+        administrativeInformation: {
+          dataEntryBy,
+          publicationAndOwnership,
+        },
+      },
+    };
+  }
+
   function buildBafuFallbackSourcePayload({
     contactReference,
     id = null,
@@ -252,7 +426,10 @@ export function createSourceSemanticUtils({
     return {
       sourceDataSet: {
         "@xmlns": "http://lca.jrc.it/ILCD/Source",
+        "@xmlns:common": "http://lca.jrc.it/ILCD/Common",
+        "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
         "@version": "1.1",
+        "@xsi:schemaLocation": "http://lca.jrc.it/ILCD/Source ../../schemas/ILCD_SourceDataSet.xsd",
         sourceInformation: {
           dataSetInformation: {
             "common:UUID": sourceId,
@@ -478,6 +655,9 @@ export function createSourceSemanticUtils({
     {
       sourceLookup,
       replacementSource = null,
+      forceReplacementSource = false,
+      replacementRelation = null,
+      replacementReason = null,
       sourceFile,
       stats,
       rewriteRows,
@@ -492,6 +672,9 @@ export function createSourceSemanticUtils({
         rewriteProcessDataSourceReferences(item, {
           sourceLookup,
           replacementSource,
+          forceReplacementSource,
+          replacementRelation,
+          replacementReason,
           sourceFile,
           stats,
           rewriteRows,
@@ -513,7 +696,13 @@ export function createSourceSemanticUtils({
       let rewriteRelation = null;
       let reason = null;
 
-      if (referencedSource?.kind === "true_source") {
+      if (forceReplacementSource && replacementSource?.dataset_id) {
+        targetSource = replacementSource;
+        rewriteRelation = replacementRelation || "process_data_source_context_source";
+        reason =
+          replacementReason ||
+          "Process context identifies a more specific original report/publication source than the converted process data source reference.";
+      } else if (referencedSource?.kind === "true_source") {
         const canonicalShortName = asText(referencedSource.short_name);
         if (canonicalShortName && currentShortName !== canonicalShortName) {
           targetSource = referencedSource;
@@ -553,6 +742,10 @@ export function createSourceSemanticUtils({
           } else {
             stats.process_source_reference_rewrites =
               Number(stats.process_source_reference_rewrites ?? 0) + 1;
+            if (rewriteRelation === "process_data_source_context_source") {
+              stats.process_source_context_rewrites =
+                Number(stats.process_source_context_rewrites ?? 0) + 1;
+            }
             if (targetSource.fallback_database_source) {
               stats.process_source_reference_fallback_rewrites =
                 Number(stats.process_source_reference_fallback_rewrites ?? 0) + 1;
@@ -579,6 +772,9 @@ export function createSourceSemanticUtils({
       rewriteProcessDataSourceReferences(child, {
         sourceLookup,
         replacementSource,
+        forceReplacementSource,
+        replacementRelation,
+        replacementReason,
         sourceFile,
         stats,
         rewriteRows,
@@ -652,8 +848,10 @@ export function createSourceSemanticUtils({
 
   return {
     buildBafuFallbackSourcePayload,
+    buildBafuProcessContextSourcePayload,
     canonicalSourceReferenceForRelation,
     processSourceReferenceRows,
+    processOriginalSourceMetadata,
     repairTrueSourceClassification,
     repairTrueSourceDescription,
     repairTrueSourceIdentity,
@@ -662,6 +860,7 @@ export function createSourceSemanticUtils({
     rewriteTrueSourceReferenceDescriptions,
     sourceReferenceSemanticBlockers,
     sourceReferenceSnapshot,
+    sourceSummaryMatchesOriginalMetadata,
     sourceSemanticSummary,
   };
 }

@@ -231,7 +231,8 @@ test("dataset-bundle-sample-rows creates one shared library contact and rewrites
   const support = readJsonLines(path.join(repoRoot, report.files.rows.support));
   assert.equal(contacts.length, 1);
   assert.equal(support.length, contacts.length + sources.length);
-  assert.match(report.commands.support.validate, /--type auto/u);
+  assert.match(report.commands.support.cleanup, /dataset-curation-cleanup/u);
+  assert.match(report.commands.support.dry_run, /--type auto/u);
   assert.match(report.commands.support.commit, /--type auto/u);
   assert.equal(
     contacts[0].contactDataSet.contactInformation.dataSetInformation["common:name"]["#text"],
@@ -432,7 +433,9 @@ test("dataset-bundle-sample-rows rewrites flow property refs to canonical suppor
   assert.equal(report.counts.reference_only_flowproperty_rows, 1);
   assert.equal(report.counts.canonical_flow_property_reference_rewrites, 1);
   assert.equal(report.counts.canonical_unit_group_reference_proofs, 1);
+  assert.equal(report.commands.unitgroup.dry_run, null);
   assert.equal(report.commands.unitgroup.commit, null);
+  assert.equal(report.commands.flowproperty.dry_run, null);
   assert.equal(report.commands.flowproperty.commit, null);
 
   const support = readJsonLines(path.join(repoRoot, report.files.rows.support));
@@ -1219,6 +1222,96 @@ test("dataset-bundle-sample-rows repairs generic EcoSpold source identity from r
   );
 });
 
+test("dataset-bundle-sample-rows uses process Original source context over converted package source", () => {
+  createBundleFixture();
+  const outDir = path.join(fixtureRoot, "out-process-source-context");
+  const bundleDir = path.join(fixtureRoot, "process-bundles", processId);
+  const sourcePath = path.join(bundleDir, "tidas", "sources", `${sourceId}.json`);
+  const sourcePayload = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
+  const sourceInfo = sourcePayload.sourceDataSet.sourceInformation.dataSetInformation;
+  sourceInfo["common:shortName"] = ml("2023 - LCI on-road vehicles - Sacchi");
+  sourceInfo.sourceCitation = "Sacchi R., 2023 - LCI on-road vehicles - Sacchi, 2023";
+  sourceInfo.sourceDescriptionOrComment = ml("doi: 10.5281/ZENODO.5156043");
+  writeJson(sourcePath, sourcePayload);
+
+  const processPath = path.join(bundleDir, "tidas", "processes", `${processId}.json`);
+  const processPayload = JSON.parse(fs.readFileSync(processPath, "utf8"));
+  const originalSource =
+    "Datasets for mobility applications. Original source: Tobias S. Schmidt, Martin Beuse, Xiaojin Zhang, Bjarne Steffen, Simon F. Schneider, Alejandro Pena-Bello, Christian Bauer, and David Parra, Additional Emissions and Cost from Storing Electricity in Stationary Battery Systems, Environmental Science & Technology 2019 53 (7), 3379-3390, doi: 10.1021/acs.est.8b05314.";
+  processPayload.processDataSet.processInformation.dataSetInformation["common:generalComment"] = ml(
+    `${originalSource} UUID: ${processId}`,
+  );
+  processPayload.processDataSet.processInformation.technology = {
+    technologyDescriptionAndIncludedProcesses: ml(originalSource),
+  };
+  processPayload.processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.dataCutOffAndCompletenessPrinciples =
+    ml(originalSource);
+  writeJson(processPath, processPayload);
+
+  const report = runFoundry([
+    "dataset-bundle-sample-rows",
+    "--bundles-dir",
+    path.join(fixtureRoot, "process-bundles"),
+    "--process-id",
+    processId,
+    "--out-dir",
+    outDir,
+    "--contact-id",
+    newContactId,
+  ]);
+
+  assert.equal(report.status, "ready");
+  assert.equal(report.counts.source_rows, 1);
+  assert.equal(report.counts.materialized_true_source_rows, 1);
+  assert.equal(report.counts.process_source_context_rewrites, 1);
+  assert.equal(report.counts.omitted_unreferenced_true_source_rows, 1);
+
+  const sources = readJsonLines(path.join(repoRoot, report.files.rows.source));
+  assert.equal(sources[0].sourceDataSet["@xmlns:xsi"], "http://www.w3.org/2001/XMLSchema-instance");
+  assert.equal(
+    sources[0].sourceDataSet["@xsi:schemaLocation"],
+    "http://lca.jrc.it/ILCD/Source ../../schemas/ILCD_SourceDataSet.xsd",
+  );
+  const sourceInfoOut = sources[0].sourceDataSet.sourceInformation.dataSetInformation;
+  assert.notEqual(sourceInfoOut["common:UUID"], sourceId);
+  assert.equal(
+    sourceInfoOut["common:shortName"]["#text"],
+    "2019 - Additional Emissions and Cost from Storing Electricity in Stationary Battery Systems - Schmidt",
+  );
+  assert.match(sourceInfoOut.sourceCitation, /10\.1021\/acs\.est\.8b05314/u);
+  assert.match(sourceInfoOut.sourceDescriptionOrComment["#text"], /Environmental Science/u);
+
+  const processes = readJsonLines(path.join(repoRoot, report.files.rows.process));
+  const processSourceRef =
+    processes[0].processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness
+      .referenceToDataSource;
+  assert.equal(processSourceRef["@refObjectId"], sourceInfoOut["common:UUID"]);
+  assert.equal(
+    processSourceRef["common:shortDescription"]["#text"],
+    sourceInfoOut["common:shortName"]["#text"],
+  );
+
+  const rewrites = readJsonLines(path.join(repoRoot, report.files.source_reference_rewrites));
+  assert.equal(
+    rewrites.some(
+      (row) =>
+        row.relation === "process_data_source_context_source" &&
+        row.original.ref_object_id === sourceId &&
+        row.canonical.ref_object_id === sourceInfoOut["common:UUID"],
+    ),
+    true,
+  );
+  const semantics = readJsonLines(path.join(repoRoot, report.files.source_semantics));
+  assert.equal(
+    semantics.some(
+      (row) =>
+        row.dataset_id === sourceId &&
+        row.omitted_reason === "unreferenced_by_selected_process_scope",
+    ),
+    true,
+  );
+});
+
 test("dataset-bundle-sample-rows omits format and compliance placeholder sources", () => {
   createBundleFixture();
   const outDir = path.join(fixtureRoot, "out-source-semantics");
@@ -1499,6 +1592,11 @@ test("dataset-bundle-sample-rows creates a BAFU database fallback source when no
   assert.equal(report.counts.process_source_reference_fallback_rewrites, 1);
 
   const sources = readJsonLines(path.join(repoRoot, report.files.rows.source));
+  assert.equal(sources[0].sourceDataSet["@xmlns:xsi"], "http://www.w3.org/2001/XMLSchema-instance");
+  assert.equal(
+    sources[0].sourceDataSet["@xsi:schemaLocation"],
+    "http://lca.jrc.it/ILCD/Source ../../schemas/ILCD_SourceDataSet.xsd",
+  );
   const sourceInfoOut = sources[0].sourceDataSet.sourceInformation.dataSetInformation;
   assert.equal(sourceInfoOut["common:shortName"]["#text"], "BAFU 2025 Version 2 LCA database");
   assert.equal(sourceInfoOut.sourceCitation.includes("FOEN"), true);
@@ -1896,9 +1994,9 @@ test("dataset-bundle-sample-rows materializes lifecyclemodels and queues locatio
   assert.equal(report.counts.lifecyclemodel_rows, 1);
   assert.equal(report.counts.location_code_blockers, 1);
   assert.equal(report.counts.location_authoring_queue_rows, 1);
-  assert.match(report.commands.lifecyclemodel.validate, /lifecyclemodel save-draft/u);
+  assert.match(report.commands.lifecyclemodel.dry_run, /lifecyclemodel save-draft/u);
   assert.doesNotMatch(
-    report.commands.lifecyclemodel.validate,
+    report.commands.lifecyclemodel.dry_run,
     /dataset save-draft --input .* --type lifecyclemodel/u,
   );
 

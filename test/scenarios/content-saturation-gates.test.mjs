@@ -1,5 +1,8 @@
 import test from "node:test";
-import { locationCodeFromOperation } from "../../scripts/lib/import-curation/internal/workflow-patch-evidence.mjs";
+import {
+  locationCodeFromOperation,
+  operationTargetsLocationCode,
+} from "../../scripts/lib/import-curation/internal/workflow-patch-evidence.mjs";
 import {
   assert,
   fs,
@@ -208,6 +211,39 @@ test("BAFU flow curation gate blocks when source-backed flow descriptors are not
   assert.equal(codes.includes("semantic_content_saturation_flow_general_comment_missing"), true);
 });
 
+test("BAFU flow curation gate does not treat generic flowProperties as split quantitative name evidence", () => {
+  const flowId = "bbbbbbbb-1212-4222-8333-444444444444";
+  const input = writeGateInputs(path.join(fixtureRoot, "flow-generic-property-name"), "flow", [
+    {
+      flowDataSet: {
+        flowInformation: {
+          dataSetInformation: {
+            "common:UUID": flowId,
+            name: {
+              baseName: ml("Residual wood, dry, measured as dry mass, at plant"),
+              flowProperties: ml("Mass"),
+            },
+            classificationInformation: classification(),
+          },
+        },
+        modellingAndValidation: {
+          LCIMethod: { typeOfDataSet: "Product flow" },
+        },
+        administrativeInformation: {
+          publicationAndOwnership: { "common:dataSetVersion": "00.00.001" },
+        },
+      },
+    },
+  ]);
+
+  const report = runGate(input);
+
+  assert.equal(report.status, "blocked_needs_foundry_ai_authoring");
+  const codes = actionCodesFor(report);
+  assert.equal(codes.includes("semantic_name_base_contains_unsplit_segments"), true);
+  assert.equal(codes.includes("semantic_name_quantitative_property_not_split"), true);
+});
+
 test("BAFU flow curation gate treats mixAndLocationTypes codes as locationOfSupply evidence", () => {
   const flowId = "bbbbbbbb-2222-4222-8333-444444444444";
   const input = writeGateInputs(path.join(fixtureRoot, "flow-mix-location"), "flow", [
@@ -243,6 +279,78 @@ test("BAFU flow curation gate treats mixAndLocationTypes codes as locationOfSupp
   assert.equal(action.path, "flowDataSet.flowInformation.geography.locationOfSupply");
   assert.equal(action.evidence.source_kind, "flow_name_mix_and_location_types");
   assert.equal(action.evidence.suggested_value, "DE");
+  const codes = actionCodesFor(report);
+  assert.equal(codes.includes("semantic_name_mix_location_too_bare"), true);
+});
+
+test("BAFU process curation gate blocks unsplit source names", () => {
+  const processId = "aaaaaaaa-2222-4222-8333-444444444444";
+  const input = writeGateInputs(path.join(fixtureRoot, "process-name-plan"), "process", [
+    {
+      processDataSet: {
+        processInformation: {
+          dataSetInformation: {
+            "common:UUID": processId,
+            name: {
+              baseName: ml("Natural gas, liquefied, production OM, at freight ship"),
+              treatmentStandardsRoutes: ml("production"),
+              mixAndLocationTypes: ml("JP"),
+            },
+            classificationInformation: classification(),
+          },
+          geography: {
+            locationOfOperationSupplyOrProduction: { "@location": "JP" },
+          },
+        },
+        administrativeInformation: {
+          publicationAndOwnership: { "common:dataSetVersion": "00.00.001" },
+        },
+      },
+    },
+  ]);
+
+  const report = runGate(input);
+
+  assert.equal(report.status, "blocked_needs_foundry_ai_authoring");
+  const codes = actionCodesFor(report);
+  assert.equal(codes.includes("semantic_name_base_contains_unsplit_segments"), true);
+  assert.equal(codes.includes("semantic_name_mix_location_too_bare"), true);
+});
+
+test("BAFU curation gate blocks generated route placeholders and unsplit quantitative name properties", () => {
+  const processId = "aaaaaaaa-3333-4222-8333-444444444444";
+  const input = writeGateInputs(path.join(fixtureRoot, "process-name-properties"), "process", [
+    {
+      processDataSet: {
+        processInformation: {
+          dataSetInformation: {
+            "common:UUID": processId,
+            name: {
+              baseName: ml("Bark chips, production mix, wet, measured as dry mass, at sawmill"),
+              treatmentStandardsRoutes: ml("source-described route"),
+              mixAndLocationTypes: ml("CH"),
+            },
+            classificationInformation: classification(),
+          },
+          geography: {
+            locationOfOperationSupplyOrProduction: { "@location": "CH" },
+          },
+        },
+        administrativeInformation: {
+          publicationAndOwnership: { "common:dataSetVersion": "00.00.001" },
+        },
+      },
+    },
+  ]);
+
+  const report = runGate(input);
+
+  assert.equal(report.status, "blocked_needs_foundry_ai_authoring");
+  const codes = actionCodesFor(report);
+  assert.equal(codes.includes("semantic_name_base_contains_unsplit_segments"), true);
+  assert.equal(codes.includes("semantic_name_treatment_placeholder"), true);
+  assert.equal(codes.includes("semantic_name_mix_location_too_bare"), true);
+  assert.equal(codes.includes("semantic_name_quantitative_property_not_split"), true);
 });
 
 test("BAFU flow curation gate uses process geography trace as locationOfSupply evidence", () => {
@@ -388,5 +496,27 @@ test("location decision patch validation accepts locationOfSupply multilingual c
       },
     }),
     "DE",
+  );
+});
+
+test("location decision patch validation does not treat name mix text as a location code", () => {
+  assert.equal(
+    operationTargetsLocationCode({
+      path: "/flowDataSet/flowInformation/dataSetInformation/name/mixAndLocationTypes",
+      value: {
+        "@xml:lang": "en",
+        "#text": "regional recycling service mix",
+      },
+    }),
+    false,
+  );
+  assert.equal(
+    operationTargetsLocationCode({
+      path: "/flowDataSet/flowInformation/geography",
+      value: {
+        locationOfSupply: "RER",
+      },
+    }),
+    true,
   );
 });

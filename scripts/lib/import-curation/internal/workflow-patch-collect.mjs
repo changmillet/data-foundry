@@ -31,6 +31,7 @@ import {
   operationClosesAnnualSupplyTarget,
   operationClosureCodes,
   operationClosureKeys,
+  operationTargetsLocationCode,
   taskActionItemKeys,
   taskActionItemsForOperation,
   taskAuthoringPackageName,
@@ -327,7 +328,8 @@ export function validateCollectedPatchSet({ repoRoot, task, patchSet, patchSetIn
         }
         if (
           closureCodes.some((code) => code.includes("location")) &&
-          mode === "location_decision"
+          mode === "location_decision" &&
+          operationTargetsLocationCode(operation)
         ) {
           validateLocationDecisionOperation({
             repoRoot,

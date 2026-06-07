@@ -517,6 +517,28 @@ export function locationCodeFromOperation(operation) {
   return "";
 }
 
+export function operationTargetsLocationCode(operation) {
+  const pointer = asText(operation?.path);
+  if (pointer.includes("/name/")) return false;
+  const pointerSegments = pointer
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => segment.replace(/~1/g, "/").replace(/~0/g, "~"));
+  const codeFields = new Set([
+    "location",
+    "subLocation",
+    "locationOfSupply",
+    "locationOfOperationSupplyOrProduction",
+    "impactLocation",
+    "interventionLocation",
+    "intervensionSubLocation",
+  ]);
+  if (pointerSegments.some((segment) => codeFields.has(segment))) return true;
+  const value = operation?.value;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  return [...codeFields].some((field) => Object.hasOwn(value, field));
+}
+
 export function validateLocationDecisionOperation({ repoRoot, operation }) {
   const code = locationCodeFromOperation(operation);
   if (!code) {

@@ -64,6 +64,7 @@ export function createBundleSampleRowsCommands({
   asText,
   attachIdentityPreflightRows,
   buildBafuFallbackSourcePayload,
+  buildBafuProcessContextSourcePayload,
   buildIdentityPreflightArtifacts,
   buildLibraryContactPayload,
   classificationAuthoringCommands,
@@ -82,6 +83,7 @@ export function createBundleSampleRowsCommands({
   loadTidasLocationCodeMap,
   locationAuthoringCommands,
   nowIso,
+  processOriginalSourceMetadata,
   processSourceReferenceRows,
   readJson,
   repairTrueSourceClassification,
@@ -100,6 +102,7 @@ export function createBundleSampleRowsCommands({
   selectProcessBundleDirs,
   shellQuote,
   sourceReferenceSemanticBlockers,
+  sourceSummaryMatchesOriginalMetadata,
   sourceSemanticSummary,
   writeJson,
   writeJsonLines,
@@ -349,7 +352,7 @@ export function createBundleSampleRowsCommands({
         global_blockers: scopedGlobalBlockers,
         next_step:
           status === "ready"
-            ? "ready_for_validation_and_write_planning"
+            ? "run raw-row validation, QA, curation gate, post-authoring cleanup, final validation, then write planning"
             : status === "needs_ai_authoring"
               ? "run classification/location/identity authoring, deterministic apply, then rerun this process scope"
               : "defer this scope until human/canonical dependency blockers are resolved",
@@ -399,7 +402,7 @@ export function createBundleSampleRowsCommands({
           "node scripts/foundry.mjs dataset-bundle-sample-rows --bundles-dir tmp/bafu-2025-v2-tidas/process-bundles --sample-size 3 --out-dir .foundry/workspaces/bafu-sample-rows",
         ],
         purpose:
-          "Sample process bundles, materialize support/process JSONL rows, replace all converted tool contacts with one library-level contact, and write commit-ready row files.",
+          "Sample process bundles, materialize support/process JSONL rows, replace all converted tool contacts with one library-level contact, and write authoring input row files.",
         ...bundleSampleStageContract,
       };
     }
@@ -470,6 +473,8 @@ export function createBundleSampleRowsCommands({
       source_reference_rewrites: 0,
       process_source_reference_rewrites: 0,
       process_source_reference_fallback_rewrites: 0,
+      process_source_context_rewrites: 0,
+      omitted_unreferenced_true_source_rows: 0,
       true_source_identity_repairs: 0,
       true_source_description_repairs: 0,
       true_source_reference_description_repairs: 0,
@@ -624,6 +629,71 @@ export function createBundleSampleRowsCommands({
     const sourceLookup = new Map(
       sourceSemanticsRows.filter((row) => row.dataset_id).map((row) => [row.dataset_id, row]),
     );
+    for (const [key, payload] of rowsByType.process.entries()) {
+      const metadata = processOriginalSourceMetadata(payload);
+      if (!metadata) continue;
+      const processIdentity = datasetIdentity(payload, "process");
+      const processSourceRefs = processSourceReferenceRows(
+        payload,
+        sourceLookup,
+        sourceByType.process.get(key),
+      ).filter((row) => row.relation === "process_data_source");
+      if (processSourceRefs.length === 0) continue;
+      for (const sourceRef of processSourceRefs) {
+        const referencedSource = sourceLookup.get(sourceRef.ref_object_id);
+        if (sourceSummaryMatchesOriginalMetadata(referencedSource, metadata)) continue;
+        const sourcePayload = buildBafuProcessContextSourcePayload({
+          metadata,
+          contactReference: libraryContactRef,
+          language: asText(options.language || options.lang || "en") || "en",
+          timestamp: nowIso(),
+        });
+        if (!sourcePayload) continue;
+        const sourceIdentity = datasetIdentity(sourcePayload, "source");
+        const sourceKey = `${sourceIdentity.id}::${sourceIdentity.version}`;
+        if (!rowsByType.source.has(sourceKey)) {
+          rowsByType.source.set(sourceKey, sourcePayload);
+          sourceByType.source.set(
+            sourceKey,
+            `foundry:process-context-source:${processIdentity.id}`,
+          );
+          const summary = {
+            ...sourceSemanticSummary(sourcePayload, sourceByType.source.get(sourceKey)),
+            process_context_source: true,
+            source_context_process_id: processIdentity.id,
+          };
+          sourceSemanticsRows = [...sourceSemanticsRows, summary];
+          sourceLookup.set(summary.dataset_id, summary);
+          sourceClassificationRepairRows.push({
+            dataset_id: sourceIdentity.id,
+            dataset_version: sourceIdentity.version,
+            source_file: repoRelativeMaybe(sourceByType.process.get(key)),
+            relation: "true_source_identity_from_process_context",
+            original_ref_object_id: sourceRef.ref_object_id,
+            original_short_description: sourceRef.short_description,
+            repaired_short_name: metadata.shortName,
+            repaired_source_citation: metadata.citation,
+            doi: metadata.doi,
+            basis:
+              "Process context contains an explicit Original source and DOI that is more specific than the converted process data source reference.",
+          });
+        }
+        const replacementSource = sourceLookup.get(sourceIdentity.id);
+        rewriteProcessDataSourceReferences(payload.processDataSet, {
+          sourceLookup,
+          replacementSource,
+          forceReplacementSource: true,
+          replacementRelation: "process_data_source_context_source",
+          replacementReason:
+            "Process context contains an explicit Original source/DOI that is more specific than the converted process data source reference.",
+          sourceFile: sourceByType.process.get(key),
+          stats: sanitizeStats,
+          rewriteRows: sourceReferenceRewriteRows,
+          datasetIdentityCache: processIdentity,
+          language: asText(options.language || options.lang || "en") || "en",
+        });
+      }
+    }
     const processSourceReplacement = (() => {
       const trueSources = sourceSemanticsRows.filter((row) => row.kind === "true_source");
       if (trueSources.length === 1) return trueSources[0];
@@ -674,6 +744,27 @@ export function createBundleSampleRowsCommands({
       (row) => row.relation === "process_data_source",
     );
     blockers.push(...sourceReferenceSemanticBlockers(allProcessSourceReferenceRows));
+    const referencedProcessSourceKeys = new Set(
+      processSourceReferenceQueueRows
+        .filter((row) => row.ref_object_id)
+        .map((row) => `${row.ref_object_id}::${row.version || "00.00.001"}`),
+    );
+    const unreferencedTrueSourceRows = sourceSemanticsRows.filter(
+      (row) =>
+        row.kind === "true_source" &&
+        row.materialized_as_source_row !== false &&
+        !referencedProcessSourceKeys.has(
+          `${row.dataset_id}::${row.dataset_version || "00.00.001"}`,
+        ),
+    );
+    for (const row of unreferencedTrueSourceRows) {
+      if (!row.dataset_id) continue;
+      rowsByType.source.delete(`${row.dataset_id}::${row.dataset_version || ""}`);
+      sourceByType.source.delete(`${row.dataset_id}::${row.dataset_version || ""}`);
+      row.materialized_as_source_row = false;
+      row.omitted_reason = "unreferenced_by_selected_process_scope";
+      sanitizeStats.omitted_unreferenced_true_source_rows += 1;
+    }
     const omittedSourceSemanticsRows = sourceSemanticsRows.filter(
       (row) => row.kind !== "true_source",
     );
@@ -776,7 +867,102 @@ export function createBundleSampleRowsCommands({
     const processScopeLedgerPath = path.join(outDir, "process-scope-ledger.jsonl");
     writeJsonLines(processScopeLedgerPath, processScopeProjection.ledger);
 
-    const rowTypeCommand = (type, mode) => {
+    const cleanupRowsPath = (type) =>
+      path.join(outDir, "cleanup", type, `${bundleRowTypes[type].plural}.cleaned.jsonl`);
+    const cleanupCommand = (type, inputFile = resolveRepoPath(rowFiles[type])) =>
+      [
+        "node",
+        "scripts/foundry.mjs",
+        "dataset-curation-cleanup",
+        "--type",
+        type,
+        "--rows-file",
+        inputFile,
+        "--out-dir",
+        path.join(outDir, "cleanup", type),
+      ]
+        .map(shellQuote)
+        .join(" ");
+    const schemaValidateCommand = (type, inputFile = resolveRepoPath(rowFiles[type])) =>
+      [
+        cliBin,
+        "dataset",
+        "validate",
+        "--input",
+        inputFile,
+        "--type",
+        type,
+        "--out-dir",
+        path.join(outDir, "validate", type),
+        "--json",
+      ]
+        .map(shellQuote)
+        .join(" ");
+    const contextPackCommand = (type) =>
+      [
+        cliBin,
+        "dataset",
+        "context-pack",
+        "--type",
+        type,
+        "--profile",
+        "ai-import",
+        "--out-dir",
+        path.join(outDir, "context", type),
+        "--json",
+      ]
+        .map(shellQuote)
+        .join(" ");
+    const qaReportPath = (type) =>
+      type === "flow"
+        ? path.join(outDir, "qa", type, "flow_qa_report.json")
+        : path.join(outDir, "qa", type, "process-qa-report.json");
+    const qaCommand = (type, inputFile = resolveRepoPath(rowFiles[type])) =>
+      [
+        cliBin,
+        "qa",
+        type,
+        "--rows-file",
+        inputFile,
+        "--out-dir",
+        path.join(outDir, "qa", type),
+        "--json",
+      ]
+        .map(shellQuote)
+        .join(" ");
+    const curationGateCommand = (type) =>
+      [
+        "node",
+        "scripts/foundry.mjs",
+        "dataset-curation-gate",
+        "--type",
+        type,
+        "--profile",
+        profile,
+        "--rows-file",
+        resolveRepoPath(rowFiles[type]),
+        "--schema-report",
+        path.join(outDir, "validate", type, "outputs", "validation-report.json"),
+        "--qa-report",
+        qaReportPath(type),
+        "--schema-file",
+        path.join(outDir, "context", type, "outputs", "schema.json"),
+        "--yaml-file",
+        path.join(outDir, "context", type, "outputs", "methodology.yaml"),
+        "--ruleset-file",
+        path.join(outDir, "context", type, "outputs", "runtime-ruleset.json"),
+        "--classification-queue",
+        classificationQueuePath,
+        "--location-queue",
+        locationQueuePath,
+        "--identity-preflight-index",
+        identityPreflightArtifacts.indexPath,
+        "--out-dir",
+        path.join(outDir, "curation-gate", type),
+      ]
+        .map(shellQuote)
+        .join(" ");
+    const saveDraftCommand = (type, mode, inputFile = cleanupRowsPath(type)) => {
       const modeFlag = mode === "commit" ? "--commit" : "--dry-run";
       if (type === "lifecyclemodel") {
         return [
@@ -784,7 +970,7 @@ export function createBundleSampleRowsCommands({
           "lifecyclemodel",
           "save-draft",
           "--input",
-          resolveRepoPath(rowFiles[type]),
+          inputFile,
           "--out-dir",
           path.join(outDir, mode === "commit" ? "commit" : "dry-run", type),
           modeFlag,
@@ -798,7 +984,7 @@ export function createBundleSampleRowsCommands({
         "dataset",
         "save-draft",
         "--input",
-        resolveRepoPath(rowFiles[type]),
+        inputFile,
         "--type",
         type,
         "--out-dir",
@@ -815,28 +1001,54 @@ export function createBundleSampleRowsCommands({
         .map((type) => [
           type,
           {
-            validate: rowTypeCommand(type, "validate"),
-            commit: rowTypeCommand(type, "commit"),
+            context_pack: contextPackCommand(type),
+            schema_validate: schemaValidateCommand(type),
+            qa: ["process", "flow"].includes(type) ? qaCommand(type) : null,
+            curation_gate: ["process", "flow"].includes(type) ? curationGateCommand(type) : null,
+            cleanup: cleanupCommand(type),
+            dry_run: saveDraftCommand(type, "validate"),
+            commit: saveDraftCommand(type, "commit"),
+            prerequisites: [
+              "Raw rows are authoring inputs, not commit-ready rows.",
+              "Run schema_validate, QA where available, and dataset-curation-gate on raw rows before AI authoring.",
+              "Run dataset-curation-cleanup only after curation source trace has been captured and AI/deterministic apply evidence is complete.",
+              "Run dry_run/commit only on cleanup output rows after all gate blockers are closed.",
+            ],
           },
         ]),
     );
     commands.unitgroup = {
-      validate: null,
+      context_pack: null,
+      schema_validate: null,
+      qa: null,
+      curation_gate: null,
+      cleanup: null,
+      dry_run: null,
       commit: null,
       policy: "reference_only_existing_database_rows",
     };
     commands.flowproperty = {
-      validate: null,
+      context_pack: null,
+      schema_validate: null,
+      qa: null,
+      curation_gate: null,
+      cleanup: null,
+      dry_run: null,
       commit: null,
       policy: "reference_only_existing_database_rows",
     };
     commands.support = {
-      validate: [
+      context_pack: null,
+      schema_validate: null,
+      qa: null,
+      curation_gate: null,
+      cleanup: cleanupCommand("support", resolveRepoPath(rowFiles.support)),
+      dry_run: [
         cliBin,
         "dataset",
         "save-draft",
         "--input",
-        resolveRepoPath(rowFiles.support),
+        path.join(outDir, "cleanup", "support", "support.cleaned.jsonl"),
         "--type",
         "auto",
         "--out-dir",
@@ -851,7 +1063,7 @@ export function createBundleSampleRowsCommands({
         "dataset",
         "save-draft",
         "--input",
-        resolveRepoPath(rowFiles.support),
+        path.join(outDir, "cleanup", "support", "support.cleaned.jsonl"),
         "--type",
         "auto",
         "--out-dir",
@@ -861,6 +1073,11 @@ export function createBundleSampleRowsCommands({
       ]
         .map(shellQuote)
         .join(" "),
+      prerequisites: [
+        "Support rows are contact/source only; unitgroup and flowproperty stay reference-only.",
+        "Run cleanup before support dry_run/commit.",
+        "Commit support only when dependent process/flow scopes have passed reference closure planning.",
+      ],
     };
 
     const reportPath = path.join(outDir, "dataset-bundle-sample-rows-report.json");
@@ -915,10 +1132,12 @@ export function createBundleSampleRowsCommands({
           "Report/publication sources with empty or generic sourceDescriptionOrComment values are repaired from sourceCitation/shortName evidence before dry-run/write planning.",
         true_source_reference_description_repair:
           "Process data source reference shortDescription values are synchronized to curated true source row names before dry-run/write planning.",
+        process_context_source_repair:
+          "When process context contains a clear Original source with DOI that is more specific than the converted source reference, Foundry creates a process-context source row, rewrites referenceToDataSource to it, and omits unreferenced converted source rows from support writes.",
         canonical_source_reference_rewrite:
           "referenceToDataSetFormat and referenceToComplianceSystem are rewritten to public canonical source references before dry-run/write planning.",
         sdk_validation_before_remote_write:
-          "Use the generated dataset save-draft dry-run/commit commands; each command validates with @tiangong-lca/tidas-sdk before writing.",
+          "Raw materialized rows are authoring inputs. Capture curation context first, close AI/deterministic gates, run dataset-curation-cleanup, then use save-draft dry-run/commit on cleanup output rows; each save-draft command validates with @tiangong-lca/tidas-sdk before writing.",
       },
       counts: {
         blockers: blockers.length,
@@ -949,6 +1168,9 @@ export function createBundleSampleRowsCommands({
         process_source_reference_rows: processSourceReferenceQueueRows.length,
         source_reference_rewrite_rows: sourceReferenceRewriteRows.length,
         canonical_support_rewrite_rows: canonicalSupportRewriteRows.length,
+        materialized_true_source_rows: sourceSemanticsRows.filter(
+          (row) => row.kind === "true_source" && row.materialized_as_source_row !== false,
+        ).length,
         reference_only_unitgroup_rows: countsByType.unitgroup,
         reference_only_flowproperty_rows: countsByType.flowproperty,
         true_source_identity_repairs: sanitizeStats.true_source_identity_repairs,

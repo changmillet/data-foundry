@@ -361,7 +361,9 @@ const supportCacheCommands = createSupportCacheCommands({
 
 const {
   buildBafuFallbackSourcePayload,
+  buildBafuProcessContextSourcePayload,
   canonicalSourceReferenceForRelation,
+  processOriginalSourceMetadata,
   processSourceReferenceRows,
   repairTrueSourceClassification,
   repairTrueSourceDescription,
@@ -371,6 +373,7 @@ const {
   rewriteTrueSourceReferenceDescriptions,
   sourceReferenceSemanticBlockers,
   sourceReferenceSnapshot,
+  sourceSummaryMatchesOriginalMetadata,
   sourceSemanticSummary,
 } = createSourceSemanticUtils({
   asText,
@@ -724,6 +727,7 @@ const bundleSampleRowsCommands = createBundleSampleRowsCommands({
   asText,
   attachIdentityPreflightRows,
   buildBafuFallbackSourcePayload,
+  buildBafuProcessContextSourcePayload,
   buildIdentityPreflightArtifacts,
   buildLibraryContactPayload,
   classificationAuthoringCommands,
@@ -742,6 +746,7 @@ const bundleSampleRowsCommands = createBundleSampleRowsCommands({
   loadTidasLocationCodeMap,
   locationAuthoringCommands,
   nowIso,
+  processOriginalSourceMetadata,
   processSourceReferenceRows,
   readJson,
   repairTrueSourceClassification,
@@ -760,6 +765,7 @@ const bundleSampleRowsCommands = createBundleSampleRowsCommands({
   selectProcessBundleDirs,
   shellQuote,
   sourceReferenceSemanticBlockers,
+  sourceSummaryMatchesOriginalMetadata,
   sourceSemanticSummary,
   writeJson,
   writeJsonLines,
