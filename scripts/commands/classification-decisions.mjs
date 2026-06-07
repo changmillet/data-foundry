@@ -479,6 +479,217 @@ export function createClassificationDecisionCommands({
     return { blockers, decisionsByKey };
   }
 
+  function libraryClassificationDecisionCode(row) {
+    return asText(row?.selected_code ?? row?.selectedCode ?? classificationDecisionCode(row));
+  }
+
+  function libraryClassificationDecisionKey(row) {
+    const schemaType = classificationDecisionSchemaType(row);
+    const datasetId = asText(row?.dataset_id ?? row?.datasetId ?? row?.id ?? row?.uuid);
+    const version = asText(row?.dataset_version ?? row?.datasetVersion ?? row?.version);
+    return `${schemaType}::${datasetId}::${version}`;
+  }
+
+  function decisionTaskAuthoringContext(task, taskPath) {
+    const contextBundle = task?.context_bundle ?? task?.contextBundle;
+    const contractFiles = contextBundle?.contract_context_files ?? [];
+    return {
+      task: contextBundle?.task ?? repoRelativePath(taskPath),
+      context_bundle_sha256: asText(contextBundle?.sha256),
+      required_context_kinds: unique(
+        contractFiles.map((file) => asText(file?.kind)).filter(Boolean),
+      ),
+      context_files: contractFiles.map((file) => ({
+        kind: asText(file?.kind) || "context",
+        path: asText(file?.path) || null,
+        sha256: asText(file?.sha256) || null,
+      })),
+    };
+  }
+
+  function runDatasetLibraryClassificationDecisionsProject(options) {
+    if (options.help) {
+      return {
+        schema_version: 1,
+        status: "help",
+        command: "dataset-library-classification-decisions-project",
+        usage: [
+          "node scripts/foundry.mjs dataset-library-classification-decisions-project --classification-queue <classification-authoring-queue.jsonl> --library-decisions <run-dir>/decisions/classification-decisions.jsonl --decision-task <classification-decision-task.json> --out-dir <projection-dir>",
+        ],
+        purpose:
+          "Project library-level semantic classification decisions into a scope-local decision file bound to an exact classification decision task before deterministic apply.",
+      };
+    }
+
+    const queuePath = resolveRepoPath(options.classificationQueue || options.queue);
+    const decisionsDir = resolveRepoPath(options.decisionsDir || options.libraryDecisionsDir);
+    const libraryDecisionsPath = resolveRepoPath(
+      options.libraryDecisions ||
+        options.libraryDecisionFile ||
+        options.decisions ||
+        (decisionsDir ? path.join(decisionsDir, "classification-decisions.jsonl") : null),
+    );
+    const decisionTaskPath = resolveRepoPath(
+      options.decisionTask || options.classificationDecisionTask || options.task,
+    );
+    if (!queuePath || !fileExists(queuePath)) {
+      throw new Error(
+        "--classification-queue is required and must point to classification-authoring-queue.jsonl.",
+      );
+    }
+    if (!libraryDecisionsPath || !fileExists(libraryDecisionsPath)) {
+      throw new Error(
+        "--library-decisions or --decisions-dir is required and must point to classification-decisions.jsonl.",
+      );
+    }
+    if (!decisionTaskPath || !fileExists(decisionTaskPath)) {
+      throw new Error(
+        "--decision-task is required so projected decisions can bind to the exact full-context task bundle.",
+      );
+    }
+
+    const outDir = resolveRepoPath(
+      options.outDir || ".foundry/workspaces/library-classification-decisions-project",
+    );
+    const queueRows = readJsonOrJsonLines(queuePath);
+    const libraryRows = readJsonOrJsonLines(libraryDecisionsPath);
+    const decisionTask = readJsonOrJsonLines(decisionTaskPath);
+    const taskPayload = Array.isArray(decisionTask) ? decisionTask[0] : decisionTask;
+    const authoringContext = decisionTaskAuthoringContext(taskPayload, decisionTaskPath);
+    const requiredContextKinds = unique([
+      ...authoringContext.required_context_kinds,
+      "schema",
+      "methodology_yaml",
+      "ruleset",
+      "classification_schema",
+      "location_schema",
+    ]);
+    const libraryByKey = new Map(
+      libraryRows.map((row) => [libraryClassificationDecisionKey(row), row]),
+    );
+    const projected = [];
+    const manualReview = [];
+
+    for (const [index, queueRow] of queueRows.entries()) {
+      const key = classificationQueueTargetKey(queueRow);
+      const decision = libraryByKey.get(key);
+      const code = libraryClassificationDecisionCode(decision);
+      if (
+        !decision ||
+        decisionCompletionStatus(decision) !== "completed" ||
+        !code ||
+        hasUnresolvedAiPlaceholder(decision)
+      ) {
+        manualReview.push({
+          schema_version: 1,
+          status: "manual_review",
+          reason: decision
+            ? "library_classification_decision_incomplete"
+            : "library_classification_decision_missing",
+          queue_row_index: index,
+          decision_key: key,
+          dataset_type: queueRow.dataset_type ?? null,
+          dataset_id: queueRow.dataset_id ?? null,
+          dataset_version: queueRow.dataset_version ?? null,
+          category_type: classificationQueueSchemaType(queueRow) || null,
+          required_human_action:
+            "Provide a completed library-level classification decision, then rerun this projection and deterministic classification apply.",
+        });
+        continue;
+      }
+      const usedContextKinds = unique([
+        ...requiredContextKinds,
+        ...classificationDecisionUsedContextKinds(decision),
+      ]);
+      projected.push({
+        schema_version: 1,
+        dataset_id: queueRow.dataset_id,
+        dataset_version: queueRow.dataset_version,
+        category_type: classificationQueueSchemaType(queueRow),
+        decision_status: "completed",
+        code,
+        basis:
+          asText(decision.basis) ||
+          "Projected from completed library-level classification decision.",
+        authoring_context: authoringContext,
+        used_context_kinds: usedContextKinds,
+        evidence: {
+          source: "library-classification-decisions-project",
+          projection: "library_decision_to_scope_classification_queue",
+          used_context_kinds: usedContextKinds,
+          queue: {
+            row_index: index,
+            dataset_type: queueRow.dataset_type ?? null,
+            dataset_id: queueRow.dataset_id ?? null,
+            dataset_version: queueRow.dataset_version ?? null,
+            category_type: classificationQueueSchemaType(queueRow) || null,
+            current_classification: queueRow.current_classification ?? null,
+            source_classification: queueRow.source_classification ?? null,
+            authoring_context: queueRow.authoring_context ?? null,
+            source_file: queueRow.source_file ?? null,
+            foundry_selection: queueRow.foundry_selection ?? null,
+          },
+          library_decision: {
+            decision_key: key,
+            selected_code: code,
+            basis: decision.basis ?? null,
+            confidence: decision.confidence ?? null,
+            source_name: decision.source_name ?? null,
+            converted_classification_reference: decision.converted_classification_reference ?? null,
+            converted_classification_reference_policy:
+              decision.converted_classification_reference_policy ?? null,
+            classification_decision_level: decision.classification_decision_level ?? null,
+            rule_hits: decision.rule_hits ?? null,
+          },
+        },
+      });
+    }
+
+    const decisionsPath = path.join(outDir, "classification-decisions.jsonl");
+    const manualReviewPath = path.join(outDir, "classification-decisions.manual-review.jsonl");
+    const reportPath = path.join(
+      outDir,
+      "dataset-library-classification-decisions-project-report.json",
+    );
+    writeJsonLines(decisionsPath, projected);
+    writeJsonLines(manualReviewPath, manualReview);
+    const report = {
+      schema_version: 1,
+      generated_at_utc: nowIso(),
+      status: manualReview.length > 0 ? "blocked" : "completed",
+      command: "dataset-library-classification-decisions-project",
+      classification_queue: repoRelativePath(queuePath),
+      library_decisions: repoRelativePath(libraryDecisionsPath),
+      decision_task: repoRelativePath(decisionTaskPath),
+      counts: {
+        queue_rows: queueRows.length,
+        library_decisions: libraryRows.length,
+        projected_decisions: projected.length,
+        manual_review: manualReview.length,
+        blockers: manualReview.length,
+      },
+      policy: {
+        classification_ai_decision_boundary:
+          "The library decision contains the semantic choice. This projection only binds it to a scope-local full-context decision task before deterministic CLI classification apply.",
+        tidas_tools_classification_policy: "weak_hint_only",
+      },
+      blockers: manualReview.map((row) => ({
+        code: row.reason,
+        message: row.required_human_action,
+        dataset_id: row.dataset_id,
+        dataset_version: row.dataset_version,
+        category_type: row.category_type,
+      })),
+      files: {
+        report: repoRelativePath(reportPath),
+        decisions: repoRelativePath(decisionsPath),
+        manual_review: repoRelativePath(manualReviewPath),
+      },
+    };
+    writeJson(reportPath, report);
+    return report;
+  }
+
   function outputRowsForClassificationGroup(rows, outDir, inputRows, options) {
     if (options.out && rows.length > 0) return resolveRepoPath(options.out);
     const outputRows = unique(rows.map(classificationQueueOutputRows)).filter(Boolean);
@@ -658,5 +869,6 @@ export function createClassificationDecisionCommands({
   return {
     runDatasetClassificationDecisionTaskBuild,
     runDatasetClassificationDecisionsApply,
+    runDatasetLibraryClassificationDecisionsProject,
   };
 }

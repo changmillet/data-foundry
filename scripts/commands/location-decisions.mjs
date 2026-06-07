@@ -23,6 +23,7 @@ export function createLocationDecisionCommands({
   decisionTaskInputRowsOverride,
   decisionTaskProofList,
   decisionTaskReportPayload,
+  ensureArray,
   fileExists,
   hasQueueSelectionOptions,
   hasUnresolvedAiPlaceholder,
@@ -467,6 +468,195 @@ export function createLocationDecisionCommands({
     return { blockers, decisionsByKey };
   }
 
+  function locationDecisionTaskAuthoringContext(task, taskPath) {
+    const contextBundle = task?.context_bundle ?? task?.contextBundle;
+    const contractFiles = contextBundle?.contract_context_files ?? [];
+    return {
+      task: contextBundle?.task ?? repoRelativePath(taskPath),
+      context_bundle_sha256: asText(contextBundle?.sha256),
+      required_context_kinds: unique(
+        contractFiles.map((file) => asText(file?.kind)).filter(Boolean),
+      ),
+      context_files: contractFiles.map((file) => ({
+        kind: asText(file?.kind) || "context",
+        path: asText(file?.path) || null,
+        sha256: asText(file?.sha256) || null,
+      })),
+    };
+  }
+
+  function locationSchemaCodeSet(options) {
+    const schemaPath = resolveRepoPath(options.locationSchema || options.locationCategorySchema);
+    if (!schemaPath || !fileExists(schemaPath)) return null;
+    const schemaRows = readJsonOrJsonLines(schemaPath);
+    const schema = Array.isArray(schemaRows) && schemaRows.length === 1 ? schemaRows[0] : {};
+    const oneOf = Array.isArray(schema?.oneOf) ? schema.oneOf : [];
+    return new Set(oneOf.map((entry) => asText(entry?.const)).filter(Boolean));
+  }
+
+  function collectSuggestedLocationCodes(queueRow) {
+    const values = [
+      queueRow?.suggested_location_code,
+      queueRow?.suggestedLocationCode,
+      queueRow?.suggested_code,
+      queueRow?.suggestedCode,
+      queueRow?.evidence?.suggested_value,
+      queueRow?.evidence?.suggestedValue,
+    ];
+    for (const candidate of ensureArray(queueRow?.evidence?.candidates)) {
+      values.push(candidate?.code);
+      values.push(candidate?.suggested_value);
+    }
+    return unique(values.map(asText).filter(Boolean));
+  }
+
+  function runDatasetLocationDecisionsSuggest(options) {
+    if (options.help) {
+      return {
+        schema_version: 1,
+        status: "help",
+        command: "dataset-location-decisions-suggest",
+        usage: [
+          "node scripts/foundry.mjs dataset-location-decisions-suggest --location-queue <location-authoring-queue.jsonl> --decision-task <location-decision-task.json> --location-schema <tidas_locations_category.json> --out-dir <decisions-dir>",
+        ],
+        purpose:
+          "Generate completed location decisions only for queue rows that already contain one provable TIDAS location code candidate, binding each decision to the exact location decision task context bundle.",
+      };
+    }
+
+    const queuePath = resolveRepoPath(options.locationQueue || options.queue);
+    const decisionTaskPath = resolveRepoPath(
+      options.decisionTask || options.locationDecisionTask || options.task,
+    );
+    if (!queuePath || !fileExists(queuePath)) {
+      throw new Error(
+        "--location-queue is required and must point to location-authoring-queue.jsonl.",
+      );
+    }
+    if (!decisionTaskPath || !fileExists(decisionTaskPath)) {
+      throw new Error(
+        "--decision-task is required so suggested decisions can bind to the exact full-context task bundle.",
+      );
+    }
+    const outDir = resolveRepoPath(options.outDir || ".foundry/workspaces/location-decisions");
+    const queueRows = readJsonOrJsonLines(queuePath);
+    const decisionTask = readJsonOrJsonLines(decisionTaskPath);
+    const taskPayload = Array.isArray(decisionTask) ? decisionTask[0] : decisionTask;
+    const authoringContext = locationDecisionTaskAuthoringContext(taskPayload, decisionTaskPath);
+    const requiredContextKinds = unique([
+      ...authoringContext.required_context_kinds,
+      "schema",
+      "methodology_yaml",
+      "ruleset",
+      "location_schema",
+      "location_authoring_queue",
+    ]);
+    const validCodes = locationSchemaCodeSet(options);
+    const decisions = [];
+    const manualReview = [];
+
+    for (const [index, queueRow] of queueRows.entries()) {
+      const candidates = collectSuggestedLocationCodes(queueRow);
+      const validCandidates = validCodes
+        ? candidates.filter((code) => validCodes.has(code))
+        : candidates;
+      if (validCandidates.length !== 1) {
+        manualReview.push({
+          schema_version: 1,
+          status: "manual_review",
+          reason:
+            validCandidates.length === 0
+              ? "location_suggestion_missing_or_invalid"
+              : "location_suggestion_conflict",
+          queue_row_index: index,
+          dataset_type: queueRow.dataset_type ?? null,
+          dataset_id: queueRow.dataset_id ?? null,
+          dataset_version: queueRow.dataset_version ?? null,
+          target_path: queueRow.path ?? null,
+          candidate_codes: candidates,
+          valid_candidate_codes: validCandidates,
+          required_human_action:
+            "Provide one evidence-backed TIDAS location code decision for this queue row, then rerun deterministic location apply.",
+        });
+        continue;
+      }
+      const code = validCandidates[0];
+      const usedContextKinds = requiredContextKinds;
+      decisions.push({
+        schema_version: 1,
+        dataset_id: queueRow.dataset_id,
+        dataset_version: queueRow.dataset_version,
+        category_type: "location",
+        decision_status: "completed",
+        code,
+        target_path: queueRow.path,
+        basis: `The location queue contains one valid source-backed TIDAS location code candidate (${code}) for this target path.`,
+        authoring_context: authoringContext,
+        used_context_kinds: usedContextKinds,
+        evidence: {
+          source: "dataset-location-decisions-suggest",
+          projection: "queue_suggested_location_code_to_decision",
+          used_context_kinds: usedContextKinds,
+          queue: {
+            row_index: index,
+            dataset_type: queueRow.dataset_type ?? null,
+            dataset_id: queueRow.dataset_id ?? null,
+            dataset_version: queueRow.dataset_version ?? null,
+            target_path: queueRow.path ?? null,
+            current_location: queueRow.current_location ?? null,
+            source_file: queueRow.source_file ?? null,
+            suggested_location_code: queueRow.suggested_location_code ?? null,
+            evidence: queueRow.evidence ?? null,
+          },
+        },
+      });
+    }
+
+    const decisionsPath = path.join(outDir, "location-decisions.jsonl");
+    const manualReviewPath = path.join(outDir, "location-decisions.manual-review.jsonl");
+    const reportPath = path.join(outDir, "dataset-location-decisions-suggest-report.json");
+    writeJsonLines(decisionsPath, decisions);
+    writeJsonLines(manualReviewPath, manualReview);
+    const report = {
+      schema_version: 1,
+      generated_at_utc: nowIso(),
+      status: manualReview.length > 0 ? "blocked" : "completed",
+      command: "dataset-location-decisions-suggest",
+      location_queue: repoRelativePath(queuePath),
+      decision_task: repoRelativePath(decisionTaskPath),
+      counts: {
+        queue_rows: queueRows.length,
+        suggested_decisions: decisions.length,
+        manual_review: manualReview.length,
+        blockers: manualReview.length,
+      },
+      policy: {
+        automatic_scope:
+          "Only queue rows with exactly one valid TIDAS location code candidate are converted to decisions. Conflicts or missing candidates remain blocked for human/AI review.",
+        apply_boundary:
+          "This command creates decision artifacts only; dataset-location-decisions-apply must perform the deterministic row update.",
+      },
+      blockers: manualReview.map((row) => ({
+        code: row.reason,
+        message: row.required_human_action,
+        dataset_type: row.dataset_type,
+        dataset_id: row.dataset_id,
+        dataset_version: row.dataset_version,
+        target_path: row.target_path,
+        candidate_codes: row.candidate_codes,
+        valid_candidate_codes: row.valid_candidate_codes,
+      })),
+      files: {
+        report: repoRelativePath(reportPath),
+        decisions: repoRelativePath(decisionsPath),
+        manual_review: repoRelativePath(manualReviewPath),
+      },
+    };
+    fs.mkdirSync(outDir, { recursive: true });
+    writeJson(reportPath, report);
+    return report;
+  }
+
   function outputRowsForLocationGroup(rows, outDir, inputRows, options) {
     if (options.out && rows.length > 0) return resolveRepoPath(options.out);
     const outputRows = unique(rows.map(locationQueueOutputRows)).filter(Boolean);
@@ -615,6 +805,7 @@ export function createLocationDecisionCommands({
 
   return {
     runDatasetLocationDecisionTaskBuild,
+    runDatasetLocationDecisionsSuggest,
     runDatasetLocationDecisionsApply,
   };
 }

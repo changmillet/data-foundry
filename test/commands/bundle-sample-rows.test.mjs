@@ -763,19 +763,24 @@ test("dataset-bundle-sample-rows projects process geography into referenced flow
   manifest.files.flows.push(`tidas/flows/${flowId}.json`);
   writeJson(manifestPath, manifest);
 
-  const report = runFoundry([
-    "dataset-bundle-sample-rows",
-    "--bundles-dir",
-    path.join(fixtureRoot, "process-bundles"),
-    "--process-id",
-    processId,
-    "--out-dir",
-    outDir,
-    "--contact-id",
-    newContactId,
-  ]);
+  const report = runFoundry(
+    [
+      "dataset-bundle-sample-rows",
+      "--bundles-dir",
+      path.join(fixtureRoot, "process-bundles"),
+      "--process-id",
+      processId,
+      "--out-dir",
+      outDir,
+      "--contact-id",
+      newContactId,
+    ],
+    1,
+  );
 
   assert.equal(report.counts.flow_location_context_traces, 1);
+  assert.equal(report.counts.flow_location_of_supply_missing_with_evidence, 1);
+  assert.equal(report.counts.location_authoring_queue_rows, 1);
   const flows = readJsonLines(path.join(repoRoot, report.files.rows.flow));
   const trace =
     flows[0].flowDataSet.flowInformation.dataSetInformation["common:other"][
@@ -788,6 +793,13 @@ test("dataset-bundle-sample-rows projects process geography into referenced flow
   );
   assert.equal(locationPayload.geography.attributes[0].value, "CH");
   assert.equal(locationPayload.exchange.attributes[0].value, flowId);
+  const locationQueue = readJsonLines(path.join(repoRoot, report.files.location_authoring_queue));
+  assert.equal(locationQueue[0].path, "flowDataSet.flowInformation.geography.locationOfSupply");
+  assert.equal(locationQueue[0].suggested_location_code, "CH");
+  assert.equal(
+    locationQueue[0].evidence.candidates[0].evidence_source,
+    "processDataSet.processInformation.geography.locationOfOperationSupplyOrProduction.@location",
+  );
 });
 
 test("dataset-identity-preflight-requests-build creates a fresh exact-row request index", () => {
@@ -2018,4 +2030,89 @@ test("dataset-bundle-sample-rows materializes lifecyclemodels and queues locatio
     "lifeCycleModelDataSet.lifeCycleModelInformation.technology.processes.processInstance.connections.outputExchange.downstreamProcess.@location",
   );
   assert.equal(locationQueue[0].current_location, "Invalid lifecycle region");
+});
+
+test("dataset-bundle-sample-rows queues missing flow locationOfSupply from name mix location code", () => {
+  createBundleFixture();
+  const outDir = path.join(fixtureRoot, "out-flow-location-saturation");
+  const bundleDir = path.join(fixtureRoot, "process-bundles", processId);
+  writeJson(path.join(bundleDir, "tidas", "flows", `${flowId}.json`), {
+    flowDataSet: {
+      flowInformation: {
+        dataSetInformation: {
+          "common:UUID": flowId,
+          typeOfDataSet: "Product flow",
+          name: {
+            baseName: ml("Fixture market flow"),
+            mixAndLocationTypes: ml("CH"),
+          },
+          classificationInformation: {
+            "common:classification": {
+              "common:class": [
+                {
+                  "@level": "0",
+                  "@classId": "0",
+                  "#text": "Community, social and personal services",
+                },
+                {
+                  "@level": "1",
+                  "@classId": "90",
+                  "#text":
+                    "Sewage and waste collection, treatment and disposal and other environmental protection services",
+                },
+              ],
+            },
+          },
+        },
+      },
+      administrativeInformation: {
+        publicationAndOwnership: {
+          "common:dataSetVersion": "00.00.001",
+        },
+      },
+    },
+  });
+  const manifestPath = path.join(bundleDir, "manifest.json");
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  manifest.files.flows = [`tidas/flows/${flowId}.json`];
+  writeJson(manifestPath, manifest);
+
+  const report = runFoundry(
+    [
+      "dataset-bundle-sample-rows",
+      "--bundles-dir",
+      path.join(fixtureRoot, "process-bundles"),
+      "--process-id",
+      processId,
+      "--out-dir",
+      outDir,
+      "--contact-id",
+      newContactId,
+    ],
+    1,
+  );
+
+  assert.equal(report.status, "blocked");
+  assert.equal(report.counts.flow_location_of_supply_missing_with_evidence, 1);
+  assert.equal(report.counts.flow_location_of_supply_auto_decision_candidates, 1);
+  assert.equal(report.counts.location_authoring_queue_rows, 1);
+  assert.ok(
+    report.blockers.some(
+      (blocker) =>
+        blocker.code === "flow_location_of_supply_requires_authoring" &&
+        blocker.suggested_location_code === "CH",
+    ),
+  );
+
+  const locationQueue = readJsonLines(path.join(repoRoot, report.files.location_authoring_queue));
+  assert.equal(locationQueue.length, 1);
+  assert.equal(locationQueue[0].dataset_type, "flow");
+  assert.equal(locationQueue[0].dataset_id, flowId);
+  assert.equal(locationQueue[0].path, "flowDataSet.flowInformation.geography.locationOfSupply");
+  assert.equal(locationQueue[0].suggested_location_code, "CH");
+  assert.equal(locationQueue[0].evidence.reason, "single_valid_location_candidate");
+  assert.equal(
+    locationQueue[0].evidence.candidates[0].evidence_source,
+    "flowDataSet.flowInformation.dataSetInformation.name.mixAndLocationTypes",
+  );
 });

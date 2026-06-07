@@ -367,3 +367,121 @@ test("location decision task and apply route AI location choices through CLI loc
     fs.rmSync(fixtureRoot, { recursive: true, force: true });
   }
 });
+
+test("location decisions suggest creates task-bound decisions for unique valid candidates", () => {
+  fs.rmSync(fixtureRoot, { recursive: true, force: true });
+  const rowsDir = path.join(fixtureRoot, "rows-suggest");
+  const processRows = path.join(rowsDir, "processes.jsonl");
+  const queue = path.join(fixtureRoot, "location-authoring-queue.suggest.jsonl");
+  const taskDir = path.join(fixtureRoot, "location-task-suggest");
+  const suggestDir = path.join(fixtureRoot, "location-decisions-suggest");
+  const contextDir = path.join(fixtureRoot, "context-suggest");
+  const schemaFile = path.join(contextDir, "schema.json");
+  const yamlFile = path.join(contextDir, "methodology.yaml");
+  const rulesetFile = path.join(contextDir, "runtime-ruleset.json");
+  const locationCategoryFile = path.join(contextDir, "tidas_locations_category.json");
+
+  writeJsonLines(processRows, [processRow()]);
+  writeJson(schemaFile, { title: "Fixture process schema" });
+  fs.mkdirSync(contextDir, { recursive: true });
+  fs.writeFileSync(yamlFile, "process:\n  geography: required\n");
+  writeJson(rulesetFile, { rules: ["source-language-only"] });
+  writeJson(locationCategoryFile, { oneOf: [{ const: "CH" }] });
+  writeJsonLines(queue, [
+    {
+      dataset_type: "process",
+      dataset_id: processId,
+      dataset_version: "00.00.001",
+      code: "location_code_requires_authoring",
+      path: locationPath,
+      current_location: null,
+      suggested_location_code: "CH",
+      source_file: "tmp/source/process.json",
+      evidence: {
+        source: "test",
+        candidates: [{ code: "CH", evidence_source: "fixture" }],
+      },
+      location_workflow: {
+        schema_type: "location",
+        commands: {
+          input_rows: rel(processRows),
+          output_rows: rel(path.join(rowsDir, "processes.located.jsonl")),
+        },
+      },
+    },
+  ]);
+
+  const task = runFoundry([
+    "dataset-location-decision-task-build",
+    "--location-queue",
+    rel(queue),
+    "--schema-file",
+    rel(schemaFile),
+    "--yaml-file",
+    rel(yamlFile),
+    "--ruleset-file",
+    rel(rulesetFile),
+    "--location-schema",
+    rel(locationCategoryFile),
+    "--out-dir",
+    rel(taskDir),
+  ]);
+  assert.equal(task.status, "ready_for_ai_location_decisions");
+
+  const suggest = runFoundry([
+    "dataset-location-decisions-suggest",
+    "--location-queue",
+    rel(queue),
+    "--decision-task",
+    task.files.task,
+    "--location-schema",
+    rel(locationCategoryFile),
+    "--out-dir",
+    rel(suggestDir),
+  ]);
+  assert.equal(suggest.status, "completed");
+  assert.equal(suggest.counts.suggested_decisions, 1);
+  assert.equal(suggest.counts.manual_review, 0);
+
+  const decisions = readJsonLines(path.join(repoRoot, suggest.files.decisions));
+  assert.equal(decisions[0].code, "CH");
+  assert.equal(decisions[0].category_type, "location");
+  assert.equal(decisions[0].decision_status, "completed");
+  assert.equal(decisions[0].target_path, locationPath);
+  assert.match(decisions[0].authoring_context.context_bundle_sha256, /^[a-f0-9]{64}$/u);
+  assert.equal(decisions[0].authoring_context.context_bundle_sha256, task.context_bundle.sha256);
+  assert.equal(decisions[0].used_context_kinds.includes("location_authoring_queue"), true);
+
+  writeJsonLines(queue, [
+    {
+      dataset_type: "process",
+      dataset_id: processId,
+      dataset_version: "00.00.001",
+      path: locationPath,
+      suggested_location_code: "Invalid",
+      location_workflow: {
+        schema_type: "location",
+        commands: {
+          input_rows: rel(processRows),
+          output_rows: rel(path.join(rowsDir, "processes.located.jsonl")),
+        },
+      },
+    },
+  ]);
+  const blockedSuggest = runFoundry(
+    [
+      "dataset-location-decisions-suggest",
+      "--location-queue",
+      rel(queue),
+      "--decision-task",
+      task.files.task,
+      "--location-schema",
+      rel(locationCategoryFile),
+      "--out-dir",
+      rel(path.join(fixtureRoot, "location-decisions-suggest-blocked")),
+    ],
+    1,
+  );
+  assert.equal(blockedSuggest.status, "blocked");
+  assert.equal(blockedSuggest.blockers[0].code, "location_suggestion_missing_or_invalid");
+});

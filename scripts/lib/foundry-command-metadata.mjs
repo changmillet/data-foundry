@@ -303,6 +303,28 @@ export const commandMetadata = {
       ),
     ],
   }),
+  "dataset-library-classification-decisions-project": metadata({
+    category: "workflow-internal",
+    ownerModule: "scripts/commands/classification-decisions.mjs",
+    ownerExport:
+      "createClassificationDecisionCommands().runDatasetLibraryClassificationDecisionsProject",
+    inputs: [
+      "classification-authoring-queue.jsonl",
+      "library classification-decisions.jsonl",
+      "classification-decision-task.json",
+    ],
+    outputs: [
+      "dataset-library-classification-decisions-project-report.json",
+      "classification-decisions.jsonl",
+      "classification-decisions.manual-review.jsonl",
+    ],
+    keyTests: [
+      nodeTest(
+        "test/commands/classification-decisions.test.mjs",
+        "library classification decisions project into task-bound apply decisions",
+      ),
+    ],
+  }),
   "dataset-classification-decisions-apply": metadata({
     category: "workflow-internal",
     ownerModule: "scripts/commands/classification-decisions.mjs",
@@ -330,6 +352,27 @@ export const commandMetadata = {
       nodeTest(
         "test/commands/location-decisions.test.mjs",
         "location decision task and apply route AI location choices through CLI location apply",
+      ),
+    ],
+  }),
+  "dataset-location-decisions-suggest": metadata({
+    category: "workflow-internal",
+    ownerModule: "scripts/commands/location-decisions.mjs",
+    ownerExport: "createLocationDecisionCommands().runDatasetLocationDecisionsSuggest",
+    inputs: [
+      "location-authoring-queue.jsonl",
+      "location-decision-task.json",
+      "tidas_locations_category.json",
+    ],
+    outputs: [
+      "location-decisions.jsonl",
+      "location-decisions.manual-review.jsonl",
+      "dataset-location-decisions-suggest-report.json",
+    ],
+    keyTests: [
+      nodeTest(
+        "test/commands/location-decisions.test.mjs",
+        "location decisions suggest creates task-bound decisions for unique valid candidates",
       ),
     ],
   }),
@@ -516,6 +559,24 @@ export const commandMetadata = {
       nodeTest(
         "test/scenarios/library-scope-workflow.test.mjs",
         "library authoring plan emits deduplicated semantic decision templates",
+      ),
+    ],
+  }),
+  "dataset-library-identity-decisions-from-preflight": metadata({
+    category: "workflow-internal",
+    ownerModule: "scripts/commands/library-scope-workflow.mjs",
+    ownerExport:
+      "createLibraryScopeWorkflowCommands().runDatasetLibraryIdentityDecisionsFromPreflight",
+    inputs: ["library index", "elementary flow identity-preflight request index and reports"],
+    outputs: [
+      "identity-decisions.jsonl",
+      "identity-decisions.manual-review.jsonl",
+      "dataset-library-identity-decisions-from-preflight-report.json",
+    ],
+    keyTests: [
+      nodeTest(
+        "test/scenarios/library-scope-workflow.test.mjs",
+        "library identity decisions from preflight emits reuse decisions and manual review rows",
       ),
     ],
   }),

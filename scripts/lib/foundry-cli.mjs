@@ -69,10 +69,14 @@ async function runFoundryCliMain({ argv, commandDeps, decisionDeps, runtime }) {
       identityDecisionTaskCommands.runDatasetIdentityDecisionTaskBuild(options),
     "dataset-classification-decision-task-build": (options) =>
       classificationDecisionCommands.runDatasetClassificationDecisionTaskBuild(options),
+    "dataset-library-classification-decisions-project": (options) =>
+      classificationDecisionCommands.runDatasetLibraryClassificationDecisionsProject(options),
     "dataset-classification-decisions-apply": (options) =>
       classificationDecisionCommands.runDatasetClassificationDecisionsApply(options),
     "dataset-location-decision-task-build": (options) =>
       locationDecisionCommands.runDatasetLocationDecisionTaskBuild(options),
+    "dataset-location-decisions-suggest": (options) =>
+      locationDecisionCommands.runDatasetLocationDecisionsSuggest(options),
     "dataset-location-decisions-apply": (options) =>
       locationDecisionCommands.runDatasetLocationDecisionsApply(options),
     "dataset-curation-cleanup": (options) => runDatasetCurationCleanup({ repoRoot, options }),
@@ -93,6 +97,8 @@ async function runFoundryCliMain({ argv, commandDeps, decisionDeps, runtime }) {
       libraryScopeWorkflowCommands.runDatasetLibraryIndexBuild(options),
     "dataset-library-authoring-plan": (options) =>
       libraryScopeWorkflowCommands.runDatasetLibraryAuthoringPlan(options),
+    "dataset-library-identity-decisions-from-preflight": (options) =>
+      libraryScopeWorkflowCommands.runDatasetLibraryIdentityDecisionsFromPreflight(options),
     "dataset-library-decisions-apply": (options) =>
       libraryScopeWorkflowCommands.runDatasetLibraryDecisionsApply(options),
     "dataset-process-scope-run": (options) =>

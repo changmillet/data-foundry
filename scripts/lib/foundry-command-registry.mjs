@@ -23,8 +23,10 @@ export const datasetPolicyCommands = [
   "dataset-authoring-patch-collect",
   "dataset-identity-decision-task-build",
   "dataset-classification-decision-task-build",
+  "dataset-library-classification-decisions-project",
   "dataset-classification-decisions-apply",
   "dataset-location-decision-task-build",
+  "dataset-location-decisions-suggest",
   "dataset-location-decisions-apply",
   "dataset-curation-cleanup",
   "dataset-patch-apply",
@@ -36,6 +38,7 @@ export const datasetPolicyCommands = [
   "dataset-identity-preflight-index-merge",
   "dataset-library-index-build",
   "dataset-library-authoring-plan",
+  "dataset-library-identity-decisions-from-preflight",
   "dataset-library-decisions-apply",
   "dataset-process-scope-run",
   "dataset-identity-reference-rewrites-apply",
@@ -99,6 +102,8 @@ export function exitCodeForCommand(command, result) {
       return statusIs(result, ["help", "ready_for_ai_library_decisions", "ready_no_action_items"])
         ? 0
         : 1;
+    case "dataset-library-identity-decisions-from-preflight":
+      return statusIs(result, ["help", "completed", "completed_with_manual_review"]) ? 0 : 1;
     case "dataset-authoring-task-build":
       return statusIs(result, [
         "help",
@@ -127,6 +132,8 @@ export function exitCodeForCommand(command, result) {
         ? 0
         : 1;
     case "dataset-classification-decisions-apply":
+    case "dataset-library-classification-decisions-project":
+    case "dataset-location-decisions-suggest":
     case "dataset-location-decisions-apply":
     case "dataset-identity-decisions-apply":
     case "dataset-library-decisions-apply":

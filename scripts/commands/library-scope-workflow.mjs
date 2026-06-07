@@ -961,6 +961,543 @@ export function createLibraryScopeWorkflowCommands({
     };
   }
 
+  function identityPreflightReportPath(row) {
+    const explicit =
+      row.expected_report_file ||
+      row.identity_decision_file ||
+      row.identityDecisionFile ||
+      row.report_file ||
+      row.reportFile;
+    if (explicit) return resolveRepoPath(explicit);
+    const outputDir = row.output_dir || row.outputDir;
+    return outputDir
+      ? path.join(resolveRepoPath(outputDir), "outputs", "identity-decision.json")
+      : null;
+  }
+
+  function identityPreflightCandidatePath(row) {
+    const explicit = row.expected_candidates_file || row.candidates_file || row.candidatesFile;
+    if (explicit) return resolveRepoPath(explicit);
+    const outputDir = row.output_dir || row.outputDir;
+    return outputDir
+      ? path.join(resolveRepoPath(outputDir), "outputs", "identity-candidates.jsonl")
+      : null;
+  }
+
+  function identityPreflightKey(row) {
+    return [
+      asText(row.dataset_type || row.type || "flow"),
+      asText(row.dataset_id || row.source_dataset_id || row.entity_id || row.id),
+      asText(row.dataset_version || row.source_dataset_version || row.version) || "00.00.001",
+    ].join(":");
+  }
+
+  function compactIdentityText(value) {
+    return normalizedText(value)
+      .replace(/[^a-z0-9]+/gu, "")
+      .trim();
+  }
+
+  function identityTokens(value) {
+    return normalizedText(value)
+      .replace(/[^a-z0-9]+/gu, " ")
+      .split(/\s+/u)
+      .filter((token) => token.length >= 2 && !["the", "and", "with"].includes(token));
+  }
+
+  function normalizedCas(value) {
+    return String(value ?? "")
+      .trim()
+      .replace(/[^0-9-]+/gu, "");
+  }
+
+  function flowPropertyDimension(value) {
+    const normalized = normalizedText(value);
+    if (/\bkg\b|mass/u.test(normalized)) return "mass";
+    if (/\b(kwh|mj)\b|energy|calorific/u.test(normalized)) return "energy";
+    if (/\b(k?bq)\b|radioactiv/u.test(normalized)) return "radioactivity";
+    if (/\b(n?m3|m\^?3)\b|volume/u.test(normalized)) return "volume";
+    if (/\bm2a\b|area.*time|occupation/u.test(normalized)) return "area_time";
+    if (/\b(ha|m2|m\^?2)\b|area/u.test(normalized)) return "area";
+    if (/\b(tkm|personkm)\b|transport/u.test(normalized)) return "transport";
+    if (/\b(km|m)\b|length|distance/u.test(normalized)) return "length";
+    if (/\b(unit|p|person|item)\b/u.test(normalized)) return "count";
+    return normalized || "unknown";
+  }
+
+  function categoryKind(categories) {
+    const text = normalizedText(ensureArray(categories).join(" > "));
+    if (!text) return null;
+    if (/resource|resources|from ground|in ground|water resource|biotic|land/u.test(text)) {
+      if (/occupation/u.test(text)) return "land_occupation";
+      if (/transformation/u.test(text)) return "land_transformation";
+      return "resource";
+    }
+    if (/emission|emissions/u.test(text)) {
+      if (/air/u.test(text)) return "emission_air";
+      if (/water|river|lake|sea|ocean/u.test(text)) return "emission_water";
+      if (/soil/u.test(text)) return "emission_soil";
+      return "emission";
+    }
+    return null;
+  }
+
+  function targetUsageStats(projectionRows) {
+    const byFlow = new Map();
+    for (const scope of projectionRows) {
+      for (const ref of ensureArray(scope.usage_refs?.process_exchange_flow_refs)) {
+        const key = `flow:${ref.flow_id}:${ref.flow_version || "00.00.001"}`;
+        const stats = byFlow.get(key) ?? {
+          input: 0,
+          output: 0,
+          other: 0,
+          process_ids: new Set(),
+        };
+        const direction = normalizedText(ref.direction);
+        if (direction === "input") stats.input += 1;
+        else if (direction === "output") stats.output += 1;
+        else stats.other += 1;
+        if (scope.process_id) stats.process_ids.add(scope.process_id);
+        byFlow.set(key, stats);
+      }
+    }
+    return new Map(
+      [...byFlow.entries()].map(([key, value]) => [
+        key,
+        { ...value, process_ids: [...value.process_ids].sort() },
+      ]),
+    );
+  }
+
+  function inferTargetCategoryKind({ targetNames, targetCategories, usage }) {
+    const nameText = normalizedText(targetNames.join(" "));
+    if (
+      /^energy\b|energy from|crude oil|natural gas|coal|lignite|peat|uranium|ore|resource/u.test(
+        nameText,
+      )
+    ) {
+      return "resource";
+    }
+    if (/^occupation\b|land occupation/u.test(nameText)) return "land_occupation";
+    if (/^transformation\b|land transformation/u.test(nameText)) return "land_transformation";
+    if (/^water\b|water river|water lake|water ocean|groundwater/u.test(nameText)) {
+      if ((usage?.input ?? 0) >= (usage?.output ?? 0)) return "resource";
+    }
+    const convertedKind = categoryKind(targetCategories);
+    if (convertedKind) return convertedKind;
+    if ((usage?.input ?? 0) > 0 && (usage?.output ?? 0) === 0) return "resource";
+    if ((usage?.output ?? 0) > 0 && (usage?.input ?? 0) === 0) return "emission";
+    return null;
+  }
+
+  function categoryCompatible(inferredKind, candidateKind) {
+    if (!inferredKind || !candidateKind) return true;
+    if (inferredKind === candidateKind) return true;
+    if (inferredKind === "emission" && candidateKind.startsWith("emission")) return true;
+    if (inferredKind.startsWith("emission") && candidateKind === "emission") return true;
+    if (inferredKind === "resource" && candidateKind.startsWith("land_")) return true;
+    return false;
+  }
+
+  function hasLongTermCategory(categories) {
+    return /\blong\s*term\b|long-term/u.test(normalizedText(ensureArray(categories).join(" ")));
+  }
+
+  function overlapScore(leftNames, rightNames) {
+    let best = 0;
+    for (const left of leftNames) {
+      const leftNormalized = normalizedText(left);
+      const leftCompact = compactIdentityText(left);
+      if (!leftCompact) continue;
+      const leftTokens = new Set(identityTokens(left));
+      for (const right of rightNames) {
+        const rightNormalized = normalizedText(right);
+        const rightCompact = compactIdentityText(right);
+        if (!rightCompact) continue;
+        if (leftCompact === rightCompact || leftNormalized === rightNormalized) {
+          best = Math.max(best, 45);
+          continue;
+        }
+        if (leftCompact.includes(rightCompact) || rightCompact.includes(leftCompact)) {
+          best = Math.max(best, 32);
+        }
+        const rightTokens = new Set(identityTokens(right));
+        const overlap = [...leftTokens].filter((token) => rightTokens.has(token)).length;
+        const denominator = Math.max(1, Math.min(leftTokens.size, rightTokens.size));
+        best = Math.max(best, Math.round((overlap / denominator) * 24));
+      }
+    }
+    return best;
+  }
+
+  function candidateShortDescription(candidate) {
+    return ensureArray(candidate?.names).find(Boolean) || candidate?.id || "";
+  }
+
+  function evaluateElementaryIdentityDecision({ entity, report, usage }) {
+    const target = report?.target ?? {};
+    const targetFields = target.fields ?? {};
+    const targetNames = [
+      ...ensureArray(target.names),
+      entity.name,
+      targetFields.name,
+      target.identity_key,
+    ].filter(Boolean);
+    const targetCas = normalizedCas(targetFields.cas);
+    const targetDimension = flowPropertyDimension(
+      targetFields.flow_property || entity.flow_property_refs?.[0]?.short_description,
+    );
+    const targetCategories = ensureArray(targetFields.categories);
+    const inferredKind = inferTargetCategoryKind({
+      targetNames,
+      targetCategories,
+      usage,
+    });
+    const targetHasLongTerm = hasLongTermCategory(targetCategories);
+    const rawCandidates = ensureArray(report?.candidates);
+
+    if (!report || typeof report !== "object") {
+      return {
+        decision: "block_unresolved",
+        reason: "identity_preflight_report_missing_or_invalid",
+        evidence: { target_dimension: targetDimension, inferred_category_kind: inferredKind },
+      };
+    }
+    if (report.decision === "create_new") {
+      return {
+        decision: "block_unresolved",
+        reason: "elementary_flow_create_new_forbidden",
+        evidence: { preflight_decision: report.decision, target_dimension: targetDimension },
+      };
+    }
+
+    const candidates = rawCandidates
+      .map((candidate, index) => {
+        const fields = candidate?.fields ?? {};
+        const candidateType = normalizedText(fields.type_of_dataset);
+        const candidateNames = ensureArray(candidate?.names);
+        const candidateCas = normalizedCas(fields.cas);
+        const candidateDimension = flowPropertyDimension(fields.flow_property);
+        const candidateCategories = ensureArray(fields.categories);
+        const candidateKind = categoryKind(candidateCategories);
+        const nameScore = overlapScore(targetNames, candidateNames);
+        const sameCas = Boolean(targetCas && candidateCas && targetCas === candidateCas);
+        const casConflict = Boolean(targetCas && candidateCas && targetCas !== candidateCas);
+        const dimensionCompatible =
+          targetDimension === "unknown" ||
+          candidateDimension === "unknown" ||
+          targetDimension === candidateDimension;
+        const categoryOk = categoryCompatible(inferredKind, candidateKind);
+        const longTermPenalty =
+          !targetHasLongTerm && hasLongTermCategory(candidateCategories) ? 8 : 0;
+        const sameCategoryPath =
+          normalizedText(candidateCategories.join(" > ")) ===
+          normalizedText(targetCategories.join(" > "));
+        const airUnspecifiedBonus =
+          inferredKind === "emission_air" &&
+          /emissions to air.*unspecified/u.test(normalizedText(candidateCategories.join(" > ")))
+            ? 14
+            : 0;
+        const score =
+          (sameCas ? 50 : 0) +
+          nameScore +
+          (dimensionCompatible ? 20 : -40) +
+          (categoryOk ? 20 : -35) +
+          (sameCategoryPath ? 14 : 0) +
+          airUnspecifiedBonus -
+          longTermPenalty -
+          index * 0.01;
+        const blockerCodes = [];
+        if (candidateType !== "elementary flow") blockerCodes.push("candidate_not_elementary_flow");
+        if (casConflict) blockerCodes.push("cas_conflict");
+        if (!dimensionCompatible) blockerCodes.push("flow_property_dimension_conflict");
+        if (!categoryOk) blockerCodes.push("category_or_compartment_conflict");
+        if (!sameCas && nameScore < 24) blockerCodes.push("insufficient_name_or_cas_overlap");
+        return {
+          candidate,
+          index,
+          fields,
+          candidateNames,
+          candidateCas,
+          candidateCategories,
+          nameScore,
+          sameCas,
+          score,
+          blockerCodes,
+        };
+      })
+      .filter((candidate) => candidate.blockerCodes.length === 0)
+      .sort((left, right) => right.score - left.score);
+
+    if (candidates.length === 0) {
+      return {
+        decision: "block_unresolved",
+        reason: rawCandidates.length === 0 ? "no_candidates" : "no_candidate_passed_guardrails",
+        evidence: {
+          preflight_status: report.status ?? null,
+          preflight_decision: report.decision ?? null,
+          target_dimension: targetDimension,
+          inferred_category_kind: inferredKind,
+          candidate_count: rawCandidates.length,
+          rejected_candidate_examples: rawCandidates.slice(0, 8).map((candidate, index) => ({
+            index,
+            id: candidate?.id ?? null,
+            version: candidate?.version ?? null,
+            names: ensureArray(candidate?.names).slice(0, 3),
+            fields: candidate?.fields ?? null,
+          })),
+        },
+      };
+    }
+
+    const top = candidates[0];
+    const competing = candidates
+      .slice(1)
+      .filter(
+        (candidate) =>
+          top.score - candidate.score < 10 &&
+          normalizedText(candidate.candidateCategories.join(" > ")) !==
+            normalizedText(top.candidateCategories.join(" > ")),
+      );
+    if (top.score < 72 || competing.length > 0) {
+      return {
+        decision: "block_unresolved",
+        reason: competing.length > 0 ? "multiple_plausible_candidates" : "candidate_score_too_low",
+        evidence: {
+          preflight_status: report.status ?? null,
+          preflight_decision: report.decision ?? null,
+          target_dimension: targetDimension,
+          inferred_category_kind: inferredKind,
+          best_score: top.score,
+          best_candidate: {
+            id: top.candidate.id,
+            version: top.candidate.version,
+            names: top.candidateNames,
+            categories: top.candidateCategories,
+            flow_property: top.fields.flow_property ?? null,
+          },
+          competing_candidates: competing.slice(0, 5).map((candidate) => ({
+            id: candidate.candidate.id,
+            version: candidate.candidate.version,
+            names: candidate.candidateNames,
+            categories: candidate.candidateCategories,
+            score: candidate.score,
+          })),
+        },
+      };
+    }
+
+    return {
+      decision: "reuse_existing_reference",
+      reason: "single_candidate_passed_physical_guardrails",
+      candidate: top.candidate,
+      evidence: {
+        preflight_status: report.status ?? null,
+        preflight_decision: report.decision ?? null,
+        target_names: targetNames.slice(0, 6),
+        target_cas: targetCas || null,
+        target_dimension: targetDimension,
+        target_categories: targetCategories,
+        inferred_category_kind: inferredKind,
+        usage: usage
+          ? {
+              input: usage.input,
+              output: usage.output,
+              other: usage.other,
+              process_count: usage.process_ids.length,
+            }
+          : null,
+        selected_candidate: {
+          id: top.candidate.id,
+          version: top.candidate.version,
+          names: top.candidateNames,
+          cas: top.candidateCas || null,
+          flow_property: top.fields.flow_property ?? null,
+          categories: top.candidateCategories,
+          score: top.score,
+        },
+        guardrails: [
+          "same elementary flow type",
+          "compatible flow property dimension",
+          "compatible compartment/resource meaning",
+          top.sameCas ? "same CAS" : "sufficient name/synonym overlap",
+        ],
+      },
+    };
+  }
+
+  function runDatasetLibraryIdentityDecisionsFromPreflight(options) {
+    if (options.help) {
+      return help(
+        "dataset-library-identity-decisions-from-preflight",
+        "Aggregate elementary-flow identity preflight reports into library-level reuse decisions and manual-review ledgers.",
+        [
+          "node scripts/foundry.mjs dataset-library-identity-decisions-from-preflight --library-index <run-dir>/library-index --identity-preflight-index <identity-preflight-requests.jsonl> --out-dir <run-dir>/decisions",
+        ],
+      );
+    }
+    const indexDir = libraryIndexDirOption(options);
+    if (!indexDir || !directoryExists(indexDir)) {
+      throw new Error("--library-index is required.");
+    }
+    const entityIndexPath = path.join(indexDir, "library-entity-index.jsonl");
+    const scopeProjectionPath = path.join(indexDir, "scope-projection.jsonl");
+    if (!fileExists(entityIndexPath) || !fileExists(scopeProjectionPath)) {
+      throw new Error(
+        "--library-index must contain library-entity-index.jsonl and scope-projection.jsonl.",
+      );
+    }
+    const preflightIndexPath = resolveRepoPath(
+      options.identityPreflightIndex || options.preflightIndex || options.index,
+    );
+    if (!preflightIndexPath || !fileExists(preflightIndexPath)) {
+      throw new Error("--identity-preflight-index is required.");
+    }
+    const outDir = resolveRepoPath(
+      options.outDir || path.join(path.dirname(indexDir), "decisions"),
+    );
+    const entityRows = readJsonLines(entityIndexPath);
+    const projectionRows = readJsonLines(scopeProjectionPath);
+    const usedEntityKeys = new Set(
+      projectionRows.flatMap((scope) =>
+        ensureArray(scope.dependency_ids?.flows).map((dep) => dep.entity_key),
+      ),
+    );
+    const usageByFlow = targetUsageStats(projectionRows);
+    const preflightRows = readJsonLines(preflightIndexPath);
+    const preflightByKey = new Map(preflightRows.map((row) => [identityPreflightKey(row), row]));
+    const elementaryRows = entityRows.filter(
+      (row) =>
+        row.dataset_type === "flow" &&
+        /^elementary flow$/iu.test(row.flow_type) &&
+        usedEntityKeys.has(row.entity_key),
+    );
+
+    const decisions = [];
+    const manualReviewRows = [];
+    const reasonCounts = new Map();
+    for (const entity of elementaryRows) {
+      const key = `flow:${entity.dataset_id}:${entity.dataset_version || "00.00.001"}`;
+      const preflightRow = preflightByKey.get(key);
+      const reportPath = preflightRow ? identityPreflightReportPath(preflightRow) : null;
+      const candidatesPath = preflightRow ? identityPreflightCandidatePath(preflightRow) : null;
+      let report = null;
+      if (reportPath && fileExists(reportPath)) {
+        try {
+          report = readJson(reportPath);
+        } catch {
+          report = null;
+        }
+      }
+      const evaluation = evaluateElementaryIdentityDecision({
+        entity,
+        report,
+        usage: usageByFlow.get(key),
+      });
+      increment(reasonCounts, evaluation.reason);
+      if (evaluation.decision === "reuse_existing_reference") {
+        const candidate = evaluation.candidate;
+        decisions.push({
+          schema_version: 1,
+          dataset_type: "flow",
+          source_dataset_id: entity.dataset_id,
+          source_dataset_version: entity.dataset_version || "00.00.001",
+          dataset_id: entity.dataset_id,
+          dataset_version: entity.dataset_version || "00.00.001",
+          source_entity_key: entity.entity_key,
+          decision: "reuse_existing_reference",
+          identity_decision: "reuse_existing_reference",
+          decision_status: "completed",
+          canonical_flow_id: candidate.id,
+          canonical_flow_version: candidate.version || "00.00.001",
+          canonical_short_description: candidateShortDescription(candidate),
+          canonical: {
+            table: "flows",
+            ref_object_id: candidate.id,
+            version: candidate.version || "00.00.001",
+            short_description: candidateShortDescription(candidate),
+          },
+          basis:
+            "Selected from identity-preflight candidates because exactly one existing elementary flow passed physical-equivalence guardrails.",
+          confidence: evaluation.evidence?.selected_candidate?.score >= 95 ? "high" : "medium",
+          used_context_kinds: ["library_index", "scope_projection", "identity_preflight"],
+          closes_action_items: ["elementary_flow_identity_manual_review"],
+          physical_equivalence_evidence: evaluation.reason,
+          evidence: {
+            ...evaluation.evidence,
+            identity_preflight_report: repoRelativeMaybe(reportPath),
+            identity_preflight_candidates: repoRelativeMaybe(candidatesPath),
+          },
+        });
+      } else {
+        manualReviewRows.push({
+          schema_version: 1,
+          dataset_type: "flow",
+          source_dataset_id: entity.dataset_id,
+          source_dataset_version: entity.dataset_version || "00.00.001",
+          dataset_id: entity.dataset_id,
+          dataset_version: entity.dataset_version || "00.00.001",
+          source_entity_key: entity.entity_key,
+          source_name: entity.name,
+          decision: "block_unresolved",
+          identity_decision: "block_unresolved",
+          decision_status: "blocked_manual_review",
+          reason: evaluation.reason,
+          required_human_action:
+            "Review identity-preflight candidates and provide reuse_existing_reference only when physical equivalence is proven; otherwise keep dependent process scopes deferred.",
+          evidence: {
+            ...evaluation.evidence,
+            identity_preflight_report: repoRelativeMaybe(reportPath),
+            identity_preflight_candidates: repoRelativeMaybe(candidatesPath),
+          },
+        });
+      }
+    }
+
+    const decisionPath = path.join(outDir, "identity-decisions.jsonl");
+    const manualReviewPath = path.join(outDir, "identity-decisions.manual-review.jsonl");
+    const reportPath = path.join(
+      outDir,
+      "dataset-library-identity-decisions-from-preflight-report.json",
+    );
+    writeJsonLines(decisionPath, decisions);
+    writeJsonLines(manualReviewPath, manualReviewRows);
+    const report = {
+      schema_version: 1,
+      generated_at_utc: nowIso(),
+      status: manualReviewRows.length > 0 ? "completed_with_manual_review" : "completed",
+      command: "dataset-library-identity-decisions-from-preflight",
+      library_index: repoRelativePath(indexDir),
+      identity_preflight_index: repoRelativePath(preflightIndexPath),
+      counts: {
+        elementary_flows: elementaryRows.length,
+        reuse_existing_reference: decisions.length,
+        manual_review: manualReviewRows.length,
+        preflight_rows: preflightRows.length,
+      },
+      reason_counts: sortedCountObject(reasonCounts),
+      files: {
+        report: repoRelativePath(reportPath),
+        identity_decisions: repoRelativePath(decisionPath),
+        manual_review: repoRelativePath(manualReviewPath),
+      },
+      policy: {
+        elementary_flows_reference_only: true,
+        create_new_for_elementary_flows: "forbidden",
+        automatic_reuse_requires_physical_equivalence: true,
+      },
+      blockers: manualReviewRows.slice(0, 25).map((row) => ({
+        code: row.reason,
+        dataset_id: row.source_dataset_id,
+        dataset_version: row.source_dataset_version,
+        message:
+          "Elementary flow identity requires human review before dependent process scopes can write.",
+      })),
+    };
+    writeJson(reportPath, report);
+    return report;
+  }
+
   function increment(map, key, count = 1) {
     const normalizedKey = asText(key) || "unknown";
     map.set(normalizedKey, (map.get(normalizedKey) ?? 0) + count);
@@ -1536,6 +2073,7 @@ export function createLibraryScopeWorkflowCommands({
   return {
     runDatasetLibraryIndexBuild,
     runDatasetLibraryAuthoringPlan,
+    runDatasetLibraryIdentityDecisionsFromPreflight,
     runDatasetLibraryDecisionsApply,
     runDatasetProcessScopeRun,
   };

@@ -659,3 +659,125 @@ test("classification decision task and apply route AI choices through CLI classi
     fs.rmSync(fixtureRoot, { recursive: true, force: true });
   }
 });
+
+test("library classification decisions project into task-bound apply decisions", () => {
+  const root = path.join(repoRoot, "tmp", "classification-library-projection-test");
+  fs.rmSync(root, { recursive: true, force: true });
+  const rowsDir = path.join(root, "rows");
+  const processRows = path.join(rowsDir, "processes.jsonl");
+  const processOut = path.join(rowsDir, "processes.classified.jsonl");
+  const queue = path.join(root, "classification-authoring-queue.jsonl");
+  const libraryDecisions = path.join(root, "library-classification-decisions.jsonl");
+  const taskDir = path.join(root, "classification-task");
+  const projectionDir = path.join(root, "projection");
+  const applyDir = path.join(root, "classification-apply");
+  const contextDir = path.join(root, "context");
+  const schemaFile = path.join(contextDir, "schema.json");
+  const yamlFile = path.join(contextDir, "methodology.yaml");
+  const rulesetFile = path.join(contextDir, "runtime-ruleset.json");
+  const processCategoryFile = path.join(contextDir, "tidas_processes_category.json");
+  const locationCategoryFile = path.join(contextDir, "tidas_locations_category.json");
+
+  try {
+    writeJsonLines(processRows, [processRow()]);
+    writeJson(schemaFile, { title: "Fixture process schema" });
+    fs.writeFileSync(yamlFile, "process:\n  required: true\n");
+    writeJson(rulesetFile, { rules: ["source-language-only"] });
+    writeJson(processCategoryFile, { oneOf: [{ const: "1080" }] });
+    writeJson(locationCategoryFile, { oneOf: [{ const: "GLO" }] });
+    writeJsonLines(queue, [
+      {
+        dataset_type: "process",
+        dataset_id: processId,
+        dataset_version: "00.00.001",
+        code: "process_classification_requires_authoring",
+        current_classification: "Other service activities",
+        source_classification: { category: "agriculture", subCategory: "feed" },
+        authoring_context: { source_name: "Fava beans IP, at feed mill" },
+        classification_workflow: {
+          schema_type: "process",
+          row_type: "process",
+          commands: {
+            input_rows: rel(processRows),
+            output_rows: rel(processOut),
+          },
+        },
+      },
+    ]);
+    writeJsonLines(libraryDecisions, [
+      {
+        dataset_type: "process",
+        dataset_id: processId,
+        dataset_version: "00.00.001",
+        category_type: "process",
+        selected_code: "1080",
+        decision_status: "completed",
+        basis: "Library-level semantic decision: the process is prepared animal feed manufacture.",
+        confidence: "high",
+      },
+    ]);
+
+    const task = runFoundry([
+      "dataset-classification-decision-task-build",
+      "--classification-queue",
+      rel(queue),
+      "--schema-file",
+      rel(schemaFile),
+      "--yaml-file",
+      rel(yamlFile),
+      "--ruleset-file",
+      rel(rulesetFile),
+      "--classification-schema",
+      rel(processCategoryFile),
+      "--location-schema",
+      rel(locationCategoryFile),
+      "--out-dir",
+      rel(taskDir),
+    ]);
+    assert.equal(task.status, "ready_for_ai_classification_decisions");
+
+    const projection = runFoundry([
+      "dataset-library-classification-decisions-project",
+      "--classification-queue",
+      rel(queue),
+      "--library-decisions",
+      rel(libraryDecisions),
+      "--decision-task",
+      task.files.task,
+      "--out-dir",
+      rel(projectionDir),
+    ]);
+    assert.equal(projection.status, "completed");
+    assert.equal(projection.counts.projected_decisions, 1);
+    const projectedDecisions = readJsonLines(path.join(repoRoot, projection.files.decisions));
+    assert.equal(projectedDecisions[0].code, "1080");
+    assert.equal(projectedDecisions[0].decision_status, "completed");
+    assert.equal(
+      projectedDecisions[0].authoring_context.context_bundle_sha256,
+      task.context_bundle.sha256,
+    );
+    assert.deepEqual(projectedDecisions[0].used_context_kinds.sort(), [
+      "classification_schema",
+      "location_schema",
+      "methodology_yaml",
+      "ruleset",
+      "schema",
+    ]);
+
+    const apply = runFoundry([
+      "dataset-classification-decisions-apply",
+      "--classification-queue",
+      rel(queue),
+      "--decisions",
+      projection.files.decisions,
+      "--decision-task",
+      task.files.task,
+      "--out-dir",
+      rel(applyDir),
+    ]);
+    assert.equal(apply.status, "completed");
+    assert.deepEqual(apply.files.output_rows, [rel(processOut)]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

@@ -368,6 +368,86 @@ test("library authoring plan emits deduplicated semantic decision templates", ()
   assert.ok(report.files.chunks.length > 0);
 });
 
+test("library identity decisions from preflight emits reuse decisions and manual review rows", () => {
+  const { outDir } = buildIndex();
+  const preflightDir = path.join(fixtureRoot, "run", "identity-preflight");
+  const reportFile = path.join(preflightDir, "flows", ids.ef1, "outputs", "identity-decision.json");
+  const candidatesFile = path.join(
+    preflightDir,
+    "flows",
+    ids.ef1,
+    "outputs",
+    "identity-candidates.jsonl",
+  );
+  writeJson(reportFile, {
+    schema_version: 1,
+    kind: "flow",
+    status: "needs_review",
+    decision: "manual_review",
+    target: {
+      id: ids.ef1,
+      version: "00.00.001",
+      names: ["Methane"],
+      fields: {
+        type_of_dataset: "Elementary flow",
+        cas: "74-82-8",
+        flow_property: "Amount in kg",
+        categories: ["Emissions", "Emissions to air", "Emissions to air, unspecified"],
+      },
+    },
+    candidates: [
+      {
+        id: "aaaaaaaa-aaaa-5aaa-8aaa-aaaaaaaaaaaa",
+        version: "03.00.004",
+        names: ["methane"],
+        fields: {
+          type_of_dataset: "Elementary flow",
+          cas: "74-82-8",
+          flow_property: "Mass",
+          categories: ["Emissions", "Emissions to air", "Emissions to air, unspecified"],
+        },
+      },
+    ],
+  });
+  writeJsonLines(candidatesFile, []);
+  const preflightIndex = path.join(preflightDir, "identity-preflight-requests.jsonl");
+  writeJsonLines(preflightIndex, [
+    {
+      dataset_type: "flow",
+      dataset_id: ids.ef1,
+      dataset_version: "00.00.001",
+      expected_report_file: rel(reportFile),
+      expected_candidates_file: rel(candidatesFile),
+    },
+  ]);
+
+  const decisionsDir = path.join(fixtureRoot, "run", "decisions-from-preflight");
+  const report = runFoundry([
+    "dataset-library-identity-decisions-from-preflight",
+    "--library-index",
+    outDir,
+    "--identity-preflight-index",
+    preflightIndex,
+    "--out-dir",
+    decisionsDir,
+  ]);
+
+  assert.equal(report.status, "completed_with_manual_review");
+  assert.equal(report.counts.elementary_flows, 2);
+  assert.equal(report.counts.reuse_existing_reference, 1);
+  assert.equal(report.counts.manual_review, 1);
+
+  const decisions = readJsonLines(path.join(decisionsDir, "identity-decisions.jsonl"));
+  const manualReview = readJsonLines(
+    path.join(decisionsDir, "identity-decisions.manual-review.jsonl"),
+  );
+  assert.equal(decisions[0].decision, "reuse_existing_reference");
+  assert.equal(decisions[0].canonical_flow_id, "aaaaaaaa-aaaa-5aaa-8aaa-aaaaaaaaaaaa");
+  assert.equal(decisions[0].canonical.ref_object_id, "aaaaaaaa-aaaa-5aaa-8aaa-aaaaaaaaaaaa");
+  assert.equal(manualReview[0].decision, "block_unresolved");
+  assert.equal(manualReview[0].source_dataset_id, ids.ef2);
+});
+
 test("library decisions apply rewrites only elementary flow references and defers unresolved scopes", () => {
   const { outDir } = buildIndex();
   const decisionsDir = path.join(fixtureRoot, "run", "decisions");

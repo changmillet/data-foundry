@@ -787,6 +787,7 @@ const bundleSampleRowsCommands = createBundleSampleRowsCommands({
   sourceReferenceSemanticBlockers,
   sourceSummaryMatchesOriginalMetadata,
   sourceSemanticSummary,
+  textValue,
   writeJson,
   writeJsonLines,
 });
@@ -844,6 +845,7 @@ runFoundryCli({
     decisionTaskInputRowsOverride,
     decisionTaskProofList,
     decisionTaskReportPayload,
+    ensureArray,
     fileExists,
     hasQueueSelectionOptions,
     hasUnresolvedAiPlaceholder,
