@@ -10,6 +10,7 @@ import {
   asText,
   ensureArray,
   fileExists,
+  readJson,
   readJsonIfExists,
   repoRelativePath,
   resolveRepoPath,
@@ -27,6 +28,7 @@ import { deterministicRowsFileTransformEntries } from "./workflow-row-transform-
 import {
   classificationEntriesForPayload,
   flowTypeForPayload,
+  jsonPointerToken,
   flowUsesElementaryClassification,
   nameTextForPayload,
 } from "./workflow-semantic-actions.mjs";
@@ -948,10 +950,126 @@ export function flowPrewriteIdentityBlockers(payload, datasetType) {
   ];
 }
 
-export function prewriteIdentityBlockers(payload, datasetType) {
+const defaultPrewriteContentPolicyFile = "specs/prewrite-content-policy.json";
+
+function readPrewriteContentPolicy(repoRoot) {
+  const policyPath = resolveRepoPath(repoRoot, defaultPrewriteContentPolicyFile);
+  if (!policyPath || !fileExists(policyPath)) return null;
+  return {
+    path: policyPath,
+    relative_path: repoRelativePath(repoRoot, policyPath),
+    value: readJson(policyPath),
+  };
+}
+
+function isFoundryTracePathSegments(pathSegments) {
+  return pathSegments.some((segment) => {
+    const text = String(segment).toLowerCase();
+    return text === "common:other" || text.startsWith("tiangongfoundry:");
+  });
+}
+
+function payloadTextLeaves(value, pathSegments = [], leaves = []) {
+  if (isFoundryTracePathSegments(pathSegments)) return leaves;
+  if (typeof value === "string") {
+    leaves.push({
+      path:
+        pathSegments.length > 0
+          ? `/${pathSegments.map(jsonPointerToken).join("/")}`
+          : "/",
+      path_segments: pathSegments,
+      text: value,
+    });
+    return leaves;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item, index) =>
+      payloadTextLeaves(item, [...pathSegments, String(index)], leaves),
+    );
+    return leaves;
+  }
+  if (!value || typeof value !== "object") return leaves;
+  for (const [key, child] of Object.entries(value)) {
+    payloadTextLeaves(child, [...pathSegments, key], leaves);
+  }
+  return leaves;
+}
+
+function normalizedPathSegments(pathSegments) {
+  return pathSegments.map((segment) => String(segment).replace(/^common:/u, ""));
+}
+
+function pathScopeMatches(pathSegments, pathScope = {}) {
+  const raw = pathSegments.map(String);
+  const normalized = normalizedPathSegments(pathSegments);
+  const contains = ensureArray(pathScope.contains).map(String);
+  const excludeContains = ensureArray(pathScope.exclude_contains).map(String);
+  const hasSegment = (segment) =>
+    raw.includes(segment) ||
+    normalized.includes(segment.replace(/^common:/u, ""));
+  if (contains.some((segment) => !hasSegment(segment))) return false;
+  if (excludeContains.some((segment) => hasSegment(segment))) return false;
+  return true;
+}
+
+function compilePolicyPattern(entry) {
+  try {
+    return new RegExp(asText(entry?.pattern), asText(entry?.flags) || "u");
+  } catch {
+    return null;
+  }
+}
+
+function policyLexiconEntries(policy, rule) {
+  const lexiconName = asText(rule?.lexicon);
+  if (!lexiconName) return [];
+  return ensureArray(policy?.lexicons?.[lexiconName]);
+}
+
+export function prewriteContentQualityBlockers({
+  repoRoot,
+  payload,
+  datasetType,
+}) {
+  if (!["flow", "process", "lifecyclemodel"].includes(datasetType)) return [];
+  const policy = readPrewriteContentPolicy(repoRoot);
+  if (!policy) return [];
+  const leaves = payloadTextLeaves(payload);
+  const blockers = [];
+  for (const rule of ensureArray(policy.value?.rules)) {
+    const allowedTypes = ensureArray(rule?.dataset_types).map(asText);
+    if (allowedTypes.length > 0 && !allowedTypes.includes(datasetType)) continue;
+    const entries = policyLexiconEntries(policy.value, rule);
+    for (const leaf of leaves) {
+      if (!pathScopeMatches(leaf.path_segments, rule?.path_scope)) continue;
+      for (const entry of entries) {
+        const pattern = compilePolicyPattern(entry);
+        if (!pattern || !pattern.test(leaf.text)) continue;
+        blockers.push({
+          code: asText(rule?.code) || "prewrite_content_quality_blocked",
+          stage: asText(rule?.stage) || "prewrite_content_quality",
+          message:
+            asText(rule?.message) ||
+            "Write payload text violates the configured prewrite content policy.",
+          dataset_type: datasetType,
+          policy: policy.relative_path,
+          rule_id: asText(rule?.id) || null,
+          lexicon: asText(rule?.lexicon) || null,
+          marker_id: asText(entry?.id) || null,
+          path: leaf.path,
+          text: leaf.text,
+        });
+      }
+    }
+  }
+  return blockers;
+}
+
+export function prewriteIdentityBlockers(payload, datasetType, repoRoot = null) {
   return [
     ...sourcePrewriteIdentityBlockers(payload, datasetType),
     ...flowPrewriteIdentityBlockers(payload, datasetType),
+    ...prewriteContentQualityBlockers({ repoRoot, payload, datasetType }),
   ];
 }
 

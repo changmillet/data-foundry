@@ -9,4 +9,6 @@ Recommended subdirectories:
 - `source-packages/`: checksums, manifests, and public source notes for external LCA packages. Keep full packages out of git unless they are intentionally small and redistributable.
 - `source-documents/`: extraction notes, metadata, or redacted examples for PDF, Excel, web exports, screenshots, and free-text source files.
 
+Only safe Markdown notes under `inputs/source-documents/*.md` are tracked by default. Keep raw source files, private exports, screenshots, and large payloads out of git unless a task explicitly approves a narrower tracked exception.
+
 Every non-obvious input artifact should be recorded in `docs/file-location-registry.json`.
