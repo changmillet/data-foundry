@@ -103,6 +103,14 @@ function stripGeneratedPrefixText(value) {
     .trim();
 }
 
+function cleanNamePlanPart(value) {
+  return String(value ?? "")
+    .replace(/\s+,/gu, ",")
+    .replace(/,\s*/gu, ", ")
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
 function splitBafuNamePlan(baseName) {
   const wasteSplit = splitBafuWasteDisposalName(baseName);
   if (wasteSplit) return wasteSplit;
@@ -486,6 +494,25 @@ function splitBafuNamePlan(baseName) {
       treatment: electricityVoltageRouteMatch.groups.route.trim(),
     };
   }
+  const electricityPhotovoltaicInstallationMatch =
+    /^(?<core>electricity),\s*(?<technology>photovoltaic),\s*(?<mix>at\s+[^,]+)\s*,\s*(?<route>.+)$/iu.exec(
+      text,
+    );
+  if (
+    electricityPhotovoltaicInstallationMatch?.groups?.core &&
+    electricityPhotovoltaicInstallationMatch?.groups?.technology &&
+    electricityPhotovoltaicInstallationMatch?.groups?.mix &&
+    electricityPhotovoltaicInstallationMatch?.groups?.route
+  ) {
+    return {
+      source: text,
+      base_name: electricityPhotovoltaicInstallationMatch.groups.core.trim(),
+      treatment: cleanNamePlanPart(
+        `${electricityPhotovoltaicInstallationMatch.groups.technology}, ${electricityPhotovoltaicInstallationMatch.groups.route}`,
+      ),
+      mix_location: cleanNamePlanPart(electricityPhotovoltaicInstallationMatch.groups.mix),
+    };
+  }
   const electricityProductionMixTechnologyMatch =
     /^(?<core>electricity),\s*production\s+mix\s+(?<technology>.+?),\s*(?<route>at .+)$/iu.exec(
       text,
@@ -548,6 +575,18 @@ function splitBafuNamePlan(baseName) {
       source: text,
       base_name: terminalAtStorageMatch.groups.core.trim(),
       treatment: terminalAtStorageMatch.groups.route.trim(),
+    };
+  }
+  const fuelCellAssemblySpecificationMatch =
+    /^(?<core>fuel\s+cell\s+.+?\bassembly),\s*(?<route>.+)$/iu.exec(text);
+  if (
+    fuelCellAssemblySpecificationMatch?.groups?.core &&
+    fuelCellAssemblySpecificationMatch?.groups?.route
+  ) {
+    return {
+      source: text,
+      base_name: cleanNamePlanPart(fuelCellAssemblySpecificationMatch.groups.core),
+      treatment: cleanNamePlanPart(fuelCellAssemblySpecificationMatch.groups.route),
     };
   }
   const sawnTimberRouteMatch =

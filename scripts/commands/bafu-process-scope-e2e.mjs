@@ -106,6 +106,125 @@ function processIdentity(row) {
   };
 }
 
+function datasetTypeFromRow(row) {
+  if (row?.contactDataSet) return "contact";
+  if (row?.sourceDataSet) return "source";
+  return null;
+}
+
+function supportIdentity(row, fallbackType) {
+  const type = datasetTypeFromRow(row) || fallbackType;
+  const root = type ? (row?.[`${type}DataSet`] ?? {}) : {};
+  const information =
+    root?.[`${type}Information`]?.dataSetInformation ??
+    root?.[`${type}Information`]?.["common:dataSetInformation"] ??
+    {};
+  const publication =
+    root?.administrativeInformation?.publicationAndOwnership ??
+    root?.administrativeInformation?.["common:publicationAndOwnership"] ??
+    {};
+  return {
+    type,
+    id:
+      textValue(information["common:UUID"]) ||
+      textValue(information.UUID) ||
+      textValue(row?.dataset_id) ||
+      textValue(row?.id),
+    version:
+      textValue(publication["common:dataSetVersion"]) ||
+      textValue(publication.dataSetVersion) ||
+      textValue(row?.dataset_version) ||
+      textValue(row?.version) ||
+      "00.00.001",
+  };
+}
+
+function shellTokens(command) {
+  const tokens = [];
+  let current = "";
+  let quote = null;
+  const text = String(command ?? "");
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (quote) {
+      if (char === quote) {
+        quote = null;
+      } else {
+        current += char;
+      }
+      continue;
+    }
+    if (char === "'" || char === '"') {
+      quote = char;
+      continue;
+    }
+    if (/\s/u.test(char)) {
+      if (current) {
+        tokens.push(current);
+        current = "";
+      }
+      continue;
+    }
+    current += char;
+  }
+  if (current) tokens.push(current);
+  return tokens;
+}
+
+function commandOptionValue(command, optionName) {
+  const tokens = shellTokens(command);
+  const index = tokens.indexOf(optionName);
+  return index >= 0 ? tokens[index + 1] || null : null;
+}
+
+function supportIdentityKeysFromHandoffPlan(handoffPlan) {
+  const inputPath = resolveRepoPath(commandOptionValue(handoffPlan?.commands?.commit, "--input"));
+  const fallbackType = commandOptionValue(handoffPlan?.commands?.commit, "--type");
+  if (!fileExists(inputPath)) return [];
+  return readRowsFile(inputPath)
+    .map((row) => {
+      const identity = supportIdentity(row, fallbackType);
+      if (!["contact", "source"].includes(identity.type) || !identity.id) return null;
+      return `${identity.type}:${identity.id}@${identity.version}`;
+    })
+    .filter(Boolean);
+}
+
+function supportIdentityKeyFromCacheRow(row) {
+  if (row?.identity_key) return String(row.identity_key);
+  const type = row?.dataset_type || row?.type || row?.table?.replace(/s$/u, "");
+  const id = row?.dataset_id || row?.id;
+  const version = row?.dataset_version || row?.version || "00.00.001";
+  return ["contact", "source"].includes(type) && id ? `${type}:${id}@${version}` : null;
+}
+
+function loadVerifiedSupportIdentities(cacheFile) {
+  const resolved = resolveRepoPath(cacheFile);
+  if (!fileExists(resolved)) return new Set();
+  return new Set(readJsonLines(resolved).map(supportIdentityKeyFromCacheRow).filter(Boolean));
+}
+
+function appendVerifiedSupportIdentities({ cacheFile, identityKeys, source, report }) {
+  const resolved = resolveRepoPath(cacheFile);
+  if (!resolved || identityKeys.length === 0) return;
+  fs.mkdirSync(path.dirname(resolved), { recursive: true });
+  for (const identityKey of identityKeys) {
+    const match = /^(contact|source):([^@]+)@(.+)$/u.exec(identityKey);
+    if (!match) continue;
+    appendLedger(resolved, {
+      schema_version: 1,
+      generated_at_utc: nowIso(),
+      identity_key: identityKey,
+      dataset_type: match[1],
+      dataset_id: match[2],
+      dataset_version: match[3],
+      status: "verified",
+      source,
+      report: repoRelative(report),
+    });
+  }
+}
+
 function booleanOption(value) {
   return runtime().booleanOption(value);
 }
@@ -1228,6 +1347,7 @@ function runDatasetBafuProcessScopeE2e(options = {}) {
         "node scripts/foundry.mjs dataset-bafu-process-scope-e2e --rows-file <one-process.jsonl> --source-support-rows-file <sources.jsonl> --out-dir <scope-run-dir>",
         "node scripts/foundry.mjs dataset-bafu-process-scope-e2e --rows-file <one-process.jsonl> --source-support-rows-file <sources.jsonl> --out-dir <scope-run-dir> --execute",
         "node scripts/foundry.mjs dataset-bafu-process-scope-e2e --rows-file <one-process.jsonl> --source-support-rows-file <sources.jsonl> --out-dir <scope-run-dir> --execute --commit-support --commit",
+        "node scripts/foundry.mjs dataset-bafu-process-scope-e2e --rows-file <one-process.jsonl> --out-dir <scope-run-dir> --execute --commit-support --verified-support-identities-file <cache.jsonl>",
       ],
       purpose:
         "Plan, resume, execute, or explicitly commit the existing Foundry BAFU post-authoring finalize chain for exactly one process scope.",
@@ -1460,22 +1580,62 @@ function runDatasetBafuProcessScopeE2e(options = {}) {
   const handoffStages = [];
   const handoffBlockers = [];
   let supportCommitted = false;
+  let supportReused = false;
   if (booleanOption(options.commitSupport)) {
     const supportHandoff = readHandoffPlan(
       finalizeReport,
       "source_contact_support_commit_handoff_plan",
     );
     if (supportHandoff.path) {
-      const supportResult = executeHandoff({
-        handoffPlanPath: supportHandoff.path,
-        ledgerDir: importLedgerDir,
-        outDir: path.join(outDir, "source-contact-support-handoff"),
-        logDir,
-        label: "support",
-      });
-      handoffStages.push(...supportResult.stages);
-      handoffBlockers.push(...supportResult.blockers);
-      supportCommitted = supportResult.status === "completed";
+      const supportIdentityKeys = supportIdentityKeysFromHandoffPlan(supportHandoff.value);
+      const supportCacheFile =
+        options.verifiedSupportIdentitiesFile || options.supportIdentityCache || null;
+      const cachedSupportIdentities = loadVerifiedSupportIdentities(supportCacheFile);
+      const canReuseSupport =
+        supportIdentityKeys.length > 0 &&
+        supportIdentityKeys.every((identityKey) => cachedSupportIdentities.has(identityKey));
+      if (canReuseSupport) {
+        supportReused = true;
+        supportCommitted = true;
+        const reuseReportPath = path.join(
+          outDir,
+          "source-contact-support-handoff",
+          "reused-support-identities.json",
+        );
+        writeJson(reuseReportPath, {
+          schema_version: 1,
+          generated_at_utc: nowIso(),
+          status: "reused_verified_support_identities",
+          handoff_plan: repoRelative(supportHandoff.path),
+          support_identity_cache: repoRelative(resolveRepoPath(supportCacheFile)),
+          support_identities: supportIdentityKeys,
+        });
+        handoffStages.push({
+          stage: "support.reuse_verified",
+          status: "skipped",
+          report: repoRelative(reuseReportPath),
+          support_identities: supportIdentityKeys,
+        });
+      } else {
+        const supportResult = executeHandoff({
+          handoffPlanPath: supportHandoff.path,
+          ledgerDir: importLedgerDir,
+          outDir: path.join(outDir, "source-contact-support-handoff"),
+          logDir,
+          label: "support",
+        });
+        handoffStages.push(...supportResult.stages);
+        handoffBlockers.push(...supportResult.blockers);
+        supportCommitted = supportResult.status === "completed";
+        if (supportCommitted && !handoffBlockers.length) {
+          appendVerifiedSupportIdentities({
+            cacheFile: supportCacheFile,
+            identityKeys: supportIdentityKeys,
+            source: "process_scope_e2e.support_handoff",
+            report: supportResult.closeoutReportPath,
+          });
+        }
+      }
       if (supportCommitted && !handoffBlockers.length) {
         const rerun = spawnSync(finalizeCommand[0], finalizeCommand.slice(1), {
           cwd: repoRoot,
@@ -1607,6 +1767,7 @@ function runDatasetBafuProcessScopeE2e(options = {}) {
     report.support_handoff = {
       requested: true,
       completed: supportCommitted,
+      reused_verified_identities: supportReused,
     };
     report.blockers = [...handoffBlockers, ...report.blockers];
     report.counts.blockers = report.blockers.length;
@@ -1676,4 +1837,6 @@ export function createBafuProcessScopeE2eCommands(deps) {
 export const bafuProcessScopeE2eTestHooks = {
   canRunPostFinalizeIdentityRecovery,
   canRunPostFinalizeSemanticRecovery,
+  loadVerifiedSupportIdentities,
+  supportIdentityKeysFromHandoffPlan,
 };

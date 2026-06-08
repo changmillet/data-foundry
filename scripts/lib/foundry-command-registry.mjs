@@ -188,9 +188,15 @@ export function exitCodeForCommand(command, result) {
     case "dataset-bafu-batch-import-run":
       return statusIs(result, [
         "help",
+        "preflight_completed",
         "completed",
         "completed_with_deferred_scopes",
         "completed_with_retryable_failures",
+        "paused",
+        "paused_with_deferred_scopes",
+        "paused_with_retryable_failures",
+        "stopped_after_blocked",
+        "stopped_after_blocked_with_retryable_failures",
       ])
         ? 0
         : 1;

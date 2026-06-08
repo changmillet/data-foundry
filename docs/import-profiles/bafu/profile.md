@@ -174,6 +174,8 @@ Remote writes must use the approved account context and official CLI/platform wr
 
 The workflow is not complete when the write command succeeds. It is complete only after remote readback confirms that all intended rows exist in the BAFU account and match the final curated payloads or an explicitly documented accepted difference. Use `npx --yes @tiangong-lca/cli@latest dataset verify-remote --compare-root-payload --target-user-id <bafu-user-id> --state-code <expected-code>` for the committed root rows and retain its `remote-verification-report.json`.
 
+For large BAFU resumes, the ready-scope batch runner should use the resumable controls instead of restarting from the original ready order: `--pending-only`, `--selection-order estimated-weight-asc`, a fresh `--pause-file`, and an operator-chosen `--stop-after-blocked` threshold. `--preflight-only` is the read-only way to inspect the next selected scopes and the active skip/blocker state before opening the writer. The batch support identity cache (`import-ledger/verified-support-identities.jsonl`) is part of the run ledger: once a support contact/source closeout is verified, later scopes may reuse that identity and skip duplicate support handoff while preserving the process/flow commit and post-write verification requirements.
+
 ## New Principle Capture
 
 If a run discovers a new rule that should become durable policy, write it to the task workspace as `principles-new-add.md` and reference it from the stage 7 checkpoint. Do not silently fold new rules into the run without review.

@@ -263,6 +263,80 @@ test("BAFU process scope helper recognizes post-finalize semantic-only recovery"
   }
 });
 
+test("BAFU process scope helper reads verified support identities for handoff reuse", () => {
+  const root = path.join(fixtureRoot, "support-cache");
+  fs.rmSync(root, { recursive: true, force: true });
+  const supportRowsFile = path.join(root, "support.jsonl");
+  const cacheFile = path.join(root, "verified-support-identities.jsonl");
+  writeJsonLines(supportRowsFile, [
+    {
+      contactDataSet: {
+        contactInformation: {
+          dataSetInformation: {
+            "common:UUID": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+          },
+        },
+        administrativeInformation: {
+          publicationAndOwnership: {
+            "common:dataSetVersion": "00.00.001",
+          },
+        },
+      },
+    },
+    {
+      sourceDataSet: {
+        sourceInformation: {
+          dataSetInformation: {
+            "common:UUID": "bbbbbbbb-cccc-4ddd-8eee-ffffffffffff",
+          },
+        },
+        administrativeInformation: {
+          publicationAndOwnership: {
+            "common:dataSetVersion": "00.00.001",
+          },
+        },
+      },
+    },
+  ]);
+  writeJsonLines(cacheFile, [
+    {
+      schema_version: 1,
+      identity_key: "contact:aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee@00.00.001",
+      status: "verified",
+    },
+    {
+      schema_version: 1,
+      dataset_type: "source",
+      dataset_id: "bbbbbbbb-cccc-4ddd-8eee-ffffffffffff",
+      dataset_version: "00.00.001",
+      status: "verified",
+    },
+  ]);
+
+  try {
+    const handoffPlan = {
+      commands: {
+        commit: `node scripts/foundry.mjs dataset save-draft --type auto --input '${rel(
+          supportRowsFile,
+        )}'`,
+      },
+    };
+    const identities = bafuProcessScopeE2eTestHooks.supportIdentityKeysFromHandoffPlan(handoffPlan);
+    const cached = bafuProcessScopeE2eTestHooks.loadVerifiedSupportIdentities(cacheFile);
+
+    assert.deepEqual(identities, [
+      "contact:aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee@00.00.001",
+      "source:bbbbbbbb-cccc-4ddd-8eee-ffffffffffff@00.00.001",
+    ]);
+    assert.equal(
+      identities.every((identityKey) => cached.has(identityKey)),
+      true,
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("BAFU process scope helper resumes ready handoff without executing remote commit", () => {
   const root = path.join(fixtureRoot, "ready");
   fs.rmSync(root, { recursive: true, force: true });

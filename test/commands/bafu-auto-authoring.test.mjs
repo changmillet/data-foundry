@@ -1275,6 +1275,14 @@ test("BAFU patch autofill splits disposal/incineration and transport route names
       expectedMix: "production mix, Mexico",
     },
     {
+      id: "88888888-9999-4aaa-8bbb-ccccccccccce",
+      baseName: "Electricity, photovoltaic, at 3kWp slanted-roof , mc-Si, future",
+      locationCode: "CH",
+      expectedBase: "Electricity",
+      expectedTreatment: "photovoltaic, mc-Si, future",
+      expectedMix: "at 3kWp slanted-roof",
+    },
+    {
       id: "99999999-aaaa-4bbb-8ccc-dddddddddddd",
       baseName: "Disposal, fluorescent lamps",
       expectedBase: "Disposal, fluorescent lamps",
@@ -1294,6 +1302,14 @@ test("BAFU patch autofill splits disposal/incineration and transport route names
       locationCode: "GLO",
       expectedBase: "Mounting",
       expectedTreatment: "surface mount technology, Pb-free solder",
+      expectedMix: "assembly service, global",
+    },
+    {
+      id: "bbbbbbbb-cccc-4ddd-8eee-fffffffffffe",
+      baseName: "Fuel cell system assembly, 1 kWe, proton exchange membrane (PEM)",
+      locationCode: "GLO",
+      expectedBase: "Fuel cell system assembly",
+      expectedTreatment: "1 kWe, proton exchange membrane (PEM)",
       expectedMix: "assembly service, global",
     },
     {
