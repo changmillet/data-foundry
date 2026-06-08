@@ -378,6 +378,8 @@ export function buildFullContextAiCompletionBlockers({
 
 export const referenceTableByTypeToken = [
   ["contact", "contacts"],
+  ["compliance system", "sources"],
+  ["compliancesystem", "sources"],
   ["flow property", "flowproperties"],
   ["flowproperty", "flowproperties"],
   ["flow data", "flows"],
@@ -398,11 +400,11 @@ export const referenceTableByPathToken = [
   ["flowdataset", "flows"],
   ["lciamethod", "lciamethods"],
   ["lifecyclemodel", "lifecyclemodels"],
-  ["processdataset", "processes"],
-  ["datasource", "sources"],
-  ["source", "sources"],
   ["datasetformat", "sources"],
   ["compliancesystem", "sources"],
+  ["datasource", "sources"],
+  ["source", "sources"],
+  ["processdataset", "processes"],
   ["unitgroup", "unitgroups"],
   ["commissioner", "contacts"],
   ["personorentity", "contacts"],
@@ -681,7 +683,7 @@ export function buildWriteCandidateItem({
         "Unit Groups and Flow Properties are reference-only support data for Foundry imports. Select existing database rows and rewrite references instead of writing account-local My Data rows.",
     });
   }
-  blockers.push(...prewriteIdentityBlockers(identity.payload, datasetType));
+  blockers.push(...prewriteIdentityBlockers(identity.payload, datasetType, repoRoot));
 
   const curationStatus = curationEntity?.status ?? null;
   if (curationGateProvided && !curationEntity) {

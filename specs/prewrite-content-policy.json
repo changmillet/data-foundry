@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "rules": [
+    {
+      "id": "dataset-name-describes-model-not-source-locator",
+      "code": "source_locator_in_dataset_name",
+      "stage": "prewrite_content_quality",
+      "severity": "blocker",
+      "dataset_types": ["flow", "process", "lifecyclemodel"],
+      "path_scope": {
+        "contains": ["dataSetInformation", "name"]
+      },
+      "lexicon": "source_locator_markers",
+      "message": "Dataset name information must describe the modeled product, process, route, or location. Source citation locators belong in source references or provenance artifacts."
+    },
+    {
+      "id": "write-payload-excludes-foundry-workflow-state",
+      "code": "workflow_state_text_in_write_payload",
+      "stage": "prewrite_content_quality",
+      "severity": "blocker",
+      "dataset_types": ["flow", "process", "lifecyclemodel"],
+      "path_scope": {
+        "exclude_contains": ["common:other", "tiangongfoundry"]
+      },
+      "lexicon": "workflow_state_markers",
+      "message": "Write payload text must not contain Foundry workflow state, candidate status, curation state, dry-run state, handoff state, or remote-write approval language."
+    }
+  ],
+  "lexicons": {
+    "source_locator_markers": [
+      {
+        "id": "latin-author-year",
+        "pattern": "\\b[A-Z][A-Za-z]+(?:\\s+et\\s+al\\.)?\\s+(?:19|20)\\d{2}\\b",
+        "flags": "iu"
+      },
+      {
+        "id": "cjk-author-year",
+        "pattern": "[\\p{Script=Han}·]{2,12}\\s*(?:19|20)\\d{2}",
+        "flags": "u"
+      },
+      {
+        "id": "numbered-table",
+        "pattern": "\\b(?:Table|Tbl\\.)\\s*\\d+[A-Za-z]?\\b",
+        "flags": "iu"
+      },
+      {
+        "id": "numbered-table-cjk",
+        "pattern": "表\\s*\\d+",
+        "flags": "u"
+      },
+      {
+        "id": "numbered-figure",
+        "pattern": "\\b(?:Figure|Fig\\.)\\s*\\d+[A-Za-z]?\\b",
+        "flags": "iu"
+      },
+      {
+        "id": "numbered-figure-cjk",
+        "pattern": "图\\s*\\d+",
+        "flags": "u"
+      }
+    ],
+    "workflow_state_markers": [
+      {
+        "id": "foundry-runtime",
+        "pattern": "\\bFoundry\\b",
+        "flags": "iu"
+      },
+      {
+        "id": "candidate-state",
+        "pattern": "\\b(?:candidate|write\\s+candidate)\\b",
+        "flags": "iu"
+      },
+      {
+        "id": "remote-write-state",
+        "pattern": "\\bremote\\s+write\\b",
+        "flags": "iu"
+      },
+      {
+        "id": "curation-state",
+        "pattern": "\\bcuration\\b",
+        "flags": "iu"
+      },
+      {
+        "id": "dry-run-state",
+        "pattern": "\\bdry-?run\\b",
+        "flags": "iu"
+      },
+      {
+        "id": "handoff-state",
+        "pattern": "\\bhandoff\\b",
+        "flags": "iu"
+      },
+      {
+        "id": "candidate-state-cjk",
+        "pattern": "候选",
+        "flags": "u"
+      },
+      {
+        "id": "remote-write-state-cjk",
+        "pattern": "远端写入|不得[^。；;]*写入",
+        "flags": "u"
+      }
+    ]
+  }
+}
