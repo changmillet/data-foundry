@@ -731,6 +731,127 @@ test("mutation manifest accepts mixed support rows with internal reference closu
   }
 });
 
+test("mutation manifest accepts public canonical source-reference rewrite as reference closure proof", () => {
+  const root = path.join(supportManifestFixtureRoot, "public-source-reference-proof");
+  fs.rmSync(root, { recursive: true, force: true });
+  const contactId = "77777777-2222-4333-8444-555555555555";
+  const canonicalFormatSourceId = "a97a0155-0234-4b87-b4ce-a45da52f2a40";
+  const rowsFile = path.join(root, "support.cleaned.jsonl");
+  const contactRow = {
+    contactDataSet: {
+      contactInformation: {
+        dataSetInformation: {
+          "common:UUID": contactId,
+          shortName: { "@xml:lang": "en", "#text": "Federal Office for the Environment FOEN" },
+        },
+      },
+      administrativeInformation: {
+        dataEntryBy: {
+          "common:referenceToDataSetFormat": {
+            "@type": "source data set",
+            refObjectId: canonicalFormatSourceId,
+            version: "03.00.003",
+            "common:shortDescription": { "@xml:lang": "en", "#text": "ILCD format" },
+          },
+        },
+        publicationAndOwnership: {
+          "common:dataSetVersion": "00.00.001",
+        },
+      },
+    },
+  };
+  writeJsonLines(rowsFile, [contactRow]);
+  writeJsonLines(path.join(root, "source-reference-rewrites.jsonl"), [
+    {
+      dataset_type: "contact",
+      dataset_id: contactId,
+      dataset_version: "00.00.001",
+      path: "contactDataSet.administrativeInformation.dataEntryBy.common:referenceToDataSetFormat",
+      relation: "dataset_format_source",
+      original: {
+        ref_object_id: "converted-format-source",
+        version: "00.00.001",
+        short_description: "ILCD format",
+      },
+      canonical: {
+        ref_object_id: canonicalFormatSourceId,
+        version: "03.00.003",
+        short_description: "ILCD format",
+      },
+      reason:
+        "Data set format uses the public canonical ILCD format source instead of a converted package-local support source.",
+    },
+  ]);
+
+  const schemaReport = path.join(root, "schema", "validation-report.json");
+  writeJson(schemaReport, {
+    status: "completed",
+    input_path: rel(rowsFile),
+    rows: [{ index: 0, id: contactId, version: "00.00.001", status: "valid", issues: [] }],
+  });
+  const cleanupReport = path.join(root, "cleanup", "dataset-curation-cleanup-report.json");
+  writeJson(cleanupReport, {
+    status: "completed",
+    rows_file: rel(rowsFile),
+    cleaned_rows_file: rel(rowsFile),
+  });
+  const progressJsonl = path.join(root, "dry-run", "progress.jsonl");
+  const failuresJsonl = path.join(root, "dry-run", "failures.jsonl");
+  writeJsonLines(progressJsonl, [
+    {
+      id: contactId,
+      version: "00.00.001",
+      type: "contact",
+      table: "contacts",
+      status: "prepared",
+      operation: "would_sync",
+    },
+  ]);
+  writeJsonLines(failuresJsonl, []);
+  const dryRunReport = path.join(root, "dry-run", "summary.json");
+  writeJson(dryRunReport, {
+    status: "completed",
+    mode: "dry_run",
+    commit: false,
+    input_path: rel(rowsFile),
+    files: {
+      progress_jsonl: rel(progressJsonl),
+      failures_jsonl: rel(failuresJsonl),
+    },
+  });
+
+  try {
+    const result = runFoundry([
+      "dataset-mutation-manifest",
+      "--type",
+      "support",
+      "--profile",
+      "bafu",
+      "--rows-file",
+      rel(rowsFile),
+      "--schema-report",
+      rel(schemaReport),
+      "--cleanup-report",
+      rel(cleanupReport),
+      "--dry-run-report",
+      rel(dryRunReport),
+      "--target-user-id",
+      targetUserId,
+      "--out-dir",
+      rel(path.join(root, "manifest")),
+    ]);
+    assert.equal(result.code, 0, JSON.stringify(result.json, null, 2));
+    assert.equal(result.json.status, "ready_for_remote_write");
+    assert.equal(result.json.counts.source_reference_rewrites, 1);
+    assert.equal(
+      scopeBlockerCodes(result.json).has("reference_closure_remote_verify_required"),
+      false,
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("BAFU support manifest accepts source-contact rewrite as deterministic semantic evidence", () => {
   const root = path.join(supportManifestFixtureRoot, "bafu-source-contact-proof");
   fs.rmSync(root, { recursive: true, force: true });

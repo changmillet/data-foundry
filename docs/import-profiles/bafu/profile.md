@@ -10,7 +10,7 @@ owner: tiangong-lca-data-foundry
 
 This profile defines the durable orchestration contract for converting the BAFU source package into TianGong-ready ILCD/TIDAS data and writing it into the approved BAFU account. It is the Foundry-facing profile for the workflow; task-local files under `.foundry/workspaces/` are runtime artifacts, not the source of truth for the workflow.
 
-BAFU-specific data curation rules live in `docs/import-profiles/bafu/constraints.md`. The Foundry task workspace must lock the constraints snapshot before generating mutation plans, remote write requests, or final mapping reports.
+BAFU-specific data curation rules live in `docs/import-profiles/bafu/constraints.md`. The BAFU leaf process classification authoring helper is documented in `docs/import-profiles/bafu/leaf-process-classification-authoring.md`; it prepares task-bound AI/human classification work and non-authoritative candidates, not final semantic classifications by itself. The Foundry task workspace must lock the constraints snapshot before generating mutation plans, remote write requests, or final mapping reports.
 
 ## Execution Layers
 

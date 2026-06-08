@@ -874,13 +874,28 @@ export function createLibraryScopeWorkflowCommands({
     };
   }
 
-  function decisionIsCompleteClassification(row) {
+  function classificationDecisionCode(row) {
     const source = row ?? {};
-    return Boolean(
-      asText(
-        source.selected_code || source.code || source.leaf_code || source.class_id || source.cat_id,
-      ),
+    return asText(
+      source.selected_code || source.code || source.leaf_code || source.class_id || source.cat_id,
     );
+  }
+
+  function decisionIsCompleteClassification(row, { datasetType = null } = {}) {
+    const code = classificationDecisionCode(row);
+    if (!code) return false;
+    const categoryType = asText(row?.category_type ?? row?.categoryType);
+    if (datasetType === "process" || categoryType === "process") {
+      const level = asText(row?.classification_decision_level ?? row?.classificationDecisionLevel);
+      if (level === "broad_section") return false;
+      if (/^[A-Z]$/u.test(code) || /^\d{1,3}$/u.test(code)) return false;
+    }
+    if (categoryType === "flow-product") {
+      const level = asText(row?.classification_decision_level ?? row?.classificationDecisionLevel);
+      if (level === "broad_section") return false;
+      if (/^\d{1,3}$/u.test(code)) return false;
+    }
+    return true;
   }
 
   function exchangePreservationHash(exchange) {
@@ -1686,14 +1701,18 @@ export function createLibraryScopeWorkflowCommands({
       const processClassification = classificationByKey.get(
         `process:${scope.process_id}:${scope.process_version || "00.00.001"}`,
       );
-      if (!decisionIsCompleteClassification(processClassification)) {
+      if (!decisionIsCompleteClassification(processClassification, { datasetType: "process" })) {
         blockers.push(
           blockRow(
             scope,
             { dataset_type: "process", id: scope.process_id, version: scope.process_version },
-            "process_classification_requires_authoring",
-            "Process classification must be authored from full process meaning before this scope can write.",
-            "Run semantic classification authoring and provide classification-decisions.jsonl.",
+            processClassification
+              ? "process_classification_requires_leaf_authoring"
+              : "process_classification_requires_authoring",
+            processClassification
+              ? "Process classification decision is only a broad section; BAFU import requires a full-context leaf classification before this scope can write."
+              : "Process classification must be authored from full process meaning before this scope can write.",
+            "Run semantic classification authoring and provide leaf classification-decisions.jsonl.",
           ),
         );
       }

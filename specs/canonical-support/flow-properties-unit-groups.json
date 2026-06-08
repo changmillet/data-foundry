@@ -1990,7 +1990,7 @@
       "reason": "Mass units must reuse the public canonical Mass flow property."
     },
     {
-      "source_units": ["p", "item", "items", "item(s)", "dozen(s)"],
+      "source_units": ["p", "unit", "item", "items", "item(s)", "dozen(s)"],
       "canonical_flow_property_id": "01846770-4cfe-4a25-8ad9-919d8d378345",
       "reason": "Countable-item units must reuse the public canonical Number of items flow property."
     },
@@ -2031,7 +2031,7 @@
       "reason": "Mass*distance units must reuse the public canonical mass*distance flow property."
     },
     {
-      "source_units": ["m3a", "m3*a", "l*a"],
+      "source_units": ["m3a", "m3y", "m3*a", "m3*y", "l*a"],
       "canonical_flow_property_id": "441238a3-ba09-46ec-b35b-c30cfba746d1",
       "reason": "Volume*time units must reuse the public canonical Volume*time flow property."
     },

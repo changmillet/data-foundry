@@ -480,7 +480,9 @@ export function createBundleSampleUtils({
         : deterministicUuid(
             `tiangong-lca-foundry:library-contact:${profile}:${libraryName}:${website}`,
           ));
-    const now = nowIso();
+    const stableTimestamp =
+      asText(options.timestamp || options.timeStamp || options.generatedAt) ||
+      (profile === "bafu" ? "2025-01-01T00:00:00.000Z" : nowIso());
     const templateRoot = templateContact?.contactDataSet;
     const templateDataEntryBy = templateRoot?.administrativeInformation?.dataEntryBy ?? {};
     const originalReferenceToDataSetFormat = cloneJson(
@@ -587,7 +589,7 @@ export function createBundleSampleUtils({
         },
         administrativeInformation: {
           dataEntryBy: {
-            "common:timeStamp": now,
+            "common:timeStamp": stableTimestamp,
             "common:referenceToDataSetFormat": referenceToDataSetFormat,
           },
           publicationAndOwnership: {

@@ -812,3 +812,100 @@ test("library classification decisions project into task-bound apply decisions",
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("library classification projection blocks broad flow-product decisions", () => {
+  const root = path.join(repoRoot, "tmp", "classification-library-flow-broad-test");
+  fs.rmSync(root, { recursive: true, force: true });
+  const rowsDir = path.join(root, "rows");
+  const flowRows = path.join(rowsDir, "flows.jsonl");
+  const flowOut = path.join(rowsDir, "flows.classified.jsonl");
+  const queue = path.join(root, "classification-authoring-queue.jsonl");
+  const libraryDecisions = path.join(root, "library-classification-decisions.jsonl");
+  const taskDir = path.join(root, "classification-task");
+  const contextDir = path.join(root, "context");
+  const schemaFile = path.join(contextDir, "schema.json");
+  const yamlFile = path.join(contextDir, "methodology.yaml");
+  const rulesetFile = path.join(contextDir, "runtime-ruleset.json");
+  const flowProductCategoryFile = path.join(contextDir, "tidas_flows_product_category.json");
+  const locationCategoryFile = path.join(contextDir, "tidas_locations_category.json");
+
+  try {
+    writeJsonLines(flowRows, [productFlowRow()]);
+    writeJson(schemaFile, { title: "Fixture flow schema" });
+    fs.writeFileSync(yamlFile, "flow:\n  required: true\n");
+    writeJson(rulesetFile, { rules: ["source-language-only"] });
+    writeJson(flowProductCategoryFile, { oneOf: [{ const: "39380" }] });
+    writeJson(locationCategoryFile, { oneOf: [{ const: "GLO" }] });
+    writeJsonLines(queue, [
+      {
+        dataset_type: "flow",
+        dataset_id: flowId,
+        dataset_version: "00.00.001",
+        code: "flow_classification_requires_authoring",
+        current_classification: "Community, social and personal services",
+        source_classification: { category: "electronics waste" },
+        authoring_context: { source_name: "Disposal, Li-ions batteries, mixed technology" },
+        classification_workflow: {
+          schema_type: "flow-product",
+          row_type: "flow",
+          commands: {
+            input_rows: rel(flowRows),
+            output_rows: rel(flowOut),
+          },
+        },
+      },
+    ]);
+    writeJsonLines(libraryDecisions, [
+      {
+        dataset_type: "flow",
+        dataset_id: flowId,
+        dataset_version: "00.00.001",
+        category_type: "flow-product",
+        selected_code: "9",
+        decision_status: "completed",
+        classification_decision_level: "broad_section",
+        basis: "Only a broad product-flow section was selected.",
+        confidence: "high",
+      },
+    ]);
+
+    const task = runFoundry([
+      "dataset-classification-decision-task-build",
+      "--classification-queue",
+      rel(queue),
+      "--schema-file",
+      rel(schemaFile),
+      "--yaml-file",
+      rel(yamlFile),
+      "--ruleset-file",
+      rel(rulesetFile),
+      "--classification-schema",
+      rel(flowProductCategoryFile),
+      "--location-schema",
+      rel(locationCategoryFile),
+      "--out-dir",
+      rel(taskDir),
+    ]);
+    assert.equal(task.status, "ready_for_ai_classification_decisions");
+
+    const broadProjection = runFoundry(
+      [
+        "dataset-library-classification-decisions-project",
+        "--classification-queue",
+        rel(queue),
+        "--library-decisions",
+        rel(libraryDecisions),
+        "--decision-task",
+        task.files.task,
+        "--out-dir",
+        rel(path.join(root, "projection-broad")),
+      ],
+      1,
+    );
+    assert.equal(broadProjection.status, "blocked");
+    assert.equal(broadProjection.counts.manual_review, 1);
+    assert.equal(broadProjection.blockers[0].code, "library_classification_decision_not_leaf");
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

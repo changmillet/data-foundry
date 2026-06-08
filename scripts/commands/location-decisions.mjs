@@ -253,7 +253,13 @@ export function createLocationDecisionCommands({
       kind: "location",
       queueRows,
       contractContext,
-      requiredContextKinds: ["schema", "methodology_yaml", "ruleset", "location_schema"],
+      requiredContextKinds: [
+        "schema",
+        "methodology_yaml",
+        "ruleset",
+        "classification_schema",
+        "location_schema",
+      ],
       attachedInputRowCount: queueRowsWithAttachedInput,
     });
     const datasetTypes = unique(queueRows.map((row) => asText(row.dataset_type)));
@@ -548,6 +554,7 @@ export function createLocationDecisionCommands({
       "schema",
       "methodology_yaml",
       "ruleset",
+      "classification_schema",
       "location_schema",
       "location_authoring_queue",
     ]);

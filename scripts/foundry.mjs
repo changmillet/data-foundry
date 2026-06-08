@@ -2,6 +2,10 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createAuthoringPlanCommands } from "./commands/authoring-plan.mjs";
+import { createBafuAutoAuthoringCommands } from "./commands/bafu-auto-authoring.mjs";
+import { createBafuBatchImportRunCommands } from "./commands/bafu-batch-import-run.mjs";
+import { createBafuLeafClassificationTaskCommands } from "./commands/bafu-leaf-classification-tasks.mjs";
+import { createBafuProcessScopeE2eCommands } from "./commands/bafu-process-scope-e2e.mjs";
 import { createBundleSampleRowsCommands } from "./commands/bundle-sample-rows.mjs";
 import { createCliWrapperCommands } from "./commands/cli-wrappers.mjs";
 import { createCommitHandoffCommands } from "./commands/commit-handoff.mjs";
@@ -560,6 +564,61 @@ const libraryScopeWorkflowCommands = createLibraryScopeWorkflowCommands({
   writeJsonLines,
 });
 
+const bafuProcessScopeE2eCommands = createBafuProcessScopeE2eCommands({
+  booleanOption,
+  fileExists,
+  nowIso,
+  readJson,
+  readJsonLines,
+  readRowsFile,
+  repoRelativeMaybe,
+  resolveRepoPath,
+  shellQuote,
+  textValue,
+  writeJson,
+});
+const bafuBatchImportRunCommands = createBafuBatchImportRunCommands({
+  asText: textValue,
+  booleanOption,
+  datasetIdentity,
+  directoryExists,
+  fileExists,
+  integerOption,
+  normalizedList,
+  nowIso,
+  readJson,
+  readJsonLines,
+  repoRelativeMaybe,
+  resolveRepoPath,
+  shellQuote,
+  writeJson,
+  writeJsonLines,
+});
+const bafuLeafClassificationTaskCommands = createBafuLeafClassificationTaskCommands({
+  asText: textValue,
+  ensureArray,
+  integerOption,
+  nowIso,
+  positiveIntegerOption,
+  readJson,
+  readJsonLines,
+  repoRelativeMaybe,
+  resolveRepoPath,
+  writeJson,
+  writeJsonLines,
+});
+const bafuAutoAuthoringCommands = createBafuAutoAuthoringCommands({
+  ensureArray,
+  fileExists,
+  nowIso,
+  readJson,
+  readText,
+  repoRelativePath,
+  resolveRepoPath,
+  writeJson,
+  writeJsonLines,
+});
+
 const {
   applyIdentityReferenceRewrites,
   externalizeUnresolvedProcessFlowExchanges,
@@ -802,6 +861,10 @@ const bundleSampleRowsCommands = createBundleSampleRowsCommands({
 runFoundryCli({
   commandDeps: {
     authoringPlanCommands,
+    bafuAutoAuthoringCommands,
+    bafuBatchImportRunCommands,
+    bafuLeafClassificationTaskCommands,
+    bafuProcessScopeE2eCommands,
     bundleSampleRowsCommands,
     cliWrapperCommands,
     commitHandoffCommands,

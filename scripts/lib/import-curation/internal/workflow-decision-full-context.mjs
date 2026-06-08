@@ -850,6 +850,11 @@ export function buildIdentityDecisionFullContextBlockers({
     rowsFile,
     cleanupArtifact,
   });
+  const contextRelevantToRows = decisionApplyContextRelevantToExpectedRowsFile({
+    repoRoot,
+    context,
+    expectedRowsFile,
+  });
   if (cleanupArtifact && !expectedRowsFile) {
     blockers.push({
       code: "full_context_ai_identity_cleanup_input_missing",
@@ -861,6 +866,7 @@ export function buildIdentityDecisionFullContextBlockers({
       cleanup_report: repoRelativePath(repoRoot, cleanupArtifact.path),
     });
   } else if (
+    contextRelevantToRows &&
     !decisionApplyOutputRowsMatch(repoRoot, context, expectedRowsFile) &&
     !decisionApplyContextCoversExpectedRowsIdentity({
       repoRoot,

@@ -325,6 +325,82 @@ export const commandMetadata = {
       ),
     ],
   }),
+  "dataset-bafu-leaf-classification-tasks-prepare": metadata({
+    category: "workflow-internal",
+    ownerModule: "scripts/commands/bafu-leaf-classification-tasks.mjs",
+    ownerExport:
+      "createBafuLeafClassificationTaskCommands().runDatasetBafuLeafClassificationTasksPrepare",
+    inputs: [
+      "library-entity-index.jsonl",
+      "scope-projection.jsonl",
+      "blocked-scope-ledger.jsonl",
+      "optional library classification-decisions.jsonl",
+    ],
+    outputs: [
+      "leaf-process-classification-task-report.json",
+      "leaf-process-classification-tasks.jsonl",
+      "classification-decisions.template.jsonl",
+      "sharded leaf process classification task/template JSONL",
+    ],
+    keyTests: [
+      nodeTest(
+        "test/commands/bafu-leaf-classification-tasks.test.mjs",
+        "BAFU leaf classification helper prepares sharded process authoring tasks",
+      ),
+    ],
+  }),
+  "dataset-bafu-leaf-classification-category-map-project": metadata({
+    category: "workflow-internal",
+    ownerModule: "scripts/commands/bafu-leaf-classification-tasks.mjs",
+    ownerExport:
+      "createBafuLeafClassificationTaskCommands().runDatasetBafuLeafClassificationCategoryMapProject",
+    inputs: [
+      "leaf-process-classification-tasks.jsonl",
+      "category-map-decisions/*.jsonl",
+      "source decisions directory",
+      "tidas_processes_category.json",
+    ],
+    outputs: [
+      "classification-decisions.jsonl",
+      "classification-decisions.manual-review.jsonl",
+      "category-map-decisions.manual-review.jsonl",
+      "process-leaf-classification-candidates.jsonl",
+      "flow-product-classification-candidates.jsonl",
+      "bafu-leaf-category-map-project-report.json",
+    ],
+    keyTests: [
+      nodeTest(
+        "test/commands/bafu-leaf-classification-tasks.test.mjs",
+        "BAFU leaf category-map projection writes task-bound decisions and non-authoritative candidates separately",
+      ),
+    ],
+  }),
+  "dataset-bafu-identity-decisions-autofill": metadata({
+    category: "workflow-internal",
+    ownerModule: "scripts/commands/bafu-auto-authoring.mjs",
+    ownerExport: "createBafuAutoAuthoringCommands().runDatasetBafuIdentityDecisionsAutofill",
+    inputs: ["identity-decision-task.json"],
+    outputs: ["identity-decisions.jsonl", "bafu-identity-decisions-autofill-report.json"],
+    keyTests: [
+      nodeTest(
+        "test/commands/bafu-auto-authoring.test.mjs",
+        "BAFU identity autofill creates product-flow create_new decisions only when candidates are not identity-equivalent",
+      ),
+    ],
+  }),
+  "dataset-bafu-authoring-patches-autofill": metadata({
+    category: "workflow-internal",
+    ownerModule: "scripts/commands/bafu-auto-authoring.mjs",
+    ownerExport: "createBafuAutoAuthoringCommands().runDatasetBafuAuthoringPatchesAutofill",
+    inputs: ["authoring-task-manifest.json", "authoring-package-snapshots"],
+    outputs: ["per-task ai-patches.json", "bafu-authoring-patches-autofill-report.json"],
+    keyTests: [
+      nodeTest(
+        "test/commands/bafu-auto-authoring.test.mjs",
+        "BAFU patch autofill writes name-plan and flowProperties patches with full-context closure",
+      ),
+    ],
+  }),
   "dataset-classification-decisions-apply": metadata({
     category: "workflow-internal",
     ownerModule: "scripts/commands/classification-decisions.mjs",
@@ -429,6 +505,26 @@ export const commandMetadata = {
       "support cache refresh report",
     ],
     keyTests: [commandSmoke("dataset-support-cache-refresh --help")],
+  }),
+  "dataset-canonical-support-mappings-autofill": metadata({
+    category: "workflow-internal",
+    ownerModule: "scripts/commands/support-cache.mjs",
+    ownerExport: "createSupportCacheCommands().runDatasetCanonicalSupportMappingsAutofill",
+    inputs: [
+      "canonical-support-mappings.template.jsonl",
+      "specs/canonical-support/flow-properties-unit-groups.json",
+    ],
+    outputs: [
+      "canonical-support-mappings.jsonl",
+      "canonical-support-blocked.manual-review.jsonl",
+      "canonical-support-mappings-report.json",
+    ],
+    keyTests: [
+      nodeTest(
+        "test/commands/support-cache.test.mjs",
+        "canonical support mapping autofill maps only proven units and reports unresolved units",
+      ),
+    ],
   }),
   "dataset-bundle-sample-rows": metadata({
     category: "workflow-internal",
@@ -619,6 +715,52 @@ export const commandMetadata = {
       nodeTest(
         "test/scenarios/library-scope-workflow.test.mjs",
         "process scope runner plans only ready scopes and keeps blocked scopes out of the queue",
+      ),
+    ],
+  }),
+  "dataset-bafu-process-scope-e2e": metadata({
+    category: "workflow-internal",
+    ownerModule: "scripts/commands/bafu-process-scope-e2e.mjs",
+    ownerExport: "createBafuProcessScopeE2eCommands().runDatasetBafuProcessScopeE2e",
+    inputs: [
+      "one process rows file",
+      "optional source support rows file",
+      "optional source rows file",
+      "post-authoring finalize context options",
+    ],
+    outputs: [
+      "bafu-process-scope-e2e-report.json",
+      "bafu-process-scope-e2e-ledger.jsonl",
+      "dataset-post-authoring-finalize-report.json when executed or resumed",
+    ],
+    keyTests: [
+      nodeTest(
+        "test/commands/bafu-process-scope-e2e.test.mjs",
+        "BAFU process scope helper hard-blocks unresolved AI curation items on resume",
+      ),
+    ],
+  }),
+  "dataset-bafu-batch-import-run": metadata({
+    category: "workflow-internal",
+    ownerModule: "scripts/commands/bafu-batch-import-run.mjs",
+    ownerExport: "createBafuBatchImportRunCommands().runDatasetBafuBatchImportRun",
+    inputs: [
+      "ready-scopes.jsonl",
+      "process-bundles directory",
+      "BAFU run directory with context and library decisions",
+      "target user id",
+    ],
+    outputs: [
+      "dataset-bafu-batch-import-run-report.json",
+      "scope-checkpoints.jsonl",
+      "import-ledger/ok.*.verified.jsonl",
+      "import-ledger/blocked.*.jsonl",
+      "import-ledger/failed.scopes.retry.jsonl",
+    ],
+    keyTests: [
+      nodeTest(
+        "test/commands/bafu-batch-import-run.test.mjs",
+        "BAFU batch import runner skips already verified scopes through resumable ledgers",
       ),
     ],
   }),

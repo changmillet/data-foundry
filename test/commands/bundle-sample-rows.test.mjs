@@ -1437,6 +1437,10 @@ test("dataset-bundle-sample-rows omits format and compliance placeholder sources
 
   const contacts = readJsonLines(path.join(repoRoot, report.files.rows.contact));
   assert.equal(
+    contacts[0].contactDataSet.administrativeInformation.dataEntryBy["common:timeStamp"],
+    "2025-01-01T00:00:00.000Z",
+  );
+  assert.equal(
     contacts[0].contactDataSet.administrativeInformation.dataEntryBy[
       "common:referenceToDataSetFormat"
     ]["@refObjectId"],

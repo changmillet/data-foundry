@@ -490,13 +490,15 @@ export function createClassificationDecisionCommands({
     return `${schemaType}::${datasetId}::${version}`;
   }
 
-  function processClassificationDecisionIsTooBroad(queueRow, decision, code) {
-    if (classificationQueueSchemaType(queueRow) !== "process") return false;
+  function classificationDecisionIsTooBroad(queueRow, decision, code) {
+    const schemaType = classificationQueueSchemaType(queueRow);
+    if (!["process", "flow-product"].includes(schemaType)) return false;
     const level = asText(
       decision?.classification_decision_level ?? decision?.classificationDecisionLevel,
     );
     if (level === "broad_section") return true;
-    return /^[A-Z]$/u.test(code) || /^\d{1,3}$/u.test(code);
+    if (schemaType === "process") return /^[A-Z]$/u.test(code) || /^\d{1,3}$/u.test(code);
+    return /^\d{1,3}$/u.test(code);
   }
 
   function decisionTaskAuthoringContext(task, taskPath) {
@@ -606,7 +608,7 @@ export function createClassificationDecisionCommands({
         });
         continue;
       }
-      if (processClassificationDecisionIsTooBroad(queueRow, decision, code)) {
+      if (classificationDecisionIsTooBroad(queueRow, decision, code)) {
         manualReview.push({
           schema_version: 1,
           status: "manual_review",
@@ -619,7 +621,7 @@ export function createClassificationDecisionCommands({
           category_type: classificationQueueSchemaType(queueRow) || null,
           selected_code: code,
           required_human_action:
-            "Replace the broad process classification with a full TIDAS leaf code selected through dataset classification children/path, then rerun this projection and deterministic classification apply.",
+            "Replace the broad classification with a full TIDAS leaf code selected through dataset classification children/path, then rerun this projection and deterministic classification apply.",
         });
         continue;
       }

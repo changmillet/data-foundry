@@ -147,6 +147,8 @@ test("decision tasks externalize full context into stable shared bundles", () =>
         rel(context.yamlFile),
         "--ruleset-file",
         rel(context.rulesetFile),
+        "--classification-schema",
+        rel(classificationSchema),
         "--location-schema",
         rel(locationSchema),
         "--limit",

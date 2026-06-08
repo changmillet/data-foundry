@@ -13,6 +13,10 @@ async function runFoundryCliMain({ argv, commandDeps, decisionDeps, runtime }) {
   const { exitCodeForCommand, parseArgs, printJson, usage } = runtime;
   const {
     authoringPlanCommands,
+    bafuAutoAuthoringCommands,
+    bafuBatchImportRunCommands,
+    bafuLeafClassificationTaskCommands,
+    bafuProcessScopeE2eCommands,
     bundleSampleRowsCommands,
     cliWrapperCommands,
     commitHandoffCommands,
@@ -71,6 +75,16 @@ async function runFoundryCliMain({ argv, commandDeps, decisionDeps, runtime }) {
       classificationDecisionCommands.runDatasetClassificationDecisionTaskBuild(options),
     "dataset-library-classification-decisions-project": (options) =>
       classificationDecisionCommands.runDatasetLibraryClassificationDecisionsProject(options),
+    "dataset-bafu-leaf-classification-tasks-prepare": (options) =>
+      bafuLeafClassificationTaskCommands.runDatasetBafuLeafClassificationTasksPrepare(options),
+    "dataset-bafu-leaf-classification-category-map-project": (options) =>
+      bafuLeafClassificationTaskCommands.runDatasetBafuLeafClassificationCategoryMapProject(
+        options,
+      ),
+    "dataset-bafu-identity-decisions-autofill": (options) =>
+      bafuAutoAuthoringCommands.runDatasetBafuIdentityDecisionsAutofill(options),
+    "dataset-bafu-authoring-patches-autofill": (options) =>
+      bafuAutoAuthoringCommands.runDatasetBafuAuthoringPatchesAutofill(options),
     "dataset-classification-decisions-apply": (options) =>
       classificationDecisionCommands.runDatasetClassificationDecisionsApply(options),
     "dataset-location-decision-task-build": (options) =>
@@ -83,6 +97,8 @@ async function runFoundryCliMain({ argv, commandDeps, decisionDeps, runtime }) {
     "dataset-patch-apply": (options) => cliWrapperCommands.runDatasetPatchApply(options),
     "dataset-support-cache-refresh": (options) =>
       supportCacheCommands.runDatasetSupportCacheRefresh(options),
+    "dataset-canonical-support-mappings-autofill": (options) =>
+      supportCacheCommands.runDatasetCanonicalSupportMappingsAutofill(options),
     "dataset-bundle-sample-rows": (options) =>
       bundleSampleRowsCommands.runDatasetBundleSampleRows(options),
     "dataset-identity-preflight-requests-build": (options) =>
@@ -103,6 +119,10 @@ async function runFoundryCliMain({ argv, commandDeps, decisionDeps, runtime }) {
       libraryScopeWorkflowCommands.runDatasetLibraryDecisionsApply(options),
     "dataset-process-scope-run": (options) =>
       libraryScopeWorkflowCommands.runDatasetProcessScopeRun(options),
+    "dataset-bafu-process-scope-e2e": (options) =>
+      bafuProcessScopeE2eCommands.runDatasetBafuProcessScopeE2e(options),
+    "dataset-bafu-batch-import-run": (options) =>
+      bafuBatchImportRunCommands.runDatasetBafuBatchImportRun(options),
     "dataset-identity-reference-rewrites-apply": (options) =>
       identityReferenceRewriteCommands.runDatasetIdentityReferenceRewritesApply(options),
     "dataset-identity-decisions-apply": (options) =>

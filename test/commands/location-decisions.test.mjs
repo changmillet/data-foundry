@@ -84,6 +84,7 @@ test("location decision task and apply route AI location choices through CLI loc
   const schemaFile = path.join(contextDir, "schema.json");
   const yamlFile = path.join(contextDir, "methodology.yaml");
   const rulesetFile = path.join(contextDir, "runtime-ruleset.json");
+  const classificationCategoryFile = path.join(contextDir, "tidas_processes_category.json");
   const locationCategoryFile = path.join(contextDir, "tidas_locations_category.json");
 
   try {
@@ -92,6 +93,7 @@ test("location decision task and apply route AI location choices through CLI loc
     fs.mkdirSync(contextDir, { recursive: true });
     fs.writeFileSync(yamlFile, "process:\n  geography: required\n");
     writeJson(rulesetFile, { rules: ["source-language-only"] });
+    writeJson(classificationCategoryFile, { oneOf: [{ const: "A.1.1" }] });
     writeJson(locationCategoryFile, { oneOf: [{ const: "CH" }] });
     writeJsonLines(queue, [
       {
@@ -124,6 +126,8 @@ test("location decision task and apply route AI location choices through CLI loc
       rel(yamlFile),
       "--ruleset-file",
       rel(rulesetFile),
+      "--classification-schema",
+      rel(classificationCategoryFile),
       "--location-schema",
       rel(locationCategoryFile),
       "--out-dir",
@@ -131,7 +135,7 @@ test("location decision task and apply route AI location choices through CLI loc
     ]);
     assert.equal(task.status, "ready_for_ai_location_decisions");
     assert.equal(task.counts.template_decisions, 1);
-    assert.equal(task.counts.contract_context_files, 4);
+    assert.equal(task.counts.contract_context_files, 5);
     assert.equal(task.counts.blockers, 0);
     assert.equal(task.counts.attached_input_rows, 1);
     assert.equal(task.location_queue_rows.length, 1);
@@ -168,7 +172,7 @@ test("location decision task and apply route AI location choices through CLI loc
       missingContextTask.blockers.some(
         (blocker) =>
           blocker.code === "location_decision_task_required_context_missing" &&
-          blocker.kind === "location_schema",
+          blocker.kind === "classification_schema",
       ),
       true,
     );
@@ -188,6 +192,8 @@ test("location decision task and apply route AI location choices through CLI loc
       rel(yamlFile),
       "--ruleset-file",
       rel(rulesetFile),
+      "--classification-schema",
+      rel(classificationCategoryFile),
       "--location-schema",
       rel(locationCategoryFile),
       "--out-dir",
@@ -222,7 +228,13 @@ test("location decision task and apply route AI location choices through CLI loc
         basis:
           "The source geography states Switzerland and the bundled TIDAS location schema contains CH for Switzerland.",
         authoring_context: templateRows[0].authoring_context,
-        used_context_kinds: ["schema", "methodology_yaml", "ruleset", "location_schema"],
+        used_context_kinds: [
+          "schema",
+          "methodology_yaml",
+          "ruleset",
+          "classification_schema",
+          "location_schema",
+        ],
         evidence: {
           source: "location-authoring-queue",
           quote_or_trace: "Source geography is Switzerland.",
@@ -267,7 +279,13 @@ test("location decision task and apply route AI location choices through CLI loc
         target_path: locationPath,
         basis:
           "The source geography states Switzerland and the bundled TIDAS location schema contains CH for Switzerland.",
-        used_context_kinds: ["schema", "methodology_yaml", "ruleset", "location_schema"],
+        used_context_kinds: [
+          "schema",
+          "methodology_yaml",
+          "ruleset",
+          "classification_schema",
+          "location_schema",
+        ],
         evidence: {
           source: "location-authoring-queue",
           quote_or_trace: "Source geography is Switzerland.",
@@ -306,7 +324,13 @@ test("location decision task and apply route AI location choices through CLI loc
         basis:
           "The source geography states Switzerland and the bundled TIDAS location schema contains CH for Switzerland.",
         authoring_context: templateRows[0].authoring_context,
-        used_context_kinds: ["schema", "methodology_yaml", "ruleset", "location_schema"],
+        used_context_kinds: [
+          "schema",
+          "methodology_yaml",
+          "ruleset",
+          "classification_schema",
+          "location_schema",
+        ],
         evidence: {
           source: "location-authoring-queue",
           quote_or_trace: "Source geography is Switzerland.",
@@ -380,6 +404,7 @@ test("location decisions suggest creates task-bound decisions for unique valid c
   const schemaFile = path.join(contextDir, "schema.json");
   const yamlFile = path.join(contextDir, "methodology.yaml");
   const rulesetFile = path.join(contextDir, "runtime-ruleset.json");
+  const classificationCategoryFile = path.join(contextDir, "tidas_processes_category.json");
   const locationCategoryFile = path.join(contextDir, "tidas_locations_category.json");
 
   writeJsonLines(processRows, [processRow()]);
@@ -387,6 +412,7 @@ test("location decisions suggest creates task-bound decisions for unique valid c
   fs.mkdirSync(contextDir, { recursive: true });
   fs.writeFileSync(yamlFile, "process:\n  geography: required\n");
   writeJson(rulesetFile, { rules: ["source-language-only"] });
+  writeJson(classificationCategoryFile, { oneOf: [{ const: "A.1.1" }] });
   writeJson(locationCategoryFile, { oneOf: [{ const: "CH" }] });
   writeJsonLines(queue, [
     {
@@ -422,6 +448,8 @@ test("location decisions suggest creates task-bound decisions for unique valid c
     rel(yamlFile),
     "--ruleset-file",
     rel(rulesetFile),
+    "--classification-schema",
+    rel(classificationCategoryFile),
     "--location-schema",
     rel(locationCategoryFile),
     "--out-dir",

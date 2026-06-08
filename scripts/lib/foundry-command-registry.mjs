@@ -24,6 +24,10 @@ export const datasetPolicyCommands = [
   "dataset-identity-decision-task-build",
   "dataset-classification-decision-task-build",
   "dataset-library-classification-decisions-project",
+  "dataset-bafu-leaf-classification-tasks-prepare",
+  "dataset-bafu-leaf-classification-category-map-project",
+  "dataset-bafu-identity-decisions-autofill",
+  "dataset-bafu-authoring-patches-autofill",
   "dataset-classification-decisions-apply",
   "dataset-location-decision-task-build",
   "dataset-location-decisions-suggest",
@@ -31,6 +35,7 @@ export const datasetPolicyCommands = [
   "dataset-curation-cleanup",
   "dataset-patch-apply",
   "dataset-support-cache-refresh",
+  "dataset-canonical-support-mappings-autofill",
   "dataset-bundle-sample-rows",
   "dataset-identity-preflight-requests-build",
   "dataset-identity-preflight-query-audit",
@@ -41,6 +46,8 @@ export const datasetPolicyCommands = [
   "dataset-library-identity-decisions-from-preflight",
   "dataset-library-decisions-apply",
   "dataset-process-scope-run",
+  "dataset-bafu-process-scope-e2e",
+  "dataset-bafu-batch-import-run",
   "dataset-identity-reference-rewrites-apply",
   "dataset-identity-decisions-apply",
   "dataset-post-authoring-finalize",
@@ -133,19 +140,28 @@ export function exitCodeForCommand(command, result) {
         : 1;
     case "dataset-classification-decisions-apply":
     case "dataset-library-classification-decisions-project":
+    case "dataset-bafu-leaf-classification-tasks-prepare":
+    case "dataset-bafu-leaf-classification-category-map-project":
     case "dataset-location-decisions-suggest":
     case "dataset-location-decisions-apply":
+    case "dataset-bafu-identity-decisions-autofill":
+    case "dataset-bafu-authoring-patches-autofill":
     case "dataset-identity-decisions-apply":
     case "dataset-library-decisions-apply":
     case "dataset-support-cache-refresh":
+    case "dataset-canonical-support-mappings-autofill":
     case "dataset-post-write-closeout":
     case "dataset-import-completion-report":
     case "dataset-import-ledger-report":
       return statusIs(result, [
         "help",
         "completed",
+        "completed_with_context_gaps",
+        "completed_with_manual_blocks",
+        "completed_with_manual_review",
         "completed_with_deferred_scopes",
         "completed_with_blocked_scopes",
+        "ready_no_leaf_classification_blockers",
       ])
         ? 0
         : 1;
@@ -165,6 +181,19 @@ export function exitCodeForCommand(command, result) {
       return statusIs(result, ["help", "passed"]) ? 0 : 1;
     case "dataset-process-scope-run":
       return statusIs(result, ["help", "completed", "completed_with_deferred_scopes"]) ? 0 : 1;
+    case "dataset-bafu-process-scope-e2e":
+      return statusIs(result, ["help", "planned", "ready_for_explicit_commit", "completed"])
+        ? 0
+        : 1;
+    case "dataset-bafu-batch-import-run":
+      return statusIs(result, [
+        "help",
+        "completed",
+        "completed_with_deferred_scopes",
+        "completed_with_retryable_failures",
+      ])
+        ? 0
+        : 1;
     case "dataset-identity-preflight-run":
       return statusIs(result, ["help", "planned", "completed", "completed_with_identity_findings"])
         ? 0

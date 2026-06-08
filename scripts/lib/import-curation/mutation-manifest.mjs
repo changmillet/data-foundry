@@ -50,6 +50,7 @@ const {
   readRowsIfExists,
   readSourceContactRewriteContext,
   readSourceReferenceRewriteContext,
+  sourceReferenceRewriteProofKeys,
   readUnresolvedExchangeExternalizationContext,
   remoteVerifyBlockerKeys,
   repoRelativePath,
@@ -292,7 +293,10 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
       rows,
       datasetType,
       remoteVerifyArtifact,
-      provenReferenceKeys: identityReferenceRewriteProofKeys(identityReferenceRewriteContext),
+      provenReferenceKeys: new Set([
+        ...identityReferenceRewriteProofKeys(identityReferenceRewriteContext),
+        ...sourceReferenceRewriteProofKeys(sourceReferenceRewriteContext),
+      ]),
       unresolvedReferenceKeys: identityDecisionUnresolvedReferenceKeys(
         identityDecisionApplyContext,
       ),

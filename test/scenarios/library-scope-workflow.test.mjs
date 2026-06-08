@@ -560,6 +560,77 @@ test("library decisions apply rewrites only elementary flow references and defer
   assert.equal(rewriteRows[0].preserved_exchange_fields, true);
 });
 
+test("library decisions apply blocks broad process section classifications", () => {
+  const { outDir } = buildIndex();
+  const decisionsDir = path.join(fixtureRoot, "run", "broad-process-classification-decisions");
+  writeJsonLines(path.join(decisionsDir, "identity-decisions.jsonl"), [
+    {
+      decision: "reuse_existing_reference",
+      source_dataset_id: ids.ef1,
+      source_dataset_version: "00.00.001",
+      canonical_flow_id: "aaaaaaaa-aaaa-5aaa-8aaa-aaaaaaaaaaaa",
+      canonical_flow_version: "03.00.003",
+    },
+  ]);
+  writeJsonLines(path.join(decisionsDir, "classification-decisions.jsonl"), [
+    {
+      category_type: "process",
+      dataset_id: ids.p1,
+      dataset_version: "00.00.001",
+      code: "D",
+      classification_decision_level: "broad_section",
+      confidence: "high",
+    },
+    {
+      category_type: "process",
+      dataset_id: ids.p2,
+      dataset_version: "00.00.001",
+      code: "3511",
+      confidence: "high",
+    },
+    {
+      category_type: "flow-product",
+      dataset_id: ids.pf1,
+      dataset_version: "00.00.001",
+      code: "flow-product",
+      confidence: "high",
+    },
+  ]);
+  writeJsonLines(path.join(decisionsDir, "canonical-support-mappings.jsonl"), [
+    {
+      support_type: "flowproperty",
+      source_support_id: ids.fp1,
+      source_support_version: "00.00.001",
+      canonical_support_id: "bbbbbbbb-bbbb-5bbb-8bbb-bbbbbbbbbbbb",
+    },
+    {
+      support_type: "unitgroup",
+      source_support_id: ids.ug1,
+      source_support_version: "00.00.001",
+      canonical_support_id: "cccccccc-cccc-5ccc-8ccc-cccccccccccc",
+    },
+  ]);
+
+  const resolutionDir = path.join(fixtureRoot, "run", "broad-process-resolution");
+  const report = runFoundry([
+    "dataset-library-decisions-apply",
+    "--library-index",
+    outDir,
+    "--decisions-dir",
+    decisionsDir,
+    "--out-dir",
+    resolutionDir,
+  ]);
+
+  assert.equal(report.status, "completed_with_deferred_scopes");
+  assert.equal(report.counts.ready_scopes, 0);
+  const blocked = readJsonLines(path.join(resolutionDir, "blocked-scope-ledger.jsonl"));
+  assert.equal(
+    blocked.some((row) => row.reason === "process_classification_requires_leaf_authoring"),
+    true,
+  );
+});
+
 test("process scope runner plans only ready scopes and keeps blocked scopes out of the queue", () => {
   const { outDir, processBundlesDir } = buildIndex();
   const decisionsDir = path.join(fixtureRoot, "run", "runner-decisions");

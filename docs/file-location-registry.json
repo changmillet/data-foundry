@@ -81,7 +81,8 @@
         "README.md",
         "scripts/lib/import-curation.mjs",
         "docs/import-profiles/bafu/profile.md",
-        "docs/import-profiles/bafu/constraints.md"
+        "docs/import-profiles/bafu/constraints.md",
+        "docs/import-profiles/bafu/leaf-process-classification-authoring.md"
       ],
       "sensitivity": "non-sensitive profile routing and waiver metadata",
       "tracked": true,

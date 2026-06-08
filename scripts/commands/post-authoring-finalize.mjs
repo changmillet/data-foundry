@@ -481,6 +481,8 @@ export function createPostAuthoringFinalizeCommands({
           patchCollectReport: null,
           authoringPatchCollectReport: null,
           patchApplyReport: null,
+          verifyRemote: false,
+          precommitVerifyRemote: false,
         })
       : {
           status: sourceContactSupportRowsFile ? "available_not_requested" : "not_required",
