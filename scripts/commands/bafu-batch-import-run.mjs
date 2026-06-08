@@ -383,6 +383,120 @@ function supportIdentityKeysFromHandoffPlan(handoffPlan) {
     .filter(Boolean);
 }
 
+function splitSupportIdentityKey(identityKey) {
+  const match = /^(contact|source):([^@]+)@(.+)$/u.exec(String(identityKey || ""));
+  if (!match) return null;
+  return { dataset_type: match[1], dataset_id: match[2], dataset_version: match[3] };
+}
+
+function supportIdentityKeyFromCacheRow(row) {
+  if (row?.identity_key) return String(row.identity_key);
+  const type = row?.dataset_type || row?.type || row?.table?.replace(/s$/u, "");
+  const id = row?.dataset_id || row?.id;
+  const version = row?.dataset_version || row?.version || "00.00.001";
+  return ["contact", "source"].includes(type) && id ? `${type}:${id}@${version}` : null;
+}
+
+function supportIdentityCacheRow({ identityKey, source, report }) {
+  const identity = splitSupportIdentityKey(identityKey);
+  if (!identity) return null;
+  return {
+    schema_version: 1,
+    generated_at_utc: nowIso(),
+    identity_key: identityKey,
+    ...identity,
+    status: "verified",
+    source,
+    report: repoRelative(report),
+  };
+}
+
+function appendSupportIdentityCacheRows({ cacheFile, identityKeys, source, report }) {
+  if (!cacheFile || identityKeys.length === 0) return 0;
+  let written = 0;
+  for (const identityKey of identityKeys) {
+    const row = supportIdentityCacheRow({ identityKey, source, report });
+    if (!row) continue;
+    appendJsonLine(cacheFile, row);
+    written += 1;
+  }
+  return written;
+}
+
+function supportCacheRowsFromFile(cacheFile) {
+  return readJsonLines(cacheFile)
+    .map((row) => ({ ...row, identity_key: supportIdentityKeyFromCacheRow(row) }))
+    .filter((row) => row.identity_key);
+}
+
+function supportCacheRowsFromCommitSummary(summaryPath, closeoutPath) {
+  const summary = readJson(summaryPath);
+  if (summary?.commit !== true || summary?.status !== "completed") return [];
+  return (summary.rows ?? [])
+    .filter((row) => row?.status === "executed")
+    .map((row) => {
+      const type =
+        row.table === "contacts" ? "contact" : row.table === "sources" ? "source" : row.type;
+      if (!["contact", "source"].includes(type) || !row.id) return null;
+      return supportIdentityCacheRow({
+        identityKey: `${type}:${row.id}@${row.version || "00.00.001"}`,
+        source: "existing_support_closeout_scan",
+        report: closeoutPath,
+      });
+    })
+    .filter(Boolean);
+}
+
+function supportCacheRowsFromCloseoutReport(closeoutPath) {
+  const closeout = readJson(closeoutPath);
+  if (closeout?.status !== "completed") return [];
+  const commitReport = resolveRepoPath(closeout.commit_report);
+  if (
+    !fileExists(commitReport) ||
+    !commitReport.includes(`${path.sep}dataset-save-draft${path.sep}`)
+  ) {
+    return [];
+  }
+  return supportCacheRowsFromCommitSummary(commitReport, closeoutPath);
+}
+
+function discoverVerifiedSupportIdentityRows(outDir) {
+  const scopesDir = path.join(outDir, "scopes");
+  if (!directoryExists(scopesDir)) return [];
+  return findFiles(
+    scopesDir,
+    (filePath) =>
+      path.basename(filePath) === "dataset-post-write-closeout-report.json" &&
+      filePath.includes(`${path.sep}closeout${path.sep}`),
+  ).flatMap(supportCacheRowsFromCloseoutReport);
+}
+
+function primeVerifiedSupportIdentityCache({ outDir, cacheFile }) {
+  verifiedSupportIdentities.clear();
+  const seen = new Set();
+  let loaded_from_cache = 0;
+  let discovered_from_artifacts = 0;
+  for (const row of supportCacheRowsFromFile(cacheFile)) {
+    if (seen.has(row.identity_key)) continue;
+    seen.add(row.identity_key);
+    verifiedSupportIdentities.add(row.identity_key);
+    loaded_from_cache += 1;
+  }
+  for (const row of discoverVerifiedSupportIdentityRows(outDir)) {
+    if (seen.has(row.identity_key)) continue;
+    seen.add(row.identity_key);
+    verifiedSupportIdentities.add(row.identity_key);
+    appendJsonLine(cacheFile, row);
+    discovered_from_artifacts += 1;
+  }
+  return {
+    cache_file: repoRelative(cacheFile),
+    loaded_from_cache,
+    discovered_from_artifacts,
+    verified_support_identities: verifiedSupportIdentities.size,
+  };
+}
+
 function appendOption(args, name, value) {
   if (value == null || value === "") return;
   if (value === true) {
@@ -1099,6 +1213,146 @@ function scopeKey(scope) {
   return `${scope.process_id || scope.id}@${scope.process_version || scope.version || "00.00.001"}`;
 }
 
+function finiteNumber(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function scopeEstimatedWeight(scope) {
+  const direct = [
+    scope?.estimated_weight,
+    scope?.estimatedWeight,
+    scope?.weight,
+    scope?.checkpoint?.estimated_weight,
+    scope?.checkpoint?.estimatedWeight,
+    scope?.checkpoint?.weight,
+  ];
+  for (const value of direct) {
+    const parsed = finiteNumber(value);
+    if (parsed != null) return parsed;
+  }
+  const counts = scope?.dependency_counts ?? scope?.checkpoint?.dependency_counts ?? {};
+  const flowCount = finiteNumber(counts.flows ?? counts.flow_count ?? scope?.flow_count);
+  const supportCount = finiteNumber(
+    counts.support_rows ?? counts.support ?? counts.sources ?? scope?.support_count,
+  );
+  const processCount = finiteNumber(counts.processes ?? counts.process_count ?? 1);
+  if (flowCount != null || supportCount != null || processCount != null) {
+    return (flowCount ?? 0) + (supportCount ?? 0) + (processCount ?? 0);
+  }
+  return null;
+}
+
+function selectionOrderOption(value) {
+  const normalized = asText(value || "input");
+  const aliases = {
+    weight: "estimated-weight-asc",
+    "weight-asc": "estimated-weight-asc",
+    "weight-desc": "estimated-weight-desc",
+    estimated_weight_asc: "estimated-weight-asc",
+    estimated_weight_desc: "estimated-weight-desc",
+  };
+  const order = aliases[normalized] ?? normalized;
+  if (!["input", "estimated-weight-asc", "estimated-weight-desc"].includes(order)) {
+    throw new Error(
+      `Unsupported --selection-order ${JSON.stringify(normalized)}. Use input, estimated-weight-asc, or estimated-weight-desc.`,
+    );
+  }
+  return order;
+}
+
+function compareSelectionRows(left, right, selectionOrder) {
+  if (selectionOrder === "input") return left.index - right.index;
+  const leftUnknown = left.weight == null;
+  const rightUnknown = right.weight == null;
+  if (leftUnknown !== rightUnknown) return leftUnknown ? 1 : -1;
+  if (!leftUnknown && !rightUnknown && left.weight !== right.weight) {
+    return selectionOrder === "estimated-weight-desc"
+      ? right.weight - left.weight
+      : left.weight - right.weight;
+  }
+  return left.index - right.index;
+}
+
+function selectScopesForRun({
+  allScopes,
+  requestedProcessIds,
+  verifiedScopes,
+  blockedScopes,
+  pendingOnly,
+  force,
+  selectionOrder,
+  limit,
+}) {
+  const explicit = requestedProcessIds.size > 0;
+  const stats = {
+    input_scopes: allScopes.length,
+    matched_scopes: 0,
+    filtered_already_verified: 0,
+    filtered_already_blocked: 0,
+    candidate_scopes_before_limit: 0,
+    selected_scopes: 0,
+  };
+  const candidates = [];
+  for (const [index, scope] of allScopes.entries()) {
+    const processId = scope?.process_id || scope?.id;
+    if (explicit && !requestedProcessIds.has(processId)) continue;
+    stats.matched_scopes += 1;
+    const key = scopeKey(scope);
+    if (pendingOnly && !force && verifiedScopes.has(key)) {
+      stats.filtered_already_verified += 1;
+      continue;
+    }
+    if (pendingOnly && !force && !explicit && blockedScopes.has(key)) {
+      stats.filtered_already_blocked += 1;
+      continue;
+    }
+    candidates.push({ scope, index, weight: scopeEstimatedWeight(scope) });
+  }
+  candidates.sort((left, right) => compareSelectionRows(left, right, selectionOrder));
+  stats.candidate_scopes_before_limit = candidates.length;
+  const limited = limit == null ? candidates : candidates.slice(0, limit);
+  stats.selected_scopes = limited.length;
+  return {
+    scopes: limited.map((entry) => entry.scope),
+    stats,
+  };
+}
+
+function preflightPlanRows({ scopes, verifiedScopes, blockedScopes }) {
+  return scopes.map((scope, index) => {
+    const key = scopeKey(scope);
+    return {
+      schema_version: 1,
+      index,
+      process_id: scope.process_id || scope.id,
+      process_version: scope.process_version || scope.version || "00.00.001",
+      scope_key: key,
+      estimated_weight: scopeEstimatedWeight(scope),
+      already_verified: verifiedScopes.has(key),
+      already_blocked: blockedScopes.has(key),
+      closure_status: scope.closure_status ?? scope.status ?? null,
+    };
+  });
+}
+
+function batchRunStatus(results, { paused = false, stoppedAfterBlocked = false } = {}) {
+  const failed = results.some((row) => row.status === "failed");
+  const blocked = results.some((row) => row.status === "blocked");
+  if (stoppedAfterBlocked) {
+    if (failed) return "stopped_after_blocked_with_retryable_failures";
+    return "stopped_after_blocked";
+  }
+  if (paused) {
+    if (failed) return "paused_with_retryable_failures";
+    if (blocked) return "paused_with_deferred_scopes";
+    return "paused";
+  }
+  if (failed) return "completed_with_retryable_failures";
+  if (blocked) return "completed_with_deferred_scopes";
+  return "completed";
+}
+
 function okDatasetRow({ type, id, version, processId, report, files }) {
   return {
     schema_version: 1,
@@ -1515,6 +1769,7 @@ async function maybeCommitSupportThenRerunFinalize({
   scopeDir,
   logDir,
   stages,
+  supportIdentityCacheFile,
 }) {
   const supportPlan = resolveRepoPath(
     finalizeReport?.files?.source_contact_support_commit_handoff_plan,
@@ -1541,6 +1796,7 @@ async function maybeCommitSupportThenRerunFinalize({
         generated_at_utc: nowIso(),
         status: "reused_verified_support_identities",
         handoff_plan: repoRelative(supportPlan),
+        support_identity_cache: repoRelative(supportIdentityCacheFile),
         support_identities: supportIdentityKeys,
       });
       stages.push({
@@ -1577,6 +1833,12 @@ async function maybeCommitSupportThenRerunFinalize({
     };
   }
   for (const identityKey of supportIdentityKeys) verifiedSupportIdentities.add(identityKey);
+  appendSupportIdentityCacheRows({
+    cacheFile: supportIdentityCacheFile,
+    identityKeys: supportIdentityKeys,
+    source: `${type}.support_handoff`,
+    report: supportResult.closeoutReportPath,
+  });
   const rerun = await runFinalizeStage({
     stage: `${type}.finalize_after_support`,
     args: finalizeArgs,
@@ -1603,6 +1865,7 @@ async function finalizeAndCommitDataset({
   logDir,
   ledgerDir,
   stages,
+  supportIdentityCacheFile,
 }) {
   const context = defaultContext(runDir, type);
   const finalizeDir = path.join(scopeDir, `finalize-${type}-ready`);
@@ -1665,6 +1928,7 @@ async function finalizeAndCommitDataset({
       scopeDir,
       logDir,
       stages,
+      supportIdentityCacheFile,
     });
     if (finalizeReport?.status === "ready_for_remote_write") break;
     const gateReport = resolveRepoPath(finalizeReport?.files?.curation_gate_report);
@@ -2270,6 +2534,7 @@ async function runOneScope({
       logDir,
       ledgerDir,
       stages,
+      supportIdentityCacheFile: paths.supportIdentityCache,
     });
     if (flowCommit.status === "failed") {
       return fail({ stage: "flow.commit", blocker: flowCommit.blocker, report: flowCommit.report });
@@ -2356,16 +2621,27 @@ async function runOneScope({
       report: processPreReportPath,
     });
   }
+  const processPreReport = await maybeCommitSupportThenRerunFinalize({
+    type: "process",
+    finalizeReport: processPre.json,
+    finalizeReportPath: processPreReportPath,
+    finalizeArgs: processPreArgs,
+    ledgerDir,
+    scopeDir,
+    logDir,
+    stages,
+    supportIdentityCacheFile: paths.supportIdentityCache,
+  });
   let processRowsForE2e =
-    resolveRepoPath(processPre.json?.files?.final_rows) || processClassifiedRows;
+    resolveRepoPath(processPreReport?.files?.final_rows) || processClassifiedRows;
   let processIdentityReport = null;
   let processPatchCollectReport = null;
   let processPatchApplyReport = null;
-  if (processPre.json?.status !== "ready_for_remote_write") {
+  if (processPreReport?.status !== "ready_for_remote_write") {
     const processAuthoring = await runIdentityAndPatch({
       type: "process",
       inputRowsFile: processRowsForE2e,
-      preFinalizeReport: processPre.json,
+      preFinalizeReport: processPreReport,
       scopeDir,
       runDir: paths.runDir,
       logDir,
@@ -2430,6 +2706,7 @@ async function runOneScope({
     "--commit",
     "--force",
   ];
+  appendPathOption(e2eArgs, "--verified-support-identities-file", paths.supportIdentityCache);
   appendPathOption(e2eArgs, "--location-decision-apply-report", locationApplyReport);
   appendPathOptions(
     e2eArgs,
@@ -2520,6 +2797,8 @@ export function createBafuBatchImportRunCommands(deps) {
         command: commandName,
         usage: [
           "node scripts/foundry.mjs dataset-bafu-batch-import-run --scope-file <ready-scopes.jsonl> --process-bundles-dir <.../process-bundles> --run-dir <run-dir> --out-dir <run-dir>/batch-import --parallel 5 --commit",
+          "node scripts/foundry.mjs dataset-bafu-batch-import-run --scope-file <ready-scopes.jsonl> --out-dir <existing-batch-dir> --pending-only --selection-order estimated-weight-asc --limit 20 --pause-file <pause.flag> --commit",
+          "node scripts/foundry.mjs dataset-bafu-batch-import-run --scope-file <ready-scopes.jsonl> --out-dir <existing-batch-dir> --pending-only --selection-order estimated-weight-asc --preflight-only",
           "node scripts/foundry.mjs dataset-bafu-batch-import-run --scope-file <ready-scopes.jsonl> --process-id <uuid> --commit",
         ],
         purpose:
@@ -2546,22 +2825,26 @@ export function createBafuBatchImportRunCommands(deps) {
     if (!directoryExists(runDir)) throw new Error("--run-dir is required.");
     const outDir = resolveRepoPath(options.outDir || path.join(runDir, "batch-import"));
     const commit = booleanOption(options.commit);
-    if (!commit) {
+    const preflightOnly = booleanOption(options.preflightOnly || options.planOnly);
+    if (!commit && !preflightOnly) {
       throw new Error(
-        `${commandName} currently requires --commit so every remote write has verify/closeout evidence.`,
+        `${commandName} requires --commit for remote writes, or --preflight-only for a read-only execution plan.`,
       );
     }
     const targetUserId = asText(options.targetUserId);
-    if (!targetUserId) throw new Error("--target-user-id is required.");
+    if (!preflightOnly && !targetUserId) throw new Error("--target-user-id is required.");
     const stateCode = integerOption(options.stateCode, 0);
     const parallel = Math.max(1, Math.min(12, integerOption(options.parallel, 5)));
     const limit = options.limit == null ? null : Math.max(0, integerOption(options.limit, 0));
     const requestedProcessIds = new Set(normalizedList(options.processId || options.processIds));
-    const allScopes = readJsonLines(scopeFile);
-    let scopes = requestedProcessIds.size
-      ? allScopes.filter((scope) => requestedProcessIds.has(scope.process_id || scope.id))
-      : allScopes;
-    if (limit != null) scopes = scopes.slice(0, limit);
+    const pendingOnly = booleanOption(options.pendingOnly);
+    const force = booleanOption(options.force);
+    const selectionOrder = selectionOrderOption(options.selectionOrder || options.scopeOrder);
+    const pauseFile = asText(options.pauseFile) ? resolveRepoPath(options.pauseFile) : null;
+    const stopAfterBlocked =
+      options.stopAfterBlocked == null
+        ? null
+        : Math.max(1, integerOption(options.stopAfterBlocked, 1));
     fs.mkdirSync(outDir, { recursive: true });
     const paths = {
       runDir,
@@ -2604,7 +2887,14 @@ export function createBafuBatchImportRunCommands(deps) {
       ),
       blockedOther: path.join(outDir, "import-ledger", "blocked.dependencies.other.jsonl"),
       failedRetry: path.join(outDir, "import-ledger", "failed.scopes.retry.jsonl"),
+      supportIdentityCache: resolveRepoPath(
+        options.verifiedSupportIdentitiesFile ||
+          options.supportIdentityCache ||
+          path.join(outDir, "import-ledger", "verified-support-identities.jsonl"),
+      ),
+      preflightPlan: path.join(outDir, "import-ledger", "preflight.plan.jsonl"),
     };
+    const allScopes = readJsonLines(scopeFile);
     const schemas = defaultSchemaFiles(options);
     const missingInputs = [
       paths.libraryClassificationDecisions,
@@ -2626,41 +2916,128 @@ export function createBafuBatchImportRunCommands(deps) {
     const verifiedScopes = loadVerifiedSet(paths.okScopes, "scope");
     const verifiedFlows = loadVerifiedSet(paths.okFlows, "flow");
     const blockedScopes = loadActiveBlockedScopeSet(paths, verifiedScopes);
+    const supportIdentityCache = primeVerifiedSupportIdentityCache({
+      outDir,
+      cacheFile: paths.supportIdentityCache,
+    });
+    const selection = selectScopesForRun({
+      allScopes,
+      requestedProcessIds,
+      verifiedScopes,
+      blockedScopes,
+      pendingOnly,
+      force,
+      selectionOrder,
+      limit,
+    });
+    const scopes = selection.scopes;
     const manifest = {
       schema_version: 1,
       generated_at_utc: nowIso(),
       command: commandName,
       status: "running",
-      mode: "commit",
+      mode: preflightOnly ? "preflight" : "commit",
       target_user_id: targetUserId,
       state_code: stateCode,
+      preflight_only: preflightOnly,
+      commit,
       parallel,
       counts: {
         input_scopes: allScopes.length,
+        matched_scopes: selection.stats.matched_scopes,
+        pending_candidate_scopes: selection.stats.candidate_scopes_before_limit,
         selected_scopes: scopes.length,
+        filtered_already_verified_scopes: selection.stats.filtered_already_verified,
+        filtered_already_blocked_scopes: selection.stats.filtered_already_blocked,
         already_verified_scopes: verifiedScopes.size,
         already_verified_flows: verifiedFlows.size,
         already_blocked_scopes: blockedScopes.size,
+        verified_support_identities: verifiedSupportIdentities.size,
       },
       files: Object.fromEntries(
         Object.entries(paths)
           .filter(([, value]) => typeof value === "string")
           .map(([key, value]) => [key, repoRelative(value)]),
       ),
+      selection: {
+        pending_only: pendingOnly,
+        selection_order: selectionOrder,
+        limit,
+        requested_process_ids: [...requestedProcessIds],
+        pause_file: repoRelative(pauseFile),
+        stop_after_blocked: stopAfterBlocked,
+      },
+      support_identity_cache: supportIdentityCache,
       policy: {
         ready_scopes_only: true,
         blocked_scopes_deferred: true,
+        pending_only_filters_before_limit: pendingOnly,
+        read_only_preflight_supported: true,
+        stop_after_blocked_supported: true,
         process_scope_atomic_commit: true,
         support_and_flows_commit_before_process_commit: true,
         retryable_remote_failures_are_separate_from_human_review: true,
       },
     };
     writeJson(path.join(outDir, "import-ledger", "run-manifest.json"), manifest);
+    if (preflightOnly) {
+      writeJsonLines(
+        paths.preflightPlan,
+        preflightPlanRows({ scopes, verifiedScopes, blockedScopes }),
+      );
+      const report = {
+        schema_version: 1,
+        generated_at_utc: nowIso(),
+        command: commandName,
+        status: "preflight_completed",
+        mode: "preflight",
+        parallel,
+        target_user_id: targetUserId || null,
+        selection: manifest.selection,
+        support_identity_cache: supportIdentityCache,
+        counts: {
+          selected_scopes: scopes.length,
+          processed_scopes: 0,
+          pending_candidate_scopes: selection.stats.candidate_scopes_before_limit,
+          filtered_already_verified_scopes: selection.stats.filtered_already_verified,
+          filtered_already_blocked_scopes: selection.stats.filtered_already_blocked,
+          already_verified_scopes: verifiedScopes.size,
+          already_verified_flows: verifiedFlows.size,
+          already_blocked_scopes: blockedScopes.size,
+          verified_support_identities: verifiedSupportIdentities.size,
+        },
+        files: {
+          report: repoRelative(path.join(outDir, "dataset-bafu-batch-import-run-report.json")),
+          run_manifest: repoRelative(path.join(outDir, "import-ledger", "run-manifest.json")),
+          preflight_plan: repoRelative(paths.preflightPlan),
+          support_identity_cache: repoRelative(paths.supportIdentityCache),
+        },
+      };
+      writeJson(path.join(outDir, "dataset-bafu-batch-import-run-report.json"), report);
+      writeJson(path.join(outDir, "import-ledger", "run-manifest.json"), {
+        ...manifest,
+        status: report.status,
+        finished_at_utc: report.generated_at_utc,
+        final_counts: report.counts,
+      });
+      return report;
+    }
 
     const results = [];
     let nextIndex = 0;
+    let pauseObserved = false;
+    let stoppedAfterBlocked = false;
+    function pauseRequested() {
+      if (!pauseFile || !fileExists(pauseFile)) return false;
+      pauseObserved = true;
+      return true;
+    }
+    function stopRequested() {
+      return stoppedAfterBlocked;
+    }
     async function worker(workerIndex) {
       while (nextIndex < scopes.length) {
+        if (pauseRequested() || stopRequested()) break;
         const scope = scopes[nextIndex];
         nextIndex += 1;
         const result = await runOneScope({
@@ -2674,25 +3051,34 @@ export function createBafuBatchImportRunCommands(deps) {
           workerIndex,
         });
         results.push({ process_id: scope.process_id || scope.id, status: result.status });
+        if (
+          stopAfterBlocked != null &&
+          results.filter((row) => row.status === "blocked").length >= stopAfterBlocked
+        ) {
+          stoppedAfterBlocked = true;
+        }
       }
     }
     await Promise.all(Array.from({ length: parallel }, (_, index) => worker(index)));
     const blockedScopeViews = writeBlockedScopeViews(paths);
+    const pausedNotStarted =
+      pauseObserved || stoppedAfterBlocked ? scopes.length - results.length : 0;
 
     const report = {
       schema_version: 1,
       generated_at_utc: nowIso(),
       command: commandName,
-      status: results.some((row) => row.status === "failed")
-        ? "completed_with_retryable_failures"
-        : results.some((row) => row.status === "blocked")
-          ? "completed_with_deferred_scopes"
-          : "completed",
+      status: batchRunStatus(results, { paused: pauseObserved, stoppedAfterBlocked }),
       mode: "commit",
       parallel,
       target_user_id: targetUserId,
+      selection: manifest.selection,
+      support_identity_cache: supportIdentityCache,
       counts: {
         selected_scopes: scopes.length,
+        processed_scopes: results.length,
+        paused_not_started: pausedNotStarted,
+        stopped_after_blocked: stoppedAfterBlocked,
         verified: results.filter((row) => row.status === "verified").length,
         skipped: results.filter((row) => row.status === "skipped").length,
         skipped_blocked: results.filter((row) => row.status === "skipped_blocked").length,
@@ -2704,6 +3090,7 @@ export function createBafuBatchImportRunCommands(deps) {
         historical_human_review_rows: blockedScopeViews.historical,
         resolved_human_review_rows: blockedScopeViews.resolved,
         retry_rows: readJsonLines(paths.failedRetry).length,
+        verified_support_identities: verifiedSupportIdentities.size,
       },
       files: {
         report: repoRelative(path.join(outDir, "dataset-bafu-batch-import-run-report.json")),
@@ -2716,6 +3103,7 @@ export function createBafuBatchImportRunCommands(deps) {
         blocked_human_review_active: repoRelative(paths.blockedHumanReviewActive),
         blocked_human_review_resolved: repoRelative(paths.blockedHumanReviewResolved),
         failed_retry: repoRelative(paths.failedRetry),
+        support_identity_cache: repoRelative(paths.supportIdentityCache),
       },
       results,
     };
@@ -2725,6 +3113,8 @@ export function createBafuBatchImportRunCommands(deps) {
       status: report.status,
       finished_at_utc: report.generated_at_utc,
       final_counts: report.counts,
+      pause_observed: pauseObserved,
+      stopped_after_blocked: stoppedAfterBlocked,
     });
     return report;
   }

@@ -397,7 +397,11 @@ export const commandMetadata = {
     keyTests: [
       nodeTest(
         "test/commands/bafu-auto-authoring.test.mjs",
-        "BAFU patch autofill writes name-plan and flowProperties patches with full-context closure",
+        "BAFU patch autofill writes collectable name-plan and flowProperties patches",
+      ),
+      nodeTest(
+        "test/commands/bafu-auto-authoring.test.mjs",
+        "BAFU patch autofill splits disposal/incineration and transport route names",
       ),
     ],
   }),
@@ -727,11 +731,13 @@ export const commandMetadata = {
       "optional source support rows file",
       "optional source rows file",
       "post-authoring finalize context options",
+      "optional verified support identity cache",
     ],
     outputs: [
       "bafu-process-scope-e2e-report.json",
       "bafu-process-scope-e2e-ledger.jsonl",
       "dataset-post-authoring-finalize-report.json when executed or resumed",
+      "reused-support-identities.json when support handoff is skipped from verified cache",
     ],
     keyTests: [
       nodeTest(
@@ -756,11 +762,21 @@ export const commandMetadata = {
       "import-ledger/ok.*.verified.jsonl",
       "import-ledger/blocked.*.jsonl",
       "import-ledger/failed.scopes.retry.jsonl",
+      "import-ledger/verified-support-identities.jsonl",
+      "import-ledger/preflight.plan.jsonl when --preflight-only is used",
     ],
     keyTests: [
       nodeTest(
         "test/commands/bafu-batch-import-run.test.mjs",
         "BAFU batch import runner skips already verified scopes through resumable ledgers",
+      ),
+      nodeTest(
+        "test/commands/bafu-batch-import-run.test.mjs",
+        "BAFU batch import runner applies pending-only before limit and honors pause file",
+      ),
+      nodeTest(
+        "test/commands/bafu-batch-import-run.test.mjs",
+        "BAFU batch import runner writes read-only preflight plan and primes support identity cache",
       ),
     ],
   }),

@@ -252,6 +252,318 @@ test("BAFU batch import runner skips already blocked scopes during normal resume
   }
 });
 
+test("BAFU batch import runner can order selected scopes by estimated weight", () => {
+  const root = path.join(fixtureRoot, "selection-order");
+  fs.rmSync(root, { recursive: true, force: true });
+  const runDir = path.join(root, "run");
+  const schemaDir = path.join(root, "schemas");
+  const bundlesDir = path.join(root, "process-bundles");
+  const outDir = path.join(root, "batch");
+  fs.mkdirSync(bundlesDir, { recursive: true });
+  writeRequiredContext(runDir, schemaDir);
+  const scopeFile = path.join(root, "ready-scopes.jsonl");
+  const processIds = [
+    "11111111-2222-4333-8444-555555555551",
+    "11111111-2222-4333-8444-555555555552",
+    "11111111-2222-4333-8444-555555555553",
+  ];
+  writeJsonLines(scopeFile, [
+    {
+      schema_version: 1,
+      process_id: processIds[0],
+      process_version: "00.00.001",
+      closure_status: "ready",
+      estimated_weight: 20,
+    },
+    {
+      schema_version: 1,
+      process_id: processIds[1],
+      process_version: "00.00.001",
+      closure_status: "ready",
+      estimated_weight: 5,
+    },
+    {
+      schema_version: 1,
+      process_id: processIds[2],
+      process_version: "00.00.001",
+      closure_status: "ready",
+      estimated_weight: 10,
+    },
+  ]);
+  writeJsonLines(
+    path.join(outDir, "import-ledger", "ok.scopes.verified.jsonl"),
+    processIds.map((id) => ({
+      schema_version: 1,
+      dataset_type: "process",
+      dataset_id: id,
+      dataset_version: "00.00.001",
+      process_id: id,
+      process_version: "00.00.001",
+      status: "verified",
+    })),
+  );
+
+  try {
+    const result = runFoundry([
+      "dataset-bafu-batch-import-run",
+      "--scope-file",
+      rel(scopeFile),
+      "--process-bundles-dir",
+      rel(bundlesDir),
+      "--run-dir",
+      rel(runDir),
+      "--out-dir",
+      rel(outDir),
+      "--tidas-schema-dir",
+      rel(schemaDir),
+      "--target-user-id",
+      "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+      "--commit",
+      "--parallel",
+      "1",
+      "--selection-order",
+      "estimated-weight-asc",
+      "--limit",
+      "2",
+    ]);
+
+    assert.equal(result.code, 0);
+    const report = result.json;
+    assert.equal(report.status, "completed");
+    assert.equal(report.selection.selection_order, "estimated-weight-asc");
+    assert.equal(report.counts.selected_scopes, 2);
+    assert.equal(report.counts.skipped, 2);
+    const checkpoints = readJsonLines(path.join(repoRoot, report.files.scope_checkpoints));
+    assert.deepEqual(
+      checkpoints.slice(-2).map((checkpoint) => checkpoint.process_id),
+      [processIds[1], processIds[2]],
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("BAFU batch import runner applies pending-only before limit and honors pause file", () => {
+  const root = path.join(fixtureRoot, "pending-pause");
+  fs.rmSync(root, { recursive: true, force: true });
+  const runDir = path.join(root, "run");
+  const schemaDir = path.join(root, "schemas");
+  const bundlesDir = path.join(root, "process-bundles");
+  const outDir = path.join(root, "batch");
+  const pauseFile = path.join(outDir, "pause.flag");
+  fs.mkdirSync(bundlesDir, { recursive: true });
+  writeRequiredContext(runDir, schemaDir);
+  writeTextFile(pauseFile, "pause\n");
+  const scopeFile = path.join(root, "ready-scopes.jsonl");
+  const verifiedId = "11111111-2222-4333-8444-555555555561";
+  const blockedId = "11111111-2222-4333-8444-555555555562";
+  const pendingId = "11111111-2222-4333-8444-555555555563";
+  writeJsonLines(scopeFile, [
+    {
+      schema_version: 1,
+      process_id: verifiedId,
+      process_version: "00.00.001",
+      closure_status: "ready",
+      estimated_weight: 1,
+    },
+    {
+      schema_version: 1,
+      process_id: blockedId,
+      process_version: "00.00.001",
+      closure_status: "ready",
+      estimated_weight: 2,
+    },
+    {
+      schema_version: 1,
+      process_id: pendingId,
+      process_version: "00.00.001",
+      closure_status: "ready",
+      estimated_weight: 3,
+    },
+  ]);
+  writeJsonLines(path.join(outDir, "import-ledger", "ok.scopes.verified.jsonl"), [
+    {
+      schema_version: 1,
+      dataset_type: "process",
+      dataset_id: verifiedId,
+      dataset_version: "00.00.001",
+      process_id: verifiedId,
+      process_version: "00.00.001",
+      status: "verified",
+    },
+  ]);
+  writeJsonLines(path.join(outDir, "import-ledger", "blocked.scopes.human-review.jsonl"), [
+    {
+      schema_version: 1,
+      process_id: blockedId,
+      process_version: "00.00.001",
+      stage: "flow.authoring",
+      code: "bafu_name_split_unsupported",
+      status: "blocked",
+    },
+  ]);
+
+  try {
+    const result = runFoundry([
+      "dataset-bafu-batch-import-run",
+      "--scope-file",
+      rel(scopeFile),
+      "--process-bundles-dir",
+      rel(bundlesDir),
+      "--run-dir",
+      rel(runDir),
+      "--out-dir",
+      rel(outDir),
+      "--tidas-schema-dir",
+      rel(schemaDir),
+      "--target-user-id",
+      "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+      "--commit",
+      "--parallel",
+      "2",
+      "--pending-only",
+      "--limit",
+      "1",
+      "--pause-file",
+      rel(pauseFile),
+    ]);
+
+    assert.equal(result.code, 0);
+    const report = result.json;
+    assert.equal(report.status, "paused");
+    assert.equal(report.selection.pending_only, true);
+    assert.equal(report.counts.selected_scopes, 1);
+    assert.equal(report.counts.processed_scopes, 0);
+    assert.equal(report.counts.paused_not_started, 1);
+    assert.deepEqual(report.results, []);
+    const manifest = readJson(path.join(repoRoot, report.files.run_manifest));
+    assert.equal(manifest.counts.filtered_already_verified_scopes, 1);
+    assert.equal(manifest.counts.filtered_already_blocked_scopes, 1);
+    assert.equal(manifest.counts.pending_candidate_scopes, 1);
+    assert.equal(manifest.pause_observed, true);
+    assert.equal(fs.existsSync(path.join(repoRoot, report.files.scope_checkpoints)), false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("BAFU batch import runner writes read-only preflight plan and primes support identity cache", () => {
+  const root = path.join(fixtureRoot, "preflight-support-cache");
+  fs.rmSync(root, { recursive: true, force: true });
+  const runDir = path.join(root, "run");
+  const schemaDir = path.join(root, "schemas");
+  const bundlesDir = path.join(root, "process-bundles");
+  const outDir = path.join(root, "batch");
+  fs.mkdirSync(bundlesDir, { recursive: true });
+  writeRequiredContext(runDir, schemaDir);
+  const scopeFile = path.join(root, "ready-scopes.jsonl");
+  const processIds = [
+    "11111111-2222-4333-8444-555555555571",
+    "11111111-2222-4333-8444-555555555572",
+  ];
+  writeJsonLines(scopeFile, [
+    {
+      schema_version: 1,
+      process_id: processIds[0],
+      process_version: "00.00.001",
+      closure_status: "ready",
+      estimated_weight: 10,
+    },
+    {
+      schema_version: 1,
+      process_id: processIds[1],
+      process_version: "00.00.001",
+      closure_status: "ready",
+      estimated_weight: 2,
+    },
+  ]);
+  const handoffDir = path.join(
+    outDir,
+    "scopes",
+    "existing",
+    "process-e2e",
+    "source-contact-support-handoff",
+  );
+  const supportCommitReport = path.join(
+    handoffDir,
+    "commit",
+    "support-save-draft",
+    "outputs",
+    "dataset-save-draft",
+    "summary.json",
+  );
+  writeJson(path.join(handoffDir, "closeout", "dataset-post-write-closeout-report.json"), {
+    schema_version: 1,
+    status: "completed",
+    commit_report: rel(supportCommitReport),
+  });
+  writeJson(supportCommitReport, {
+    schema_version: 1,
+    commit: true,
+    status: "completed",
+    rows: [
+      {
+        id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        version: "00.00.001",
+        type: "contact",
+        table: "contacts",
+        status: "executed",
+      },
+      {
+        id: "bbbbbbbb-cccc-4ddd-8eee-ffffffffffff",
+        version: "00.00.001",
+        type: "source",
+        table: "sources",
+        status: "executed",
+      },
+    ],
+  });
+
+  try {
+    const result = runFoundry([
+      "dataset-bafu-batch-import-run",
+      "--scope-file",
+      rel(scopeFile),
+      "--process-bundles-dir",
+      rel(bundlesDir),
+      "--run-dir",
+      rel(runDir),
+      "--out-dir",
+      rel(outDir),
+      "--tidas-schema-dir",
+      rel(schemaDir),
+      "--preflight-only",
+      "--pending-only",
+      "--selection-order",
+      "estimated-weight-asc",
+      "--limit",
+      "1",
+    ]);
+
+    assert.equal(result.code, 0);
+    assert.equal(result.json.status, "preflight_completed");
+    assert.equal(result.json.mode, "preflight");
+    assert.equal(result.json.counts.selected_scopes, 1);
+    assert.equal(result.json.counts.processed_scopes, 0);
+    assert.equal(result.json.counts.verified_support_identities, 2);
+    const plan = readJsonLines(path.join(repoRoot, result.json.files.preflight_plan));
+    assert.deepEqual(
+      plan.map((row) => row.process_id),
+      [processIds[1]],
+    );
+    const cache = readJsonLines(path.join(repoRoot, result.json.files.support_identity_cache));
+    assert.deepEqual(cache.map((row) => row.identity_key).sort(), [
+      "contact:aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee@00.00.001",
+      "source:bbbbbbbb-cccc-4ddd-8eee-ffffffffffff@00.00.001",
+    ]);
+    const manifest = readJson(path.join(repoRoot, result.json.files.run_manifest));
+    assert.equal(manifest.status, "preflight_completed");
+    assert.equal(fs.existsSync(path.join(outDir, "scope-checkpoints.jsonl")), false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("BAFU authoring task filter removes rows already rewritten by identity apply", () => {
   const root = path.join(fixtureRoot, "filter-authoring");
   fs.rmSync(root, { recursive: true, force: true });
