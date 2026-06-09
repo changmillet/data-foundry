@@ -1,5 +1,6 @@
 import test from "node:test";
 import {
+  bafuBatchImportRunTestHooks,
   createBafuBatchImportRunCommands,
   filterAuthoringTaskManifestToRows,
 } from "../../scripts/commands/bafu-batch-import-run.mjs";
@@ -629,4 +630,32 @@ test("BAFU authoring task filter removes rows already rewritten by identity appl
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
+});
+
+test("BAFU batch flow verification filter keeps only flows not in ok flow ledger", () => {
+  const verifiedId = "44444444-5555-4666-8777-888888888888";
+  const pendingId = "55555555-6666-4777-8888-999999999999";
+  const rows = [verifiedId, pendingId].map((id) => ({
+    flowDataSet: {
+      flowInformation: {
+        dataSetInformation: {
+          "common:UUID": id,
+        },
+      },
+      administrativeInformation: {
+        publicationAndOwnership: {
+          "common:dataSetVersion": "00.00.001",
+        },
+      },
+    },
+  }));
+  const plan = bafuBatchImportRunTestHooks.flowRowsPendingVerification(
+    rows,
+    new Set([`${verifiedId}@00.00.001`]),
+  );
+
+  assert.equal(plan.pendingRows.length, 1);
+  assert.equal(plan.verifiedRows.length, 1);
+  assert.equal(plan.pendingIdentities[0].id, pendingId);
+  assert.equal(plan.verifiedIdentities[0].id, verifiedId);
 });

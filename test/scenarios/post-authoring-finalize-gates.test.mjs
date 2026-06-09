@@ -296,6 +296,16 @@ test("post-authoring finalize auto-builds curation queue context from sibling pr
     assert.equal(finalize.json.counts.identity_preflight_merge_replaced_rows, 1);
     assert.ok(finalize.json.files.identity_preflight_refresh_report);
     assert.ok(finalize.json.files.identity_preflight_merge_report);
+    assert.ok(
+      finalize.json.timings.some(
+        (timing) => timing.stage === "identity_preflight_run" && timing.duration_ms >= 0,
+      ),
+    );
+    assert.ok(
+      finalize.json.stages.some(
+        (stage) => stage.stage === "identity_preflight_run" && stage.duration_ms >= 0,
+      ),
+    );
     assert.equal(finalize.json.counts.curation_queue_status, "ready");
     assert.equal(finalize.json.counts.curation_queue_process_rows, 1);
     assert.equal(finalize.json.counts.curation_queue_flow_rows, 1);
@@ -331,6 +341,66 @@ test("post-authoring finalize auto-builds curation queue context from sibling pr
       JSON.stringify(authoringPackage.curation_queue_context.dependency_rows[0].input_rows),
       new RegExp(flowId, "u"),
     );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("post-authoring finalize skips forced identity preflight refresh when current scope index is exact", () => {
+  const root = path.join(finalizeAutoQueueFixtureRoot, "identity-refresh-exact-cache");
+  fs.rmSync(root, { recursive: true, force: true });
+  const processId = "d3333333-2222-4333-8444-555555555555";
+  const flowId = "f3333333-2222-4333-8444-555555555555";
+  const rowsFile = path.join(root, "rows", "processes.jsonl");
+  const processRow = processRowWithFlowRef(processId, flowId);
+  writeJsonLines(rowsFile, [processRow]);
+  const context = writeContextPackFiles(root);
+  const identityPreflightIndex = writeCompletedIdentityPreflightIndex(root, [
+    {
+      datasetType: "process",
+      id: processId,
+      target: processRow,
+      name: "Heat production",
+    },
+    {
+      datasetType: "flow",
+      id: flowId,
+      target: flowRow(flowId),
+      name: "Natural gas",
+    },
+  ]);
+
+  try {
+    const finalize = runFoundry([
+      "dataset-post-authoring-finalize",
+      "--type",
+      "process",
+      "--profile",
+      "bafu",
+      "--rows-file",
+      rel(rowsFile),
+      "--identity-preflight-index",
+      rel(identityPreflightIndex),
+      "--run-identity-preflight",
+      "--refresh-identity-preflight",
+      "--schema-file",
+      rel(context.schemaFile),
+      "--yaml-file",
+      rel(context.yamlFile),
+      "--ruleset-file",
+      rel(context.rulesetFile),
+      "--target-user-id",
+      targetUserId,
+      "--out-dir",
+      rel(path.join(root, "finalize")),
+    ]);
+
+    assert.equal(finalize.json.counts.identity_preflight_refresh_required, false);
+    assert.equal(finalize.json.counts.identity_preflight_refresh_forced, false);
+    assert.equal(finalize.json.counts.identity_preflight_refresh_force_skipped_exact, true);
+    assert.equal(finalize.json.counts.identity_preflight_refreshed_current_rows, 0);
+    assert.equal(finalize.json.files.identity_preflight_refresh_report, null);
+    assert.equal(finalize.json.files.identity_preflight_merge_report, null);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

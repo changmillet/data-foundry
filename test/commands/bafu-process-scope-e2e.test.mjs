@@ -110,6 +110,31 @@ function writeRows(root) {
   return { rowsFile, sourceSupportRowsFile };
 }
 
+test("BAFU process scope helper treats lookup_failed post-write verify as retryable", () => {
+  const root = path.join(fixtureRoot, "verify-retry-reason");
+  fs.rmSync(root, { recursive: true, force: true });
+  const verifyReport = path.join(root, "remote-verification-report.json");
+  writeJson(verifyReport, {
+    schema_version: 1,
+    status: "blocked_remote_verification",
+    blockers: [
+      {
+        code: "lookup_failed",
+        table: "processes",
+      },
+    ],
+  });
+
+  try {
+    assert.equal(
+      bafuProcessScopeE2eTestHooks.postWriteVerifyRetryReason(verifyReport),
+      "lookup_failed",
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("BAFU process scope helper plans existing finalize command with source support rows", () => {
   const root = path.join(fixtureRoot, "plan");
   fs.rmSync(root, { recursive: true, force: true });

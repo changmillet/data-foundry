@@ -391,9 +391,12 @@ export function createPostAuthoringFinalizeUtils({
     let indexPath = baseIndexPath;
     let refreshReport = null;
     let mergeReport = null;
+    const refreshForcedButExact = Boolean(
+      !allowStaleIdentityPreflight && refreshRequested && !refreshPlan.required,
+    );
     if (
       !allowStaleIdentityPreflight &&
-      (refreshRequested || refreshPlan.required) &&
+      refreshPlan.required &&
       ["flow", "process"].includes(String(options.type || "").toLowerCase())
     ) {
       const baseIndexHasSourceContext = readRowsFile(baseIndexPath).some((row) =>
@@ -459,7 +462,10 @@ export function createPostAuthoringFinalizeUtils({
       index_file: repoRelativeMaybe(indexPath),
       base_index_file: repoRelativeMaybe(baseIndexPath),
       refresh_required: Boolean(!allowStaleIdentityPreflight && refreshPlan.required),
-      refresh_forced: Boolean(refreshRequested),
+      refresh_forced: Boolean(
+        !allowStaleIdentityPreflight && refreshRequested && refreshPlan.required,
+      ),
+      refresh_force_skipped_exact: refreshForcedButExact,
       refresh_plan: refreshPlan,
       refresh_report_file: repoRelativeMaybe(resolveRepoPath(refreshReport?.files?.report)),
       merge_report_file: repoRelativeMaybe(resolveRepoPath(mergeReport?.files?.report)),
