@@ -571,6 +571,10 @@ function runShellStage({ stage, command, logDir }) {
   return runStage({ stage, logDir, command, shell: true });
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function runStage({ stage, command, logDir, shell }) {
   fs.mkdirSync(logDir, { recursive: true });
   const safeStage = stage.replace(/[^A-Za-z0-9_.-]+/gu, "-");
@@ -626,6 +630,58 @@ function runStage({ stage, command, logDir, shell }) {
       });
     });
   });
+}
+
+function postWriteVerifyRetryAttempts() {
+  const parsed = integerOption(process.env.BAFU_POST_WRITE_VERIFY_ATTEMPTS, 3);
+  return Math.max(1, Math.min(8, parsed || 3));
+}
+
+function postWriteVerifyRetryDelayMs(attemptIndex) {
+  const base = integerOption(process.env.BAFU_POST_WRITE_VERIFY_RETRY_DELAY_MS, 2_000);
+  return Math.max(0, Math.min(60_000, (base || 2_000) * 2 ** attemptIndex));
+}
+
+const postWriteVerifyRetryableCodes = new Set([
+  "lookup_failed",
+  "remote_lookup_failed",
+  "readback_failed",
+  "remote_readback_failed",
+  "remote_readback_missing",
+  "root_readback_incomplete",
+  "post_write_verify_root_readback_incomplete",
+  "verify_report_missing",
+]);
+
+function collectReportCodes(value, codes = new Set(), depth = 0) {
+  if (value == null || depth > 6) return codes;
+  if (Array.isArray(value)) {
+    for (const entry of value) collectReportCodes(entry, codes, depth + 1);
+    return codes;
+  }
+  if (typeof value !== "object") return codes;
+  for (const key of ["code", "failure_code", "status_code", "readback_status"]) {
+    const text = asText(value[key]);
+    if (text) codes.add(text);
+  }
+  for (const key of ["blockers", "findings", "checks", "results", "rows", "items"]) {
+    collectReportCodes(value[key], codes, depth + 1);
+  }
+  return codes;
+}
+
+function postWriteVerifyRetryReason(verifyReportPath) {
+  if (!verifyReportPath || !fileExists(verifyReportPath)) return "verify_report_missing";
+  const report = readJson(verifyReportPath);
+  const codes = collectReportCodes(report);
+  for (const code of codes) {
+    if (postWriteVerifyRetryableCodes.has(code)) return code;
+  }
+  const byStatus = report?.counts?.by_status || report?.counts?.statuses || {};
+  for (const code of postWriteVerifyRetryableCodes) {
+    if (Number(byStatus?.[code] ?? 0) > 0) return code;
+  }
+  return null;
 }
 
 function firstExistingPath(candidates) {
@@ -781,38 +837,65 @@ async function executeHandoff({ handoffPlanPath, ledgerDir, outDir, logDir, labe
     return { status: "failed", blockers, stages, handoffPlan };
   }
 
-  const verifyStage = await runShellStage({
-    stage: `${label}.post_write_verify`,
-    command: handoffPlan.commands.post_write_verify,
-    logDir,
-  });
-  let verifyReportPath = verifyReportForHandoffPlan(handoffPlan);
-  let verifyAccepted = verifyStage.exit_code === 0;
-  stages.push({ ...verifyStage, report: repoRelative(verifyReportPath) });
-  if (verifyStage.exit_code !== 0 && verifyReportPath) {
-    const acceptedVerify = acceptTraceHashOnlyRemoteVerificationMismatch({
-      verifyReportPath,
-      outDir,
-      repoRoot,
+  let verifyReportPath = null;
+  let verifyAccepted = false;
+  let verifyExitCode = 1;
+  let verifyAttempts = 0;
+  let verifyRetryReason = null;
+  const maxVerifyAttempts = postWriteVerifyRetryAttempts();
+  for (let attempt = 1; attempt <= maxVerifyAttempts; attempt += 1) {
+    const verifyStageName =
+      attempt === 1 ? `${label}.post_write_verify` : `${label}.post_write_verify.retry_${attempt}`;
+    const verifyStage = await runShellStage({
+      stage: verifyStageName,
+      command: handoffPlan.commands.post_write_verify,
+      logDir,
     });
-    if (acceptedVerify.accepted) {
-      verifyReportPath = acceptedVerify.verifyReportPath;
-      verifyAccepted = true;
-      stages.push({
-        stage: `${label}.post_write_verify.accepted_diff`,
-        status: "accepted",
-        report: repoRelative(acceptedVerify.acceptanceReportPath),
-        accepted_differences: acceptedVerify.evidence.length,
+    verifyReportPath = verifyReportForHandoffPlan(handoffPlan);
+    verifyExitCode = verifyStage.exit_code;
+    verifyAttempts = attempt;
+    const stageRecord = {
+      ...verifyStage,
+      report: repoRelative(verifyReportPath),
+      attempt,
+      max_attempts: maxVerifyAttempts,
+    };
+    stages.push(stageRecord);
+    verifyAccepted = verifyStage.exit_code === 0 && Boolean(verifyReportPath);
+    if (verifyStage.exit_code !== 0 && verifyReportPath) {
+      const acceptedVerify = acceptTraceHashOnlyRemoteVerificationMismatch({
+        verifyReportPath,
+        outDir,
+        repoRoot,
       });
+      if (acceptedVerify.accepted) {
+        verifyReportPath = acceptedVerify.verifyReportPath;
+        verifyAccepted = true;
+        stages.push({
+          stage: `${label}.post_write_verify.accepted_diff`,
+          status: "accepted",
+          report: repoRelative(acceptedVerify.acceptanceReportPath),
+          accepted_differences: acceptedVerify.evidence.length,
+        });
+      }
     }
+    if (verifyAccepted) break;
+    verifyRetryReason = postWriteVerifyRetryReason(verifyReportPath);
+    if (!verifyRetryReason || attempt >= maxVerifyAttempts) break;
+    const retryDelayMs = postWriteVerifyRetryDelayMs(attempt - 1);
+    stageRecord.retry_reason = verifyRetryReason;
+    stageRecord.retry_next_delay_ms = retryDelayMs;
+    await sleep(retryDelayMs);
   }
   if (!verifyAccepted || !verifyReportPath) {
     blockers.push({
       code: "post_write_verify_command_failed",
       message: `${label} post-write verification failed or did not emit the expected remote verification report.`,
       handoff_plan: repoRelative(handoffPlanPath),
-      exit_code: verifyStage.exit_code,
+      exit_code: verifyExitCode,
       post_write_verify_report: repoRelative(verifyReportPath),
+      post_write_verify_attempts: verifyAttempts,
+      retry_reason: verifyRetryReason,
     });
     return { status: "failed", blockers, stages, handoffPlan };
   }
@@ -1160,6 +1243,42 @@ function loadVerifiedSet(filePath, type) {
     if (id) set.add(`${id}@${version}`);
   }
   return set;
+}
+
+function datasetIdentityKey(identity) {
+  const id = asText(identity?.id);
+  if (!id) return null;
+  return `${id}@${asText(identity?.version) || "00.00.001"}`;
+}
+
+function flowRowsPendingVerification(rows, verifiedFlows) {
+  const pendingRows = [];
+  const verifiedRows = [];
+  const pendingIdentities = [];
+  const verifiedIdentities = [];
+  for (const row of rows) {
+    const identity = datasetIdentity(row, "flow");
+    const key = datasetIdentityKey(identity);
+    if (!key) continue;
+    const entry = {
+      id: identity.id,
+      version: asText(identity.version) || "00.00.001",
+      identity_key: key,
+    };
+    if (verifiedFlows.has(key)) {
+      verifiedRows.push(row);
+      verifiedIdentities.push(entry);
+      continue;
+    }
+    pendingRows.push(row);
+    pendingIdentities.push(entry);
+  }
+  return {
+    pendingRows,
+    verifiedRows,
+    pendingIdentities,
+    verifiedIdentities,
+  };
 }
 
 function scopeKeyFromLedgerRow(row) {
@@ -2443,9 +2562,51 @@ async function runOneScope({
   const flowIds = flowRows
     .map((row) => datasetIdentity(row, "flow"))
     .filter((identity) => identity.id);
-  const unverifiedFlowIds = flowIds.filter(
-    (identity) => !verifiedFlows.has(`${identity.id}@${identity.version}`),
-  );
+  const flowVerificationPlan = flowRowsPendingVerification(flowRows, verifiedFlows);
+  const unverifiedFlowIds = flowVerificationPlan.pendingIdentities;
+  if (
+    flowRows.length > 0 &&
+    flowVerificationPlan.pendingRows.length > 0 &&
+    flowVerificationPlan.pendingRows.length < flowRows.length
+  ) {
+    const flowFilterDir = path.join(scopeDir, "flow-filter-verified");
+    const pendingRowsFile = path.join(flowFilterDir, "flows.unverified.jsonl");
+    const filterReportPath = path.join(flowFilterDir, "flow-filter-verified-report.json");
+    writeJsonLines(pendingRowsFile, flowVerificationPlan.pendingRows);
+    writeJson(filterReportPath, {
+      schema_version: 1,
+      generated_at_utc: nowIso(),
+      status: "completed",
+      input_rows_file: repoRelative(flowRowsForFinalize),
+      output_rows_file: repoRelative(pendingRowsFile),
+      policy:
+        "Only flow rows not present in ok.flows.verified are passed to flow finalize/commit. Already verified flows remain remote dependencies for the process scope.",
+      counts: {
+        input_rows: flowRows.length,
+        output_rows: flowVerificationPlan.pendingRows.length,
+        skipped_verified_rows: flowVerificationPlan.verifiedRows.length,
+      },
+      pending_identities: flowVerificationPlan.pendingIdentities,
+      skipped_verified_identities: flowVerificationPlan.verifiedIdentities,
+      files: {
+        input_rows: repoRelative(flowRowsForFinalize),
+        output_rows: repoRelative(pendingRowsFile),
+        report: repoRelative(filterReportPath),
+      },
+    });
+    stages.push({
+      stage: "flow.filter_verified",
+      status: "completed",
+      exit_code: 0,
+      report: repoRelative(filterReportPath),
+      counts: {
+        input_rows: flowRows.length,
+        output_rows: flowVerificationPlan.pendingRows.length,
+        skipped_verified_rows: flowVerificationPlan.verifiedRows.length,
+      },
+    });
+    flowRowsForFinalize = pendingRowsFile;
+  }
   let flowIdentityReport = null;
   let flowIdentityReportsForProcess = existingIdentityApplyReportsWithReferenceRewrites(
     scopeDir,
@@ -2560,7 +2721,7 @@ async function runOneScope({
     for (const identity of committedFlowRows
       .map((row) => datasetIdentity(row, "flow"))
       .filter((entry) => entry.id)) {
-      const identityKey = `${identity.id}@${identity.version}`;
+      const identityKey = datasetIdentityKey(identity);
       const alreadyVerified = verifiedFlows.has(identityKey);
       verifiedFlows.add(identityKey);
       if (alreadyVerified) continue;
@@ -2660,79 +2821,70 @@ async function runOneScope({
     processPatchApplyReport = processAuthoring.patchApplyReport;
   }
 
-  const e2eDir = path.join(scopeDir, "process-e2e");
-  const e2eArgs = [
-    process.execPath,
-    "scripts/foundry.mjs",
-    "dataset-bafu-process-scope-e2e",
-    "--rows-file",
-    repoRelative(processRowsForE2e),
-    "--source-support-rows-file",
-    repoRelative(materialized.supportRowsFile),
-    "--source-rows-file",
-    repoRelative(materialized.sourceRowsFile),
-    "--identity-preflight-index",
-    repoRelative(materialized.identityPreflightIndex),
-    "--schema-file",
-    repoRelative(defaultContext(paths.runDir, "process").schemaFile),
-    "--yaml-file",
-    repoRelative(defaultContext(paths.runDir, "process").yamlFile),
-    "--ruleset-file",
-    repoRelative(defaultContext(paths.runDir, "process").rulesetFile),
-    "--classification-queue",
-    repoRelative(materialized.classificationQueue),
-    "--location-queue",
-    repoRelative(materialized.locationQueue),
-    "--classification-decision-apply-report",
-    repoRelative(classificationApplyReport),
-    "--target-user-id",
-    options.targetUserId,
-    "--state-code",
-    String(options.stateCode),
-    "--root-policy",
-    "candidate",
-    "--verify-remote",
-    "true",
-    "--finalize-source-contact-support",
-    "true",
-    "--run-identity-preflight",
-    "true",
-    "--refresh-identity-preflight",
-    "true",
-    "--out-dir",
-    repoRelative(e2eDir),
-    "--execute",
-    "--commit-support",
-    "--commit",
-    "--force",
-  ];
-  appendPathOption(e2eArgs, "--verified-support-identities-file", paths.supportIdentityCache);
-  appendPathOption(e2eArgs, "--location-decision-apply-report", locationApplyReport);
-  appendPathOptions(
-    e2eArgs,
-    "--identity-decision-apply-report",
-    [...flowIdentityReportsForProcess, processIdentityReport].filter(Boolean),
-  );
-  appendPathOption(e2eArgs, "--patch-collect-report", processPatchCollectReport);
-  appendPathOption(e2eArgs, "--patch-apply-report", processPatchApplyReport);
-  const e2e = await runArgvStage({
-    stage: "process.e2e_commit",
-    argv: e2eArgs,
-    logDir,
-    reportPath: path.join(e2eDir, "bafu-process-scope-e2e-report.json"),
-  });
-  stages.push(e2e);
-  const e2eReport = reportFile(e2e.json, path.join(e2eDir, "bafu-process-scope-e2e-report.json"));
-  if (!statusIs(e2e.json, ["completed"])) {
-    const blocker = firstBlocker(
-      e2e.json,
-      e2e.exit_code === 0 ? "process_e2e_not_completed" : "process_e2e_failed",
-      "Process scope e2e commit did not complete.",
-    );
-    if (categoryForBlocker(blocker.code) === "remote-write") {
-      return fail({ stage: "process.e2e_commit", blocker, report: e2eReport });
+  let processScopeReport = processPreReportPath;
+  let processCloseoutReport = null;
+  if (processPreReport?.status === "ready_for_remote_write" && !processPatchApplyReport) {
+    const handoffPlan = resolveRepoPath(processPreReport.files?.commit_handoff_plan);
+    const handoff = await executeHandoff({
+      handoffPlanPath: handoffPlan,
+      ledgerDir,
+      outDir: path.join(scopeDir, "process-handoff"),
+      logDir,
+      label: "process",
+    });
+    stages.push(...handoff.stages);
+    if (handoff.status !== "completed") {
+      const blocker = handoff.blockers?.[0] ?? {
+        code: "process_handoff_failed",
+        message: "Process commit/verify handoff failed.",
+      };
+      return fail({ stage: "process.commit", blocker, report: processPreReportPath });
     }
-    return block({ stage: "process.e2e_commit", blocker, report: e2eReport });
+    processCloseoutReport = handoff.closeoutReportPath;
+  } else {
+    const processCommit = await finalizeAndCommitDataset({
+      type: "process",
+      rowsFile: processRowsForE2e,
+      scopeDir,
+      runDir: paths.runDir,
+      materialized,
+      classificationApplyReport,
+      locationApplyReport,
+      identityApplyReports: [...flowIdentityReportsForProcess, processIdentityReport].filter(
+        Boolean,
+      ),
+      patchCollectReport: processPatchCollectReport,
+      patchApplyReport: processPatchApplyReport,
+      targetUserId: options.targetUserId,
+      stateCode: options.stateCode,
+      logDir,
+      ledgerDir,
+      stages,
+      supportIdentityCacheFile: paths.supportIdentityCache,
+    });
+    if (processCommit.status === "failed") {
+      return fail({
+        stage: "process.commit",
+        blocker: processCommit.blocker,
+        report: processCommit.report,
+      });
+    }
+    if (processCommit.status !== "completed") {
+      if (categoryForBlocker(processCommit.blocker?.code) === "remote-write") {
+        return fail({
+          stage: "process.finalize",
+          blocker: processCommit.blocker,
+          report: processCommit.report,
+        });
+      }
+      return block({
+        stage: "process.finalize",
+        blocker: processCommit.blocker,
+        report: processCommit.report,
+      });
+    }
+    processScopeReport = processCommit.report;
+    processCloseoutReport = processCommit.handoff?.closeoutReportPath ?? null;
   }
 
   verifiedScopes.add(`${processId}@${processVersion}`);
@@ -2743,10 +2895,10 @@ async function runOneScope({
       id: processId,
       version: processVersion,
       processId,
-      report: e2eReport,
+      report: processScopeReport,
       files: {
-        e2e_report: repoRelative(e2eReport),
-        process_closeout_report: e2e.json?.files?.process_closeout_report ?? null,
+        process_finalize_report: repoRelative(processScopeReport),
+        process_closeout_report: repoRelative(processCloseoutReport),
       },
     }),
   );
@@ -2756,7 +2908,7 @@ async function runOneScope({
     process_id: processId,
     process_version: processVersion,
     status: "verified",
-    report: repoRelative(e2eReport),
+    report: repoRelative(processScopeReport),
     rows: {
       flows: flowIds.length,
       processes: 1,
@@ -2781,7 +2933,8 @@ async function runOneScope({
     process_version: processVersion,
     stages,
     files: {
-      e2e_report: repoRelative(e2eReport),
+      process_finalize_report: repoRelative(processScopeReport),
+      process_closeout_report: repoRelative(processCloseoutReport),
     },
   });
   return { status: "verified", stages };
@@ -3121,3 +3274,8 @@ export function createBafuBatchImportRunCommands(deps) {
 
   return { runDatasetBafuBatchImportRun };
 }
+
+export const bafuBatchImportRunTestHooks = {
+  flowRowsPendingVerification,
+  postWriteVerifyRetryReason,
+};

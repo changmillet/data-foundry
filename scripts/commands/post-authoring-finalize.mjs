@@ -104,6 +104,49 @@ export function createPostAuthoringFinalizeCommands({
   writeJson,
   writeJsonLines,
 }) {
+  function stageStatus(value) {
+    if (!value || typeof value !== "object") return "completed";
+    return value.status ?? value.report?.status ?? "completed";
+  }
+
+  function timedFinalizeStage(timings, stage, fn) {
+    const startedAtUtc = nowIso();
+    const startedAtMs = Date.now();
+    try {
+      const result = fn();
+      timings.push({
+        stage,
+        status: stageStatus(result),
+        started_at_utc: startedAtUtc,
+        finished_at_utc: nowIso(),
+        duration_ms: Date.now() - startedAtMs,
+      });
+      return result;
+    } catch (error) {
+      timings.push({
+        stage,
+        status: "failed",
+        started_at_utc: startedAtUtc,
+        finished_at_utc: nowIso(),
+        duration_ms: Date.now() - startedAtMs,
+        error: String(error?.message || error),
+      });
+      throw error;
+    }
+  }
+
+  function compactStageReportWithTiming(stageReport, timingsByStage) {
+    const compacted = compactStageReport(stageReport);
+    const timing = timingsByStage.get(compacted.stage);
+    if (!timing) return compacted;
+    return {
+      ...compacted,
+      started_at_utc: timing.started_at_utc,
+      finished_at_utc: timing.finished_at_utc,
+      duration_ms: timing.duration_ms,
+    };
+  }
+
   function rowDatasetType(payload, fallbackType) {
     if (payload?.processDataSet) return "process";
     if (payload?.flowDataSet) return "flow";
@@ -354,6 +397,10 @@ export function createPostAuthoringFinalizeCommands({
   }
 
   function runDatasetPostAuthoringFinalize(options) {
+    const finalizeStartedAtUtc = nowIso();
+    const finalizeStartedAtMs = Date.now();
+    const finalizeTimings = [];
+    const timeStage = (stage, fn) => timedFinalizeStage(finalizeTimings, stage, fn);
     const datasetType = String(options.type || options.datasetType || "process")
       .trim()
       .toLowerCase();
@@ -397,18 +444,20 @@ export function createPostAuthoringFinalizeCommands({
     const identityPreflightRequired =
       ["flow", "process"].includes(datasetType) &&
       (booleanOption(options.requireIdentityPreflight) || Boolean(fullContextRequirement));
-    const identityReferenceRewriteStage = applyIdentityReferenceRewrites({
-      datasetType,
-      rowsFile,
-      outFile: path.join(
-        outDir,
-        "identity-reference-rewrites",
-        `${datasetRowsFileStem(datasetType)}.identity-rewritten.jsonl`,
-      ),
-      outDir: path.join(outDir, "identity-reference-rewrites"),
-      options,
-      allowMissingIndex: true,
-    });
+    const identityReferenceRewriteStage = timeStage("identity_reference_rewrites", () =>
+      applyIdentityReferenceRewrites({
+        datasetType,
+        rowsFile,
+        outFile: path.join(
+          outDir,
+          "identity-reference-rewrites",
+          `${datasetRowsFileStem(datasetType)}.identity-rewritten.jsonl`,
+        ),
+        outDir: path.join(outDir, "identity-reference-rewrites"),
+        options,
+        allowMissingIndex: true,
+      }),
+    );
     const identityReferenceRewriteFile = resolveRepoPath(
       identityReferenceRewriteStage.rewrite_file,
     );
@@ -416,27 +465,33 @@ export function createPostAuthoringFinalizeCommands({
       Number(identityReferenceRewriteStage.counts?.flow_reference_rewrites ?? 0) > 0
         ? resolveRepoPath(identityReferenceRewriteStage.output_rows_file)
         : rowsFile;
-    const unresolvedExchangeExternalizeStage = externalizeUnresolvedProcessFlowExchanges({
-      datasetType,
-      rowsFile: identityRewrittenRowsFile,
-      outFile: path.join(
-        outDir,
-        "unresolved-exchange-externalization",
-        `${datasetRowsFileStem(datasetType)}.unresolved-exchanges-externalized.jsonl`,
-      ),
-      outDir: path.join(outDir, "unresolved-exchange-externalization"),
-      options,
-    });
+    const unresolvedExchangeExternalizeStage = timeStage(
+      "unresolved_exchange_externalization",
+      () =>
+        externalizeUnresolvedProcessFlowExchanges({
+          datasetType,
+          rowsFile: identityRewrittenRowsFile,
+          outFile: path.join(
+            outDir,
+            "unresolved-exchange-externalization",
+            `${datasetRowsFileStem(datasetType)}.unresolved-exchanges-externalized.jsonl`,
+          ),
+          outDir: path.join(outDir, "unresolved-exchange-externalization"),
+          options,
+        }),
+    );
     const preCleanupRowsFile =
       Number(unresolvedExchangeExternalizeStage.counts?.externalized_exchanges ?? 0) > 0
         ? resolveRepoPath(unresolvedExchangeExternalizeStage.output_rows_file)
         : identityRewrittenRowsFile;
-    const sourceContactRewriteStage = applySourceContactRewrites({
-      datasetType,
-      rowsFile: preCleanupRowsFile,
-      outDir: path.join(outDir, "source-contact-rewrites"),
-      options,
-    });
+    const sourceContactRewriteStage = timeStage("source_contact_rewrites", () =>
+      applySourceContactRewrites({
+        datasetType,
+        rowsFile: preCleanupRowsFile,
+        outDir: path.join(outDir, "source-contact-rewrites"),
+        options,
+      }),
+    );
     const sourceContactRowsFile = resolveRepoPath(
       sourceContactRewriteStage.files?.output_rows || sourceContactRewriteStage.output_rows_file,
     );
@@ -456,34 +511,36 @@ export function createPostAuthoringFinalizeCommands({
         ? "support"
         : "contact";
     const sourceContactSupportFinalize = sourceContactSupportFinalizeRequested
-      ? runDatasetPostAuthoringFinalize({
-          ...options,
-          type: sourceContactSupportFinalizeType,
-          rowsFile: sourceContactSupportRowsFile,
-          outDir: path.join(outDir, "source-contact-support-finalize"),
-          skipSourceContactRewrites: true,
-          finalizeSourceContactSupport: false,
-          prepareSourceContactSupport: false,
-          autoFinalizeSourceContactSupport: false,
-          requireIdentityPreflight: false,
-          runIdentityPreflight: false,
-          identityPreflightIndex: null,
-          identityPreflightRequests: null,
-          identityPreflightRequestsIndex: null,
-          classificationDecisionApplyReport: null,
-          classificationDecisionsApplyReport: null,
-          locationDecisionApplyReport: null,
-          locationDecisionsApplyReport: null,
-          identityDecisionApplyReport: null,
-          identityDecisionsApplyReport: null,
-          identityDecisionApplyReports: [],
-          identityDecisionsApplyReports: [],
-          patchCollectReport: null,
-          authoringPatchCollectReport: null,
-          patchApplyReport: null,
-          verifyRemote: false,
-          precommitVerifyRemote: false,
-        })
+      ? timeStage("source_contact_support_finalize", () =>
+          runDatasetPostAuthoringFinalize({
+            ...options,
+            type: sourceContactSupportFinalizeType,
+            rowsFile: sourceContactSupportRowsFile,
+            outDir: path.join(outDir, "source-contact-support-finalize"),
+            skipSourceContactRewrites: true,
+            finalizeSourceContactSupport: false,
+            prepareSourceContactSupport: false,
+            autoFinalizeSourceContactSupport: false,
+            requireIdentityPreflight: false,
+            runIdentityPreflight: false,
+            identityPreflightIndex: null,
+            identityPreflightRequests: null,
+            identityPreflightRequestsIndex: null,
+            classificationDecisionApplyReport: null,
+            classificationDecisionsApplyReport: null,
+            locationDecisionApplyReport: null,
+            locationDecisionsApplyReport: null,
+            identityDecisionApplyReport: null,
+            identityDecisionsApplyReport: null,
+            identityDecisionApplyReports: [],
+            identityDecisionsApplyReports: [],
+            patchCollectReport: null,
+            authoringPatchCollectReport: null,
+            patchApplyReport: null,
+            verifyRemote: false,
+            precommitVerifyRemote: false,
+          }),
+        )
       : {
           status: sourceContactSupportRowsFile ? "available_not_requested" : "not_required",
           counts: { blockers: 0, write_candidates: 0 },
@@ -497,17 +554,19 @@ export function createPostAuthoringFinalizeCommands({
           blockers: [],
         };
 
-    const canonicalSupportRewriteStage = applyCanonicalSupportRewrites({
-      datasetType,
-      rowsFile: sourceContactRowsFile || preCleanupRowsFile,
-      outFile: path.join(
-        outDir,
-        "canonical-support-rewrites",
-        `${datasetRowsFileStem(datasetType)}.canonical-support-rewritten.jsonl`,
-      ),
-      outDir: path.join(outDir, "canonical-support-rewrites"),
-      options,
-    });
+    const canonicalSupportRewriteStage = timeStage("canonical_support_rewrites", () =>
+      applyCanonicalSupportRewrites({
+        datasetType,
+        rowsFile: sourceContactRowsFile || preCleanupRowsFile,
+        outFile: path.join(
+          outDir,
+          "canonical-support-rewrites",
+          `${datasetRowsFileStem(datasetType)}.canonical-support-rewritten.jsonl`,
+        ),
+        outDir: path.join(outDir, "canonical-support-rewrites"),
+        options,
+      }),
+    );
     const canonicalSupportRowsFile = resolveRepoPath(
       canonicalSupportRewriteStage.files?.output_rows ||
         canonicalSupportRewriteStage.output_rows_file,
@@ -522,177 +581,194 @@ export function createPostAuthoringFinalizeCommands({
       }),
     );
 
-    const cleanup = runDatasetCurationCleanup({
-      repoRoot,
-      options: {
-        ...options,
-        type: datasetType,
-        rowsFile: canonicalSupportRowsFile || preCleanupRowsFile,
-        sourceRowsFile:
-          options.sourceRowsFile ||
-          options.sourceRows ||
-          options.originalSourceRowsFile ||
-          options.originalRowsFile,
-        outDir: path.join(outDir, "cleanup"),
-        outFile: options.cleanedRowsFile || options.cleanedRows || options.outFile,
-      },
-    });
+    const cleanup = timeStage("curation_cleanup", () =>
+      runDatasetCurationCleanup({
+        repoRoot,
+        options: {
+          ...options,
+          type: datasetType,
+          rowsFile: canonicalSupportRowsFile || preCleanupRowsFile,
+          sourceRowsFile:
+            options.sourceRowsFile ||
+            options.sourceRows ||
+            options.originalSourceRowsFile ||
+            options.originalRowsFile,
+          outDir: path.join(outDir, "cleanup"),
+          outFile: options.cleanedRowsFile || options.cleanedRows || options.outFile,
+        },
+      }),
+    );
     const cleanedRowsFile = resolveRepoPath(
       cleanup.files?.cleaned_rows || cleanup.cleaned_rows_file,
     );
     const cleanupReportFile = resolveRepoPath(cleanup.files?.report);
-    const identityPreflightRunStage = runFinalizeIdentityPreflightStage({
-      rowsFile: cleanedRowsFile,
-      outDir,
-      options: {
-        ...options,
-        type: datasetType,
-      },
-    });
-    const curationQueueStage = runFinalizeAutoCurationQueue({
-      datasetType,
-      rowsFile,
-      cleanedRowsFile,
-      outDir,
-      options,
-      fullContextRequirement,
-      identityReferenceRewriteStage,
-    });
+    const identityPreflightRunStage = timeStage("identity_preflight_run", () =>
+      runFinalizeIdentityPreflightStage({
+        rowsFile: cleanedRowsFile,
+        outDir,
+        options: {
+          ...options,
+          type: datasetType,
+        },
+      }),
+    );
+    const curationQueueStage = timeStage("curation_queue", () =>
+      runFinalizeAutoCurationQueue({
+        datasetType,
+        rowsFile,
+        cleanedRowsFile,
+        outDir,
+        options,
+        fullContextRequirement,
+        identityReferenceRewriteStage,
+      }),
+    );
     const curationQueueDir =
       curationQueueStage.queue_dir || resolveRepoPath(options.queueDir || options.curationQueueDir);
 
     const schemaOutDir = path.join(outDir, "schema", datasetType);
-    const schemaStage = runTiangongJsonStage("schema_validate", [
-      "dataset",
-      "validate",
-      "--type",
-      datasetType === "support" ? "auto" : datasetType,
-      "--input",
-      cleanedRowsFile,
-      "--out-dir",
-      schemaOutDir,
-      "--json",
-    ]);
-    schemaStage.report_file = reportFileFromCliStage(
-      schemaStage,
-      ["files.report"],
-      path.join(schemaOutDir, "outputs", "validation-report.json"),
-    );
+    const schemaStage = timeStage("schema_validate", () => {
+      const stage = runTiangongJsonStage("schema_validate", [
+        "dataset",
+        "validate",
+        "--type",
+        datasetType === "support" ? "auto" : datasetType,
+        "--input",
+        cleanedRowsFile,
+        "--out-dir",
+        schemaOutDir,
+        "--json",
+      ]);
+      stage.report_file = reportFileFromCliStage(
+        stage,
+        ["files.report"],
+        path.join(schemaOutDir, "outputs", "validation-report.json"),
+      );
+      return stage;
+    });
 
     const qaOutDir = path.join(outDir, "qa", datasetType);
-    const qaStage = requiresDeterministicQa
-      ? runTiangongJsonStage(`${datasetType}_qa`, [
-          "qa",
-          datasetType,
-          "--rows-file",
-          cleanedRowsFile,
-          "--out-dir",
-          qaOutDir,
-          "--json",
-        ])
-      : {
-          stage: `${datasetType}_qa`,
+    const qaStage = timeStage(`${datasetType}_qa`, () => {
+      const stage = requiresDeterministicQa
+        ? runTiangongJsonStage(`${datasetType}_qa`, [
+            "qa",
+            datasetType,
+            "--rows-file",
+            cleanedRowsFile,
+            "--out-dir",
+            qaOutDir,
+            "--json",
+          ])
+        : {
+            stage: `${datasetType}_qa`,
+            status: "not_required_for_support_rows",
+            exit_code: 0,
+            command: "skipped",
+            args: [],
+            stderr: "Support rows do not have a deterministic qa <type> gate.",
+            report: { status: "not_required_for_support_rows" },
+            report_file: null,
+          };
+      if (requiresDeterministicQa) {
+        stage.report_file = reportFileFromCliStage(
+          stage,
+          ["files.report"],
+          path.join(
+            qaOutDir,
+            datasetType === "flow"
+              ? "flow_qa_report.json"
+              : datasetType === "lifecyclemodel"
+                ? "lifecyclemodel_qa_report.json"
+                : "process-qa-report.json",
+          ),
+        );
+      } else {
+        const supportQaOutDir = path.join(outDir, "qa", datasetType);
+        const supportQaReportFile = path.join(supportQaOutDir, `${datasetType}-qa-report.json`);
+        const supportQaReport = {
+          schema_version: 1,
           status: "not_required_for_support_rows",
-          exit_code: 0,
-          command: "skipped",
-          args: [],
-          stderr: "Support rows do not have a deterministic qa <type> gate.",
-          report: { status: "not_required_for_support_rows" },
-          report_file: null,
+          dataset_type: datasetType,
+          rows_file: repoRelativePath(cleanedRowsFile),
+          findings: [],
+          blockers: [],
+          counts: {
+            blockers: 0,
+            findings: 0,
+          },
+          files: {
+            report: repoRelativePath(supportQaReportFile),
+          },
         };
-    if (requiresDeterministicQa) {
-      qaStage.report_file = reportFileFromCliStage(
-        qaStage,
-        ["files.report"],
-        path.join(
-          qaOutDir,
-          datasetType === "flow"
-            ? "flow_qa_report.json"
-            : datasetType === "lifecyclemodel"
-              ? "lifecyclemodel_qa_report.json"
-              : "process-qa-report.json",
-        ),
-      );
-    } else {
-      const supportQaOutDir = path.join(outDir, "qa", datasetType);
-      const supportQaReportFile = path.join(supportQaOutDir, `${datasetType}-qa-report.json`);
-      const supportQaReport = {
-        schema_version: 1,
-        status: "not_required_for_support_rows",
-        dataset_type: datasetType,
-        rows_file: repoRelativePath(cleanedRowsFile),
-        findings: [],
-        blockers: [],
-        counts: {
-          blockers: 0,
-          findings: 0,
-        },
-        files: {
-          report: repoRelativePath(supportQaReportFile),
-        },
-      };
-      writeJson(supportQaReportFile, supportQaReport);
-      qaStage.report = supportQaReport;
-      qaStage.report_file = supportQaReportFile;
-    }
+        writeJson(supportQaReportFile, supportQaReport);
+        stage.report = supportQaReport;
+        stage.report_file = supportQaReportFile;
+      }
+      return stage;
+    });
 
     const locationAuditOutDir = path.join(outDir, "location-audit", datasetType);
-    const locationAuditStage = runTiangongJsonStage("location_audit", [
-      "dataset",
-      "classification",
-      "audit",
-      "--type",
-      "location",
-      "--input",
-      cleanedRowsFile,
-      "--out-dir",
-      locationAuditOutDir,
-      "--json",
-    ]);
-    locationAuditStage.report_file = reportFileFromCliStage(
-      locationAuditStage,
-      ["files.report"],
-      path.join(locationAuditOutDir, "outputs", "location-audit-report.json"),
-    );
+    const locationAuditStage = timeStage("location_audit", () => {
+      const stage = runTiangongJsonStage("location_audit", [
+        "dataset",
+        "classification",
+        "audit",
+        "--type",
+        "location",
+        "--input",
+        cleanedRowsFile,
+        "--out-dir",
+        locationAuditOutDir,
+        "--json",
+      ]);
+      stage.report_file = reportFileFromCliStage(
+        stage,
+        ["files.report"],
+        path.join(locationAuditOutDir, "outputs", "location-audit-report.json"),
+      );
+      return stage;
+    });
     const locationAuditBlockers = blockersFromLocationAuditStage(locationAuditStage);
 
-    const curationGate = requiresCurationGate
-      ? runDatasetCurationGate({
-          repoRoot,
-          options: {
-            ...options,
-            type: datasetType,
-            rowsFile: cleanedRowsFile,
-            schemaReport: schemaStage.report_file,
-            qaReport: qaStage.report_file,
-            outDir: path.join(outDir, "curation-gate"),
-            requireIdentityPreflight: identityPreflightRequired,
-            identityPreflightIndex:
-              identityPreflightRunStage.index_file ||
-              options.identityPreflightIndex ||
-              options.identityPreflightRequests ||
-              options.identityPreflightRequestsIndex,
-            identityReferenceRewrites: identityReferenceRewriteFile,
-            classificationDecisionApplyReport:
-              options.classificationDecisionApplyReport ||
-              options.classificationDecisionsApplyReport,
-            unresolvedExchangeExternalizationReport:
-              unresolvedExchangeExternalizeStage.files?.report,
-            sourceContactRewriteReport: sourceContactRewriteStage.files?.report,
-            canonicalSupportRewriteReport: canonicalSupportReportFile,
-            cleanupReport: cleanupReportFile,
-            identityDecisionApplyReport:
-              options.identityDecisionApplyReport || options.identityDecisionsApplyReport,
-            queueDir: curationQueueDir,
-            requireQueueContext:
-              booleanOption(options.requireQueueContext || options.requireCurationQueueContext) ||
-              (Boolean(fullContextRequirement) && datasetType === "process"),
+    const curationGate = timeStage("post_authoring_curation_gate", () =>
+      requiresCurationGate
+        ? runDatasetCurationGate({
+            repoRoot,
+            options: {
+              ...options,
+              type: datasetType,
+              rowsFile: cleanedRowsFile,
+              schemaReport: schemaStage.report_file,
+              qaReport: qaStage.report_file,
+              outDir: path.join(outDir, "curation-gate"),
+              requireIdentityPreflight: identityPreflightRequired,
+              identityPreflightIndex:
+                identityPreflightRunStage.index_file ||
+                options.identityPreflightIndex ||
+                options.identityPreflightRequests ||
+                options.identityPreflightRequestsIndex,
+              identityReferenceRewrites: identityReferenceRewriteFile,
+              classificationDecisionApplyReport:
+                options.classificationDecisionApplyReport ||
+                options.classificationDecisionsApplyReport,
+              unresolvedExchangeExternalizationReport:
+                unresolvedExchangeExternalizeStage.files?.report,
+              sourceContactRewriteReport: sourceContactRewriteStage.files?.report,
+              canonicalSupportRewriteReport: canonicalSupportReportFile,
+              cleanupReport: cleanupReportFile,
+              identityDecisionApplyReport:
+                options.identityDecisionApplyReport || options.identityDecisionsApplyReport,
+              queueDir: curationQueueDir,
+              requireQueueContext:
+                booleanOption(options.requireQueueContext || options.requireCurationQueueContext) ||
+                (Boolean(fullContextRequirement) && datasetType === "process"),
+            },
+          })
+        : {
+            status: "not_required_for_support_rows",
+            files: {},
           },
-        })
-      : {
-          status: "not_required_for_support_rows",
-          files: {},
-        };
+    );
     const curationGateReportFile = requiresCurationGate
       ? resolveRepoPath(curationGate.files?.report)
       : null;
@@ -775,40 +851,36 @@ export function createPostAuthoringFinalizeCommands({
         options.remoteTargetUserId || options.targetUserId,
       );
     }
-    const dryRunStage = prewriteGateReady
-      ? runTiangongJsonStage(
+    const dryRunStageName =
+      datasetType === "support" || supportTypes.includes(datasetType)
+        ? `${datasetType}_save_draft_dry_run`
+        : datasetType === "flow"
+          ? "flow_publish_version_dry_run"
+          : datasetType === "lifecyclemodel"
+            ? "lifecyclemodel_save_draft_dry_run"
+            : "process_save_draft_dry_run";
+    const dryRunStage = timeStage(dryRunStageName, () => {
+      const stage = prewriteGateReady
+        ? runTiangongJsonStage(dryRunStageName, dryRunArgs)
+        : skippedPrewriteStage(
+            dryRunStageName,
+            "Skipped because schema, QA, canonical support, location audit, or post-authoring curation gate is not ready.",
+          );
+      if (prewriteGateReady) {
+        stage.report_file = reportFileFromCliStage(
+          stage,
+          datasetType === "flow" ? ["files.report"] : ["files.summary_json"],
           datasetType === "support" || supportTypes.includes(datasetType)
-            ? `${datasetType}_save_draft_dry_run`
+            ? path.join(dryRunOutDir, "outputs", "dataset-save-draft", "summary.json")
             : datasetType === "flow"
-              ? "flow_publish_version_dry_run"
+              ? path.join(dryRunOutDir, "flows_tidas_sdk_plus_classification_mcp_sync_report.json")
               : datasetType === "lifecyclemodel"
-                ? "lifecyclemodel_save_draft_dry_run"
-                : "process_save_draft_dry_run",
-          dryRunArgs,
-        )
-      : skippedPrewriteStage(
-          datasetType === "support" || supportTypes.includes(datasetType)
-            ? `${datasetType}_save_draft_dry_run`
-            : datasetType === "flow"
-              ? "flow_publish_version_dry_run"
-              : datasetType === "lifecyclemodel"
-                ? "lifecyclemodel_save_draft_dry_run"
-                : "process_save_draft_dry_run",
-          "Skipped because schema, QA, canonical support, location audit, or post-authoring curation gate is not ready.",
+                ? path.join(dryRunOutDir, "outputs", "save-draft-bundle", "summary.json")
+                : path.join(dryRunOutDir, "outputs", "save-draft-rpc", "summary.json"),
         );
-    if (prewriteGateReady) {
-      dryRunStage.report_file = reportFileFromCliStage(
-        dryRunStage,
-        datasetType === "flow" ? ["files.report"] : ["files.summary_json"],
-        datasetType === "support" || supportTypes.includes(datasetType)
-          ? path.join(dryRunOutDir, "outputs", "dataset-save-draft", "summary.json")
-          : datasetType === "flow"
-            ? path.join(dryRunOutDir, "flows_tidas_sdk_plus_classification_mcp_sync_report.json")
-            : datasetType === "lifecyclemodel"
-              ? path.join(dryRunOutDir, "outputs", "save-draft-bundle", "summary.json")
-              : path.join(dryRunOutDir, "outputs", "save-draft-rpc", "summary.json"),
-      );
-    }
+      }
+      return stage;
+    });
 
     let remoteVerifyStage = null;
     let remoteVerifyReportFile = null;
@@ -834,20 +906,23 @@ export function createPostAuthoringFinalizeCommands({
         options.remoteTargetUserId || options.targetUserId,
       );
       appendOption(remoteArgs, "--state-code", options.remoteStateCode || options.stateCode || "0");
-      remoteVerifyStage = prewriteGateReady
-        ? runTiangongJsonStage("remote_verify_precommit", remoteArgs)
-        : skippedPrewriteStage(
-            "remote_verify_precommit",
-            "Skipped because schema, QA, canonical support, location audit, or post-authoring curation gate is not ready.",
+      remoteVerifyStage = timeStage("remote_verify_precommit", () => {
+        const stage = prewriteGateReady
+          ? runTiangongJsonStage("remote_verify_precommit", remoteArgs)
+          : skippedPrewriteStage(
+              "remote_verify_precommit",
+              "Skipped because schema, QA, canonical support, location audit, or post-authoring curation gate is not ready.",
+            );
+        if (prewriteGateReady) {
+          stage.report_file = reportFileFromCliStage(
+            stage,
+            ["files.report"],
+            path.join(remoteOutDir, "outputs", "remote-verification-report.json"),
           );
-      if (prewriteGateReady) {
-        remoteVerifyStage.report_file = reportFileFromCliStage(
-          remoteVerifyStage,
-          ["files.report"],
-          path.join(remoteOutDir, "outputs", "remote-verification-report.json"),
-        );
-        remoteVerifyReportFile = remoteVerifyStage.report_file;
-      }
+          remoteVerifyReportFile = stage.report_file;
+        }
+        return stage;
+      });
     }
 
     const identityDecisionApplyReportOptions = unique([
@@ -860,44 +935,46 @@ export function createPostAuthoringFinalizeCommands({
       .map(resolveRepoPath)
       .filter(fileExists);
 
-    const mutationManifest = runDatasetMutationManifest({
-      repoRoot,
-      options: {
-        ...options,
-        type: datasetType,
-        rowsFile: cleanedRowsFile,
-        referenceRowsFile:
-          identityReferenceRewriteStage.reference_rows_file ||
-          options.referenceRowsFile ||
-          options.referenceRows ||
-          options.reuseRowsFile,
-        schemaReport: schemaStage.report_file,
-        qaReport: requiresDeterministicQa ? qaStage.report_file : null,
-        curationGateReport: requiresCurationGate ? curationGateReportFile : null,
-        cleanupReport: cleanupReportFile,
-        dryRunReport: prewriteGateReady ? dryRunStage.report_file : null,
-        remoteVerifyReport: remoteVerifyReportFile,
-        unresolvedExchangeExternalizationReport: unresolvedExchangeExternalizeStage.files?.report,
-        sourceContactRewriteReport: sourceContactRewriteStage.files?.report,
-        canonicalSupportRewriteReport: canonicalSupportReportFile,
-        classificationDecisionApplyReport:
-          options.classificationDecisionApplyReport || options.classificationDecisionsApplyReport,
-        locationDecisionApplyReport:
-          options.locationDecisionApplyReport || options.locationDecisionsApplyReport,
-        identityDecisionApplyReport:
-          options.identityDecisionApplyReport || options.identityDecisionsApplyReport,
-        identityDecisionApplyReports: identityDecisionApplyReportOptions,
-        identityReferenceRewriteStatus: identityReferenceRewriteStage.status,
-        identityReferenceRewriteInputRows: rowsFile,
-        identityReferenceRewriteOutputRows: identityReferenceRewriteStage.output_rows_file,
-        sourceReferenceRewrites:
-          sourceContactRewriteStage.files?.source_reference_rewrites ||
-          sourceReferenceRewritesFileForRowsFile(rowsFile, options),
-        identityReferenceRewrites: identityReferenceRewriteFile,
-        outDir: path.join(outDir, "mutation-manifest"),
-        requireCurationGate: requiresCurationGate,
-      },
-    });
+    const mutationManifest = timeStage("mutation_manifest", () =>
+      runDatasetMutationManifest({
+        repoRoot,
+        options: {
+          ...options,
+          type: datasetType,
+          rowsFile: cleanedRowsFile,
+          referenceRowsFile:
+            identityReferenceRewriteStage.reference_rows_file ||
+            options.referenceRowsFile ||
+            options.referenceRows ||
+            options.reuseRowsFile,
+          schemaReport: schemaStage.report_file,
+          qaReport: requiresDeterministicQa ? qaStage.report_file : null,
+          curationGateReport: requiresCurationGate ? curationGateReportFile : null,
+          cleanupReport: cleanupReportFile,
+          dryRunReport: prewriteGateReady ? dryRunStage.report_file : null,
+          remoteVerifyReport: remoteVerifyReportFile,
+          unresolvedExchangeExternalizationReport: unresolvedExchangeExternalizeStage.files?.report,
+          sourceContactRewriteReport: sourceContactRewriteStage.files?.report,
+          canonicalSupportRewriteReport: canonicalSupportReportFile,
+          classificationDecisionApplyReport:
+            options.classificationDecisionApplyReport || options.classificationDecisionsApplyReport,
+          locationDecisionApplyReport:
+            options.locationDecisionApplyReport || options.locationDecisionsApplyReport,
+          identityDecisionApplyReport:
+            options.identityDecisionApplyReport || options.identityDecisionsApplyReport,
+          identityDecisionApplyReports: identityDecisionApplyReportOptions,
+          identityReferenceRewriteStatus: identityReferenceRewriteStage.status,
+          identityReferenceRewriteInputRows: rowsFile,
+          identityReferenceRewriteOutputRows: identityReferenceRewriteStage.output_rows_file,
+          sourceReferenceRewrites:
+            sourceContactRewriteStage.files?.source_reference_rewrites ||
+            sourceReferenceRewritesFileForRowsFile(rowsFile, options),
+          identityReferenceRewrites: identityReferenceRewriteFile,
+          outDir: path.join(outDir, "mutation-manifest"),
+          requireCurationGate: requiresCurationGate,
+        },
+      }),
+    );
     const patchApplyReportFile = resolveRepoPath(options.patchApplyReport);
     const patchCollectReportFile = resolveRepoPath(
       options.patchCollectReport || options.authoringPatchCollectReport,
@@ -1054,6 +1131,7 @@ export function createPostAuthoringFinalizeCommands({
         report_file: resolveRepoPath(mutationManifest.files?.report),
       },
     ];
+    const timingsByStage = new Map(finalizeTimings.map((timing) => [timing.stage, timing]));
     const mutationBlockerCount = Number(mutationManifest.counts?.blockers ?? 0);
     const mutationManifestBlockers = [];
     const seenMutationBlockers = new Set();
@@ -1101,6 +1179,7 @@ export function createPostAuthoringFinalizeCommands({
             : mutationManifest.status;
     const report = {
       schema_version: 1,
+      started_at_utc: finalizeStartedAtUtc,
       generated_at_utc: nowIso(),
       status,
       dataset_type: datasetType,
@@ -1126,6 +1205,8 @@ export function createPostAuthoringFinalizeCommands({
           "Final rows must pass tiangong-lca dataset classification audit --type location against tidas_locations_category.json before remote write.",
       },
       counts: {
+        finalize_duration_ms: Date.now() - finalizeStartedAtMs,
+        finalize_substage_count: finalizeTimings.length,
         blockers: blockerCount,
         mutation_manifest_blockers: mutationBlockerCount,
         prewrite_gate_blockers: prewriteGateBlockers.length,
@@ -1167,6 +1248,9 @@ export function createPostAuthoringFinalizeCommands({
         identity_preflight_refresh_required: Boolean(identityPreflightRunStage.refresh_required),
         identity_preflight_refresh_forced: Boolean(identityPreflightRunStage.refresh_forced),
         identity_preflight_refresh_reason: identityPreflightRunStage.refresh_plan?.reason ?? null,
+        identity_preflight_refresh_force_skipped_exact: Boolean(
+          identityPreflightRunStage.refresh_force_skipped_exact,
+        ),
         identity_preflight_refreshed_current_rows:
           identityPreflightRunStage.refresh_report?.counts?.request_rows ?? 0,
         identity_preflight_merge_replaced_rows:
@@ -1215,7 +1299,8 @@ export function createPostAuthoringFinalizeCommands({
           ).length ?? 0,
       },
       blockers: [...prewriteGateBlockers, ...mutationManifestBlockers],
-      stages: stageReports.map(compactStageReport),
+      stages: stageReports.map((stage) => compactStageReportWithTiming(stage, timingsByStage)),
+      timings: finalizeTimings,
       files: {
         source_contact_rewrite_report: sourceContactRewriteStage.files?.report ?? null,
         source_contact_rewritten_rows: sourceContactRewriteStage.files?.output_rows ?? null,
@@ -1287,13 +1372,16 @@ export function createPostAuthoringFinalizeCommands({
     };
     const reportPath = path.join(outDir, "dataset-post-authoring-finalize-report.json");
     writeJson(reportPath, report);
-    const commitHandoffPlan = runDatasetCommitHandoffPlan({
-      finalizeReport: reportPath,
-      outDir: path.join(outDir, "commit-handoff"),
-      stateCode: options.commitStateCode ?? options.postWriteStateCode ?? options.stateCode ?? "0",
-      targetUserId: options.targetUserId,
-      rootPolicy: options.postWriteRootPolicy || options.rootPolicy || options.remoteRootPolicy,
-    });
+    const commitHandoffPlan = timeStage("commit_handoff_plan", () =>
+      runDatasetCommitHandoffPlan({
+        finalizeReport: reportPath,
+        outDir: path.join(outDir, "commit-handoff"),
+        stateCode:
+          options.commitStateCode ?? options.postWriteStateCode ?? options.stateCode ?? "0",
+        targetUserId: options.targetUserId,
+        rootPolicy: options.postWriteRootPolicy || options.rootPolicy || options.remoteRootPolicy,
+      }),
+    );
     const finalReportBase = {
       ...report,
       counts: {
@@ -1312,20 +1400,25 @@ export function createPostAuthoringFinalizeCommands({
       },
     };
     const importLedger = writeFinalizeImportLedger
-      ? writeFinalizeImportLedger({
-          report: finalReportBase,
-          reportPath,
-          ledgerDir: resolveRepoPath(
-            options.ledgerDir || options.importLedgerDir || path.join(outDir, "import-ledger"),
-          ),
-        })
+      ? timeStage("import_ledger", () =>
+          writeFinalizeImportLedger({
+            report: finalReportBase,
+            reportPath,
+            ledgerDir: resolveRepoPath(
+              options.ledgerDir || options.importLedgerDir || path.join(outDir, "import-ledger"),
+            ),
+          }),
+        )
       : { status: "skipped", files: {}, counts: { entries_written: 0 } };
     const finalReport = {
       ...finalReportBase,
       counts: {
         ...finalReportBase.counts,
+        finalize_duration_ms: Date.now() - finalizeStartedAtMs,
+        finalize_substage_count: finalizeTimings.length,
         import_ledger_entries: importLedger.counts?.entries_written ?? 0,
       },
+      timings: finalizeTimings,
       files: {
         ...finalReportBase.files,
         import_ledger: importLedger.files ?? {},

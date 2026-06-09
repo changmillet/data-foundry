@@ -328,6 +328,72 @@ function runShellStage({ stage, command, cwd, logDir }) {
   return { result, stdoutLog, stderrLog };
 }
 
+function sleepSync(ms) {
+  if (!ms || ms <= 0) return;
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function integerEnv(name, fallback) {
+  const parsed = Number.parseInt(String(process.env[name] ?? ""), 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function postWriteVerifyRetryAttempts() {
+  return Math.max(1, Math.min(8, integerEnv("BAFU_POST_WRITE_VERIFY_ATTEMPTS", 3)));
+}
+
+function postWriteVerifyRetryDelayMs(attemptIndex) {
+  return Math.max(
+    0,
+    Math.min(
+      60_000,
+      integerEnv("BAFU_POST_WRITE_VERIFY_RETRY_DELAY_MS", 2_000) * 2 ** attemptIndex,
+    ),
+  );
+}
+
+const postWriteVerifyRetryableCodes = new Set([
+  "lookup_failed",
+  "remote_lookup_failed",
+  "readback_failed",
+  "remote_readback_failed",
+  "remote_readback_missing",
+  "root_readback_incomplete",
+  "post_write_verify_root_readback_incomplete",
+  "verify_report_missing",
+]);
+
+function collectReportCodes(value, codes = new Set(), depth = 0) {
+  if (value == null || depth > 6) return codes;
+  if (Array.isArray(value)) {
+    for (const entry of value) collectReportCodes(entry, codes, depth + 1);
+    return codes;
+  }
+  if (typeof value !== "object") return codes;
+  for (const key of ["code", "failure_code", "status_code", "readback_status"]) {
+    const text = textValue(value[key]);
+    if (text) codes.add(text);
+  }
+  for (const key of ["blockers", "findings", "checks", "results", "rows", "items"]) {
+    collectReportCodes(value[key], codes, depth + 1);
+  }
+  return codes;
+}
+
+function postWriteVerifyRetryReason(verifyReportPath) {
+  if (!verifyReportPath || !fileExists(verifyReportPath)) return "verify_report_missing";
+  const report = readJson(verifyReportPath);
+  const codes = collectReportCodes(report);
+  for (const code of codes) {
+    if (postWriteVerifyRetryableCodes.has(code)) return code;
+  }
+  const byStatus = report?.counts?.by_status || report?.counts?.statuses || {};
+  for (const code of postWriteVerifyRetryableCodes) {
+    if (Number(byStatus?.[code] ?? 0) > 0) return code;
+  }
+  return null;
+}
+
 function runArgvStage({ stage, argv, logDir }) {
   fs.mkdirSync(logDir, { recursive: true });
   const stdoutLog = path.join(logDir, `${stage}.stdout.log`);
@@ -523,40 +589,60 @@ function executeHandoff({ handoffPlanPath, ledgerDir, outDir, logDir, label }) {
     return { status: "failed", blockers, stages, handoffPlan };
   }
 
-  const verifyStage = runShellStage({
-    stage: `${label}.post_write_verify`,
-    command: handoffPlan.commands.post_write_verify,
-    cwd: repoRoot,
-    logDir,
-  });
-  let verifyReportPath = verifyReportForHandoffPlan(handoffPlan);
-  let verifyAccepted = verifyStage.result.status === 0;
-  stages.push(
-    compactCommandStage({
-      stage: `${label}.post_write_verify`,
+  let verifyReportPath = null;
+  let verifyAccepted = false;
+  let verifyExitCode = 1;
+  let verifyAttempts = 0;
+  let verifyRetryReason = null;
+  const maxVerifyAttempts = postWriteVerifyRetryAttempts();
+  for (let attempt = 1; attempt <= maxVerifyAttempts; attempt += 1) {
+    const verifyStageName =
+      attempt === 1 ? `${label}.post_write_verify` : `${label}.post_write_verify.retry_${attempt}`;
+    const verifyStage = runShellStage({
+      stage: verifyStageName,
+      command: handoffPlan.commands.post_write_verify,
+      cwd: repoRoot,
+      logDir,
+    });
+    verifyReportPath = verifyReportForHandoffPlan(handoffPlan);
+    verifyExitCode = verifyStage.result.status ?? 1;
+    verifyAttempts = attempt;
+    const stageReport = compactCommandStage({
+      stage: verifyStageName,
       command: handoffPlan.commands.post_write_verify,
       result: verifyStage.result,
       stdoutLog: verifyStage.stdoutLog,
       stderrLog: verifyStage.stderrLog,
       reportPath: verifyReportPath,
-    }),
-  );
-  if (verifyStage.result.status !== 0 && verifyReportPath) {
-    const acceptedVerify = acceptTraceHashOnlyRemoteVerificationMismatch({
-      verifyReportPath,
-      outDir,
-      repoRoot,
     });
-    if (acceptedVerify.accepted) {
-      verifyReportPath = acceptedVerify.verifyReportPath;
-      verifyAccepted = true;
-      stages.push({
-        stage: `${label}.post_write_verify.accepted_diff`,
-        status: "accepted",
-        report: repoRelative(acceptedVerify.acceptanceReportPath),
-        accepted_differences: acceptedVerify.evidence.length,
+    stageReport.attempt = attempt;
+    stageReport.max_attempts = maxVerifyAttempts;
+    stages.push(stageReport);
+    verifyAccepted = verifyStage.result.status === 0 && Boolean(verifyReportPath);
+    if (verifyStage.result.status !== 0 && verifyReportPath) {
+      const acceptedVerify = acceptTraceHashOnlyRemoteVerificationMismatch({
+        verifyReportPath,
+        outDir,
+        repoRoot,
       });
+      if (acceptedVerify.accepted) {
+        verifyReportPath = acceptedVerify.verifyReportPath;
+        verifyAccepted = true;
+        stages.push({
+          stage: `${label}.post_write_verify.accepted_diff`,
+          status: "accepted",
+          report: repoRelative(acceptedVerify.acceptanceReportPath),
+          accepted_differences: acceptedVerify.evidence.length,
+        });
+      }
     }
+    if (verifyAccepted) break;
+    verifyRetryReason = postWriteVerifyRetryReason(verifyReportPath);
+    if (!verifyRetryReason || attempt >= maxVerifyAttempts) break;
+    const retryDelayMs = postWriteVerifyRetryDelayMs(attempt - 1);
+    stageReport.retry_reason = verifyRetryReason;
+    stageReport.retry_next_delay_ms = retryDelayMs;
+    sleepSync(retryDelayMs);
   }
   if (!verifyAccepted || !verifyReportPath) {
     blockers.push({
@@ -564,8 +650,10 @@ function executeHandoff({ handoffPlanPath, ledgerDir, outDir, logDir, label }) {
       message:
         "CLI post-write verification failed or did not emit the expected remote verification report.",
       handoff_plan: repoRelative(handoffPlanPath),
-      exit_code: verifyStage.result.status ?? 1,
+      exit_code: verifyExitCode,
       post_write_verify_report: repoRelative(verifyReportPath),
+      post_write_verify_attempts: verifyAttempts,
+      retry_reason: verifyRetryReason,
     });
     return { status: "failed", blockers, stages, handoffPlan };
   }
@@ -1838,5 +1926,6 @@ export const bafuProcessScopeE2eTestHooks = {
   canRunPostFinalizeIdentityRecovery,
   canRunPostFinalizeSemanticRecovery,
   loadVerifiedSupportIdentities,
+  postWriteVerifyRetryReason,
   supportIdentityKeysFromHandoffPlan,
 };
