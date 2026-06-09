@@ -107,6 +107,64 @@ function writeRequiredContext(runDir, schemaDir) {
   );
 }
 
+function bafuFamilyProcessPayload({ id, name, location, inputAmount }) {
+  return {
+    processDataSet: {
+      processInformation: {
+        dataSetInformation: {
+          "common:UUID": id,
+          name: {
+            baseName: { "@xml:lang": "en", "#text": name },
+            mixAndLocationTypes: { "@xml:lang": "en", "#text": location },
+          },
+        },
+        geography: {
+          locationOfOperationSupplyOrProduction: {
+            "@location": location,
+          },
+        },
+      },
+      exchanges: {
+        exchange: [
+          {
+            exchangeDirection: "Output",
+            referenceToFlowDataSet: {
+              "common:shortDescription": { "@xml:lang": "en", "#text": name },
+            },
+            meanAmount: "1.0",
+            resultingAmount: "1.0",
+            uncertaintyDistributionType: "undefined",
+            dataDerivationTypeStatus: "Unknown derivation",
+          },
+          {
+            exchangeDirection: "Input",
+            referenceToFlowDataSet: {
+              "common:shortDescription": {
+                "@xml:lang": "en",
+                "#text": `Natural gas supply {${location}}`,
+              },
+            },
+            meanAmount: String(inputAmount),
+            resultingAmount: String(inputAmount),
+            uncertaintyDistributionType: "undefined",
+            dataDerivationTypeStatus: "Unknown derivation",
+          },
+        ],
+      },
+      administrativeInformation: {
+        publicationAndOwnership: {
+          "common:dataSetVersion": "00.00.001",
+        },
+      },
+    },
+  };
+}
+
+function writeBafuFamilyBundleProcess(bundlesDir, payload) {
+  const id = payload.processDataSet.processInformation.dataSetInformation["common:UUID"];
+  writeJson(path.join(bundlesDir, id, "tidas", "processes", `${id}.json`), payload);
+}
+
 test("BAFU batch import runner publishes explicit commit stage contract", () => {
   const result = runFoundry(["dataset-bafu-batch-import-run", "--help"]);
   assert.equal(result.code, 0);
@@ -339,6 +397,250 @@ test("BAFU batch import runner can order selected scopes by estimated weight", (
       checkpoints.slice(-2).map((checkpoint) => checkpoint.process_id),
       [processIds[1], processIds[2]],
     );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("BAFU batch import runner emits BAFU family signatures and can order masters before variants", () => {
+  const root = path.join(fixtureRoot, "family-master-first");
+  fs.rmSync(root, { recursive: true, force: true });
+  const runDir = path.join(root, "run");
+  const schemaDir = path.join(root, "schemas");
+  const bundlesDir = path.join(root, "process-bundles");
+  const outDir = path.join(root, "batch");
+  fs.mkdirSync(bundlesDir, { recursive: true });
+  writeRequiredContext(runDir, schemaDir);
+  const ids = [
+    "11111111-2222-4333-8444-555555555581",
+    "11111111-2222-4333-8444-555555555582",
+    "11111111-2222-4333-8444-555555555583",
+    "11111111-2222-4333-8444-555555555584",
+  ];
+  writeBafuFamilyBundleProcess(
+    bundlesDir,
+    bafuFamilyProcessPayload({
+      id: ids[0],
+      name: "Natural gas, production CH, at long-distance pipeline {CH}",
+      location: "CH",
+      inputAmount: 5,
+    }),
+  );
+  writeBafuFamilyBundleProcess(
+    bundlesDir,
+    bafuFamilyProcessPayload({
+      id: ids[1],
+      name: "Natural gas, production DE, at long-distance pipeline {DE}",
+      location: "DE",
+      inputAmount: 5,
+    }),
+  );
+  writeBafuFamilyBundleProcess(
+    bundlesDir,
+    bafuFamilyProcessPayload({
+      id: ids[2],
+      name: "Heat production CH, at boiler {CH}",
+      location: "CH",
+      inputAmount: 2,
+    }),
+  );
+  writeBafuFamilyBundleProcess(
+    bundlesDir,
+    bafuFamilyProcessPayload({
+      id: ids[3],
+      name: "Heat production DE, at boiler {DE}",
+      location: "DE",
+      inputAmount: 3,
+    }),
+  );
+  const scopeFile = path.join(root, "ready-scopes.jsonl");
+  writeJsonLines(
+    scopeFile,
+    [ids[1], ids[0], ids[3], ids[2]].map((id) => ({
+      schema_version: 1,
+      process_id: id,
+      process_version: "00.00.001",
+      closure_status: "ready",
+    })),
+  );
+
+  try {
+    const result = runFoundry([
+      "dataset-bafu-batch-import-run",
+      "--scope-file",
+      rel(scopeFile),
+      "--process-bundles-dir",
+      rel(bundlesDir),
+      "--run-dir",
+      rel(runDir),
+      "--out-dir",
+      rel(outDir),
+      "--tidas-schema-dir",
+      rel(schemaDir),
+      "--preflight-only",
+      "--selection-order",
+      "family-master-first",
+    ]);
+
+    assert.equal(result.code, 0);
+    assert.equal(result.json.status, "preflight_completed");
+    assert.equal(result.json.selection.selection_order, "family-master-first");
+    assert.equal(result.json.counts.selected_same_amount_vector_scopes, 2);
+    assert.equal(result.json.counts.selected_same_skeleton_only_scopes, 2);
+    const plan = readJsonLines(path.join(repoRoot, result.json.files.preflight_plan));
+    assert.deepEqual(
+      plan.map((row) => row.process_id),
+      [ids[1], ids[3], ids[0], ids[2]],
+    );
+    assert.deepEqual(
+      plan.map((row) => row.bafu_family_optimization_role),
+      [
+        "same_amount_master",
+        "same_skeleton_master",
+        "same_amount_variant",
+        "same_skeleton_variant",
+      ],
+    );
+    const familyReport = readJson(path.join(repoRoot, result.json.files.bafu_family_signatures));
+    assert.equal(familyReport.counts.selected_scopes.same_amount_vector_scopes, 2);
+    assert.equal(familyReport.counts.selected_scopes.same_skeleton_scopes, 4);
+    assert.equal(familyReport.counts.selected_scopes.same_skeleton_only_scopes, 2);
+    assert.equal(familyReport.entries.length, 4);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("BAFU batch import runner can require leaf classification decisions before selection", () => {
+  const root = path.join(fixtureRoot, "leaf-classification-filter");
+  fs.rmSync(root, { recursive: true, force: true });
+  const runDir = path.join(root, "run");
+  const schemaDir = path.join(root, "schemas");
+  const bundlesDir = path.join(root, "process-bundles");
+  const outDir = path.join(root, "batch");
+  fs.mkdirSync(bundlesDir, { recursive: true });
+  writeRequiredContext(runDir, schemaDir);
+  const ids = [
+    "11111111-2222-4333-8444-555555555591",
+    "11111111-2222-4333-8444-555555555592",
+    "11111111-2222-4333-8444-555555555593",
+  ];
+  const flowIds = [
+    "22222222-3333-4444-8555-666666666691",
+    "22222222-3333-4444-8555-666666666692",
+    "22222222-3333-4444-8555-666666666693",
+  ];
+  for (const [index, id] of ids.entries()) {
+    writeBafuFamilyBundleProcess(
+      bundlesDir,
+      bafuFamilyProcessPayload({
+        id,
+        name: `Leaf filter sample ${index} {CH}`,
+        location: "CH",
+        inputAmount: index + 1,
+      }),
+    );
+  }
+  writeJsonLines(
+    path.join(runDir, "decisions-v4-leaf-category-map", "classification-decisions.jsonl"),
+    [
+      {
+        dataset_type: "process",
+        dataset_id: ids[0],
+        dataset_version: "00.00.001",
+        category_type: "process",
+        decision_status: "completed",
+        classification_decision_level: "leaf",
+        selected_code: "35101",
+      },
+      {
+        dataset_type: "flow",
+        dataset_id: flowIds[0],
+        dataset_version: "00.00.001",
+        category_type: "flow-product",
+        decision_status: "completed",
+        classification_decision_level: "leaf",
+        selected_code: "17100",
+      },
+      {
+        dataset_type: "process",
+        dataset_id: ids[1],
+        dataset_version: "00.00.001",
+        category_type: "process",
+        decision_status: "completed",
+        classification_decision_level: "broad_section",
+        selected_code: "D",
+      },
+      {
+        dataset_type: "flow",
+        dataset_id: flowIds[1],
+        dataset_version: "00.00.001",
+        category_type: "flow-product",
+        decision_status: "completed",
+        classification_decision_level: "leaf",
+        selected_code: "17100",
+      },
+      {
+        dataset_type: "process",
+        dataset_id: ids[2],
+        dataset_version: "00.00.001",
+        category_type: "process",
+        decision_status: "completed",
+        classification_decision_level: "leaf",
+        selected_code: "35101",
+      },
+    ],
+  );
+  const scopeFile = path.join(root, "ready-scopes.jsonl");
+  writeJsonLines(
+    scopeFile,
+    ids.map((id, index) => ({
+      schema_version: 1,
+      process_id: id,
+      process_version: "00.00.001",
+      closure_status: "ready",
+      dependency_ids: {
+        flows: [
+          {
+            id: flowIds[index],
+            version: "00.00.001",
+            flow_type: "Product flow",
+            reference_only: false,
+          },
+        ],
+      },
+    })),
+  );
+
+  try {
+    const result = runFoundry([
+      "dataset-bafu-batch-import-run",
+      "--scope-file",
+      rel(scopeFile),
+      "--process-bundles-dir",
+      rel(bundlesDir),
+      "--run-dir",
+      rel(runDir),
+      "--out-dir",
+      rel(outDir),
+      "--tidas-schema-dir",
+      rel(schemaDir),
+      "--preflight-only",
+      "--require-leaf-classification",
+    ]);
+
+    assert.equal(result.code, 0);
+    assert.equal(result.json.selection.require_leaf_classification, true);
+    assert.equal(result.json.counts.selected_scopes, 1);
+    assert.equal(result.json.counts.filtered_classification_not_leaf_scopes, 1);
+    assert.equal(result.json.counts.filtered_classification_missing_scopes, 1);
+    const plan = readJsonLines(path.join(repoRoot, result.json.files.preflight_plan));
+    assert.deepEqual(
+      plan.map((row) => row.process_id),
+      [ids[0]],
+    );
+    assert.equal(plan[0].classification_preflight_status, "leaf");
+    assert.equal(plan[0].classification_preflight_checked_decisions, 2);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
@@ -658,4 +960,75 @@ test("BAFU batch flow verification filter keeps only flows not in ok flow ledger
   assert.equal(plan.verifiedRows.length, 1);
   assert.equal(plan.pendingIdentities[0].id, pendingId);
   assert.equal(plan.verifiedIdentities[0].id, verifiedId);
+});
+
+test("BAFU batch import runner preserves blocked pre-finalize when authoring produces no evidence", () => {
+  const finalizeReport = {
+    status: "blocked",
+    blockers: [
+      {
+        code: "post_authoring_curation_gate_not_ready",
+        message: "Curation gate still has unresolved action items.",
+      },
+    ],
+  };
+
+  const blocker = bafuBatchImportRunTestHooks.preFinalizeRecoveryBlocker({
+    type: "flow",
+    finalizeReport,
+    recovery: {
+      status: "completed",
+      identityApplyReport: null,
+      patchCollectReport: null,
+      patchApplyReport: null,
+    },
+  });
+
+  assert.equal(blocker.code, "post_authoring_curation_gate_not_ready");
+
+  const retryBlocker = bafuBatchImportRunTestHooks.preFinalizeRecoveryBlocker({
+    type: "flow",
+    finalizeReport,
+    recovery: {
+      status: "completed",
+      identityApplyReport: null,
+      patchCollectReport: "tmp/authoring-patch-collect-report.json",
+      patchApplyReport: null,
+    },
+  });
+
+  assert.equal(retryBlocker, null);
+});
+
+test("BAFU batch import runner blocks unresolved identity reference rows", () => {
+  const root = path.join(fixtureRoot, "identity-unresolved-reference");
+  fs.rmSync(root, { recursive: true, force: true });
+  const unresolvedRows = path.join(root, "identity-unresolved-references.jsonl");
+  writeJsonLines(unresolvedRows, [
+    {
+      dataset_type: "flow",
+      dataset_id: "66666666-7777-4888-8999-000000000001",
+      version: "00.00.001",
+    },
+  ]);
+
+  try {
+    const blocker = bafuBatchImportRunTestHooks.identityUnresolvedReferenceBlocker({
+      type: "flow",
+      report: {
+        status: "completed",
+        counts: {
+          identity_unresolved_references: 1,
+        },
+        files: {
+          identity_unresolved_references: rel(unresolvedRows),
+        },
+      },
+    });
+
+    assert.equal(blocker.code, "flow_identity_unresolved_references");
+    assert.equal(blocker.unresolved_reference_rows, rel(unresolvedRows));
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });

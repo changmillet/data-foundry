@@ -353,6 +353,42 @@ test("BAFU curation gate blocks generated route placeholders and unsplit quantit
   assert.equal(codes.includes("semantic_name_quantitative_property_not_split"), true);
 });
 
+test("BAFU curation gate blocks source locator markers in structured name fields", () => {
+  const flowId = "bbbbbbbb-3434-4222-8333-444444444444";
+  const input = writeGateInputs(path.join(fixtureRoot, "flow-source-locator-name"), "flow", [
+    {
+      flowDataSet: {
+        flowInformation: {
+          dataSetInformation: {
+            "common:UUID": flowId,
+            name: {
+              baseName: ml("Aluminium profile, uncoated, SZFF 2014, recycling share 52%"),
+              treatmentStandardsRoutes: ml("at plant"),
+              mixAndLocationTypes: ml("recovered material, Switzerland"),
+            },
+            classificationInformation: classification(),
+          },
+          geography: {
+            locationOfSupply: "CH",
+          },
+        },
+        modellingAndValidation: {
+          LCIMethod: { typeOfDataSet: "Product flow" },
+        },
+        administrativeInformation: {
+          publicationAndOwnership: { "common:dataSetVersion": "00.00.001" },
+        },
+      },
+    },
+  ]);
+
+  const report = runGate(input);
+
+  assert.equal(report.status, "blocked_needs_foundry_ai_authoring");
+  const codes = actionCodesFor(report);
+  assert.equal(codes.includes("semantic_name_source_locator_in_name"), true);
+});
+
 test("BAFU flow curation gate uses process geography trace as locationOfSupply evidence", () => {
   const flowId = "bbbbbbbb-3333-4222-8333-444444444444";
   const input = writeGateInputs(path.join(fixtureRoot, "flow-process-geography"), "flow", [

@@ -347,6 +347,53 @@ export function namePlanQualityFindings(name) {
   const quantitative =
     textValue(name?.functionalUnitFlowProperties) || textValue(name?.flowProperties);
   const findings = [];
+  const sourceLocatorPatterns = [
+    {
+      kind: "latin-author-year",
+      regex: /\b[A-Z][A-Za-z]+(?:\s+et\s+al\.)?\s+(?:19|20)\d{2}\b/iu,
+    },
+    {
+      kind: "cjk-author-year",
+      regex: /[\p{Script=Han}·]{2,12}\s*(?:19|20)\d{2}/u,
+    },
+    {
+      kind: "numbered-table",
+      regex: /\b(?:Table|Tbl\.)\s*\d+[A-Za-z]?\b/iu,
+    },
+    {
+      kind: "numbered-table-cjk",
+      regex: /表\s*\d+/u,
+    },
+    {
+      kind: "numbered-figure",
+      regex: /\b(?:Figure|Fig\.)\s*\d+[A-Za-z]?\b/iu,
+    },
+    {
+      kind: "numbered-figure-cjk",
+      regex: /图\s*\d+/u,
+    },
+  ];
+  for (const field of [
+    ["baseName", baseName],
+    ["treatmentStandardsRoutes", treatment],
+    ["mixAndLocationTypes", mix],
+    ["functionalUnitFlowProperties", quantitative],
+  ]) {
+    const [fieldName, text] = field;
+    if (!text) continue;
+    const matches = sourceLocatorPatterns
+      .filter((pattern) => pattern.regex.test(text))
+      .map((pattern) => pattern.kind);
+    if (matches.length === 0) continue;
+    findings.push({
+      code: "semantic_name_source_locator_in_name",
+      field: fieldName,
+      path_field: fieldName,
+      text,
+      evidence_kind: "name_plan_source_locator_scan",
+      detected_segments: matches,
+    });
+  }
 
   const basePatterns = [
     {
@@ -441,9 +488,11 @@ export function collectNamePlanQualitySemanticActions(payload, datasetType) {
           ? "name.treatmentStandardsRoutes still contains the generated placeholder source-described route."
           : finding.code === "semantic_name_mix_location_too_bare"
             ? "name.mixAndLocationTypes contains only a bare location code; the name plan should include the availability/mix/location-type phrase and keep the code in the formal geography/location field."
-            : finding.code === "semantic_name_quantitative_property_not_split"
-              ? "name.baseName contains quantitative or allocation qualifiers that should be split into the formal name property field when source-backed."
-              : "name.baseName contains route, mix, availability, or location segments that should be split into the structured TIDAS name fields.",
+            : finding.code === "semantic_name_source_locator_in_name"
+              ? "name contains source citation or source-locator text that belongs in provenance, source references, or source-backed property evidence rather than the dataset name."
+              : finding.code === "semantic_name_quantitative_property_not_split"
+                ? "name.baseName contains quantitative or allocation qualifiers that should be split into the formal name property field when source-backed."
+                : "name.baseName contains route, mix, availability, or location segments that should be split into the structured TIDAS name fields.",
       evidence: {
         ...finding,
         current_name: {

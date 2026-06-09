@@ -587,6 +587,18 @@ test("BAFU leaf category-map projection writes task-bound decisions and candidat
       source_name: "Hydrogen, liquid",
       basis: "Broad chemical section selected from source name.",
     },
+    {
+      schema_version: 1,
+      dataset_type: "flow",
+      dataset_id: "flow-l",
+      dataset_version: "00.00.001",
+      category_type: "flow-product",
+      selected_code: "6",
+      decision_status: "completed",
+      classification_decision_level: "broad_section",
+      source_name: "Transport, liquefied natural gas AU, freight ship {OCE}",
+      basis: "Broad transport service section selected from source name.",
+    },
   ]);
   writeJsonLines(path.join(decisionsDir, "identity-decisions.jsonl"), [
     { schema_version: 1, source_dataset_id: "flow-a", decision: "reuse_existing_reference" },
@@ -729,6 +741,15 @@ test("BAFU leaf category-map projection writes task-bound decisions and candidat
           },
         },
       },
+      {
+        properties: {
+          "@level": { const: "4" },
+          "@classId": { const: "65212" },
+          "#text": {
+            const: "Coastal and transoceanic water transport services of freight by tankers",
+          },
+        },
+      },
     ],
   });
 
@@ -782,9 +803,9 @@ test("BAFU leaf category-map projection writes task-bound decisions and candidat
   assert.equal(report.status, "completed_with_manual_review");
   assert.equal(report.counts.projected_process_decisions, 1);
   assert.equal(report.counts.process_leaf_classification_candidates, 1);
-  assert.equal(report.counts.flow_product_classification_candidates, 9);
-  assert.equal(report.counts.flow_product_manual_review_rows, 10);
-  assert.equal(report.counts.projection_manual_review_rows, 12);
+  assert.equal(report.counts.flow_product_classification_candidates, 10);
+  assert.equal(report.counts.flow_product_manual_review_rows, 11);
+  assert.equal(report.counts.projection_manual_review_rows, 13);
   assert.equal(report.copied_decision_files.length, 2);
 
   const projected = readJsonLines(path.join(outDir, "classification-decisions.jsonl"));
@@ -837,7 +858,10 @@ test("BAFU leaf category-map projection writes task-bound decisions and candidat
   );
   assert.equal(flowCandidates[0].dataset_id, "flow-b");
   assert.equal(flowCandidates[0].decision_status, "candidate_requires_ai_or_human_review");
-  assert.equal(flowCandidates.length, 9);
+  assert.equal(flowCandidates.length, 10);
+  const lngCandidate = flowCandidates.find((row) => row.dataset_id === "flow-l");
+  assert.equal(lngCandidate.selected_code, "65212");
+  assert.equal(lngCandidate.evidence.repair_rule, "lng_tanker_transport_service_to_65212");
   const processCandidates = readJsonLines(
     path.join(outDir, "process-leaf-classification-candidates.jsonl"),
   );

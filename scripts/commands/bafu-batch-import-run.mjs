@@ -4,6 +4,14 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import {
+  bafuFamilyPlanFields,
+  bafuFamilySelectionRank,
+  bafuFamilySignatureForScope,
+  buildBafuFamilySignatureIndex,
+  compactBafuFamilySignature,
+  summarizeBafuFamilyScopes,
+} from "../lib/bafu-family-signatures.mjs";
 import { acceptTraceHashOnlyRemoteVerificationMismatch } from "../lib/remote-verification-accepted-diff.mjs";
 import { stageContract } from "../lib/stage-contract.mjs";
 
@@ -1001,6 +1009,42 @@ function statusIs(report, values) {
   return values.includes(String(report?.status || ""));
 }
 
+function authoringRecoveryProducedEvidence(recovery) {
+  return Boolean(
+    recovery?.identityApplyReport || recovery?.patchCollectReport || recovery?.patchApplyReport,
+  );
+}
+
+function preFinalizeRecoveryBlocker({ type, finalizeReport, recovery }) {
+  if (statusIs(finalizeReport, ["ready_for_remote_write"])) return null;
+  if (authoringRecoveryProducedEvidence(recovery)) return null;
+  return firstBlocker(
+    finalizeReport,
+    `${type}_pre_finalize_not_ready`,
+    `${type} pre-finalize status is ${finalizeReport?.status || "missing"} and no automatic authoring evidence was produced.`,
+  );
+}
+
+function identityUnresolvedReferenceBlocker({ type, report }) {
+  const unresolvedRowsFile = resolveRepoPath(
+    report?.files?.identity_unresolved_references || report?.files?.unresolved_reference_rows,
+  );
+  const unresolvedRows = readJsonLines(unresolvedRowsFile);
+  const unresolvedCount =
+    unresolvedRows.length ||
+    Number(
+      report?.counts?.identity_unresolved_references ??
+        report?.counts?.unresolved_reference_rows ??
+        0,
+    );
+  if (!unresolvedCount) return null;
+  return {
+    code: `${type}_identity_unresolved_references`,
+    message: `${type} identity decisions still leave ${unresolvedCount} unresolved reference row(s).`,
+    unresolved_reference_rows: repoRelative(unresolvedRowsFile),
+  };
+}
+
 function findOneFile(rootDir, pattern) {
   const resolved = resolveRepoPath(rootDir);
   if (!directoryExists(resolved)) return null;
@@ -1362,9 +1406,115 @@ function scopeEstimatedWeight(scope) {
   return null;
 }
 
+function asArray(value) {
+  if (value == null) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+function classificationDecisionKey({ datasetType, datasetId, datasetVersion, categoryType }) {
+  const type = asText(datasetType);
+  const id = asText(datasetId);
+  const version = asText(datasetVersion) || "00.00.001";
+  const category = asText(categoryType);
+  return type && id && category ? `${type}:${id}@${version}:${category}` : null;
+}
+
+function loadClassificationDecisionIndex(filePath) {
+  const byKey = new Map();
+  const rows = readJsonLines(filePath);
+  for (const row of rows) {
+    const key = classificationDecisionKey({
+      datasetType: row?.dataset_type,
+      datasetId: row?.dataset_id,
+      datasetVersion: row?.dataset_version,
+      categoryType: row?.category_type,
+    });
+    if (key) byKey.set(key, row);
+  }
+  return {
+    row_count: rows.length,
+    indexed_decisions: byKey.size,
+    byKey,
+  };
+}
+
+function isLeafClassificationDecision(row) {
+  return (
+    row &&
+    asText(row.decision_status || "completed") === "completed" &&
+    asText(row.classification_decision_level) === "leaf" &&
+    Boolean(asText(row.selected_code ?? row.code))
+  );
+}
+
+function scopeClassificationRequirements(scope) {
+  const processId = asText(scope?.process_id ?? scope?.id);
+  const processVersion = asText(scope?.process_version ?? scope?.version) || "00.00.001";
+  const requirements = [];
+  if (processId) {
+    requirements.push({
+      dataset_type: "process",
+      dataset_id: processId,
+      dataset_version: processVersion,
+      category_type: "process",
+    });
+  }
+  for (const flow of asArray(scope?.dependency_ids?.flows)) {
+    const flowType = asText(flow?.flow_type);
+    if (flowType && flowType !== "Product flow") continue;
+    const flowId = asText(flow?.id ?? flow?.dataset_id);
+    if (!flowId) continue;
+    requirements.push({
+      dataset_type: "flow",
+      dataset_id: flowId,
+      dataset_version: asText(flow?.version ?? flow?.dataset_version) || "00.00.001",
+      category_type: "flow-product",
+    });
+  }
+  return requirements;
+}
+
+function scopeClassificationPreflight(scope, classificationDecisionIndex) {
+  const requirements = scopeClassificationRequirements(scope);
+  const missing = [];
+  const notLeaf = [];
+  for (const requirement of requirements) {
+    const key = classificationDecisionKey({
+      datasetType: requirement.dataset_type,
+      datasetId: requirement.dataset_id,
+      datasetVersion: requirement.dataset_version,
+      categoryType: requirement.category_type,
+    });
+    const decision = key ? classificationDecisionIndex?.byKey?.get(key) : null;
+    if (!decision) {
+      missing.push(requirement);
+      continue;
+    }
+    if (!isLeafClassificationDecision(decision)) {
+      notLeaf.push({
+        ...requirement,
+        selected_code: asText(decision.selected_code ?? decision.code) || null,
+        classification_decision_level: asText(decision.classification_decision_level) || null,
+        decision_status: asText(decision.decision_status) || null,
+      });
+    }
+  }
+  const status = missing.length > 0 ? "missing" : notLeaf.length > 0 ? "not_leaf" : "leaf";
+  return {
+    status,
+    checked_decisions: requirements.length,
+    missing_decisions: missing.length,
+    not_leaf_decisions: notLeaf.length,
+    first_missing: missing[0] ?? null,
+    first_not_leaf: notLeaf[0] ?? null,
+  };
+}
+
 function selectionOrderOption(value) {
   const normalized = asText(value || "input");
   const aliases = {
+    family: "family-master-first",
+    "family-master": "family-master-first",
     weight: "estimated-weight-asc",
     "weight-asc": "estimated-weight-asc",
     "weight-desc": "estimated-weight-desc",
@@ -1372,15 +1522,40 @@ function selectionOrderOption(value) {
     estimated_weight_desc: "estimated-weight-desc",
   };
   const order = aliases[normalized] ?? normalized;
-  if (!["input", "estimated-weight-asc", "estimated-weight-desc"].includes(order)) {
+  if (
+    ![
+      "input",
+      "estimated-weight-asc",
+      "estimated-weight-desc",
+      "family-master-first",
+      "family-master-first-weight-asc",
+    ].includes(order)
+  ) {
     throw new Error(
-      `Unsupported --selection-order ${JSON.stringify(normalized)}. Use input, estimated-weight-asc, or estimated-weight-desc.`,
+      `Unsupported --selection-order ${JSON.stringify(normalized)}. Use input, estimated-weight-asc, estimated-weight-desc, family-master-first, or family-master-first-weight-asc.`,
     );
   }
   return order;
 }
 
 function compareSelectionRows(left, right, selectionOrder) {
+  if (selectionOrder.startsWith("family-master-first")) {
+    const leftRank = bafuFamilySelectionRank(left.familySignature);
+    const rightRank = bafuFamilySelectionRank(right.familySignature);
+    if (leftRank !== rightRank) return leftRank - rightRank;
+    const leftGroup = left.familySignature?.family_group_key ?? "";
+    const rightGroup = right.familySignature?.family_group_key ?? "";
+    if (leftGroup !== rightGroup) return leftGroup.localeCompare(rightGroup);
+    if (selectionOrder === "family-master-first-weight-asc") {
+      const leftUnknown = left.weight == null;
+      const rightUnknown = right.weight == null;
+      if (leftUnknown !== rightUnknown) return leftUnknown ? 1 : -1;
+      if (!leftUnknown && !rightUnknown && left.weight !== right.weight) {
+        return left.weight - right.weight;
+      }
+    }
+    return left.index - right.index;
+  }
   if (selectionOrder === "input") return left.index - right.index;
   const leftUnknown = left.weight == null;
   const rightUnknown = right.weight == null;
@@ -1402,6 +1577,9 @@ function selectScopesForRun({
   force,
   selectionOrder,
   limit,
+  familySignatureIndex,
+  classificationDecisionIndex,
+  requireLeafClassification,
 }) {
   const explicit = requestedProcessIds.size > 0;
   const stats = {
@@ -1409,6 +1587,8 @@ function selectScopesForRun({
     matched_scopes: 0,
     filtered_already_verified: 0,
     filtered_already_blocked: 0,
+    filtered_classification_missing: 0,
+    filtered_classification_not_leaf: 0,
     candidate_scopes_before_limit: 0,
     selected_scopes: 0,
   };
@@ -1426,7 +1606,25 @@ function selectScopesForRun({
       stats.filtered_already_blocked += 1;
       continue;
     }
-    candidates.push({ scope, index, weight: scopeEstimatedWeight(scope) });
+    const classificationPreflight = scopeClassificationPreflight(
+      scope,
+      classificationDecisionIndex,
+    );
+    if (requireLeafClassification && classificationPreflight.status !== "leaf") {
+      if (classificationPreflight.status === "missing") {
+        stats.filtered_classification_missing += 1;
+      } else {
+        stats.filtered_classification_not_leaf += 1;
+      }
+      continue;
+    }
+    candidates.push({
+      scope,
+      index,
+      weight: scopeEstimatedWeight(scope),
+      familySignature: bafuFamilySignatureForScope(familySignatureIndex, scope),
+      classificationPreflight,
+    });
   }
   candidates.sort((left, right) => compareSelectionRows(left, right, selectionOrder));
   stats.candidate_scopes_before_limit = candidates.length;
@@ -1438,9 +1636,20 @@ function selectScopesForRun({
   };
 }
 
-function preflightPlanRows({ scopes, verifiedScopes, blockedScopes }) {
+function preflightPlanRows({
+  scopes,
+  verifiedScopes,
+  blockedScopes,
+  familySignatureIndex,
+  classificationDecisionIndex,
+}) {
   return scopes.map((scope, index) => {
     const key = scopeKey(scope);
+    const familySignature = bafuFamilySignatureForScope(familySignatureIndex, scope);
+    const classificationPreflight = scopeClassificationPreflight(
+      scope,
+      classificationDecisionIndex,
+    );
     return {
       schema_version: 1,
       index,
@@ -1451,6 +1660,13 @@ function preflightPlanRows({ scopes, verifiedScopes, blockedScopes }) {
       already_verified: verifiedScopes.has(key),
       already_blocked: blockedScopes.has(key),
       closure_status: scope.closure_status ?? scope.status ?? null,
+      classification_preflight_status: classificationPreflight.status,
+      classification_preflight_checked_decisions: classificationPreflight.checked_decisions,
+      classification_preflight_missing_decisions: classificationPreflight.missing_decisions,
+      classification_preflight_not_leaf_decisions: classificationPreflight.not_leaf_decisions,
+      classification_preflight_first_missing: classificationPreflight.first_missing,
+      classification_preflight_first_not_leaf: classificationPreflight.first_not_leaf,
+      ...bafuFamilyPlanFields(familySignature),
     };
   });
 }
@@ -1709,6 +1925,17 @@ async function runIdentityAndPatch({
           `${type}_identity_apply_not_completed`,
           `${type} identity decisions did not apply cleanly.`,
         ),
+        report: identityApplyReport,
+      };
+    }
+    const unresolvedReferenceBlocker = identityUnresolvedReferenceBlocker({
+      type,
+      report: identityApply.json,
+    });
+    if (unresolvedReferenceBlocker) {
+      return {
+        status: "blocked",
+        blocker: unresolvedReferenceBlocker,
         report: identityApplyReport,
       };
     }
@@ -2123,6 +2350,7 @@ async function finalizeAndCommitDataset({
 
 async function runOneScope({
   scope,
+  familySignature,
   options,
   paths,
   schemas,
@@ -2142,6 +2370,7 @@ async function runOneScope({
     process_id: processId,
     process_version: processVersion,
     scope_lock: `process:${processId}:${processVersion}`,
+    ...bafuFamilyPlanFields(familySignature),
   };
   const rerunCommand = commandString([
     process.execPath,
@@ -2678,6 +2907,18 @@ async function runOneScope({
       ]);
       flowPatchCollectReport = flowAuthoring.patchCollectReport;
       flowPatchApplyReport = flowAuthoring.patchApplyReport;
+      const recoveryBlocker = preFinalizeRecoveryBlocker({
+        type: "flow",
+        finalizeReport: flowPre.json,
+        recovery: flowAuthoring,
+      });
+      if (recoveryBlocker) {
+        return block({
+          stage: "flow.finalize",
+          blocker: recoveryBlocker,
+          report: flowPreReportPath,
+        });
+      }
     }
     const flowCommit = await finalizeAndCommitDataset({
       type: "flow",
@@ -2819,6 +3060,18 @@ async function runOneScope({
     processIdentityReport = processAuthoring.identityApplyReport;
     processPatchCollectReport = processAuthoring.patchCollectReport;
     processPatchApplyReport = processAuthoring.patchApplyReport;
+    const recoveryBlocker = preFinalizeRecoveryBlocker({
+      type: "process",
+      finalizeReport: processPreReport,
+      recovery: processAuthoring,
+    });
+    if (recoveryBlocker) {
+      return block({
+        stage: "process.finalize",
+        blocker: recoveryBlocker,
+        report: processPreReportPath,
+      });
+    }
   }
 
   let processScopeReport = processPreReportPath;
@@ -2931,6 +3184,7 @@ async function runOneScope({
     status: "verified",
     process_id: processId,
     process_version: processVersion,
+    bafu_family_signature: compactBafuFamilySignature(familySignature, repoRelative),
     stages,
     files: {
       process_finalize_report: repoRelative(processScopeReport),
@@ -2951,6 +3205,8 @@ export function createBafuBatchImportRunCommands(deps) {
         usage: [
           "node scripts/foundry.mjs dataset-bafu-batch-import-run --scope-file <ready-scopes.jsonl> --process-bundles-dir <.../process-bundles> --run-dir <run-dir> --out-dir <run-dir>/batch-import --parallel 5 --commit",
           "node scripts/foundry.mjs dataset-bafu-batch-import-run --scope-file <ready-scopes.jsonl> --out-dir <existing-batch-dir> --pending-only --selection-order estimated-weight-asc --limit 20 --pause-file <pause.flag> --commit",
+          "node scripts/foundry.mjs dataset-bafu-batch-import-run --scope-file <ready-scopes.jsonl> --pending-only --selection-order family-master-first --preflight-only",
+          "node scripts/foundry.mjs dataset-bafu-batch-import-run --scope-file <ready-scopes.jsonl> --pending-only --require-leaf-classification --preflight-only",
           "node scripts/foundry.mjs dataset-bafu-batch-import-run --scope-file <ready-scopes.jsonl> --out-dir <existing-batch-dir> --pending-only --selection-order estimated-weight-asc --preflight-only",
           "node scripts/foundry.mjs dataset-bafu-batch-import-run --scope-file <ready-scopes.jsonl> --process-id <uuid> --commit",
         ],
@@ -2993,6 +3249,9 @@ export function createBafuBatchImportRunCommands(deps) {
     const pendingOnly = booleanOption(options.pendingOnly);
     const force = booleanOption(options.force);
     const selectionOrder = selectionOrderOption(options.selectionOrder || options.scopeOrder);
+    const requireLeafClassification = booleanOption(
+      options.requireLeafClassification || options.leafClassificationOnly,
+    );
     const pauseFile = asText(options.pauseFile) ? resolveRepoPath(options.pauseFile) : null;
     const stopAfterBlocked =
       options.stopAfterBlocked == null
@@ -3046,8 +3305,15 @@ export function createBafuBatchImportRunCommands(deps) {
           path.join(outDir, "import-ledger", "verified-support-identities.jsonl"),
       ),
       preflightPlan: path.join(outDir, "import-ledger", "preflight.plan.jsonl"),
+      bafuFamilySignatures: path.join(outDir, "import-ledger", "bafu-family-signatures.json"),
     };
     const allScopes = readJsonLines(scopeFile);
+    const defaultProcessesDir = path.join(path.dirname(processBundlesDir), "tidas", "processes");
+    const processFilesDir = resolveRepoPath(
+      options.bafuProcessesDir ||
+        options.processesDir ||
+        (directoryExists(defaultProcessesDir) ? defaultProcessesDir : null),
+    );
     const schemas = defaultSchemaFiles(options);
     const missingInputs = [
       paths.libraryClassificationDecisions,
@@ -3073,6 +3339,15 @@ export function createBafuBatchImportRunCommands(deps) {
       outDir,
       cacheFile: paths.supportIdentityCache,
     });
+    const familySignatureIndex = buildBafuFamilySignatureIndex({
+      scopes: allScopes,
+      processBundlesDir,
+      processesDir: directoryExists(processFilesDir) ? processFilesDir : null,
+      readJson,
+    });
+    const classificationDecisionIndex = loadClassificationDecisionIndex(
+      paths.libraryClassificationDecisions,
+    );
     const selection = selectScopesForRun({
       allScopes,
       requestedProcessIds,
@@ -3082,8 +3357,39 @@ export function createBafuBatchImportRunCommands(deps) {
       force,
       selectionOrder,
       limit,
+      familySignatureIndex,
+      classificationDecisionIndex,
+      requireLeafClassification,
     });
     const scopes = selection.scopes;
+    const selectedFamilySummary = summarizeBafuFamilyScopes(scopes, familySignatureIndex);
+    writeJson(paths.bafuFamilySignatures, {
+      schema_version: 1,
+      generated_at_utc: nowIso(),
+      status: "completed",
+      command: commandName,
+      scope_file: repoRelative(scopeFile),
+      process_bundles_dir: repoRelative(processBundlesDir),
+      processes_dir: repoRelative(processFilesDir),
+      policy: {
+        same_amount_vector:
+          "Master plus variant generation is allowed only as a BAFU-specific authoring shortcut; each scope still runs schema validation, QA gates, remote write, and readback verification.",
+        same_skeleton:
+          "Authoring, curation, and identity decisions may be reused as templates only with amount, location, and source-specific text parameterized per scope.",
+        standard: "Scopes without matching vectors or skeletons stay on the ordinary import path.",
+      },
+      counts: {
+        all_scopes: familySignatureIndex.summary,
+        selected_scopes: selectedFamilySummary,
+      },
+      entries: familySignatureIndex.entries.map((entry) =>
+        compactBafuFamilySignature(entry, repoRelative),
+      ),
+      missing: familySignatureIndex.missing,
+      files: {
+        report: repoRelative(paths.bafuFamilySignatures),
+      },
+    });
     const manifest = {
       schema_version: 1,
       generated_at_utc: nowIso(),
@@ -3102,10 +3408,18 @@ export function createBafuBatchImportRunCommands(deps) {
         selected_scopes: scopes.length,
         filtered_already_verified_scopes: selection.stats.filtered_already_verified,
         filtered_already_blocked_scopes: selection.stats.filtered_already_blocked,
+        filtered_classification_missing_scopes: selection.stats.filtered_classification_missing,
+        filtered_classification_not_leaf_scopes: selection.stats.filtered_classification_not_leaf,
         already_verified_scopes: verifiedScopes.size,
         already_verified_flows: verifiedFlows.size,
         already_blocked_scopes: blockedScopes.size,
         verified_support_identities: verifiedSupportIdentities.size,
+        library_classification_decisions: classificationDecisionIndex.row_count,
+        indexed_library_classification_decisions: classificationDecisionIndex.indexed_decisions,
+      },
+      bafu_family_signatures: {
+        all_scopes: familySignatureIndex.summary,
+        selected_scopes: selectedFamilySummary,
       },
       files: Object.fromEntries(
         Object.entries(paths)
@@ -3117,6 +3431,7 @@ export function createBafuBatchImportRunCommands(deps) {
         selection_order: selectionOrder,
         limit,
         requested_process_ids: [...requestedProcessIds],
+        require_leaf_classification: requireLeafClassification,
         pause_file: repoRelative(pauseFile),
         stop_after_blocked: stopAfterBlocked,
       },
@@ -3130,13 +3445,23 @@ export function createBafuBatchImportRunCommands(deps) {
         process_scope_atomic_commit: true,
         support_and_flows_commit_before_process_commit: true,
         retryable_remote_failures_are_separate_from_human_review: true,
+        bafu_family_reuse_is_dataset_specific: true,
+        bafu_family_variants_still_require_per_scope_schema_qa_remote_verify: true,
+        require_leaf_classification_filters_only_library_decision_readiness:
+          requireLeafClassification,
       },
     };
     writeJson(path.join(outDir, "import-ledger", "run-manifest.json"), manifest);
     if (preflightOnly) {
       writeJsonLines(
         paths.preflightPlan,
-        preflightPlanRows({ scopes, verifiedScopes, blockedScopes }),
+        preflightPlanRows({
+          scopes,
+          verifiedScopes,
+          blockedScopes,
+          familySignatureIndex,
+          classificationDecisionIndex,
+        }),
       );
       const report = {
         schema_version: 1,
@@ -3148,21 +3473,33 @@ export function createBafuBatchImportRunCommands(deps) {
         target_user_id: targetUserId || null,
         selection: manifest.selection,
         support_identity_cache: supportIdentityCache,
+        bafu_family_signatures: {
+          all_scopes: familySignatureIndex.summary,
+          selected_scopes: selectedFamilySummary,
+        },
         counts: {
           selected_scopes: scopes.length,
           processed_scopes: 0,
           pending_candidate_scopes: selection.stats.candidate_scopes_before_limit,
           filtered_already_verified_scopes: selection.stats.filtered_already_verified,
           filtered_already_blocked_scopes: selection.stats.filtered_already_blocked,
+          filtered_classification_missing_scopes: selection.stats.filtered_classification_missing,
+          filtered_classification_not_leaf_scopes: selection.stats.filtered_classification_not_leaf,
           already_verified_scopes: verifiedScopes.size,
           already_verified_flows: verifiedFlows.size,
           already_blocked_scopes: blockedScopes.size,
           verified_support_identities: verifiedSupportIdentities.size,
+          library_classification_decisions: classificationDecisionIndex.row_count,
+          indexed_library_classification_decisions: classificationDecisionIndex.indexed_decisions,
+          selected_same_amount_vector_scopes: selectedFamilySummary.same_amount_vector_scopes,
+          selected_same_skeleton_only_scopes: selectedFamilySummary.same_skeleton_only_scopes,
+          selected_standard_scopes: selectedFamilySummary.standard_scopes,
         },
         files: {
           report: repoRelative(path.join(outDir, "dataset-bafu-batch-import-run-report.json")),
           run_manifest: repoRelative(path.join(outDir, "import-ledger", "run-manifest.json")),
           preflight_plan: repoRelative(paths.preflightPlan),
+          bafu_family_signatures: repoRelative(paths.bafuFamilySignatures),
           support_identity_cache: repoRelative(paths.supportIdentityCache),
         },
       };
@@ -3192,9 +3529,11 @@ export function createBafuBatchImportRunCommands(deps) {
       while (nextIndex < scopes.length) {
         if (pauseRequested() || stopRequested()) break;
         const scope = scopes[nextIndex];
+        const familySignature = bafuFamilySignatureForScope(familySignatureIndex, scope);
         nextIndex += 1;
         const result = await runOneScope({
           scope,
+          familySignature,
           options: { ...options, targetUserId, stateCode },
           paths,
           schemas,
@@ -3203,7 +3542,11 @@ export function createBafuBatchImportRunCommands(deps) {
           blockedScopes,
           workerIndex,
         });
-        results.push({ process_id: scope.process_id || scope.id, status: result.status });
+        results.push({
+          process_id: scope.process_id || scope.id,
+          status: result.status,
+          ...bafuFamilyPlanFields(familySignature),
+        });
         if (
           stopAfterBlocked != null &&
           results.filter((row) => row.status === "blocked").length >= stopAfterBlocked
@@ -3227,8 +3570,14 @@ export function createBafuBatchImportRunCommands(deps) {
       target_user_id: targetUserId,
       selection: manifest.selection,
       support_identity_cache: supportIdentityCache,
+      bafu_family_signatures: {
+        all_scopes: familySignatureIndex.summary,
+        selected_scopes: selectedFamilySummary,
+      },
       counts: {
         selected_scopes: scopes.length,
+        filtered_classification_missing_scopes: selection.stats.filtered_classification_missing,
+        filtered_classification_not_leaf_scopes: selection.stats.filtered_classification_not_leaf,
         processed_scopes: results.length,
         paused_not_started: pausedNotStarted,
         stopped_after_blocked: stoppedAfterBlocked,
@@ -3244,6 +3593,11 @@ export function createBafuBatchImportRunCommands(deps) {
         resolved_human_review_rows: blockedScopeViews.resolved,
         retry_rows: readJsonLines(paths.failedRetry).length,
         verified_support_identities: verifiedSupportIdentities.size,
+        library_classification_decisions: classificationDecisionIndex.row_count,
+        indexed_library_classification_decisions: classificationDecisionIndex.indexed_decisions,
+        selected_same_amount_vector_scopes: selectedFamilySummary.same_amount_vector_scopes,
+        selected_same_skeleton_only_scopes: selectedFamilySummary.same_skeleton_only_scopes,
+        selected_standard_scopes: selectedFamilySummary.standard_scopes,
       },
       files: {
         report: repoRelative(path.join(outDir, "dataset-bafu-batch-import-run-report.json")),
@@ -3256,6 +3610,7 @@ export function createBafuBatchImportRunCommands(deps) {
         blocked_human_review_active: repoRelative(paths.blockedHumanReviewActive),
         blocked_human_review_resolved: repoRelative(paths.blockedHumanReviewResolved),
         failed_retry: repoRelative(paths.failedRetry),
+        bafu_family_signatures: repoRelative(paths.bafuFamilySignatures),
         support_identity_cache: repoRelative(paths.supportIdentityCache),
       },
       results,
@@ -3277,5 +3632,7 @@ export function createBafuBatchImportRunCommands(deps) {
 
 export const bafuBatchImportRunTestHooks = {
   flowRowsPendingVerification,
+  identityUnresolvedReferenceBlocker,
   postWriteVerifyRetryReason,
+  preFinalizeRecoveryBlocker,
 };

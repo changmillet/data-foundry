@@ -91,10 +91,35 @@ function splitBafuWasteDisposalName(baseName) {
   };
 }
 
-function stripTrailingLocationTokenText(value) {
+function normalizeLocationTokenCode(value) {
   return String(value ?? "")
-    .replace(/\s*\{[A-Z0-9][A-Z0-9+&-]{1,30}\}\s*$/u, "")
-    .trim();
+    .trim()
+    .toUpperCase();
+}
+
+function trailingLocationToken(value) {
+  const text = String(value ?? "").trim();
+  const match =
+    /\s*\{(?<code>[A-Z0-9][A-Z0-9+&-]{1,30})\}\s*(?:[A-Z]\s*)?(?:-\s*(?<suffix>[A-Z0-9][A-Z0-9+&-]{1,30}))?\s*$/u.exec(
+      text,
+    );
+  if (!match?.groups?.code) return null;
+  const code = normalizeLocationTokenCode(match.groups.code);
+  const suffix = normalizeLocationTokenCode(match.groups.suffix);
+  if (suffix && suffix !== code) return null;
+  return {
+    code,
+    cleaned: text.slice(0, match.index).trim(),
+  };
+}
+
+function stripTrailingLocationTokenText(value, expectedLocationCode = null) {
+  const text = String(value ?? "").trim();
+  const token = trailingLocationToken(text);
+  if (!token) return text;
+  const expected = normalizeLocationTokenCode(expectedLocationCode);
+  if (expected && token.code !== expected) return text;
+  return token.cleaned;
 }
 
 function stripGeneratedPrefixText(value) {
@@ -111,19 +136,68 @@ function cleanNamePlanPart(value) {
     .trim();
 }
 
-function splitBafuNamePlan(baseName) {
+function sourceLocatorMarkerInText(value) {
+  const text = String(value ?? "");
+  return [
+    /\b[A-Z][A-Za-z]+(?:\s+et\s+al\.)?\s+(?:19|20)\d{2}\b/iu,
+    /[\p{Script=Han}·]{2,12}\s*(?:19|20)\d{2}/u,
+    /\b(?:Table|Tbl\.)\s*\d+[A-Za-z]?\b/iu,
+    /表\s*\d+/u,
+    /\b(?:Figure|Fig\.)\s*\d+[A-Za-z]?\b/iu,
+    /图\s*\d+/u,
+  ].some((regex) => regex.test(text));
+}
+
+function recyclingShareDescriptor(value) {
+  const text = String(value ?? "");
+  const percentMatch =
+    /\brecycling\s+share\s+(?:(?:19|20)\d{2}\s*)?\(?\s*(?<percent>\d+(?:\.\d+)?)\s*%\s*(?:Rec\.)?\s*\)?/iu.exec(
+      text,
+    );
+  if (percentMatch?.groups?.percent) {
+    return `recycling share ${percentMatch.groups.percent}%`;
+  }
+  return null;
+}
+
+function splitBafuNamePlan(baseName, expectedLocationCode = null) {
   const wasteSplit = splitBafuWasteDisposalName(baseName);
   if (wasteSplit) return wasteSplit;
 
   const text = stripGeneratedPrefixText(
-    stripTrailingLocationTokenText(textFromMultilang(baseName).trim()),
+    stripTrailingLocationTokenText(textFromMultilang(baseName).trim(), expectedLocationCode),
   );
+  const sourceLocatorRecyclingMatch =
+    /^(?<core>aluminium\s+profile|steel\s+sheet),\s*(?<treatment>uncoated),\s*(?:(?<source>[A-Z][A-Za-z]+(?:\s+et\s+al\.)?\s+(?:19|20)\d{2})\s*,\s*)?(?<property>recycling\s+share\s+.+?)(?:,\s*(?<mix>at\s+plant))?$/iu.exec(
+      text,
+    );
+  if (
+    sourceLocatorRecyclingMatch?.groups?.core &&
+    sourceLocatorRecyclingMatch?.groups?.treatment &&
+    sourceLocatorRecyclingMatch?.groups?.property
+  ) {
+    return {
+      source: text,
+      base_name: cleanNamePlanPart(sourceLocatorRecyclingMatch.groups.core),
+      treatment: cleanNamePlanPart(sourceLocatorRecyclingMatch.groups.treatment),
+      flow_property:
+        recyclingShareDescriptor(sourceLocatorRecyclingMatch.groups.property) ??
+        cleanNamePlanPart(sourceLocatorRecyclingMatch.groups.property),
+      mix_location: sourceLocatorRecyclingMatch.groups.mix
+        ? cleanNamePlanPart(sourceLocatorRecyclingMatch.groups.mix)
+        : "production mix",
+      clean_existing_treatment: true,
+    };
+  }
   const leadingGeneratedHeatMatch = /^xx\s+(?<core>heat,\s*.+?),\s*(?<route>at\s+.+)$/iu.exec(text);
   if (leadingGeneratedHeatMatch?.groups?.core && leadingGeneratedHeatMatch?.groups?.route) {
     return {
       source: text,
       base_name: leadingGeneratedHeatMatch.groups.core.trim(),
-      treatment: stripTrailingLocationTokenText(leadingGeneratedHeatMatch.groups.route),
+      treatment: stripTrailingLocationTokenText(
+        leadingGeneratedHeatMatch.groups.route,
+        expectedLocationCode,
+      ),
     };
   }
   const naturalGasBurnedMatch = /^(?<core>natural\s+gas),\s*(?<route>burned\s+in\s+.+)$/iu.exec(
@@ -133,7 +207,10 @@ function splitBafuNamePlan(baseName) {
     return {
       source: text,
       base_name: naturalGasBurnedMatch.groups.core.trim(),
-      treatment: stripTrailingLocationTokenText(naturalGasBurnedMatch.groups.route),
+      treatment: stripTrailingLocationTokenText(
+        naturalGasBurnedMatch.groups.route,
+        expectedLocationCode,
+      ),
     };
   }
   const heatAtCombustionUnitMatch =
@@ -142,7 +219,24 @@ function splitBafuNamePlan(baseName) {
     return {
       source: text,
       base_name: heatAtCombustionUnitMatch.groups.core.trim(),
-      treatment: stripTrailingLocationTokenText(heatAtCombustionUnitMatch.groups.route),
+      treatment: stripTrailingLocationTokenText(
+        heatAtCombustionUnitMatch.groups.route,
+        expectedLocationCode,
+      ),
+    };
+  }
+  const energyAtPlantMatch =
+    /^(?<core>(?:heat|electricity),\s*[^,]+),\s*(?<route>at\s+(?:CHP\s+)?(?:power|heat)\s+plant)$/iu.exec(
+      text,
+    );
+  if (energyAtPlantMatch?.groups?.core && energyAtPlantMatch?.groups?.route) {
+    return {
+      source: text,
+      base_name: energyAtPlantMatch.groups.core.trim(),
+      treatment: stripTrailingLocationTokenText(
+        energyAtPlantMatch.groups.route,
+        expectedLocationCode,
+      ),
     };
   }
   const fuelBurnedMatch = /^(?<core>.+?),\s*(?<route>burned\s+in\s+.+)$/iu.exec(text);
@@ -150,14 +244,17 @@ function splitBafuNamePlan(baseName) {
     return {
       source: text,
       base_name: fuelBurnedMatch.groups.core.trim(),
-      treatment: stripTrailingLocationTokenText(fuelBurnedMatch.groups.route),
+      treatment: stripTrailingLocationTokenText(fuelBurnedMatch.groups.route, expectedLocationCode),
     };
   }
   const pipeSeparatedNameMatch = /^(?<core>.+?)\s+\|\s+(?<route>.+)$/u.exec(text);
   if (pipeSeparatedNameMatch?.groups?.core && pipeSeparatedNameMatch?.groups?.route) {
     return {
       source: text,
-      base_name: stripTrailingLocationTokenText(pipeSeparatedNameMatch.groups.core.trim()),
+      base_name: stripTrailingLocationTokenText(
+        pipeSeparatedNameMatch.groups.core.trim(),
+        expectedLocationCode,
+      ),
       treatment: pipeSeparatedNameMatch.groups.route.trim().replace(/\s+\|\s+/gu, ", "),
     };
   }
@@ -1246,15 +1343,15 @@ function identityDecisionRow(actionItem, task) {
   };
 }
 
-function removeTrailingLocationToken(value) {
+function removeTrailingLocationToken(value, expectedLocationCode = null) {
   const text = textFromMultilang(value).trim();
-  const cleaned = text.replace(/\s*\{[A-Z]{2,3}\}\s*$/u, "").trim();
+  const cleaned = stripTrailingLocationTokenText(text, expectedLocationCode);
   return cleaned && cleaned !== text ? englishText(cleaned) : null;
 }
 
-function cleanProcessFunctionalUnitText(value) {
+function cleanProcessFunctionalUnitText(value, expectedLocationCode = null) {
   const text = textFromMultilang(value).trim();
-  const cleaned = stripTrailingLocationTokenText(text)
+  const cleaned = stripTrailingLocationTokenText(text, expectedLocationCode)
     .replace(/(^|\s)xx\s+/iu, "$1")
     .replace(/\s+/gu, " ")
     .trim();
@@ -1393,8 +1490,9 @@ function inferMixLocationPhrase({ isProcess, name, locationCode }) {
 }
 
 function inferBareProductNamePlan({ name, packagePayload }) {
+  const locationCode = datasetLocationCode({ isProcess: false, packagePayload });
   const source = stripGeneratedPrefixText(
-    stripTrailingLocationTokenText(textFromMultilang(name?.baseName).trim()),
+    stripTrailingLocationTokenText(textFromMultilang(name?.baseName).trim(), locationCode),
   );
   if (!source || /,/u.test(source)) return null;
   const flow =
@@ -1407,7 +1505,6 @@ function inferBareProductNamePlan({ name, packagePayload }) {
   const treatment = /\b(?:consumption|consumer|market|supply|imports?|grid)\b/u.test(normalized)
     ? "supply"
     : "production";
-  const locationCode = datasetLocationCode({ isProcess: false, packagePayload });
   const locationLabel = locationCode ? locationNameLabel(locationCode) : null;
   const mixKind = treatment === "supply" ? "supply mix" : "production mix";
   return {
@@ -1419,8 +1516,9 @@ function inferBareProductNamePlan({ name, packagePayload }) {
 }
 
 function inferBareProcessNamePlan({ name, packagePayload }) {
+  const locationCode = datasetLocationCode({ isProcess: true, packagePayload });
   const source = stripGeneratedPrefixText(
-    stripTrailingLocationTokenText(textFromMultilang(name?.baseName).trim()),
+    stripTrailingLocationTokenText(textFromMultilang(name?.baseName).trim(), locationCode),
   );
   if (!source || /,/u.test(source)) return null;
   const process =
@@ -1469,7 +1567,6 @@ function inferBareProcessNamePlan({ name, packagePayload }) {
     mixKind = "treatment process";
   }
 
-  const locationCode = datasetLocationCode({ isProcess: true, packagePayload });
   const locationLabel = locationCode ? locationNameLabel(locationCode) : null;
   return {
     source,
@@ -1488,7 +1585,17 @@ function mergeExistingTreatmentRoute(nameSplit, name) {
     const parts = [...existing.split(","), ...currentTreatment.split(",")]
       .map((part) => part.trim())
       .filter(Boolean)
-      .filter((part) => !["disposal route", "market"].includes(normalizeIdentityText(part)));
+      .filter((part) => {
+        const normalized = normalizeIdentityText(part);
+        return (
+          !["disposal route", "market"].includes(normalized) &&
+          !sourceLocatorMarkerInText(part) &&
+          !/\brecycling\s+share\b/iu.test(part) &&
+          !/^(?:at|to)\s+(?:plant|user|grid|market|consumer|sawmill|warehouse|regional storage)$/iu.test(
+            part,
+          )
+        );
+      });
     const uniqueParts = [];
     const seen = new Set();
     for (const part of parts) {
@@ -1533,7 +1640,31 @@ function completeNameSplitMixLocationPhrase(mixLocation, locationCode) {
   if (/^(?:market|production|supply)\s+mix$/iu.test(phrase) && locationCode) {
     return `${phrase}, ${locationNameLabel(locationCode)}`;
   }
+  if (
+    /^at\s+(?:plant|user|grid|consumer|market|sawmill|warehouse|regional storage)$/iu.test(
+      phrase,
+    ) &&
+    locationCode
+  ) {
+    return `${phrase}, ${locationNameLabel(locationCode)}`;
+  }
   return phrase;
+}
+
+function splitBafuNamePlanFromNameParts(name, expectedLocationCode = null) {
+  const baseName = textFromMultilang(name?.baseName).trim();
+  const treatment = textFromMultilang(name?.treatmentStandardsRoutes).trim();
+  if (!baseName || !treatment || normalizeIdentityText(treatment) === "source described route") {
+    return null;
+  }
+  if (
+    !sourceLocatorMarkerInText(baseName) &&
+    !sourceLocatorMarkerInText(treatment) &&
+    !/\brecycling\s+share\b/iu.test(treatment)
+  ) {
+    return null;
+  }
+  return splitBafuNamePlan(`${baseName}, ${treatment}`, expectedLocationCode);
 }
 
 function buildNamePatchOperations(task) {
@@ -1569,8 +1700,10 @@ function buildNamePatchOperations(task) {
       ["semantic_geography_token_in_name", "semantic_name_placeholder_token"].includes(code)
     );
   });
+  const locationCode = datasetLocationCode({ isProcess, packagePayload });
   const nameSplit = mergeExistingTreatmentRoute(
-    splitBafuNamePlan(name.baseName) ??
+    splitBafuNamePlanFromNameParts(name, locationCode) ??
+      splitBafuNamePlan(name.baseName, locationCode) ??
       (isProcess
         ? inferBareProcessNamePlan({ name, packagePayload })
         : inferBareProductNamePlan({ name, packagePayload })),
@@ -1578,13 +1711,14 @@ function buildNamePatchOperations(task) {
   );
   const nameSplitMixLocation = completeNameSplitMixLocationPhrase(
     nameSplit?.mix_location,
-    datasetLocationCode({ isProcess, packagePayload }),
+    locationCode,
   );
   const nameSplitActionItems = actionItems.filter((item) =>
     [
       "semantic_name_base_contains_unsplit_segments",
       "semantic_name_treatment_placeholder",
       "semantic_name_quantitative_property_not_split",
+      "semantic_name_source_locator_in_name",
     ].includes(actionCode(item)),
   );
   const mixLocationActionItems = actionItems.filter(
@@ -1604,8 +1738,8 @@ function buildNamePatchOperations(task) {
       if (emittedFunctionalUnitClean) continue;
       emittedFunctionalUnitClean = true;
       const value =
-        cleanProcessFunctionalUnitText(functionalUnit) ??
-        removeTrailingLocationToken(functionalUnit);
+        cleanProcessFunctionalUnitText(functionalUnit, locationCode) ??
+        removeTrailingLocationToken(functionalUnit, locationCode);
       if (!value) {
         operations.push({
           blocker: {
@@ -1613,7 +1747,7 @@ function buildNamePatchOperations(task) {
             dataset_id: task.entity.entity_id,
             action_item: closureFor(item),
             message:
-              "BAFU auto patch only removes generated placeholder tokens and trailing formal location tokens such as '{CH}' from process functionalUnitOrOther.",
+              "BAFU auto patch only removes generated placeholder tokens and trailing formal location suffixes when they match the dataset geography field.",
           },
         });
         continue;
@@ -1643,7 +1777,8 @@ function buildNamePatchOperations(task) {
     if (
       code === "semantic_name_base_contains_unsplit_segments" ||
       code === "semantic_name_treatment_placeholder" ||
-      code === "semantic_name_quantitative_property_not_split"
+      code === "semantic_name_quantitative_property_not_split" ||
+      code === "semantic_name_source_locator_in_name"
     ) {
       if (emittedNameSplit) continue;
       emittedNameSplit = true;
@@ -1714,6 +1849,27 @@ function buildNamePatchOperations(task) {
             "Moved the source mix/location phrase from baseName into mixAndLocationTypes.",
           ),
           closes_action_items: mixCloses,
+        });
+      }
+      if (!isProcess && nameSplit.flow_property) {
+        const flowPropertyExists = Boolean(
+          textFromMultilang(name?.functionalUnitFlowProperties).trim(),
+        );
+        operations.push({
+          op: flowPropertyExists ? "replace" : "add",
+          path: `${namePathPrefix}/functionalUnitFlowProperties`,
+          value: englishText(nameSplit.flow_property),
+          basis:
+            "The source name embeds a quantitative flow-property qualifier; TIDAS name-plan stores it in functionalUnitFlowProperties rather than baseName or treatmentStandardsRoutes.",
+          evidence: evidenceObject("name_plan_flow_property", task, item, {
+            source_name: nameSplit.source,
+            extracted_flow_property: nameSplit.flow_property,
+          }),
+          resolution: resolution(
+            "source_language_normalization",
+            "Moved the source-backed quantitative qualifier from the dataset name into functionalUnitFlowProperties.",
+          ),
+          closes_action_items: closes,
         });
       }
     }

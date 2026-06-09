@@ -645,7 +645,10 @@ function flowProductLeafRepairRule(row) {
         "BAFU flow-product leaf repair: source name denotes transoceanic freight ship transport service.",
     };
   }
-  if (startsWith(/^transport\s+lng\s+freight\s+ship\b/u)) {
+  if (
+    startsWith(/^transport\s+lng\s+freight\s+ship\b/u) ||
+    (startsWith(/^transport\s+liquefied\s+natural\s+gas\b/u) && contains(/\bfreight\s+ship\b/u))
+  ) {
     return {
       code: "65212",
       rule: "lng_tanker_transport_service_to_65212",
