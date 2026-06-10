@@ -755,6 +755,7 @@ export const commandMetadata = {
       "process-bundles directory",
       "BAFU run directory with context and library decisions",
       "target user id",
+      "optional prior batch/import-ledger directories for pending-only carry-forward",
     ],
     outputs: [
       "dataset-bafu-batch-import-run-report.json",
@@ -776,7 +777,35 @@ export const commandMetadata = {
       ),
       nodeTest(
         "test/commands/bafu-batch-import-run.test.mjs",
+        "BAFU batch import runner carries forward prior ledgers into fresh batch selection",
+      ),
+      nodeTest(
+        "test/commands/bafu-batch-import-run.test.mjs",
         "BAFU batch import runner writes read-only preflight plan and primes support identity cache",
+      ),
+    ],
+  }),
+  "dataset-bafu-universe-coverage-report": metadata({
+    category: "workflow-internal",
+    ownerModule: "scripts/commands/bafu-batch-import-run.mjs",
+    ownerExport: "createBafuBatchImportRunCommands().runDatasetBafuUniverseCoverageReport",
+    inputs: [
+      "BAFU input directory",
+      "process-bundles/index.json",
+      "ready-scopes.jsonl files",
+      "explicit prior batch/import-ledger directories",
+    ],
+    outputs: [
+      "bafu-universe-coverage-report.json",
+      "bafu-process-universe.coverage.jsonl",
+      "bafu-process-coverage-gaps.jsonl",
+      "bafu-flow-reference-coverage.jsonl",
+      "bafu-flow-reference-coverage-gaps.jsonl",
+    ],
+    keyTests: [
+      nodeTest(
+        "test/commands/bafu-batch-import-run.test.mjs",
+        "BAFU universe coverage report compares full process universe with ready scopes and ledgers",
       ),
     ],
   }),

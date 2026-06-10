@@ -52,6 +52,7 @@ const {
   readSourceReferenceRewriteContext,
   sourceReferenceRewriteProofKeys,
   readUnresolvedExchangeExternalizationContext,
+  referenceKey,
   remoteVerifyBlockerKeys,
   repoRelativePath,
   resolveRepoPath,
@@ -60,6 +61,61 @@ const {
   writeJson,
   writeText,
 } = mutationManifestWorkflow;
+
+function optionList(value) {
+  return ensureArray(value).flatMap((entry) =>
+    String(entry ?? "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean),
+  );
+}
+
+function readJsonLinesIfExists(filePath) {
+  if (!filePath || !fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) return [];
+  return fs
+    .readFileSync(filePath, "utf8")
+    .trim()
+    .split(/\r?\n/u)
+    .filter(Boolean)
+    .map((line) => JSON.parse(line));
+}
+
+function verifiedReferenceLedgerProof(repoRoot, options) {
+  const ledgerFiles = optionList(
+    options.verifiedReferenceLedger ??
+      options.verifiedReferenceLedgers ??
+      options.verifiedReferenceLedgerFile ??
+      options.verifiedReferenceLedgerFiles ??
+      options.verifiedFlowLedger ??
+      options.verifiedFlowLedgers,
+  )
+    .map((filePath) => resolveRepoPath(repoRoot, filePath))
+    .filter((filePath) => filePath && fs.existsSync(filePath) && fs.statSync(filePath).isFile());
+  const keys = new Set();
+  let rows = 0;
+  for (const filePath of ledgerFiles) {
+    for (const row of readJsonLinesIfExists(filePath)) {
+      rows += 1;
+      const datasetType = asText(
+        row.row_dataset_type ?? row.dataset_type ?? row.type ?? row.scope_dataset_type,
+      );
+      const table = asText(row.table) || datasetTypePlural[datasetType];
+      const id = asText(row.dataset_id ?? row.id ?? row.flow_id ?? row.process_id);
+      const version =
+        asText(row.version ?? row.dataset_version ?? row.flow_version ?? row.process_version) ||
+        "00.00.001";
+      if (!table || !id) continue;
+      keys.add(referenceKey({ table, id, version }));
+    }
+  }
+  return {
+    files: ledgerFiles.map((filePath) => repoRelativePath(repoRoot, filePath)),
+    rows,
+    proven_keys: keys.size,
+    keys,
+  };
+}
 
 export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
   const datasetType = datasetTypeFromOptions(options);
@@ -232,6 +288,7 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
     referenceRows,
     datasetType,
   });
+  const verifiedReferenceProof = verifiedReferenceLedgerProof(repoRoot, options);
   const plannedRootKeys = plannedRootReferenceKeys(rows, datasetType);
   const plannedRootIds = plannedRootReferenceIds(rows, datasetType);
   const remoteVerifyBlockers = remoteVerifyBlockerKeys(remoteVerifyArtifact?.value, {
@@ -296,6 +353,7 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
       provenReferenceKeys: new Set([
         ...identityReferenceRewriteProofKeys(identityReferenceRewriteContext),
         ...sourceReferenceRewriteProofKeys(sourceReferenceRewriteContext),
+        ...verifiedReferenceProof.keys,
       ]),
       unresolvedReferenceKeys: identityDecisionUnresolvedReferenceKeys(
         identityDecisionApplyContext,
@@ -519,6 +577,9 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
         identityReferenceRewriteContext.sourceRows.length > 0
           ? repoRelativePath(repoRoot, identityReferenceRewriteContext.sourceFile)
           : null,
+      verified_reference_ledger_files: verifiedReferenceProof.files,
+      verified_reference_ledger_rows: verifiedReferenceProof.rows,
+      verified_reference_ledger_proven_keys: verifiedReferenceProof.proven_keys,
       full_context_ai_completion_required: Boolean(fullContextRequirement),
       full_context_ai_completion_proof: fullContextRequirement?.proof ?? null,
       scope_blockers: evidenceScopeBlockers,
@@ -549,6 +610,8 @@ export function runDatasetMutationManifest({ repoRoot, options = {} } = {}) {
       source_exchange_completeness_entries: sourceExchangeCompletenessItems.length,
       source_reference_rewrites: sourceReferenceRewriteContext.scopedRows.length,
       identity_reference_rewrites: identityReferenceRewriteContext.scopedRows.length,
+      verified_reference_ledger_rows: verifiedReferenceProof.rows,
+      verified_reference_ledger_proven_keys: verifiedReferenceProof.proven_keys,
       identity_reference_reuse_rows: referenceItems.filter(
         (item) => item.identity_reference_rewrite_count > 0,
       ).length,

@@ -123,6 +123,8 @@ async function runFoundryCliMain({ argv, commandDeps, decisionDeps, runtime }) {
       bafuProcessScopeE2eCommands.runDatasetBafuProcessScopeE2e(options),
     "dataset-bafu-batch-import-run": (options) =>
       bafuBatchImportRunCommands.runDatasetBafuBatchImportRun(options),
+    "dataset-bafu-universe-coverage-report": (options) =>
+      bafuBatchImportRunCommands.runDatasetBafuUniverseCoverageReport(options),
     "dataset-identity-reference-rewrites-apply": (options) =>
       identityReferenceRewriteCommands.runDatasetIdentityReferenceRewritesApply(options),
     "dataset-identity-decisions-apply": (options) =>

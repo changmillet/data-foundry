@@ -28,8 +28,8 @@ import { deterministicRowsFileTransformEntries } from "./workflow-row-transform-
 import {
   classificationEntriesForPayload,
   flowTypeForPayload,
-  jsonPointerToken,
   flowUsesElementaryClassification,
+  jsonPointerToken,
   nameTextForPayload,
 } from "./workflow-semantic-actions.mjs";
 
@@ -973,10 +973,7 @@ function payloadTextLeaves(value, pathSegments = [], leaves = []) {
   if (isFoundryTracePathSegments(pathSegments)) return leaves;
   if (typeof value === "string") {
     leaves.push({
-      path:
-        pathSegments.length > 0
-          ? `/${pathSegments.map(jsonPointerToken).join("/")}`
-          : "/",
+      path: pathSegments.length > 0 ? `/${pathSegments.map(jsonPointerToken).join("/")}` : "/",
       path_segments: pathSegments,
       text: value,
     });
@@ -1005,8 +1002,7 @@ function pathScopeMatches(pathSegments, pathScope = {}) {
   const contains = ensureArray(pathScope.contains).map(String);
   const excludeContains = ensureArray(pathScope.exclude_contains).map(String);
   const hasSegment = (segment) =>
-    raw.includes(segment) ||
-    normalized.includes(segment.replace(/^common:/u, ""));
+    raw.includes(segment) || normalized.includes(segment.replace(/^common:/u, ""));
   if (contains.some((segment) => !hasSegment(segment))) return false;
   if (excludeContains.some((segment) => hasSegment(segment))) return false;
   return true;
@@ -1026,11 +1022,7 @@ function policyLexiconEntries(policy, rule) {
   return ensureArray(policy?.lexicons?.[lexiconName]);
 }
 
-export function prewriteContentQualityBlockers({
-  repoRoot,
-  payload,
-  datasetType,
-}) {
+export function prewriteContentQualityBlockers({ repoRoot, payload, datasetType }) {
   if (!["flow", "process", "lifecyclemodel"].includes(datasetType)) return [];
   const policy = readPrewriteContentPolicy(repoRoot);
   if (!policy) return [];

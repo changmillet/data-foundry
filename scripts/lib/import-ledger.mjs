@@ -626,7 +626,7 @@ export function createImportLedgerUtils({
     const blockedRows = [...blockedScopeRows, ...blockedDependencyRows];
     const retryRows = fs
       .readdirSync(ledgerDir)
-      .filter((name) => /^retry\..*\.jsonl$/u.test(name))
+      .filter((name) => /^(?:retry\..*|failed\..*\.retry)\.jsonl$/u.test(name))
       .flatMap((name) => readJsonLinesIfExists(path.join(ledgerDir, name)));
     const verifiedKeys = new Set(
       okRows

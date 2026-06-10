@@ -17,6 +17,7 @@ import { stageContract } from "../lib/stage-contract.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const commandName = "dataset-bafu-batch-import-run";
+const coverageCommandName = "dataset-bafu-universe-coverage-report";
 let supportCommitQueue = Promise.resolve();
 const verifiedSupportIdentities = new Set();
 const bafuBatchStageContract = {
@@ -27,7 +28,11 @@ const bafuBatchStageContract = {
       phase: "prepare",
       purpose:
         "Load ready scopes plus existing ok/blocked/retry ledgers so reruns skip verified and deferred scopes.",
-      inputs: ["ready-scopes.jsonl", "import-ledger/*.jsonl"],
+      inputs: [
+        "ready-scopes.jsonl",
+        "import-ledger/*.jsonl",
+        "optional --ledger-source-dir ledgers",
+      ],
       outputs: ["selected process scopes", "run-manifest.json"],
       side_effects: ["writes local Foundry run manifest"],
     },
@@ -183,6 +188,10 @@ function integerOption(value, fallback) {
 
 function normalizedList(value) {
   return runtime().normalizedList(value);
+}
+
+function uniqueValues(values) {
+  return [...new Set(values.filter((value) => value != null && value !== ""))];
 }
 
 function shellQuote(value) {
@@ -431,10 +440,58 @@ function appendSupportIdentityCacheRows({ cacheFile, identityKeys, source, repor
   return written;
 }
 
+function appendSupportIdentityInvalidationRows({ cacheFile, identityKeys, source, report }) {
+  if (!cacheFile || identityKeys.length === 0) return 0;
+  let written = 0;
+  for (const identityKey of identityKeys) {
+    const identity = splitSupportIdentityKey(identityKey);
+    if (!identity) continue;
+    appendJsonLine(cacheFile, {
+      schema_version: 1,
+      generated_at_utc: nowIso(),
+      identity_key: identityKey,
+      ...identity,
+      status: "invalidated_remote_missing",
+      source,
+      report: repoRelative(report),
+    });
+    written += 1;
+  }
+  return written;
+}
+
+function staleReusedSupportIdentityKeys(finalizeReport, supportIdentityKeys) {
+  const keySet = new Set(supportIdentityKeys);
+  const stale = new Set();
+  for (const blocker of asArray(finalizeReport?.blockers)) {
+    if (!["missing_dataset", "reference_closure_unproven"].includes(asText(blocker?.code))) {
+      continue;
+    }
+    const table = asText(blocker?.table);
+    const type = table === "contacts" ? "contact" : table === "sources" ? "source" : null;
+    if (!type) continue;
+    const id = asText(blocker?.reference_id ?? blocker?.id);
+    if (!id) continue;
+    const version = asText(blocker?.reference_version ?? blocker?.version) || "00.00.001";
+    const identityKey = `${type}:${id}@${version}`;
+    if (keySet.has(identityKey)) stale.add(identityKey);
+  }
+  return [...stale];
+}
+
 function supportCacheRowsFromFile(cacheFile) {
-  return readJsonLines(cacheFile)
-    .map((row) => ({ ...row, identity_key: supportIdentityKeyFromCacheRow(row) }))
-    .filter((row) => row.identity_key);
+  const byKey = new Map();
+  for (const row of readJsonLines(cacheFile)) {
+    const identityKey = supportIdentityKeyFromCacheRow(row);
+    if (!identityKey) continue;
+    byKey.set(identityKey, { ...row, identity_key: identityKey });
+  }
+  return [...byKey.values()];
+}
+
+function supportCacheRowIsVerified(row) {
+  const status = asText(row?.status) || "verified";
+  return status === "verified";
 }
 
 function supportCacheRowsFromCommitSummary(summaryPath, closeoutPath) {
@@ -479,16 +536,34 @@ function discoverVerifiedSupportIdentityRows(outDir) {
   ).flatMap(supportCacheRowsFromCloseoutReport);
 }
 
-function primeVerifiedSupportIdentityCache({ outDir, cacheFile }) {
+function primeVerifiedSupportIdentityCache({ outDir, cacheFile, sourceLedgerDirs = [] }) {
   verifiedSupportIdentities.clear();
   const seen = new Set();
   let loaded_from_cache = 0;
+  let loaded_from_ledger_sources = 0;
   let discovered_from_artifacts = 0;
+  let discovered_from_ledger_source_artifacts = 0;
   for (const row of supportCacheRowsFromFile(cacheFile)) {
     if (seen.has(row.identity_key)) continue;
     seen.add(row.identity_key);
+    if (!supportCacheRowIsVerified(row)) continue;
     verifiedSupportIdentities.add(row.identity_key);
     loaded_from_cache += 1;
+  }
+  for (const ledgerDir of sourceLedgerDirs) {
+    const sourceCacheFile = path.join(ledgerDir, "verified-support-identities.jsonl");
+    for (const row of supportCacheRowsFromFile(sourceCacheFile)) {
+      if (seen.has(row.identity_key)) continue;
+      seen.add(row.identity_key);
+      appendJsonLine(cacheFile, {
+        ...row,
+        carried_forward_from: repoRelative(sourceCacheFile),
+        carried_forward_at_utc: nowIso(),
+      });
+      if (!supportCacheRowIsVerified(row)) continue;
+      verifiedSupportIdentities.add(row.identity_key);
+      loaded_from_ledger_sources += 1;
+    }
   }
   for (const row of discoverVerifiedSupportIdentityRows(outDir)) {
     if (seen.has(row.identity_key)) continue;
@@ -497,10 +572,27 @@ function primeVerifiedSupportIdentityCache({ outDir, cacheFile }) {
     appendJsonLine(cacheFile, row);
     discovered_from_artifacts += 1;
   }
+  for (const outDirFromLedger of sourceLedgerDirs
+    .filter((ledgerDir) => path.basename(ledgerDir) === "import-ledger")
+    .map((ledgerDir) => path.dirname(ledgerDir))) {
+    for (const row of discoverVerifiedSupportIdentityRows(outDirFromLedger)) {
+      if (seen.has(row.identity_key)) continue;
+      seen.add(row.identity_key);
+      verifiedSupportIdentities.add(row.identity_key);
+      appendJsonLine(cacheFile, {
+        ...row,
+        carried_forward_from: repoRelative(outDirFromLedger),
+        carried_forward_at_utc: nowIso(),
+      });
+      discovered_from_ledger_source_artifacts += 1;
+    }
+  }
   return {
     cache_file: repoRelative(cacheFile),
     loaded_from_cache,
+    loaded_from_ledger_sources,
     discovered_from_artifacts,
+    discovered_from_ledger_source_artifacts,
     verified_support_identities: verifiedSupportIdentities.size,
   };
 }
@@ -987,6 +1079,187 @@ function existingIdentityApplyReportsWithReferenceRewrites(scopeDir, label) {
   return uniqueExistingPaths(candidates).filter(identityApplyReportHasReferenceRewrites);
 }
 
+function identityDecisionDatasetKey(row, fallbackType = null) {
+  const datasetType = asText(row?.dataset_type ?? row?.datasetType ?? row?.type ?? fallbackType);
+  const datasetId = asText(
+    row?.dataset_id ??
+      row?.datasetId ??
+      row?.source_dataset_id ??
+      row?.sourceDatasetId ??
+      row?.entity_id ??
+      row?.entityId,
+  );
+  if (!datasetType || !datasetId) return null;
+  const datasetVersion =
+    asText(
+      row?.dataset_version ??
+        row?.datasetVersion ??
+        row?.source_dataset_version ??
+        row?.sourceDatasetVersion ??
+        row?.version,
+    ) || "00.00.001";
+  return `${datasetType.toLowerCase()}:${datasetId}@${datasetVersion}`;
+}
+
+function identityDecisionValue(row) {
+  const value = asText(row?.identity_decision ?? row?.identityDecision ?? row?.decision);
+  if (["reuse", "reuse_existing", "reference_reuse"].includes(value)) {
+    return "reuse_existing_reference";
+  }
+  if (["block", "blocked", "unresolved"].includes(value)) return "block_unresolved";
+  return value;
+}
+
+function identityDecisionCanonical(row) {
+  const canonical = row?.canonical ?? row?.selected_reference ?? row?.selectedReference;
+  if (!canonical || typeof canonical !== "object") return null;
+  const id = asText(
+    canonical.ref_object_id ?? canonical.refObjectId ?? canonical.id ?? canonical["@refObjectId"],
+  );
+  if (!id) return null;
+  return {
+    table: asText(canonical.table) || "flows",
+    ref_object_id: id,
+    version:
+      asText(canonical.version ?? canonical.ref_version ?? canonical["@version"]) || "00.00.001",
+    short_description:
+      asText(
+        canonical.short_description ??
+          canonical.shortDescription ??
+          canonical["common:shortDescription"]?.["#text"],
+      ) || id,
+  };
+}
+
+function canonicalDecisionKey(canonical) {
+  if (!canonical) return "";
+  return `${canonical.table}:${canonical.ref_object_id}@${canonical.version}`;
+}
+
+function completedReusableIdentityDecision(row) {
+  return (
+    asText(row?.decision_status ?? row?.decisionStatus ?? row?.status) === "completed" &&
+    identityDecisionValue(row) === "reuse_existing_reference" &&
+    Boolean(identityDecisionCanonical(row)) &&
+    Boolean(row?.evidence && typeof row.evidence === "object") &&
+    asText(row?.basis ?? row?.reason)
+  );
+}
+
+function identityDecisionSourceFiles(runDir) {
+  if (!directoryExists(runDir)) return [];
+  return fs
+    .readdirSync(runDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && /^decisions(?:-|$)/u.test(entry.name))
+    .map((entry) => path.join(runDir, entry.name, "identity-decisions.jsonl"))
+    .filter(fileExists)
+    .sort();
+}
+
+function loadCompletedReusableIdentityDecisions(runDir) {
+  const byKey = new Map();
+  const conflicts = [];
+  const files = identityDecisionSourceFiles(runDir);
+  for (const filePath of files) {
+    for (const row of readJsonLines(filePath)) {
+      if (!completedReusableIdentityDecision(row)) continue;
+      const key = identityDecisionDatasetKey(row);
+      if (!key) continue;
+      const canonical = identityDecisionCanonical(row);
+      const existing = byKey.get(key);
+      if (existing) {
+        const existingCanonicalKey = canonicalDecisionKey(identityDecisionCanonical(existing.row));
+        const currentCanonicalKey = canonicalDecisionKey(canonical);
+        if (existingCanonicalKey !== currentCanonicalKey) {
+          conflicts.push({
+            key,
+            existing_source_file: repoRelative(existing.source_file),
+            existing_canonical: existingCanonicalKey,
+            source_file: repoRelative(filePath),
+            canonical: currentCanonicalKey,
+          });
+          byKey.delete(key);
+        }
+        continue;
+      }
+      byKey.set(key, { row, source_file: filePath });
+    }
+  }
+  return { files, byKey, conflicts };
+}
+
+function mergeCompletedReusableIdentityDecisions({ runDir, decisionsFile, outDir, datasetType }) {
+  const currentRows = readJsonLines(decisionsFile);
+  const reusable = loadCompletedReusableIdentityDecisions(runDir);
+  const replacements = [];
+  const mergedRows = currentRows.map((row) => {
+    const key = identityDecisionDatasetKey(row, datasetType);
+    const reusableDecision = key ? reusable.byKey.get(key) : null;
+    if (!reusableDecision || identityDecisionValue(row) !== "block_unresolved") return row;
+    replacements.push({
+      key,
+      source_file: repoRelative(reusableDecision.source_file),
+      previous_decision: identityDecisionValue(row),
+      replacement_decision: "reuse_existing_reference",
+      canonical: identityDecisionCanonical(reusableDecision.row),
+    });
+    return {
+      ...reusableDecision.row,
+      dataset_type: row.dataset_type ?? reusableDecision.row.dataset_type ?? datasetType,
+      dataset_id:
+        row.dataset_id ?? row.source_dataset_id ?? reusableDecision.row.dataset_id ?? null,
+      dataset_version:
+        row.dataset_version ??
+        row.source_dataset_version ??
+        reusableDecision.row.dataset_version ??
+        "00.00.001",
+      authoring_package: reusableDecision.row.authoring_package ?? row.authoring_package ?? null,
+      authoring_package_sha256:
+        reusableDecision.row.authoring_package_sha256 ?? row.authoring_package_sha256 ?? null,
+      used_context_kinds: uniqueValues([
+        ...normalizedList(reusableDecision.row.used_context_kinds),
+        ...normalizedList(row.used_context_kinds),
+      ]),
+      closes_action_items: uniqueValues([
+        ...normalizedList(reusableDecision.row.closes_action_items),
+        ...normalizedList(row.closes_action_items),
+      ]),
+    };
+  });
+  fs.mkdirSync(outDir, { recursive: true });
+  const outputFile =
+    replacements.length > 0
+      ? path.join(outDir, "identity-decisions.with-carry-forward.jsonl")
+      : decisionsFile;
+  if (replacements.length > 0) writeJsonLines(outputFile, mergedRows);
+  const reportPath = path.join(outDir, "identity-decision-carry-forward-report.json");
+  const report = {
+    schema_version: 1,
+    generated_at_utc: nowIso(),
+    command: "dataset-bafu-identity-decision-carry-forward",
+    status: replacements.length > 0 ? "completed" : "completed_noop",
+    remote_write_mode: "read-only",
+    dataset_type: datasetType,
+    files: {
+      report: repoRelative(reportPath),
+      input_decisions: repoRelative(decisionsFile),
+      output_decisions: repoRelative(outputFile),
+      source_decision_files: reusable.files.map(repoRelative),
+    },
+    counts: {
+      input_decisions: currentRows.length,
+      source_decision_files: reusable.files.length,
+      reusable_decisions: reusable.byKey.size,
+      replacements: replacements.length,
+      conflicts: reusable.conflicts.length,
+    },
+    replacements,
+    conflicts: reusable.conflicts,
+  };
+  writeJson(reportPath, report);
+  return { report, reportPath, outputFile };
+}
+
 function countRows(filePath) {
   return readRows(filePath).length;
 }
@@ -1274,19 +1547,611 @@ function repairClassificationDecisionCodes({ decisionsFile, schemas, outDir }) {
   return { repairs, unresolved, repairPath, unresolvedPath };
 }
 
-function loadVerifiedSet(filePath, type) {
+function ledgerDirCandidate(sourcePath) {
+  if (!sourcePath) return null;
+  if (directoryExists(path.join(sourcePath, "import-ledger"))) {
+    return path.join(sourcePath, "import-ledger");
+  }
+  if (!directoryExists(sourcePath)) return null;
+  if (path.basename(sourcePath) === "import-ledger") return sourcePath;
+  const knownLedgerFiles = [
+    "ok.scopes.verified.jsonl",
+    "ok.flows.verified.jsonl",
+    "blocked.scopes.human-review.jsonl",
+    "verified-support-identities.jsonl",
+  ];
+  if (knownLedgerFiles.some((name) => fileExists(path.join(sourcePath, name)))) return sourcePath;
+  return null;
+}
+
+function resolveLedgerSourceDirs(value) {
+  const seen = new Set();
+  const dirs = [];
+  for (const entry of normalizedList(value)) {
+    const resolved = resolveRepoPath(entry);
+    const ledgerDir = ledgerDirCandidate(resolved);
+    if (!ledgerDir) {
+      throw new Error(
+        `--ledger-source-dir must point to a batch directory or import-ledger directory: ${entry}`,
+      );
+    }
+    const key = path.resolve(ledgerDir);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    dirs.push(ledgerDir);
+  }
+  return dirs;
+}
+
+function ledgerFiles(sourceDirs, name) {
+  return sourceDirs.map((dir) => path.join(dir, name));
+}
+
+function summarizeLedgerSources(sourceDirs) {
+  return sourceDirs.map((dir) => ({
+    ledger_dir: repoRelative(dir),
+    ok_scope_rows: readJsonLines(path.join(dir, "ok.scopes.verified.jsonl")).length,
+    ok_flow_rows: readJsonLines(path.join(dir, "ok.flows.verified.jsonl")).length,
+    blocked_scope_rows: readJsonLines(path.join(dir, "blocked.scopes.human-review.jsonl")).length,
+    verified_support_identity_rows: readJsonLines(
+      path.join(dir, "verified-support-identities.jsonl"),
+    ).length,
+  }));
+}
+
+function sumLedgerSourceRows(summary, field) {
+  return summary.reduce((sum, row) => sum + (Number(row[field]) || 0), 0);
+}
+
+function sortedSet(values) {
+  return [...values].sort();
+}
+
+function setDifference(left, right) {
+  return new Set([...left].filter((value) => !right.has(value)));
+}
+
+function setIntersection(left, right) {
+  return new Set([...left].filter((value) => right.has(value)));
+}
+
+function datasetKeyFromParts(id, version) {
+  return id ? `${id}@${version || "00.00.001"}` : null;
+}
+
+function datasetKeyFromRow(row, type) {
+  const id = row?.dataset_id || row?.id || row?.[`${type}_id`] || row?.process_id || row?.flow_id;
+  const version =
+    row?.dataset_version ||
+    row?.version ||
+    row?.[`${type}_version`] ||
+    row?.process_version ||
+    row?.flow_version ||
+    "00.00.001";
+  return datasetKeyFromParts(id, version);
+}
+
+function identityFromTidasRow(row, type, fallbackId = null) {
+  const identity = runtime().datasetIdentity(row, type) ?? {};
+  const root = row?.[`${type}DataSet`] ?? {};
+  const info =
+    root?.[`${type}Information`]?.dataSetInformation ??
+    root?.[`${type}Information`]?.["common:dataSetInformation"] ??
+    {};
+  const publication =
+    root?.administrativeInformation?.publicationAndOwnership ??
+    root?.administrativeInformation?.["common:publicationAndOwnership"] ??
+    {};
+  return {
+    id: identity.id || asText(info["common:UUID"] ?? info.UUID) || fallbackId,
+    version:
+      identity.version ||
+      asText(publication["common:dataSetVersion"] ?? publication.dataSetVersion) ||
+      "00.00.001",
+  };
+}
+
+function readJsonIfExists(filePath) {
+  return fileExists(filePath) ? readJson(filePath) : null;
+}
+
+function walkFiles(rootDir, predicate) {
+  const resolved = resolveRepoPath(rootDir);
+  if (!resolved || !fs.existsSync(resolved)) return [];
+  const stack = [resolved];
+  const files = [];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const next = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(next);
+      } else if (entry.isFile() && predicate(next)) {
+        files.push(next);
+      }
+    }
+  }
+  return files.sort();
+}
+
+function bundleIndexRows(processBundlesDir) {
+  const indexFile = path.join(processBundlesDir, "index.json");
+  const indexDir = path.dirname(indexFile);
+  const index = readJsonIfExists(indexFile);
+  let entries = [];
+  if (Array.isArray(index)) {
+    entries = index;
+  } else if (Array.isArray(index?.bundles)) {
+    entries = index.bundles;
+  } else if (Array.isArray(index?.process_bundles)) {
+    entries = index.process_bundles;
+  } else if (index && typeof index === "object") {
+    entries = Object.values(index).find(Array.isArray) ?? [];
+  }
+  return entries.map((entry) => {
+    const processId = asText(
+      entry?.process_id || entry?.id || entry?.dataset_id || entry?.process?.id,
+    );
+    const processVersion = asText(
+      entry?.process_version || entry?.version || entry?.dataset_version || entry?.process?.version,
+    );
+    const bundleDir = processId ? path.join(processBundlesDir, processId) : null;
+    const manifest = entry?.manifest
+      ? resolveRepoPath(
+          path.isAbsolute(entry.manifest) ? entry.manifest : path.join(indexDir, entry.manifest),
+        )
+      : bundleDir
+        ? path.join(bundleDir, "manifest.json")
+        : null;
+    const tidasDir = entry?.tidas_dir
+      ? resolveRepoPath(
+          path.isAbsolute(entry.tidas_dir) ? entry.tidas_dir : path.join(indexDir, entry.tidas_dir),
+        )
+      : bundleDir
+        ? path.join(bundleDir, "tidas")
+        : null;
+    return {
+      process_id: processId,
+      process_version: processVersion || "00.00.001",
+      process_key: datasetKeyFromParts(processId, processVersion || "00.00.001"),
+      manifest,
+      tidas_dir: tidasDir,
+    };
+  });
+}
+
+function processFileRows(processesDir) {
+  return walkFiles(processesDir, (filePath) => filePath.endsWith(".json")).map((filePath) => {
+    const row = readJson(filePath);
+    const fallbackId = path.basename(filePath, ".json");
+    const identity = identityFromTidasRow(row, "process", fallbackId);
+    return {
+      process_id: identity.id,
+      process_version: identity.version,
+      process_key: datasetKeyFromParts(identity.id, identity.version),
+      file: filePath,
+      row,
+    };
+  });
+}
+
+function textAt(value) {
+  if (value == null) return "";
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  if (Array.isArray(value)) return value.map(textAt).filter(Boolean).join("; ");
+  if (typeof value === "object") return textAt(value["#text"] ?? value.value ?? value.id);
+  return "";
+}
+
+function collectFlowReferences(value, refs = []) {
+  if (!value || typeof value !== "object") return refs;
+  if (Array.isArray(value)) {
+    for (const entry of value) collectFlowReferences(entry, refs);
+    return refs;
+  }
+  const ref = value.referenceToFlowDataSet;
+  if (ref && typeof ref === "object") {
+    const flowId = asText(ref["@refObjectId"] ?? ref.refObjectId ?? ref.id);
+    const flowVersion = asText(ref["@version"] ?? ref.version) || "00.00.001";
+    if (flowId) {
+      refs.push({
+        flow_id: flowId,
+        flow_version: flowVersion,
+        flow_key: datasetKeyFromParts(flowId, flowVersion),
+        short_description: textAt(ref["common:shortDescription"] ?? ref.shortDescription),
+      });
+    }
+  }
+  for (const entry of Object.values(value)) collectFlowReferences(entry, refs);
+  return refs;
+}
+
+function flowTypeOfRow(row) {
+  const info =
+    row?.flowDataSet?.flowInformation?.dataSetInformation ??
+    row?.flowDataSet?.flowInformation?.["common:dataSetInformation"] ??
+    {};
+  return asText(info.typeOfDataSet ?? info["common:typeOfDataSet"] ?? row?.typeOfDataSet);
+}
+
+function flowRowsByKey(flowsDir) {
+  const rowsByKey = new Map();
+  for (const filePath of walkFiles(flowsDir, (entry) => entry.endsWith(".json"))) {
+    const row = readJson(filePath);
+    const fallbackId = path.basename(filePath, ".json");
+    const identity = identityFromTidasRow(row, "flow", fallbackId);
+    const key = datasetKeyFromParts(identity.id, identity.version);
+    if (!key) continue;
+    rowsByKey.set(key, {
+      flow_id: identity.id,
+      flow_version: identity.version,
+      flow_key: key,
+      flow_type: flowTypeOfRow(row),
+      file: filePath,
+    });
+  }
+  return rowsByKey;
+}
+
+function scopeFilesForCoverage(options, runDir) {
+  const explicit = normalizedList(options.scopeFile || options.scopeFiles);
+  if (explicit.length > 0) return uniqueExistingPaths(explicit);
+  return walkFiles(runDir, (filePath) => path.basename(filePath) === "ready-scopes.jsonl");
+}
+
+function scopeKeyRowsFromFiles(files) {
+  const rows = [];
+  for (const filePath of files) {
+    for (const row of readJsonLines(filePath)) {
+      const key = scopeKey(row);
+      if (!key) continue;
+      rows.push({
+        process_id: row.process_id || row.id,
+        process_version: row.process_version || row.version || "00.00.001",
+        process_key: key,
+        closure_status: row.closure_status ?? row.status ?? null,
+        source_file: filePath,
+      });
+    }
+  }
+  return rows;
+}
+
+function keySetFromRows(rows, type) {
+  return new Set(rows.map((row) => datasetKeyFromRow(row, type)).filter(Boolean));
+}
+
+function keySetFromFiles(files, type) {
+  return keySetFromRows(
+    files.flatMap((filePath) => readJsonLines(filePath)),
+    type,
+  );
+}
+
+function runDatasetBafuUniverseCoverageReport(options = {}) {
+  if (options.help) {
+    return {
+      schema_version: 1,
+      status: "help",
+      command: coverageCommandName,
+      usage: [
+        "node scripts/foundry.mjs dataset-bafu-universe-coverage-report --run-dir .foundry/workspaces/<bafu-run> --ledger-source-dir <batch/import-ledger> --out-dir <coverage-dir>",
+        "node scripts/foundry.mjs dataset-bafu-universe-coverage-report --input-dir 'inputs/BAFU-2025 Version 2 - TIDAS 2026-03-09' --scope-file <ready-scopes.jsonl> --ledger-source-dir <batch/import-ledger>",
+      ],
+      purpose:
+        "Build a read-only BAFU full-universe coverage report from process-bundles, ready scopes, flow references, and explicit ledger sources.",
+      remote_write_mode: "read-only",
+    };
+  }
+
+  const inputDir = resolveRepoPath(
+    options.inputDir || "inputs/BAFU-2025 Version 2 - TIDAS 2026-03-09",
+  );
+  const processBundlesDir = resolveRepoPath(
+    options.processBundlesDir || options.bundlesDir || path.join(inputDir, "process-bundles"),
+  );
+  const processesDir = resolveRepoPath(
+    options.processesDir || path.join(inputDir, "tidas", "processes"),
+  );
+  const flowsDir = resolveRepoPath(options.flowsDir || path.join(inputDir, "tidas", "flows"));
+  const runDir = resolveRepoPath(options.runDir || path.dirname(processBundlesDir));
+  const outDir = resolveRepoPath(
+    options.outDir || path.join(runDir, "bafu-universe-coverage-report"),
+  );
+  if (!directoryExists(processBundlesDir)) {
+    throw new Error("--process-bundles-dir is required and must point to process-bundles.");
+  }
+  if (!directoryExists(processesDir)) {
+    throw new Error("--processes-dir is required and must point to tidas/processes.");
+  }
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const ledgerSourceDirs = resolveLedgerSourceDirs(
+    options.ledgerSourceDir ||
+      options.ledgerSourceDirs ||
+      options.carryForwardLedgerDir ||
+      options.carryForwardLedgerDirs,
+  );
+  const ledgerSourceSummary = summarizeLedgerSources(ledgerSourceDirs);
+  const scopeFiles = scopeFilesForCoverage(options, runDir);
+  const scopeRows = scopeKeyRowsFromFiles(scopeFiles);
+  const readyScopeSet = new Set(scopeRows.map((row) => row.process_key));
+  const bundleRows = bundleIndexRows(processBundlesDir);
+  const processRows = processFileRows(processesDir);
+  const processByKey = new Map();
+  for (const row of bundleRows) {
+    if (!row.process_key) continue;
+    processByKey.set(row.process_key, {
+      process_id: row.process_id,
+      process_version: row.process_version,
+      process_key: row.process_key,
+      in_process_bundles: true,
+      in_tidas_processes: false,
+      bundle_manifest: repoRelative(row.manifest),
+    });
+  }
+  for (const row of processRows) {
+    if (!row.process_key) continue;
+    const current = processByKey.get(row.process_key) ?? {
+      process_id: row.process_id,
+      process_version: row.process_version,
+      process_key: row.process_key,
+      in_process_bundles: false,
+      in_tidas_processes: false,
+    };
+    current.in_tidas_processes = true;
+    current.process_file = repoRelative(row.file);
+    processByKey.set(row.process_key, current);
+  }
+  const processUniverseSet = new Set(processByKey.keys());
+
+  const verifiedScopes = keySetFromFiles(
+    ledgerFiles(ledgerSourceDirs, "ok.scopes.verified.jsonl"),
+    "scope",
+  );
+  const verifiedFlows = keySetFromFiles(
+    ledgerFiles(ledgerSourceDirs, "ok.flows.verified.jsonl"),
+    "flow",
+  );
+  const blockedScopeRows = ledgerFiles(
+    ledgerSourceDirs,
+    "blocked.scopes.human-review.jsonl",
+  ).flatMap((filePath) => readJsonLines(filePath));
+  const activeBlockedScopes = setDifference(
+    keySetFromRows(blockedScopeRows, "scope"),
+    verifiedScopes,
+  );
+  const retryScopeRows = [
+    ...ledgerFiles(ledgerSourceDirs, "failed.scopes.retry.jsonl"),
+    ...ledgerFiles(ledgerSourceDirs, "retry.scopes.jsonl"),
+  ].flatMap((filePath) => readJsonLines(filePath));
+  const retryScopes = setDifference(keySetFromRows(retryScopeRows, "scope"), verifiedScopes);
+  const nonImportableScopes = keySetFromFiles(
+    normalizedList(options.nonImportableScopesFile || options.nonImportableScopesFiles).map(
+      resolveRepoPath,
+    ),
+    "scope",
+  );
+
+  const readyUniverseSet = setIntersection(processUniverseSet, readyScopeSet);
+  const missingReadySet = setDifference(processUniverseSet, readyScopeSet);
+  const verifiedUniverseSet = setIntersection(processUniverseSet, verifiedScopes);
+  const pendingReadySet = setDifference(
+    setDifference(setDifference(readyUniverseSet, verifiedUniverseSet), activeBlockedScopes),
+    retryScopes,
+  );
+
+  const flowIndex = flowRowsByKey(flowsDir);
+  const referencedFlows = new Map();
+  for (const row of processRows) {
+    for (const ref of collectFlowReferences(row.row)) {
+      const current = referencedFlows.get(ref.flow_key) ?? {
+        ...ref,
+        referencing_processes: new Set(),
+      };
+      current.referencing_processes.add(row.process_key);
+      referencedFlows.set(ref.flow_key, current);
+    }
+  }
+  const productOrUnknownFlowKeys = new Set();
+  const referencedFlowRows = [];
+  for (const [flowKey, ref] of referencedFlows.entries()) {
+    const indexed = flowIndex.get(flowKey);
+    const flowType = indexed?.flow_type || "unknown";
+    const isElementary = /elementary/u.test(flowType.toLowerCase());
+    if (!isElementary) productOrUnknownFlowKeys.add(flowKey);
+    referencedFlowRows.push({
+      schema_version: 1,
+      flow_id: ref.flow_id,
+      flow_version: ref.flow_version,
+      flow_key: flowKey,
+      flow_type: flowType,
+      flow_file: repoRelative(indexed?.file),
+      reference_kind: isElementary
+        ? "elementary"
+        : flowType === "unknown"
+          ? "unknown"
+          : "product_or_waste",
+      verified: verifiedFlows.has(flowKey),
+      referencing_process_count: ref.referencing_processes.size,
+      sample_referencing_processes: sortedSet(ref.referencing_processes).slice(0, 20),
+    });
+  }
+  const unverifiedProductOrUnknownFlows = setDifference(productOrUnknownFlowKeys, verifiedFlows);
+
+  const processCoverageRows = sortedSet(processUniverseSet).map((key) => {
+    const processRow = processByKey.get(key);
+    const verified = verifiedScopes.has(key);
+    const nonImportable = nonImportableScopes.has(key);
+    const activeBlocked = activeBlockedScopes.has(key);
+    const retry = retryScopes.has(key);
+    const ready = readyScopeSet.has(key);
+    const coverageStatus = verified
+      ? "verified"
+      : nonImportable
+        ? "non_importable"
+        : retry
+          ? "retry"
+          : activeBlocked
+            ? "active_human_review"
+            : ready
+              ? "pending_ready_scope"
+              : "missing_ready_scope";
+    return {
+      schema_version: 1,
+      ...processRow,
+      ready_scope: ready,
+      verified,
+      non_importable: nonImportable,
+      active_human_review: activeBlocked,
+      retry,
+      coverage_status: coverageStatus,
+    };
+  });
+  const processCoverageStatusCounts = processCoverageRows.reduce((counts, row) => {
+    counts[row.coverage_status] = (counts[row.coverage_status] ?? 0) + 1;
+    return counts;
+  }, {});
+  const processGapRows = processCoverageRows.filter(
+    (row) => !["verified", "non_importable"].includes(row.coverage_status),
+  );
+  const flowGapRows = referencedFlowRows.filter(
+    (row) => row.reference_kind !== "elementary" && !row.verified,
+  );
+
+  const processUniversePath = path.join(outDir, "bafu-process-universe.coverage.jsonl");
+  const processGapPath = path.join(outDir, "bafu-process-coverage-gaps.jsonl");
+  const flowReferencePath = path.join(outDir, "bafu-flow-reference-coverage.jsonl");
+  const flowGapPath = path.join(outDir, "bafu-flow-reference-coverage-gaps.jsonl");
+  const reportPath = path.join(outDir, "bafu-universe-coverage-report.json");
+  writeJsonLines(processUniversePath, processCoverageRows);
+  writeJsonLines(processGapPath, processGapRows);
+  writeJsonLines(flowReferencePath, referencedFlowRows);
+  writeJsonLines(flowGapPath, flowGapRows);
+
+  const report = {
+    schema_version: 1,
+    generated_at_utc: nowIso(),
+    status:
+      processGapRows.length === 0 && flowGapRows.length === 0
+        ? "completed"
+        : "completed_with_coverage_gaps",
+    command: coverageCommandName,
+    remote_write_mode: "read-only",
+    inputs: {
+      input_dir: repoRelative(inputDir),
+      process_bundles_dir: repoRelative(processBundlesDir),
+      processes_dir: repoRelative(processesDir),
+      flows_dir: repoRelative(flowsDir),
+      run_dir: repoRelative(runDir),
+      scope_files: scopeFiles.map(repoRelative),
+      ledger_source_dirs: ledgerSourceDirs.map(repoRelative),
+      non_importable_scope_files: normalizedList(
+        options.nonImportableScopesFile || options.nonImportableScopesFiles,
+      ).map((entry) => repoRelative(resolveRepoPath(entry))),
+    },
+    counts: {
+      process_bundle_entries: bundleRows.length,
+      process_bundle_unique: new Set(bundleRows.map((row) => row.process_key).filter(Boolean)).size,
+      tidas_process_files: processRows.length,
+      tidas_process_unique: new Set(processRows.map((row) => row.process_key).filter(Boolean)).size,
+      process_universe: processUniverseSet.size,
+      ready_scope_files: scopeFiles.length,
+      ready_scope_rows: scopeRows.length,
+      ready_scope_unique: readyScopeSet.size,
+      ready_scopes_in_universe: readyUniverseSet.size,
+      missing_ready_scopes: missingReadySet.size,
+      verified_process_scopes: processCoverageStatusCounts.verified ?? 0,
+      non_importable_process_scopes: processCoverageStatusCounts.non_importable ?? 0,
+      active_human_review_scopes: processCoverageStatusCounts.active_human_review ?? 0,
+      retry_scopes: processCoverageStatusCounts.retry ?? 0,
+      pending_ready_scopes: processCoverageStatusCounts.pending_ready_scope ?? 0,
+      process_coverage_gap_rows: processGapRows.length,
+      referenced_flow_rows: referencedFlows.size,
+      product_or_unknown_flow_references: productOrUnknownFlowKeys.size,
+      verified_product_or_unknown_flow_references: setIntersection(
+        productOrUnknownFlowKeys,
+        verifiedFlows,
+      ).size,
+      unverified_product_or_unknown_flow_references: unverifiedProductOrUnknownFlows.size,
+      flow_coverage_gap_rows: flowGapRows.length,
+      ledger_source_dirs: ledgerSourceSummary.length,
+      ledger_source_ok_scope_rows: sumLedgerSourceRows(ledgerSourceSummary, "ok_scope_rows"),
+      ledger_source_ok_scope_unique: verifiedScopes.size,
+      ledger_source_ok_scope_unique_in_universe: verifiedUniverseSet.size,
+      ledger_source_ok_flow_rows: sumLedgerSourceRows(ledgerSourceSummary, "ok_flow_rows"),
+      ledger_source_ok_flow_unique: verifiedFlows.size,
+      ledger_source_ok_flow_unique_product_or_unknown_references: setIntersection(
+        productOrUnknownFlowKeys,
+        verifiedFlows,
+      ).size,
+      ledger_source_blocked_scope_rows: sumLedgerSourceRows(
+        ledgerSourceSummary,
+        "blocked_scope_rows",
+      ),
+    },
+    ledger_sources: ledgerSourceSummary,
+    files: {
+      report: repoRelative(reportPath),
+      process_universe: repoRelative(processUniversePath),
+      process_coverage_gaps: repoRelative(processGapPath),
+      flow_reference_coverage: repoRelative(flowReferencePath),
+      flow_reference_coverage_gaps: repoRelative(flowGapPath),
+    },
+    policy: {
+      ledger_sources_are_explicit:
+        "Coverage is computed only from the explicit --ledger-source-dir inputs. Root import-ledger is not assumed to aggregate prior batches.",
+      v8_ready_scope_is_not_full_universe:
+        "Ready scope files are treated as closure snapshots, not as the full input process universe.",
+      read_only: true,
+    },
+  };
+  writeJson(reportPath, report);
+  return report;
+}
+
+function loadVerifiedSetFromFiles(filePaths, type) {
   const set = new Set();
-  for (const row of readJsonLines(filePath)) {
-    const id = row.dataset_id || row.id || row[`${type}_id`] || row.process_id;
-    const version =
-      row.dataset_version ||
-      row.version ||
-      row[`${type}_version`] ||
-      row.process_version ||
-      "00.00.001";
-    if (id) set.add(`${id}@${version}`);
+  for (const filePath of filePaths) {
+    for (const row of readJsonLines(filePath)) {
+      const id = row.dataset_id || row.id || row[`${type}_id`] || row.process_id;
+      const version =
+        row.dataset_version ||
+        row.version ||
+        row[`${type}_version`] ||
+        row.process_version ||
+        "00.00.001";
+      if (id) set.add(`${id}@${version}`);
+    }
   }
   return set;
+}
+
+function loadVerifiedRowsByKeyFromFiles(filePaths, type) {
+  const rowsByKey = new Map();
+  for (const filePath of filePaths) {
+    for (const row of readJsonLines(filePath)) {
+      const id = row.dataset_id || row.id || row[`${type}_id`] || row.process_id;
+      const version =
+        row.dataset_version ||
+        row.version ||
+        row[`${type}_version`] ||
+        row.process_version ||
+        "00.00.001";
+      if (!id) continue;
+      const key = `${id}@${version}`;
+      if (rowsByKey.has(key)) continue;
+      rowsByKey.set(key, {
+        ...row,
+        source_ledger_file: repoRelative(filePath),
+      });
+    }
+  }
+  return rowsByKey;
+}
+
+function loadVerifiedSet(filePath, type) {
+  return loadVerifiedSetFromFiles([filePath], type);
 }
 
 function datasetIdentityKey(identity) {
@@ -1322,6 +2187,44 @@ function flowRowsPendingVerification(rows, verifiedFlows) {
     verifiedRows,
     pendingIdentities,
     verifiedIdentities,
+  };
+}
+
+function writeScopeCarriedForwardVerifiedFlowRows({
+  ledgerDir,
+  processId,
+  verifiedIdentities,
+  verifiedFlowRowsByKey,
+}) {
+  const ledgerPath = path.join(ledgerDir, "ok.flows.verified.jsonl");
+  const existing = loadVerifiedSet(ledgerPath, "flow");
+  const written = [];
+  for (const identity of verifiedIdentities ?? []) {
+    const key = identity.identity_key || datasetIdentityKey(identity);
+    if (!key || existing.has(key)) continue;
+    const sourceRow = verifiedFlowRowsByKey?.get(key);
+    if (!sourceRow) continue;
+    const carried = {
+      ...sourceRow,
+      schema_version: 1,
+      status: "verified",
+      carried_forward: true,
+      carried_forward_at_utc: nowIso(),
+      carried_forward_for_process_id: processId,
+    };
+    appendJsonLine(ledgerPath, carried);
+    existing.add(key);
+    written.push({
+      id: identity.id || carried.dataset_id || carried.flow_id,
+      version: identity.version || carried.dataset_version || carried.flow_version || "00.00.001",
+      identity_key: key,
+      source_ledger_file: carried.source_ledger_file ?? null,
+    });
+  }
+  return {
+    count: written.length,
+    rows: written,
+    ledger: ledgerPath,
   };
 }
 
@@ -1363,13 +2266,19 @@ function writeBlockedScopeViews(paths) {
   };
 }
 
-function loadActiveBlockedScopeSet(paths, verifiedScopes) {
+function loadActiveBlockedScopeSetFromFiles(filePaths, verifiedScopes) {
   const set = new Set();
-  for (const row of readJsonLines(paths.blockedHumanReview)) {
-    const key = scopeKeyFromLedgerRow(row);
-    if (key && !verifiedScopes.has(key)) set.add(key);
+  for (const filePath of filePaths) {
+    for (const row of readJsonLines(filePath)) {
+      const key = scopeKeyFromLedgerRow(row);
+      if (key && !verifiedScopes.has(key)) set.add(key);
+    }
   }
   return set;
+}
+
+function loadActiveBlockedScopeSet(paths, verifiedScopes) {
+  return loadActiveBlockedScopeSetFromFiles([paths.blockedHumanReview], verifiedScopes);
 }
 
 function scopeKey(scope) {
@@ -1720,6 +2629,54 @@ function blockRow({ scope, stage, blocker, report, rerunCommand }) {
   };
 }
 
+const retryableStageFailurePattern =
+  /\b(?:ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNRESET|ECONNREFUSED|ECONNABORTED|EHOSTUNREACH|ENETUNREACH|ESOCKETTIMEDOUT)\b|npm error network|registry\.npmjs\.org|network connectivity|timed out after|lookup_failed after insert/u;
+
+function retryableStageFailureText({ blocker, report }) {
+  const parts = [
+    blocker?.code,
+    blocker?.message,
+    blocker?.stderr,
+    blocker?.stage?.stderr,
+    blocker?.stage?.command,
+  ];
+  const reportPath = resolveRepoPath(report);
+  if (fileExists(reportPath)) {
+    const reportJson = readJson(reportPath);
+    parts.push(
+      reportJson?.status,
+      ...(reportJson?.blockers ?? []).map((entry) => JSON.stringify(entry)),
+      ...(reportJson?.stages ?? []).map((entry) =>
+        [entry?.stage, entry?.status, entry?.exit_code, entry?.stderr, entry?.command]
+          .filter((value) => value != null && value !== "")
+          .join("\n"),
+      ),
+    );
+  }
+  return parts.filter(Boolean).join("\n");
+}
+
+function retryableStageFailure({ stage, blocker, report }) {
+  const code = String(blocker?.code ?? "");
+  const stageName = String(stage ?? "");
+  if (
+    !/(?:_stage_failed|_command_failed|_timeout|_report_missing|not_completed|not_ready|handoff_failed)$/u.test(
+      code,
+    ) &&
+    !/(?:commit|verify|finalize|apply|materialize|preflight)/u.test(stageName)
+  ) {
+    return null;
+  }
+  const text = retryableStageFailureText({ blocker, report });
+  if (!retryableStageFailurePattern.test(text)) return null;
+  const match = text.match(retryableStageFailurePattern);
+  return {
+    code: match?.[0] ?? "retryable_stage_failure",
+    message:
+      "Stage failed for a retryable tool, network, or eventual-consistency reason; rerun the same scope instead of sending it to human review.",
+  };
+}
+
 function buildFinalizeArgs({
   type,
   rowsFile,
@@ -1897,13 +2854,26 @@ async function runIdentityAndPatch({
         ),
       };
     }
+    const carryForward = mergeCompletedReusableIdentityDecisions({
+      runDir,
+      decisionsFile: identityDecisions,
+      outDir: identityTaskDir,
+      datasetType: type,
+    });
+    stages.push({
+      stage: `${stagePrefix}.identity_decision_carry_forward`,
+      status: carryForward.report.status,
+      report: repoRelative(carryForward.reportPath),
+      replacements: carryForward.report.counts.replacements,
+      conflicts: carryForward.report.counts.conflicts,
+    });
     const identityApplyDir = path.join(scopeDir, `${label}-identity-apply`);
     const identityApply = await runArgvStage({
       stage: `${stagePrefix}.identity_apply`,
       argv: foundryCommand("dataset-identity-decisions-apply", {
         type,
         rowsFile: repoRelative(inputRowsFile),
-        decisions: repoRelative(identityDecisions),
+        decisions: repoRelative(carryForward.outputFile),
         outDir: repoRelative(identityApplyDir),
         authoringPackageDir: repoRelative(
           path.join(identityTaskDir, "authoring-package-snapshots"),
@@ -2158,7 +3128,21 @@ async function maybeCommitSupportThenRerunFinalize({
         logDir,
       });
       stages.push(rerun);
-      return rerun.json;
+      const staleKeys = staleReusedSupportIdentityKeys(rerun.json, supportIdentityKeys);
+      if (staleKeys.length === 0) return rerun.json;
+      for (const identityKey of staleKeys) verifiedSupportIdentities.delete(identityKey);
+      appendSupportIdentityInvalidationRows({
+        cacheFile: supportIdentityCacheFile,
+        identityKeys: staleKeys,
+        source: `${type}.support.reuse_invalidated`,
+        report: finalizeReportPath,
+      });
+      stages.push({
+        stage: `${type}.support.reuse_invalidated`,
+        status: "invalidated_stale_support_identities",
+        support_identities: staleKeys,
+        report: repoRelative(finalizeReportPath),
+      });
     }
     supportResult = await executeHandoff({
       handoffPlanPath: supportPlan,
@@ -2356,6 +3340,7 @@ async function runOneScope({
   schemas,
   verifiedScopes,
   verifiedFlows,
+  verifiedFlowRowsByKey,
   blockedScopes,
 }) {
   const processId = scope.process_id || scope.id;
@@ -2449,6 +3434,23 @@ async function runOneScope({
     };
   };
 
+  const defer = ({ stage, blocker, report }) => {
+    const retryable = retryableStageFailure({ stage, blocker, report });
+    if (!retryable) return block({ stage, blocker, report });
+    return fail({
+      stage,
+      blocker: {
+        ...blocker,
+        retryable: true,
+        retryable_reason_code: retryable.code,
+        retryable_reason: retryable.message,
+        required_human_action:
+          "Do not manually curate this scope for the recorded stage failure. Restore CLI/npm/network availability or wait for remote consistency, then rerun the exact scope command.",
+      },
+      report,
+    });
+  };
+
   const materializedDir = path.join(scopeDir, "materialized");
   const materialize = await runArgvStage({
     stage: "materialize",
@@ -2471,7 +3473,7 @@ async function runOneScope({
     ].includes(String(blocker?.code || "")),
   );
   if (!materializedReport || fatalMaterializeBlocker) {
-    return block({
+    return defer({
       stage: "materialize",
       blocker:
         fatalMaterializeBlocker ??
@@ -2489,7 +3491,7 @@ async function runOneScope({
     identityPreflightIndex: resolveRepoPath(materializedReport.files?.identity_preflight_requests),
   };
   if (!fileExists(materialized.processRowsFile)) {
-    return block({
+    return defer({
       stage: "materialize",
       blocker: {
         code: "materialized_process_rows_missing",
@@ -2534,7 +3536,7 @@ async function runOneScope({
       "ready_no_classification_actions",
     ])
   ) {
-    return block({
+    return defer({
       stage: "classification.task",
       blocker: firstBlocker(
         classificationTask.json,
@@ -2568,7 +3570,7 @@ async function runOneScope({
     });
     stages.push(classificationProjection);
     if (!statusIs(classificationProjection.json, ["completed", "completed_with_manual_review"])) {
-      return block({
+      return defer({
         stage: "classification.project",
         blocker: firstBlocker(
           classificationProjection.json,
@@ -2587,7 +3589,7 @@ async function runOneScope({
       outDir: classificationProjectionDir,
     });
     if (schemaRepair.unresolved.length > 0) {
-      return block({
+      return defer({
         stage: "classification.schema_repair",
         blocker: {
           code: "classification_decision_code_invalid",
@@ -2606,7 +3608,7 @@ async function runOneScope({
       "classification-decisions.manual-review.jsonl",
     );
     if (readJsonLines(manualRows).length > 0) {
-      return block({
+      return defer({
         stage: "classification.project",
         blocker: {
           code: "classification_requires_human_review",
@@ -2642,7 +3644,7 @@ async function runOneScope({
       path.join(classificationApplyDir, "classification-decisions-apply-report.json"),
     );
     if (!statusIs(classificationApply.json, ["completed"])) {
-      return block({
+      return defer({
         stage: "classification.apply",
         blocker: firstBlocker(
           classificationApply.json,
@@ -2698,7 +3700,7 @@ async function runOneScope({
     if (
       !statusIs(locationTask.json, ["ready_for_ai_location_decisions", "ready_no_location_actions"])
     ) {
-      return block({
+      return defer({
         stage: "location.task",
         blocker: firstBlocker(
           locationTask.json,
@@ -2729,7 +3731,7 @@ async function runOneScope({
       });
       stages.push(locationSuggest);
       if (!statusIs(locationSuggest.json, ["completed", "completed_with_manual_review"])) {
-        return block({
+        return defer({
           stage: "location.suggest",
           blocker: firstBlocker(
             locationSuggest.json,
@@ -2741,7 +3743,7 @@ async function runOneScope({
       }
       const manualRows = path.join(locationDecisionDir, "location-decisions.manual-review.jsonl");
       if (readJsonLines(manualRows).length > 0) {
-        return block({
+        return defer({
           stage: "location.suggest",
           blocker: {
             code: "location_requires_human_review",
@@ -2773,7 +3775,7 @@ async function runOneScope({
         path.join(locationApplyDir, "location-decisions-apply-report.json"),
       );
       if (!statusIs(locationApply.json, ["completed"])) {
-        return block({
+        return defer({
           stage: "location.apply",
           blocker: firstBlocker(
             locationApply.json,
@@ -2793,6 +3795,25 @@ async function runOneScope({
     .filter((identity) => identity.id);
   const flowVerificationPlan = flowRowsPendingVerification(flowRows, verifiedFlows);
   const unverifiedFlowIds = flowVerificationPlan.pendingIdentities;
+  const carriedForwardFlows = writeScopeCarriedForwardVerifiedFlowRows({
+    ledgerDir,
+    processId,
+    verifiedIdentities: flowVerificationPlan.verifiedIdentities,
+    verifiedFlowRowsByKey,
+  });
+  if (carriedForwardFlows.count > 0) {
+    stages.push({
+      stage: "flow.carry_forward_verified",
+      status: "completed",
+      exit_code: 0,
+      report: null,
+      counts: {
+        carried_forward_verified_flows: carriedForwardFlows.count,
+      },
+      carried_forward_verified_identities: carriedForwardFlows.rows,
+      ledger: repoRelative(carriedForwardFlows.ledger),
+    });
+  }
   if (
     flowRows.length > 0 &&
     flowVerificationPlan.pendingRows.length > 0 &&
@@ -2893,7 +3914,7 @@ async function runOneScope({
         stages,
       });
       if (flowAuthoring.status !== "completed") {
-        return block({
+        return defer({
           stage: "flow.authoring",
           blocker: flowAuthoring.blocker,
           report: flowAuthoring.report,
@@ -2913,62 +3934,75 @@ async function runOneScope({
         recovery: flowAuthoring,
       });
       if (recoveryBlocker) {
-        return block({
+        return defer({
           stage: "flow.finalize",
           blocker: recoveryBlocker,
           report: flowPreReportPath,
         });
       }
     }
-    const flowCommit = await finalizeAndCommitDataset({
-      type: "flow",
-      rowsFile: flowReadyRows,
-      scopeDir,
-      runDir: paths.runDir,
-      materialized,
-      classificationApplyReport,
-      locationApplyReport,
-      identityApplyReports: flowIdentityReport ? [flowIdentityReport] : [],
-      patchCollectReport: flowPatchCollectReport,
-      patchApplyReport: flowPatchApplyReport,
-      targetUserId: options.targetUserId,
-      stateCode: options.stateCode,
-      logDir,
-      ledgerDir,
-      stages,
-      supportIdentityCacheFile: paths.supportIdentityCache,
-    });
-    if (flowCommit.status === "failed") {
-      return fail({ stage: "flow.commit", blocker: flowCommit.blocker, report: flowCommit.report });
-    }
-    if (flowCommit.status !== "completed") {
-      if (categoryForBlocker(flowCommit.blocker?.code) === "remote-write") {
+    const flowReadyRowCount = readRows(flowReadyRows).length;
+    if (flowReadyRowCount === 0) {
+      stages.push({
+        stage: "flow.finalize",
+        status: "skipped_no_write_rows_after_identity_reuse",
+        exit_code: 0,
+        rows_file: repoRelative(flowReadyRows),
+        identity_decision_apply_report: flowIdentityReport
+          ? repoRelative(flowIdentityReport)
+          : null,
+      });
+    } else {
+      const flowCommit = await finalizeAndCommitDataset({
+        type: "flow",
+        rowsFile: flowReadyRows,
+        scopeDir,
+        runDir: paths.runDir,
+        materialized,
+        classificationApplyReport,
+        locationApplyReport,
+        identityApplyReports: flowIdentityReport ? [flowIdentityReport] : [],
+        patchCollectReport: flowPatchCollectReport,
+        patchApplyReport: flowPatchApplyReport,
+        targetUserId: options.targetUserId,
+        stateCode: options.stateCode,
+        logDir,
+        ledgerDir,
+        stages,
+        supportIdentityCacheFile: paths.supportIdentityCache,
+      });
+      if (flowCommit.status === "failed") {
         return fail({
+          stage: "flow.commit",
+          blocker: flowCommit.blocker,
+          report: flowCommit.report,
+        });
+      }
+      if (flowCommit.status !== "completed") {
+        if (categoryForBlocker(flowCommit.blocker?.code) === "remote-write") {
+          return fail({
+            stage: "flow.finalize",
+            blocker: flowCommit.blocker,
+            report: flowCommit.report,
+          });
+        }
+        return defer({
           stage: "flow.finalize",
           blocker: flowCommit.blocker,
           report: flowCommit.report,
         });
       }
-      return block({
-        stage: "flow.finalize",
-        blocker: flowCommit.blocker,
-        report: flowCommit.report,
-      });
-    }
-    const committedFlowRows =
-      readRows(resolveRepoPath(flowCommit.finalizeReport?.files?.final_rows)).length > 0
-        ? readRows(resolveRepoPath(flowCommit.finalizeReport?.files?.final_rows))
-        : readRows(flowReadyRows);
-    for (const identity of committedFlowRows
-      .map((row) => datasetIdentity(row, "flow"))
-      .filter((entry) => entry.id)) {
-      const identityKey = datasetIdentityKey(identity);
-      const alreadyVerified = verifiedFlows.has(identityKey);
-      verifiedFlows.add(identityKey);
-      if (alreadyVerified) continue;
-      appendJsonLine(
-        paths.okFlows,
-        okDatasetRow({
+      const committedFlowRows =
+        readRows(resolveRepoPath(flowCommit.finalizeReport?.files?.final_rows)).length > 0
+          ? readRows(resolveRepoPath(flowCommit.finalizeReport?.files?.final_rows))
+          : readRows(flowReadyRows);
+      for (const identity of committedFlowRows
+        .map((row) => datasetIdentity(row, "flow"))
+        .filter((entry) => entry.id)) {
+        const identityKey = datasetIdentityKey(identity);
+        const alreadyVerified = verifiedFlows.has(identityKey);
+        verifiedFlows.add(identityKey);
+        const okFlowRow = okDatasetRow({
           type: "flow",
           id: identity.id,
           version: identity.version,
@@ -2978,8 +4012,14 @@ async function runOneScope({
             finalize_report: repoRelative(flowCommit.report),
             closeout_report: repoRelative(flowCommit.handoff?.closeoutReportPath),
           },
-        }),
-      );
+        });
+        verifiedFlowRowsByKey?.set(identityKey, {
+          ...okFlowRow,
+          source_ledger_file: repoRelative(paths.okFlows),
+        });
+        if (alreadyVerified) continue;
+        appendJsonLine(paths.okFlows, okFlowRow);
+      }
     }
   }
 
@@ -3050,7 +4090,7 @@ async function runOneScope({
       stages,
     });
     if (processAuthoring.status !== "completed") {
-      return block({
+      return defer({
         stage: "process.authoring",
         blocker: processAuthoring.blocker,
         report: processAuthoring.report,
@@ -3066,7 +4106,7 @@ async function runOneScope({
       recovery: processAuthoring,
     });
     if (recoveryBlocker) {
-      return block({
+      return defer({
         stage: "process.finalize",
         blocker: recoveryBlocker,
         report: processPreReportPath,
@@ -3130,7 +4170,7 @@ async function runOneScope({
           report: processCommit.report,
         });
       }
-      return block({
+      return defer({
         stage: "process.finalize",
         blocker: processCommit.blocker,
         report: processCommit.report,
@@ -3207,6 +4247,7 @@ export function createBafuBatchImportRunCommands(deps) {
           "node scripts/foundry.mjs dataset-bafu-batch-import-run --scope-file <ready-scopes.jsonl> --out-dir <existing-batch-dir> --pending-only --selection-order estimated-weight-asc --limit 20 --pause-file <pause.flag> --commit",
           "node scripts/foundry.mjs dataset-bafu-batch-import-run --scope-file <ready-scopes.jsonl> --pending-only --selection-order family-master-first --preflight-only",
           "node scripts/foundry.mjs dataset-bafu-batch-import-run --scope-file <ready-scopes.jsonl> --pending-only --require-leaf-classification --preflight-only",
+          "node scripts/foundry.mjs dataset-bafu-batch-import-run --scope-file <ready-scopes.jsonl> --out-dir <new-batch-dir> --ledger-source-dir <previous-batch-dir> --pending-only --preflight-only",
           "node scripts/foundry.mjs dataset-bafu-batch-import-run --scope-file <ready-scopes.jsonl> --out-dir <existing-batch-dir> --pending-only --selection-order estimated-weight-asc --preflight-only",
           "node scripts/foundry.mjs dataset-bafu-batch-import-run --scope-file <ready-scopes.jsonl> --process-id <uuid> --commit",
         ],
@@ -3307,6 +4348,25 @@ export function createBafuBatchImportRunCommands(deps) {
       preflightPlan: path.join(outDir, "import-ledger", "preflight.plan.jsonl"),
       bafuFamilySignatures: path.join(outDir, "import-ledger", "bafu-family-signatures.json"),
     };
+    const ledgerSourceDirs = resolveLedgerSourceDirs(
+      options.ledgerSourceDir ||
+        options.ledgerSourceDirs ||
+        options.carryForwardLedgerDir ||
+        options.carryForwardLedgerDirs,
+    );
+    const ledgerSourceSummary = summarizeLedgerSources(ledgerSourceDirs);
+    const okScopeFiles = [
+      ...ledgerFiles(ledgerSourceDirs, "ok.scopes.verified.jsonl"),
+      paths.okScopes,
+    ];
+    const okFlowFiles = [
+      ...ledgerFiles(ledgerSourceDirs, "ok.flows.verified.jsonl"),
+      paths.okFlows,
+    ];
+    const blockedScopeFiles = [
+      ...ledgerFiles(ledgerSourceDirs, "blocked.scopes.human-review.jsonl"),
+      paths.blockedHumanReview,
+    ];
     const allScopes = readJsonLines(scopeFile);
     const defaultProcessesDir = path.join(path.dirname(processBundlesDir), "tidas", "processes");
     const processFilesDir = resolveRepoPath(
@@ -3332,12 +4392,14 @@ export function createBafuBatchImportRunCommands(deps) {
         `Missing required batch import inputs:\n${missingInputs.map(repoRelative).join("\n")}`,
       );
     }
-    const verifiedScopes = loadVerifiedSet(paths.okScopes, "scope");
-    const verifiedFlows = loadVerifiedSet(paths.okFlows, "flow");
-    const blockedScopes = loadActiveBlockedScopeSet(paths, verifiedScopes);
+    const verifiedScopes = loadVerifiedSetFromFiles(okScopeFiles, "scope");
+    const verifiedFlows = loadVerifiedSetFromFiles(okFlowFiles, "flow");
+    const verifiedFlowRowsByKey = loadVerifiedRowsByKeyFromFiles(okFlowFiles, "flow");
+    const blockedScopes = loadActiveBlockedScopeSetFromFiles(blockedScopeFiles, verifiedScopes);
     const supportIdentityCache = primeVerifiedSupportIdentityCache({
       outDir,
       cacheFile: paths.supportIdentityCache,
+      sourceLedgerDirs: ledgerSourceDirs,
     });
     const familySignatureIndex = buildBafuFamilySignatureIndex({
       scopes: allScopes,
@@ -3414,6 +4476,13 @@ export function createBafuBatchImportRunCommands(deps) {
         already_verified_flows: verifiedFlows.size,
         already_blocked_scopes: blockedScopes.size,
         verified_support_identities: verifiedSupportIdentities.size,
+        ledger_source_dirs: ledgerSourceSummary.length,
+        ledger_source_ok_scope_rows: sumLedgerSourceRows(ledgerSourceSummary, "ok_scope_rows"),
+        ledger_source_ok_flow_rows: sumLedgerSourceRows(ledgerSourceSummary, "ok_flow_rows"),
+        ledger_source_blocked_scope_rows: sumLedgerSourceRows(
+          ledgerSourceSummary,
+          "blocked_scope_rows",
+        ),
         library_classification_decisions: classificationDecisionIndex.row_count,
         indexed_library_classification_decisions: classificationDecisionIndex.indexed_decisions,
       },
@@ -3432,10 +4501,12 @@ export function createBafuBatchImportRunCommands(deps) {
         limit,
         requested_process_ids: [...requestedProcessIds],
         require_leaf_classification: requireLeafClassification,
+        ledger_source_dirs: ledgerSourceDirs.map(repoRelative),
         pause_file: repoRelative(pauseFile),
         stop_after_blocked: stopAfterBlocked,
       },
       support_identity_cache: supportIdentityCache,
+      ledger_sources: ledgerSourceSummary,
       policy: {
         ready_scopes_only: true,
         blocked_scopes_deferred: true,
@@ -3447,6 +4518,7 @@ export function createBafuBatchImportRunCommands(deps) {
         retryable_remote_failures_are_separate_from_human_review: true,
         bafu_family_reuse_is_dataset_specific: true,
         bafu_family_variants_still_require_per_scope_schema_qa_remote_verify: true,
+        ledger_source_dirs_are_read_only_carry_forward_inputs: true,
         require_leaf_classification_filters_only_library_decision_readiness:
           requireLeafClassification,
       },
@@ -3489,6 +4561,13 @@ export function createBafuBatchImportRunCommands(deps) {
           already_verified_flows: verifiedFlows.size,
           already_blocked_scopes: blockedScopes.size,
           verified_support_identities: verifiedSupportIdentities.size,
+          ledger_source_dirs: ledgerSourceSummary.length,
+          ledger_source_ok_scope_rows: sumLedgerSourceRows(ledgerSourceSummary, "ok_scope_rows"),
+          ledger_source_ok_flow_rows: sumLedgerSourceRows(ledgerSourceSummary, "ok_flow_rows"),
+          ledger_source_blocked_scope_rows: sumLedgerSourceRows(
+            ledgerSourceSummary,
+            "blocked_scope_rows",
+          ),
           library_classification_decisions: classificationDecisionIndex.row_count,
           indexed_library_classification_decisions: classificationDecisionIndex.indexed_decisions,
           selected_same_amount_vector_scopes: selectedFamilySummary.same_amount_vector_scopes,
@@ -3502,6 +4581,7 @@ export function createBafuBatchImportRunCommands(deps) {
           bafu_family_signatures: repoRelative(paths.bafuFamilySignatures),
           support_identity_cache: repoRelative(paths.supportIdentityCache),
         },
+        ledger_sources: ledgerSourceSummary,
       };
       writeJson(path.join(outDir, "dataset-bafu-batch-import-run-report.json"), report);
       writeJson(path.join(outDir, "import-ledger", "run-manifest.json"), {
@@ -3539,6 +4619,7 @@ export function createBafuBatchImportRunCommands(deps) {
           schemas,
           verifiedScopes,
           verifiedFlows,
+          verifiedFlowRowsByKey,
           blockedScopes,
           workerIndex,
         });
@@ -3576,6 +4657,9 @@ export function createBafuBatchImportRunCommands(deps) {
       },
       counts: {
         selected_scopes: scopes.length,
+        pending_candidate_scopes: selection.stats.candidate_scopes_before_limit,
+        filtered_already_verified_scopes: selection.stats.filtered_already_verified,
+        filtered_already_blocked_scopes: selection.stats.filtered_already_blocked,
         filtered_classification_missing_scopes: selection.stats.filtered_classification_missing,
         filtered_classification_not_leaf_scopes: selection.stats.filtered_classification_not_leaf,
         processed_scopes: results.length,
@@ -3592,7 +4676,17 @@ export function createBafuBatchImportRunCommands(deps) {
         historical_human_review_rows: blockedScopeViews.historical,
         resolved_human_review_rows: blockedScopeViews.resolved,
         retry_rows: readJsonLines(paths.failedRetry).length,
+        already_verified_scopes: verifiedScopes.size,
+        already_verified_flows: verifiedFlows.size,
+        already_blocked_scopes: blockedScopes.size,
         verified_support_identities: verifiedSupportIdentities.size,
+        ledger_source_dirs: ledgerSourceSummary.length,
+        ledger_source_ok_scope_rows: sumLedgerSourceRows(ledgerSourceSummary, "ok_scope_rows"),
+        ledger_source_ok_flow_rows: sumLedgerSourceRows(ledgerSourceSummary, "ok_flow_rows"),
+        ledger_source_blocked_scope_rows: sumLedgerSourceRows(
+          ledgerSourceSummary,
+          "blocked_scope_rows",
+        ),
         library_classification_decisions: classificationDecisionIndex.row_count,
         indexed_library_classification_decisions: classificationDecisionIndex.indexed_decisions,
         selected_same_amount_vector_scopes: selectedFamilySummary.same_amount_vector_scopes,
@@ -3614,6 +4708,7 @@ export function createBafuBatchImportRunCommands(deps) {
         support_identity_cache: repoRelative(paths.supportIdentityCache),
       },
       results,
+      ledger_sources: ledgerSourceSummary,
     };
     writeJson(path.join(outDir, "dataset-bafu-batch-import-run-report.json"), report);
     writeJson(path.join(outDir, "import-ledger", "run-manifest.json"), {
@@ -3627,12 +4722,15 @@ export function createBafuBatchImportRunCommands(deps) {
     return report;
   }
 
-  return { runDatasetBafuBatchImportRun };
+  return { runDatasetBafuBatchImportRun, runDatasetBafuUniverseCoverageReport };
 }
 
 export const bafuBatchImportRunTestHooks = {
   flowRowsPendingVerification,
   identityUnresolvedReferenceBlocker,
+  mergeCompletedReusableIdentityDecisions,
   postWriteVerifyRetryReason,
   preFinalizeRecoveryBlocker,
+  retryableStageFailure,
+  writeScopeCarriedForwardVerifiedFlowRows,
 };
