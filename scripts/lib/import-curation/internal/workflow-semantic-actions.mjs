@@ -665,8 +665,14 @@ export function collectClassificationSemanticActions(
   }
   const sourceLooksIndustrial =
     /\b(hydrometallurgical|Li-ion|battery|batteries|Li salt|lithium|processing)\b/iu.test(nameText);
+  const sourceLooksWasteTreatment =
+    /\b(disposal|waste treatment|treatment of|treatment,? (?:of )?.*batteries)\b/iu.test(nameText);
   const classificationLooksService =
     /membership organizations|community, social and personal services|environmental protection services|other service activities/iu.test(
+      classificationPath,
+    );
+  const classificationLooksWasteTreatment =
+    /waste (?:collection,\s*)?treatment and disposal|waste treatment|hazardous waste treatment|waste treatment services/iu.test(
       classificationPath,
     );
   if (
@@ -689,7 +695,11 @@ export function collectClassificationSemanticActions(
       }),
     );
   }
-  if (sourceLooksIndustrial && classificationLooksService) {
+  if (
+    sourceLooksIndustrial &&
+    classificationLooksService &&
+    !(sourceLooksWasteTreatment && classificationLooksWasteTreatment)
+  ) {
     actions.push(
       semanticActionItem({
         code: "semantic_classification_mismatch",

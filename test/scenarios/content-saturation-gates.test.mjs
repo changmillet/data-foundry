@@ -40,6 +40,28 @@ function classification() {
   };
 }
 
+function classificationFromLabels(labels) {
+  return {
+    "common:classification": {
+      "common:class": labels.map((label, index) => ({
+        "@level": String(index),
+        "@classId": String(index + 1),
+        "#text": label,
+      })),
+    },
+  };
+}
+
+function hazardousWasteTreatmentClassification() {
+  return classificationFromLabels([
+    "Community, social and personal services",
+    "Sewage and waste collection, treatment and disposal and other environmental protection services",
+    "Waste treatment and disposal services",
+    "Hazardous waste treatment and disposal services",
+    "Hazardous waste treatment services",
+  ]);
+}
+
 function writeGateInputs(root, datasetType, rows) {
   fs.rmSync(root, { recursive: true, force: true });
   const context = writeContextPackFiles(root);
@@ -96,6 +118,30 @@ function runGate(input) {
   ]);
   assert.equal(result.code, 1);
   return result.json;
+}
+
+function runGateRaw(input) {
+  return runFoundry([
+    "dataset-curation-gate",
+    "--type",
+    input.datasetType,
+    "--profile",
+    "bafu",
+    "--rows-file",
+    rel(input.rowsFile),
+    "--schema-report",
+    rel(input.schemaReport),
+    "--qa-report",
+    rel(input.qaReport),
+    "--schema-file",
+    rel(input.schemaFile),
+    "--yaml-file",
+    rel(input.yamlFile),
+    "--ruleset-file",
+    rel(input.rulesetFile),
+    "--out-dir",
+    rel(path.join(path.dirname(input.rowsFile), "curation-gate")),
+  ]);
 }
 
 function actionCodesFor(report) {
@@ -209,6 +255,102 @@ test("BAFU flow curation gate blocks when source-backed flow descriptors are not
     true,
   );
   assert.equal(codes.includes("semantic_content_saturation_flow_general_comment_missing"), true);
+});
+
+test("BAFU flow curation gate accepts battery disposal under hazardous waste treatment classification", () => {
+  const flowId = "bbbbbbbb-1313-4222-8333-444444444444";
+  const input = writeGateInputs(
+    path.join(fixtureRoot, "flow-battery-disposal-classification"),
+    "flow",
+    [
+      {
+        flowDataSet: {
+          flowInformation: {
+            dataSetInformation: {
+              "common:UUID": flowId,
+              name: {
+                baseName: ml("Disposal, Li-ions batteries, mixed technology"),
+                treatmentStandardsRoutes: ml("disposal route"),
+                mixAndLocationTypes: ml("disposal service, global"),
+                flowProperties: ml("Mass"),
+              },
+              classificationInformation: hazardousWasteTreatmentClassification(),
+            },
+            geography: {
+              locationOfSupply: "GLO",
+            },
+          },
+          modellingAndValidation: {
+            LCIMethod: { typeOfDataSet: "Product flow" },
+          },
+          administrativeInformation: {
+            publicationAndOwnership: { "common:dataSetVersion": "00.00.001" },
+          },
+          flowProperties: {
+            flowProperty: {
+              referenceToFlowPropertyDataSet: {
+                "common:shortDescription": ml("Mass"),
+              },
+            },
+          },
+        },
+      },
+    ],
+  );
+
+  const result = runGateRaw(input);
+
+  assert.equal(result.code, 1);
+  const codes = actionCodesFor(result.json);
+  assert.equal(codes.includes("semantic_classification_mismatch"), false);
+});
+
+test("BAFU flow curation gate still blocks Li-ion production under service classification", () => {
+  const flowId = "bbbbbbbb-1414-4222-8333-444444444444";
+  const input = writeGateInputs(
+    path.join(fixtureRoot, "flow-battery-production-classification"),
+    "flow",
+    [
+      {
+        flowDataSet: {
+          flowInformation: {
+            dataSetInformation: {
+              "common:UUID": flowId,
+              name: {
+                baseName: ml("Li salt, hydrometallurgical processing Li-ion batteries"),
+                treatmentStandardsRoutes: ml("production route"),
+                mixAndLocationTypes: ml("production service, global"),
+                flowProperties: ml("Mass"),
+              },
+              classificationInformation: hazardousWasteTreatmentClassification(),
+            },
+            geography: {
+              locationOfSupply: "GLO",
+            },
+          },
+          modellingAndValidation: {
+            LCIMethod: { typeOfDataSet: "Product flow" },
+          },
+          administrativeInformation: {
+            publicationAndOwnership: { "common:dataSetVersion": "00.00.001" },
+          },
+          flowProperties: {
+            flowProperty: {
+              referenceToFlowPropertyDataSet: {
+                "common:shortDescription": ml("Mass"),
+              },
+            },
+          },
+        },
+      },
+    ],
+  );
+
+  const report = runGate(input);
+
+  assert.equal(report.status, "blocked_needs_foundry_ai_authoring");
+  const codes = actionCodesFor(report);
+  assert.equal(codes.includes("semantic_classification_mismatch"), true);
 });
 
 test("BAFU flow curation gate does not treat generic flowProperties as split quantitative name evidence", () => {
