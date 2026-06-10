@@ -55,6 +55,20 @@ const postAuthoringFinalizeStageContract = readOnlyStageContract([
   },
 ]);
 
+function verifiedReferenceLedgerFilesForDir(ledgerDir) {
+  if (!ledgerDir) return [];
+  return [
+    "ok.flows.verified.jsonl",
+    "ok.processes.verified.jsonl",
+    "ok.sources.verified.jsonl",
+    "ok.contacts.verified.jsonl",
+    "ok.unitgroups.verified.jsonl",
+    "ok.flowproperties.verified.jsonl",
+  ]
+    .map((name) => path.join(ledgerDir, name))
+    .filter((filePath) => fs.existsSync(filePath) && fs.statSync(filePath).isFile());
+}
+
 export function createPostAuthoringFinalizeCommands({
   appendOption,
   applyCanonicalSupportRewrites,
@@ -934,6 +948,12 @@ export function createPostAuthoringFinalizeCommands({
     const identityDecisionApplyReportFiles = identityDecisionApplyReportOptions
       .map(resolveRepoPath)
       .filter(fileExists);
+    const verifiedReferenceLedgerDir = resolveRepoPath(
+      options.ledgerDir || options.importLedgerDir || path.join(outDir, "import-ledger"),
+    );
+    const verifiedReferenceLedgerFiles = verifiedReferenceLedgerFilesForDir(
+      verifiedReferenceLedgerDir,
+    );
 
     const mutationManifest = timeStage("mutation_manifest", () =>
       runDatasetMutationManifest({
@@ -970,6 +990,7 @@ export function createPostAuthoringFinalizeCommands({
             sourceContactRewriteStage.files?.source_reference_rewrites ||
             sourceReferenceRewritesFileForRowsFile(rowsFile, options),
           identityReferenceRewrites: identityReferenceRewriteFile,
+          verifiedReferenceLedgers: verifiedReferenceLedgerFiles,
           outDir: path.join(outDir, "mutation-manifest"),
           requireCurationGate: requiresCurationGate,
         },

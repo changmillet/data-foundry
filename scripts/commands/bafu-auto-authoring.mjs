@@ -136,6 +136,21 @@ function cleanNamePlanPart(value) {
     .trim();
 }
 
+function splitCommaDelimitedMarketMixPart(value) {
+  const parts = String(value ?? "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const marketMixIndex = parts.findIndex((part) => normalizeIdentityText(part) === "market mix");
+  if (marketMixIndex < 0) return null;
+  const remainingParts = parts.filter((_, index) => index !== marketMixIndex);
+  if (remainingParts.length === 0) return null;
+  return {
+    base_name: cleanNamePlanPart(remainingParts.join(", ")),
+    mix_location: "market mix",
+  };
+}
+
 function sourceLocatorMarkerInText(value) {
   const text = String(value ?? "");
   return [
@@ -429,10 +444,17 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
   }
   const disposalToMatch = /^(?<core>disposal,\s*.+?),\s*(?<route>to .+)$/iu.exec(text);
   if (disposalToMatch?.groups?.core && disposalToMatch?.groups?.route) {
+    const marketMixSplit = splitCommaDelimitedMarketMixPart(disposalToMatch.groups.core);
     return {
       source: text,
-      base_name: disposalToMatch.groups.core.trim(),
+      base_name: marketMixSplit?.base_name ?? disposalToMatch.groups.core.trim(),
       treatment: disposalToMatch.groups.route.trim(),
+      ...(marketMixSplit
+        ? {
+            mix_location: marketMixSplit.mix_location,
+            clean_existing_treatment: true,
+          }
+        : {}),
     };
   }
   const disposalObjectMatch = /^(?<core>disposal,\s*.+)$/iu.exec(text);
@@ -717,6 +739,31 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
       source: text,
       base_name: woodResourceRouteMatch.groups.core.trim(),
       treatment: woodResourceRouteMatch.groups.route.trim(),
+    };
+  }
+  const barkAfterDebarkingMatch =
+    /^(?<core>bark,\s*(?:softwood|hardwood)),\s*(?<route>after\s+debarking,\s*at\s+sawmill)$/iu.exec(
+      text,
+    );
+  if (barkAfterDebarkingMatch?.groups?.core && barkAfterDebarkingMatch?.groups?.route) {
+    return {
+      source: text,
+      base_name: barkAfterDebarkingMatch.groups.core.trim(),
+      treatment: barkAfterDebarkingMatch.groups.route.trim(),
+    };
+  }
+  const measuredAsPropertyRouteMatch =
+    /^(?<core>.+?),\s*(?<property>measured\s+as\s+[^,{}]+),\s*(?<route>at\s+[^,{}]+)$/iu.exec(text);
+  if (
+    measuredAsPropertyRouteMatch?.groups?.core &&
+    measuredAsPropertyRouteMatch?.groups?.property &&
+    measuredAsPropertyRouteMatch?.groups?.route
+  ) {
+    return {
+      source: text,
+      base_name: cleanNamePlanPart(measuredAsPropertyRouteMatch.groups.core),
+      treatment: measuredAsPropertyRouteMatch.groups.route.trim(),
+      flow_property: measuredAsPropertyRouteMatch.groups.property.trim(),
     };
   }
   const insulationSpecificationMatch =
@@ -1737,9 +1784,19 @@ function buildNamePatchOperations(task) {
     ) {
       if (emittedFunctionalUnitClean) continue;
       emittedFunctionalUnitClean = true;
+      const nameMixLocationText = normalizeLocationTokenCode(
+        textFromMultilang(name?.mixAndLocationTypes).trim(),
+      );
+      const nameMixLocationCode = /^[A-Z0-9][A-Z0-9+&-]{1,30}$/u.test(nameMixLocationText)
+        ? nameMixLocationText
+        : null;
       const value =
         cleanProcessFunctionalUnitText(functionalUnit, locationCode) ??
-        removeTrailingLocationToken(functionalUnit, locationCode);
+        removeTrailingLocationToken(functionalUnit, locationCode) ??
+        (nameMixLocationCode && nameMixLocationCode !== locationCode
+          ? (cleanProcessFunctionalUnitText(functionalUnit, nameMixLocationCode) ??
+            removeTrailingLocationToken(functionalUnit, nameMixLocationCode))
+          : null);
       if (!value) {
         operations.push({
           blocker: {

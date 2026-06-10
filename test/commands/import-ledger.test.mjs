@@ -60,6 +60,16 @@ test("import ledger report separates verified rows from human-review resume scop
       ledger_key: "blocked:dependency:canonical-support:1",
     },
   ]);
+  writeJsonLines(path.join(ledgerDir, "failed.scopes.retry.jsonl"), [
+    {
+      schema_version: 1,
+      process_id: "retry-process",
+      process_version: "00.00.001",
+      stage: "classification.apply",
+      code: "classification_apply_stage_failed",
+      ledger_key: "retry:scope:process:retry-process",
+    },
+  ]);
 
   const result = runFoundry([
     "dataset-import-ledger-report",
@@ -74,6 +84,7 @@ test("import ledger report separates verified rows from human-review resume scop
   assert.equal(result.json.counts.skipped_verified_rows, 1);
   assert.equal(result.json.counts.resume_rows, 1);
   assert.equal(result.json.counts.blocked_rows, 2);
+  assert.equal(result.json.counts.retry_rows, 1);
 
   const report = readJson(path.join(outDir, "dataset-import-ledger-report.json"));
   const resumeRows = readJsonLines(path.join(outDir, "resume.plan.jsonl"));

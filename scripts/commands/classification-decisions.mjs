@@ -847,12 +847,15 @@ export function createClassificationDecisionCommands({
           stage.report_file = resolveRepoPath(stage.report?.files?.report);
           stages.push(stage);
           if (stage.exit_code !== 0) {
+            const stageSummary = compactStageReport(stage);
             blockers.push({
               code: "classification_apply_stage_failed",
               message: `CLI classification apply failed for ${schemaType}.`,
               schema_type: schemaType,
               exit_code: stage.exit_code,
               report_file: repoRelativeMaybe(stage.report_file),
+              stage: stageSummary,
+              stderr: stageSummary.stderr || "",
             });
             break;
           }

@@ -48,6 +48,7 @@ export const datasetPolicyCommands = [
   "dataset-process-scope-run",
   "dataset-bafu-process-scope-e2e",
   "dataset-bafu-batch-import-run",
+  "dataset-bafu-universe-coverage-report",
   "dataset-identity-reference-rewrites-apply",
   "dataset-identity-decisions-apply",
   "dataset-post-authoring-finalize",
@@ -200,6 +201,8 @@ export function exitCodeForCommand(command, result) {
       ])
         ? 0
         : 1;
+    case "dataset-bafu-universe-coverage-report":
+      return statusIs(result, ["help", "completed", "completed_with_coverage_gaps"]) ? 0 : 1;
     case "dataset-identity-preflight-run":
       return statusIs(result, ["help", "planned", "completed", "completed_with_identity_findings"])
         ? 0

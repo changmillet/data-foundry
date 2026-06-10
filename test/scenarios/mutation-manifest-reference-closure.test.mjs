@@ -194,6 +194,49 @@ test("mutation manifest blocks process writes when referenced datasets are not p
     assert.equal(proven.json.status, "ready_for_remote_write");
     assert.equal(proven.json.items[0].blockers.length, 0);
 
+    const verifiedReferenceLedger = path.join(
+      referenceClosureFixtureRoot,
+      "ledger",
+      "ok.flows.verified.jsonl",
+    );
+    writeJsonLines(verifiedReferenceLedger, [
+      {
+        schema_version: 1,
+        dataset_type: "flow",
+        dataset_id: flowId,
+        dataset_version: "00.00.001",
+        status: "verified",
+      },
+    ]);
+    const provenByVerifiedLedger = runFoundry([
+      "dataset-mutation-manifest",
+      "--type",
+      "process",
+      "--profile",
+      "generic",
+      "--rows-file",
+      rel(rowsFile),
+      "--schema-report",
+      rel(schemaReport),
+      "--curation-gate-report",
+      rel(curationGateReport),
+      "--cleanup-report",
+      rel(cleanupReport),
+      "--dry-run-report",
+      rel(dryRunReport),
+      "--verified-reference-ledger",
+      rel(verifiedReferenceLedger),
+      "--target-user-id",
+      targetUserId,
+      "--out-dir",
+      rel(path.join(referenceClosureFixtureRoot, "proven-by-verified-ledger")),
+    ]);
+    assert.equal(provenByVerifiedLedger.code, 0);
+    assert.equal(provenByVerifiedLedger.json.status, "ready_for_remote_write");
+    assert.equal(provenByVerifiedLedger.json.counts.verified_reference_ledger_rows, 1);
+    assert.equal(provenByVerifiedLedger.json.counts.verified_reference_ledger_proven_keys, 1);
+    assert.equal(provenByVerifiedLedger.json.items[0].blockers.length, 0);
+
     const existingFlowId = "eeeeeeee-ffff-4000-8000-000000000003";
     const identityIndex = writeCompletedIdentityPreflightIndex(referenceClosureFixtureRoot, [
       {

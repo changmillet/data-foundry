@@ -165,6 +165,60 @@ function writeBafuFamilyBundleProcess(bundlesDir, payload) {
   writeJson(path.join(bundlesDir, id, "tidas", "processes", `${id}.json`), payload);
 }
 
+function coverageProcessPayload({ id, flowIds }) {
+  return {
+    processDataSet: {
+      processInformation: {
+        dataSetInformation: {
+          "common:UUID": id,
+          name: {
+            baseName: { "@xml:lang": "en", "#text": `Process ${id}` },
+          },
+        },
+      },
+      exchanges: {
+        exchange: flowIds.map((flowId, index) => ({
+          exchangeDirection: index === 0 ? "Output" : "Input",
+          referenceToFlowDataSet: {
+            "@type": "flow data set",
+            "@refObjectId": flowId,
+            "@version": "00.00.001",
+            "common:shortDescription": { "@xml:lang": "en", "#text": `Flow ${flowId}` },
+          },
+          meanAmount: "1.0",
+          resultingAmount: "1.0",
+        })),
+      },
+      administrativeInformation: {
+        publicationAndOwnership: {
+          "common:dataSetVersion": "00.00.001",
+        },
+      },
+    },
+  };
+}
+
+function coverageFlowPayload({ id, typeOfDataSet = "Product flow" }) {
+  return {
+    flowDataSet: {
+      flowInformation: {
+        dataSetInformation: {
+          "common:UUID": id,
+          typeOfDataSet,
+          name: {
+            baseName: { "@xml:lang": "en", "#text": `Flow ${id}` },
+          },
+        },
+      },
+      administrativeInformation: {
+        publicationAndOwnership: {
+          "common:dataSetVersion": "00.00.001",
+        },
+      },
+    },
+  };
+}
+
 test("BAFU batch import runner publishes explicit commit stage contract", () => {
   const result = runFoundry(["dataset-bafu-batch-import-run", "--help"]);
   assert.equal(result.code, 0);
@@ -646,6 +700,242 @@ test("BAFU batch import runner can require leaf classification decisions before 
   }
 });
 
+test("BAFU batch import runner treats npm network apply failures as retryable", () => {
+  const retryable = bafuBatchImportRunTestHooks.retryableStageFailure({
+    stage: "classification.apply",
+    blocker: {
+      code: "classification_apply_stage_failed",
+      message: "CLI classification apply failed for process.",
+      stderr:
+        "npm error code ENOTFOUND\nnpm error network request to https://registry.npmjs.org/@tiangong-lca%2fcli failed",
+    },
+  });
+
+  assert.equal(retryable.code, "ENOTFOUND");
+});
+
+test("BAFU universe coverage report compares full process universe with ready scopes and ledgers", () => {
+  const root = path.join(fixtureRoot, "universe-coverage");
+  fs.rmSync(root, { recursive: true, force: true });
+  const inputDir = path.join(root, "input");
+  const bundlesDir = path.join(inputDir, "process-bundles");
+  const processesDir = path.join(inputDir, "tidas", "processes");
+  const flowsDir = path.join(inputDir, "tidas", "flows");
+  const ledgerDir = path.join(root, "previous-batch", "import-ledger");
+  const outDir = path.join(root, "coverage");
+  const readyScopes = path.join(root, "ready-scopes.jsonl");
+  const p1 = "11111111-2222-4333-8444-555555555591";
+  const p2 = "11111111-2222-4333-8444-555555555592";
+  const p3 = "11111111-2222-4333-8444-555555555593";
+  const f1 = "22222222-3333-4444-8555-666666666691";
+  const f2 = "22222222-3333-4444-8555-666666666692";
+  const f3 = "22222222-3333-4444-8555-666666666693";
+
+  writeJson(path.join(bundlesDir, "index.json"), {
+    bundles: [
+      { process_id: p1, process_version: "00.00.001", manifest: `${p1}/manifest.json` },
+      { process_id: p2, process_version: "00.00.001", manifest: `${p2}/manifest.json` },
+      { process_id: p3, process_version: "00.00.001", manifest: `${p3}/manifest.json` },
+    ],
+  });
+  writeJson(
+    path.join(processesDir, `${p1}.json`),
+    coverageProcessPayload({ id: p1, flowIds: [f1] }),
+  );
+  writeJson(
+    path.join(processesDir, `${p2}.json`),
+    coverageProcessPayload({ id: p2, flowIds: [f2] }),
+  );
+  writeJson(
+    path.join(processesDir, `${p3}.json`),
+    coverageProcessPayload({ id: p3, flowIds: [f3] }),
+  );
+  writeJson(path.join(flowsDir, `${f1}.json`), coverageFlowPayload({ id: f1 }));
+  writeJson(path.join(flowsDir, `${f2}.json`), coverageFlowPayload({ id: f2 }));
+  writeJson(path.join(flowsDir, `${f3}.json`), coverageFlowPayload({ id: f3 }));
+  writeJsonLines(readyScopes, [
+    {
+      schema_version: 1,
+      process_id: p1,
+      process_version: "00.00.001",
+      closure_status: "ready",
+    },
+  ]);
+  writeJsonLines(path.join(ledgerDir, "ok.scopes.verified.jsonl"), [
+    {
+      schema_version: 1,
+      dataset_type: "process",
+      dataset_id: p1,
+      dataset_version: "00.00.001",
+      status: "verified",
+    },
+  ]);
+  writeJsonLines(path.join(ledgerDir, "ok.flows.verified.jsonl"), [
+    {
+      schema_version: 1,
+      dataset_type: "flow",
+      dataset_id: f1,
+      dataset_version: "00.00.001",
+      status: "verified",
+    },
+  ]);
+  writeJsonLines(path.join(ledgerDir, "blocked.scopes.human-review.jsonl"), [
+    {
+      schema_version: 1,
+      process_id: p2,
+      process_version: "00.00.001",
+      stage: "classification.apply",
+      code: "classification_apply_stage_failed",
+    },
+    {
+      schema_version: 1,
+      process_id: p3,
+      process_version: "00.00.001",
+      stage: "flow.commit",
+      code: "finalize_report_missing",
+    },
+  ]);
+  writeJsonLines(path.join(ledgerDir, "failed.scopes.retry.jsonl"), [
+    {
+      schema_version: 1,
+      process_id: p3,
+      process_version: "00.00.001",
+      stage: "flow.commit",
+      code: "finalize_report_missing",
+    },
+  ]);
+
+  try {
+    const result = runFoundry([
+      "dataset-bafu-universe-coverage-report",
+      "--input-dir",
+      rel(inputDir),
+      "--process-bundles-dir",
+      rel(bundlesDir),
+      "--scope-file",
+      rel(readyScopes),
+      "--ledger-source-dir",
+      rel(ledgerDir),
+      "--out-dir",
+      rel(outDir),
+    ]);
+
+    assert.equal(result.code, 0);
+    assert.equal(result.json.status, "completed_with_coverage_gaps");
+    assert.equal(result.json.counts.process_universe, 3);
+    assert.equal(result.json.counts.ready_scope_unique, 1);
+    assert.equal(result.json.counts.verified_process_scopes, 1);
+    assert.equal(result.json.counts.active_human_review_scopes, 1);
+    assert.equal(result.json.counts.retry_scopes, 1);
+    assert.equal(result.json.counts.ledger_source_ok_scope_rows, 1);
+    assert.equal(result.json.counts.ledger_source_ok_scope_unique, 1);
+    assert.equal(result.json.counts.ledger_source_ok_scope_unique_in_universe, 1);
+    assert.equal(result.json.counts.ledger_source_ok_flow_rows, 1);
+    assert.equal(result.json.counts.ledger_source_ok_flow_unique, 1);
+    assert.equal(result.json.counts.unverified_product_or_unknown_flow_references, 2);
+    const gaps = readJsonLines(path.join(outDir, "bafu-process-coverage-gaps.jsonl"));
+    assert.deepEqual(
+      gaps.map((row) => [row.process_id, row.coverage_status]),
+      [
+        [p2, "active_human_review"],
+        [p3, "retry"],
+      ],
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("BAFU identity decision carry-forward replaces unresolved rows only with completed reusable decisions", () => {
+  const root = path.join(fixtureRoot, "identity-carry-forward");
+  fs.rmSync(root, { recursive: true, force: true });
+  const runDir = path.join(root, "run");
+  const decisionDir = path.join(runDir, "decisions-v7-support-process-flow-product-leaf");
+  const taskDir = path.join(root, "scope", "flow-identity-task");
+  const sourceId = "33333333-4444-4555-8666-777777777791";
+  const canonicalId = "44444444-5555-4666-8777-888888888891";
+  const decisionsFile = path.join(taskDir, "identity-decisions.jsonl");
+
+  writeJsonLines(path.join(decisionDir, "identity-decisions.jsonl"), [
+    {
+      schema_version: 1,
+      dataset_type: "flow",
+      dataset_id: sourceId,
+      dataset_version: "00.00.001",
+      decision_status: "completed",
+      identity_decision: "reuse_existing_reference",
+      canonical: {
+        table: "flows",
+        ref_object_id: canonicalId,
+        version: "03.00.004",
+        short_description: "canonical elementary flow",
+      },
+      basis: "Existing completed decision with physical-equivalence evidence.",
+      used_context_kinds: ["schema", "methodology_yaml", "ruleset"],
+      closes_action_items: ["elementary_flow_identity_manual_review"],
+      evidence: {
+        source: "prior_completed_identity_decision",
+        selected_candidate: { id: canonicalId, version: "03.00.004" },
+      },
+    },
+    {
+      schema_version: 1,
+      dataset_type: "flow",
+      dataset_id: "33333333-4444-4555-8666-777777777792",
+      dataset_version: "00.00.001",
+      decision_status: "needs_review",
+      identity_decision: "reuse_existing_reference",
+      canonical: {
+        table: "flows",
+        ref_object_id: "44444444-5555-4666-8777-888888888892",
+        version: "03.00.004",
+      },
+      basis: "Incomplete rows must not be reused.",
+      evidence: { source: "incomplete" },
+    },
+  ]);
+  writeJsonLines(decisionsFile, [
+    {
+      schema_version: 1,
+      dataset_type: "flow",
+      dataset_id: sourceId,
+      dataset_version: "00.00.001",
+      decision_status: "completed",
+      identity_decision: "block_unresolved",
+      canonical: null,
+      basis: "Autofill could not prove reuse.",
+      used_context_kinds: ["schema", "methodology_yaml", "ruleset"],
+      closes_action_items: ["elementary_flow_identity_manual_review"],
+      authoring_package: "current/flow.authoring-package.json",
+      authoring_package_sha256: "current-sha",
+      evidence: { source: "autofill" },
+    },
+  ]);
+
+  try {
+    const result = bafuBatchImportRunTestHooks.mergeCompletedReusableIdentityDecisions({
+      runDir,
+      decisionsFile,
+      outDir: taskDir,
+      datasetType: "flow",
+    });
+
+    assert.equal(result.report.status, "completed");
+    assert.equal(result.report.counts.replacements, 1);
+    assert.equal(result.report.counts.reusable_decisions, 1);
+    const merged = readJsonLines(result.outputFile);
+    assert.equal(merged.length, 1);
+    assert.equal(merged[0].identity_decision, "reuse_existing_reference");
+    assert.equal(merged[0].canonical.ref_object_id, canonicalId);
+    assert.equal(merged[0].authoring_package, "current/flow.authoring-package.json");
+    assert.equal(merged[0].authoring_package_sha256, "current-sha");
+    assert.deepEqual(merged[0].used_context_kinds, ["schema", "methodology_yaml", "ruleset"]);
+    assert.deepEqual(merged[0].closes_action_items, ["elementary_flow_identity_manual_review"]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("BAFU batch import runner applies pending-only before limit and honors pause file", () => {
   const root = path.join(fixtureRoot, "pending-pause");
   fs.rmSync(root, { recursive: true, force: true });
@@ -745,6 +1035,167 @@ test("BAFU batch import runner applies pending-only before limit and honors paus
     assert.equal(manifest.counts.pending_candidate_scopes, 1);
     assert.equal(manifest.pause_observed, true);
     assert.equal(fs.existsSync(path.join(repoRoot, report.files.scope_checkpoints)), false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("BAFU batch import runner carries forward prior ledgers into fresh batch selection", () => {
+  const root = path.join(fixtureRoot, "ledger-source-carry-forward");
+  fs.rmSync(root, { recursive: true, force: true });
+  const runDir = path.join(root, "run");
+  const schemaDir = path.join(root, "schemas");
+  const bundlesDir = path.join(root, "process-bundles");
+  const sourceOutDir = path.join(root, "previous-batch");
+  const outDir = path.join(root, "fresh-batch");
+  fs.mkdirSync(bundlesDir, { recursive: true });
+  writeRequiredContext(runDir, schemaDir);
+  const scopeFile = path.join(root, "ready-scopes.jsonl");
+  const verifiedId = "11111111-2222-4333-8444-555555555581";
+  const blockedId = "11111111-2222-4333-8444-555555555582";
+  const pendingId = "11111111-2222-4333-8444-555555555583";
+  const verifiedFlowId = "22222222-3333-4444-8555-666666666681";
+  writeJsonLines(scopeFile, [
+    {
+      schema_version: 1,
+      process_id: verifiedId,
+      process_version: "00.00.001",
+      closure_status: "ready",
+      estimated_weight: 1,
+    },
+    {
+      schema_version: 1,
+      process_id: blockedId,
+      process_version: "00.00.001",
+      closure_status: "ready",
+      estimated_weight: 2,
+    },
+    {
+      schema_version: 1,
+      process_id: pendingId,
+      process_version: "00.00.001",
+      closure_status: "ready",
+      estimated_weight: 3,
+    },
+  ]);
+  writeJsonLines(path.join(sourceOutDir, "import-ledger", "ok.scopes.verified.jsonl"), [
+    {
+      schema_version: 1,
+      dataset_type: "process",
+      dataset_id: verifiedId,
+      dataset_version: "00.00.001",
+      process_id: verifiedId,
+      process_version: "00.00.001",
+      status: "verified",
+    },
+  ]);
+  writeJsonLines(path.join(sourceOutDir, "import-ledger", "ok.flows.verified.jsonl"), [
+    {
+      schema_version: 1,
+      dataset_type: "flow",
+      dataset_id: verifiedFlowId,
+      dataset_version: "00.00.001",
+      status: "verified",
+    },
+  ]);
+  writeJsonLines(path.join(sourceOutDir, "import-ledger", "blocked.scopes.human-review.jsonl"), [
+    {
+      schema_version: 1,
+      process_id: blockedId,
+      process_version: "00.00.001",
+      stage: "flow.authoring",
+      code: "bafu_name_split_unsupported",
+      status: "blocked",
+    },
+  ]);
+  writeJsonLines(path.join(sourceOutDir, "import-ledger", "verified-support-identities.jsonl"), [
+    {
+      schema_version: 1,
+      identity_key: "source:bbbbbbbb-cccc-4ddd-8eee-ffffffffffff@00.00.001",
+      type: "source",
+      id: "bbbbbbbb-cccc-4ddd-8eee-ffffffffffff",
+      version: "00.00.001",
+      status: "verified",
+    },
+    {
+      schema_version: 1,
+      identity_key: "source:cccccccc-dddd-4eee-8fff-000000000000@00.00.001",
+      type: "source",
+      id: "cccccccc-dddd-4eee-8fff-000000000000",
+      version: "00.00.001",
+      status: "verified",
+    },
+    {
+      schema_version: 1,
+      identity_key: "source:cccccccc-dddd-4eee-8fff-000000000000@00.00.001",
+      type: "source",
+      id: "cccccccc-dddd-4eee-8fff-000000000000",
+      version: "00.00.001",
+      status: "invalidated_remote_missing",
+    },
+  ]);
+
+  try {
+    const result = runFoundry([
+      "dataset-bafu-batch-import-run",
+      "--scope-file",
+      rel(scopeFile),
+      "--process-bundles-dir",
+      rel(bundlesDir),
+      "--run-dir",
+      rel(runDir),
+      "--out-dir",
+      rel(outDir),
+      "--ledger-source-dir",
+      rel(sourceOutDir),
+      "--tidas-schema-dir",
+      rel(schemaDir),
+      "--preflight-only",
+      "--pending-only",
+      "--selection-order",
+      "estimated-weight-asc",
+      "--limit",
+      "1",
+    ]);
+
+    assert.equal(result.code, 0);
+    assert.equal(result.json.status, "preflight_completed");
+    assert.equal(result.json.counts.selected_scopes, 1);
+    assert.equal(result.json.counts.filtered_already_verified_scopes, 1);
+    assert.equal(result.json.counts.filtered_already_blocked_scopes, 1);
+    assert.equal(result.json.counts.already_verified_scopes, 1);
+    assert.equal(result.json.counts.already_verified_flows, 1);
+    assert.equal(result.json.counts.already_blocked_scopes, 1);
+    assert.equal(result.json.counts.ledger_source_dirs, 1);
+    assert.equal(result.json.counts.ledger_source_ok_scope_rows, 1);
+    assert.equal(result.json.counts.ledger_source_ok_flow_rows, 1);
+    assert.equal(result.json.counts.ledger_source_blocked_scope_rows, 1);
+    assert.equal(result.json.support_identity_cache.loaded_from_ledger_sources, 1);
+    assert.deepEqual(result.json.selection.ledger_source_dirs, [
+      rel(path.join(sourceOutDir, "import-ledger")),
+    ]);
+    const plan = readJsonLines(path.join(repoRoot, result.json.files.preflight_plan));
+    assert.deepEqual(
+      plan.map((row) => row.process_id),
+      [pendingId],
+    );
+    const cache = readJsonLines(path.join(repoRoot, result.json.files.support_identity_cache));
+    assert.deepEqual(
+      cache.map((row) => row.identity_key),
+      [
+        "source:bbbbbbbb-cccc-4ddd-8eee-ffffffffffff@00.00.001",
+        "source:cccccccc-dddd-4eee-8fff-000000000000@00.00.001",
+      ],
+    );
+    assert.equal(cache[0].status, "verified");
+    assert.equal(cache[1].status, "invalidated_remote_missing");
+    assert.equal(
+      cache[0].carried_forward_from,
+      rel(path.join(sourceOutDir, "import-ledger", "verified-support-identities.jsonl")),
+    );
+    const manifest = readJson(path.join(repoRoot, result.json.files.run_manifest));
+    assert.equal(manifest.counts.ledger_source_dirs, 1);
+    assert.equal(manifest.policy.ledger_source_dirs_are_read_only_carry_forward_inputs, true);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
@@ -935,6 +1386,8 @@ test("BAFU authoring task filter removes rows already rewritten by identity appl
 });
 
 test("BAFU batch flow verification filter keeps only flows not in ok flow ledger", () => {
+  const root = path.join(fixtureRoot, "flow-filter-carry-forward");
+  fs.rmSync(root, { recursive: true, force: true });
   const verifiedId = "44444444-5555-4666-8777-888888888888";
   const pendingId = "55555555-6666-4777-8888-999999999999";
   const rows = [verifiedId, pendingId].map((id) => ({
@@ -960,6 +1413,46 @@ test("BAFU batch flow verification filter keeps only flows not in ok flow ledger
   assert.equal(plan.verifiedRows.length, 1);
   assert.equal(plan.pendingIdentities[0].id, pendingId);
   assert.equal(plan.verifiedIdentities[0].id, verifiedId);
+  const ledgerDir = path.join(root, "scope", "import-ledger");
+  const sourceRow = {
+    schema_version: 1,
+    dataset_type: "flow",
+    dataset_id: verifiedId,
+    dataset_version: "00.00.001",
+    status: "verified",
+    report: "prior/finalize-report.json",
+  };
+  const sourceRows = new Map([[`${verifiedId}@00.00.001`, sourceRow]]);
+
+  try {
+    const carried = bafuBatchImportRunTestHooks.writeScopeCarriedForwardVerifiedFlowRows({
+      ledgerDir,
+      processId: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+      verifiedIdentities: plan.verifiedIdentities,
+      verifiedFlowRowsByKey: sourceRows,
+    });
+    assert.equal(carried.count, 1);
+    const ledgerRows = readJsonLines(path.join(ledgerDir, "ok.flows.verified.jsonl"));
+    assert.equal(ledgerRows.length, 1);
+    assert.equal(ledgerRows[0].dataset_id, verifiedId);
+    assert.equal(ledgerRows[0].carried_forward, true);
+    assert.equal(
+      ledgerRows[0].carried_forward_for_process_id,
+      "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+    );
+    assert.equal(ledgerRows[0].report, "prior/finalize-report.json");
+
+    const repeated = bafuBatchImportRunTestHooks.writeScopeCarriedForwardVerifiedFlowRows({
+      ledgerDir,
+      processId: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+      verifiedIdentities: plan.verifiedIdentities,
+      verifiedFlowRowsByKey: sourceRows,
+    });
+    assert.equal(repeated.count, 0);
+    assert.equal(readJsonLines(path.join(ledgerDir, "ok.flows.verified.jsonl")).length, 1);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("BAFU batch import runner preserves blocked pre-finalize when authoring produces no evidence", () => {

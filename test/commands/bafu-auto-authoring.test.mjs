@@ -1462,6 +1462,14 @@ test("BAFU patch autofill splits disposal/incineration and transport route names
       expectedMix: "production mix, Japan",
     },
     {
+      id: "ffffffff-1111-4222-8333-44444444444a",
+      baseName: "Bark, softwood, after debarking, at sawmill {RER}",
+      locationCode: "RER",
+      expectedBase: "Bark, softwood",
+      expectedTreatment: "after debarking, at sawmill",
+      expectedMix: "production mix, Europe",
+    },
+    {
       id: "ffffffff-1111-4222-8333-444444444449",
       baseName: "Photovoltaic laminate, micro-Si, at regional storage",
       locationCode: "RER",
@@ -2282,6 +2290,91 @@ test("BAFU patch autofill cleans post-finalize disposal market-mix residue", () 
   }
 });
 
+test("BAFU patch autofill moves disposal market mix out of flow baseName", () => {
+  const root = path.join(fixtureRoot, "flow-disposal-market-mix-wall-opening");
+  fs.rmSync(root, { recursive: true, force: true });
+  const id = "11111111-2222-4333-8444-555555555627";
+  const packagePath = path.join(root, "authoring-package-snapshots", `flow-${id}.json`);
+  const patchPath = path.join(root, `flow-${id}`, "ai-patches.json");
+  const row = namedFlowRow(
+    id,
+    "Disposal, building, window frame, wood, market mix, wall opening, to final disposal",
+    "CH",
+  );
+  row.flowDataSet.flowInformation.dataSetInformation.name.treatmentStandardsRoutes = {
+    "@xml:lang": "en",
+    "#text": "disposal route, disposal route, to final disposal, market",
+  };
+  row.flowDataSet.flowInformation.dataSetInformation.name.mixAndLocationTypes = {
+    "@xml:lang": "en",
+    "#text": "disposal service, Switzerland",
+  };
+  writeJson(packagePath, {
+    dataset_type: "flow",
+    entity_id: id,
+    version: "00.00.001",
+    source_row: row,
+  });
+  const manifestPath = path.join(root, "authoring-task-manifest.json");
+  writeJson(manifestPath, {
+    schema_version: 1,
+    status: "ready_for_ai_authoring_batch",
+    tasks: [
+      {
+        status: "ready_for_ai_authoring",
+        entity: { dataset_type: "flow", entity_id: id, version: "00.00.001", profile: "bafu" },
+        context: {
+          source_rows_file: rel(path.join(root, "flows.cleaned.jsonl")),
+          authoring_package_sha256: sha256Text(fs.readFileSync(packagePath, "utf8")),
+          full_context_ai_completion: { required: false },
+          contract_context_files: [],
+          missing_context_files: [],
+        },
+        action_items: [
+          {
+            code: "semantic_name_base_contains_unsplit_segments",
+            path: "flowDataSet.flowInformation.dataSetInformation.name.baseName",
+            evidence: {
+              text: "Disposal, building, window frame, wood, market mix, wall opening, to final disposal",
+              detected_segments: ["mix_phrase"],
+            },
+          },
+        ],
+        files: {
+          authoring_package: rel(packagePath),
+          output_patch_file: rel(patchPath),
+          task_json: rel(path.join(root, `flow-${id}`, "ai-authoring-task.json")),
+        },
+      },
+    ],
+  });
+
+  try {
+    const autofill = runFoundry([
+      "dataset-bafu-authoring-patches-autofill",
+      "--task-manifest",
+      rel(manifestPath),
+    ]);
+    assert.equal(autofill.code, 0);
+    assert.equal(autofill.json.status, "completed");
+    const operations = readJson(patchPath).patch_sets[0].operations;
+    assert.deepEqual(operations.find((operation) => operation.path.endsWith("/baseName")).value, {
+      "@xml:lang": "en",
+      "#text": "Disposal, building, window frame, wood, wall opening",
+    });
+    assert.deepEqual(
+      operations.find((operation) => operation.path.endsWith("/treatmentStandardsRoutes")).value,
+      { "@xml:lang": "en", "#text": "to final disposal" },
+    );
+    assert.deepEqual(
+      operations.find((operation) => operation.path.endsWith("/mixAndLocationTypes")).value,
+      { "@xml:lang": "en", "#text": "market mix, Switzerland" },
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("BAFU patch autofill writes collectable process name-plan patches", () => {
   const root = path.join(fixtureRoot, "process-patch");
   fs.rmSync(root, { recursive: true, force: true });
@@ -2360,6 +2453,97 @@ test("BAFU patch autofill writes collectable process name-plan patches", () => {
     assert.equal(collect.code, 0);
     assert.equal(collect.json.status, "ready_for_patch_apply");
     assert.equal(collect.json.counts.operations, 5);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("BAFU patch autofill strips functional unit name-location tokens that differ from geography", () => {
+  const root = path.join(fixtureRoot, "process-functional-unit-name-token-patch");
+  fs.rmSync(root, { recursive: true, force: true });
+  const id = "33333333-4444-4555-8666-777777777782";
+  const packagePath = path.join(root, "authoring-package-snapshots", `process-${id}.json`);
+  const patchPath = path.join(root, "process-task", "ai-patches.json");
+  const row = processRow(id);
+  row.processDataSet.processInformation.dataSetInformation.name = {
+    baseName: {
+      "@xml:lang": "en",
+      "#text": "Natural gas, liquefied, production QA, at freight ship {TW}",
+    },
+    treatmentStandardsRoutes: { "@xml:lang": "en", "#text": "source-described route" },
+    mixAndLocationTypes: { "@xml:lang": "en", "#text": "TW" },
+  };
+  row.processDataSet.processInformation.geography.locationOfOperationSupplyOrProduction = {
+    "@location": "GLO",
+  };
+  row.processDataSet.processInformation.quantitativeReference.functionalUnitOrOther = {
+    "@xml:lang": "en",
+    "#text": "1 Nm3 Natural gas, liquefied, production QA, at freight ship {TW}",
+  };
+  writeJson(packagePath, {
+    dataset_type: "process",
+    entity_id: id,
+    version: "00.00.001",
+    source_row: row,
+  });
+  const packageSha = sha256Text(fs.readFileSync(packagePath, "utf8"));
+  const manifestPath = path.join(root, "authoring-task-manifest.json");
+  writeJson(manifestPath, {
+    schema_version: 1,
+    status: "ready_for_ai_authoring_batch",
+    tasks: [
+      {
+        status: "ready_for_ai_authoring",
+        entity: {
+          dataset_type: "process",
+          entity_id: id,
+          version: "00.00.001",
+          profile: "bafu",
+        },
+        context: {
+          source_rows_file: rel(path.join(root, "processes.cleaned.jsonl")),
+          authoring_package_sha256: packageSha,
+          full_context_ai_completion: { required: false },
+          contract_context_files: [],
+          missing_context_files: [],
+        },
+        action_items: [
+          {
+            code: "semantic_geography_token_in_name",
+            path: "processDataSet.processInformation.quantitativeReference.functionalUnitOrOther.#text",
+            evidence: {
+              text: "1 Nm3 Natural gas, liquefied, production QA, at freight ship {TW}",
+            },
+          },
+        ],
+        files: {
+          authoring_package: rel(packagePath),
+          output_patch_file: rel(patchPath),
+          task_json: rel(path.join(root, "process-task", "ai-authoring-task.json")),
+        },
+      },
+    ],
+  });
+
+  try {
+    const autofill = runFoundry([
+      "dataset-bafu-authoring-patches-autofill",
+      "--task-manifest",
+      rel(manifestPath),
+    ]);
+    assert.equal(autofill.code, 0);
+    assert.equal(autofill.json.status, "completed");
+    const patch = readJson(patchPath);
+    const operations = patch.patch_sets[0].operations;
+    assert.deepEqual(
+      operations.find((operation) =>
+        operation.path.endsWith("/quantitativeReference/functionalUnitOrOther"),
+      )?.value,
+      {
+        "@xml:lang": "en",
+        "#text": "1 Nm3 Natural gas, liquefied, production QA, at freight ship",
+      },
+    );
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
