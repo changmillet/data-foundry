@@ -1213,7 +1213,7 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
     ) ||
     /\b\d+(?:\.\d+)?\s*%|u=\d+%/u.test(treatment) ||
     /\beuro\s*\d/u.test(treatmentText) ||
-    /\b(?:raw|uncoated|coated|ore|concentrate|beneficiation|ventilated|mineral|gaseous|internet|foil|stone|crushed|devices)\b/u.test(
+    /\b(?:raw|uncoated|coated|ore|concentrate|beneficiation|ventilated|mineral|gaseous|internet|foil|stone|crushed|devices|dried|solar)\b/u.test(
       treatmentText,
     );
   if (!routeLike) return null;

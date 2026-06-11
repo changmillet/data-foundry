@@ -3009,6 +3009,11 @@ test("BAFU splitBafuNamePlan covers session rule families", () => {
       treatment: "at regional storehouse",
     },
     {
+      input: "Dried roughage store, air dried, solar",
+      base: "Dried roughage store",
+      treatment: "air dried, solar",
+    },
+    {
       input: "Particle board, melamin coated, doubleside coated (200 g",
       base: "Particle board",
       treatment: "melamin coated, doubleside coated (200 g",
