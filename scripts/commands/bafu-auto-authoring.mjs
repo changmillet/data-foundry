@@ -258,7 +258,9 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
     };
   }
   const heatAtCombustionUnitMatch =
-    /^(?<core>heat,\s*.+?),\s*(?<route>at\s+(?:boiler|furnace|stove)\s+.+)$/iu.exec(text);
+    /^(?<core>heat,\s*.+?),\s*(?<route>at\s+(?:boiler|furnace|stove)\s+.+|at\s+(?:heat\s+radiator|floor\s+heating)(?:\s+.+)?)$/iu.exec(
+      text,
+    );
   if (heatAtCombustionUnitMatch?.groups?.core && heatAtCombustionUnitMatch?.groups?.route) {
     return {
       source: text,
@@ -1015,7 +1017,7 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
     };
   }
   const productQualifierMatch =
-    /^(?<core>paper|door|cement\s+floor\s+screed|anhydrite\s+floor\s+screed|building|photovoltaic\s+panel|render\s+carrier\s+board|petrol|steel\s+sheet|transmission\s+network|water\s+supply\s+network|glass\s+fibre-reinforced\s+polymer\s+panel|flooring|sulphite\s+pulp|ferrochromium|industrial\s+wood|plastic\s+tunnel|ventilation\s+of\s+dwellings|energy\s+reduction|SMR\s+NG|fuel\s+in\s+building\s+machine|particle\s+board|fibre\s+board),\s*(?<route>.+)$/iu.exec(
+    /^(?<core>paper|door|cement\s+floor\s+screed|anhydrite\s+floor\s+screed|building|photovoltaic\s+panel|render\s+carrier\s+board|petrol|steel\s+sheet|transmission\s+network|water\s+supply\s+network|glass\s+fibre-reinforced\s+polymer\s+panel|flooring|sulphite\s+pulp|ferrochromium|industrial\s+wood|plastic\s+tunnel|ventilation\s+of\s+dwellings|energy\s+reduction|SMR\s+NG|fuel\s+in\s+building\s+machine|particle\s+board|fibre\s+board|chipper),\s*(?<route>.+)$/iu.exec(
       text,
     );
   if (productQualifierMatch?.groups?.core && productQualifierMatch?.groups?.route) {
@@ -1034,6 +1036,17 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
       source: text,
       base_name: crushedAtSourceMatch.groups.core.trim(),
       treatment: crushedAtSourceMatch.groups.route.trim(),
+    };
+  }
+  const windPlantPartsMatch =
+    /^(?<core>wind\s+power\s+plant(?:\s+\d+\s*[kM]?W)?),\s*(?<route>(?:moving|fixed)\s+parts)$/iu.exec(
+      text,
+    );
+  if (windPlantPartsMatch?.groups?.core && windPlantPartsMatch?.groups?.route) {
+    return {
+      source: text,
+      base_name: cleanNamePlanPart(windPlantPartsMatch.groups.core),
+      treatment: cleanNamePlanPart(windPlantPartsMatch.groups.route),
     };
   }
   const serviceProcessObjectMatch =
