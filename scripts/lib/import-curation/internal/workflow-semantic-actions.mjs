@@ -431,13 +431,14 @@ export function namePlanQualityFindings(name) {
   }
 
   const quantitativeBaseMatches = [
-    /\b(?:wet|dry mass|measured as dry mass|moisture|water content|allocation exergy)\b/iu,
+    // "wet & dry processes" is a manufacturing-route phrase (fibreboard), not a moisture state.
+    /\b(?:wet(?!\s*&\s*dry|\s+and\s+dry)|dry mass|measured as dry mass|moisture|water content|allocation exergy)\b/iu,
     /\b(?:net calorific value|gross calorific value|lower heating value|upper heating value)\b/iu,
   ]
     .filter((regex) => regex.test(baseName))
     .map((regex) => regex.source);
   const quantitativeContainsSpecificQualifier =
-    /\b(?:wet|dry mass|measured as dry mass|moisture|water content|allocation exergy|net calorific value|gross calorific value|lower heating value|upper heating value)\b/iu.test(
+    /\b(?:wet(?!\s*&\s*dry|\s+and\s+dry)|dry mass|measured as dry mass|moisture|water content|allocation exergy|net calorific value|gross calorific value|lower heating value|upper heating value)\b/iu.test(
       quantitative,
     );
   if (quantitativeBaseMatches.length > 0 && !quantitativeContainsSpecificQualifier) {
