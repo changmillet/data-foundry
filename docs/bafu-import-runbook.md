@@ -32,7 +32,7 @@ export RUN=.foundry/workspaces/bafu-full-import-20260607T080646Z
 2. **v12、v46、v47、v48 不是 canonical 成功来源**，只能用于 forensic 分析。v12 时代的远端写入已不可信（见 §7-9 stale support identity 事故）。
 3. **candidate ≠ authoritative**：classification / location / identity / authoring 的 AI 输出必须带 task bundle 证据（`authoring_context.context_bundle_sha256`）并经 deterministic apply / projection 进库；规则推导的 repair 只是 candidate 行。
 4. **当前 canonical classification decisions 文件**：`$RUN/decisions-v11-direct-process-leaf/classification-decisions.jsonl`（23,521 行 = v10 的 23,478 + 43 条 direct process 决策；v51 批次用它，运行中的 v50 批次仍显式沿用 decisions-v9 的 21,007 行——v11 是其超集，不要中途给在跑批次换文件）。⚠️ batch run 的默认值仍指向旧的 `decisions-v4-leaf-category-map`，**每次必须显式传** `--library-classification-decisions`（见 §7-2）。 **identity decisions**：全部 `decisions*` 目录的 `identity-decisions.jsonl` 已统一替换为 `identity-decisions-from-preflight-final-20260611/` 的 2,463 行隔间修正版（2026-06-10/11；旧 1,493 行备份在各目录 `identity-decisions.pre-compartment-fix.jsonl`，其中 828 行隔间错配）。runner 按 `/^decisions(-|$)/` 合并所有目录且 canonical 冲突即删键——**新决策目录必须与现存目录一致或全量替换**。
-5. `--parallel 5` 只用于 queue/ledger 证明独立的 family masters 或 master 已 verified 的 variants；runner 的 `family-master-first` 排序 + 内部锁负责这一点，不要绕过。
+5. `--parallel N` 的 scope 独立性由 runner 的 `family-master-first` 排序 + 内部 family 锁保证（与 N 无关，不要绕过）。N 上限 12（代码 cap）；18 核/128GB 机器实测 parallel 5 ≈ 1.2 scope/min（瓶颈为每 scope 约 4 分钟的远端调用链）。2026-06-11 起 v50 尾段/v51 用 parallel 10——若 retry/blocked 率上升（远端限流征兆），降回 5-8。
 6. 每个新批次：独立 `--out-dir`、独立 report / run-manifest / preflight plan / ledger；coverage 报告显式列出使用的 ledger sources。
 
 ---
