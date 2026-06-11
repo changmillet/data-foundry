@@ -569,7 +569,8 @@ export function runDatasetCurationGate({ repoRoot, options = {} } = {}) {
       foundry_role:
         "profile policy, AI authoring package, deterministic cleanup, waiver, final prewrite decision",
       waived_qa_codes: [...waivedQaCodes],
-      source_language_only_before_import: true,
+      required_multilang_english_before_write: true,
+      preserve_source_language_variants: true,
     },
     context: {
       profile_files: profileContext.files.map((file) => file.path),

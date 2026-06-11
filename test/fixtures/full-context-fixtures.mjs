@@ -360,7 +360,7 @@ export function writeContextPackFiles(root) {
   const yamlFile = path.join(contextDir, "methodology.yaml");
   const rulesetFile = path.join(contextDir, "runtime-ruleset.json");
   writeText(schemaFile, '{"title":"process schema"}\n');
-  writeText(yamlFile, "process:\n  source_language_only: true\n");
+  writeText(yamlFile, "process:\n  required_multilang_english: true\n");
   writeText(rulesetFile, '{"rules":["classification-decision"]}\n');
   return { schemaFile, yamlFile, rulesetFile };
 }

@@ -1307,7 +1307,9 @@ export function createBundleSampleRowsCommands({
         replaced_contact_descriptions: [...rewriteStats.previous_descriptions].sort(),
       },
       policy: {
-        source_language_only: true,
+        raw_sample_rows_are_not_write_ready: true,
+        required_multilang_english_before_write: true,
+        preserve_source_language_variants: true,
         tidas_tools_conversion_boundary:
           "tidas-tools may emit a generic conversion contact; Foundry replaces it during library import materialization.",
         support_rows_before_process_rows: true,

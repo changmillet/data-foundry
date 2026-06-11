@@ -403,7 +403,7 @@ export function buildDatasetAuthoringTaskFromPackage({
       unresolved_trace:
         "If a value cannot be inferred safely and the action item allows deferral, record structured tiangongfoundry:unresolvedTrace under common:other. Mandatory schema fields need evidence-backed values or remain blocked.",
       source_language:
-        "Preserve source-language content. Do not require bilingual fields or add language variants unless source evidence supports them.",
+        "Preserve source-language content. For TIDAS-required multilingual fields, add an evidence-backed English variant from full task context before write planning.",
     },
     files: {
       authoring_package: repoRelativePath(repoRoot, packagePath),

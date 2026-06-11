@@ -1,4 +1,5 @@
 import path from "node:path";
+import { normalizeTidasLanguageCode } from "../../tidas-language-utils.mjs";
 import { fullContextAiCompletionRequirement } from "./context-inputs.mjs";
 import { dataSetInformation, datasetRoot } from "./dataset-payload.mjs";
 import { sha256Text } from "./hash-utils.mjs";
@@ -280,18 +281,19 @@ export function firstTraceAttribute(payloads, objectNames, attributeNames, optio
 }
 
 export function sourceTraceLanguage(payloads, fallback = "en") {
-  return (
+  const rawLanguage = (
     firstTraceAttribute(payloads, "dataSetInformation", "localLanguageCode")?.value ||
     firstTraceAttribute(payloads, "dataSetInformation", "languageCode")?.value ||
     fallback
   )
     .slice(0, 8)
     .toLowerCase();
+  return normalizeTidasLanguageCode(rawLanguage, { field: "source trace language" });
 }
 
 export function multiLangSuggestion(value, language = "en") {
   return {
-    "@xml:lang": language || "en",
+    "@xml:lang": normalizeTidasLanguageCode(language),
     "#text": textValue(value),
   };
 }

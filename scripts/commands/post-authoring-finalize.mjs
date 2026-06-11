@@ -1216,7 +1216,8 @@ export function createPostAuthoringFinalizeCommands({
           "Finalize AI-authored or support TIDAS rows into exact-scope prewrite evidence without committing to the database.",
         commit_boundary:
           "A later explicit CLI commit command is required after this report and mutation manifest are ready.",
-        source_language_only_before_import: true,
+        required_multilang_english_before_write: true,
+        preserve_source_language_variants: true,
         full_context_ai_patch_evidence:
           "When the active profile requires full-context AI completion, mutation manifest must prove deterministic AI semantic evidence: classification/location decision apply evidence for queued decisions, or patch collect/apply evidence with authoring package hash, closed action items, resolution.mode, and resolution.used_context_kinds for field patches.",
         identity_preflight_gate: identityPreflightRequired

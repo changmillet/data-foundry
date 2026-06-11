@@ -101,7 +101,7 @@ export function qaFindingInstruction(finding, datasetType) {
     return "Use the source row, reference exchange, source unit, process name, SDK schema, and methodology YAML quantitativeReference rules to write source-language functionalUnitOrOther. Do not invent a value when source evidence is absent.";
   }
   if (datasetType === "process" && code === "process_missing_source_base_name") {
-    return "Use source-language evidence and methodology YAML naming rules to write name.baseName without placeholder tokens, geography braces, or bilingual requirements.";
+    return "Use source-language evidence, methodology YAML naming rules, and full task context to write name.baseName without placeholder tokens or geography braces. Preserve the source-language variant and add English for TIDAS-required multilingual fields before write planning.";
   }
   if (datasetType === "process" && code === "process_missing_geography") {
     return "Use source geography evidence and the TIDAS location code workflow before writing location fields.";

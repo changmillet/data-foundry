@@ -44,7 +44,7 @@ These items are appropriate for a temporary HiQLCD script or profile-scoped norm
 
 | Normalization item | Source issue | Handling | Blocks import? |
 | --- | --- | --- | --- |
-| Relabel Chinese text currently marked `xml:lang="en"` | 214 affected localized text nodes; see `hiq-issue-03-source-data-labeling-and-normalization.md`. | Detect CJK-bearing text and write `zh-CN` or task-approved source-language metadata while preserving original XML language as trace. | Yes until normalized. |
+| Relabel Chinese text currently marked `xml:lang="en"` | 214 affected localized text nodes; see `hiq-issue-03-source-data-labeling-and-normalization.md`. | Detect CJK-bearing text and write the TIDAS language code `zh` or task-approved source-language metadata while preserving original XML language as trace. | Yes until normalized. |
 | Generate process name plans from route + reference product + role | Process `baseName` under-identifies co-products and market semantics. | Profile rule or AI/human name-plan decision; final names should distinguish one-step/two-step, reference product, and market vs production. | Yes for final identity/name quality. |
 | Crop process-reachable scope | 762 LCIA methods and 4,311 unreferenced flows are sidecar payload for this import. | Keep full package as source evidence; build working import scope from 10 processes, 21 exchange-referenced flows, required support, source/provider trace. | No, but needed for efficient curation. |
 | Natural gas unit recovery from openLCA extension | Flow `fffbe9bc...` has empty `flowProperties`, but exchanges carry `olca:propertyId` volume and `olca:unitId` m3. | Use profile/adapter trace to recover m3 only after confirmation. | Blocks quantity finalization until accepted. |

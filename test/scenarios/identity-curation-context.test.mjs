@@ -578,7 +578,7 @@ test("curation gate authoring package carries full contract text and queue depen
       authoringPackage.contract_context_files.map((file) => [file.kind, file.text]),
     );
     assert.match(contextByKind.get("schema"), /process schema/u);
-    assert.match(contextByKind.get("methodology_yaml"), /source_language_only/u);
+    assert.match(contextByKind.get("methodology_yaml"), /required_multilang_english/u);
     assert.match(contextByKind.get("ruleset"), /classification-decision/u);
     assert.match(
       contextTextByPathSuffix(authoringPackage, "tidas_processes_category.json"),

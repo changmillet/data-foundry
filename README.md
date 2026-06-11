@@ -34,7 +34,7 @@ Foundry is intentionally thin. It owns task routing, local workspaces, import pr
 - `external-dataset-curated-import`: packaged LCA datasets converted through `npx --yes @tiangong-lca/cli@latest dataset import-lca convert` / `tidas-tools`, with default per-process dependency bundles under `process-bundles/`, then validated, QA checked, curated, cleaned, dry-run, committed, and verified through queue/checkpoint-driven scopes.
 - `source-evidence-dataset-development`: PDF, Excel, web exports, images, markdown, or free text extracted through CLI/skills, authored into candidate TIDAS rows with source evidence, then sent through the same validation and curation gates.
 
-Rows stay source-language before database import. Missing bilingual text is not an import blocker.
+Raw rows may preserve source-language text, but final import/write-ready rows must include English for TIDAS-required multilingual fields while preserving non-English source-language variants.
 
 ## Core Commands
 

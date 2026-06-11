@@ -28,7 +28,7 @@ test("authoring task batch writes shared full-context bundle for repeated packag
     {
       kind: "methodology_yaml",
       path: rel(path.join(root, "context", "methodology.yaml")),
-      text: "process:\n  source_language_only: true\n",
+      text: "process:\n  required_multilang_english: true\n",
     },
   ];
   for (const file of contextFiles) {
@@ -177,7 +177,7 @@ test("authoring patch collect verifies referenced shared full-context bundle", (
     {
       kind: "methodology_yaml",
       path: rel(path.join(root, "context", "methodology.yaml")),
-      text: "process:\n  source_language_only: true\n",
+      text: "process:\n  required_multilang_english: true\n",
     },
   ];
   for (const file of contextFiles) {

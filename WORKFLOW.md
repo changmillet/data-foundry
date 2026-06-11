@@ -44,7 +44,8 @@ policy:
   require_curation_gate: true
   require_cleanup_before_remote_write: true
   require_dry_run_before_remote_write: true
-  source_language_only_before_import: true
+  required_multilang_english_before_write: true
+  preserve_source_language_variants: true
 ---
 
 You are working on a TianGong LCA data import task.

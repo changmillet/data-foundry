@@ -1,3 +1,5 @@
+import { normalizeTidasLanguageCode, tidasLanguageForText } from "./tidas-language-utils.mjs";
+
 export function createTidasRowUtils({ asText, bundleRowTypes, cloneJson, ensureArray, writeText }) {
   function datasetRowsFileStem(datasetType) {
     return (
@@ -16,7 +18,7 @@ export function createTidasRowUtils({ asText, bundleRowTypes, cloneJson, ensureA
 
   function multiLang(text, language = "en") {
     return {
-      "@xml:lang": language,
+      "@xml:lang": normalizeTidasLanguageCode(language),
       "#text": String(text ?? "").trim(),
     };
   }
@@ -27,8 +29,8 @@ export function createTidasRowUtils({ asText, bundleRowTypes, cloneJson, ensureA
 
   function languageForText(text, fallback = "en") {
     const value = String(text ?? "").trim();
-    if (!value) return fallback;
-    return containsCjk(value) ? "zh" : "en";
+    if (!value) return normalizeTidasLanguageCode(fallback);
+    return containsCjk(value) ? "zh" : tidasLanguageForText(value, fallback);
   }
 
   function preferredSourceLanguageText(values) {
@@ -233,6 +235,7 @@ export function createTidasRowUtils({ asText, bundleRowTypes, cloneJson, ensureA
     isObjectEmpty,
     languageForText,
     multiLang,
+    normalizeTidasLanguageCode,
     pathExpression,
     preferredSourceLanguageText,
     printJson,

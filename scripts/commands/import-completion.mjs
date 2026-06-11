@@ -370,7 +370,8 @@ export function createImportCompletionCommands({
         completion_boundary:
           "Task completion is read-only and requires every committed write scope to have a completed post-write closeout with attached finalize, mutation, readback, trace, and profile-required full schema/YAML/context AI evidence.",
         no_closeout_means_not_complete: true,
-        source_language_only_before_import: true,
+        required_multilang_english_before_write: true,
+        preserve_source_language_variants: true,
         unresolved_trace_policy:
           "Unresolved values that could not be safely inferred may enter only through structured common:other trace queues preserved by mutation manifests and closeouts.",
       },
