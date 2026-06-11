@@ -1245,7 +1245,21 @@ function snapshotGateAuthoringPackage({ gatePackage, outDir }) {
   );
   fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
   if (!fileExists(snapshotPath)) fs.copyFileSync(packagePath, snapshotPath);
-  return { authoring_package: repoRelative(snapshotPath), authoring_package_sha256: sha };
+  let contractContextKinds = [];
+  try {
+    contractContextKinds = uniqueValues(
+      (readJson(snapshotPath)?.contract_context_files ?? [])
+        .filter((file) => asText(file?.kind) && asText(file?.text))
+        .map((file) => asText(file.kind)),
+    );
+  } catch {
+    contractContextKinds = [];
+  }
+  return {
+    authoring_package: repoRelative(snapshotPath),
+    authoring_package_sha256: sha,
+    contractContextKinds,
+  };
 }
 
 function mergeCompletedReusableIdentityDecisions({
@@ -1332,14 +1346,21 @@ function mergeCompletedReusableIdentityDecisions({
         dataset_type: datasetType,
         dataset_id: identity.id,
         dataset_version: identity.version || reusableDecision.row.dataset_version || "00.00.001",
-        ...(packageBinding ?? {}),
-        // The apply validator requires the full contract context kinds; replacement rows
-        // inherit them from the autofill template, appended rows declare them directly.
+        ...(packageBinding
+          ? {
+              authoring_package: packageBinding.authoring_package,
+              authoring_package_sha256: packageBinding.authoring_package_sha256,
+            }
+          : {}),
+        // The full-context proof requires every profile context kind on each decision;
+        // replacement rows inherit them from the autofill template, appended rows declare
+        // exactly what their bound authoring package proves (plus the contract baseline).
         used_context_kinds: uniqueValues([
           ...normalizedList(reusableDecision.row.used_context_kinds),
           "schema",
           "methodology_yaml",
           "ruleset",
+          ...(packageBinding?.contractContextKinds ?? []),
         ]),
       });
     }

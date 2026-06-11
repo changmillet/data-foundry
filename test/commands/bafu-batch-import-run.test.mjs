@@ -1055,6 +1055,9 @@ test("BAFU identity decision carry-forward appends library reuse rows with full 
       { kind: "schema", path: "context/schema.json", text: "{}" },
       { kind: "methodology_yaml", path: "context/methodology.yaml", text: "rules: []" },
       { kind: "ruleset", path: "context/runtime-ruleset.json", text: "{}" },
+      { kind: "classification_schema", path: "context/categories.json", text: "{}" },
+      { kind: "location_schema", path: "context/locations.json", text: "{}" },
+      { kind: "empty_text_kind_must_not_count", path: "context/empty.json", text: "" },
     ],
   });
   const gatePackageSha = bafuBatchImportRunTestHooks.sha256File(gatePackagePath);
@@ -1128,6 +1131,8 @@ test("BAFU identity decision carry-forward appends library reuse rows with full 
       "schema",
       "methodology_yaml",
       "ruleset",
+      "classification_schema",
+      "location_schema",
     ]);
     const snapshotPath = path.join(
       taskDir,
@@ -1144,7 +1149,14 @@ test("BAFU identity decision carry-forward appends library reuse rows with full 
     );
     assert.deepEqual(
       readJson(snapshotPath).contract_context_files.map((file) => file.kind),
-      ["schema", "methodology_yaml", "ruleset"],
+      [
+        "schema",
+        "methodology_yaml",
+        "ruleset",
+        "classification_schema",
+        "location_schema",
+        "empty_text_kind_must_not_count",
+      ],
     );
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
