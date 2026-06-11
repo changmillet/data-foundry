@@ -1,4 +1,5 @@
 import test from "node:test";
+import { bafuAutoAuthoringTestHooks } from "../../scripts/commands/bafu-auto-authoring.mjs";
 import {
   assert,
   fs,
@@ -1468,6 +1469,32 @@ test("BAFU patch autofill splits disposal/incineration and transport route names
       expectedBase: "Bark, softwood",
       expectedTreatment: "after debarking, at sawmill",
       expectedMix: "production mix, Europe",
+    },
+    {
+      id: "ffffffff-1111-4222-8333-44444444444b",
+      baseName: "Sawnwood, beam, hardwood, raw, kiln dried (u=10%), at sawmill {CH}",
+      locationCode: "CH",
+      expectedBase: "Sawnwood, beam, hardwood",
+      expectedTreatment: "raw, kiln dried (u=10%), at sawmill",
+      expectedMix: "production mix, Switzerland",
+    },
+    {
+      id: "ffffffff-1111-4222-8333-44444444444c",
+      baseName: "Sawnwood, production mix, hardwood, dried (u=10%), planed, at sawmill {CH}",
+      locationCode: "CH",
+      expectedBase: "Sawnwood, hardwood",
+      expectedTreatment: "dried (u=10%), planed, at sawmill",
+      expectedMix: "production mix, Switzerland",
+    },
+    {
+      id: "ffffffff-1111-4222-8333-44444444444d",
+      baseName:
+        "Sawnwood, softwood, raw, dried (u=20%), planed, Swiss wood, at regional storage, with resource correction {CH}",
+      locationCode: "CH",
+      expectedBase: "Sawnwood, softwood",
+      expectedTreatment:
+        "raw, dried (u=20%), planed, Swiss wood, at regional storage, with resource correction",
+      expectedMix: "supply mix, Switzerland",
     },
     {
       id: "ffffffff-1111-4222-8333-444444444449",
@@ -2962,4 +2989,349 @@ test("BAFU patch autofill completes bare production process names from output co
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
+});
+
+test("BAFU splitBafuNamePlan covers session rule families", () => {
+  const cases = [
+    {
+      input: "xxx Logs, hardwood, at forest",
+      base: "Logs",
+      treatment: "hardwood, at forest",
+    },
+    {
+      input: "xxx Residual wood, softwood, under bark, air dried, u=20%, at forest road",
+      base: "Residual wood",
+      treatment: "softwood, under bark, air dried, u=20%, at forest road",
+    },
+    {
+      input: "Ammonia, liquid, at regional storehouse",
+      base: "Ammonia, liquid",
+      treatment: "at regional storehouse",
+    },
+    {
+      input: "Particle board, melamin coated, doubleside coated (200 g",
+      base: "Particle board",
+      treatment: "melamin coated, doubleside coated (200 g",
+    },
+    {
+      input: "Slanted-roof construction, integrated, on roof",
+      base: "Slanted-roof construction",
+      treatment: "integrated, on roof",
+    },
+    {
+      input: "Slanted-roof construction, mounted, on roof, Stade de Suisse",
+      base: "Slanted-roof construction",
+      treatment: "mounted, on roof, Stade de Suisse",
+    },
+    {
+      input: "Facade construction, mounted, at building",
+      base: "Facade construction",
+      treatment: "mounted, at building",
+    },
+    {
+      input: "xxx Flat roof construction, on roof, m2",
+      base: "Flat roof construction",
+      treatment: "on roof, m2",
+    },
+    {
+      input: "Production of heat distribution system, apartment building Ecofaubourg A",
+      base: "Production of heat distribution system",
+      treatment: "apartment building Ecofaubourg A",
+    },
+    {
+      input: "Production of borehole heat exchanger, apartment building MCS Leimbach",
+      base: "Production of borehole heat exchanger",
+      treatment: "apartment building MCS Leimbach",
+    },
+    {
+      input: "Production of heat distribution system, office building Fribourg",
+      base: "Production of heat distribution system",
+      treatment: "office building Fribourg",
+    },
+    {
+      input: "Heat treatment, cold impact extrusion, aluminium",
+      base: "Heat treatment",
+      treatment: "cold impact extrusion, aluminium",
+    },
+    {
+      input: "Charger, for electric scooter",
+      base: "Charger",
+      treatment: "for electric scooter",
+    },
+    {
+      input: "Generator, for hybrid passenger car",
+      base: "Generator",
+      treatment: "for hybrid passenger car",
+    },
+    {
+      input: "Steel profile, tin-coated, recycling share 2000 (37% Rec.)",
+      base: "Steel profile",
+      treatment: "tin-coated",
+      flowProperty: "recycling share 37%",
+    },
+    {
+      input: "Sealing sheet, aluminium, recycling share 2000 (32% Rec.)",
+      base: "Sealing sheet, aluminium",
+      treatment: "recycled content",
+      flowProperty: "recycling share 32%",
+    },
+    {
+      input: "Copper sheet, uncoated, high recycling share (85% Rec.)",
+      base: "Copper sheet",
+      treatment: "uncoated",
+      flowProperty: "recycling share 85%",
+    },
+    {
+      input: "Copper sheet, uncoated, secondary production (100% Rec.)",
+      base: "Copper sheet, uncoated",
+      treatment: "secondary production (100% Rec.)",
+    },
+    {
+      input: "Steel, low alloyed, secondary production (100% Rec.)",
+      base: "Steel, low alloyed",
+      treatment: "secondary production (100% Rec.)",
+    },
+    {
+      input: "Biogas purification, to methane, 96 vol-%, pressure swing adsorption",
+      base: "Biogas purification",
+      treatment: "to methane, 96 vol-%, pressure swing adsorption",
+    },
+    {
+      input: "Selective coating, aluminium sheet, nickel pigmented aluminium oxide",
+      base: "Selective coating",
+      treatment: "aluminium sheet, nickel pigmented aluminium oxide",
+    },
+    {
+      input: "Carbon fiber, weaved, at factory",
+      base: "Carbon fiber, weaved",
+      treatment: "at factory",
+    },
+    {
+      input: "Calendering, rigid sheets",
+      base: "Calendering",
+      treatment: "rigid sheets",
+    },
+    {
+      input: "Crushing, rock",
+      base: "Crushing",
+      treatment: "rock",
+    },
+    {
+      input: "Packing, lime products",
+      base: "Packing",
+      treatment: "lime products",
+    },
+    {
+      input: "Drawing of pipes, steel",
+      base: "Drawing of pipes",
+      treatment: "steel",
+    },
+    {
+      input: "Yarn production, bast fibres",
+      base: "Yarn production",
+      treatment: "bast fibres",
+    },
+    {
+      input: "Spruce wood, chipping and drying",
+      base: "Spruce wood",
+      treatment: "chipping and drying",
+    },
+    {
+      input: "Operation, electric bicycle",
+      base: "electric bicycle",
+      treatment: "operation",
+    },
+    {
+      input: "Operation, electric bicycle, certified electricity",
+      base: "electric bicycle",
+      treatment: "operation, certified electricity",
+    },
+    {
+      input: "Uranium, enriched 4.75% for PWR",
+      base: "Uranium",
+      treatment: "enriched 4.75% for PWR",
+    },
+    {
+      input: "Ventilated ceiling system, commercial kitchen",
+      base: "Ventilated ceiling system",
+      treatment: "commercial kitchen",
+    },
+    {
+      input: "Jute fibres, irrigated system, at farm",
+      base: "Jute fibres",
+      treatment: "irrigated system, at farm",
+    },
+    {
+      input: "Steam brake, polyethylen (PE), flame-protected",
+      base: "Steam brake",
+      treatment: "polyethylen (PE), flame-protected",
+    },
+    {
+      input: "Methane, 96 vol-%, from biogas, at purification",
+      base: "Methane",
+      treatment: "96 vol-%, from biogas, at purification",
+    },
+    {
+      input: "Molybdenum concentrate, main product",
+      base: "Molybdenum concentrate",
+      treatment: "main product",
+    },
+    {
+      input: "Well for exploration and production, onshore",
+      base: "Well for exploration and production",
+      treatment: "onshore",
+    },
+    {
+      input: "Heating-cooling ceiling, plasterboard",
+      base: "Heating-cooling ceiling",
+      treatment: "plasterboard",
+    },
+    {
+      input: "Gravel, unspecified, at mine",
+      base: "Gravel, unspecified",
+      treatment: "at mine",
+    },
+    {
+      input: "Cotton fibres, ginned, at farm",
+      base: "Cotton fibres, ginned",
+      treatment: "at farm",
+    },
+    {
+      input: "Limestone, crushed, washed",
+      base: "Limestone, crushed",
+      treatment: "washed",
+    },
+    {
+      input: "Insulated gate bipolar transistor, electric vehicle application",
+      base: "Insulated gate bipolar transistor",
+      treatment: "electric vehicle application",
+    },
+    {
+      input: "Ground heat exchanger for office buildings, short: 0.267 m",
+      base: "Ground heat exchanger for office buildings",
+      treatment: "short: 0.267 m",
+    },
+    {
+      input: "Bearing layer, bituminised",
+      base: "Bearing layer",
+      treatment: "bituminised",
+    },
+    {
+      input: "Solid wood, spruce / fir / larch Switzerland, air-dried, planed",
+      base: "Solid wood, spruce / fir / larch Switzerland",
+      treatment: "air-dried, planed",
+    },
+  ];
+  for (const item of cases) {
+    const plan = bafuAutoAuthoringTestHooks.splitBafuNamePlan(item.input, null);
+    assert.equal(plan.base_name, item.base, `base_name for ${item.input}`);
+    assert.equal(plan.treatment, item.treatment, `treatment for ${item.input}`);
+    assert.equal(
+      plan.flow_property ?? null,
+      item.flowProperty ?? null,
+      `flow_property for ${item.input}`,
+    );
+  }
+});
+
+test("BAFU splitBafuNamePlan reconstructs ENTSO storage pump names idempotently", () => {
+  const mixPlan = bafuAutoAuthoringTestHooks.splitBafuNamePlan(
+    "Electricity mix, operation storage pumps, ENTSO, winter 2018, at plant",
+    null,
+  );
+  assert.equal(mixPlan.base_name, "Electricity");
+  assert.equal(mixPlan.treatment, "mix, operation storage pumps, ENTSO, winter 2018, at plant");
+
+  const voltagePlan = bafuAutoAuthoringTestHooks.splitBafuNamePlan(
+    "Electricity, high voltage, operation storage pumps, ENTSO, 2020, at grid",
+    null,
+  );
+  assert.equal(voltagePlan.base_name, "Electricity, high voltage");
+  assert.equal(voltagePlan.treatment, "operation storage pumps, ENTSO, 2020, at grid");
+
+  const mangledPlan = bafuAutoAuthoringTestHooks.splitBafuNamePlan(
+    "Electricity, mix, operation storage pumps, ENTSO, summer 2018, at plant, at plant, mix, operation storage pumps, ENTSO, summer 2018, at plant",
+    null,
+  );
+  assert.equal(mangledPlan.base_name, "Electricity");
+  assert.equal(mangledPlan.treatment, "mix, operation storage pumps, ENTSO, summer 2018, at plant");
+
+  const replayPlan = bafuAutoAuthoringTestHooks.splitBafuNamePlan(
+    `${mangledPlan.base_name}, ${mangledPlan.treatment}`,
+    null,
+  );
+  assert.equal(replayPlan.base_name, mangledPlan.base_name);
+  assert.equal(replayPlan.treatment, mangledPlan.treatment);
+});
+
+test("BAFU splitBafuNamePlan extracts measured-as property ahead of generic at-plant", () => {
+  const measuredPlan = bafuAutoAuthoringTestHooks.splitBafuNamePlan(
+    "X, measured as dry mass, at plant",
+    null,
+  );
+  assert.equal(measuredPlan.base_name, "X");
+  assert.equal(measuredPlan.treatment, "at plant");
+  assert.equal(measuredPlan.flow_property, "measured as dry mass");
+
+  const alloyPlan = bafuAutoAuthoringTestHooks.splitBafuNamePlan(
+    "Aluminium alloy, AlMg3, at plant",
+    null,
+  );
+  assert.equal(alloyPlan.base_name, "Aluminium alloy, AlMg3");
+  assert.equal(alloyPlan.treatment, "at plant");
+  assert.equal(alloyPlan.flow_property ?? null, null);
+
+  const cellulosePlan = bafuAutoAuthoringTestHooks.splitBafuNamePlan(
+    "Cellulose fibres (injected) (isofloc 2012), import, at plant",
+    null,
+  );
+  assert.equal(cellulosePlan.base_name, "Cellulose fibres");
+  assert.equal(cellulosePlan.treatment, "injected, import, at plant");
+});
+
+test("BAFU flow identity non-equivalence ignores route and geography tokens", () => {
+  const target = {
+    names: ["Acrylonitrile-butadiene-styrene copolymer, ABS, at plant", "at plant", "RER"],
+    fields: {
+      geography: "RER",
+      flow_property: "Mass",
+      categories: ["plastics", "rubbers"],
+    },
+  };
+  const nylonCandidate = {
+    id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+    names: ["Nylon 6", "at plant", "RER"],
+    fields: {
+      geography: "RER",
+      flow_property: "Mass",
+      categories: ["Rubber and plastics products"],
+    },
+  };
+  const sameSubstanceCandidate = {
+    id: "bbbbbbbb-cccc-4ddd-8eee-ffffffffffff",
+    names: ["Acrylonitrile-butadiene-styrene (ABS) copolymer, granulate"],
+    fields: {
+      flow_property: "Mass",
+      categories: ["Rubber and plastics products"],
+    },
+  };
+
+  const { reviewed } = bafuAutoAuthoringTestHooks.nonEquivalentFlowCandidateReasons(target, [
+    nylonCandidate,
+    sameSubstanceCandidate,
+  ]);
+  assert.equal(reviewed.length, 2);
+
+  const nylonReview = reviewed.find((candidate) => candidate.id === nylonCandidate.id);
+  assert.ok(nylonReview.non_equivalence_reasons.length > 0);
+
+  const sameSubstanceReview = reviewed.find(
+    (candidate) => candidate.id === sameSubstanceCandidate.id,
+  );
+  assert.equal(
+    sameSubstanceReview.non_equivalence_reasons.includes(
+      "flow name/physical service meaning differs",
+    ),
+    false,
+  );
 });

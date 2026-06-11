@@ -154,7 +154,7 @@ function splitCommaDelimitedMarketMixPart(value) {
 function sourceLocatorMarkerInText(value) {
   const text = String(value ?? "");
   return [
-    /\b[A-Z][A-Za-z]+(?:\s+et\s+al\.)?\s+(?:19|20)\d{2}\b/iu,
+    /\b(?!(?:summer|winter|spring|autumn|fall)\s)[A-Z][A-Za-z]+(?:\s+et\s+al\.)?\s+(?:19|20)\d{2}\b/iu,
     /[\p{Script=Han}·]{2,12}\s*(?:19|20)\d{2}/u,
     /\b(?:Table|Tbl\.)\s*\d+[A-Za-z]?\b/iu,
     /表\s*\d+/u,
@@ -183,18 +183,18 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
     stripTrailingLocationTokenText(textFromMultilang(baseName).trim(), expectedLocationCode),
   );
   const sourceLocatorRecyclingMatch =
-    /^(?<core>aluminium\s+profile|steel\s+sheet),\s*(?<treatment>uncoated),\s*(?:(?<source>[A-Z][A-Za-z]+(?:\s+et\s+al\.)?\s+(?:19|20)\d{2})\s*,\s*)?(?<property>recycling\s+share\s+.+?)(?:,\s*(?<mix>at\s+plant))?$/iu.exec(
+    /^(?<core>aluminium\s+profile|aluminium\s+sheet|steel\s+profile|steel\s+sheet|copper\s+sheet|sealing\s+sheet,\s*aluminium|chromium(?:-nickel)?\s+steel(?:\s+sheet)?(?:\s+18\/8)?|steel,\s*low\s+alloyed)(?:,\s*(?<treatment>uncoated|tin-coated|zinc-coated))?,\s*(?:(?<source>[A-Z][A-Za-z]+(?:\s+et\s+al\.)?\s+(?:19|20)\d{2})\s*,\s*)?(?<property>(?:high\s+)?recycling\s+share\s+.+?)(?:,\s*(?<mix>at\s+plant))?(?:,\s*(?<rescorr>with\s+resource\s+correction))?$/iu.exec(
       text,
     );
-  if (
-    sourceLocatorRecyclingMatch?.groups?.core &&
-    sourceLocatorRecyclingMatch?.groups?.treatment &&
-    sourceLocatorRecyclingMatch?.groups?.property
-  ) {
+  if (sourceLocatorRecyclingMatch?.groups?.core && sourceLocatorRecyclingMatch?.groups?.property) {
     return {
       source: text,
       base_name: cleanNamePlanPart(sourceLocatorRecyclingMatch.groups.core),
-      treatment: cleanNamePlanPart(sourceLocatorRecyclingMatch.groups.treatment),
+      treatment: cleanNamePlanPart(
+        `${sourceLocatorRecyclingMatch.groups.treatment ?? "recycled content"}${
+          sourceLocatorRecyclingMatch.groups.rescorr ? ", with resource correction" : ""
+        }`,
+      ),
       flow_property:
         recyclingShareDescriptor(sourceLocatorRecyclingMatch.groups.property) ??
         cleanNamePlanPart(sourceLocatorRecyclingMatch.groups.property),
@@ -202,6 +202,35 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
         ? cleanNamePlanPart(sourceLocatorRecyclingMatch.groups.mix)
         : "production mix",
       clean_existing_treatment: true,
+    };
+  }
+  const secondaryProductionRouteMatch =
+    /^(?<core>(?:steel|copper|aluminium|chromium|sealing|zinc|brass)[^,]*(?:,\s*(?:uncoated|tin-coated|low\s+alloyed|aluminium|copper|steel|zinc))?),\s*(?<route>(?:secondary\s+production|high\s+recycling\s+share)\s*\([^)]*\))$/iu.exec(
+      text,
+    );
+  if (secondaryProductionRouteMatch?.groups?.core && secondaryProductionRouteMatch?.groups?.route) {
+    return {
+      source: text,
+      base_name: cleanNamePlanPart(secondaryProductionRouteMatch.groups.core),
+      treatment: cleanNamePlanPart(secondaryProductionRouteMatch.groups.route),
+    };
+  }
+  const biogasPurificationMatch =
+    /^(?<core>biogas\s+purification),\s*(?<route>to\s+methane.*)$/iu.exec(text);
+  if (biogasPurificationMatch?.groups?.core && biogasPurificationMatch?.groups?.route) {
+    return {
+      source: text,
+      base_name: biogasPurificationMatch.groups.core.trim(),
+      treatment: biogasPurificationMatch.groups.route.trim(),
+    };
+  }
+  const selectiveCoatingMatch =
+    /^(?<core>selective\s+coating),\s*(?<route>(?:aluminium|copper|steel)\s+sheet.*)$/iu.exec(text);
+  if (selectiveCoatingMatch?.groups?.core && selectiveCoatingMatch?.groups?.route) {
+    return {
+      source: text,
+      base_name: selectiveCoatingMatch.groups.core.trim(),
+      treatment: selectiveCoatingMatch.groups.route.trim(),
     };
   }
   const leadingGeneratedHeatMatch = /^xx\s+(?<core>heat,\s*.+?),\s*(?<route>at\s+.+)$/iu.exec(text);
@@ -271,6 +300,87 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
         expectedLocationCode,
       ),
       treatment: pipeSeparatedNameMatch.groups.route.trim().replace(/\s+\|\s+/gu, ", "),
+    };
+  }
+  const electricityStoragePumpsMatch =
+    /^electricity[,\s]+(?<voltage>(?:high|medium|low)\s+voltage,\s*)?(?:mix,\s*)?operation\s+storage\s+pumps?,\s*(?<grid>ENTSO(?:-E)?|UCTE),\s*(?<period>(?:summer|winter)\s+\d{4}|\d{4})\b/iu.exec(
+      text,
+    );
+  if (electricityStoragePumpsMatch?.groups?.grid && electricityStoragePumpsMatch?.groups?.period) {
+    // Reconstruct the canonical plan from matched groups: these names arrive with
+    // duplicated segments after join/split cycles ("..., at plant, at plant, mix, ..."),
+    // so rebuilding from groups keeps the patch idempotent.
+    const voltage = electricityStoragePumpsMatch.groups.voltage
+      ? cleanNamePlanPart(electricityStoragePumpsMatch.groups.voltage.replace(/,\s*$/u, ""))
+      : null;
+    const hadMix =
+      /^electricity[,\s]+(?:high\s+voltage,\s*|medium\s+voltage,\s*|low\s+voltage,\s*)?mix,/iu.test(
+        text,
+      );
+    const tail = /at\s+grid/iu.test(text)
+      ? ", at grid"
+      : /at\s+plant/iu.test(text)
+        ? ", at plant"
+        : "";
+    return {
+      source: text,
+      base_name: voltage ? `Electricity, ${voltage}` : "Electricity",
+      treatment: `${hadMix ? "mix, " : ""}operation storage pumps, ${electricityStoragePumpsMatch.groups.grid.toUpperCase()}, ${electricityStoragePumpsMatch.groups.period.toLowerCase()}${tail}`,
+      clean_existing_treatment: true,
+    };
+  }
+  const photovoltaicProductionCountryMatch =
+    /^(?<core>photovoltaic\s+(?:laminate|panel|cell|module)(?:,\s*[^,]+?)?),\s*(?<route>production\s+[A-Z]{2,4}),\s*(?<mix>at\s+(?:regional\s+storage|plant))$/iu.exec(
+      text,
+    );
+  if (
+    photovoltaicProductionCountryMatch?.groups?.core &&
+    photovoltaicProductionCountryMatch?.groups?.route
+  ) {
+    return {
+      source: text,
+      base_name: cleanNamePlanPart(photovoltaicProductionCountryMatch.groups.core),
+      treatment: cleanNamePlanPart(photovoltaicProductionCountryMatch.groups.route),
+      mix_location: photovoltaicProductionCountryMatch.groups.mix.trim(),
+    };
+  }
+  const metalProductionMixForMatch =
+    /^(?<core>aluminium|copper|steel|zinc),\s*(?<route>production\s+mix\s+for\s+[a-z][a-z ]+?),\s*[A-Z][A-Za-z]*\s+(?:19|20)\d{2},\s*(?<mix>at\s+plant)$/iu.exec(
+      text,
+    );
+  if (metalProductionMixForMatch?.groups?.core && metalProductionMixForMatch?.groups?.route) {
+    return {
+      source: text,
+      base_name: cleanNamePlanPart(metalProductionMixForMatch.groups.core),
+      treatment: cleanNamePlanPart(metalProductionMixForMatch.groups.route),
+      mix_location: metalProductionMixForMatch.groups.mix.trim(),
+      clean_existing_treatment: true,
+    };
+  }
+  const electricityBfeConsumerMatch =
+    /^electricity[,\s]+(?<voltage>(?:high|medium|low)\s+voltage,\s*)?(?:mix,\s*)?consumer,\s*according\s+to\s+BFE\s+(?:19|20)\d{2}\b/iu.exec(
+      text,
+    );
+  if (electricityBfeConsumerMatch) {
+    // Same join/split duplication hazard as the ENTSO storage-pump names: rebuild the
+    // canonical plan from groups; the BFE statistics citation moves to provenance.
+    const voltage = electricityBfeConsumerMatch.groups.voltage
+      ? cleanNamePlanPart(electricityBfeConsumerMatch.groups.voltage.replace(/,\s*$/u, ""))
+      : null;
+    const hadMix =
+      /^electricity[,\s]+(?:high\s+voltage,\s*|medium\s+voltage,\s*|low\s+voltage,\s*)?mix,/iu.test(
+        text,
+      );
+    const tail = /at\s+grid/iu.test(text)
+      ? ", at grid"
+      : /at\s+plant/iu.test(text)
+        ? ", at plant"
+        : "";
+    return {
+      source: text,
+      base_name: voltage ? `Electricity, ${voltage}` : "Electricity",
+      treatment: `${hadMix ? "mix, " : ""}consumer${tail}`,
+      clean_existing_treatment: true,
     };
   }
   const electricityBareMixMatch = /^(?<core>electricity)\s+(?<route>imports|mix)$/iu.exec(text);
@@ -678,6 +788,37 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
       mix_location: windowFrameMarketMixMatch.groups.mix.trim(),
     };
   }
+  const measuredAsPropertyRouteMatch =
+    /^(?<core>.+?),\s*(?<property>measured\s+as\s+[^,{}]+),\s*(?<route>at\s+[^,{}]+)$/iu.exec(text);
+  if (
+    measuredAsPropertyRouteMatch?.groups?.core &&
+    measuredAsPropertyRouteMatch?.groups?.property &&
+    measuredAsPropertyRouteMatch?.groups?.route
+  ) {
+    return {
+      source: text,
+      base_name: cleanNamePlanPart(measuredAsPropertyRouteMatch.groups.core),
+      treatment: measuredAsPropertyRouteMatch.groups.route.trim(),
+      flow_property: measuredAsPropertyRouteMatch.groups.property.trim(),
+    };
+  }
+  const vendorYearLocatorMatch =
+    /^(?<core>cellulose\s+fibres)\s*\((?<treat>injected|blown[- ]?in)\)\s*\([a-z][a-z .&-]*(?:19|20)\d{2}\)(?<rest>(?:,\s*[^,]+)*)$/iu.exec(
+      text,
+    );
+  if (vendorYearLocatorMatch?.groups?.core && vendorYearLocatorMatch?.groups?.treat) {
+    const rest = cleanNamePlanPart(
+      (vendorYearLocatorMatch.groups.rest ?? "").replace(/^\s*,\s*/u, ""),
+    );
+    return {
+      source: text,
+      base_name: cleanNamePlanPart(vendorYearLocatorMatch.groups.core),
+      treatment: rest
+        ? `${vendorYearLocatorMatch.groups.treat.trim()}, ${rest}`
+        : vendorYearLocatorMatch.groups.treat.trim(),
+      clean_existing_treatment: true,
+    };
+  }
   const terminalAtPlantMatch = /^(?<core>.+?),\s*(?<route>at plant)$/iu.exec(text);
   if (terminalAtPlantMatch?.groups?.core && terminalAtPlantMatch?.groups?.route) {
     return {
@@ -731,7 +872,7 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
     };
   }
   const woodResourceRouteMatch =
-    /^(?<core>round\s*wood|roundwood|bark\s+chips|slab\s+and\s+siding),\s*(?<route>.+\b(?:forest\s+road|sawmill|under\s+bark|u=\d+%).*)$/iu.exec(
+    /^(?<core>round\s*wood|roundwood|logs|residual\s+wood|bark\s+chips|slab\s+and\s+siding),\s*(?<route>.+\b(?:forest\s+road|at\s+forest|sawmill|under\s+bark|u=\d+%).*)$/iu.exec(
       text,
     );
   if (woodResourceRouteMatch?.groups?.core && woodResourceRouteMatch?.groups?.route) {
@@ -752,18 +893,76 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
       treatment: barkAfterDebarkingMatch.groups.route.trim(),
     };
   }
-  const measuredAsPropertyRouteMatch =
-    /^(?<core>.+?),\s*(?<property>measured\s+as\s+[^,{}]+),\s*(?<route>at\s+[^,{}]+)$/iu.exec(text);
+  const sawnwoodProductionMixRouteMatch =
+    /^(?<core>sawnwood),\s*production\s+mix,\s*(?:(?<species>softwood|hardwood),\s*)?(?<route>(?:raw|air\s+dried|kiln\s+dried|dried|planed)\b.*\bat\s+(?:sawmill|saw|regional\s+storage)(?:,\s*with\s+resource\s+correction)?)$/iu.exec(
+      text,
+    );
   if (
-    measuredAsPropertyRouteMatch?.groups?.core &&
-    measuredAsPropertyRouteMatch?.groups?.property &&
-    measuredAsPropertyRouteMatch?.groups?.route
+    sawnwoodProductionMixRouteMatch?.groups?.core &&
+    sawnwoodProductionMixRouteMatch?.groups?.route
+  ) {
+    const species = sawnwoodProductionMixRouteMatch.groups.species?.trim();
+    return {
+      source: text,
+      base_name: species
+        ? `${sawnwoodProductionMixRouteMatch.groups.core.trim()}, ${species}`
+        : sawnwoodProductionMixRouteMatch.groups.core.trim(),
+      treatment: sawnwoodProductionMixRouteMatch.groups.route.trim(),
+      mix_location: "production mix",
+    };
+  }
+  const sawnwoodShapeSpeciesRouteMatch =
+    /^(?<core>sawnwood(?:,\s*(?:beam|board|lath))?(?:,\s*(?:softwood|hardwood))?),\s*(?<route>(?:raw|air\s+dried|kiln\s+dried|dried|planed|Swiss\s+wood)\b.*\bat\s+(?:sawmill|saw|regional\s+storage)(?:,\s*with\s+resource\s+correction)?)$/iu.exec(
+      text,
+    );
+  if (
+    sawnwoodShapeSpeciesRouteMatch?.groups?.core &&
+    sawnwoodShapeSpeciesRouteMatch?.groups?.route
   ) {
     return {
       source: text,
-      base_name: cleanNamePlanPart(measuredAsPropertyRouteMatch.groups.core),
-      treatment: measuredAsPropertyRouteMatch.groups.route.trim(),
-      flow_property: measuredAsPropertyRouteMatch.groups.property.trim(),
+      base_name: sawnwoodShapeSpeciesRouteMatch.groups.core.trim(),
+      treatment: sawnwoodShapeSpeciesRouteMatch.groups.route.trim(),
+    };
+  }
+  const productionOfSystemMatch =
+    /^(?<core>production\s+of\s+(?:.+?\bsystem|borehole\s+heat\s+exchanger)),\s*(?<route>(?:apartment|office)\s+building.*)$/iu.exec(
+      text,
+    );
+  if (productionOfSystemMatch?.groups?.core && productionOfSystemMatch?.groups?.route) {
+    return {
+      source: text,
+      base_name: productionOfSystemMatch.groups.core.trim(),
+      treatment: productionOfSystemMatch.groups.route.trim(),
+    };
+  }
+  const heatTreatmentExtrusionMatch =
+    /^(?<core>heat\s+treatment),\s*(?<route>(?:cold|hot)\s+impact\s+extrusion.*)$/iu.exec(text);
+  if (heatTreatmentExtrusionMatch?.groups?.core && heatTreatmentExtrusionMatch?.groups?.route) {
+    return {
+      source: text,
+      base_name: heatTreatmentExtrusionMatch.groups.core.trim(),
+      treatment: heatTreatmentExtrusionMatch.groups.route.trim(),
+    };
+  }
+  const forElectricVehicleMatch =
+    /^(?<core>.+?),\s*(?<route>for\s+(?:electric|hybrid)\s+.+)$/iu.exec(text);
+  if (forElectricVehicleMatch?.groups?.core && forElectricVehicleMatch?.groups?.route) {
+    return {
+      source: text,
+      base_name: forElectricVehicleMatch.groups.core.trim(),
+      treatment: forElectricVehicleMatch.groups.route.trim(),
+    };
+  }
+  const mountingConstructionMatch =
+    /^(?<core>(?:slanted-roof|flat\s+roof|facade)\s+construction),\s*(?<route>(?:integrated|mounted|on\s+roof).*)$/iu.exec(
+      text,
+    );
+  if (mountingConstructionMatch?.groups?.core && mountingConstructionMatch?.groups?.route) {
+    return {
+      source: text,
+      base_name: mountingConstructionMatch.groups.core.trim(),
+      treatment: mountingConstructionMatch.groups.route.trim(),
     };
   }
   const insulationSpecificationMatch =
@@ -778,7 +977,7 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
     };
   }
   const constructionProductQualifierMatch =
-    /^(?<core>pipe|steel\s+pipe|heat\s+pump|branch\s+connections\s+and\s+fittings|mineral\s+wool\s+insulation|borehole\s+heat\s+exchanger|prefabricated\s+driven\s+pile|concrete\s+pile)(?:\s+(?<dimension>\d+(?:\.\d+)?\s*mm))?,\s*(?<route>.+)$/iu.exec(
+    /^(?<core>pipe|steel\s+pipe|heat\s+pump|branch\s+connections\s+and\s+fittings|mineral\s+wool\s+insulation|borehole\s+heat\s+exchanger|prefabricated\s+driven\s+pile|concrete\s+pile|heating-cooling\s+ceiling)(?:\s+(?<dimension>\d+(?:\.\d+)?\s*mm))?,\s*(?<route>.+)$/iu.exec(
       text,
     );
   if (
@@ -803,7 +1002,7 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
     };
   }
   const productQualifierMatch =
-    /^(?<core>paper|door|cement\s+floor\s+screed|anhydrite\s+floor\s+screed|building|photovoltaic\s+panel|render\s+carrier\s+board|petrol|steel\s+sheet|transmission\s+network|water\s+supply\s+network|glass\s+fibre-reinforced\s+polymer\s+panel|flooring|sulphite\s+pulp|ferrochromium|industrial\s+wood|plastic\s+tunnel|ventilation\s+of\s+dwellings|energy\s+reduction|SMR\s+NG|fuel\s+in\s+building\s+machine),\s*(?<route>.+)$/iu.exec(
+    /^(?<core>paper|door|cement\s+floor\s+screed|anhydrite\s+floor\s+screed|building|photovoltaic\s+panel|render\s+carrier\s+board|petrol|steel\s+sheet|transmission\s+network|water\s+supply\s+network|glass\s+fibre-reinforced\s+polymer\s+panel|flooring|sulphite\s+pulp|ferrochromium|industrial\s+wood|plastic\s+tunnel|ventilation\s+of\s+dwellings|energy\s+reduction|SMR\s+NG|fuel\s+in\s+building\s+machine|particle\s+board|fibre\s+board),\s*(?<route>.+)$/iu.exec(
       text,
     );
   if (productQualifierMatch?.groups?.core && productQualifierMatch?.groups?.route) {
@@ -814,7 +1013,7 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
     };
   }
   const crushedAtSourceMatch =
-    /^(?<core>.+?,\s*(?:crushed|washed|sorted|screened|broken|milled|ground|dried)),\s*(?<route>at\s+(?:mine|quarry|pit|plant))$/iu.exec(
+    /^(?<core>.+?,\s*(?:crushed|washed|sorted|screened|broken|milled|ground|dried|liquid|liquefied|gaseous|weaved|woven|ginned|unspecified)),\s*(?<route>at\s+(?:mine|quarry|pit|plant|factory|farm|mill|regional\s+storehouse|regional\s+storage|storehouse))$/iu.exec(
       text,
     );
   if (crushedAtSourceMatch?.groups?.core && crushedAtSourceMatch?.groups?.route) {
@@ -822,6 +1021,40 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
       source: text,
       base_name: crushedAtSourceMatch.groups.core.trim(),
       treatment: crushedAtSourceMatch.groups.route.trim(),
+    };
+  }
+  const serviceProcessObjectMatch =
+    /^(?<core>calendering|crushing|packing|drawing\s+of\s+pipes|fleece\s+production|yarn\s+production|spruce\s+wood),\s*(?<route>.+)$/iu.exec(
+      text,
+    );
+  if (serviceProcessObjectMatch?.groups?.core && serviceProcessObjectMatch?.groups?.route) {
+    return {
+      source: text,
+      base_name: cleanNamePlanPart(serviceProcessObjectMatch.groups.core),
+      treatment: cleanNamePlanPart(serviceProcessObjectMatch.groups.route),
+    };
+  }
+  const operationOfVehicleMatch =
+    /^(?<core>operation),\s*(?<obj>electric\s+(?:bicycle|scooter|moped))(?:,\s*(?<extra>.+))?$/iu.exec(
+      text,
+    );
+  if (operationOfVehicleMatch?.groups?.obj) {
+    const extra = operationOfVehicleMatch.groups.extra?.trim();
+    return {
+      source: text,
+      base_name: cleanNamePlanPart(operationOfVehicleMatch.groups.obj),
+      treatment: extra ? `operation, ${extra}` : "operation",
+    };
+  }
+  const residualSingleSplitMatch =
+    /^(?<core>(?:aluminium|steel|copper)\s+(?:profile|sheet)|(?:bearing|covering)\s+layer|brass|fuel\s+cell\s+(?:stack|balance\s+of\s+plant)\s+production|ground\s+heat\s+exchanger\s+for\s+\w+\s+buildings|insulated\s+gate\s+bipolar\s+transistor|jute\s+fibres|limestone,\s*crushed|methane|molybdenum\s+concentrate|office,\s*(?:complex|simple)\s+sanitary\s+installation|solid\s+wood,\s*spruce\s*[\/,]\s*fir\s*[\/,]\s*larch(?:\s+switzerland)?|steam\s+brake|uranium|ventilated\s+ceiling\s+system|well\s+for\s+exploration\s+and\s+production),\s*(?<route>uncoated|tin-coated|bituminised|bituminized|architectural\s+bronze\s+sheet|1\s*kWe.*|PE\s+ducts|long:.*|short:.*|electric\s+vehicle\s+application|(?:irrigated|rainfed)\s+system,\s*at\s+farm|for\s+mill|washed|96\s*vol-%.*|couple\s+production\s+\w+|main\s+product|incl\..*|(?:air|kiln)-dried.*|polyethylen.*|enriched\s+[\d.]+%\s+for\s+\w+|commercial\s+kitchen|onshore|offshore)$/iu.exec(
+      text,
+    );
+  if (residualSingleSplitMatch?.groups?.core && residualSingleSplitMatch?.groups?.route) {
+    return {
+      source: text,
+      base_name: cleanNamePlanPart(residualSingleSplitMatch.groups.core),
+      treatment: cleanNamePlanPart(residualSingleSplitMatch.groups.route),
     };
   }
   const bareProductMatch =
@@ -961,12 +1194,46 @@ function namesAreExactIdentityMatch(targetNames, candidateNames) {
   return target && target === candidate;
 }
 
+const NAME_MEANING_STOP_TOKENS = new Set([
+  "at",
+  "plant",
+  "production",
+  "mix",
+  "market",
+  "supply",
+  "grid",
+  "regional",
+  "storage",
+  "storehouse",
+  "works",
+  "rer",
+  "glo",
+  "row",
+  "ucte",
+  "entso",
+]);
+
+function substanceMeaningText(names) {
+  return normalizeIdentityText(identityTextFromParts(names))
+    .split(/\s+/u)
+    .filter((token) => token.length >= 2 && !NAME_MEANING_STOP_TOKENS.has(token))
+    .filter((token) => !/^[a-z]{2}$/u.test(token))
+    .join(" ");
+}
+
 function strongNameMeaningDiffers(targetNames, candidateNames) {
   const targetText = identityTextFromParts(targetNames);
   const candidateText = identityTextFromParts(candidateNames);
   const target = normalizeIdentityText(targetText);
   const candidate = normalizeIdentityText(candidateText);
   if (!target || !candidate || target === candidate) return false;
+  // Route/mix/geography words ("at plant", "RER") are not substance identity; comparing
+  // them inflates overlap and lets a different polymer pass as possibly equivalent.
+  const targetSubstance = substanceMeaningText(targetNames);
+  const candidateSubstance = substanceMeaningText(candidateNames);
+  if (targetSubstance && candidateSubstance) {
+    return tokenOverlapRatio(targetSubstance, candidateSubstance) < 0.45;
+  }
   return tokenOverlapRatio(targetText, candidateText) < 0.45;
 }
 
@@ -1777,6 +2044,70 @@ function buildNamePatchOperations(task) {
 
   for (const item of actionItems) {
     const code = actionCode(item);
+    if (code === "semantic_content_saturation_flow_location_of_supply_missing" && !isProcess) {
+      const mixText = normalizeLocationTokenCode(
+        textFromMultilang(name?.mixAndLocationTypes).trim(),
+      );
+      const codeToken = /^[A-Z0-9][A-Z0-9+&-]{1,30}$/u.test(mixText) ? mixText : null;
+      if (!codeToken) {
+        operations.push({
+          blocker: {
+            code: "bafu_flow_location_of_supply_unresolvable",
+            dataset_id: task.entity.entity_id,
+            action_item: closureFor(item),
+            message:
+              "Flow locationOfSupply is missing and the name mixAndLocationTypes does not carry a usable location code.",
+          },
+        });
+        continue;
+      }
+      operations.push({
+        op: "add",
+        path: "/flowDataSet/flowInformation/geography",
+        value: { locationOfSupply: codeToken },
+        basis:
+          "The flow geography block is missing while the source name's mixAndLocationTypes segment carries the formal location code.",
+        evidence: evidenceObject("flow_location_of_supply_from_mix", task, item, {
+          source_value: null,
+          selected_value: codeToken,
+          mix_and_location_types: mixText,
+        }),
+        resolution: resolution(
+          "source_language_normalization",
+          "Materialized geography.locationOfSupply from the source-backed location code in the name's mixAndLocationTypes segment.",
+        ),
+        closes_action_items: [closureFor(item)],
+      });
+      continue;
+    }
+    if (code === "semantic_local_source_path_visible") {
+      const itemPath = actionPath(item);
+      if (!itemPath) continue;
+      const pointer = `/${itemPath.split(".").join("/")}`;
+      const original = String(item?.evidence?.text ?? "");
+      const sanitized =
+        original
+          .replace(/\bsource\b[\s\S]*?\.xml\b\.?/iu, "source.")
+          .replace(/\s+/gu, " ")
+          .trim() || "Imported from EcoSpold 1 source.";
+      operations.push({
+        op: "replace",
+        path: pointer,
+        value: sanitized,
+        basis:
+          "Local package paths are import-time provenance, not user-facing payload text; the conversion trace already records the source file.",
+        evidence: evidenceObject("local_source_path_removed", task, item, {
+          source_value: original,
+          selected_value: sanitized,
+        }),
+        resolution: resolution(
+          "source_language_normalization",
+          "Removed the local source package path from the visible comment; conversion provenance remains in the tidasimport:sourceTrace block.",
+        ),
+        closes_action_items: [closureFor(item)],
+      });
+      continue;
+    }
     if (
       isProcess &&
       actionPath(item).includes("functionalUnitOrOther") &&
@@ -2056,6 +2387,13 @@ function buildSourceOnlyOutputExchangeTraceOperation(task, actionItem) {
     closes_action_items: [closureFor(actionItem)],
   };
 }
+
+export const bafuAutoAuthoringTestHooks = {
+  splitBafuNamePlan,
+  nonEquivalentFlowCandidateReasons,
+  strongNameMeaningDiffers,
+  routeOrTechnologyDiffers,
+};
 
 export function createBafuAutoAuthoringCommands({
   ensureArray,
