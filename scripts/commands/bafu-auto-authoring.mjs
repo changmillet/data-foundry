@@ -1038,6 +1038,17 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
       treatment: crushedAtSourceMatch.groups.route.trim(),
     };
   }
+  const heatDistributionMatch =
+    /^(?<core>heat\s+distribution(?:\s+system)?),\s*(?<route>(?:hydronic|radiant|underfloor|radiator|air\s+heating)\b.*)$/iu.exec(
+      text,
+    );
+  if (heatDistributionMatch?.groups?.core && heatDistributionMatch?.groups?.route) {
+    return {
+      source: text,
+      base_name: cleanNamePlanPart(heatDistributionMatch.groups.core),
+      treatment: cleanNamePlanPart(heatDistributionMatch.groups.route),
+    };
+  }
   const kwpInstallationMatch =
     /^(?<core>\d+(?:\.\d+)?\s*kWp\s+(?:flat\s+roof|slanted-roof|facade)\s+installation),\s*(?<route>(?:single-Si|multi-Si|mc-Si|sc-Si|a-Si|ribbon-Si|micro-Si|CIS|CdTe)\b.*)$/iu.exec(
       text,
