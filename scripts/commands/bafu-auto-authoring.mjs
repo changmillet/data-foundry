@@ -1050,7 +1050,7 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
     };
   }
   const kwpInstallationMatch =
-    /^(?<core>\d+(?:\.\d+)?\s*kWp\s+(?:flat\s+roof|slanted-roof|facade)\s+installation),\s*(?<route>(?:single-Si|multi-Si|mc-Si|sc-Si|a-Si|ribbon-Si|micro-Si|CIS|CdTe)\b.*)$/iu.exec(
+    /^(?<core>\d+(?:\.\d+)?\s*[kM]Wp\s+(?:flat[\s-]roof|slanted[\s-]roof|facade|open\s+ground)\s+installation),\s*(?<route>(?:single-Si|multi-Si|mc-Si|sc-Si|a-Si|ribbon-Si|micro-Si|CIS|CdTe)\b.*)$/iu.exec(
       text,
     );
   if (kwpInstallationMatch?.groups?.core && kwpInstallationMatch?.groups?.route) {
@@ -1082,6 +1082,55 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
       treatment: cleanNamePlanPart(serviceProcessObjectMatch.groups.route),
     };
   }
+  const useOfServiceMatch = /^(?<core>use\s+of\s+[^,]+),\s*(?<route>.+)$/iu.exec(text);
+  if (useOfServiceMatch?.groups?.core && useOfServiceMatch?.groups?.route) {
+    return {
+      source: text,
+      base_name: cleanNamePlanPart(useOfServiceMatch.groups.core),
+      treatment: cleanNamePlanPart(useOfServiceMatch.groups.route),
+    };
+  }
+  const useOfDeviceMatch =
+    /^(?<core>use),\s*(?<obj>laptop|smartphone|printer|computer(?:\s*,\s*(?:desktop|laptop))?|tablet)\s*,\s*(?<route>.+)$/iu.exec(
+      text,
+    );
+  if (useOfDeviceMatch?.groups?.obj && useOfDeviceMatch?.groups?.route) {
+    return {
+      source: text,
+      base_name: cleanNamePlanPart(useOfDeviceMatch.groups.obj),
+      treatment: cleanNamePlanPart(`use, ${useOfDeviceMatch.groups.route}`),
+    };
+  }
+  const resourceCorrectionSignMatch =
+    /^(?<core>resource\s+correction,\s*[A-Za-z]+,\s*[a-z]+),\s*(?<route>negative|positive)$/iu.exec(
+      text,
+    );
+  if (resourceCorrectionSignMatch?.groups?.core && resourceCorrectionSignMatch?.groups?.route) {
+    return {
+      source: text,
+      base_name: cleanNamePlanPart(resourceCorrectionSignMatch.groups.core),
+      treatment: cleanNamePlanPart(resourceCorrectionSignMatch.groups.route),
+    };
+  }
+  const maintenanceOfObjectMatch = /^(?<core>maintenance),\s*(?<obj>.+)$/iu.exec(text);
+  if (maintenanceOfObjectMatch?.groups?.obj) {
+    return {
+      source: text,
+      base_name: cleanNamePlanPart(maintenanceOfObjectMatch.groups.obj),
+      treatment: "maintenance",
+    };
+  }
+  const namedFacilityMatch =
+    /^(?<core>ventilation\s+system|storage\s+building|manual\s+treatment\s+plant|open\s+cast\s+mine|mine|pem\s+electrolyzer|irrigation),\s*(?<route>.+)$/iu.exec(
+      text,
+    );
+  if (namedFacilityMatch?.groups?.core && namedFacilityMatch?.groups?.route) {
+    return {
+      source: text,
+      base_name: cleanNamePlanPart(namedFacilityMatch.groups.core),
+      treatment: cleanNamePlanPart(namedFacilityMatch.groups.route),
+    };
+  }
   const operationOfVehicleMatch =
     /^(?<core>operation),\s*(?<obj>electric\s+(?:bicycle|scooter|moped))(?:,\s*(?<extra>.+))?$/iu.exec(
       text,
@@ -1095,7 +1144,7 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
     };
   }
   const residualSingleSplitMatch =
-    /^(?<core>(?:aluminium|steel|copper)\s+(?:profile|sheet)|(?:bearing|covering)\s+layer|brass|fuel\s+cell\s+(?:stack|balance\s+of\s+plant)\s+production|ground\s+heat\s+exchanger\s+for\s+\w+\s+buildings|insulated\s+gate\s+bipolar\s+transistor|jute\s+fibres|limestone,\s*crushed|methane|molybdenum\s+concentrate|office,\s*(?:complex|simple)\s+sanitary\s+installation|solid\s+wood,\s*spruce\s*[\/,]\s*fir\s*[\/,]\s*larch(?:\s+switzerland)?|steam\s+brake|uranium|ventilated\s+ceiling\s+system|well\s+for\s+exploration\s+and\s+production),\s*(?<route>uncoated|tin-coated|bituminised|bituminized|architectural\s+bronze\s+sheet|1\s*kWe.*|PE\s+ducts|long:.*|short:.*|electric\s+vehicle\s+application|(?:irrigated|rainfed)\s+system,\s*at\s+farm|for\s+mill|washed|96\s*vol-%.*|couple\s+production\s+\w+|main\s+product|incl\..*|(?:air|kiln)-dried.*|polyethylen.*|enriched\s+[\d.]+%\s+for\s+\w+|commercial\s+kitchen|onshore|offshore)$/iu.exec(
+    /^(?<core>(?:aluminium|steel|copper)\s+(?:profile|sheet)|(?:bearing|covering)\s+layer|brass|fuel\s+cell\s+(?:stack|balance\s+of\s+plant)\s+production|ground\s+heat\s+exchanger\s+for\s+\w+\s+buildings|insulated\s+gate\s+bipolar\s+transistor|jute\s+fibres|limestone,\s*crushed|methane|molybdenum\s+concentrate|office,\s*(?:complex|simple)\s+sanitary\s+installation|solid\s+wood,\s*spruce\s*[\/,]\s*fir\s*[\/,]\s*larch(?:\s+switzerland)?|steam\s+brake|uranium|ventilated\s+ceiling\s+system|well\s+for\s+exploration\s+and\s+production),\s*(?<route>uncoated|tin-coated|bituminised|bituminized|architectural\s+bronze\s+sheet(?:,\s*with\s+resource\s+correction)?|1\s*kWe.*|PE\s+ducts|long:.*|short:.*|electric\s+vehicle\s+application|(?:irrigated|rainfed)\s+system,\s*at\s+farm|for\s+mill|washed|96\s*vol-%.*|couple\s+production\s+\w+|main\s+product|incl\..*|(?:air|kiln)-dried.*|polyethylen.*|enriched\s+[\d.]+%\s+for\s+\w+|commercial\s+kitchen|onshore|offshore)$/iu.exec(
       text,
     );
   if (residualSingleSplitMatch?.groups?.core && residualSingleSplitMatch?.groups?.route) {
@@ -1143,7 +1192,9 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
 
   const treatmentText = normalizeIdentityText(treatment);
   const routeLike =
-    /^(?:as|at|from|in|production|consumption|market|supply)\b/u.test(treatmentText) ||
+    /^(?:as|at|by|from|in|for|on|to|per|with|without|production|consumption|market|supply)\b/u.test(
+      treatmentText,
+    ) ||
     /\b(?:allocation|average|cogen|cogeneration|diesel|fleet|freight|gas|grid|gross|hydropower|incineration|industrial|lorry|module|municipal|mix|nuclear|oil|plant|power|pv|reactor|recovered|river|ship|treatment|transport|voltage|waste|wind|wood)\b/u.test(
       treatmentText,
     ) ||
@@ -1151,7 +1202,20 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
     /\b(?:assembly|electronic|fluorescent|lamp|lamps|metal|mounting|shredding|solder|surface|technology|through|welding|working|hole)\b/u.test(
       treatmentText,
     ) ||
-    /\b(?:fossil|biogenic|land use change)\b/u.test(treatmentText);
+    /\b(?:fossil|biogenic|land use change)\b/u.test(treatmentText) ||
+    // v51-population qualifier vocabulary (product/route adjectives and nouns)
+    /\b(?:electric|conventional|steel|aluminium|copper|brass|zinc|components?|parts|concrete|collector|future|tower|matured|heat|pit|class|overlapped|pressure|agricultur(?:e|al)|organics?|borehole|infrastructure|system|sewage|rechargeable|prismatic|manufacturing|equipment|circuit|operation|maintenance|stack|unspecified|process|based|type|ion|battery|panels?|mounted|integrated|laminated|installation|roof|ground|facade|station|covered|sludge|electrolysis|graphite|render|machinery|charging|lignite|peat|cast|hydronic|anchored|drilled|vibrated|strutted|capture|sorbent|adsorbent|digested|silage|sprinkler|scrap|converter|chemicals|solid|cargo|urban|production|network|server|standard|printing|storehouse|distillation|molasses|polymerisation|polymerization)\b/u.test(
+      treatmentText,
+    ) ||
+    // power ratings (3kW, 1MWe, 570 kWp, 100W), physical measurements, EURO classes
+    /\b\d+(?:\.\d+)?\s*(?:[km]?w[ep]?|kva|mm|cm|m[23]?|kg|t|litres?|liters?|bar|%)\b/u.test(
+      treatmentText,
+    ) ||
+    /\b\d+(?:\.\d+)?\s*%|u=\d+%/u.test(treatment) ||
+    /\beuro\s*\d/u.test(treatmentText) ||
+    /\b(?:raw|uncoated|coated|ore|concentrate|beneficiation|ventilated|mineral|gaseous|internet|foil|stone|crushed|devices)\b/u.test(
+      treatmentText,
+    );
   if (!routeLike) return null;
 
   return {
