@@ -1276,11 +1276,30 @@ function mergeCompletedReusableIdentityDecisions({
         replacement_decision: "reuse_existing_reference",
         canonical: identityDecisionCanonical(reusableDecision.row),
       });
+      // The apply validator also requires a readable authoring package per decision;
+      // library reuse rows have none, so materialize the decision evidence as one.
+      const appendedPackagePath = path.join(
+        outDir,
+        "appended-authoring-packages",
+        `${datasetType}-${identity.id}.authoring-package.json`,
+      );
+      fs.mkdirSync(path.dirname(appendedPackagePath), { recursive: true });
+      writeJson(appendedPackagePath, {
+        schema_version: 1,
+        package_kind: "library_reuse_carry_forward",
+        dataset_type: datasetType,
+        dataset_id: identity.id,
+        dataset_version: identity.version || reusableDecision.row.dataset_version || "00.00.001",
+        source_decision_file: repoRelative(reusableDecision.source_file),
+        decision: reusableDecision.row,
+      });
       mergedRows.push({
         ...reusableDecision.row,
         dataset_type: datasetType,
         dataset_id: identity.id,
         dataset_version: identity.version || reusableDecision.row.dataset_version || "00.00.001",
+        authoring_package: repoRelative(appendedPackagePath),
+        authoring_package_sha256: sha256File(appendedPackagePath),
         // The apply validator requires the full contract context kinds; replacement rows
         // inherit them from the autofill template, appended rows declare them directly.
         used_context_kinds: uniqueValues([
@@ -4885,5 +4904,6 @@ export const bafuBatchImportRunTestHooks = {
   preFinalizeRecoveryBlocker,
   requestedProcessIdValues,
   retryableStageFailure,
+  sha256File,
   writeScopeCarriedForwardVerifiedFlowRows,
 };

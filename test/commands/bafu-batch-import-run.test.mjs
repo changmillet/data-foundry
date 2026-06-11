@@ -1034,6 +1034,93 @@ test("BAFU identity decision carry-forward replaces unresolved rows only with co
   }
 });
 
+test("BAFU identity decision carry-forward appends library reuse rows with full apply contract", () => {
+  const root = path.join(fixtureRoot, "identity-carry-forward-append");
+  fs.rmSync(root, { recursive: true, force: true });
+  const runDir = path.join(root, "run");
+  const decisionDir = path.join(runDir, "decisions-v7-support-process-flow-product-leaf");
+  const taskDir = path.join(root, "scope", "flow-identity-task");
+  const appendedId = "33333333-4444-4555-8666-777777777793";
+  const canonicalId = "44444444-5555-4666-8777-888888888893";
+  const decisionsFile = path.join(taskDir, "identity-decisions.jsonl");
+  const rowsFile = path.join(root, "flows.jsonl");
+
+  writeJsonLines(path.join(decisionDir, "identity-decisions.jsonl"), [
+    {
+      schema_version: 1,
+      dataset_type: "flow",
+      dataset_id: appendedId,
+      dataset_version: "00.00.001",
+      decision_status: "completed",
+      identity_decision: "reuse_existing_reference",
+      canonical: {
+        table: "flows",
+        ref_object_id: canonicalId,
+        version: "03.00.004",
+        short_description: "canonical elementary flow",
+      },
+      basis: "Completed library reuse decision without a per-scope task.",
+      used_context_kinds: ["library_index", "scope_projection", "identity_preflight"],
+      closes_action_items: ["elementary_flow_identity_manual_review"],
+      evidence: { source: "identity_preflight" },
+    },
+  ]);
+  writeJsonLines(decisionsFile, []);
+  writeJsonLines(rowsFile, [
+    {
+      flowDataSet: {
+        flowInformation: {
+          dataSetInformation: { "common:UUID": appendedId },
+        },
+        administrativeInformation: {
+          publicationAndOwnership: { "common:dataSetVersion": "00.00.001" },
+        },
+      },
+    },
+  ]);
+
+  try {
+    const result = bafuBatchImportRunTestHooks.mergeCompletedReusableIdentityDecisions({
+      runDir,
+      decisionsFile,
+      outDir: taskDir,
+      datasetType: "flow",
+      rowsFile,
+    });
+
+    assert.equal(result.report.status, "completed");
+    assert.equal(result.report.counts.additions, 1);
+    const merged = readJsonLines(result.outputFile);
+    assert.equal(merged.length, 1);
+    assert.equal(merged[0].identity_decision, "reuse_existing_reference");
+    assert.equal(merged[0].canonical.ref_object_id, canonicalId);
+    assert.deepEqual(merged[0].used_context_kinds, [
+      "library_index",
+      "scope_projection",
+      "identity_preflight",
+      "schema",
+      "methodology_yaml",
+      "ruleset",
+    ]);
+    const packagePath = path.join(
+      taskDir,
+      "appended-authoring-packages",
+      `flow-${appendedId}.authoring-package.json`,
+    );
+    assert.equal(merged[0].authoring_package, rel(packagePath));
+    assert.ok(fs.existsSync(packagePath));
+    const packageJson = readJson(packagePath);
+    assert.equal(packageJson.package_kind, "library_reuse_carry_forward");
+    assert.equal(packageJson.dataset_id, appendedId);
+    assert.equal(
+      merged[0].authoring_package_sha256,
+      bafuBatchImportRunTestHooks.sha256File(packagePath),
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("BAFU batch import runner applies pending-only before limit and honors pause file", () => {
   const root = path.join(fixtureRoot, "pending-pause");
   fs.rmSync(root, { recursive: true, force: true });
