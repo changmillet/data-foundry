@@ -1207,10 +1207,17 @@ function loadCompletedReusableIdentityDecisions(runDir) {
   return { files, byKey, conflicts };
 }
 
-function mergeCompletedReusableIdentityDecisions({ runDir, decisionsFile, outDir, datasetType }) {
-  const currentRows = readJsonLines(decisionsFile);
+function mergeCompletedReusableIdentityDecisions({
+  runDir,
+  decisionsFile,
+  outDir,
+  datasetType,
+  rowsFile = null,
+}) {
+  const currentRows = fileExists(decisionsFile) ? readJsonLines(decisionsFile) : [];
   const reusable = loadCompletedReusableIdentityDecisions(runDir);
   const replacements = [];
+  const additions = [];
   const mergedRows = currentRows.map((row) => {
     const key = identityDecisionDatasetKey(row, datasetType);
     const reusableDecision = key ? reusable.byKey.get(key) : null;
@@ -1245,18 +1252,50 @@ function mergeCompletedReusableIdentityDecisions({ runDir, decisionsFile, outDir
       ]),
     };
   });
+  // A materialized row without any task decision would otherwise fall through to the
+  // write path even when the library already holds a completed reuse decision for it
+  // (e.g. an elementary flow that produced no preflight action item).
+  if (rowsFile && fileExists(rowsFile)) {
+    const decidedKeys = new Set(
+      mergedRows.map((row) => identityDecisionDatasetKey(row, datasetType)).filter(Boolean),
+    );
+    for (const payloadRow of readJsonLines(rowsFile)) {
+      const identity = datasetIdentity(payloadRow, datasetType);
+      if (!identity?.id) continue;
+      const key = identityDecisionDatasetKey(
+        { dataset_type: datasetType, dataset_id: identity.id, dataset_version: identity.version },
+        datasetType,
+      );
+      if (!key || decidedKeys.has(key)) continue;
+      const reusableDecision = reusable.byKey.get(key);
+      if (!reusableDecision) continue;
+      decidedKeys.add(key);
+      additions.push({
+        key,
+        source_file: repoRelative(reusableDecision.source_file),
+        replacement_decision: "reuse_existing_reference",
+        canonical: identityDecisionCanonical(reusableDecision.row),
+      });
+      mergedRows.push({
+        ...reusableDecision.row,
+        dataset_type: datasetType,
+        dataset_id: identity.id,
+        dataset_version: identity.version || reusableDecision.row.dataset_version || "00.00.001",
+      });
+    }
+  }
   fs.mkdirSync(outDir, { recursive: true });
-  const outputFile =
-    replacements.length > 0
-      ? path.join(outDir, "identity-decisions.with-carry-forward.jsonl")
-      : decisionsFile;
-  if (replacements.length > 0) writeJsonLines(outputFile, mergedRows);
+  const changed = replacements.length > 0 || additions.length > 0;
+  const outputFile = changed
+    ? path.join(outDir, "identity-decisions.with-carry-forward.jsonl")
+    : decisionsFile;
+  if (changed) writeJsonLines(outputFile, mergedRows);
   const reportPath = path.join(outDir, "identity-decision-carry-forward-report.json");
   const report = {
     schema_version: 1,
     generated_at_utc: nowIso(),
     command: "dataset-bafu-identity-decision-carry-forward",
-    status: replacements.length > 0 ? "completed" : "completed_noop",
+    status: changed ? "completed" : "completed_noop",
     remote_write_mode: "read-only",
     dataset_type: datasetType,
     files: {
@@ -1270,9 +1309,11 @@ function mergeCompletedReusableIdentityDecisions({ runDir, decisionsFile, outDir
       source_decision_files: reusable.files.length,
       reusable_decisions: reusable.byKey.size,
       replacements: replacements.length,
+      additions: additions.length,
       conflicts: reusable.conflicts.length,
     },
     replacements,
+    additions,
     conflicts: reusable.conflicts,
   };
   writeJson(reportPath, report);
@@ -2897,12 +2938,14 @@ async function runIdentityAndPatch({
       decisionsFile: identityDecisions,
       outDir: identityTaskDir,
       datasetType: type,
+      rowsFile: inputRowsFile,
     });
     stages.push({
       stage: `${stagePrefix}.identity_decision_carry_forward`,
       status: carryForward.report.status,
       report: repoRelative(carryForward.reportPath),
       replacements: carryForward.report.counts.replacements,
+      additions: carryForward.report.counts.additions,
       conflicts: carryForward.report.counts.conflicts,
     });
     const identityApplyDir = path.join(scopeDir, `${label}-identity-apply`);
@@ -2949,6 +2992,68 @@ async function runIdentityAndPatch({
     }
     identityOutputRows =
       resolveRepoPath(identityApply.json?.files?.output_rows) || identityOutputRows;
+  } else if (statusIs(identityTask.json, ["ready_no_identity_actions"])) {
+    // No identity action items does not mean no identity work: rows may still carry
+    // completed library reuse decisions (e.g. elementary flows whose preflight produced
+    // no review item). Apply them so such rows become references instead of writes.
+    const carryForward = mergeCompletedReusableIdentityDecisions({
+      runDir,
+      decisionsFile: identityDecisions,
+      outDir: identityTaskDir,
+      datasetType: type,
+      rowsFile: inputRowsFile,
+    });
+    stages.push({
+      stage: `${stagePrefix}.identity_decision_carry_forward`,
+      status: carryForward.report.status,
+      report: repoRelative(carryForward.reportPath),
+      replacements: carryForward.report.counts.replacements,
+      additions: carryForward.report.counts.additions,
+      conflicts: carryForward.report.counts.conflicts,
+    });
+    if (carryForward.report.counts.additions > 0) {
+      const identityApplyDir = path.join(scopeDir, `${label}-identity-apply`);
+      const identityApply = await runArgvStage({
+        stage: `${stagePrefix}.identity_apply`,
+        argv: foundryCommand("dataset-identity-decisions-apply", {
+          type,
+          rowsFile: repoRelative(inputRowsFile),
+          decisions: repoRelative(carryForward.outputFile),
+          outDir: repoRelative(identityApplyDir),
+        }),
+        logDir,
+        reportPath: path.join(identityApplyDir, "identity-decisions-apply-report.json"),
+      });
+      stages.push(identityApply);
+      identityApplyReport = reportFile(
+        identityApply.json,
+        path.join(identityApplyDir, "identity-decisions-apply-report.json"),
+      );
+      if (!statusIs(identityApply.json, ["completed"])) {
+        return {
+          status: "blocked",
+          blocker: firstBlocker(
+            identityApply.json,
+            `${type}_identity_apply_not_completed`,
+            `${type} identity decisions did not apply cleanly.`,
+          ),
+          report: identityApplyReport,
+        };
+      }
+      const unresolvedReferenceBlocker = identityUnresolvedReferenceBlocker({
+        type,
+        report: identityApply.json,
+      });
+      if (unresolvedReferenceBlocker) {
+        return {
+          status: "blocked",
+          blocker: unresolvedReferenceBlocker,
+          report: identityApplyReport,
+        };
+      }
+      identityOutputRows =
+        resolveRepoPath(identityApply.json?.files?.output_rows) || identityOutputRows;
+    }
   }
 
   const authoringDir = path.join(scopeDir, `${label}-authoring-tasks`);
