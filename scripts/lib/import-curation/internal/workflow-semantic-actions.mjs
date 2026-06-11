@@ -350,7 +350,9 @@ export function namePlanQualityFindings(name) {
   const sourceLocatorPatterns = [
     {
       kind: "latin-author-year",
-      regex: /\b[A-Z][A-Za-z]+(?:\s+et\s+al\.)?\s+(?:19|20)\d{2}\b/iu,
+      // Season/period qualifiers ("summer 2018") are temporal scope, not citations.
+      regex:
+        /\b(?!(?:summer|winter|spring|autumn|fall)\s)[A-Z][A-Za-z]+(?:\s+et\s+al\.)?\s+(?:19|20)\d{2}\b/iu,
     },
     {
       kind: "cjk-author-year",

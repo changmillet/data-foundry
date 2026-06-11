@@ -1021,9 +1021,12 @@ export function createLibraryScopeWorkflowCommands({
   }
 
   function normalizedCas(value) {
+    // BAFU/ecoinvent zero-pads CAS numbers ("000124-38-9"); the remote library stores the
+    // canonical unpadded form ("124-38-9"). Compare without leading zeros.
     return String(value ?? "")
       .trim()
-      .replace(/[^0-9-]+/gu, "");
+      .replace(/[^0-9-]+/gu, "")
+      .replace(/^0+(?=\d)/u, "");
   }
 
   function flowPropertyDimension(value) {
@@ -1149,6 +1152,81 @@ export function createLibraryScopeWorkflowCommands({
     return ensureArray(candidate?.names).find(Boolean) || candidate?.id || "";
   }
 
+  const sourceClassificationCache = new Map();
+
+  function entitySourceClassification(entity) {
+    // The BAFU→TIDAS conversion writes a uniform default elementaryFlowCategorization
+    // ("Emissions to air, unspecified") on every elementary flow, but preserves the real
+    // ecoinvent compartment in tidasimport:sourceTrace.payload.sourceClassification.
+    const sourceFile = asText(entity?.source_file) || ensureArray(entity?.source_files)[0];
+    if (!sourceFile) return null;
+    if (sourceClassificationCache.has(sourceFile)) return sourceClassificationCache.get(sourceFile);
+    let result = null;
+    const resolved = resolveRepoPath(sourceFile);
+    if (resolved && fileExists(resolved)) {
+      try {
+        const payload = readJson(resolved);
+        const trace =
+          payload?.flowDataSet?.flowInformation?.dataSetInformation?.["common:other"]?.[
+            "tidasimport:sourceTrace"
+          ]?.payload?.sourceClassification ?? null;
+        if (trace && typeof trace === "object") {
+          const category = normalizedText(trace.category || trace.localCategory);
+          const subCategory = normalizedText(trace.subCategory || trace.localSubCategory);
+          if (category) result = { category, subCategory };
+        }
+      } catch {
+        result = null;
+      }
+    }
+    sourceClassificationCache.set(sourceFile, result);
+    return result;
+  }
+
+  function traceCompartment(sourceClassification) {
+    if (!sourceClassification) return null;
+    const { category, subCategory } = sourceClassification;
+    let kind = null;
+    if (/emissions? to air/u.test(category)) kind = "emission_air";
+    else if (/emissions? to water/u.test(category)) kind = "emission_water";
+    else if (/emissions? to soil/u.test(category)) kind = "emission_soil";
+    else if (/resource/u.test(category)) kind = "resource";
+    if (!kind) return null;
+    const longTerm = /long[\s-]*term/u.test(subCategory);
+    const base = subCategory.replace(/,?\s*long[\s-]*term/u, "").trim();
+    // ecoinvent sub-compartment → remote (ILCD-style) third-level category pattern
+    let pattern = null;
+    if (kind === "emission_air") {
+      if (/^low\.? ?pop\.?$/u.test(base)) pattern = /non-urban air|from high stacks/u;
+      else if (/^high\.? ?pop\.?$/u.test(base)) pattern = /urban air close to ground/u;
+      else if (/stratosphere/u.test(base)) pattern = /stratosphere/u;
+      else if (/indoor/u.test(base)) pattern = /indoor/u;
+      else if (!base || /unspecified/u.test(base)) pattern = /air, unspecified$/u;
+    } else if (kind === "emission_water") {
+      if (/^(river|lake)$/u.test(base)) pattern = /fresh water/u;
+      else if (/ocean|sea/u.test(base)) pattern = /sea water/u;
+      else if (/ground ?water/u.test(base))
+        pattern = /ground water|fresh water|water, unspecified/u;
+      else if (!base || /unspecified/u.test(base)) pattern = /water, unspecified$/u;
+    } else if (kind === "emission_soil") {
+      if (/agricultur/u.test(base)) pattern = /to agricultural soil/u;
+      else if (/industri/u.test(base)) pattern = /industrial soil/u;
+      else if (/forest/u.test(base)) pattern = /non-agricultural soil|soil, unspecified/u;
+      else if (!base || /unspecified/u.test(base)) pattern = /soil, unspecified$/u;
+    }
+    // When the mapped sub-compartment has no remote candidate, the standard fallback is the
+    // compartment's "unspecified" variant (long-term form when the source is long-term).
+    const compartmentWord =
+      kind === "emission_air" ? "air" : kind === "emission_water" ? "water" : "soil";
+    const fallbackPattern =
+      kind === "resource"
+        ? null
+        : longTerm
+          ? new RegExp(`${compartmentWord}, unspecified \\(long-term\\)$`, "u")
+          : new RegExp(`${compartmentWord}, unspecified$`, "u");
+    return { kind, longTerm, subCategory: base, pattern, fallbackPattern };
+  }
+
   function evaluateElementaryIdentityDecision({ entity, report, usage }) {
     const target = report?.target ?? {};
     const targetFields = target.fields ?? {};
@@ -1163,12 +1241,15 @@ export function createLibraryScopeWorkflowCommands({
       targetFields.flow_property || entity.flow_property_refs?.[0]?.short_description,
     );
     const targetCategories = ensureArray(targetFields.categories);
-    const inferredKind = inferTargetCategoryKind({
-      targetNames,
-      targetCategories,
-      usage,
-    });
-    const targetHasLongTerm = hasLongTermCategory(targetCategories);
+    const trace = traceCompartment(entitySourceClassification(entity));
+    const inferredKind =
+      trace?.kind ??
+      inferTargetCategoryKind({
+        targetNames,
+        targetCategories,
+        usage,
+      });
+    const targetHasLongTerm = trace ? trace.longTerm : hasLongTermCategory(targetCategories);
     const rawCandidates = ensureArray(report?.candidates);
 
     if (!report || typeof report !== "object") {
@@ -1178,102 +1259,281 @@ export function createLibraryScopeWorkflowCommands({
         evidence: { target_dimension: targetDimension, inferred_category_kind: inferredKind },
       };
     }
-    if (report.decision === "create_new") {
-      return {
-        decision: "block_unresolved",
-        reason: "elementary_flow_create_new_forbidden",
-        evidence: { preflight_decision: report.decision, target_dimension: targetDimension },
-      };
-    }
+    // A preflight "create_new" is a candidate suggestion, not an authoritative decision;
+    // elementary flows may still match an existing remote flow, so evaluate candidates anyway.
+    const preflightSuggestedCreateNew = report.decision === "create_new";
 
-    const candidates = rawCandidates
-      .map((candidate, index) => {
-        const fields = candidate?.fields ?? {};
-        const candidateType = normalizedText(fields.type_of_dataset);
-        const candidateNames = ensureArray(candidate?.names);
-        const candidateCas = normalizedCas(fields.cas);
-        const candidateDimension = flowPropertyDimension(fields.flow_property);
-        const candidateCategories = ensureArray(fields.categories);
-        const candidateKind = categoryKind(candidateCategories);
-        const nameScore = overlapScore(targetNames, candidateNames);
-        const sameCas = Boolean(targetCas && candidateCas && targetCas === candidateCas);
-        const casConflict = Boolean(targetCas && candidateCas && targetCas !== candidateCas);
-        const dimensionCompatible =
-          targetDimension === "unknown" ||
-          candidateDimension === "unknown" ||
-          targetDimension === candidateDimension;
-        const categoryOk = categoryCompatible(inferredKind, candidateKind);
-        const longTermPenalty =
-          !targetHasLongTerm && hasLongTermCategory(candidateCategories) ? 8 : 0;
-        const sameCategoryPath =
-          normalizedText(candidateCategories.join(" > ")) ===
-          normalizedText(targetCategories.join(" > "));
-        const airUnspecifiedBonus =
-          inferredKind === "emission_air" &&
-          /emissions to air.*unspecified/u.test(normalizedText(candidateCategories.join(" > ")))
-            ? 14
-            : 0;
-        const score =
-          (sameCas ? 50 : 0) +
-          nameScore +
-          (dimensionCompatible ? 20 : -40) +
-          (categoryOk ? 20 : -35) +
-          (sameCategoryPath ? 14 : 0) +
-          airUnspecifiedBonus -
-          longTermPenalty -
-          index * 0.01;
-        const blockerCodes = [];
-        if (candidateType !== "elementary flow") blockerCodes.push("candidate_not_elementary_flow");
-        if (casConflict) blockerCodes.push("cas_conflict");
-        if (!dimensionCompatible) blockerCodes.push("flow_property_dimension_conflict");
-        if (!categoryOk) blockerCodes.push("category_or_compartment_conflict");
-        if (!sameCas && nameScore < 24) blockerCodes.push("insufficient_name_or_cas_overlap");
-        return {
-          candidate,
-          index,
-          fields,
-          candidateNames,
-          candidateCas,
-          candidateCategories,
-          nameScore,
-          sameCas,
-          score,
-          blockerCodes,
-        };
-      })
-      .filter((candidate) => candidate.blockerCodes.length === 0)
-      .sort((left, right) => right.score - left.score);
+    const targetCompacts = targetNames.map((name) => compactIdentityText(name)).filter(Boolean);
+    const BAFU_DEFAULT_ELEMENTARY_PATH =
+      "emissions > emissions to air > emissions to air, unspecified";
+    const targetCategoryText = normalizedText(targetCategories.join(" > "));
+    // The converter writes this exact path as a default on most elementary flows; only treat
+    // converted categories as evidence when they differ from the default.
+    const targetCategoriesReliable =
+      Boolean(targetCategoryText) && targetCategoryText !== BAFU_DEFAULT_ELEMENTARY_PATH;
+    const scoredCandidates = rawCandidates.map((candidate, index) => {
+      const fields = candidate?.fields ?? {};
+      const candidateType = normalizedText(fields.type_of_dataset);
+      const candidateNames = ensureArray(candidate?.names);
+      const candidateCas = normalizedCas(fields.cas);
+      const candidateDimension = flowPropertyDimension(fields.flow_property);
+      const candidateCategories = ensureArray(fields.categories);
+      const candidateCategoryText = normalizedText(candidateCategories.join(" > "));
+      const candidateKind = categoryKind(candidateCategories);
+      const nameScore = overlapScore(targetNames, candidateNames);
+      const candidateCompacts = candidateNames
+        .map((name) => compactIdentityText(name))
+        .filter(Boolean);
+      // Token-set equality covers word-order variants ("Heat, waste" ↔ "waste heat").
+      const targetTokenSets = targetNames
+        .map((name) => new Set(identityTokens(name)))
+        .filter((tokens) => tokens.size >= 2);
+      const tokenSetEqual = candidateNames.some((name) => {
+        const candidateTokens = new Set(identityTokens(name));
+        return (
+          candidateTokens.size >= 2 &&
+          targetTokenSets.some(
+            (targetTokens) =>
+              targetTokens.size === candidateTokens.size &&
+              [...targetTokens].every((token) => candidateTokens.has(token)),
+          )
+        );
+      });
+      // Chemical-name inversion ("Ethane, 1,1,2,2-tetrachloro-" ↔ "1,1,2,2-tetrachloroethane"):
+      // after separating digit locants, some permutation of the target's word tokens
+      // concatenates to the candidate's word part and the digit multisets agree.
+      const digitsOf = (value) => [...String(value).replace(/[^0-9]+/gu, "")].sort().join("");
+      const wordPartOf = (value) => String(value).replace(/[0-9]+/gu, "");
+      const permutationCompactEqual = candidateCompacts.some((cn) => {
+        const candidateWord = wordPartOf(cn);
+        if (candidateWord.length < 6) return false;
+        const candidateDigits = digitsOf(cn);
+        return targetNames.some((name) => {
+          if (typeof name !== "string" || name.includes("|")) return false;
+          if (digitsOf(compactIdentityText(name)) !== candidateDigits) return false;
+          const tokens = identityTokens(name)
+            .map((token) => wordPartOf(token))
+            .filter((token) => token.length >= 2);
+          if (tokens.length < 2 || tokens.length > 4) return false;
+          if (tokens.join("").length !== candidateWord.length) return false;
+          const permute = (rest, acc) => {
+            if (rest.length === 0) return acc === candidateWord;
+            if (!candidateWord.startsWith(acc)) return false;
+            return rest.some((token, i) =>
+              permute([...rest.slice(0, i), ...rest.slice(i + 1)], acc + token),
+            );
+          };
+          return permute(tokens, "");
+        });
+      });
+      // Minimum lengths guard against degenerate compacts (e.g. a non-Latin name whose
+      // compact collapses to a single character) producing false equality/containment.
+      const exactName =
+        candidateCompacts.some((cn) => cn.length >= 3 && targetCompacts.includes(cn)) ||
+        tokenSetEqual ||
+        permutationCompactEqual;
+      // Direction matters for containment: a candidate that extends the target name
+      // ("ethane" → "1,2-dibromoethane") names a different substance. A candidate whose
+      // tokens form a contiguous prefix or suffix run of the target name is the same
+      // substance minus a qualifier/abbreviation ("CFC-12" suffix of "Methane,
+      // dichlorodifluoro-, CFC-12"; "ammonium" prefix of "Ammonium, ion"; "chemical
+      // oxygen demand" suffix of "COD, Chemical Oxygen Demand"), while mid-name runs
+      // ("dump site" inside "Occupation, dump site, benthos") stay manual.
+      const targetTokenLists = targetNames
+        .filter((name) => typeof name === "string" && !name.includes("|"))
+        .map((name) => identityTokens(name))
+        .filter((tokens) => tokens.length >= 1);
+      const candidateInTarget = candidateNames.some((name) => {
+        const candidateTokens = identityTokens(name);
+        if (candidateTokens.length < 1) return false;
+        const candidateCompact = compactIdentityText(name);
+        if (candidateCompact.length < 4) return false;
+        const candidateDigits = digitsOf(candidateCompact);
+        const joined = candidateTokens.join(" ");
+        return targetTokenLists.some((targetTokens) => {
+          if (targetTokens.length < candidateTokens.length) return false;
+          // Digit locants are substance identity ("1-Butanol" ≠ "2-butanol"): a digit-
+          // bearing candidate must carry the same digits; a digit-free candidate is the
+          // generic form and may stand for the locant-specified target.
+          if (candidateDigits && candidateDigits !== digitsOf(targetTokens.join(""))) {
+            return false;
+          }
+          const prefix = targetTokens.slice(0, candidateTokens.length).join(" ");
+          const suffix = targetTokens.slice(-candidateTokens.length).join(" ");
+          return prefix === joined || suffix === joined;
+        });
+      });
+      const nameTier = exactName ? 3 : candidateInTarget ? 2 : nameScore >= 24 ? 1 : 0;
+      // Tier evidence (exact/permuted equality, prefix/suffix runs) earns at least the
+      // corresponding overlap score even when raw compact/token overlap misses it.
+      const effectiveNameScore =
+        nameTier === 3
+          ? Math.max(nameScore, 45)
+          : nameTier === 2
+            ? Math.max(nameScore, 32)
+            : nameScore;
+      const sameCas = Boolean(targetCas && candidateCas && targetCas === candidateCas);
+      const casConflict = Boolean(targetCas && candidateCas && targetCas !== candidateCas);
+      const exactCompartmentMatched = Boolean(trace?.pattern?.test(candidateCategoryText));
+      const fallbackCompartmentMatched = Boolean(
+        trace?.fallbackPattern?.test(candidateCategoryText),
+      );
+      const compartmentFamilyMatched = exactCompartmentMatched || fallbackCompartmentMatched;
+      const categoryOk = categoryCompatible(inferredKind, candidateKind);
+      let dimensionCompatible =
+        targetDimension === "unknown" ||
+        candidateDimension === "unknown" ||
+        targetDimension === candidateDimension;
+      let dimensionLabelOverridden = false;
+      // The candidate category naming the target's dimension family ("Renewable energy
+      // resources …" for an energy target) contradicts the conflicting property label and
+      // marks the label as unreliable for that row.
+      const categoryIndicatesTargetDimension =
+        (targetDimension === "energy" && /energy resources/u.test(candidateCategoryText)) ||
+        (targetDimension === "mass" &&
+          /(?:material|element) resources/u.test(candidateCategoryText));
+      if (
+        !dimensionCompatible &&
+        !casConflict &&
+        ((exactName && compartmentFamilyMatched) ||
+          (nameTier >= 2 && categoryOk && categoryIndicatesTargetDimension))
+      ) {
+        // The remote search response carries the flow-property *label* text, which is
+        // mislabeled on some remote rows (verified: ILCD "waste heat" references
+        // 93a60a56-a3c8-11da-a746-0800200c9a66 = Net calorific value, but its embedded
+        // shortDescription reads "Radioactivity"). With an exact name and matching
+        // compartment — or a near-exact name whose category names the target dimension —
+        // treat the label conflict as extraction noise instead of a veto.
+        dimensionCompatible = true;
+        dimensionLabelOverridden = true;
+      }
+      const candidateLongTerm = hasLongTermCategory(candidateCategories);
+      const longTermPenalty = targetHasLongTerm
+        ? candidateLongTerm
+          ? 0
+          : 8
+        : candidateLongTerm
+          ? 8
+          : 0;
+      const sameCategoryPath = targetCategoriesReliable
+        ? candidateCategoryText === targetCategoryText
+        : false;
+      const legacyAirUnspecifiedBonus =
+        !trace &&
+        inferredKind === "emission_air" &&
+        /emissions to air.*unspecified/u.test(candidateCategoryText)
+          ? 14
+          : 0;
+      const baseScore =
+        (sameCas ? 50 : 0) +
+        effectiveNameScore +
+        (dimensionCompatible ? 20 : -40) +
+        (categoryOk ? 20 : -35) +
+        (sameCategoryPath ? 14 : 0) +
+        legacyAirUnspecifiedBonus -
+        longTermPenalty;
+      const blockerCodes = [];
+      if (candidateType !== "elementary flow") blockerCodes.push("candidate_not_elementary_flow");
+      if (casConflict) blockerCodes.push("cas_conflict");
+      if (!dimensionCompatible) blockerCodes.push("flow_property_dimension_conflict");
+      if (!categoryOk) blockerCodes.push("category_or_compartment_conflict");
+      if (!sameCas && effectiveNameScore < 24)
+        blockerCodes.push("insufficient_name_or_cas_overlap");
+      // Without a CAS anchor, a candidate whose name merely extends or loosely overlaps
+      // the target is not auto-acceptable evidence of the same substance.
+      if (!sameCas && nameTier < 2) blockerCodes.push("name_tier_insufficient_without_cas");
+      return {
+        candidate,
+        index,
+        fields,
+        candidateNames,
+        candidateCas,
+        candidateCategories,
+        nameScore,
+        nameTier,
+        exactCompartmentMatched,
+        fallbackCompartmentMatched,
+        compartmentMatched: false,
+        dimensionLabelOverridden,
+        sameCas,
+        score: baseScore,
+        blockerCodes,
+      };
+    });
+    const passingCandidates = scoredCandidates.filter(
+      (candidate) => candidate.blockerCodes.length === 0,
+    );
+    // Decide the sub-compartment tier from candidates that actually pass the guardrails so a
+    // cas-conflicted other substance with the mapped sub-compartment cannot mask the fallback.
+    const useExactCompartment = passingCandidates.some(
+      (candidate) => candidate.exactCompartmentMatched,
+    );
+    for (const candidate of passingCandidates) {
+      candidate.compartmentMatched = trace
+        ? useExactCompartment
+          ? candidate.exactCompartmentMatched
+          : candidate.fallbackCompartmentMatched
+        : false;
+      if (trace && candidate.compartmentMatched) candidate.score += 14;
+    }
+    const candidates = passingCandidates.sort(
+      (left, right) =>
+        right.score - left.score ||
+        right.nameTier - left.nameTier ||
+        right.nameScore - left.nameScore ||
+        left.index - right.index,
+    );
 
     if (candidates.length === 0) {
       return {
         decision: "block_unresolved",
-        reason: rawCandidates.length === 0 ? "no_candidates" : "no_candidate_passed_guardrails",
+        reason:
+          rawCandidates.length === 0
+            ? preflightSuggestedCreateNew
+              ? "elementary_flow_create_new_forbidden"
+              : "no_candidates"
+            : preflightSuggestedCreateNew
+              ? "elementary_flow_create_new_forbidden"
+              : "no_candidate_passed_guardrails",
         evidence: {
           preflight_status: report.status ?? null,
           preflight_decision: report.decision ?? null,
           target_dimension: targetDimension,
           inferred_category_kind: inferredKind,
+          source_trace_compartment: trace
+            ? { kind: trace.kind, sub_category: trace.subCategory, long_term: trace.longTerm }
+            : null,
           candidate_count: rawCandidates.length,
-          rejected_candidate_examples: rawCandidates.slice(0, 8).map((candidate, index) => ({
-            index,
-            id: candidate?.id ?? null,
-            version: candidate?.version ?? null,
-            names: ensureArray(candidate?.names).slice(0, 3),
-            fields: candidate?.fields ?? null,
+          rejected_candidate_examples: scoredCandidates.slice(0, 8).map((scored) => ({
+            index: scored.index,
+            id: scored.candidate?.id ?? null,
+            version: scored.candidate?.version ?? null,
+            names: scored.candidateNames.slice(0, 3),
+            fields: scored.candidate?.fields ?? null,
+            blocker_codes: scored.blockerCodes,
+            name_tier: scored.nameTier,
+            same_cas: scored.sameCas,
+            score: scored.score,
           })),
         },
       };
     }
 
-    const top = candidates[0];
-    const competing = candidates
-      .slice(1)
-      .filter(
-        (candidate) =>
-          top.score - candidate.score < 10 &&
-          normalizedText(candidate.candidateCategories.join(" > ")) !==
-            normalizedText(top.candidateCategories.join(" > ")),
-      );
+    const bestTier = Math.max(...candidates.map((candidate) => candidate.nameTier));
+    const tieredCandidates =
+      bestTier >= 2
+        ? candidates.filter((candidate) => candidate.nameTier >= 2 || candidate.sameCas)
+        : candidates;
+    const top = tieredCandidates[0];
+    const competing = tieredCandidates.slice(1).filter(
+      (candidate) =>
+        top.score - candidate.score < 10 &&
+        normalizedText(candidate.candidateCategories.join(" > ")) !==
+          normalizedText(top.candidateCategories.join(" > ")) &&
+        // A candidate that misses the source-trace compartment pattern does not compete
+        // with one that hits it (e.g. "(long-term)" variants against a non-long-term target).
+        !(top.compartmentMatched && !candidate.compartmentMatched),
+    );
     if (top.score < 72 || competing.length > 0) {
       return {
         decision: "block_unresolved",
@@ -1283,6 +1543,9 @@ export function createLibraryScopeWorkflowCommands({
           preflight_decision: report.decision ?? null,
           target_dimension: targetDimension,
           inferred_category_kind: inferredKind,
+          source_trace_compartment: trace
+            ? { kind: trace.kind, sub_category: trace.subCategory, long_term: trace.longTerm }
+            : null,
           best_score: top.score,
           best_candidate: {
             id: top.candidate.id,
@@ -1314,6 +1577,10 @@ export function createLibraryScopeWorkflowCommands({
         target_dimension: targetDimension,
         target_categories: targetCategories,
         inferred_category_kind: inferredKind,
+        source_trace_compartment: trace
+          ? { kind: trace.kind, sub_category: trace.subCategory, long_term: trace.longTerm }
+          : null,
+        preflight_suggested_create_new: preflightSuggestedCreateNew || undefined,
         usage: usage
           ? {
               input: usage.input,
@@ -1330,6 +1597,9 @@ export function createLibraryScopeWorkflowCommands({
           flow_property: top.fields.flow_property ?? null,
           categories: top.candidateCategories,
           score: top.score,
+          name_tier: top.nameTier,
+          compartment_matched: top.compartmentMatched,
+          flow_property_label_overridden: top.dimensionLabelOverridden || undefined,
         },
         guardrails: [
           "same elementary flow type",
@@ -2095,5 +2365,10 @@ export function createLibraryScopeWorkflowCommands({
     runDatasetLibraryIdentityDecisionsFromPreflight,
     runDatasetLibraryDecisionsApply,
     runDatasetProcessScopeRun,
+    libraryScopeWorkflowTestHooks: {
+      evaluateElementaryIdentityDecision,
+      traceCompartment,
+      entitySourceClassification,
+    },
   };
 }
