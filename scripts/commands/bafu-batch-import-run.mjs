@@ -1281,6 +1281,14 @@ function mergeCompletedReusableIdentityDecisions({
         dataset_type: datasetType,
         dataset_id: identity.id,
         dataset_version: identity.version || reusableDecision.row.dataset_version || "00.00.001",
+        // The apply validator requires the full contract context kinds; replacement rows
+        // inherit them from the autofill template, appended rows declare them directly.
+        used_context_kinds: uniqueValues([
+          ...normalizedList(reusableDecision.row.used_context_kinds),
+          "schema",
+          "methodology_yaml",
+          "ruleset",
+        ]),
       });
     }
   }
