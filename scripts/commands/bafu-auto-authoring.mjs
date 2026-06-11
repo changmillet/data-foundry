@@ -2252,7 +2252,7 @@ function buildNamePatchOperations(task) {
           closes_action_items: mixCloses,
         });
       }
-      if (!isProcess && nameSplit.flow_property) {
+      if (nameSplit.flow_property) {
         const flowPropertyExists = Boolean(
           textFromMultilang(name?.functionalUnitFlowProperties).trim(),
         );

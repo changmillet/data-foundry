@@ -4323,7 +4323,7 @@ export function createBafuBatchImportRunCommands(deps) {
     const targetUserId = asText(options.targetUserId);
     if (!preflightOnly && !targetUserId) throw new Error("--target-user-id is required.");
     const stateCode = integerOption(options.stateCode, 0);
-    const parallel = Math.max(1, Math.min(12, integerOption(options.parallel, 5)));
+    const parallel = Math.max(1, Math.min(20, integerOption(options.parallel, 5)));
     const limit = options.limit == null ? null : Math.max(0, integerOption(options.limit, 0));
     const requestedProcessIds = new Set(requestedProcessIdValues(options));
     const pendingOnly = booleanOption(options.pendingOnly);
