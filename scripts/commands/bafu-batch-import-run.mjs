@@ -190,6 +190,25 @@ function normalizedList(value) {
   return runtime().normalizedList(value);
 }
 
+function requestedProcessIdValues(options) {
+  const values = [...normalizedList(options.processId || options.processIds)];
+  const fileOption = options.processIdFile ?? options.processIdsFile;
+  if (fileOption == null || fileOption === false) return values;
+  const filePath = resolveRepoPath(asText(fileOption));
+  if (!filePath || !fileExists(filePath)) {
+    throw new Error(`--process-id-file not found: ${filePath || asText(fileOption)}`);
+  }
+  const fileIds = fs
+    .readFileSync(filePath, "utf8")
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#"))
+    // Same comma tolerance as --process-id values via normalizedList.
+    .flatMap((line) => line.split(",").map((entry) => entry.trim()))
+    .filter(Boolean);
+  return [...values, ...fileIds];
+}
+
 function uniqueValues(values) {
   return [...new Set(values.filter((value) => value != null && value !== ""))];
 }
@@ -2630,7 +2649,25 @@ function blockRow({ scope, stage, blocker, report, rerunCommand }) {
 }
 
 const retryableStageFailurePattern =
-  /\b(?:ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNRESET|ECONNREFUSED|ECONNABORTED|EHOSTUNREACH|ENETUNREACH|ESOCKETTIMEDOUT)\b|npm error network|registry\.npmjs\.org|network connectivity|timed out after|lookup_failed after insert/u;
+  /\b(?:ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNRESET|ECONNREFUSED|ECONNABORTED|EHOSTUNREACH|ENETUNREACH|ESOCKETTIMEDOUT)\b|npm error network|registry\.npmjs\.org|network connectivity|timed out after|lookup_failed after insert|identity_preflight_report_missing_or_non_json|identity_preflight_timeout|REMOTE_REQUEST_FAILED|Auth session missing/u;
+
+function failedStageNestedReportText(stageEntry) {
+  if (!stageEntry || stageEntry.exit_code === 0) return [];
+  const nestedPath = resolveRepoPath(stageEntry.report_file);
+  if (!nestedPath || !fileExists(nestedPath)) return [];
+  let nested;
+  try {
+    nested = readJson(nestedPath);
+  } catch {
+    return [];
+  }
+  return [
+    nested?.status,
+    ...(Array.isArray(nested?.blockers) ? nested.blockers : []).map((entry) =>
+      JSON.stringify(entry),
+    ),
+  ].filter(Boolean);
+}
 
 function retryableStageFailureText({ blocker, report }) {
   const parts = [
@@ -2651,6 +2688,7 @@ function retryableStageFailureText({ blocker, report }) {
           .filter((value) => value != null && value !== "")
           .join("\n"),
       ),
+      ...(reportJson?.stages ?? []).flatMap((entry) => failedStageNestedReportText(entry)),
     );
   }
   return parts.filter(Boolean).join("\n");
@@ -3382,7 +3420,7 @@ async function runOneScope({
     appendJsonLine(paths.scopeCheckpoints, checkpoint);
     return { status: "skipped", checkpoint, stages };
   }
-  const explicitProcessIds = new Set(normalizedList(options.processId || options.processIds));
+  const explicitProcessIds = new Set(requestedProcessIdValues(options));
   if (
     blockedScopes?.has(`${processId}@${processVersion}`) &&
     !booleanOption(options.force) &&
@@ -4250,6 +4288,7 @@ export function createBafuBatchImportRunCommands(deps) {
           "node scripts/foundry.mjs dataset-bafu-batch-import-run --scope-file <ready-scopes.jsonl> --out-dir <new-batch-dir> --ledger-source-dir <previous-batch-dir> --pending-only --preflight-only",
           "node scripts/foundry.mjs dataset-bafu-batch-import-run --scope-file <ready-scopes.jsonl> --out-dir <existing-batch-dir> --pending-only --selection-order estimated-weight-asc --preflight-only",
           "node scripts/foundry.mjs dataset-bafu-batch-import-run --scope-file <ready-scopes.jsonl> --process-id <uuid> --commit",
+          "node scripts/foundry.mjs dataset-bafu-batch-import-run --scope-file <ready-scopes.jsonl> --process-id-file <retry-ids.txt> --commit (one id per line; blank lines and # comments ignored)",
         ],
         purpose:
           "Run BAFU ready process scopes through materialize, semantic decisions, dependency flow commit, support commit, process commit, readback verify, and resumable ledgers.",
@@ -4286,7 +4325,7 @@ export function createBafuBatchImportRunCommands(deps) {
     const stateCode = integerOption(options.stateCode, 0);
     const parallel = Math.max(1, Math.min(12, integerOption(options.parallel, 5)));
     const limit = options.limit == null ? null : Math.max(0, integerOption(options.limit, 0));
-    const requestedProcessIds = new Set(normalizedList(options.processId || options.processIds));
+    const requestedProcessIds = new Set(requestedProcessIdValues(options));
     const pendingOnly = booleanOption(options.pendingOnly);
     const force = booleanOption(options.force);
     const selectionOrder = selectionOrderOption(options.selectionOrder || options.scopeOrder);
@@ -4731,6 +4770,7 @@ export const bafuBatchImportRunTestHooks = {
   mergeCompletedReusableIdentityDecisions,
   postWriteVerifyRetryReason,
   preFinalizeRecoveryBlocker,
+  requestedProcessIdValues,
   retryableStageFailure,
   writeScopeCarriedForwardVerifiedFlowRows,
 };

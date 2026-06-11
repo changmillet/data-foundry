@@ -452,6 +452,10 @@ export function createPostAuthoringFinalizeUtils({
         options.identityPreflightTimeout ||
         options.timeoutMs ||
         options.timeout,
+      // Transient CLI/remote failures (timeout, missing JSON report) are retriable per
+      // identity-preflight-run; without this a single remote blip blocks the curation gate.
+      maxAttempts:
+        options.identityPreflightMaxAttempts || options.identityPreflightRetryAttempts || 3,
       dryRun: options.identityPreflightDryRun || options.dryRunIdentityPreflight,
     });
     return {

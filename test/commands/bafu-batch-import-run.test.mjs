@@ -714,6 +714,104 @@ test("BAFU batch import runner treats npm network apply failures as retryable", 
   assert.equal(retryable.code, "ENOTFOUND");
 });
 
+test("BAFU batch import runner treats curation gate blocks from failed identity preflight execution as retryable", () => {
+  const root = path.join(fixtureRoot, "retryable-identity-preflight-gate");
+  fs.rmSync(root, { recursive: true, force: true });
+  const preflightRunReport = path.join(root, "identity-preflight-run", "run-report.json");
+  writeJson(preflightRunReport, {
+    status: "failed",
+    counts: { failed: 1, cli_exit_nonzero: 1 },
+    blockers: [
+      {
+        code: "identity_preflight_report_missing_or_non_json",
+        message: "Identity-preflight runner could not produce usable evidence for a selected row.",
+      },
+    ],
+  });
+  const finalizeReport = path.join(root, "finalize", "dataset-post-authoring-finalize-report.json");
+  writeJson(finalizeReport, {
+    status: "blocked",
+    blockers: [
+      {
+        code: "post_authoring_curation_gate_not_ready",
+        stage: "post_authoring_curation_gate",
+        status: "blocked_needs_foundry_deterministic_cleanup",
+      },
+    ],
+    stages: [
+      {
+        stage: "identity_preflight_run",
+        status: "failed",
+        exit_code: 1,
+        stderr: "",
+        report_file: rel(preflightRunReport),
+      },
+      {
+        stage: "post_authoring_curation_gate",
+        status: "blocked_needs_foundry_deterministic_cleanup",
+        exit_code: 1,
+      },
+    ],
+  });
+
+  const retryable = bafuBatchImportRunTestHooks.retryableStageFailure({
+    stage: "process.finalize",
+    blocker: {
+      code: "post_authoring_curation_gate_not_ready",
+      message:
+        "Post-authoring curation gate must be ready before dry-run or remote write planning.",
+    },
+    report: rel(finalizeReport),
+  });
+
+  assert.ok(retryable, "failed identity preflight execution should classify as retryable");
+  assert.equal(retryable.code, "identity_preflight_report_missing_or_non_json");
+
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test("BAFU batch import runner keeps genuine curation gate blocks on the human review path", () => {
+  const root = path.join(fixtureRoot, "non-retryable-curation-gate");
+  fs.rmSync(root, { recursive: true, force: true });
+  const finalizeReport = path.join(root, "finalize", "dataset-post-authoring-finalize-report.json");
+  writeJson(finalizeReport, {
+    status: "blocked",
+    blockers: [
+      {
+        code: "post_authoring_curation_gate_not_ready",
+        stage: "post_authoring_curation_gate",
+        status: "blocked_needs_foundry_ai_authoring",
+      },
+    ],
+    stages: [
+      {
+        stage: "identity_preflight_run",
+        status: "completed",
+        exit_code: 0,
+      },
+      {
+        stage: "post_authoring_curation_gate",
+        status: "blocked_needs_foundry_ai_authoring",
+        exit_code: 1,
+      },
+    ],
+  });
+
+  const retryable = bafuBatchImportRunTestHooks.retryableStageFailure({
+    stage: "process.finalize",
+    blocker: {
+      code: "post_authoring_curation_gate_not_ready",
+      message:
+        "Post-authoring curation gate must be ready before dry-run or remote write planning.",
+    },
+    report: rel(finalizeReport),
+  });
+
+  assert.equal(retryable, null);
+
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
 test("BAFU universe coverage report compares full process universe with ready scopes and ledgers", () => {
   const root = path.join(fixtureRoot, "universe-coverage");
   fs.rmSync(root, { recursive: true, force: true });
@@ -1524,4 +1622,63 @@ test("BAFU batch import runner blocks unresolved identity reference rows", () =>
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
+});
+
+test("BAFU batch import runner merges --process-id-file ids with explicit process ids", () => {
+  const root = path.join(fixtureRoot, "process-id-file-merge");
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.mkdirSync(root, { recursive: true });
+  const idFile = path.join(root, "retry-ids.txt");
+  fs.writeFileSync(
+    idFile,
+    [
+      "# blocked retry batch",
+      "",
+      "aaaaaaaa-1111-4111-8111-111111111111",
+      "  bbbbbbbb-2222-4222-8222-222222222222  ",
+      "# trailing comment",
+      "",
+    ].join("\n"),
+  );
+
+  try {
+    const merged = bafuBatchImportRunTestHooks.requestedProcessIdValues({
+      processId: "cccccccc-3333-4333-8333-333333333333",
+      processIdFile: idFile,
+    });
+    assert.deepEqual(merged, [
+      "cccccccc-3333-4333-8333-333333333333",
+      "aaaaaaaa-1111-4111-8111-111111111111",
+      "bbbbbbbb-2222-4222-8222-222222222222",
+    ]);
+
+    const fileOnly = bafuBatchImportRunTestHooks.requestedProcessIdValues({
+      processIdsFile: idFile,
+    });
+    assert.deepEqual(fileOnly, [
+      "aaaaaaaa-1111-4111-8111-111111111111",
+      "bbbbbbbb-2222-4222-8222-222222222222",
+    ]);
+
+    const absent = bafuBatchImportRunTestHooks.requestedProcessIdValues({
+      processId: "cccccccc-3333-4333-8333-333333333333",
+    });
+    assert.deepEqual(absent, ["cccccccc-3333-4333-8333-333333333333"]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("BAFU batch import runner rejects a missing --process-id-file with the path in the error", () => {
+  const missingFile = path.join(fixtureRoot, "process-id-file-missing", "no-such-ids.txt");
+  assert.throws(
+    () =>
+      bafuBatchImportRunTestHooks.requestedProcessIdValues({
+        processIdFile: missingFile,
+      }),
+    (error) =>
+      error instanceof Error &&
+      error.message.includes("--process-id-file not found:") &&
+      error.message.includes(missingFile),
+  );
 });

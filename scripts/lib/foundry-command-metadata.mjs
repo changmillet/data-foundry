@@ -756,6 +756,7 @@ export const commandMetadata = {
       "BAFU run directory with context and library decisions",
       "target user id",
       "optional prior batch/import-ledger directories for pending-only carry-forward",
+      "optional explicit retry ids via repeated --process-id or --process-id-file (one id per line, # comments and blank lines ignored)",
     ],
     outputs: [
       "dataset-bafu-batch-import-run-report.json",
