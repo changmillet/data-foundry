@@ -1044,6 +1044,32 @@ test("BAFU identity decision carry-forward appends library reuse rows with full 
   const canonicalId = "44444444-5555-4666-8777-888888888893";
   const decisionsFile = path.join(taskDir, "identity-decisions.jsonl");
   const rowsFile = path.join(root, "flows.jsonl");
+  const gateReportPath = path.join(root, "curation-gate", "dataset-curation-gate-report.json");
+  const gatePackagePath = path.join(root, "authoring", `flow-${appendedId}.authoring-package.json`);
+
+  writeJson(gatePackagePath, {
+    schema_version: 1,
+    dataset_type: "flow",
+    entity_id: appendedId,
+    contract_context_files: [
+      { kind: "schema", path: "context/schema.json", text: "{}" },
+      { kind: "methodology_yaml", path: "context/methodology.yaml", text: "rules: []" },
+      { kind: "ruleset", path: "context/runtime-ruleset.json", text: "{}" },
+    ],
+  });
+  const gatePackageSha = bafuBatchImportRunTestHooks.sha256File(gatePackagePath);
+  writeJson(gateReportPath, {
+    schema_version: 1,
+    entities: [
+      {
+        dataset_type: "flow",
+        entity_id: appendedId,
+        version: "00.00.001",
+        authoring_package: rel(gatePackagePath),
+        authoring_package_sha256: gatePackageSha,
+      },
+    ],
+  });
 
   writeJsonLines(path.join(decisionDir, "identity-decisions.jsonl"), [
     {
@@ -1086,6 +1112,7 @@ test("BAFU identity decision carry-forward appends library reuse rows with full 
       outDir: taskDir,
       datasetType: "flow",
       rowsFile,
+      curationGateReport: gateReportPath,
     });
 
     assert.equal(result.report.status, "completed");
@@ -1102,19 +1129,22 @@ test("BAFU identity decision carry-forward appends library reuse rows with full 
       "methodology_yaml",
       "ruleset",
     ]);
-    const packagePath = path.join(
+    const snapshotPath = path.join(
       taskDir,
-      "appended-authoring-packages",
-      `flow-${appendedId}.authoring-package.json`,
+      "authoring-package-snapshots",
+      `flow-${appendedId}.authoring-package.${gatePackageSha}.snapshot.json`,
     );
-    assert.equal(merged[0].authoring_package, rel(packagePath));
-    assert.ok(fs.existsSync(packagePath));
-    const packageJson = readJson(packagePath);
-    assert.equal(packageJson.package_kind, "library_reuse_carry_forward");
-    assert.equal(packageJson.dataset_id, appendedId);
+    assert.equal(merged[0].authoring_package, rel(snapshotPath));
+    assert.equal(merged[0].authoring_package_sha256, gatePackageSha);
+    assert.ok(fs.existsSync(snapshotPath));
     assert.equal(
-      merged[0].authoring_package_sha256,
-      bafuBatchImportRunTestHooks.sha256File(packagePath),
+      bafuBatchImportRunTestHooks.sha256File(snapshotPath),
+      gatePackageSha,
+      "snapshot must be a byte-identical copy of the gate authoring package",
+    );
+    assert.deepEqual(
+      readJson(snapshotPath).contract_context_files.map((file) => file.kind),
+      ["schema", "methodology_yaml", "ruleset"],
     );
   } finally {
     fs.rmSync(root, { recursive: true, force: true });

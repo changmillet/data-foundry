@@ -1207,12 +1207,54 @@ function loadCompletedReusableIdentityDecisions(runDir) {
   return { files, byKey, conflicts };
 }
 
+function curationGateAuthoringPackagesById(curationGateReport) {
+  const byId = new Map();
+  if (!curationGateReport || !fileExists(curationGateReport)) return byId;
+  let report;
+  try {
+    report = readJson(curationGateReport);
+  } catch {
+    return byId;
+  }
+  const entities = [report?.entities, report?.processes, report?.flows, report?.items].find(
+    Array.isArray,
+  );
+  for (const entity of entities ?? []) {
+    const id = asText(entity?.entity_id ?? entity?.dataset_id);
+    const packageRef = asText(entity?.authoring_package);
+    if (!id || !packageRef) continue;
+    byId.set(id, {
+      package_ref: packageRef,
+      sha256: asText(entity?.authoring_package_sha256) || null,
+    });
+  }
+  return byId;
+}
+
+// Mirrors dataset-identity-decision-task-build: bind the decision to a snapshot of the
+// entity's real full-context authoring package so downstream full-context proofs hold.
+function snapshotGateAuthoringPackage({ gatePackage, outDir }) {
+  const packagePath = resolveRepoPath(gatePackage.package_ref);
+  if (!packagePath || !fileExists(packagePath)) return null;
+  const sha = gatePackage.sha256 || sha256File(packagePath);
+  const parsed = path.parse(path.basename(packagePath));
+  const snapshotPath = path.join(
+    outDir,
+    "authoring-package-snapshots",
+    `${parsed.name}.${sha}.snapshot${parsed.ext || ".json"}`,
+  );
+  fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
+  if (!fileExists(snapshotPath)) fs.copyFileSync(packagePath, snapshotPath);
+  return { authoring_package: repoRelative(snapshotPath), authoring_package_sha256: sha };
+}
+
 function mergeCompletedReusableIdentityDecisions({
   runDir,
   decisionsFile,
   outDir,
   datasetType,
   rowsFile = null,
+  curationGateReport = null,
 }) {
   const currentRows = fileExists(decisionsFile) ? readJsonLines(decisionsFile) : [];
   const reusable = loadCompletedReusableIdentityDecisions(runDir);
@@ -1256,6 +1298,7 @@ function mergeCompletedReusableIdentityDecisions({
   // write path even when the library already holds a completed reuse decision for it
   // (e.g. an elementary flow that produced no preflight action item).
   if (rowsFile && fileExists(rowsFile)) {
+    const gatePackagesById = curationGateAuthoringPackagesById(curationGateReport);
     const decidedKeys = new Set(
       mergedRows.map((row) => identityDecisionDatasetKey(row, datasetType)).filter(Boolean),
     );
@@ -1270,36 +1313,26 @@ function mergeCompletedReusableIdentityDecisions({
       const reusableDecision = reusable.byKey.get(key);
       if (!reusableDecision) continue;
       decidedKeys.add(key);
+      // Appended rows have no per-scope task decision, so bind them to the entity's own
+      // full-context authoring package from the curation gate (same trust pattern as
+      // replacement rows, which keep the task package while taking the library decision).
+      const gatePackage = gatePackagesById.get(identity.id);
+      const packageBinding = gatePackage
+        ? snapshotGateAuthoringPackage({ gatePackage, outDir })
+        : null;
       additions.push({
         key,
         source_file: repoRelative(reusableDecision.source_file),
         replacement_decision: "reuse_existing_reference",
         canonical: identityDecisionCanonical(reusableDecision.row),
-      });
-      // The apply validator also requires a readable authoring package per decision;
-      // library reuse rows have none, so materialize the decision evidence as one.
-      const appendedPackagePath = path.join(
-        outDir,
-        "appended-authoring-packages",
-        `${datasetType}-${identity.id}.authoring-package.json`,
-      );
-      fs.mkdirSync(path.dirname(appendedPackagePath), { recursive: true });
-      writeJson(appendedPackagePath, {
-        schema_version: 1,
-        package_kind: "library_reuse_carry_forward",
-        dataset_type: datasetType,
-        dataset_id: identity.id,
-        dataset_version: identity.version || reusableDecision.row.dataset_version || "00.00.001",
-        source_decision_file: repoRelative(reusableDecision.source_file),
-        decision: reusableDecision.row,
+        authoring_package: packageBinding?.authoring_package ?? null,
       });
       mergedRows.push({
         ...reusableDecision.row,
         dataset_type: datasetType,
         dataset_id: identity.id,
         dataset_version: identity.version || reusableDecision.row.dataset_version || "00.00.001",
-        authoring_package: repoRelative(appendedPackagePath),
-        authoring_package_sha256: sha256File(appendedPackagePath),
+        ...(packageBinding ?? {}),
         // The apply validator requires the full contract context kinds; replacement rows
         // inherit them from the autofill template, appended rows declare them directly.
         used_context_kinds: uniqueValues([
@@ -2966,6 +2999,7 @@ async function runIdentityAndPatch({
       outDir: identityTaskDir,
       datasetType: type,
       rowsFile: inputRowsFile,
+      curationGateReport: gateReport,
     });
     stages.push({
       stage: `${stagePrefix}.identity_decision_carry_forward`,
@@ -3029,6 +3063,7 @@ async function runIdentityAndPatch({
       outDir: identityTaskDir,
       datasetType: type,
       rowsFile: inputRowsFile,
+      curationGateReport: gateReport,
     });
     stages.push({
       stage: `${stagePrefix}.identity_decision_carry_forward`,
