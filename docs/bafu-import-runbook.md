@@ -1,6 +1,6 @@
 # BAFU 2025 V2 导入运行手册（入口文档）
 
-> 目标读者：接手 BAFU 全量导入的任何一个 agent 会话或人工操作者。读完本文应能：知道当前进度在哪、用哪条命令继续、遇到 blocker 怎么分诊，而不需要重新逆向工程整条流水线。最后更新：2026-06-10（v50 drain 暂停点）。更新本文时同步更新「当前状态快照」一节。
+> 目标读者：接手 BAFU 全量导入的任何一个 agent 会话或人工操作者。读完本文应能：知道当前进度在哪、用哪条命令继续、遇到 blocker 怎么分诊，而不需要重新逆向工程整条流水线。最后更新：2026-06-10 深夜（v50 drain resume10 运行中）。更新本文时同步更新「当前状态快照」一节。
 
 ---
 
@@ -31,7 +31,7 @@ export RUN=.foundry/workspaces/bafu-full-import-20260607T080646Z
    - （v50 完成后追加 `$RUN/batch-import-v50-pending-ready-commit/import-ledger`）
 2. **v12、v46、v47、v48 不是 canonical 成功来源**，只能用于 forensic 分析。v12 时代的远端写入已不可信（见 §7-9 stale support identity 事故）。
 3. **candidate ≠ authoritative**：classification / location / identity / authoring 的 AI 输出必须带 task bundle 证据（`authoring_context.context_bundle_sha256`）并经 deterministic apply / projection 进库；规则推导的 repair 只是 candidate 行。
-4. **当前 canonical classification decisions 文件**：`$RUN/decisions-v9-pending-ready-leaf/classification-decisions.jsonl`（21,007 行）。⚠️ batch run 的默认值仍指向旧的 `decisions-v4-leaf-category-map`，**每次必须显式传** `--library-classification-decisions`（见 §7-2）。
+4. **当前 canonical classification decisions 文件**：`$RUN/decisions-v11-direct-process-leaf/classification-decisions.jsonl`（23,521 行 = v10 的 23,478 + 43 条 direct process 决策；v51 批次用它，运行中的 v50 批次仍显式沿用 decisions-v9 的 21,007 行——v11 是其超集，不要中途给在跑批次换文件）。⚠️ batch run 的默认值仍指向旧的 `decisions-v4-leaf-category-map`，**每次必须显式传** `--library-classification-decisions`（见 §7-2）。 **identity decisions**：全部 `decisions*` 目录的 `identity-decisions.jsonl` 已统一替换为 `identity-decisions-from-preflight-final-20260611/` 的 2,463 行隔间修正版（2026-06-10/11；旧 1,493 行备份在各目录 `identity-decisions.pre-compartment-fix.jsonl`，其中 828 行隔间错配）。runner 按 `/^decisions(-|$)/` 合并所有目录且 canonical 冲突即删键——**新决策目录必须与现存目录一致或全量替换**。
 5. `--parallel 5` 只用于 queue/ledger 证明独立的 family masters 或 master 已 verified 的 variants；runner 的 `family-master-first` 排序 + 内部锁负责这一点，不要绕过。
 6. 每个新批次：独立 `--out-dir`、独立 report / run-manifest / preflight plan / ledger；coverage 报告显式列出使用的 ledger sources。
 
@@ -44,9 +44,9 @@ export RUN=.foundry/workspaces/bafu-full-import-20260607T080646Z
 | `inputs/BAFU-2025 Version 2 - TIDAS 2026-03-09/process-bundles/` | 11,747 个 bundle（每个含 manifest + tidas 子树），`index.json` 是 universe 契约 |
 | `inputs/.../tidas/processes | flows/` | 扁平 TIDAS 数据集（11,747 process / 15,120 flow 依赖） |
 | `$RUN/library-index/` | `library-entity-index.jsonl`、`scope-projection.jsonl`（resolution 的输入） |
-| `$RUN/decisions-v9-pending-ready-leaf/` | **当前 canonical 决策**（classification + identity + canonical-support-mappings） |
+| `$RUN/decisions-v9-pending-ready-leaf/` | v50 批次使用的决策（classification + identity + canonical-support-mappings）；**v51 起 canonical = `decisions-v11-direct-process-leaf/`** |
 | `$RUN/decisions-v8-pending-ready-authoring/` | v9 的投影源（v7 + 1,031 条 authored flow 决策） |
-| `$RUN/library-resolution-v9-pending-ready-leaf/` | **当前 canonical resolution**：`ready-scopes.jsonl`（2,940）+ `blocked-scope-ledger.jsonl`（8,807 scopes / 166,468 行） |
+| `$RUN/library-resolution-v9-pending-ready-leaf/` | v50 时代 resolution：`ready-scopes.jsonl`（2,940）+ `blocked-scope-ledger.jsonl`（8,807 scopes / 166,468 行）；**v51 起 = `library-resolution-v14-energy-override/`（ready 5,553）** |
 | `$RUN/leaf-process-classification-authoring/` | process 分类 authoring 工作区：leaf tasks（11,704）、category-map-tasks-v50/v51（带 sha 的 bundle）、category-map-decisions-v50/（projection 输入目录） |
 | `$RUN/batch-import-v50-pending-ready-staging/` | v50 阶段工作台：merged scope file、flow-product authoring（round1+v51）、phase journal |
 | `$RUN/batch-import-v50-pending-ready-commit/` | v50 commit 批次（**进行中，已暂停**） |
@@ -81,7 +81,7 @@ python3 - <<'EOF'
 import json, collections
 RUN='.foundry/workspaces/bafu-full-import-20260607T080646Z'
 uniq=collections.defaultdict(set); scopes=collections.defaultdict(set)
-for line in open(f'{RUN}/library-resolution-v9-pending-ready-leaf/blocked-scope-ledger.jsonl'):
+for line in open(f'{RUN}/library-resolution-v14-energy-override/blocked-scope-ledger.jsonl'):  # 用当前最新 resolution-vNN
     r=json.loads(line); dep=r.get('blocking_dependency') or {}
     uniq[r['reason']].add(f"{dep.get('dataset_type')}:{dep.get('id')}")
     scopes[r['reason']].add(r['blocked_process_id'])
@@ -125,7 +125,7 @@ EOF
 node scripts/foundry.mjs dataset-bafu-leaf-classification-category-map-project \
   --task-dir "$RUN/leaf-process-classification-authoring" \
   --category-map-decisions-dir "$RUN/leaf-process-classification-authoring/category-map-decisions-vNN" \
-  --source-decisions-dir "$RUN/decisions-v9-pending-ready-leaf" \
+  --source-decisions-dir "$RUN/decisions-v11-direct-process-leaf" \
   --out-dir "$RUN/decisions-v10-..." \
   --process-category-schema /Users/davidli/projects/workspace/tiangong-lca-cli/assets/tidas-schemas/tidas_processes_category.json \
   --flow-product-category-schema /Users/davidli/projects/workspace/tiangong-lca-cli/assets/tidas-schemas/tidas_flows_product_category.json
@@ -159,11 +159,11 @@ node scripts/foundry.mjs dataset-library-decisions-apply \
 
 ```bash
 node scripts/foundry.mjs dataset-bafu-batch-import-run \
-  --scope-file "$RUN/library-resolution-v9-pending-ready-leaf/ready-scopes.jsonl" \
+  --scope-file "$RUN/library-resolution-v14-energy-override/ready-scopes.jsonl" \
   --run-dir "$RUN" \
   --out-dir "$RUN/batch-import-vNN-preflight" \
   --process-bundles-dir "inputs/BAFU-2025 Version 2 - TIDAS 2026-03-09/process-bundles" \
-  --library-classification-decisions "$RUN/decisions-v9-pending-ready-leaf/classification-decisions.jsonl" \
+  --library-classification-decisions "$RUN/decisions-v11-direct-process-leaf/classification-decisions.jsonl" \
   --pending-only --require-leaf-classification --selection-order family-master-first \
   --ledger-source-dir "$RUN/batch-import-v35-targeted-variant-commit/import-ledger" \
   --ledger-source-dir "$RUN/batch-import-v41-retry-classification-commit/import-ledger" \
@@ -208,7 +208,14 @@ done
 ### 5.3 重试 blocked / retry scopes
 
 - `failed.scopes.retry.jsonl`（网络/工具类，如 `commit_handoff_command_failed`）：直接重跑批次即可（retry 行不阻止重选）。
-- `blocked.scopes.human-review.jsonl`：修复根因（代码规则/决策）后，用**显式 process id** 重试（显式请求绕过 blocked 过滤）：
+- `blocked.scopes.human-review.jsonl`：修复根因（代码规则/决策）后，用**显式 process id** 重试（显式请求绕过 blocked 过滤）。**首选 `--process-id-file`**（一行一个 id，空行与 `#` 注释行忽略），从根本上规避 zsh 分词陷阱（§7-10）；文件不存在会直接报错（`--process-id-file not found: <path>`），不会静默空跑：
+
+```bash
+node scripts/foundry.mjs dataset-bafu-batch-import-run ...（完整参数）... \
+  --process-id-file /tmp/bafu-vNN-blocked-retry-ids.txt --commit
+```
+
+旧的 `--process-id <uuid>`（可重复）仍然支持，并可与 `--process-id-file` 合并使用：
 
 ```bash
 node scripts/foundry.mjs dataset-bafu-batch-import-run ...（完整参数）... \
@@ -221,7 +228,7 @@ node scripts/foundry.mjs dataset-bafu-batch-import-run ...（完整参数）... 
 node scripts/foundry.mjs dataset-bafu-universe-coverage-report \
   --input-dir "inputs/BAFU-2025 Version 2 - TIDAS 2026-03-09" \
   --run-dir "$RUN" \
-  --scope-file "$RUN/library-resolution-v9-pending-ready-leaf/ready-scopes.jsonl" \
+  --scope-file "$RUN/library-resolution-v14-energy-override/ready-scopes.jsonl" \
   --ledger-source-dir "$RUN/batch-import-v35-targeted-variant-commit/import-ledger" \
   --ledger-source-dir "$RUN/batch-import-v41-retry-classification-commit/import-ledger" \
   --ledger-source-dir "$RUN/batch-import-v42-curation-fix-commit/import-ledger" \
@@ -237,8 +244,8 @@ node scripts/foundry.mjs dataset-bafu-universe-coverage-report \
 
 | code | 阶段 | 含义 | 处置 |
 | --- | --- | --- | --- |
-| `post_authoring_curation_gate_not_ready` | finalize | curation gate 报 `blocked_needs_foundry_deterministic_cleanup` 等 | 看 scope 的 `finalize-*/curation-gate/dataset-curation-gate-report.json` 的 `entities[].deterministic_cleanup_count/blocking_item_count`，定位 cleanup 项。**当前未诊断（v50 暂停时 9 例，恢复后第一优先）** |
-| `bafu_name_split_unsupported` | flow/process.authoring | 名称拆分规则链没有该模式 | 在 `scripts/commands/bafu-auto-authoring.mjs` 的 `splitBafuNamePlan` 加针对性规则 + 测试，重启批次后显式重试。已加：bark after debarking、`measured as X` 属性段 |
+| `post_authoring_curation_gate_not_ready` | finalize | curation gate 报 `blocked_needs_foundry_deterministic_cleanup` 等 | 看 scope 的 `finalize-*/curation-gate/dataset-curation-gate-report.json` 的 `entities[].deterministic_cleanup_count/blocking_item_count`，定位 cleanup 项。已诊断：v50 的 9 例根因是瞬时 auth/preflight 失败被误判终态——已修（retryable 归类 + finalize identity-preflight maxAttempts=3），旧案例已显式重试清零 |
+| `bafu_name_split_unsupported` | flow/process.authoring | 名称拆分规则链没有该模式 | 在 `scripts/commands/bafu-auto-authoring.mjs` 的 `splitBafuNamePlan` 加针对性规则 + 测试，重启批次后显式重试。已加：bark after debarking、`measured as X` 属性段；本会话又加约 16 组规则（清单见 §8「本会话代码修改」） |
 | `bafu_process_functional_unit_location_token_unsupported` | process.authoring | FU 文本尾部地理 token 与 geography 不符 | 已修复：回退接受 name `mixAndLocationTypes` 中的代码。旧批次的此类 blocked 直接显式重试 |
 | `reference_closure_unproven` | process.finalize | 引用的 support 数据集既不在写入范围也无远端证明 | 多为 stale support identity cache（v12 渗入）。已修复：reuse 后 finalize 报 missing → 自动 invalidate + 真实写入。旧 blocked 显式重试 |
 | `missing_dataset`（remote verify） | precommit verify | 远端确实没有该数据集 | 看是谁声称它 verified（`verified-support-identities.jsonl` 的 `report` 字段溯源）；v12 来源即 stale |
@@ -251,70 +258,57 @@ node scripts/foundry.mjs dataset-bafu-universe-coverage-report \
 ## 7. 已知陷阱（每条都真实踩过）
 
 1. **`--target-user-id` commit 必填**：错误只出现在 stderr 栈尾，report JSON 不会生成。值沿用 `dab05739-1a42-421b-8170-3b77146d1d64`。
-2. **decisions 默认值是旧的**：batch run 默认 `decisions-v4-leaf-category-map`。永远显式传 `--library-classification-decisions`（当前 = decisions-v9）。
+2. **decisions 默认值是旧的**：batch run 默认 `decisions-v4-leaf-category-map`。永远显式传 `--library-classification-decisions`（v51 起 = decisions-v11；运行中的 v50 批次仍按其 run-manifest 显式沿用 decisions-v9，不要中途换）。
 3. **preflight.plan.jsonl 只含选中 scope**：选中 0 时为空，不能用于缺口诊断；用 §4.1 的脚本。
 4. **category-map 旧决策两类失效**：无 `context_bundle_sha256`（现为硬性要求）；旧 code 3510/2610 已被 schema 细分（3511/3512/3513、2611/2619…）不再是 leaf。任何"再投影"前先核对 leaf 表。
 5. **改代码不影响在跑的进程**：drain 中途修的规则要等该进程停止后才生效，期间产生的同类 blocked 属预期，集中显式重试。
 6. **统计口径**：census-v1 的 aggregate（1,527 verified）混入了非 canonical ledger；canonical 口径以 coverage 报告 + 五个 canonical sources 为准（v5 = 1,295）。
 7. **`ready_scope=false` ≠ 不可导入**：9,025 missing ready scopes 多数只是决策闭包未完成（分类/identity/FP-UG），authoring 回合可批量解锁（v9 一轮 +218 ready、process-leaf 缺口 5,531→2,156）。
-8. **scope-file 不要再合并旧文件**：library-resolution-v9 的 ready-scopes.jsonl 已是历史并集的超集。
+8. **scope-file 不要再合并旧文件**：最新 resolution-vNN 的 ready-scopes.jsonl 始终是历史并集的超集（当前 = v14）。
 9. **stale support identity（v12 渗入）**：`verified-support-identities.jsonl` 的 `existing_support_closeout_scan` 行可能指向 v12 报告而远端已无该数据集。现 runner 已支持 `invalidated_remote_missing` 墓碑行 + reuse 失败自动回退真实写入；同文件内 last-wins。新批次的 `--ledger-source-dir` **建议新→旧排序**，让最新墓碑/证据先占位。
-10. **后台跑长批次**：stdout 只有结束时的 JSON；一定 `> log 2>&1` 且追加 `echo "exit=$?"`，进度看 ledger 行数而不是日志。
+10. **zsh 变量展开陷阱**：把多个 `--process-id` 放进变量再无引号展开，zsh 不分词 → 整串变成单个参数被忽略，显式重试静默落空。**修复：改用 `--process-id-file <清单文件>`（§5.3，一行一个 id，文件缺失直接报错而非静默空跑）**；如仍用 `--process-id` 拼接，一律生成 bash 脚本执行，跑前核对 run-manifest `matched_scopes` = 显式 id 数、`requested_process_ids` 非空。
+11. **后台跑长批次**：stdout 只有结束时的 JSON；一定 `> log 2>&1` 且追加 `echo "exit=$?"`，进度看 ledger 行数而不是日志。
 
-## 8. 当前状态快照（2026-06-10，用户要求暂停）
+## 8. 当前状态快照（2026-06-10 深夜，drain resume10 运行中）
 
-**v50 commit（`$RUN/batch-import-v50-pending-ready-commit/`，可断点续跑）**
+**v50 commit（`$RUN/batch-import-v50-pending-ready-commit/`，drain resume10 运行中，可断点续跑）**
 
-- 1,427 个 pending ready scopes：**57 verified** / 15 blocked / 2 retry / **1,353 未开始**。
-- blocked 构成：9× `post_authoring_curation_gate_not_ready`（**未诊断**）、3× name-split（代码已修）、2× FU token（代码已修）、1× reference closure（代码已修）。
-- canonical verified 总数 = 1,295（v5）+ 57 = 1,352。
+- verified 本日从 57 涨到 **931+**（本次更新文档时实测；drain 进行中持续增长，随时用 `wc -l "$RUN"/batch-import-v50-pending-ready-commit/import-ledger/ok.scopes.verified.jsonl` 取实时数）。retry 2 行（自动重选，无需干预）。
+- blocked ledger 行数随 drain 增长（深夜快照 39 行，更新时实测 55 行，均为唯一 process）：其中 **22 个已通过显式 bash 脚本重试全部转 verified（22/22 清零）**；深夜快照时的 17 个 active blocked 的修复/规则均已在位，resume10 期间新增的 blocked 一并留给 sweep。**不要逐个手工重试**——drain 排空后跑 `ops-scripts/bafu-v50-blocked-sweep.sh`（运行时从 active blocked ledger 取 id）统一清扫并分诊残余。
+- **resume10 进程已加载本会话全部代码修复**（见下「本会话代码修改」），不要为换码中途重启。scopeFile 仍 = merged 2,722，其中 5 行在新 identity 决策下会卡 identity——预期行为，不要强行重试。
+- canonical verified 总数 = 1,295（coverage v5）+ v50 ok 行数（实测 931 → **2,226+**，drain 中持续增长）。
 
 **决策/解锁层**
 
-- decisions-v9（21,007 行）使全部 1,427 pending 过 leaf 门禁；resolution-v9：ready 2,940（+218 新 scope 未入批）、blocked 8,807。
-- v51 authoring 回合（**已完成 authoring、未投影**）：
-  - 308/308 个类目决策：`$RUN/leaf-process-classification-authoring/category-map-tasks-v51/authored/`（已校验，0 错误）
-  - flow-product 14/28 片完成（1,260/2,471）：`$RUN/batch-import-v50-pending-ready-staging/flow-product-authoring-v51/authored/`（0000–0013）
-- 5 对 FP/UG（my、personkm、a、hr、kmy）卡 1,370 scopes，等上游建 canonical 数据集。
+- **identity decisions canonical**：`$RUN/identity-decisions-from-preflight-final-20260611/` = **2,463 reuse / 883 manual**（v18 增加类目-维度交叉覆写：候选类目写明 energy/material resources 时，矛盾的属性标签按错标处理——解锁 Energy in biomass[394 scopes]/Energy from uranium/水族），已统一换入全部 12 个 decisions\* 目录（旧文件备份 `identity-decisions.pre-compartment-fix.jsonl`）。详见 v50-phase-journal。
+- ✅ 828 行旧隔间错配暴露审计：与全部 verified scopes 交集为**零**（修复早于任何写入；证据 `$RUN/elementary-compartment-remediation/`），无需远端修复管线。
+- **decisions-v11-direct-process-leaf（canonical classification）**：23,521 行 = v10 的 23,478 + 43 条 direct process 决策（v12 口径下最后一批 process classification 缺口已清）。
+- **resolution-v14-energy-override**：**ready 5,553**（⊇ v13 的 5,539）。v51 批次 scope file 用它；`ops-scripts/` 的 v51 脚本已指向 v11/v14。
+- 883 manual elementary：~671 远端真缺（PM 分箱/Noise/Transformation unknown 等，上游治理或 non-importable 登记）、156 多候选（AI authoring 轮）、38 低分、8 源头误标 elementary、杂项。
+- 5 对 FP/UG（my、personkm、a、hr、kmy）仍卡 1,370 scopes，等上游 canonical 数据集。
 
-**本会话代码修改（已过 `npm test` 164/164）**
+**本会话代码修改（已在 working tree，resume10 已加载）**
 
-- `scripts/commands/bafu-auto-authoring.mjs`：bark 拆名规则、`measured as X` 属性拆名规则、FU 地理 token 回退。
-- `scripts/commands/bafu-batch-import-run.mjs`：support identity 墓碑行 + reuse 失败回退真实写入 + cache 加载 last-wins/状态过滤。
-- 测试：`test/commands/bafu-auto-authoring.test.mjs`、`test/commands/bafu-batch-import-run.test.mjs` 各加用例。
+- 瞬时 auth/preflight 失败归类为 **retryable**（含负向测试）；finalize identity-preflight `maxAttempts=3`。
+- **~16 组 name-split/autofill 规则**：sawnwood 家族、logs/residual wood、ammonia storehouse、particle board、roof/facade construction、production-of-system、heat-treatment extrusion、for-electric/hybrid 部件、recycling-share 金属 + secondary production、biogas purification、selective coating、carbon fiber、service-process-object 家族、operation-of-vehicle、residual 单例、heating-cooling ceiling、ENTSO storage-pumps 幂等重建、vendor-year cellulose、`measured as` 提升到 terminal at-plant 之上、local-source-path comment patch handler。
+- **elementary identity 评估器 overhaul**：CAS 前导零、sourceTrace 隔间恢复 + 子隔间映射、name tier 含数字位标、倒置化学名置换判等、维度标签覆写、substance-token 非等价。
+- season-year 排除出 citation 启发式（QA + autofill 两层）。
 
-**恢复清单（按序）**
+**预生成运维脚本**（`$RUN/ops-scripts/`，bash 执行，已避开 zsh 分词陷阱）
 
-1. 诊断 9 例 `post_authoring_curation_gate_not_ready`（看 curation-gate 报告的 cleanup 项；大概率是 deterministic cleanup 工具缺口 → 修代码而非沉淀 human review）。
-2. 重启 v50 drain——**精确恢复命令**（scopeFile 必须沿用 merged 文件，不是 resolution-v9；原始参数以 `$RUN/batch-import-v50-pending-ready-commit/import-ledger/run-manifest.json` 为准）：
+- `bafu-v50-resume6.sh`：drain 续跑模板（当前 drain 为该模板的第 10 次续跑实例 resume10，参数不变）。
+- `bafu-v50-blocked-sweep.sh`：运行时从 active blocked ledger 取 id 的清扫批。
+- `bafu-v51-preflight.sh` / `bafu-v51-commit.sh`：v51 批次（scope=resolution-v14 ready 5,553、decisions=v11、6 ledger sources 含 v50）。
 
-```bash
-rm -f /tmp/bafu-v50-pause.flag; pgrep -f dataset-bafu-batch-import-run && echo "STOP: old run alive" || \
-node scripts/foundry.mjs dataset-bafu-batch-import-run \
-  --scope-file "$RUN/batch-import-v50-pending-ready-staging/ready-scopes.merged.jsonl" \
-  --run-dir "$RUN" \
-  --out-dir "$RUN/batch-import-v50-pending-ready-commit" \
-  --process-bundles-dir "inputs/BAFU-2025 Version 2 - TIDAS 2026-03-09/process-bundles" \
-  --library-classification-decisions "$RUN/decisions-v9-pending-ready-leaf/classification-decisions.jsonl" \
-  --target-user-id dab05739-1a42-421b-8170-3b77146d1d64 \
-  --pending-only --require-leaf-classification --selection-order family-master-first \
-  --ledger-source-dir "$RUN/batch-import-v35-targeted-variant-commit/import-ledger" \
-  --ledger-source-dir "$RUN/batch-import-v41-retry-classification-commit/import-ledger" \
-  --ledger-source-dir "$RUN/batch-import-v42-curation-fix-commit/import-ledger" \
-  --ledger-source-dir "$RUN/batch-import-v45-stale-v12-flow-rewrite-commit/import-ledger" \
-  --ledger-source-dir "$RUN/batch-import-v49-identity-reuse-empty-flow-skip-commit/import-ledger" \
-  --parallel 5 --stop-after-blocked 8 --pause-file /tmp/bafu-v50-pause.flag --commit
-```
+**恢复清单（drain 排空后按序）**
 
-之后用 `--process-id` 显式重试 15 个 blocked + 重跑覆盖 2 个 retry。3. 完成 v51 flow 0014–0027 分片 authoring → 组装 category-map-decisions-v51 目录 → 投影 decisions-v10 → resolution-v10 → v51 批次（含 +218 及新解锁 scopes）。4. 生成 universe-coverage-v6（ledger sources = 5 canonical + v50）。5. 下一大主题：1,853 个 elementary flow 的 identity preflight（7,892 scopes）。
-
-## 10. 完成判据（最终收尾必须全部满足）
-
-1. `process-bundles/index.json` unique process 数 = 11,747，与 `tidas/processes` unique 数一致（coverage 报告自动核对）。
-2. 最终 canonical coverage 报告中，11,747 个 process scope 全部为 verified 或明确 non-importable；non-importable 必须落档：整理 `non-importable-scopes.jsonl`（含 reason/evidence），通过 `dataset-bafu-universe-coverage-report --non-importable-scopes-file <file>` 显式登记（可重复传多个），不允许"默认缺席"。
-3. canonical `ok.scopes.verified` 覆盖全部可导入 process scopes；canonical `ok.flows.verified` 覆盖全部需写入的 product flows。
-4. 最终批次/coverage 报告：`blocked=0`、`failed_retryable=0`、`human_review_rows=0`、`retry_rows=0`、selected pending `0`。
-5. `npm test` 与 `npm run doctor` 通过；跑 `dataset-import-completion-report` 作为收尾工件；保存最终 batch report、canonical ledger、coverage report 路径。
+1. 确认 v50 drain（resume10）已退出：`pgrep -f dataset-bafu-batch-import-run` 为空、ledger 行数不再增长；如需再续跑，恢复前 rm pause flag + pgrep（§5.2）。
+2. `ops-scripts/bafu-v50-blocked-sweep.sh`：清扫全部 active blocked（已知 17 个修复均在位，应转 verified；resume10 期间新增的重试后再分诊）。2 retry 行自动重选。
+3. `ops-scripts/bafu-v51-preflight.sh`：预期 `filtered_classification_missing/not_leaf` = **0/0**。
+4. 干净后 `ops-scripts/bafu-v51-commit.sh`（--target-user-id、parallel 5、stop-after-blocked 15 已写在脚本里）。
+5. universe-coverage-v6：§5.4，ledger sources = 6（5 canonical + v50）；v51 完成后追加 v51 再出一版。
+6. 终局瓶颈画像（resolution-v12 口径 6,234 blocked，v13 仅 +26 ready 微调）：**704 个 no-candidate elementary flows 卡 6,076 scopes 的主体**（PM 分箱/Noise/Transformation unknown/区域水变体等，远端真缺——上游补库或完成时 non-importable 登记）；5 对 FP/UG 卡 1,370；149 个多候选 elementary（AI authoring 轮仅直接解锁 62 scopes，低优先）；43 个 process classification 缺口已由 decisions-v11 的 direct-process 决策解决。
+7. elementary 余量：156 多候选 AI authoring、~671 真缺登记 non-importable 或上游补库。
 
 ## 9. 本阶段产物登记（v50/v51）
 
@@ -325,10 +319,23 @@ node scripts/foundry.mjs dataset-bafu-batch-import-run \
 | v50 projection 输入目录 | `$RUN/leaf-process-classification-authoring/category-map-decisions-v50/` |
 | v50 flow-product bundles/决策（1,031） | `$RUN/batch-import-v50-pending-ready-staging/flow-product-authoring/` |
 | decisions v8（投影源） | `$RUN/decisions-v8-pending-ready-authoring/` |
-| **decisions v9（canonical）** | `$RUN/decisions-v9-pending-ready-leaf/` |
-| **resolution v9（canonical ready 集）** | `$RUN/library-resolution-v9-pending-ready-leaf/` |
+| decisions v9（v50 批次用） | `$RUN/decisions-v9-pending-ready-leaf/` |
+| resolution v9（v50 scope 来源） | `$RUN/library-resolution-v9-pending-ready-leaf/` |
 | v50 preflight（v2，1,427 全选） | `$RUN/batch-import-v50-pending-ready-preflight-v2/` |
 | v50 commit 批次 | `$RUN/batch-import-v50-pending-ready-commit/` |
 | v51 category bundles/决策（308） | `$RUN/leaf-process-classification-authoring/category-map-tasks-v51/` |
-| v51 flow bundles/决策（14/28 片） | `$RUN/batch-import-v50-pending-ready-staging/flow-product-authoring-v51/` |
+| v51 flow bundles/决策（28/28 片完成校验） | `$RUN/batch-import-v50-pending-ready-staging/flow-product-authoring-v51/` |
+| **identity decisions canonical（2,463 reuse / 883 manual）** | `$RUN/identity-decisions-from-preflight-final-20260611/` |
+| 828 隔间错配暴露审计（零暴露证据） | `$RUN/elementary-compartment-remediation/` |
+| **decisions v11（canonical，v51 用，23,521 行）** | `$RUN/decisions-v11-direct-process-leaf/` |
+| **resolution v14（v51 ready 集，5,553）** | `$RUN/library-resolution-v14-energy-override/` |
+| 预生成运维脚本（resume/sweep/v51） | `$RUN/ops-scripts/` |
 | 阶段日志 | `$RUN/batch-import-v50-pending-ready-staging/v50-phase-journal.md` |
+
+## 10. 完成判据（最终收尾必须全部满足）
+
+1. `process-bundles/index.json` unique process 数 = 11,747，与 `tidas/processes` unique 数一致（coverage 报告自动核对）。
+2. 最终 canonical coverage 报告中，11,747 个 process scope 全部为 verified 或明确 non-importable；non-importable 必须落档：整理 `non-importable-scopes.jsonl`（含 reason/evidence），通过 `dataset-bafu-universe-coverage-report --non-importable-scopes-file <file>` 显式登记（可重复传多个），不允许"默认缺席"。
+3. canonical `ok.scopes.verified` 覆盖全部可导入 process scopes；canonical `ok.flows.verified` 覆盖全部需写入的 product flows。
+4. 最终批次/coverage 报告：`blocked=0`、`failed_retryable=0`、`human_review_rows=0`、`retry_rows=0`、selected pending `0`。
+5. `npm test` 与 `npm run doctor` 通过；跑 `dataset-import-completion-report` 作为收尾工件；保存最终 batch report、canonical ledger、coverage report 路径。
