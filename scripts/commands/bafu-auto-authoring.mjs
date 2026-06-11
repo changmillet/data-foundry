@@ -802,6 +802,19 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
       flow_property: measuredAsPropertyRouteMatch.groups.property.trim(),
     };
   }
+  const fusedAtPlantQualifierMatch =
+    /^(?<core>titanium\s+dioxide)\s+at\s+plant,\s*(?<route>(?:sulphate|chloride)\s+process(?:,\s*at\s+plant)?)$/iu.exec(
+      text,
+    );
+  if (fusedAtPlantQualifierMatch?.groups?.core && fusedAtPlantQualifierMatch?.groups?.route) {
+    const route = fusedAtPlantQualifierMatch.groups.route.trim();
+    return {
+      source: text,
+      base_name: cleanNamePlanPart(fusedAtPlantQualifierMatch.groups.core),
+      treatment: /at\s+plant$/iu.test(route) ? route : `${route}, at plant`,
+      clean_existing_treatment: true,
+    };
+  }
   const vendorYearLocatorMatch =
     /^(?<core>cellulose\s+fibres)\s*\((?<treat>injected|blown[- ]?in)\)\s*\([a-z][a-z .&-]*(?:19|20)\d{2}\)(?<rest>(?:,\s*[^,]+)*)$/iu.exec(
       text,
