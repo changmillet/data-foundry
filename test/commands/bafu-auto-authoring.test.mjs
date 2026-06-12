@@ -3034,6 +3034,16 @@ test("BAFU splitBafuNamePlan covers session rule families", () => {
       treatment: "at plant",
     },
     {
+      input: "Process-specific burdens, residual material landfill",
+      base: "Process-specific burdens",
+      treatment: "residual material landfill",
+    },
+    {
+      input: "Wrecking, transocean tanker",
+      base: "transocean tanker",
+      treatment: "wrecking",
+    },
+    {
       input: "Particle board, melamin coated, doubleside coated (200 g",
       base: "Particle board",
       treatment: "melamin coated, doubleside coated (200 g",

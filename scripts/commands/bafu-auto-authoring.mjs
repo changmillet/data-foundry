@@ -595,6 +595,22 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
       treatment: "shredding",
     };
   }
+  const wreckingMatch = /^wrecking,\s*(?<object>.+)$/iu.exec(text);
+  if (wreckingMatch?.groups?.object) {
+    return {
+      source: text,
+      base_name: wreckingMatch.groups.object.trim(),
+      treatment: "wrecking",
+    };
+  }
+  const processBurdensMatch = /^(?<core>process-specific\s+burdens),\s*(?<route>.+)$/iu.exec(text);
+  if (processBurdensMatch?.groups?.core && processBurdensMatch?.groups?.route) {
+    return {
+      source: text,
+      base_name: processBurdensMatch.groups.core.trim(),
+      treatment: processBurdensMatch.groups.route.trim(),
+    };
+  }
   const mountingMatch = /^mounting,\s*(?<route>.+)$/iu.exec(text);
   if (mountingMatch?.groups?.route) {
     return {
