@@ -277,7 +277,8 @@ node scripts/foundry.mjs dataset-bafu-universe-coverage-report \
 **Coverage v7 终版（`$RUN/universe-coverage-v7-final/`，8 ledger sources + non-importable 登记）**
 
 - **5,575 verified + 6,172 non-importable = 11,747（gap=0）**；active human-review / retry / pending_ready 全部为 **0**。npm test 186/186、doctor passed。
-- 登记文件：`$RUN/non-importable-scopes-v1.jsonl`（+ `.report.json`）——每行带 blocker reasons、阻塞依赖清单（≤40 条 + 计数）、依赖级证据（identity manual-review 类别 / 2026-06-12 authoring 轮拒绝原因）。三类签名：4,802 仅缺 elementary、1,236 elementary+FP/UG、134 仅 FP/UG（5 对）。
+- 登记文件：`$RUN/non-importable-scopes-v1.jsonl`（+ `.report.json`）——每行带 blocker reasons、阻塞依赖清单（**截断于 40 条**，完整依赖以 ledger/scopes.csv 为准 + 计数字段）、依赖级证据（identity manual-review 类别 / 2026-06-12 authoring 轮拒绝原因）。三类签名：4,802 仅缺 elementary、1,236 elementary+FP/UG、134 仅 FP/UG（5 对）。
+- **人工评审包**：`$RUN/non-importable-review-v1/`——README.md 专家手册 + `data/`（elementary-flows.csv 747 行评审队列 / fp-ug-pairs.csv / scopes.csv 6,172 行 / review-data.json）+ `index.html` 零网络依赖评审仪表盘（判定 localStorage 持久化、导出/导入 verdicts）。评审单元是 747 个缺失 elementary flow + 5 对 FP/UG（非逐 scope）；判定四选一 upstream_add / remap_existing / keep_non_importable / unsure，导出后走 decisions-v13 路径回流。
 - batch ledger 链：v35/v41/v42/v45/v49（canonical 前代）+ v50 2,675 + v51 2,840 + **v52 19/19**（elementary 多候选解锁批，blocked=0）。
 - **149 多候选 elementary authoring 轮**（`$RUN/elementary-multi-candidate-authoring-20260612/`）：5 个 sha-stamped shard bundle + 5 个 subagent + 确定性校验器（validate-decisions.py，含 long-term 优先与 waste-heat v18 覆写豁免）→ **136 reuse / 13 拒绝**（拒绝含 Ethane/Fluorine/Bromine/Benzal 等真缺隔间变体，全部机械验证）；3 个复核翻案（Barium ILCD 系列 tiebreak、Oils 库一致替代、Heat-waste v18 覆写）。decisions-v12 = v11 + 136 行（2,599 identity）→ resolution-v15（ready 5,572）。
 - 产品流引用：verified 7,834 / 15,120；其余 7,286 全部隶属 non-importable scopes（其引用进程未导入，无需写入）。
