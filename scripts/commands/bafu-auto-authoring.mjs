@@ -1801,9 +1801,18 @@ function removeTrailingLocationToken(value, expectedLocationCode = null) {
 
 function cleanProcessFunctionalUnitText(value, expectedLocationCode = null) {
   const text = textFromMultilang(value).trim();
-  const cleaned = stripTrailingLocationTokenText(text, expectedLocationCode)
+  const expected = normalizeLocationTokenCode(expectedLocationCode);
+  let cleaned = stripTrailingLocationTokenText(text, expectedLocationCode);
+  // SimaPro-style names also embed the location token inline
+  // ("1.0 MJ Product {RER} | activity | Alloc Rec, U"); remove inline
+  // occurrences only when they match the dataset geography field.
+  if (expected) {
+    cleaned = cleaned.split(`{${expected}}`).join(" ");
+  }
+  cleaned = cleaned
     .replace(/(^|\s)xx\s+/iu, "$1")
     .replace(/\s+/gu, " ")
+    .replace(/\s+\|/gu, " |")
     .trim();
   return cleaned && cleaned !== text ? englishText(cleaned) : null;
 }
@@ -2225,8 +2234,9 @@ function buildNamePatchOperations(task) {
           selected_value: codeToken,
           mix_and_location_types: mixText,
         }),
+        // The action item only allows the location_decision resolution mode.
         resolution: resolution(
-          "source_language_normalization",
+          "location_decision",
           "Materialized geography.locationOfSupply from the source-backed location code in the name's mixAndLocationTypes segment.",
         ),
         closes_action_items: [closureFor(item)],
@@ -2544,6 +2554,7 @@ function buildSourceOnlyOutputExchangeTraceOperation(task, actionItem) {
 export const bafuAutoAuthoringTestHooks = {
   splitBafuNamePlan,
   splitBafuNamePlanFromNameParts,
+  cleanProcessFunctionalUnitText,
   nonEquivalentFlowCandidateReasons,
   strongNameMeaningDiffers,
   routeOrTechnologyDiffers,

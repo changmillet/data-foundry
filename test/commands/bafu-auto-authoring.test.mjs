@@ -3259,6 +3259,27 @@ test("BAFU splitBafuNamePlan covers session rule families", () => {
   }
 });
 
+test("BAFU process functional unit cleaning strips inline geography tokens matching the dataset location", () => {
+  const cleaned = bafuAutoAuthoringTestHooks.cleanProcessFunctionalUnitText(
+    {
+      "@xml:lang": "en",
+      "#text":
+        "1.0 MJ Refined Waste Cooking Oil {RER} | Refining of waste cooking oil Europe | Alloc Rec, U {RER}",
+    },
+    "RER",
+  );
+  assert.ok(cleaned, "SimaPro-style FU with inline location token must clean");
+  assert.equal(
+    cleaned["#text"],
+    "1.0 MJ Refined Waste Cooking Oil | Refining of waste cooking oil Europe | Alloc Rec, U",
+  );
+  const mismatched = bafuAutoAuthoringTestHooks.cleanProcessFunctionalUnitText(
+    { "@xml:lang": "en", "#text": "1.0 MJ Product {CH} mix" },
+    "RER",
+  );
+  assert.equal(mismatched, null, "tokens that do not match the dataset geography must stay");
+});
+
 test("BAFU splitBafuNamePlanFromNameParts does not duplicate treatment segments already in baseName", () => {
   const plan = bafuAutoAuthoringTestHooks.splitBafuNamePlanFromNameParts(
     {

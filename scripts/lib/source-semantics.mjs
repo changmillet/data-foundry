@@ -409,16 +409,22 @@ export function createSourceSemanticUtils({
     const description =
       "Database-level fallback source used when the converted BAFU package has no more specific report, publication, or data-source evidence for the process scope.";
     const dataFormatReference = canonicalSourceReferenceForRelation("dataset_format_source");
-    const admin = {
+    // ILCD expects the format reference inside dataEntryBy (see
+    // buildBafuProcessContextSourcePayload); at the administrativeInformation
+    // root it fails schema validation as an unknown member.
+    const dataEntryBy = {
       "common:referenceToDataSetFormat": dataFormatReference,
+    };
+    if (timestamp) {
+      dataEntryBy["common:timeStamp"] = timestamp;
+    }
+    const admin = {
+      dataEntryBy,
       publicationAndOwnership: {
         "common:dataSetVersion": version,
         "common:permanentDataSetURI": `https://www.bafu.admin.ch/bafu-2025-v2/${sourceId}`,
       },
     };
-    if (timestamp) {
-      admin.dataEntryBy = { "common:timeStamp": timestamp };
-    }
     if (contactReference) {
       admin.publicationAndOwnership["common:referenceToOwnershipOfDataSet"] =
         cloneJson(contactReference);
