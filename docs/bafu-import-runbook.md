@@ -1,6 +1,6 @@
 # BAFU 2025 V2 导入运行手册（入口文档）
 
-> 目标读者：接手 BAFU 全量导入的任何一个 agent 会话或人工操作者。读完本文应能：知道当前进度在哪、用哪条命令继续、遇到 blocker 怎么分诊，而不需要重新逆向工程整条流水线。最后更新：2026-06-12（v50+v51 全部排空，ready 选集 100% 闭环，coverage v6 已出）。更新本文时同步更新「当前状态快照」一节。
+> 目标读者：接手 BAFU 全量导入的任何一个 agent 会话或人工操作者。读完本文应能：知道当前进度在哪、用哪条命令继续、遇到 blocker 怎么分诊，而不需要重新逆向工程整条流水线。最后更新：2026-06-12（**导入阶段完成**：coverage v7 = 5,575 verified + 6,172 non-importable = 11,747，gap 0）。更新本文时同步更新「当前状态快照」一节。
 
 ---
 
@@ -272,14 +272,16 @@ node scripts/foundry.mjs dataset-bafu-universe-coverage-report \
 10. **zsh 变量展开陷阱**：把多个 `--process-id` 放进变量再无引号展开，zsh 不分词 → 整串变成单个参数被忽略，显式重试静默落空。**修复：改用 `--process-id-file <清单文件>`（§5.3，一行一个 id，文件缺失直接报错而非静默空跑）**；如仍用 `--process-id` 拼接，一律生成 bash 脚本执行，跑前核对 run-manifest `matched_scopes` = 显式 id 数、`requested_process_ids` 非空。
 11. **后台跑长批次**：stdout 只有结束时的 JSON；一定 `> log 2>&1` 且追加 `echo "exit=$?"`，进度看 ledger 行数而不是日志。
 
-## 8. 当前状态快照（2026-06-12，v50+v51 完成，ready 选集闭环）
+## 8. 当前状态快照（2026-06-12，导入阶段完成）
 
-**Coverage v6 终版（`$RUN/universe-coverage-v6-current-canonical/`，7 ledger sources = 5 canonical + v50 + v51）**
+**Coverage v7 终版（`$RUN/universe-coverage-v7-final/`，8 ledger sources + non-importable 登记）**
 
-- **verified 5,556 / 11,747**（47.3%）。ready 选集 5,553 **100% 闭环**：retry=0、pending_ready=0、active human-review 仅 1（`d52e06dd` Energy-in-biomass，不在 ready 文件，上游缺 elementary flow）。
-- v50 ledger：2,675 ok；v51 ledger：**2,840 ok / 0 blocked**（主排空 r5-r7 + blocked sweep ×3 + v50 深残余定向 sweep ×2，全部 58+11+5+3 个 blocked 经代码修复后清零，无一豁免）。
-- 产品流引用：verified 7,807 / 15,120。
-- 剩余 universe 缺口 6,191 全部为上游瓶颈（见恢复清单 6/7），**无管线内待修项**。
+- **5,575 verified + 6,172 non-importable = 11,747（gap=0）**；active human-review / retry / pending_ready 全部为 **0**。npm test 186/186、doctor passed。
+- 登记文件：`$RUN/non-importable-scopes-v1.jsonl`（+ `.report.json`）——每行带 blocker reasons、阻塞依赖清单（≤40 条 + 计数）、依赖级证据（identity manual-review 类别 / 2026-06-12 authoring 轮拒绝原因）。三类签名：4,802 仅缺 elementary、1,236 elementary+FP/UG、134 仅 FP/UG（5 对）。
+- batch ledger 链：v35/v41/v42/v45/v49（canonical 前代）+ v50 2,675 + v51 2,840 + **v52 19/19**（elementary 多候选解锁批，blocked=0）。
+- **149 多候选 elementary authoring 轮**（`$RUN/elementary-multi-candidate-authoring-20260612/`）：5 个 sha-stamped shard bundle + 5 个 subagent + 确定性校验器（validate-decisions.py，含 long-term 优先与 waste-heat v18 覆写豁免）→ **136 reuse / 13 拒绝**（拒绝含 Ethane/Fluorine/Bromine/Benzal 等真缺隔间变体，全部机械验证）；3 个复核翻案（Barium ILCD 系列 tiebreak、Oils 库一致替代、Heat-waste v18 覆写）。decisions-v12 = v11 + 136 行（2,599 identity）→ resolution-v15（ready 5,572）。
+- 产品流引用：verified 7,834 / 15,120；其余 7,286 全部隶属 non-importable scopes（其引用进程未导入，无需写入）。
+- **未来解锁路径**：上游补齐缺失 elementary flows / FP-UG 对后——decisions-v13（在 v12 上追加新 identity）→ resolution v16 → 新批次（v52 模板 + v52 ledger source）→ 从登记文件移除已解锁行 → coverage v8。
 
 **决策/解锁层**
 
