@@ -3014,6 +3014,26 @@ test("BAFU splitBafuNamePlan covers session rule families", () => {
       treatment: "air dried, solar",
     },
     {
+      input: "Final repository for nuclear waste SF, HLW, and ILW",
+      base: "Final repository",
+      treatment: "for nuclear waste SF, HLW, and ILW",
+    },
+    {
+      input: "Interim storage, for nuclear waste",
+      base: "Interim storage",
+      treatment: "for nuclear waste",
+    },
+    {
+      input: "Disposal, concrete demolition, at plant",
+      base: "Disposal, concrete demolition",
+      treatment: "at plant",
+    },
+    {
+      input: "Disposal, mixed demolition, at plant",
+      base: "Disposal, mixed demolition",
+      treatment: "at plant",
+    },
+    {
       input: "Particle board, melamin coated, doubleside coated (200 g",
       base: "Particle board",
       treatment: "melamin coated, doubleside coated (200 g",
@@ -3237,6 +3257,33 @@ test("BAFU splitBafuNamePlan covers session rule families", () => {
       `flow_property for ${item.input}`,
     );
   }
+});
+
+test("BAFU splitBafuNamePlanFromNameParts does not duplicate treatment segments already in baseName", () => {
+  const plan = bafuAutoAuthoringTestHooks.splitBafuNamePlanFromNameParts(
+    {
+      baseName: {
+        "@xml:lang": "en",
+        "#text": "Aluminium, production mix for aluminium profiles, SZFF 2014, at plant",
+      },
+      treatmentStandardsRoutes: { "@xml:lang": "en", "#text": "at plant" },
+    },
+    "CH",
+  );
+  assert.ok(plan, "vendor-year locator name must split");
+  assert.equal(plan.base_name, "Aluminium");
+  assert.equal(plan.treatment, "production mix for aluminium profiles");
+  assert.equal(plan.mix_location, "at plant");
+
+  const novelTreatment = bafuAutoAuthoringTestHooks.splitBafuNamePlanFromNameParts(
+    {
+      baseName: { "@xml:lang": "en", "#text": "Sawn timber, hardwood, SZH 2010" },
+      treatmentStandardsRoutes: { "@xml:lang": "en", "#text": "kiln dried" },
+    },
+    "CH",
+  );
+  assert.ok(novelTreatment, "novel treatment segments must still be appended before the split");
+  assert.match(novelTreatment.treatment, /kiln dried/u);
 });
 
 test("BAFU splitBafuNamePlan reconstructs ENTSO storage pump names idempotently", () => {

@@ -569,6 +569,16 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
         : {}),
     };
   }
+  // Trailing location segments must leave the baseName before the catch-all
+  // keeps the full disposal name with a placeholder route.
+  const disposalAtLocationMatch = /^(?<core>disposal,\s*.+?),\s*(?<route>at\s+.+)$/iu.exec(text);
+  if (disposalAtLocationMatch?.groups?.core && disposalAtLocationMatch?.groups?.route) {
+    return {
+      source: text,
+      base_name: disposalAtLocationMatch.groups.core.trim(),
+      treatment: disposalAtLocationMatch.groups.route.trim(),
+    };
+  }
   const disposalObjectMatch = /^(?<core>disposal,\s*.+)$/iu.exec(text);
   if (disposalObjectMatch?.groups?.core) {
     return {
@@ -1182,6 +1192,20 @@ function splitBafuNamePlan(baseName, expectedLocationCode = null) {
       source: text,
       base_name: electrodeMaterialMatch.groups.core.trim(),
       treatment: "production",
+    };
+  }
+  // Waste-facility names whose first comma sits inside an enumeration
+  // ("Final repository for nuclear waste SF, HLW, and ILW") — keep the
+  // enumeration whole in the route, mirroring "Interim storage, for nuclear waste".
+  const wasteFacilityMatch =
+    /^(?<core>final\s+repository|interim\s+storage)\s*,?\s+(?<route>for\s+nuclear\s+waste\b.*)$/iu.exec(
+      text,
+    );
+  if (wasteFacilityMatch?.groups?.core && wasteFacilityMatch?.groups?.route) {
+    return {
+      source: text,
+      base_name: wasteFacilityMatch.groups.core.trim(),
+      treatment: wasteFacilityMatch.groups.route.trim(),
     };
   }
   const match = /^(?<core>[^,]+),\s*(?<treatment>.+)$/u.exec(text);
@@ -2090,7 +2114,24 @@ function splitBafuNamePlanFromNameParts(name, expectedLocationCode = null) {
   ) {
     return null;
   }
-  return splitBafuNamePlan(`${baseName}, ${treatment}`, expectedLocationCode);
+  // Treatment segments already embedded in the baseName (e.g. base "..., at plant"
+  // with treatment "at plant") must not be appended again — the duplicated tail
+  // defeats the terminal-segment rules and the split degrades to a no-op.
+  const baseSegmentKeys = new Set(
+    baseName
+      .split(",")
+      .map((part) => normalizeIdentityText(part.trim()))
+      .filter(Boolean),
+  );
+  const novelTreatmentParts = treatment
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .filter((part) => !baseSegmentKeys.has(normalizeIdentityText(part)));
+  const combinedName = novelTreatmentParts.length
+    ? `${baseName}, ${novelTreatmentParts.join(", ")}`
+    : baseName;
+  return splitBafuNamePlan(combinedName, expectedLocationCode);
 }
 
 function buildNamePatchOperations(task) {
@@ -2502,6 +2543,7 @@ function buildSourceOnlyOutputExchangeTraceOperation(task, actionItem) {
 
 export const bafuAutoAuthoringTestHooks = {
   splitBafuNamePlan,
+  splitBafuNamePlanFromNameParts,
   nonEquivalentFlowCandidateReasons,
   strongNameMeaningDiffers,
   routeOrTechnologyDiffers,
