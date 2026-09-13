@@ -262,9 +262,9 @@ checkPaths:
   - test/unit/zero-javascript-ratchet.test.mts
   - test/unit/foundry-cli-spine.test.mts
   - specs/**
-lastReviewedAt: 2026-09-13
-lastReviewedCommit: dcde4dbeedf056a5b5c12cadafa8497ffbdad107
-lastReviewedNote: "Reviewed Foundry #161 CI correction: source-candidate component URLs use the current producer; historical npm verification remains version-bound. Runtime, task, permission and workspace completion boundaries remain unchanged."
+lastReviewedAt: "2026-09-14"
+lastReviewedCommit: "2b80865083d1ca4dd095624090ddd1c741b5d2cd"
+lastReviewedNote: "Reviewed for Foundry #167: exact helper-generated version projection advances0.1.8 to0.1.9 for canonical publish.yml provenance. Runtime, ownership, environment, authorization, CLI0.1.14 dependency and all qualification gates remain unchanged. Registry/component publication and independent install proof are still pending."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry

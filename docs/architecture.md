@@ -151,9 +151,9 @@ checkPaths:
   - test/unit/foundry-runtime-environment.test.mts
   - test/unit/lint-suppression-audit.test.mts
   - docs/incremental-change-set-contract.md
-lastReviewedAt: 2026-09-13
-lastReviewedCommit: dcde4dbeedf056a5b5c12cadafa8497ffbdad107
-lastReviewedNote: "Reviewed Foundry #161 CI correction: source-candidate component URLs bind the current producer repository independently of historical npm verification. Versions, archives, task/permission and native qualification gates remain unchanged."
+lastReviewedAt: "2026-09-14"
+lastReviewedCommit: "2b80865083d1ca4dd095624090ddd1c741b5d2cd"
+lastReviewedNote: "Reviewed for Foundry #167: exact helper-generated version projection advances0.1.8 to0.1.9 for canonical publish.yml provenance. Runtime, ownership, environment, authorization, CLI0.1.14 dependency and all qualification gates remain unchanged. Registry/component publication and independent install proof are still pending."
 ---
 
 # Architecture
