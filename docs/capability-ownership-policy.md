@@ -92,9 +92,9 @@ checkPaths:
   - scripts/lib/import-curation/internal/mutation-manifest-workflow.ts
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
-lastReviewedAt: "2026-09-14"
-lastReviewedCommit: "2b80865083d1ca4dd095624090ddd1c741b5d2cd"
-lastReviewedNote: "Reviewed for Foundry #167: exact helper-generated version projection advances0.1.8 to0.1.9 for canonical publish.yml provenance. Runtime, ownership, environment, authorization, CLI0.1.14 dependency and all qualification gates remain unchanged. Registry/component publication and independent install proof are still pending."
+lastReviewedAt: 2026-09-14
+lastReviewedCommit: 7dd0c9e7e4231e7732d36e936c1885d660876877
+lastReviewedNote: "Reviewed for Foundry #169: workspaceMap reports the canonical cli/agent-skills sibling directories, local shared-skill sources and install commands use ../agent-skills, and the Golden normalizer accepts the canonical ../cli schema-asset path as well as the pre-rename ../tiangong-lca-cli form. Package, runtime and capsule identities, golden history, temporary fixture names and installed CLI behavior are unchanged; the full suite, lint and strict Docpact pass."
 ---
 
 # Capability Ownership Policy

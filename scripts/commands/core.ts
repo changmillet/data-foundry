@@ -407,8 +407,8 @@ export function createCoreCommands({
   function workspaceMap() {
     const root = workspaceRoot();
     const candidates = {
-      cli: path.join(root, "tiangong-lca-cli"),
-      skills: path.join(root, "tiangong-lca-skills"),
+      cli: path.join(root, "cli"),
+      skills: path.join(root, "agent-skills"),
       foundry: repoRoot,
     };
     return {

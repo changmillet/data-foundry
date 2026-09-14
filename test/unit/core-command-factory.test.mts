@@ -319,3 +319,29 @@ test("core command consumers and metadata target the typed owner", () => {
     assert.doesNotMatch(source, /(?:commands\/|scripts\/commands\/)core\.mjs/u, consumer);
   }
 });
+
+test("workspace map reports the canonical workspace sibling directories", async () => {
+  const factory = await loadFactory();
+  withTempRoot((root) => {
+    const workspace = path.join(root, "workspace");
+    fs.mkdirSync(workspace, { recursive: true });
+    withEnvironment({ FOUNDRY_LCA_WORKSPACE_ROOT: workspace }, () => {
+      function projectsOf(map: JsonObject): Record<string, { path: string; exists: boolean }> {
+        return map.projects as Record<string, { path: string; exists: boolean }>;
+      }
+
+      const absent = projectsOf(createHarness(root, factory).workspaceMap());
+      assert.equal(absent.cli.path, path.join(workspace, "cli"));
+      assert.equal(absent.skills.path, path.join(workspace, "agent-skills"));
+      assert.equal(absent.foundry.path, root);
+      assert.equal(absent.cli.exists, false);
+      assert.equal(absent.skills.exists, false);
+
+      fs.mkdirSync(path.join(workspace, "cli"), { recursive: true });
+      fs.mkdirSync(path.join(workspace, "agent-skills"), { recursive: true });
+      const present = projectsOf(createHarness(root, factory).workspaceMap());
+      assert.equal(present.cli.exists, true);
+      assert.equal(present.skills.exists, true);
+    });
+  });
+});

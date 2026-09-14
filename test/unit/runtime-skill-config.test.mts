@@ -95,3 +95,25 @@ test("document-granular-decompose is a runtime Tiangong AI skill, not a tracked 
   );
   assert.match(gitignore, /\.agents\/skills\/document-granular-decompose\//);
 });
+
+test("local shared runtime skills resolve the canonical workspace sibling directory", () => {
+  const config = readJson<SharedSkillsConfig>(".agents/shared-skills.json");
+  const pkg = readJson<PackageConfig>("package.json");
+  const rawConfig = readText(".agents/shared-skills.json");
+
+  const localSiblingSkills = config.shared_runtime_skills.filter(
+    (skill) => skill.source_type === "local-git",
+  );
+  assert.ok(localSiblingSkills.length > 0, "local sibling skills must stay configured");
+  for (const skill of localSiblingSkills) {
+    assert.equal(skill.source, "../agent-skills");
+    assert.ok(
+      skill.install_command.includes("add ../agent-skills "),
+      `${skill.name} must install from the canonical sibling directory`,
+    );
+  }
+
+  assert.ok(pkg.scripts["skills:install:shared"].includes("add ../agent-skills "));
+  assert.doesNotMatch(rawConfig, /\.\.\/tiangong-lca-skills/u);
+  assert.doesNotMatch(pkg.scripts["skills:install:shared"], /\.\.\/tiangong-lca-skills/u);
+});
