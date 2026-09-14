@@ -141,3 +141,47 @@ test("package, metadata, surface, and toolchain target the typed Golden entrypoi
     assert.doesNotMatch(source, /foundry-golden-diff\.mjs/u);
   }
 });
+
+test("Golden normalizes canonical and pre-rename CLI schema-asset paths alike", () => {
+  const source = fs.readFileSync(path.join(repoRoot, "scripts/foundry-golden-diff.ts"), "utf8");
+  const patternLine = source
+    .split("\n")
+    .find((line) => line.includes("assets[\\\\/]tidas-schemas/gu,"));
+  assert.ok(patternLine, "the CLI schema-assets normalizer must exist");
+  const open = patternLine.indexOf("/");
+  const close = patternLine.lastIndexOf("/gu,");
+  assert.ok(open >= 0 && close > open, "the CLI schema-assets pattern must be one /gu literal");
+  assert.ok(
+    !patternLine.slice(1, close).includes("\n"),
+    "the CLI schema-assets pattern must stay on one line",
+  );
+
+  const normalizeCliSchemaAssets = (value: string): string =>
+    value.replace(new RegExp(patternLine.slice(open + 1, close), "gu"), "<cli-schema-assets>");
+
+  // Positive: the canonical workspace directory and the historical pre-rename one
+  // both normalize, so goldens recorded under either layout stay comparable.
+  assert.equal(normalizeCliSchemaAssets("../cli/assets/tidas-schemas"), "<cli-schema-assets>");
+  assert.equal(
+    normalizeCliSchemaAssets("../tiangong-lca-cli/assets/tidas-schemas"),
+    "<cli-schema-assets>",
+  );
+  assert.equal(
+    normalizeCliSchemaAssets("node_modules/@tiangong-lca/cli/assets/tidas-schemas"),
+    "<cli-schema-assets>",
+  );
+
+  // Negative: paths that only share a prefix or suffix must survive untouched.
+  assert.equal(
+    normalizeCliSchemaAssets("../agent-skills/assets/tidas-schemas"),
+    "../agent-skills/assets/tidas-schemas",
+  );
+  assert.equal(
+    normalizeCliSchemaAssets("../cli-extra/assets/tidas-schemas"),
+    "../cli-extra/assets/tidas-schemas",
+  );
+  assert.equal(
+    normalizeCliSchemaAssets("../cli/assets/other-schemas"),
+    "../cli/assets/other-schemas",
+  );
+});

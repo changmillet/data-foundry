@@ -939,7 +939,9 @@ function normalize(value: unknown): unknown {
     .replace(/<temp-root>[\\/]after-output/gu, "<side-output>")
     .replace(/<temp-root>[\\/]before-worktree/gu, "<repo-root>")
     .replace(
-      /(?:\.\.[\\/]tiangong-lca-cli|node_modules[\\/](?:\.pnpm[\\/][^\\/]+[\\/]node_modules[\\/])?@tiangong-lca[\\/]cli)[\\/]assets[\\/]tidas-schemas/gu,
+      // `cli` is the canonical workspace directory; `tiangong-lca-cli` stays so
+      // goldens recorded against the pre-rename layout keep normalizing.
+      /(?:\.\.[\\/](?:cli|tiangong-lca-cli)|node_modules[\\/](?:\.pnpm[\\/][^\\/]+[\\/]node_modules[\\/])?@tiangong-lca[\\/]cli)[\\/]assets[\\/]tidas-schemas/gu,
       "<cli-schema-assets>",
     )
     .replace(skillsPackageCommandPattern, "<skills-runtime>")
