@@ -119,7 +119,7 @@ test("source, mixed, tag and unproven wire inputs retain the complete ordered ga
       "(delete) " + zero + "\n",
       deletion.trimEnd(),
       deletion + "incomplete\n",
-      deletion.replace("\n", " extra\n"),
+      deletion.replaceAll("\n", " extra\n"),
       deletion.replace(oid, zero),
       deletion.replace(zero, oid),
       deletion.replace(zero, "0".repeat(50)),
@@ -127,8 +127,8 @@ test("source, mixed, tag and unproven wire inputs retain the complete ordered ga
       deletion.replace(oid, "z".repeat(40)),
       deletion.replace("/old ", "/../escape "),
       deletion.replace("refs/heads/", "refs/notes/"),
-      deletion.replace("\n", "\r\n"),
-      Buffer.from(deletion.replace("\n", "\0\n")),
+      deletion.replaceAll("\n", "\r\n"),
+      Buffer.from(deletion.replaceAll("\n", "\0\n")),
     ];
     for (const [index, input] of inputs.entries()) {
       const result = f.hook(input, { FOUNDRY_SKIP_VALIDATION: "1" });
