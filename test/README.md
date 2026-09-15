@@ -279,9 +279,9 @@ checkPaths:
   - AGENTS.md
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
-lastReviewedAt: 2026-09-14
-lastReviewedCommit: 7dd0c9e7e4231e7732d36e936c1885d660876877
-lastReviewedNote: "Reviewed for Foundry #169: workspaceMap reports the canonical cli/agent-skills sibling directories, local shared-skill sources and install commands use ../agent-skills, and the Golden normalizer accepts the canonical ../cli schema-asset path as well as the pre-rename ../tiangong-lca-cli form. Package, runtime and capsule identities, golden history, temporary fixture names and installed CLI behavior are unchanged; the full suite, lint and strict Docpact pass."
+lastReviewedAt: 2026-09-16
+lastReviewedCommit: f456de2d102d19491010508b9c9b4dad31acd52b
+lastReviewedNote: "Reviewed for Foundry #172: the existing package-consumer scenario retains every build, install, integrity, runtime and tamper assertion while exposing 21 fixed-schema phase timings only through safe test diagnostics. Independent source and eight-document reviews, 14 focused tests and type/lint checks pass; partial timings do not confer success or publication authority. Full canonical and supported-platform CI qualification remain pending."
 ---
 
 # Test Layout

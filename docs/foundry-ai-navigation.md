@@ -143,9 +143,9 @@ checkPaths:
   - test/unit/identity-preflight-run-command-factory.test.mts
   - test/unit/post-authoring-finalize-command-factory.test.mts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-09-11
-lastReviewedCommit: abc7672f3b3a806caa4219ab5b797f1d92421926
-lastReviewedNote: "Reviewed for #122: explicit task reference snapshots, CLI 0.1.14 QA/intent transport, sealed admission/readback evidence and no-replay recovery. Existing profile, permission, environment and historical delivery boundaries remain enforced."
+lastReviewedAt: 2026-09-16
+lastReviewedCommit: f456de2d102d19491010508b9c9b4dad31acd52b
+lastReviewedNote: "Reviewed for Foundry #172: the existing package-consumer scenario retains every build, install, integrity, runtime and tamper assertion while exposing 21 fixed-schema phase timings only through safe test diagnostics. Independent source and eight-document reviews, 14 focused tests and type/lint checks pass; partial timings do not confer success or publication authority. Full canonical and supported-platform CI qualification remain pending."
 ---
 
 # Foundry AI Navigation
