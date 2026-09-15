@@ -92,9 +92,9 @@ checkPaths:
   - scripts/lib/import-curation/internal/mutation-manifest-workflow.ts
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-09-14
-lastReviewedCommit: 7dd0c9e7e4231e7732d36e936c1885d660876877
-lastReviewedNote: "Reviewed for Foundry #169: workspaceMap reports the canonical cli/agent-skills sibling directories, local shared-skill sources and install commands use ../agent-skills, and the Golden normalizer accepts the canonical ../cli schema-asset path as well as the pre-rename ../tiangong-lca-cli form. Package, runtime and capsule identities, golden history, temporary fixture names and installed CLI behavior are unchanged; the full suite, lint and strict Docpact pass."
+lastReviewedAt: 2026-09-16
+lastReviewedCommit: 55294c62245198481470cc8ec79df6b4131526b8
+lastReviewedNote: "Reviewed for Foundry #172 after the complete documentation reading closure: test-only phase observations do not change Foundry ownership, workflow, runtime inputs, package qualification or production authority. Original and supplemental independent semantic reviews found no required policy change. The full canonical and supported-platform gates remain pending; fixed-schema timing is not success evidence."
 ---
 
 # Capability Ownership Policy
