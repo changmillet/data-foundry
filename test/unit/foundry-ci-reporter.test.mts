@@ -18,6 +18,7 @@ async function collect(items: unknown[]): Promise<unknown[]> {
 test("CI reporter retains native runner counters and excludes arbitrary test output", async () => {
   const items = await collect([
     { type: "test:stdout", data: { message: "must-not-copy-raw-output" } },
+    { type: "test:diagnostic", data: { message: "must-not-copy-diagnostic-payload" } },
     {
       type: "test:fail",
       data: {

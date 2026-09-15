@@ -279,9 +279,9 @@ checkPaths:
   - AGENTS.md
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
-lastReviewedAt: 2026-09-14
-lastReviewedCommit: 7dd0c9e7e4231e7732d36e936c1885d660876877
-lastReviewedNote: "Reviewed for Foundry #169: workspaceMap reports the canonical cli/agent-skills sibling directories, local shared-skill sources and install commands use ../agent-skills, and the Golden normalizer accepts the canonical ../cli schema-asset path as well as the pre-rename ../tiangong-lca-cli form. Package, runtime and capsule identities, golden history, temporary fixture names and installed CLI behavior are unchanged; the full suite, lint and strict Docpact pass."
+lastReviewedAt: 2026-09-16
+lastReviewedCommit: f456de2d102d19491010508b9c9b4dad31acd52b
+lastReviewedNote: "Reviewed for Foundry #172: the existing package-consumer scenario retains every build, install, integrity, runtime and tamper assertion while exposing 21 fixed-schema phase timings only through safe test diagnostics. Independent source and eight-document reviews, 14 focused tests and type/lint checks pass; partial timings do not confer success or publication authority. Full canonical and supported-platform CI qualification remain pending."
 ---
 
 # Test Layout
@@ -533,6 +533,8 @@ The sixteen public workflow scenarios retain their assertions and names. Heavy i
 Full CI retains all supported platforms, canonical platform checks, native assembly and copied bootstrap. Version-only PRs use the existing strict projection proof plus release/package/real-consumer checks; the final release workflow always selects full qualification. Workflow regression checks preserve the platform set, dependency guards and independent artifact-output bindings. Build-reuse tests reject changed bytes, self-authored digests, wrong source/toolchain/run, invalid paths, partial selection and serialized snapshots. Dedicated real builds, fresh installs and public-download qualification remain separate evidence.
 
 The custom CI reporter is selected by its `file:` URL rather than a native absolute path; Node ESM must not interpret a Windows drive letter as a URL scheme. The actual reporter integration exercises the same exported URL used by the shard runner.
+
+The packed-consumer scenario also emits 21 fixed `tiangong-foundry.package-consumer-phase.v1` diagnostics containing only an allowlisted phase name and finite elapsed milliseconds. The spec reporter retains these in CI logs; the machine reporter continues to omit diagnostic payloads. Failed runs can retain partial timings, while an abrupt process termination may prevent flushing. Timings are inclusive observations, including aggregate managed-cache and managed-host work, and never replace Node pass/fail results, package integrity assertions or release qualification.
 
 CI recovery tests cover capsule source/platform/input and certificate boundaries, original signer/caller provenance, bounded artifact discovery, actual terminal shell guards for failed/skipped/reused paths, isolated diagnostic mode selection, and upload-once registry readback with an injected clock. The full four-platform test inventory still includes newly added files. Real GitHub qualification and verified-reuse timings belong in the delivery PR; unit fixtures do not establish performance or signing acceptance.
 

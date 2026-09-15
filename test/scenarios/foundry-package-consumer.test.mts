@@ -10,6 +10,7 @@ import { resolvePackageManagerCommand } from "../../scripts/lib/package-manager-
 import { canonicalizeFoundryPackageArchive } from "../../scripts/pack-foundry-package.ts";
 import { verifyManagedPackageCache } from "../helpers/managed-package-cache.mts";
 import { verifyManagedPackageHost } from "../helpers/managed-package-host.mts";
+import { createPackageConsumerTiming } from "../helpers/package-consumer-timing.mts";
 
 const repoRoot = path.resolve(import.meta.dirname, "../..");
 const stageRoot = path.join(repoRoot, "package-stage");
@@ -187,16 +188,21 @@ function installConsumer(
 }
 
 test("packed Foundry installs twice and runs only the public facade from a read-only closure", async (t) => {
+  const timing = createPackageConsumerTiming((message) => t.diagnostic(message));
+  timing.checkpoint("setup");
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-package-consumer-"));
   const installedRoots: string[] = [];
-  t.after(() => {
-    for (const installed of installedRoots) restoreWritable(installed);
-    fs.rmSync(root, { recursive: true, force: true });
-  });
+  t.after(() =>
+    timing.cleanup(() => {
+      for (const installed of installedRoots) restoreWritable(installed);
+      fs.rmSync(root, { recursive: true, force: true });
+    }),
+  );
   fs.writeFileSync(
     path.join(root, "package.json"),
     JSON.stringify({ private: true, packageManager: sourceManifest.packageManager }),
   );
+  timing.checkpoint("toolchain");
   const packageManager = packageManagerCommand(
     "pnpm",
     ["--version"],
@@ -206,6 +212,7 @@ test("packed Foundry installs twice and runs only the public facade from a read-
   );
   assert.equal(packageManager.status, 0, packageManager.stderr || packageManager.stdout);
   assert.equal(`pnpm@${packageManager.stdout.trim()}`, sourceManifest.packageManager);
+  timing.checkpoint("build-first");
   const build = command(
     process.execPath,
     [path.join(repoRoot, "scripts", "build-foundry-package.ts")],
@@ -214,6 +221,7 @@ test("packed Foundry installs twice and runs only the public facade from a read-
   );
   assert.equal(build.status, 0, build.stderr || build.stdout);
   const firstBuild = packageFiles(stageRoot);
+  timing.checkpoint("build-second");
   const rebuilt = command(
     process.execPath,
     [path.join(repoRoot, "scripts", "build-foundry-package.ts")],
@@ -222,6 +230,7 @@ test("packed Foundry installs twice and runs only the public facade from a read-
   );
   assert.equal(rebuilt.status, 0, rebuilt.stderr || rebuilt.stdout);
   assert.deepEqual(packageFiles(stageRoot), firstBuild);
+  timing.checkpoint("pack-first");
   const artifacts = path.join(root, "artifacts");
   fs.mkdirSync(artifacts);
   const packed = packageManagerCommand(
@@ -246,6 +255,7 @@ test("packed Foundry installs twice and runs only the public facade from a read-
     ? packReport[0].filename
     : path.join(artifacts, packReport[0].filename);
   assert.equal(fs.existsSync(tarball), true);
+  timing.checkpoint("pack-second");
   const secondArtifacts = path.join(root, "artifacts-second");
   fs.mkdirSync(secondArtifacts);
   const secondPack = packageManagerCommand(
@@ -257,6 +267,7 @@ test("packed Foundry installs twice and runs only the public facade from a read-
   assert.equal(secondPack.status, 0, secondPack.stderr || secondPack.stdout);
   const secondTarball = path.join(secondArtifacts, path.basename(packReport[0].filename));
   assert.deepEqual(fs.readFileSync(secondTarball), fs.readFileSync(tarball));
+  timing.checkpoint("package-verify");
   const verified = command(
     process.execPath,
     [path.join(repoRoot, "scripts/verify-foundry-package.ts")],
@@ -265,11 +276,13 @@ test("packed Foundry installs twice and runs only the public facade from a read-
   );
   assert.equal(verified.status, 0, verified.stderr || verified.stdout);
   assert.equal(JSON.parse(verified.stdout).status, "passed");
+  timing.checkpoint("archive-first");
   const packDriver = pathToFileURL(path.join(repoRoot, "scripts/pack-foundry-package.ts")).href;
   const driverDestination = path.join(root, "pack driver 中文");
   const canonicalBytes = canonicalizeFoundryPackageArchive(fs.readFileSync(tarball));
   let publishedTarball = tarball;
   for (const attempt of ["first", "reuse"]) {
+    if (attempt === "reuse") timing.checkpoint("archive-reuse");
     const archived = command(
       process.execPath,
       [
@@ -294,6 +307,7 @@ test("packed Foundry installs twice and runs only the public facade from a read-
     false,
   );
 
+  timing.checkpoint("install-online");
   const sharedCache = path.join(root, "shared-npm-home");
   const firstProject = installConsumer(
     path.join(root, "first"),
@@ -301,12 +315,14 @@ test("packed Foundry installs twice and runs only the public facade from a read-
     sharedCache,
     false,
   );
+  timing.checkpoint("install-offline");
   const secondProject = installConsumer(
     path.join(root, "second"),
     publishedTarball,
     sharedCache,
     true,
   );
+  timing.checkpoint("installed-identity");
   const firstPackage = path.join(firstProject, "node_modules", "@tiangong-lca", "foundry");
   const secondPackage = path.join(secondProject, "node_modules", "@tiangong-lca", "foundry");
   installedRoots.push(firstPackage, secondPackage);
@@ -340,8 +356,11 @@ test("packed Foundry installs twice and runs only the public facade from a read-
   const installedCli = installedResolver.resolveInstalledTiangongLcaCliPackage();
   assert.equal(installedCli.packageVersion, "0.1.14");
   assert.ok(fs.statSync(installedCli.binPath).isFile());
+  timing.checkpoint("managed-cache");
   await verifyManagedPackageCache(firstPackage, root);
+  timing.checkpoint("managed-host");
   await verifyManagedPackageHost(firstPackage, root);
+  timing.checkpoint("api-import");
   const consumerModule = path.join(firstProject, "consumer.mjs");
   const apiWorkspace = path.join(root, "api workspace");
   fs.writeFileSync(
@@ -391,6 +410,7 @@ test("packed Foundry installs twice and runs only the public facade from a read-
   assert.deepEqual(importedResult.cli, { name: "@tiangong-lca/cli", version: "0.1.14" });
   assert.equal(importedResult.doctor, "ready");
 
+  timing.checkpoint("declarations");
   const typeSource = path.join(firstProject, "consumer.ts");
   fs.writeFileSync(
     typeSource,
@@ -422,6 +442,7 @@ test("packed Foundry installs twice and runs only the public facade from a read-
   );
   assert.equal(typed.status, 0, typed.stderr || typed.stdout);
 
+  timing.checkpoint("readonly-facade");
   const before = packageFiles(firstPackage);
   setReadOnly(firstPackage);
   const entry = path.join(firstPackage, "package-dist/scripts/package-entry.js");
@@ -514,6 +535,7 @@ test("packed Foundry installs twice and runs only the public facade from a read-
   assert.equal(internal.operation, "unknown");
   assert.deepEqual(packageFiles(firstPackage), before);
 
+  timing.checkpoint("source-equivalence");
   const sourceWorkspace = path.join(root, "source workspace");
   const source = runFacade(
     path.join(repoRoot, "scripts/package-entry.ts"),
@@ -526,6 +548,7 @@ test("packed Foundry installs twice and runs only the public facade from a read-
     [initialized.schema, initialized.operation, initialized.status],
   );
 
+  timing.checkpoint("tamper-rejection");
   const tampered = path.join(root, "tampered-package");
   fs.cpSync(firstPackage, tampered, { recursive: true });
   restoreWritable(tampered);
@@ -609,6 +632,7 @@ test("packed Foundry installs twice and runs only the public facade from a read-
     }),
   );
 
+  timing.checkpoint("missing-cli");
   const orphan = path.join(root, "orphan-foundry");
   fs.cpSync(firstPackage, orphan, { recursive: true });
   restoreWritable(orphan);
