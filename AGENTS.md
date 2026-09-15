@@ -263,8 +263,8 @@ checkPaths:
   - test/unit/foundry-cli-spine.test.mts
   - specs/**
 lastReviewedAt: 2026-09-16
-lastReviewedCommit: f456de2d102d19491010508b9c9b4dad31acd52b
-lastReviewedNote: "Reviewed for Foundry #172: the existing package-consumer scenario retains every build, install, integrity, runtime and tamper assertion while exposing 21 fixed-schema phase timings only through safe test diagnostics. Independent source and eight-document reviews, 14 focused tests and type/lint checks pass; partial timings do not confer success or publication authority. Full canonical and supported-platform CI qualification remain pending."
+lastReviewedCommit: 53880675a419d4b1f6afa5c93d391c71978e39e6
+lastReviewedNote: "Reviewed for Foundry #174: only a complete existing-branch deletion stream skips source qualification. Source/mixed/tag/unproven inputs retain original Git-environment isolation, NVM and full canonical gate. Independent source and nineteen-document consistency review, six focused tests, real local Git, foreign-environment and open-PTY negative controls pass. No runtime, package, permission or publication authority changes; full source qualification and hosted CI remain required."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry
