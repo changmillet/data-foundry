@@ -152,8 +152,8 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - docs/incremental-change-set-contract.md
 lastReviewedAt: 2026-09-16
-lastReviewedCommit: 55294c62245198481470cc8ec79df6b4131526b8
-lastReviewedNote: "Reviewed for Foundry #172 after the complete documentation reading closure: test-only phase observations do not change Foundry ownership, workflow, runtime inputs, package qualification or production authority. Original and supplemental independent semantic reviews found no required policy change. The full canonical and supported-platform gates remain pending; fixed-schema timing is not success evidence."
+lastReviewedCommit: 53880675a419d4b1f6afa5c93d391c71978e39e6
+lastReviewedNote: "Reviewed for Foundry #174: only a complete existing-branch deletion stream skips source qualification. Source/mixed/tag/unproven inputs retain original Git-environment isolation, NVM and full canonical gate. Independent source and nineteen-document consistency review, six focused tests, real local Git, foreign-environment and open-PTY negative controls pass. No runtime, package, permission or publication authority changes; full source qualification and hosted CI remain required."
 ---
 
 # Architecture
