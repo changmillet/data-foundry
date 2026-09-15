@@ -387,6 +387,8 @@ Test files should name the behavior surface they cover, for example `post-author
 
 ## TDD And TypeScript Migration
 
+`unit/pre-push-deletion.test.mts` executes the real hook with isolated gate stubs and a local bare Git remote. It requires pure branch deletion to avoid source qualification, while code, mixed/tag and malformed input retain the original toolchain/gate order and failure propagation. Foreign Git bindings and missing/failed classifier cases stay isolated. The existing Git-hook isolation test remains; POSIX terminal blocking is additionally checked with a real open PTY and a guard-removal negative control during hook changes. No hook fixture contacts GitHub or loads operator credentials, and source qualification is not replaced by these orchestration tests.
+
 Every behavior or migration slice starts with a failing focused test or a realistic case characterization. Preserve command help, stdout, exit, artifacts, receipts, stage contracts, and fail-closed safety before moving implementation across the TypeScript boundary.
 
 The Issue #63 migration is complete. `unit/zero-javascript-ratchet.test.mts` permanently enforces zero tracked first-party JavaScript, rejects `.jsx`/`.tsx` in this non-JSX Node control plane, and requires native TypeScript configuration plus TS-only compiler/test/lint globs. `unit/toolchain-contract.test.mts` enforces pnpm-only locking, Node.js 24, TypeScript `7.0.2` as the sole compiler graph, Oxlint, and forbidden compatibility bridges.

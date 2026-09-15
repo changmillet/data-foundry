@@ -1,6 +1,13 @@
 #!/bin/sh
 set -e
 
+foundry_hook_root="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
+if [ -f "$foundry_hook_root/scripts/pre-push-deletion-only.sh" ] &&
+  sh "$foundry_hook_root/scripts/pre-push-deletion-only.sh"; then
+  printf '%s\n' 'Only existing branch refs are being deleted; no source qualification is needed.'
+  exit 0
+fi
+
 # Git exports repository-local bindings to hooks. Test fixtures create their own
 # repositories, so those bindings must not redirect a fixture into this checkout.
 foundry_git_local_names="$(git rev-parse --local-env-vars)"

@@ -572,6 +572,8 @@ The complete contract is `docs/topology-convergence-contract.md`.
 
 ## Maintainer Validation
 
+The pre-push hook runs the complete source qualification for code updates, branch creation, tags, mixed pushes and unproven input. Only a complete Git pre-push stream consisting entirely of valid existing branch deletions skips Node/toolchain loading and `pnpm prepush:gate`: it publishes no source. Missing or failed classification falls back to the original gate, and terminal input never waits for an EOF. This is not permission to delete a branch; the operator still verifies ownership, merge/integration completion and the exact remote head.
+
 Golden comparisons retain isolated source snapshots and frozen dependency installs. Matching package-manager pins may reuse only the verified pnpm content store and Corepack tool cache, with installation scripts disabled and store integrity checks enabled. This avoids repeated dependency downloads without inheriting operator configuration, credentials or `node_modules`; the compared commands still receive identical isolated environments.
 
 Docpact requires `test/unit/zero-javascript-ratchet.test.mts` to exist; the normal test gate verifies its executable assertions. Review the TypeScript boundary in the governed documents and record their review metadata. Do not add review-only comments to executable tests for a version bump. Release-only PRs retain the exact version projections and permitted document review metadata; governance rule changes land in a separate source PR first.
