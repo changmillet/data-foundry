@@ -17,8 +17,9 @@ zero64='0000000000000000000000000000000000000000000000000000000000000000'
 
 is_oid() { # $1 = value, $2 = required length
     [ "${#1}" -eq "$2" ] || return 1
+    # Explicit ASCII characters avoid locale-dependent collation ranges.
     case "$1" in
-        *[!0-9a-f]*) return 1 ;;
+        *[!0123456789abcdef]*) return 1 ;;
     esac
     return 0
 }

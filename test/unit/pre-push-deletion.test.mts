@@ -210,3 +210,29 @@ test("both hook paths preserve foreign Git bindings and source qualification iso
     f.cleanup();
   }
 });
+
+test("OID classification remains ASCII-only under C and UTF-8 locales", () => {
+  const f = fixture();
+  try {
+    for (const locale of ["C", "en_US.UTF-8"]) {
+      for (const width of [40, 64]) {
+        const lower =
+          "(delete) " + "0".repeat(width) + " refs/heads/old " + "a".repeat(width) + "\n";
+        const upper =
+          "(delete) " + "0".repeat(width) + " refs/heads/old " + "A".repeat(width) + "\n";
+        const label = locale + " / " + width;
+        const valid = f.hook(lower, { LC_ALL: locale });
+        assert.equal(valid.status, 0, label + ": " + valid.stderr);
+        assert.equal(f.observed(), "", label + ": lowercase deletion must remain fast");
+        const invalid = f.hook(upper, { LC_ALL: locale });
+        assert.equal(invalid.status, 0, label + ": " + invalid.stderr);
+        assert.equal(f.observed(), fullTrace, label + ": uppercase OID must run the full gate");
+        const mixed = f.hook(lower + update, { LC_ALL: locale });
+        assert.equal(mixed.status, 0, label + ": " + mixed.stderr);
+        assert.equal(f.observed(), fullTrace, label + ": mixed push must run the full gate");
+      }
+    }
+  } finally {
+    f.cleanup();
+  }
+});
