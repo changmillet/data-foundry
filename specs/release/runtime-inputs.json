@@ -6,7 +6,7 @@
     "source_commit": "4316c205453071c8cbb45e06480344f8eae5e041",
     "repository": "https://github.com/tiangong-lca/cli",
     "tag": "cli-v0.1.16",
-    "source_date": "2026-09-17T02:57:23Z",
+    "source_date": "2026-09-17T02:57:23.000Z",
     "bootstrap": {
       "posix": {
         "source_url": "https://raw.githubusercontent.com/tiangong-lca/cli/4316c205453071c8cbb45e06480344f8eae5e041/scripts/bootstrap/tiangong-runtime-bootstrap.sh",
