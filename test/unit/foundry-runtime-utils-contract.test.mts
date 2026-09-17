@@ -6,6 +6,7 @@ import path from "node:path";
 import process from "node:process";
 import test from "node:test";
 import { parseScalar } from "../../scripts/lib/foundry-args.ts";
+import { resolveTiangongLcaCliTidasSource } from "../../scripts/lib/foundry-tidas-source.ts";
 import {
   createFoundryRuntimeUtils,
   resolveInstalledTiangongLcaCliPackage,
@@ -47,8 +48,16 @@ test("installed CLI resolution and runtime command precedence stay package-pinne
   withTempRoot("foundry-runtime-command", (root) => {
     const installed = resolveInstalledTiangongLcaCliPackage();
     assert.equal(installed.packageName, "@tiangong-lca/cli");
-    assert.equal(installed.packageVersion, "0.1.14");
-    assert.equal(installed.packageSpec, "@tiangong-lca/cli@0.1.14");
+    assert.equal(installed.packageVersion, "0.1.16");
+    assert.equal(installed.packageSpec, "@tiangong-lca/cli@0.1.16");
+    assert.equal(installed.tidasSpecSource.schema, "tiangong-lca.cli-tidas-spec-source.v1");
+    assert.equal(installed.tidasSpecSource.spec_commit, "6fb497bad562125ccc0c00a803351207b9ed438f");
+    assert.equal(
+      installed.tidasSpecSource.source_commit,
+      "9c0d8b1c8ceb1841074f5bc6de5fbb7fcc9318f5",
+    );
+    assert.equal(installed.tidasSpecSource.schemas.length, 18);
+    assert.equal(path.basename(installed.sourceManifestPath), "tidas-spec-source.json");
     assert.equal(path.basename(installed.packageJsonPath), "package.json");
     assert.equal(fs.statSync(installed.binPath).isFile(), true);
     assert.equal(fs.statSync(installed.schemaDir).isDirectory(), true);
@@ -57,8 +66,8 @@ test("installed CLI resolution and runtime command precedence stay package-pinne
     assert.equal(defaultCommand.command, process.execPath);
     assert.deepEqual(defaultCommand.args, [installed.binPath]);
     assert.equal(defaultCommand.source, "installed_package");
-    assert.equal(defaultCommand.package, "@tiangong-lca/cli@0.1.14");
-    assert.equal(defaultCommand.package_version, "0.1.14");
+    assert.equal(defaultCommand.package, "@tiangong-lca/cli@0.1.16");
+    assert.equal(defaultCommand.package_version, "0.1.16");
     assert.equal(defaultCommand.bin_path, installed.binPath);
 
     const overridePath = path.join(root, "CLI folder", "owner-cli.mjs");
@@ -88,6 +97,34 @@ test("installed CLI resolution and runtime command precedence stay package-pinne
         ...resolved.args,
       ]);
     });
+  });
+});
+
+test("installed TIDAS source validation rejects stale manifest and schema bytes", () => {
+  const installed = resolveInstalledTiangongLcaCliPackage();
+  withTempRoot("foundry-tidas-source", (root) => {
+    const schemaDir = path.join(root, "schemas");
+    const manifestPath = path.join(root, "tidas-spec-source.json");
+    fs.cpSync(installed.schemaDir, schemaDir, { recursive: true });
+    fs.copyFileSync(installed.sourceManifestPath, manifestPath);
+    const source = resolveTiangongLcaCliTidasSource(manifestPath, schemaDir);
+    assert.equal(source.schemas.length, 18);
+
+    const staleManifest = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as JsonObject;
+    staleManifest.source_commit = "0".repeat(40);
+    fs.writeFileSync(manifestPath, `${JSON.stringify(staleManifest)}\n`);
+    assert.throws(
+      () => resolveTiangongLcaCliTidasSource(manifestPath, schemaDir),
+      /approved W6b source identity/iu,
+    );
+
+    fs.copyFileSync(installed.sourceManifestPath, manifestPath);
+    const schemaPath = path.join(schemaDir, source.schemas[0].name);
+    fs.writeFileSync(schemaPath, "{}\n");
+    assert.throws(
+      () => resolveTiangongLcaCliTidasSource(manifestPath, schemaDir),
+      /schema hash mismatch/iu,
+    );
   });
 });
 

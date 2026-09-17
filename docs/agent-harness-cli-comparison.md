@@ -20,7 +20,7 @@ checkPaths:
   - scripts/commands/core.ts
 lastReviewedAt: 2026-09-11
 lastReviewedCommit: a69b7de2bb6aba5ce6e6db13957cf8e793ae69a6
-lastReviewedNote: "Reviewed for #122: the explicit reference-input workflow and qualified CLI 0.1.14 retain existing acceptance hooks, artifact locations and no-replay authority."
+lastReviewedNote: "Reviewed for #122: the explicit reference-input workflow and qualified CLI 0.1.16 retain existing acceptance hooks, artifact locations and no-replay authority."
 related:
   - docs/file-organization.md
   - docs/codex-stop-hook.md

@@ -111,6 +111,25 @@ const capabilityContractMigrationHashes = new Map<string, Set<string>>([
     ]),
   ],
 ]);
+// W7 admits only the two exact CLI 0.1.14 -> 0.1.16 schema-asset byte
+// migrations reviewed with the tidas-spec source manifest. Any other schema
+// asset digest remains a Golden diff so an unreviewed asset change cannot hide.
+const cliSchemaAssetMigrationHashes = new Map<string, Set<string>>([
+  [
+    "tidas_flows_elementary_category.json",
+    new Set([
+      "18643:e7b05dd2f082f2a60f4520f9a6eee1f28a2cabd5ea92f47c6ce07194275b26ea",
+      "20892:e817d6e40dfa7b21cb947548027f32b393d1b06ee2a7326f7c59686a2cd3552d",
+    ]),
+  ],
+  [
+    "tidas_locations_category.json",
+    new Set([
+      "57646:f8a9f7e9802cfe9812301564c5c1c541b5aa32100a18b70f5892df20c5b95c9b",
+      "57807:415fe8c7ba4991a88bc66d9cd55541ee27b74f731541c64a9bc354679d109a71",
+    ]),
+  ],
+]);
 
 function resolveGoldenBase(): GoldenBase {
   const explicitBase = String(process.env.FOUNDRY_GOLDEN_BASE ?? "").trim();
@@ -781,6 +800,23 @@ function normalizeWorldsteelProfileContract(value: JsonRecord): JsonRecord | nul
 function normalizeKnownContractMigration(value: JsonRecord): JsonRecord {
   const skillOwnership = normalizeGoldenSkillOwnership(value);
   if (skillOwnership !== value) return skillOwnership;
+  if (
+    typeof value.path === "string" &&
+    typeof value.bytes === "number" &&
+    typeof value.sha256 === "string"
+  ) {
+    const assetName = value.path.match(
+      /(?:^|[\\/])assets[\\/]tidas-schemas[\\/](tidas_(?:flows_elementary_category|locations_category)\.json)$/u,
+    )?.[1];
+    const migrationHashes = assetName ? cliSchemaAssetMigrationHashes.get(assetName) : undefined;
+    if (migrationHashes?.has(`${value.bytes}:${value.sha256}`)) {
+      return {
+        ...value,
+        bytes: "<reviewed-cli-schema-asset-migration>",
+        sha256: "<reviewed-cli-schema-asset-migration>",
+      };
+    }
+  }
   // #98 adds current profile-rule evidence to the fixed generic support fixture.
   // Only this exact reviewed rule digest may be omitted for the old/new comparison.
   if (

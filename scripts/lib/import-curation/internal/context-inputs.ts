@@ -46,7 +46,7 @@ export type FullContextGateItem = {
   instruction: string;
 };
 
-export const tidasSchemaSearchRoots = ["@tiangong-lca/cli@0.1.14/assets/tidas-schemas"];
+export const tidasSchemaSearchRoots = ["@tiangong-lca/cli@0.1.16/assets/tidas-schemas"];
 
 export function tidasSchemaPath(repoRoot: string, schemaFile: string): string | null {
   void repoRoot;

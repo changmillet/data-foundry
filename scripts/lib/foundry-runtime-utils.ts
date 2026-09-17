@@ -9,10 +9,14 @@ import {
   runtimeEnvFilePolicyKey,
 } from "./foundry-runtime-environment.ts";
 import { resolveFoundryRuntimePaths } from "./foundry-runtime-paths.ts";
+import {
+  resolveTiangongLcaCliTidasSource,
+  type TiangongLcaCliTidasSchemaSource,
+} from "./foundry-tidas-source.ts";
 
 const require = createRequire(import.meta.url);
 const tiangongLcaCliPackageName = "@tiangong-lca/cli";
-const tiangongLcaCliPackageVersion = "0.1.14";
+const tiangongLcaCliPackageVersion = "0.1.16";
 const tiangongLcaCliBinName = "tiangong-lca";
 const { repoRoot: foundryRepoRoot } = resolveFoundryRuntimePaths(import.meta.url);
 
@@ -25,6 +29,8 @@ export interface InstalledTiangongLcaCliPackage {
   binName: string;
   binPath: string;
   schemaDir: string;
+  sourceManifestPath: string;
+  tidasSpecSource: TiangongLcaCliTidasSchemaSource;
 }
 
 export interface TiangongLcaCliRuntimeCommand {
@@ -131,6 +137,7 @@ export function resolveInstalledTiangongLcaCliPackage(): InstalledTiangongLcaCli
   const packageRoot = path.dirname(packageJsonPath);
   const binPath = path.resolve(packageRoot, binEntry);
   const schemaDir = path.join(packageRoot, "assets", "tidas-schemas");
+  const sourceManifestPath = path.join(packageRoot, "assets", "tidas-spec-source.json");
   if (!fs.existsSync(binPath) || !fs.statSync(binPath).isFile()) {
     throw new Error(`Installed ${tiangongLcaCliPackageName} bin is missing at ${binPath}.`);
   }
@@ -139,6 +146,7 @@ export function resolveInstalledTiangongLcaCliPackage(): InstalledTiangongLcaCli
       `Installed ${tiangongLcaCliPackageName} schema assets are missing at ${schemaDir}.`,
     );
   }
+  const tidasSpecSource = resolveTiangongLcaCliTidasSource(sourceManifestPath, schemaDir);
 
   return {
     packageName: packageJson.name,
@@ -149,6 +157,8 @@ export function resolveInstalledTiangongLcaCliPackage(): InstalledTiangongLcaCli
     binName: tiangongLcaCliBinName,
     binPath,
     schemaDir,
+    sourceManifestPath,
+    tidasSpecSource,
   };
 }
 

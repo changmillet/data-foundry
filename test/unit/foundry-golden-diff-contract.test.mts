@@ -185,3 +185,19 @@ test("Golden normalizes canonical and pre-rename CLI schema-asset paths alike", 
     "../cli/assets/other-schemas",
   );
 });
+
+test("Golden admits only the reviewed CLI 0.1.14 to 0.1.16 schema migrations", () => {
+  const source = fs.readFileSync(path.join(repoRoot, "scripts/foundry-golden-diff.ts"), "utf8");
+  assert.match(source, /cliSchemaAssetMigrationHashes/u);
+  for (const digest of [
+    "18643:e7b05dd2f082f2a60f4520f9a6eee1f28a2cabd5ea92f47c6ce07194275b26ea",
+    "20892:e817d6e40dfa7b21cb947548027f32b393d1b06ee2a7326f7c59686a2cd3552d",
+    "57646:f8a9f7e9802cfe9812301564c5c1c541b5aa32100a18b70f5892df20c5b95c9b",
+    "57807:415fe8c7ba4991a88bc66d9cd55541ee27b74f731541c64a9bc354679d109a71",
+  ]) {
+    assert.match(source, new RegExp(digest, "u"));
+  }
+  assert.match(source, /<reviewed-cli-schema-asset-migration>/u);
+  assert.ok(source.includes("assets[\\\\/]tidas-schemas"));
+  assert.ok(source.includes("tidas_(?:flows_elementary_category|locations_category)\\.json"));
+});

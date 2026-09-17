@@ -20,7 +20,7 @@ checkPaths:
   - scripts/commands/core.ts
 lastReviewedAt: 2026-09-11
 lastReviewedCommit: abc7672f3b3a806caa4219ab5b797f1d92421926
-lastReviewedNote: "Reviewed for #122: explicit task reference snapshots, CLI 0.1.14 QA/intent transport, sealed admission/readback evidence and no-replay recovery. Existing profile, permission, environment and historical delivery boundaries remain enforced."
+lastReviewedNote: "Reviewed for #122: explicit task reference snapshots, CLI 0.1.16 QA/intent transport, sealed admission/readback evidence and no-replay recovery. Existing profile, permission, environment and historical delivery boundaries remain enforced."
 ---
 
 # Codex Stop Hook
