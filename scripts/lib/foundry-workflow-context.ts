@@ -125,6 +125,10 @@ export async function prepareFoundryWorkflowContext(
         const report = {
           schema: "tiangong-foundry.context-stage.v1",
           status: "completed",
+          cli: {
+            package: cli.packageSpec,
+            tidas_spec_source: cli.tidasSpecSource,
+          },
           reports,
           files,
         };
