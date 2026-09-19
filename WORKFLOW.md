@@ -280,9 +280,9 @@ checkPaths:
   - test/unit/foundry-runtime-environment.test.mts
   - test/unit/lint-suppression-audit.test.mts
   - test/README.md
-lastReviewedAt: 2026-09-16
-lastReviewedCommit: 55294c62245198481470cc8ec79df6b4131526b8
-lastReviewedNote: "Reviewed for Foundry #172 after the complete documentation reading closure: test-only phase observations do not change Foundry ownership, workflow, runtime inputs, package qualification or production authority. Original and supplemental independent semantic reviews found no required policy change. The full canonical and supported-platform gates remain pending; fixed-schema timing is not success evidence."
+lastReviewedAt: 2026-09-19
+lastReviewedCommit: 0088181d5da79d4dbcfd5e6271b97071c9c3cc80
+lastReviewedNote: "Reviewed for Foundry #178: W8 public naming source bindings do not alter workflow order, authorization, runtime inputs, package qualification or production authority. Node 24 full tests, lint, build, and Docpact pass locally; hosted CI remains pending."
 tracker:
   kind: filesystem
   inbox: tasks/inbox

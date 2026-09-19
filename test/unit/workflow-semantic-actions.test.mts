@@ -1,12 +1,57 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { namePlanQualityFindings } from "../../scripts/lib/import-curation/internal/workflow-semantic-actions.ts";
+import {
+  collectNamePlanQualitySemanticActions,
+  namePlanQualityFindings,
+} from "../../scripts/lib/import-curation/internal/workflow-semantic-actions.ts";
 
 interface TestNameFinding {
   code: string;
   field?: unknown;
   detected_segments?: unknown;
 }
+
+test("name-plan actions bind public premises without changing Foundry findings", () => {
+  for (const [datasetType, rootKey, expectedRule] of [
+    ["flow", "flowDataSet", "tidas.flow.name.base-name.technical"],
+    ["process", "processDataSet", "tidas.process.name.qualifiers.structured"],
+  ]) {
+    const informationKey = datasetType === "flow" ? "flowInformation" : "processInformation";
+    const actions = collectNamePlanQualitySemanticActions(
+      {
+        [rootKey]: {
+          [informationKey]: { dataSetInformation: { name: { baseName: "Electricity, at plant" } } },
+        },
+      },
+      datasetType,
+    );
+    const action = actions.find(
+      (item) => item.code === "semantic_name_base_contains_unsplit_segments",
+    );
+    assert.ok(action);
+    const evidence = action.evidence as Record<string, unknown>;
+    assert.deepEqual(evidence.public_rule_refs, [expectedRule]);
+    assert.match(
+      String(evidence.public_rule_source),
+      /tidas-spec@ea4a5898.*public-rules\.v1\.json/u,
+    );
+    assert.equal(action.action_kind, "ai_authoring");
+    assert.equal(action.required_owner, "foundry_ai_authoring");
+  }
+
+  const localOnly = collectNamePlanQualitySemanticActions(
+    {
+      flowDataSet: {
+        flowInformation: {
+          dataSetInformation: { name: { baseName: "Steel, Frischknecht 2012" } },
+        },
+      },
+    },
+    "flow",
+  ).find((item) => item.code === "semantic_name_source_locator_in_name");
+  assert.ok(localOnly);
+  assert.deepEqual((localOnly.evidence as Record<string, unknown>).public_rule_refs, []);
+});
 
 test("name-plan QA treats season-year scope as temporal, not a source citation", () => {
   const seasonScopedFindings = namePlanQualityFindings({

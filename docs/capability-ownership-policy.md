@@ -92,9 +92,9 @@ checkPaths:
   - scripts/lib/import-curation/internal/mutation-manifest-workflow.ts
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-09-16
-lastReviewedCommit: 53880675a419d4b1f6afa5c93d391c71978e39e6
-lastReviewedNote: "Reviewed for Foundry #174: only a complete existing-branch deletion stream skips source qualification. Source/mixed/tag/unproven inputs retain original Git-environment isolation, NVM and full canonical gate. Independent source and nineteen-document consistency review, six focused tests, real local Git, foreign-environment and open-PTY negative controls pass. No runtime, package, permission or publication authority changes; full source qualification and hosted CI remain required."
+lastReviewedAt: 2026-09-19
+lastReviewedCommit: 0088181d5da79d4dbcfd5e6271b97071c9c3cc80
+lastReviewedNote: "Reviewed for Foundry #178: bound W8 naming premises by source identity while retaining Foundry-local evidence, identity, authorization, and blocking policy. Existing navigation and operational boundaries are unchanged; Node 24 full tests, lint, build, and Docpact pass locally; hosted CI remains pending."
 ---
 
 # Capability Ownership Policy
@@ -112,6 +112,24 @@ Import profiles distribute source rules only. Historical BAFU/USLCI/Worldsteel a
 Foundry must distinguish project-specific orchestration from shared TianGong capabilities before implementing new logic.
 
 ## Boundary
+
+### TIDAS W8 rule ownership in Foundry
+
+The reviewed public index is `tiangong-lca/tidas-spec` W8 commit `ea4a58984c22734f2d54cda6d45b2733d9920ac0`, `assets/tidas/rules/public-rules.v1.json`. This is an ownership map, not a second normative rule catalog or a runtime lookup of a sibling checkout. The workspace W10 inventory records the path-level comparison.
+
+| Public rule ID | Foundry disposition |
+| --- | --- |
+| `tidas.flow.classification.elementary.valid` | Classification mapping and source trace consume owner tooling; no local public definition. |
+| `tidas.flow.flow-property.mean-value.positive` | Authoring transports values; schema/CLI validates, with no local public definition. |
+| `tidas.flow.name.base-name.technical` | Exact ID on applicable name-plan findings; stronger source-backed split/evidence gate remains local. |
+| `tidas.flow.reference-property-unit.required` | Reference resolution and identity are local operations; validation stays with owner tooling. |
+| `tidas.flow.type.required` | Import profiles read/write the field; no local public definition. |
+| `tidas.process.exchange.amount.required` | Amount derivation and source evidence are local; no copied public definition. |
+| `tidas.process.name.base-name.align-reference-flow` | Source-context/CLI name-plan premise; local segment scanner does not verify reference-flow identity. |
+| `tidas.process.name.qualifiers.structured` | Exact ID on applicable name-plan findings; source-specific split/remediation/blocking remain local. |
+| `tidas.process.version.format` | Historical import plans are evidence, not current public definition authority. |
+
+The five product-local decisions are not de-duplication targets: `tidas.flow.evidence.field-bindings.required`, `tidas.flow.identity.alias-equivalence.review`, `tidas.process.evidence.field-bindings.required`, `tidas.process.identity.duplicate-fingerprint.block`, and `tidas.process.quantitative-reference.required`. Foundry retains its evidence, identity, task, authorization and blocking policy; toolkit/CLI retain their own validation and quantitative-reference decisions. Do not infer public status from historical reports or fixtures.
 
 Foundry owns:
 
