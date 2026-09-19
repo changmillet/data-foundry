@@ -88,9 +88,9 @@ checkPaths:
   - scripts/lib/import-curation/internal/mutation-manifest-workflow.ts
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-09-16
-lastReviewedCommit: 53880675a419d4b1f6afa5c93d391c71978e39e6
-lastReviewedNote: "Reviewed for Foundry #174: only a complete existing-branch deletion stream skips source qualification. Source/mixed/tag/unproven inputs retain original Git-environment isolation, NVM and full canonical gate. Independent source and nineteen-document consistency review, six focused tests, real local Git, foreign-environment and open-PTY negative controls pass. No runtime, package, permission or publication authority changes; full source qualification and hosted CI remain required."
+lastReviewedAt: 2026-09-19
+lastReviewedCommit: 0088181d5da79d4dbcfd5e6271b97071c9c3cc80
+lastReviewedNote: "Reviewed for Foundry #178: bound W8 naming premises by source identity while retaining Foundry-local evidence, identity, authorization, and blocking policy. Existing navigation and operational boundaries are unchanged; Node 24 full tests, lint, build, and Docpact pass locally; hosted CI remains pending."
 ---
 
 # Workspace Project Map

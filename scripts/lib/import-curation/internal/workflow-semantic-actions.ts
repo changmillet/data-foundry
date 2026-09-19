@@ -674,6 +674,19 @@ export function collectNamePlanQualitySemanticActions(
                 : "name.baseName contains route, mix, availability, or location segments that should be split into the structured TIDAS name fields.",
       evidence: {
         ...finding,
+        // W8 public premises are referenced by identity; source-specific detection and
+        // the decision to block remain Foundry policy, not copied public definitions.
+        public_rule_refs:
+          finding.code === "semantic_name_base_contains_unsplit_segments" ||
+          finding.code === "semantic_name_quantitative_property_not_split"
+            ? datasetType === "flow"
+              ? ["tidas.flow.name.base-name.technical"]
+              : datasetType === "process"
+                ? ["tidas.process.name.qualifiers.structured"]
+                : []
+            : [],
+        public_rule_source:
+          "tiangong-lca/tidas-spec@ea4a58984c22734f2d54cda6d45b2733d9920ac0:assets/tidas/rules/public-rules.v1.json",
         current_name: {
           baseName: textValue(name?.baseName) || null,
           treatmentStandardsRoutes: textValue(name?.treatmentStandardsRoutes) || null,
