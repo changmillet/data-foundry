@@ -12,7 +12,7 @@ overrides:
 minimumReleaseAge: 1440
 
 minimumReleaseAgeExclude:
-  - "@tiangong-lca/cli@0.1.16"
+  - "@tiangong-lca/cli@0.1.17"
   - "@oxlint/binding-android-arm-eabi@1.80.0"
   - "@oxlint/binding-android-arm64@1.80.0"
   - "@oxlint/binding-darwin-arm64@1.80.0"
@@ -31,6 +31,6 @@ minimumReleaseAgeExclude:
   - "@oxlint/binding-win32-arm64-msvc@1.80.0"
   - "@oxlint/binding-win32-ia32-msvc@1.80.0"
   - "@oxlint/binding-win32-x64-msvc@1.80.0"
-  - "@tiangong-lca/tidas-sdk@0.2.0"
+  - "@tiangong-lca/tidas-sdk@0.2.2"
   - oxlint@1.80.0
   - npm-check-updates@23.1.0

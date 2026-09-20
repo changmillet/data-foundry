@@ -174,7 +174,7 @@ function seedExactFinalizeCheckpoint({
     },
     options,
     finalizeCommand,
-    cliPackage: "@tiangong-lca/cli@0.1.16",
+    cliPackage: "@tiangong-lca/cli@0.1.17",
   });
   writeJsonLines(path.join(outDir, "bafu-process-scope-e2e-ledger.jsonl"), [
     {

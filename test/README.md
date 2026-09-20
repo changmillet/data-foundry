@@ -279,9 +279,9 @@ checkPaths:
   - AGENTS.md
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
-lastReviewedAt: 2026-09-16
-lastReviewedCommit: f456de2d102d19491010508b9c9b4dad31acd52b
-lastReviewedNote: "Reviewed for Foundry #172: the existing package-consumer scenario retains every build, install, integrity, runtime and tamper assertion while exposing 21 fixed-schema phase timings only through safe test diagnostics. Independent source and eight-document reviews, 14 focused tests and type/lint checks pass; partial timings do not confer success or publication authority. Full canonical and supported-platform CI qualification remain pending."
+lastReviewedAt: 2026-09-20
+lastReviewedCommit: 6a48836f88194c68a95e0bb13c0daaf32ce9685f
+lastReviewedNote: "Reviewed for Foundry #180: exact CLI 0.1.17 and transitive SDK 0.2.2 pins update existing package-consumer expectations without changing test authority or allowing production writes."
 ---
 
 # Test Layout

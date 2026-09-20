@@ -29,9 +29,9 @@ checkPaths:
   - test/unit/task-authorization.test.mts
   - test/unit/task-profile-authority.test.mts
   - test/scenarios/foundry-execution-admission.test.mts
-lastReviewedAt: 2026-09-11
-lastReviewedCommit: abc7672f3b3a806caa4219ab5b797f1d92421926
-lastReviewedNote: "Reviewed for #122: explicit task reference snapshots, CLI 0.1.16 QA/intent transport, sealed admission/readback evidence and no-replay recovery. Existing profile, permission, environment and historical delivery boundaries remain enforced."
+lastReviewedAt: 2026-09-20
+lastReviewedCommit: 6a48836f88194c68a95e0bb13c0daaf32ce9685f
+lastReviewedNote: "Reviewed for Foundry #180: CLI 0.1.17 changes the exact installed dependency and source identity only; task authorization, sealed admission, readback, and no-replay requirements remain unchanged."
 related:
   - docs/architecture.md
   - docs/safety-policy.md

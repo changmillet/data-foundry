@@ -11,8 +11,8 @@ importers:
   .:
     dependencies:
       "@tiangong-lca/cli":
-        specifier: 0.1.16
-        version: 0.1.16
+        specifier: 0.1.17
+        version: 0.1.17
     devDependencies:
       "@types/node":
         specifier: 24.13.3
@@ -412,20 +412,20 @@ packages:
       "@opentelemetry/api":
         optional: true
 
-  "@tiangong-lca/cli@0.1.16":
+  "@tiangong-lca/cli@0.1.17":
     resolution:
       {
-        integrity: sha512-fggqLQNgUujA+VouCoZOM2qx2VMERTA4G64HgtyQZ7CYosdc5WJbvIaJrod5UKKal4Ok4WGnL2Op86xuK7BwSA==,
+        integrity: sha512-qgSAcble/y1i8nK9rRWAF3Udzwnnv9uHkue6TkofZAQD+nYK/hcqcWlN3BsUO9vUgOqU1JmXEE8pls3yXbN+2w==,
       }
     engines: { node: ">=24.19.0 <25", pnpm: 11.24.0 }
     hasBin: true
 
-  "@tiangong-lca/tidas-sdk@0.2.0":
+  "@tiangong-lca/tidas-sdk@0.2.2":
     resolution:
       {
-        integrity: sha512-+Epmr66xxU3N39AX77CIoYpNmy3/5LnSX+X8QwCWHNibvyy2dCa2JTUR0RCb80D0uCKJAHQ3q7bxTdGIPRGg9A==,
+        integrity: sha512-qM1y7heapb8PaMY12UrNRV0j/tIboR+TOdxiJQpVPtXLE2Sry6IsS4egHmYXMA2fS0X8NV1Xuy9c1uQxwhx8BQ==,
       }
-    engines: { node: ">=24.0.0" }
+    engines: { node: 24.19.0 }
 
   "@tufjs/canonical-json@2.0.0":
     resolution:
@@ -1273,14 +1273,14 @@ snapshots:
       "@supabase/realtime-js": 2.114.0
       "@supabase/storage-js": 2.114.0
 
-  "@tiangong-lca/cli@0.1.16":
+  "@tiangong-lca/cli@0.1.17":
     dependencies:
       "@supabase/supabase-js": 2.114.0
-      "@tiangong-lca/tidas-sdk": 0.2.0
+      "@tiangong-lca/tidas-sdk": 0.2.2
     transitivePeerDependencies:
       - "@opentelemetry/api"
 
-  "@tiangong-lca/tidas-sdk@0.2.0":
+  "@tiangong-lca/tidas-sdk@0.2.2":
     dependencies:
       jsonschema: 1.5.0
       xmltodict: 1.0.5
