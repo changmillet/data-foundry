@@ -16,7 +16,7 @@ import {
 
 const require = createRequire(import.meta.url);
 const tiangongLcaCliPackageName = "@tiangong-lca/cli";
-const tiangongLcaCliPackageVersion = "0.1.17";
+const tiangongLcaCliPackageVersion = "0.1.18";
 const tiangongLcaCliBinName = "tiangong-lca";
 const { repoRoot: foundryRepoRoot } = resolveFoundryRuntimePaths(import.meta.url);
 

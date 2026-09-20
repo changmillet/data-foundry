@@ -281,7 +281,7 @@ checkPaths:
   - docs/foundry-command-surface.md
 lastReviewedAt: 2026-09-20
 lastReviewedCommit: 6a48836f88194c68a95e0bb13c0daaf32ce9685f
-lastReviewedNote: "Reviewed for Foundry #180: exact CLI 0.1.17 and transitive SDK 0.2.2 pins update existing package-consumer expectations without changing test authority or allowing production writes."
+lastReviewedNote: "Reviewed for Foundry #182: exact CLI 0.1.18, SDK 0.3.0 and Toolkit 0.3.2 pins update package-consumer expectations without changing test authority or allowing production writes."
 ---
 
 # Test Layout

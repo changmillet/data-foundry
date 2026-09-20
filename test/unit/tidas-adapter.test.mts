@@ -95,10 +95,10 @@ test("handshake accepts reviewed 0.2.x and 0.3.x contracts and rejects other min
       runTidasHandshake({ repoRoot: root }),
     );
     assert.equal(accepted.binary_version, "0.2.99");
-    const current = withEnvironment({ TIDAS_BIN: bin, FAKE_TIDAS_VERSION: "0.3.0" }, () =>
+    const current = withEnvironment({ TIDAS_BIN: bin, FAKE_TIDAS_VERSION: "0.3.2" }, () =>
       runTidasHandshake({ repoRoot: root }),
     );
-    assert.equal(current.binary_version, "0.3.0");
+    assert.equal(current.binary_version, "0.3.2");
     assert.throws(
       () =>
         withEnvironment({ TIDAS_BIN: bin, FAKE_TIDAS_VERSION: "0.4.0" }, () =>

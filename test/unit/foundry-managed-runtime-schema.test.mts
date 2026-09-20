@@ -16,7 +16,7 @@ test("managed runtime metadata has a strict portable structural contract", () =>
     platform: "darwin-arm64",
     cli: {
       schema: "tiangong-lca.cli-runtime-expectation.v1",
-      package_version: "0.1.17",
+      package_version: "0.1.18",
       platform: "darwin-arm64",
       content_sha256: digest,
       node_version: "24.19.0",
@@ -27,7 +27,7 @@ test("managed runtime metadata has a strict portable structural contract", () =>
       expectation: {
         schema: "tiangong-foundry.tidas-runtime-expectation.v1",
         platform: "darwin-arm64",
-        binary_version: "0.2.2",
+        binary_version: "0.3.2",
         executable: { bytes: 42, sha256: digest },
         validation: {
           schema_version: "tidas.validation-describe.v1",

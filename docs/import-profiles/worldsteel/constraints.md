@@ -1,7 +1,7 @@
 ---
 lastReviewedAt: 2026-09-20
-lastReviewedCommit: 6a48836f88194c68a95e0bb13c0daaf32ce9685f
-lastReviewedNote: "Reviewed for Foundry #180: CLI 0.1.17 consumer adoption does not change Worldsteel profile constraints, permissions, or historical source evidence."
+lastReviewedCommit: 138b79581aea4e8de53babeb46f34692c0e84fa5
+lastReviewedNote: "Reviewed for Foundry #182: CLI 0.1.18 consumer adoption does not change Worldsteel profile constraints, permissions or source evidence."
 title: worldsteel Import Constraints
 docType: constraints
 scope: import-profile
