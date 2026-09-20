@@ -40,9 +40,9 @@ checkPaths:
   - test/scenarios/runtime-workspace.test.mts
   - test/scenarios/foundry-execution-admission.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
-lastReviewedAt: 2026-09-16
-lastReviewedCommit: f456de2d102d19491010508b9c9b4dad31acd52b
-lastReviewedNote: "Reviewed for Foundry #172: the existing package-consumer scenario retains every build, install, integrity, runtime and tamper assertion while exposing 21 fixed-schema phase timings only through safe test diagnostics. Independent source and eight-document reviews, 14 focused tests and type/lint checks pass; partial timings do not confer success or publication authority. Full canonical and supported-platform CI qualification remain pending."
+lastReviewedAt: 2026-09-20
+lastReviewedCommit: 6a48836f88194c68a95e0bb13c0daaf32ce9685f
+lastReviewedNote: "Reviewed for Foundry #180: exact CLI 0.1.17 runtime identity and spec 0.2.1 source manifest advance without changing process-local trust selection or task authorization."
 related:
   - docs/architecture.md
   - docs/task-authorization-contract.md
@@ -64,7 +64,7 @@ The public task facade delegates sealed owner execution to `foundry-workflow-exe
 
 The public workflow selects derived row/context facts from the current verified task index before assessment. `runFoundryTaskOperation` rechecks their producer ancestry and original sources. Native validation and the exact CLI's local QA/queue commands use the qualified runtime and isolated environment; curation and authoring write only to a fresh task-owned generation. Runtime assets and source-owner reference bases remain separate from user workspace paths.
 
-`qualifyFoundryRuntime` compares an independently selected CLI expectation with the exact installed `@tiangong-lca/cli@0.1.16` runtime descriptor. It also compares a strict TIDAS expectation with the selected platform, executable bytes, compatible 0.2.x or 0.3.x version, validation protocols, event schemas and asset fingerprint. The selected TIDAS executable is copied into a private temporary directory, rehashed there and invoked with the credential-free child environment; both handshake calls must be silent. Qualification uses a process-local brand. The portable identity described by `runtime-qualification.schema.json` is diagnostic evidence and cannot be deserialized into authority.
+`qualifyFoundryRuntime` compares an independently selected CLI expectation with the exact installed `@tiangong-lca/cli@0.1.17` runtime descriptor. It also compares a strict TIDAS expectation with the selected platform, executable bytes, compatible 0.2.x or 0.3.x version, validation protocols, event schemas and asset fingerprint. The selected TIDAS executable is copied into a private temporary directory, rehashed there and invoked with the credential-free child environment; both handshake calls must be silent. Qualification uses a process-local brand. The portable identity described by `runtime-qualification.schema.json` is diagnostic evidence and cannot be deserialized into authority.
 
 The TIDAS expectation admits only `linux-x64`, `linux-arm64`, `darwin-arm64` and `win32-x64`; `darwin-x64` cannot enter the schema or runtime context. `tidas-runtime-expectation.schema.json` is the reviewed machine shape. Qualification creation performs the isolated version/protocol/assets handshake once. Every later assertion reopens and hashes the selected executable and rejects any byte drift before child admission; identical immutable bytes do not replay the handshake. This keeps the original observed behavior bound to exact content while avoiding repeated child-process creation inside one admission call.
 

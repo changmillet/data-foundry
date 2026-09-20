@@ -1,7 +1,7 @@
 ---
-lastReviewedAt: 2026-09-11
-lastReviewedCommit: abc7672f3b3a806caa4219ab5b797f1d92421926
-lastReviewedNote: "Reviewed for #122: explicit task reference snapshots, CLI 0.1.16 QA/intent transport, sealed admission/readback evidence and no-replay recovery. Existing profile, permission, environment and historical delivery boundaries remain enforced."
+lastReviewedAt: 2026-09-20
+lastReviewedCommit: 6a48836f88194c68a95e0bb13c0daaf32ce9685f
+lastReviewedNote: "Reviewed for Foundry #180: CLI 0.1.17 consumer adoption leaves Worldsteel profile selection, authorization and write gates unchanged."
 title: worldsteel Import Profile
 docType: profile
 scope: import-profile
