@@ -162,7 +162,7 @@ export function selectFoundryTidasDistribution(
     "rustc_release",
   ]);
   if (
-    source.repository !== "https://github.com/tiangong-lca/tidas-tools" ||
+    source.repository !== "https://github.com/tiangong-lca/tidas-toolkit" ||
     source.commit !== expectation.sourceCommit ||
     source.vcpkg_triplet !== targets[expectation.target]
   )

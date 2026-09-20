@@ -28,9 +28,9 @@ checkPaths:
   - specs/schemas/execution-context.schema.json
   - specs/import-profiles.json
   - tasks/**
-lastReviewedAt: 2026-09-11
-lastReviewedCommit: fd348f2c0d4391974f2fd894e2939f677cae618d
-lastReviewedNote: "Reviewed for Foundry #119: explicit native insert selection, indexed control snapshot, exact command/report bindings and no-replay recovery. CLI retains native execution ownership; existing authorization and environment boundaries remain mandatory."
+lastReviewedAt: 2026-09-20
+lastReviewedCommit: 138b79581aea4e8de53babeb46f34692c0e84fa5
+lastReviewedNote: "Reviewed for Foundry #182: CLI and native runtime versions advance without changing task authorization, persisted evidence or no-replay recovery."
 related:
   - AGENTS.md
   - WORKFLOW.md

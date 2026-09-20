@@ -77,7 +77,7 @@ test("runtime qualification binds exact public CLI and isolated TIDAS observatio
     assert.equal(Object.isFrozen(qualification), true);
     assert.equal(Object.isFrozen(qualification.tidas.expectation.validation.protocols), true);
     const identity = foundryRuntimeQualificationIdentity(context, qualification);
-    assert.equal(identity.cli.package_version, "0.1.17");
+    assert.equal(identity.cli.package_version, "0.1.18");
     assert.equal(identity.tidas.binary_version, "0.2.7");
     assert.match(identity.qualification_sha256, /^[0-9a-f]{64}$/u);
     const described = createFoundryRuntime(context, qualification).describe();
@@ -228,7 +228,7 @@ test("TIDAS runtime expectations accept the reviewed 0.3 contract without admitt
   const expectation = {
     schema: FOUNDRY_TIDAS_EXPECTATION_SCHEMA,
     platform: "darwin-arm64",
-    binary_version: "0.3.0",
+    binary_version: "0.3.2",
     executable: { bytes: 100, sha256: "a".repeat(64) },
     validation: {
       schema_version: "tidas.validation-describe.v1",
@@ -239,7 +239,7 @@ test("TIDAS runtime expectations accept the reviewed 0.3 contract without admitt
   };
   assert.equal(
     parseFoundryTidasRuntimeExpectation(expectation, "darwin-arm64").binary_version,
-    "0.3.0",
+    "0.3.2",
   );
   assert.throws(
     () =>

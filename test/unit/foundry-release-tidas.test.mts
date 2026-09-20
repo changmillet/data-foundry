@@ -8,7 +8,7 @@ const sha = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("he
 const json = (value: unknown) => Buffer.from(`${JSON.stringify(value)}\n`);
 
 function fixture() {
-  const version = "0.3.0",
+  const version = "0.3.2",
     target = "x86_64-pc-windows-msvc",
     sourceCommit = "a".repeat(40);
   const root = `tidas-v${version}-${target}/`;
@@ -60,7 +60,7 @@ function fixture() {
     target,
     executable: { sha256: sha(binary), bytes: binary.length },
     source: {
-      repository: "https://github.com/tiangong-lca/tidas-tools",
+      repository: "https://github.com/tiangong-lca/tidas-toolkit",
       commit: sourceCommit,
       cargo_lock_sha256: sha(files["evidence/Cargo.lock"]),
       vcpkg_commit: "b".repeat(40),

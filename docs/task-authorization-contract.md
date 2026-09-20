@@ -31,7 +31,7 @@ checkPaths:
   - test/scenarios/foundry-execution-admission.test.mts
 lastReviewedAt: 2026-09-20
 lastReviewedCommit: 6a48836f88194c68a95e0bb13c0daaf32ce9685f
-lastReviewedNote: "Reviewed for Foundry #180: CLI 0.1.17 changes the exact installed dependency and source identity only; task authorization, sealed admission, readback, and no-replay requirements remain unchanged."
+lastReviewedNote: "Reviewed for Foundry #180: CLI 0.1.18 changes the exact installed dependency and source identity only; task authorization, sealed admission, readback, and no-replay requirements remain unchanged."
 related:
   - docs/architecture.md
   - docs/safety-policy.md
