@@ -28,8 +28,9 @@ checkPaths:
   - test/unit/final-delivery-algebra.test.mts
   - test/unit/final-delivery-redaction.test.mts
   - test/fixtures/final-delivery-fixtures.ts
-lastReviewedAt: 2026-07-23
-lastReviewedCommit: 849d6ac14d357bd445a9fa75a9c18dc16a2a411a
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 57abdbc10a860aa5a100a666e9ea692d1c91e092
+lastReviewedNote: "Reviewed for Foundry #30 / PR #41 at 57abdbc: the offline final-delivery validator binds exact artifact content, strict text/XML parsing, redaction and independent review; it grants no execution-capsule or public-runtime authority. Current module, environment and test boundaries remain valid."
 ---
 
 # Final Delivery Promotion Contract

@@ -20,9 +20,9 @@ checkPaths:
   - test/unit/execution-capsule-command-factory.test.mts
   - specs/schemas/execution-context.schema.json
   - scripts/lib/foundry-execution-admission.ts
-lastReviewedAt: 2026-09-05
-lastReviewedCommit: 9f258f4632c091d2b12834c1699171e6cc714ed7
-lastReviewedNote: "Reviewed for #100 W04: this offline zero-attempt seal remains distinct from the qualified current-task child execution context."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 57abdbc10a860aa5a100a666e9ea692d1c91e092
+lastReviewedNote: "Reviewed for Foundry #30 / PR #41 at 57abdbc: the offline final-delivery validator binds exact artifact content, strict text/XML parsing, redaction and independent review; it grants no execution-capsule or public-runtime authority. Current module, environment and test boundaries remain valid."
 ---
 
 # Execution Capsule Admission Contract

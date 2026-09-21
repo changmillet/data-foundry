@@ -34,9 +34,9 @@ checkPaths:
   - scripts/public-api.ts
   - test/scenarios/foundry-package-consumer.test.mts
   - test/unit/foundry-runtime-environment.test.mts
-lastReviewedAt: 2026-09-20
-lastReviewedCommit: 6a48836f88194c68a95e0bb13c0daaf32ce9685f
-lastReviewedNote: "Reviewed for Foundry #180: the exact installed CLI 0.1.18 pin does not change environment allowlists, OAuth session handling, or account-scoped execution authority."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 57abdbc10a860aa5a100a666e9ea692d1c91e092
+lastReviewedNote: "Reviewed for Foundry #30 / PR #41 at 57abdbc: the offline final-delivery validator binds exact artifact content, strict text/XML parsing, redaction and independent review; it grants no execution-capsule or public-runtime authority. Current module, environment and test boundaries remain valid."
 ---
 
 # Environment Surface Policy
