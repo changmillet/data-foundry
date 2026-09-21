@@ -264,8 +264,8 @@ checkPaths:
   - test/unit/foundry-cli-spine.test.mts
   - specs/**
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: bc41ba12a0fd9d6499c6ee992df891cf15e5303b
-lastReviewedNote: "Reviewed for Foundry #171 Windows CI correction: repair handoff and readback artifact paths reuse the existing canonical relative-path owner, matching strict native closeout on every platform. Payload, contract, authorization, exact readback and no-replay requirements are preserved."
+lastReviewedCommit: e8e94788701dd52fc192724f6854bc5893753192
+lastReviewedNote: "Reviewed for Foundry #171: the manual closeout test now supplies the same canonical path projection as the real owner. Windows execution and successor CI already pass; successful completion and invalid receipt refusal assertions remain intact."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry

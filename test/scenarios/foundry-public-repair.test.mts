@@ -13,6 +13,7 @@ import {
 } from "../fixtures/foundry-repair-workflow.ts";
 import { validateNativeDraftCloseout } from "../../scripts/lib/finalize-owners/native-draft-closeout.ts";
 import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
+import { repoRelativePath } from "../../scripts/lib/import-curation/internal/runtime-io.ts";
 
 type Json = Record<string, unknown>;
 
@@ -605,7 +606,7 @@ test("the sealed repair handoff is consumable by the native draft closeout owner
       stateCode: "0",
       expectedRows: 1,
       resolveFile,
-      relativePath: (file) => path.relative(assetRoot, file),
+      relativePath: (file) => repoRelativePath(assetRoot, file),
     });
   assert.equal(
     closeout(report({})),

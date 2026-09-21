@@ -93,8 +93,8 @@ checkPaths:
   - test/unit/post-authoring-finalize-command-factory.test.mts
   - test/commands/*.test.mts
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 58f7ebb
-lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: --execution-contract-file now selects insert or bounded save_draft contracts, and native closeout requires per-action operation/attempt evidence. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171."
+lastReviewedCommit: e8e94788701dd52fc192724f6854bc5893753192
+lastReviewedNote: "Reviewed for Foundry #171: the manual closeout test now supplies the same canonical path projection as the real owner. Windows execution and successor CI already pass; successful completion and invalid receipt refusal assertions remain intact."
 ---
 
 # Foundry Command Surface

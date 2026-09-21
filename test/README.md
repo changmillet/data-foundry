@@ -280,8 +280,8 @@ checkPaths:
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: ce94fc0e71ccf7792b4a012c6d3a2a8692a80c89
-lastReviewedNote: "Reviewed the combination of repair workflow ce94fc0 and merged final-delivery gate 13fa996: CLI 0.1.19 remains the exact runtime input; offline delivery seals grant no execution or publication authority. Reviewed for Foundry #171: exact CLI 0.1.19 pins update existing package-consumer expectations, and the repair unit/scenario/fixture suites fit the existing test-layout contract and keep native evidence claims test-owned. Reviewed for Foundry #30 / PR #41 at 57abdbc: the offline final-delivery validator binds exact artifact content, strict text/XML parsing, redaction and independent review; it grants no execution-capsule or public-runtime authority. Current module, environment and test boundaries remain valid."
+lastReviewedCommit: e8e94788701dd52fc192724f6854bc5893753192
+lastReviewedNote: "Reviewed for Foundry #171: the manual closeout test now supplies the same canonical path projection as the real owner. Windows execution and successor CI already pass; successful completion and invalid receipt refusal assertions remain intact."
 ---
 
 # Test Layout
