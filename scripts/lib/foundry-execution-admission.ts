@@ -9,7 +9,7 @@ export {
 } from "./foundry-execution-context-format.ts";
 import fs from "node:fs";
 import path from "node:path";
-import { readNativeInsertHandoff } from "./finalize-owners/native-insert-handoff.ts";
+import { readNativeDraftHandoff } from "./finalize-owners/native-draft-handoff.ts";
 import { readHandoffReferenceEvidence } from "./finalize-owners/handoff-reference-intent.ts";
 import {
   assertFoundryCommandSpecArtifactsCurrent,
@@ -176,7 +176,7 @@ function commandSpec(
     if (!nativeSave)
       fail(
         "execution_command_unadmitted",
-        "Native insert contracts require the reviewed dataset save-draft operation.",
+        "Native draft contracts require the reviewed dataset save-draft operation.",
       );
     const fact = selected(context, nativeFile);
     const bound = contractArtifacts[0];
@@ -191,7 +191,7 @@ function commandSpec(
       );
     readFoundryInput(context, fact.path, 8 * 1024 * 1024);
     readFoundryInput(context, finalRows.path);
-    const native = readNativeInsertHandoff({
+    const native = readNativeDraftHandoff({
       contractFile: fact.path,
       rowsFile: finalRows.path,
       datasetType: datasetType!,

@@ -32,9 +32,9 @@ checkPaths:
   - test/scenarios/foundry-facade-request-store.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
   - docs/public-runtime-contract.md
-lastReviewedAt: 2026-09-16
-lastReviewedCommit: f456de2d102d19491010508b9c9b4dad31acd52b
-lastReviewedNote: "Reviewed for Foundry #172: the existing package-consumer scenario retains every build, install, integrity, runtime and tamper assertion while exposing 21 fixed-schema phase timings only through safe test diagnostics. Independent source and eight-document reviews, 14 focused tests and type/lint checks pass; partial timings do not confer success or publication authority. Full canonical and supported-platform CI qualification remain pending."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 4eebdb5
+lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: the native draft report requirement now states per-action operation/before binding and strict recovered-exact-readback closure; root readback still cannot close a scope without the matching CLI report. Reviewed against the uncommitted change on top of 4eebdb5."
 related:
   - docs/runtime-context-contract.md
   - docs/task-authorization-contract.md
@@ -100,7 +100,7 @@ Before the first dispatch, the batch attempt-start event durably registers an im
 
 Each owner command is dispatched once as executable plus argv with explicit authentication and `shell=false`. Commit stdout must match its contained report. A confirmed success requires the existing closeout checks and fresh independent root, owner, state, payload and reference verification. Lost or unknown responses and narrowly recognized same-identity conflicts use independent readback; known business failures remain unresolved. Recovery does not require the old write grant to remain unexpired and cannot change the original request. The CLI batch item's verified/recovered result determines success; aggregate batch completion alone is insufficient.
 
-Explicit native insert handoffs additionally require a matching CLI v2 execution report: exact contract canonical digest, execution id, ordered action/row identities and desired payload digests, consumed insert attempts, and successful exact readback for every action. Failed, unknown, blocked, replayed or incomplete rows cannot close the scope. After a lost response, recovery may read the original bound output's `outputs/dataset-save-draft/summary.json`; absent or invalid native evidence remains unresolved even when roots match. Recovery never dispatches another mutation or retrofits a legacy report into native consumption.
+Explicit native draft handoffs additionally require a matching CLI v2 execution report: exact contract canonical digest, execution id, ordered action/row identities, per-action operation/before binding and desired payload digests, consumed attempts, and successful exact readback for every action. A row recovered from an ambiguous dispatch may close only with that same consumed-attempt, non-replayed, desired-exact evidence. Failed, forged, unknown, blocked, replayed or incomplete rows cannot close the scope. After a lost response, recovery may read the original bound output's `outputs/dataset-save-draft/summary.json`; absent or invalid native evidence remains unresolved even when roots match. Recovery never dispatches another mutation or retrofits a legacy report into native consumption.
 
 Every readback gets a fresh output directory. A verified result binds the exact input, report and JSONL check hashes, plus the native execution report when selected; later status checks rehash each fact. Completed scopes preserve their final rows while dependent scopes are finalized again after new verified progress. Reference-only partitions use the separate canonical verification stage below; semantic changes cannot replace consumed scope rows.
 

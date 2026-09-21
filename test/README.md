@@ -279,9 +279,9 @@ checkPaths:
   - AGENTS.md
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
-lastReviewedAt: 2026-09-20
-lastReviewedCommit: 6a48836f88194c68a95e0bb13c0daaf32ce9685f
-lastReviewedNote: "Reviewed for Foundry #182: exact CLI 0.1.18, SDK 0.3.0 and Toolkit 0.3.2 pins update package-consumer expectations without changing test authority or allowing production writes."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 4eebdb5
+lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: the new public native draft scenario file and the extended handoff/closeout unit matrix fit the existing test-layout contract and keep native evidence claims test-owned. Reviewed against the uncommitted change on top of 4eebdb5."
 ---
 
 # Test Layout

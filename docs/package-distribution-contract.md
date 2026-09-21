@@ -34,9 +34,9 @@ checkPaths:
   - test/commands/foundry-release-*.test.mts
   - test/unit/runtime-layout.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
-lastReviewedAt: 2026-09-20
-lastReviewedCommit: 6a48836f88194c68a95e0bb13c0daaf32ce9685f
-lastReviewedNote: "Reviewed for Foundry #182: exact CLI 0.1.18, transitive SDK 0.3.0 and native Toolkit 0.3.2 inputs change while the production closure and package authority model remain stable."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 4eebdb5
+lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: the renamed finalize-owner modules stay inside the existing package closure rules with no descriptor, provenance or publication change. Reviewed against the uncommitted change on top of 4eebdb5."
 related:
   - docs/public-runtime-contract.md
   - docs/runtime-context-contract.md

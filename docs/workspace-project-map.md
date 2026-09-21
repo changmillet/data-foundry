@@ -89,8 +89,8 @@ checkPaths:
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 167f0e138e0c86c50ed62e39548f8b11eb728654
-lastReviewedNote: "Reviewed for Foundry #171 at head 167f0e1: the annual-supply cleanup change adds only Foundry-local cleanup evidence and report rows, so every capability-ownership row and sibling-project routing statement remains accurate and requires no update."
+lastReviewedCommit: 4eebdb5
+lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: capability-ownership rows and sibling-project routing remain accurate because only Foundry-local consumer adapters changed. Reviewed against the uncommitted change on top of 4eebdb5."
 ---
 
 # Workspace Project Map

@@ -28,9 +28,9 @@ checkPaths:
   - specs/schemas/execution-context.schema.json
   - specs/import-profiles.json
   - tasks/**
-lastReviewedAt: 2026-09-20
-lastReviewedCommit: 138b79581aea4e8de53babeb46f34692c0e84fa5
-lastReviewedNote: "Reviewed for Foundry #182: CLI and native runtime versions advance without changing task authorization, persisted evidence or no-replay recovery."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 4eebdb5
+lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: task authorization, persisted evidence and no-replay recovery statements remain unchanged. Reviewed against the uncommitted change on top of 4eebdb5."
 related:
   - AGENTS.md
   - WORKFLOW.md

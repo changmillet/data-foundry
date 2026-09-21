@@ -20,6 +20,7 @@
     "test/scenarios/foundry-public-native-lost.test.mts": 177.858,
     "test/scenarios/foundry-public-native-missing.test.mts": 196.334,
     "test/scenarios/foundry-public-native-unknown.test.mts": 215.675,
+    "test/scenarios/foundry-public-native-draft.test.mts": 96.187,
     "test/scenarios/foundry-public-reference-input.test.mts": 265,
     "test/scenarios/foundry-public-reference-recovery.test.mts": 330,
     "test/scenarios/foundry-public-reference-qa.test.mts": 45
@@ -34,6 +35,7 @@
     }
   ],
   "estimated_weights": {
+    "test/scenarios/foundry-public-native-draft.test.mts": "Local macOS arm64 measurement of the three save_draft repair cases; replace after first hosted measurement.",
     "test/scenarios/foundry-public-reference-input.test.mts": "Estimated from native insert Windows case with extra reference selection/refinalization. Replace after first hosted measurement.",
     "test/scenarios/foundry-public-reference-recovery.test.mts": "Estimated from current-rows Windows case with extra reference selection/refinalization. Replace after first hosted measurement.",
     "test/scenarios/foundry-public-reference-qa.test.mts": "Estimated from local 6.78-second Process public selection/owner QA transport; replace after first hosted measurement."

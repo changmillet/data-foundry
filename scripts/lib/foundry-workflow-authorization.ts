@@ -38,7 +38,7 @@ import { createFoundryCommandSpec, createFileArtifactFact } from "./foundry-comm
 import { parseFoundryCommandSpec } from "@tiangong-lca/cli/command-spec";
 import type { ValidatedTaskAuthorization } from "./task-authorization.ts";
 import type { ArtifactEntry } from "./foundry-task-types.ts";
-import { readNativeInsertHandoff } from "./finalize-owners/native-insert-handoff.ts";
+import { readNativeDraftHandoff } from "./finalize-owners/native-draft-handoff.ts";
 
 export async function authorizeFoundryWorkflow(
   context: FoundryRuntimeContext,
@@ -82,7 +82,7 @@ export async function authorizeFoundryWorkflow(
   const identity = verifyFoundryRuntimeIdentity(context, authentication, process.env, qualified);
   if (selected.executionContract) {
     try {
-      readNativeInsertHandoff({
+      readNativeDraftHandoff({
         contractFile: selected.executionContract.path,
         rowsFile: inputFile,
         datasetType: spec.dataset_type,
@@ -94,7 +94,7 @@ export async function authorizeFoundryWorkflow(
     } catch {
       throw new FoundryContextError(
         "authorization_execution_contract_invalid",
-        "Native insert contract must bind the current final rows, owner, project and draft state before authorization.",
+        "Native draft contract must bind the current final rows, owner, project and draft state before authorization.",
       );
     }
   }

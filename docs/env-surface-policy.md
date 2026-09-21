@@ -34,9 +34,9 @@ checkPaths:
   - scripts/public-api.ts
   - test/scenarios/foundry-package-consumer.test.mts
   - test/unit/foundry-runtime-environment.test.mts
-lastReviewedAt: 2026-09-20
-lastReviewedCommit: 6a48836f88194c68a95e0bb13c0daaf32ce9685f
-lastReviewedNote: "Reviewed for Foundry #180: the exact installed CLI 0.1.18 pin does not change environment allowlists, OAuth session handling, or account-scoped execution authority."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 4eebdb5
+lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: the change adds no environment, credential or session surface. Reviewed against the uncommitted change on top of 4eebdb5."
 ---
 
 # Environment Surface Policy

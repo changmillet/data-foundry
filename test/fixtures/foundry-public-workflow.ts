@@ -184,6 +184,8 @@ export async function verifyPublicIdentityWorkflow(
   nativeResponse: "normal" | "lost" | "missing" | "unknown" = "normal",
   referenceInput = false,
   expireIdentityDuringLocalWork = false,
+  nativeOperation: "insert" | "save_draft" = "insert",
+  nativeContractInvalid = false,
 ) {
   const [identityDecision, approvalKind, trace, mixed, explicitMode, remoteDifference] = scenario;
   const accountMode = explicitMode ?? "ordinary";
@@ -526,11 +528,31 @@ export async function verifyPublicIdentityWorkflow(
               actions: Array<{
                 action_id: string;
                 desired_sha256: string;
+                expected_operation: "insert" | "save_draft";
                 id: string;
                 version: string;
                 table: string;
+                before_sha256: string | null;
               }>;
             };
+            if (nativeOperation === "save_draft") {
+              const finalIdentities = readRows(input).map((row, index) =>
+                datasetIdentity(row, index, "flow"),
+              );
+              contract.actions.forEach((action, index) => {
+                assert.equal(action.id, finalIdentities[index]?.id, "repair keeps the exact UUID");
+                assert.equal(
+                  action.version,
+                  finalIdentities[index]?.version,
+                  "repair keeps the stable draft version",
+                );
+                assert.match(
+                  String(action.before_sha256),
+                  /^[a-f0-9]{64}$/u,
+                  "repair binds the exact before hash",
+                );
+              });
+            }
             report = {
               schema_version: 2,
               status: "completed",
@@ -558,7 +580,7 @@ export async function verifyPublicIdentityWorkflow(
                 index,
                 type: "flow",
                 status: "executed",
-                operation: "insert",
+                operation: action.expected_operation,
                 attempt_consumed: true,
                 replayed: false,
                 readback: "desired_exact",
@@ -1127,9 +1149,46 @@ export async function verifyPublicIdentityWorkflow(
     };
     const writeApproval = (value = grant, finalizationSha = finalizeArtifact.sha256) => {
       fs.writeFileSync(grantFile, JSON.stringify(value));
-      const nativeFile = path.join(root, "selected-native-insert.json");
+      const nativeFile = path.join(root, "selected-native-contract.json");
       if (nativeInsert) {
         const rows = readRows(input.file);
+        const actions = rows.map((row, index) => {
+          const identity = datasetIdentity(row, index, "flow");
+          if (nativeOperation === "save_draft") {
+            // A bounded repair keeps the exact identity/version and binds the current draft bytes
+            // as the before hash; the CLI owns the real owner-session before comparison.
+            const before = structuredClone(identity.payload) as Record<string, unknown>;
+            const beforeRoot = before.flowDataSet as Record<string, unknown>;
+            const beforeInformation = beforeRoot.flowInformation as Record<string, unknown>;
+            beforeRoot.flowInformation = {
+              ...beforeInformation,
+              dataSetInformation: {
+                ...(beforeInformation.dataSetInformation as Record<string, unknown>),
+                "common:generalComment": "before draft content",
+              },
+            };
+            return {
+              action_id: `update-${index}`,
+              expected_operation: "save_draft",
+              table: "flows",
+              id: identity.id,
+              version: identity.version,
+              desired_sha256: sha256Json(identity.payload),
+              before_sha256: sha256Json(before),
+              dependency_action_ids: [],
+            };
+          }
+          return {
+            action_id: `insert-${index}`,
+            expected_operation: "insert",
+            table: "flows",
+            id: identity.id,
+            version: identity.version,
+            desired_sha256: sha256Json(identity.payload),
+            before_sha256: null,
+            dependency_action_ids: [],
+          };
+        });
         fs.writeFileSync(
           nativeFile,
           JSON.stringify({
@@ -1138,19 +1197,9 @@ export async function verifyPublicIdentityWorkflow(
             project_ref: account.project_ref,
             target_mode: "owner_draft",
             owner: { user_id: account.user_id, email: "fixture@example.invalid", state_code: 0 },
-            actions: rows.map((row, index) => {
-              const identity = datasetIdentity(row, index, "flow");
-              return {
-                action_id: `insert-${index}`,
-                expected_operation: "insert",
-                table: "flows",
-                id: identity.id,
-                version: identity.version,
-                desired_sha256: sha256Json(identity.payload),
-                before_sha256: null,
-                dependency_action_ids: [],
-              };
-            }),
+            actions: nativeContractInvalid
+              ? actions.map((action) => ({ ...action, before_sha256: null }))
+              : actions,
           }),
         );
       }
@@ -1191,6 +1240,25 @@ export async function verifyPublicIdentityWorkflow(
     writeApproval(wrong);
     const refused = await facade.resume({ ...invocation, authorizationInputFile: approvalFile });
     assert.notEqual(refused.permissions.state, "granted");
+    if (nativeContractInvalid) {
+      // A native draft contract whose operation/before binding is impossible must be refused by
+      // the real authorization path before any owner-session dispatch.
+      writeApproval();
+      const invalidNative = await facade.resume({
+        ...invocation,
+        authorizationInputFile: approvalFile,
+      });
+      assert.equal(invalidNative.status, "blocked", JSON.stringify(invalidNative.blockers));
+      assert.ok(
+        invalidNative.blockers.some(
+          (blocker) => blocker.code === "authorization_execution_contract_invalid",
+        ),
+        JSON.stringify(invalidNative.blockers),
+      );
+      assert.notEqual(invalidNative.permissions.state, "granted");
+      assert.equal(writes, 0, "an invalid native draft contract cannot reach dispatch");
+      return;
+    }
     writeApproval();
     const alternateGrant = structuredClone(grant);
     alternateGrant.issued_at_utc = new Date(Date.now() - 2000).toISOString();
@@ -1377,7 +1445,7 @@ export async function verifyPublicIdentityWorkflow(
       "granted",
     );
     assert.equal(exitCode, 2, "sealed execution still requires the subsequent execution stage");
-    if (nativeInsert) fs.unlinkSync(path.join(root, "selected-native-insert.json"));
+    if (nativeInsert) fs.unlinkSync(path.join(root, "selected-native-contract.json"));
     const preparedExecution = await facade.resume(invocation);
     assert.ok(
       preparedExecution.artifacts.some((item) => item.role === "owner-execution-request.json"),

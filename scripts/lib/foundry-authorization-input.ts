@@ -116,7 +116,7 @@ export function parseFoundryAuthorizationInput(value: unknown): FoundryAuthoriza
       data.input_kind !== "final_rows" ||
       !["flow", "process", "source"].includes(data.dataset_type)
     )
-      invalid("Native insert contracts require finalized Flow, Process or Source rows.");
+      invalid("Native draft contracts require finalized Flow, Process or Source rows.");
     const selected = workflowObject(data.execution_contract);
     exact(selected, ["file", "sha256"]);
     executionContract = Object.freeze(fileReference(selected));

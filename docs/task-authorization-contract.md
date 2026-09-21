@@ -29,9 +29,9 @@ checkPaths:
   - test/unit/task-authorization.test.mts
   - test/unit/task-profile-authority.test.mts
   - test/scenarios/foundry-execution-admission.test.mts
-lastReviewedAt: 2026-09-20
-lastReviewedCommit: 6a48836f88194c68a95e0bb13c0daaf32ce9685f
-lastReviewedNote: "Reviewed for Foundry #180: CLI 0.1.18 changes the exact installed dependency and source identity only; task authorization, sealed admission, readback, and no-replay requirements remain unchanged."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 4eebdb5
+lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: authorization-input native contract validation still binds current rows, owner, project and draft state, and insert plus bounded save_draft share that same boundary. Reviewed against the uncommitted change on top of 4eebdb5."
 related:
   - docs/architecture.md
   - docs/safety-policy.md

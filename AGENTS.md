@@ -262,9 +262,9 @@ checkPaths:
   - test/unit/zero-javascript-ratchet.test.mts
   - test/unit/foundry-cli-spine.test.mts
   - specs/**
-lastReviewedAt: 2026-09-20
-lastReviewedCommit: 6a48836f88194c68a95e0bb13c0daaf32ce9685f
-lastReviewedNote: "Reviewed for Foundry #182: exact CLI 0.1.18, SDK 0.3.0 and Toolkit 0.3.2 adoption changes package/source pins, not authorization, workflow ownership, or write boundaries."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 4eebdb5
+lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: handoff admission now binds per-action insert or save_draft operation/before state, closeout accepts strict recovered-exact-readback rows, and the two finalize-owner helpers were renamed to native-draft-handoff/native-draft-closeout. No ownership, authorization or write-authority statement changes. Reviewed against the uncommitted change on top of 4eebdb5."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry
@@ -277,7 +277,7 @@ The installable package boundary is defined by `docs/package-distribution-contra
 
 Import profiles distribute source rules only. Historical BAFU/USLCI/Worldsteel account overrides, QA waivers and the Worldsteel full-context relaxation grant no permission to a new task. `docs/task-authorization-contract.md` owns the separate workspace/task/actor/account/profile/input binding and exact action evidence. Local candidate preparation and checked public-reference proofs remain available; current final-row hashes, task permissions and all content/closure/no-replay gates are required before a restricted write handoff.
 
-Explicit native insert selection for final Flow, Process or Source rows follows `docs/public-runtime-contract.md`. Bind both the indexed contract snapshot and exact final rows; a lost response requires the matching CLI execution receipt plus independent root readback. Never close native consumption from root equality alone or replay a consumed command to manufacture evidence. CLI retains transaction and native attempt ownership.
+Explicit native draft selection — insert or a bounded save_draft repair of the same identity and stable version — for final Flow, Process or Source rows follows `docs/public-runtime-contract.md`. Bind both the indexed contract snapshot and exact final rows; a lost response requires the matching CLI execution receipt plus independent root readback. Never close native consumption from root equality alone or replay a consumed command to manufacture evidence. CLI retains transaction and native attempt ownership.
 
 This repository is the local control plane for external LCA data import and TIDAS authoring work.
 

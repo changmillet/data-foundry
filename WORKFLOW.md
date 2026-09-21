@@ -280,9 +280,9 @@ checkPaths:
   - test/unit/foundry-runtime-environment.test.mts
   - test/unit/lint-suppression-audit.test.mts
   - test/README.md
-lastReviewedAt: 2026-09-19
-lastReviewedCommit: 0088181d5da79d4dbcfd5e6271b97071c9c3cc80
-lastReviewedNote: "Reviewed for Foundry #178: W8 public naming source bindings do not alter workflow order, authorization, runtime inputs, package qualification or production authority. Node 24 full tests, lint, build, and Docpact pass locally; hosted CI remains pending."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 4eebdb5
+lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: workflow order, execution authorization, package qualification and production authority are unchanged by the insert/save_draft contract generalization. Reviewed against the uncommitted change on top of 4eebdb5."
 tracker:
   kind: filesystem
   inbox: tasks/inbox

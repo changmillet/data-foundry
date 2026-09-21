@@ -93,8 +93,8 @@ checkPaths:
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 167f0e138e0c86c50ed62e39548f8b11eb728654
-lastReviewedNote: "Reviewed for Foundry #171 at head 167f0e1: annual-supply evidence preservation and unknown-volume normalization in prewrite/curation cleanup stay within Foundry-local deterministic transforms, and every ownership, blocking and no-write-authority statement in this policy remains accurate and requires no update."
+lastReviewedCommit: 4eebdb5
+lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: contract admission and closeout remain thin Foundry-local consumer adapters with no ownership, blocking-policy or remote-write change. Reviewed against the uncommitted change on top of 4eebdb5."
 ---
 
 # Capability Ownership Policy
