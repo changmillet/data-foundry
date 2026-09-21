@@ -40,9 +40,9 @@ checkPaths:
   - test/scenarios/runtime-workspace.test.mts
   - test/scenarios/foundry-execution-admission.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
-lastReviewedAt: 2026-09-20
-lastReviewedCommit: 6a48836f88194c68a95e0bb13c0daaf32ce9685f
-lastReviewedNote: "Reviewed for Foundry #180: exact CLI 0.1.18 runtime identity and spec 0.2.1 source manifest advance without changing process-local trust selection or task authorization."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 167f0e138e0c86c50ed62e39548f8b11eb728654
+lastReviewedNote: "Reviewed for Foundry #171 at head 167f0e1: the change adds row-level annual-supply evidence gaps to local cleanup reports only; runtime context, qualification, root-ownership and child-admission statements remain accurate and require no update."
 related:
   - docs/architecture.md
   - docs/task-authorization-contract.md

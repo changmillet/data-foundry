@@ -92,9 +92,9 @@ checkPaths:
   - scripts/lib/import-curation/internal/mutation-manifest-workflow.ts
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-09-19
-lastReviewedCommit: 0088181d5da79d4dbcfd5e6271b97071c9c3cc80
-lastReviewedNote: "Reviewed for Foundry #178: bound W8 naming premises by source identity while retaining Foundry-local evidence, identity, authorization, and blocking policy. Existing navigation and operational boundaries are unchanged; Node 24 full tests, lint, build, and Docpact pass locally; hosted CI remains pending."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 167f0e138e0c86c50ed62e39548f8b11eb728654
+lastReviewedNote: "Reviewed for Foundry #171 at head 167f0e1: annual-supply evidence preservation and unknown-volume normalization in prewrite/curation cleanup stay within Foundry-local deterministic transforms, and every ownership, blocking and no-write-authority statement in this policy remains accurate and requires no update."
 ---
 
 # Capability Ownership Policy
