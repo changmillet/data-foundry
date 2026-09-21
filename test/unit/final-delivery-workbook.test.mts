@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import test from "node:test";
 import {
   cellParts,
@@ -7,6 +9,24 @@ import {
 } from "../../scripts/lib/final-delivery-workbook.ts";
 import { parseXmlDocument } from "../../scripts/lib/final-delivery-xml.ts";
 import { sheetXml, storedZip, workbookBuffer } from "../fixtures/final-delivery-fixtures.ts";
+
+// An unmodified workbook written by openpyxl 3.1.5 -- the shape every standard spreadsheet library
+// produces, and the one the gate rejected before the absolute-target fix:
+//   * DEFLATE compression rather than stored entries;
+//   * docProps/core.xml and docProps/app.xml present and bound from _rels/.rels;
+//   * worksheet relationships written as absolute pack URIs ("/xl/worksheets/sheetN.xml").
+// Regenerate with openpyxl (pinning properties.created/modified keeps the bytes reproducible):
+//   wb = Workbook(); wb.properties.creator = "openpyxl-native-fixture"
+//   wb.properties.created = wb.properties.modified = datetime(2026, 9, 21, tzinfo=timezone.utc)
+//   sheets: Summary(["metric","value"], [["status","ready"],["count",2]])
+//           Evidence(["id","status","proof_sha"], [["evidence-1","ready","a"*64],
+//                                                  ["evidence-2","ready","b"*64]])
+const NATIVE_OPENPYXL = fs.readFileSync(
+  path.join(
+    path.resolve(import.meta.dirname, "..", ".."),
+    "test/fixtures/openpyxl-native-workbook.xlsx",
+  ),
+);
 
 function throwsWith(fragment: string) {
   return (error: unknown): boolean => {
@@ -122,7 +142,7 @@ test("workbook parsing rejects a relationship that escapes the package root", ()
       '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Target="../../evil.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/></Relationships>',
     "xl/worksheets/sheet1.xml": sheetXml([["id"], ["row-1"]]),
   };
-  assert.throws(() => parseWorkbook(storedZip(files)), throwsWith("escapes the xl package root"));
+  assert.throws(() => parseWorkbook(storedZip(files)), throwsWith("escapes the package root"));
 });
 
 function parts(workbookXml: string, extra: Record<string, string> = {}): Record<string, string> {
@@ -422,4 +442,115 @@ test("phonetic text is scanned even though it is not cell body text", () => {
     true,
     "phonetic text is excluded from cell values, not from the redaction scan",
   );
+});
+
+test("workbook parsing accepts a native openpyxl workbook end to end", () => {
+  const workbook = parseWorkbook(NATIVE_OPENPYXL);
+  assert.deepEqual(workbook.names, ["Summary", "Evidence"]);
+  assert.deepEqual(
+    [...workbook.sheets.values()].map((sheet) => [...sheet.populatedRows].length),
+    [3, 3],
+  );
+  assert.equal(workbook.sheets.get("Evidence")?.cells.get("A2"), "evidence-1");
+  assert.equal(workbook.sheets.get("Evidence")?.cells.get("C3"), "b".repeat(64));
+  assert.equal(workbook.sheets.get("Summary")?.cells.get("B2"), "ready");
+});
+
+test("a docProps root relationship is kept and its part is still scanned", () => {
+  // docProps is a legal non-participating OPC part: it is not a worksheet and is never a sheet
+  // target, but it is shipped content, so its decoded text must reach the redaction scan.
+  const workbook = parseWorkbook(NATIVE_OPENPYXL);
+  assert.equal(
+    workbook.scanText.includes("openpyxl-native-fixture"),
+    true,
+    "docProps/core.xml text must be scanned",
+  );
+  assert.equal(
+    workbook.scanText.includes("Microsoft Excel Compatible"),
+    true,
+    "docProps/app.xml text must be scanned",
+  );
+});
+
+test("an absolute package target resolves from the zip root, not the owning part", () => {
+  const absolute = {
+    ...parts(
+      `${WORKBOOK_OPEN}<sheets><sheet name="Real" sheetId="1" r:id="rId1"/></sheets></workbook>`,
+    ),
+    "xl/_rels/workbook.xml.rels":
+      '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Target="/xl/worksheets/sheet1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/></Relationships>',
+  };
+  const workbook = parseWorkbook(storedZip(absolute));
+  assert.deepEqual(workbook.names, ["Real"]);
+  assert.equal(workbook.sheets.get("Real")?.cells.get("A2"), "row-1");
+});
+
+test("an absolute workbook relationship target is accepted by the root check", () => {
+  const absolute = {
+    ...parts(
+      `${WORKBOOK_OPEN}<sheets><sheet name="Real" sheetId="1" r:id="rId1"/></sheets></workbook>`,
+    ),
+    "_rels/.rels":
+      '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rW" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="/xl/workbook.xml"/></Relationships>',
+  };
+  assert.deepEqual(parseWorkbook(storedZip(absolute)).names, ["Real"]);
+});
+
+test("a relationship target cannot escape the package root in either form", () => {
+  const withTarget = (target: string, base = "xl/_rels/workbook.xml.rels") => ({
+    ...parts(
+      `${WORKBOOK_OPEN}<sheets><sheet name="Real" sheetId="1" r:id="rId1"/></sheets></workbook>`,
+    ),
+    [base]: `<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Target="${target}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/></Relationships>`,
+  });
+  // "xl/../../evil.xml" and "../docProps/core.xml" are deliberately absent: each leaves the
+  // package root and re-enters it, resolving back inside. OPC permits that, so they are refused
+  // only for naming a part that is not a worksheet -- pinned by the re-entrant case below.
+  for (const target of [
+    "../../evil.xml",
+    "/../evil.xml",
+    "/xl/../../evil.xml",
+    "..\\evil.xml",
+    "/xl/..\\evil.xml",
+    "..",
+    "/..",
+    "/",
+    "./",
+  ]) {
+    assert.throws(
+      () => parseWorkbook(storedZip(withTarget(target))),
+      throwsWith("escapes the package root"),
+      target,
+    );
+  }
+});
+
+test("a target that leaves and re-enters the package resolves inside the root", () => {
+  // Resolved from xl/workbook.xml these normalise back inside the package: "evil.xml" and
+  // "docProps/core.xml". Neither is an escape, so each must fail as a part that is not a usable
+  // worksheet rather than as a containment violation.
+  for (const target of ["xl/../../evil.xml", "../docProps/core.xml"]) {
+    const reentrant = {
+      ...parts(
+        `${WORKBOOK_OPEN}<sheets><sheet name="Real" sheetId="1" r:id="rId1"/></sheets></workbook>`,
+      ),
+      "xl/_rels/workbook.xml.rels": `<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Target="${target}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/></Relationships>`,
+    };
+    assert.throws(
+      () => parseWorkbook(storedZip(reentrant)),
+      throwsWith("invalid or duplicate sheet"),
+      target,
+    );
+  }
+});
+
+test("a root relationship cannot escape the package root", () => {
+  const escaping = {
+    ...parts(
+      `${WORKBOOK_OPEN}<sheets><sheet name="Real" sheetId="1" r:id="rId1"/></sheets></workbook>`,
+    ),
+    "_rels/.rels":
+      '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rW" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/><Relationship Id="r2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="../outside.xml"/></Relationships>',
+  };
+  assert.throws(() => parseWorkbook(storedZip(escaping)), throwsWith("escapes the package root"));
 });

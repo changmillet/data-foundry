@@ -223,13 +223,25 @@ function parsePart(entries: Map<string, Buffer>, name: string): XmlNode {
   return parseXmlDocument(entry);
 }
 
+// A relationship target is resolved the way OPC defines it: a target that begins with "/" is an
+// absolute pack URI and resolves from the package root, and anything else resolves against the part
+// that declares the relationship. Resolving an absolute target against the declaring part instead
+// would look for "xl/xl/worksheets/sheet1.xml", which is what rejected every workbook written by a
+// standard spreadsheet library. The result must still be a safe relative path, so a traversal
+// target fails closed whichever form it uses, and a target that names the package root or a
+// directory names no part and is refused.
 function relationshipTarget(basePath: string, target: string): string {
   const cleaned = target.replace(/^\/+/u, "");
-  const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(basePath), cleaned));
-  if (!safeRelativePath(resolved) || !resolved.startsWith("xl/")) {
+  const resolved =
+    cleaned.length === 0 || target.endsWith("/")
+      ? ""
+      : target.startsWith("/")
+        ? path.posix.normalize(cleaned)
+        : path.posix.normalize(path.posix.join(path.posix.dirname(basePath), cleaned));
+  if (resolved.length === 0 || resolved === "." || !safeRelativePath(resolved)) {
     throw new PromotionArtifactError(
       "workbook_relationship_escape",
-      `Workbook relationship escapes the xl package root: ${target}`,
+      `Workbook relationship target escapes the package root: ${target}`,
     );
   }
   return resolved;
