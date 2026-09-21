@@ -3,7 +3,21 @@ title: Repository File Organization
 docType: policy
 scope: repository
 status: active
+authoritative: true
 owner: tiangong-lca-data-foundry
+language: en
+whenToUse:
+  - when deciding where a new tracked or runtime file belongs
+  - when maintaining the durable file-location registry
+whenToUpdate:
+  - when repository placement rules or registered durable locations change
+checkPaths:
+  - docs/file-organization.md
+  - docs/file-location-registry.json
+  - test/unit/zero-javascript-ratchet.test.mts
+lastReviewedAt: 2026-08-26
+lastReviewedCommit: af5573acf9d8731fc5d7445433f3f3caf633fa8e
+lastReviewedNote: "Reviewed for Issue #67 final cutover: native TypeScript configuration and the permanent zero-JavaScript ratchet replace the completed migration inventory without a compatibility ledger."
 ---
 
 # Repository File Organization
@@ -22,6 +36,7 @@ Before creating or moving a file, classify it by role:
 - reusable policies and operator guides: `docs/`
 - executable contracts and schemas: `specs/`
 - local utilities: `scripts/`
+- permanent zero-JavaScript and toolchain contracts: `test/unit/zero-javascript-ratchet.test.mts`, `test/unit/toolchain-contract.test.mts`, and focused tests under `test/unit/`
 
 If a file does not fit one of these roles, create or update the smallest repo-owned placement rule before adding it.
 
@@ -49,6 +64,6 @@ The external `agent-harness-cli` design is useful because it makes agent work in
 Current repo-native commands:
 
 ```bash
-npm run storage:check
-npm run acceptance:check
+pnpm storage:check
+pnpm acceptance:check
 ```

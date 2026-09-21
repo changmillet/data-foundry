@@ -1,9 +1,30 @@
 ---
+lastReviewedAt: 2026-09-20
+lastReviewedCommit: 138b79581aea4e8de53babeb46f34692c0e84fa5
+lastReviewedNote: "Reviewed for Foundry #182: CLI 0.1.18 consumer adoption does not change Worldsteel profile constraints, permissions or source evidence."
 title: worldsteel Import Constraints
 docType: constraints
 scope: import-profile
 status: draft
+authoritative: true
 owner: tiangong-lca-data-foundry
+language: en
+whenToUse:
+  - when deciding whether a Worldsteel canonical-cache miss may enter an owner-draft support scope
+  - when evaluating unit-scale, closure, handoff, or readback blockers for Worldsteel
+whenToUpdate:
+  - when Worldsteel support authorization, ordering, or blocking semantics change
+  - when the shared support/finalize engine changes the enforceable candidate boundary
+checkPaths:
+  - specs/import-profiles.json
+  - scripts/commands/worldsteel-batch-import-run.ts
+  - scripts/commands/bafu-batch-import-run.ts
+  - scripts/commands/post-authoring-finalize.ts
+  - docs/import-profiles/worldsteel/profile.md
+  - docs/import-profiles/worldsteel/constraints.md
+  - docs/import-profiles/worldsteel/import-plan.md
+  - docs/import-profiles/worldsteel/import-coverage.md
+  - test/unit/worldsteel-support-mint-truth.test.mts
 related:
   - docs/import-profiles/worldsteel/profile.md
   - docs/import-profiles/worldsteel/import-plan.md
@@ -12,29 +33,33 @@ related:
 
 # worldsteel Import Constraints
 
+Current task authorization is defined by `docs/task-authorization-contract.md`. Distributed profiles grant no mint/write action or QA waiver. The dated R1–R5 decisions and inventories below are historical case evidence; new tasks require their own exact binding and action evidence. Local candidate preparation remains available, and old locks/seals/attempts are not rewritten or replayed.
+
 ## Reference-by-UUID first (the dominant policy)
 
-The ~1,315 EF3.1 reference elementary flows + canonical flowproperties/unitgroups are **reused by their original canonical UUID** through the offline library-resolution `exchange-reference-rewrites.jsonl` (applied by the runner's `applyResolutionRewrites`). They are **never minted**. Each rewrite row must carry `canonical_short_description` so committed exchanges show the flow name, not the UUID.
+The ~1,315 EF3.1 reference elementary flows + every FP/UG present in the canonical-support cache are **reused by their original canonical UUID** through the offline library-resolution `exchange-reference-rewrites.jsonl` (applied by the runner's `applyResolutionRewrites`). A canonical row is **never minted**. Each rewrite row must carry `canonical_short_description` so committed exchanges show the flow name, not the UUID.
 
-## Authorized: capped account-local elementary mint (2026-06-29, requirement 3)
+## Authorized account-local exceptions (2026-06-29 and 2026-07-01)
 
-`allow_account_local_support_and_elementary` is enabled for the worldsteel profile (`specs/import-profiles.json`) **only** as a capped escape hatch. Unlike BAFU/USLCI (which mint reference support at scale), worldsteel's reference support is canonical and reused by UUID. The override is scoped to the small residual of **GaBi/Sphera pseudo-elementary flows** (dataSetVersion 20.25.x) that have no canonical match — **expected at most 17** — minted as account-local My Data (state_code=0) so the 33 steel processes stay complete.
+The distributed Worldsteel profile grants no account-local exception. The historical 2026-06-29 decision authorized the small residual of **GaBi/Sphera pseudo-elementary flows** (dataSetVersion 20.25.x) that have no canonical match — **expected at most 17** — as account-local My Data (`state_code=0`). The 2026-07-01 delivery decision separately supersedes the earlier FP/UG reference-only statement: `mintUnmatchedFpUgSupport=true` admits materialized FP/UG whose UUID is absent from the canonical-support cache into the same task-gated support path.
 
 - These residual flows are **NOT** matched by UUID; the AI judges reuse-vs-mint from **full context**.
-- The final mint count is reviewed **after** the UUID-reuse pass. If the residual is zero, set `enabled=false`.
-- Flow properties / unit groups are reference-only (`mintUnmatchedFpUgSupport=false`); only elementary flows may mint under this allowance.
+- The final elementary mint count is reviewed **after** the UUID-reuse pass. New tasks start with no elementary or support write actions; select each required action through task authorization.
+- Canonical FP/UG are always reused. For cache misses, Unit Groups are ordered before Flow Properties and candidates are normalized to same-owner My Data version `00.00.001`; they never enter the public canonical cache.
+- The retained 10+10 EF3.1 LANCA gap explains why the support flag was enabled, and the historical delivery inventory records 11+11 owner rows. The runtime has no LANCA name whitelist or numeric hard cap: its enforceable candidate boundary is the canonical-cache miss inside the materialized ready-scope closure.
+- Support preparation/commit/readback failure blocks and defers the dependent flow/process scope. Independent ready scopes may continue, but no failed support scope may be treated as complete.
 
 ## Gates that REMAIN blocking (NOT relaxed)
 
-- the unit-scale safety blocker `canonical_support_amount_scaling_required`;
-- schema validation against tidas-tools' **corrected eILCD schemas** (not raw EF3.1), deterministic QA (except the waived `process_material_balance_deviation`), curation, and full-context AI proof for `flow`/`process`/`lifecyclemodel`;
+- both unit-scale safety blockers: `canonical_support_amount_scaling_required` and `canonical_support_amount_scale_unresolved`;
+- schema validation through Rust tidas against its locked corrected eILCD schemas (not raw EF3.1), deterministic QA (a process material-balance observation requires current approval and source-model evidence), curation, and full-context AI proof for `flow`/`process`/`lifecyclemodel`;
 - remote write requires dry-run, queue verify, commit handoff, closeout, and readback verification, **and account/write-policy approval before any remote commit** — `allow_remote_commit` stays false until then.
 
 ## worldsteel-specific identity & attribution
 
-- **Library contact:** reuse the packaged worldsteel contact `d5710976-d600-11da-a94d-0800200c9a66` (World Steel Association, v20.20.002) as the single shared library contact. Do not mint a synthetic foundry contact.
+- **Library contact:** packaged id `d5710976@20.20.002` is occupied by another account and is not a usable public reference. Mint one deterministic same-owner contact at `00.00.001` from the runner's real World Steel Association identity fields; never substitute BAFU/FOEN defaults.
 - **Database fallback source:** processes whose data source resolves to a placeholder cite the synthesized `worldsteel LCI database` source — never the BAFU 2025 default.
-- **Version:** preserve the source `dataSetVersion`; do not renumber to `00.00.001`.
+- **Version:** preserve source `dataSetVersion` inside the ILCD/TIDAS payload for provenance. New Worldsteel-owned DB rows use key `00.00.001`; canonical references keep their current published versions.
 - **LCIA methods:** the 25 EF3.1 LCIA method datasets are reference/provenance only and are NOT written inline by the import.
 - **External documents:** the 13 `referenceToDigitalFile` binaries are uploaded to the `external_docs` bucket and the source `@uri` rewritten by `tiangong-lca dataset source upload-attachments` (authenticated as `data@worldsteel.org`) before write; plain `http(s)` referenceToDigitalFile URIs are left untouched.
 
@@ -42,11 +67,11 @@ The ~1,315 EF3.1 reference elementary flows + canonical flowproperties/unitgroup
 
 Landed while committing the first worldsteel processes; all are gated to the worldsteel profile so BAFU/USLCI are byte-for-byte unchanged.
 
-- **Process-name content-policy waiver.** worldsteel source process names follow `"<product> <route> <geography> <data-year>"` (e.g. `Steel rebar Global 2022`, `Steel sections EU 2019`, `Steel ECCS Global 2021 v2`). The trailing `<Geography> <Year>` is reference metadata, not a citation, but it matches the prewrite-content-policy `latin-author-year` marker. The worldsteel profile therefore waives rule `source_locator_in_dataset_name` for `process` names via `waived_content_policy_rules_by_type` (a new per-profile mechanism parallel to `waived_qa_codes_by_type`). All 33 baseNames carry the pattern and are preserved verbatim. The waiver is scoped to processes only — worldsteel flows/lifecyclemodels and every other content-policy rule stay enforced.
-- **Trusted USLCI external reference.** The process exchanges reference one flow — `3c4b0e5d "Slag (deposited)" @00.00.001` — owned by the USLCI import account `linanenv@126.com` (uid `5c784552`) at `state_code=0`. Per the 2026-07-01 governance rule, USLCI-account data is reusable by worldsteel even at state_code=0, so it is reused-by-reference (a `reuse_existing_reference` decision) instead of duplicated. The flow was verified present via the USLCI token, but RLS hides it from `data@worldsteel.org`, so the RLS-scoped post-write readback falsely reports `missing_dataset`. The runner accepts that single reference blocker for pre-verified trusted keys only (`acceptTrustedExternalReferenceMissingDataset` + `trustedExternalReferenceFlows`); every other blocker still fails. It is the only cross-account state_code=0 reference in the worldsteel new-flow universe.
+- **Process-name source metadata.** Source names such as `Steel rebar Global 2022`, `Steel sections EU 2019` and `Steel ECCS Global 2021 v2` retain their trailing geography/year metadata. Only that single `latin-author-year` match in a process `baseName` is classified as source naming metadata. Additional author/year matches, table/figure markers, other name fields and all flow/lifecyclemodel names remain checked. There is no `waived_content_policy_rules_by_type` permission.
+
+- **Foreign/RLS-hidden drafts are not references.** The historical process exchange pointing at `3c4b0e5d "Slag (deposited)" @00.00.001` resolved only under a different account at `state_code=0` and is invisible to `data@worldsteel.org`. That cross-account observation is not valid readback evidence. Current runs must keep `missing_dataset` blocking and replace the exchange with an allowed public or same-owner visible reference; no trusted-key list may convert it to passed. Production-test account runs are unconditionally fail-closed.
 - **Canonical reuse pinned to latest published version.** Reuse-by-UUID decisions are swept to the latest `state_code=100` version before commit (the post-write readback rejects references below a flow's latest published version). Only flows that drifted are updated.
 
-### Corrections to earlier notes
+### Corrections to the initial plan
 
-- **Contact (supersedes the identity note above).** The packaged contact id `d5710976@20.20.002` turned out to be occupied by a different account in the target database (not published canonical, not visible to `data@worldsteel.org`), so it can neither be created nor referenced. Per the 2026-06-30 decision the library contact is **minted under a fresh deterministic foundry-owned UUID that carries the real worldsteel identity** — email `steel@worldsteel.org`, classification `Organisations > Other organisations` (a private industry association, not governmental), address `Avenue de Tervueren 270, 1150 Brussels`. worldsteel contact fields are never BAFU/FOEN defaults.
-- **Version (supersedes the "preserve dataSetVersion" note for NEW entities).** worldsteel-specific new flows/mints/processes are committed as account-local My Data at `00.00.001` (their source versions `20.25.x`/`00.00.000` are occupied by other test-import accounts). The ILCD `common:dataSetVersion` inside each dataset still carries the source version for provenance; only the DB row-version key is `00.00.001`. Canonical reference flows keep their real published versions (reused by UUID).
+The contact and version bullets above are the current contract and supersede the initial packaged-contact reuse and native DB-row-version assumptions. The deterministic contact uses `steel@worldsteel.org`, classification `Organisations > Other organisations`, and `Avenue de Tervueren 270, 1150 Brussels`; new owner-draft rows use `00.00.001`, while source versions remain inside the payload as provenance.

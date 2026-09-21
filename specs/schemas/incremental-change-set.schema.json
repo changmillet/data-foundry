@@ -1,0 +1,1186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tiangong-lca.local/foundry/incremental-change-set.schema.json",
+  "title": "Foundry Incremental Change Set v1",
+  "description": "Strict schemas for the offline three-way incremental change-set composer and every governed input and output artifact.",
+  "oneOf": [
+    { "$ref": "#/$defs/request" },
+    { "$ref": "#/$defs/comparisonRow" },
+    { "$ref": "#/$defs/ownerRow" },
+    { "$ref": "#/$defs/ownerSnapshotReceipt" },
+    { "$ref": "#/$defs/preservationPolicy" },
+    { "$ref": "#/$defs/terminalExclusion" },
+    { "$ref": "#/$defs/terminalSuccessReceipt" },
+    { "$ref": "#/$defs/conversionEvent" },
+    { "$ref": "#/$defs/noWriteRow" },
+    { "$ref": "#/$defs/holdRow" },
+    { "$ref": "#/$defs/dependencyClosure" },
+    { "$ref": "#/$defs/cliContract" },
+    { "$ref": "#/$defs/report" },
+    { "$ref": "#/$defs/manifest" },
+    { "$ref": "#/$defs/artifactFacts" }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "nullableSha256": {
+      "anyOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }]
+    },
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "nullableNonEmptyString": {
+      "anyOf": [{ "$ref": "#/$defs/nonEmptyString" }, { "type": "null" }]
+    },
+    "utcTimestamp": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z$"
+    },
+    "table": {
+      "type": "string",
+      "enum": ["contacts", "sources", "unitgroups", "flowproperties", "flows", "processes"]
+    },
+    "disposition": {
+      "type": "string",
+      "enum": ["INSERT", "UPDATE", "NOOP", "HOLD"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["rejected", "completed_with_holds", "completed_no_actions", "completed"]
+    },
+    "expectedOperation": {
+      "type": "string",
+      "enum": ["insert", "save_draft"]
+    },
+    "nullableExpectedOperation": {
+      "anyOf": [{ "$ref": "#/$defs/expectedOperation" }, { "type": "null" }]
+    },
+    "jsonPointer": {
+      "type": "string",
+      "pattern": "^(?:/(?:[^~/]|~0|~1)*)*$"
+    },
+    "nonEmptyJsonPointer": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?:/(?:[^~/]|~0|~1)*)+$"
+    },
+    "jsonPointerArray": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/jsonPointer" },
+      "uniqueItems": true
+    },
+    "nonRootJsonPointerArray": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/nonEmptyJsonPointer" },
+      "uniqueItems": true
+    },
+    "stringArray": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/nonEmptyString" },
+      "uniqueItems": true
+    },
+    "reasonCodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/nonEmptyString" },
+      "uniqueItems": true
+    },
+    "sha256Array": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/sha256" },
+      "uniqueItems": true
+    },
+    "jsonValue": {
+      "anyOf": [
+        { "type": "null" },
+        { "type": "boolean" },
+        { "type": "number" },
+        { "type": "string" },
+        { "$ref": "#/$defs/jsonArray" },
+        { "$ref": "#/$defs/jsonObject" }
+      ]
+    },
+    "jsonArray": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/jsonValue" }
+    },
+    "jsonObject": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+    },
+    "nullableJsonObject": {
+      "anyOf": [{ "$ref": "#/$defs/jsonObject" }, { "type": "null" }]
+    },
+    "entity": {
+      "type": "object",
+      "required": ["table", "id", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "table": { "$ref": "#/$defs/table" },
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "version": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "ownerIdentity": {
+      "type": "object",
+      "required": ["user_id", "email"],
+      "additionalProperties": false,
+      "properties": {
+        "user_id": { "$ref": "#/$defs/nonEmptyString" },
+        "email": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "owner": {
+      "type": "object",
+      "required": ["user_id", "email", "state_code"],
+      "additionalProperties": false,
+      "properties": {
+        "user_id": { "$ref": "#/$defs/nonEmptyString" },
+        "email": { "$ref": "#/$defs/nonEmptyString" },
+        "state_code": { "const": 0 }
+      }
+    },
+    "jsonArtifactReference": {
+      "type": "object",
+      "required": ["path", "sha256", "bytes"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "#/$defs/nonEmptyString" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "bytes": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "jsonlArtifactReference": {
+      "type": "object",
+      "required": ["path", "sha256", "bytes", "rows"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "#/$defs/nonEmptyString" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "bytes": { "type": "integer", "minimum": 0 },
+        "rows": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "snapshotFacts": {
+      "type": "object",
+      "required": ["sha256", "bytes", "rows"],
+      "additionalProperties": false,
+      "properties": {
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "bytes": { "type": "integer", "minimum": 0 },
+        "rows": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "ownerScopeBinding": {
+      "type": "object",
+      "required": ["allowed_target_keys", "allowed_target_keys_sha256", "canonical_scope_sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "allowed_target_keys": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/nonEmptyString" },
+          "uniqueItems": true
+        },
+        "allowed_target_keys_sha256": { "$ref": "#/$defs/sha256" },
+        "canonical_scope_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "ownerTargetLedgerRow": {
+      "type": "object",
+      "required": ["entity_key", "presence", "snapshot_row_sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "entity_key": { "$ref": "#/$defs/nonEmptyString" },
+        "presence": { "type": "string", "enum": ["present", "absent"] },
+        "snapshot_row_sha256": { "$ref": "#/$defs/nullableSha256" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "presence": { "const": "present" } } },
+          "then": { "properties": { "snapshot_row_sha256": { "$ref": "#/$defs/sha256" } } },
+          "else": { "properties": { "snapshot_row_sha256": { "type": "null" } } }
+        }
+      ]
+    },
+    "consumerBinding": {
+      "type": "object",
+      "required": ["schema_version", "cli_version", "toolchain_fingerprint_sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "const": "dataset-save-draft-execution-contract.v1" },
+        "cli_version": { "$ref": "#/$defs/nonEmptyString" },
+        "toolchain_fingerprint_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "tablePointerMap": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "contacts": { "$ref": "#/$defs/nonRootJsonPointerArray" },
+        "sources": { "$ref": "#/$defs/nonRootJsonPointerArray" },
+        "unitgroups": { "$ref": "#/$defs/nonRootJsonPointerArray" },
+        "flowproperties": { "$ref": "#/$defs/nonRootJsonPointerArray" },
+        "flows": { "$ref": "#/$defs/nonRootJsonPointerArray" },
+        "processes": { "$ref": "#/$defs/nonRootJsonPointerArray" }
+      }
+    },
+    "requestScope": {
+      "type": "object",
+      "required": [
+        "allowed_tables",
+        "allowed_target_keys",
+        "allowed_update_pointer_prefixes",
+        "allow_account_local_support"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "allowed_tables": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/table" },
+          "uniqueItems": true
+        },
+        "allowed_target_keys": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/nonEmptyString" },
+          "uniqueItems": true
+        },
+        "allowed_update_pointer_prefixes": { "$ref": "#/$defs/tablePointerMap" },
+        "allow_account_local_support": { "type": "boolean" }
+      }
+    },
+    "requestInputArtifacts": {
+      "type": "object",
+      "required": [
+        "comparisons",
+        "owner_snapshot",
+        "owner_snapshot_receipt",
+        "preservation_policy"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "comparisons": { "$ref": "#/$defs/jsonlArtifactReference" },
+        "owner_snapshot": { "$ref": "#/$defs/jsonlArtifactReference" },
+        "owner_snapshot_receipt": { "$ref": "#/$defs/jsonArtifactReference" },
+        "preservation_policy": { "$ref": "#/$defs/jsonArtifactReference" },
+        "terminal_exclusions": { "$ref": "#/$defs/jsonlArtifactReference" }
+      }
+    },
+    "request": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "change_set_id",
+        "producer_id",
+        "project_ref",
+        "target_mode",
+        "production_authority",
+        "owner",
+        "scope",
+        "input_artifacts",
+        "consumer"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "const": "foundry-incremental-change-set-request.v1" },
+        "change_set_id": { "$ref": "#/$defs/nonEmptyString" },
+        "producer_id": { "$ref": "#/$defs/nonEmptyString" },
+        "project_ref": { "$ref": "#/$defs/nonEmptyString" },
+        "target_mode": { "const": "owner_draft" },
+        "production_authority": { "const": false },
+        "owner": { "$ref": "#/$defs/owner" },
+        "scope": { "$ref": "#/$defs/requestScope" },
+        "input_artifacts": { "$ref": "#/$defs/requestInputArtifacts" },
+        "consumer": { "$ref": "#/$defs/consumerBinding" }
+      }
+    },
+    "comparisonRow": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "conversion_id",
+        "entity",
+        "old_payload",
+        "new_payload",
+        "old_payload_sha256",
+        "candidate_payload_sha256",
+        "dependency_conversion_ids"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "const": "foundry-incremental-change-set-comparison-row.v1" },
+        "conversion_id": { "$ref": "#/$defs/nonEmptyString" },
+        "entity": { "$ref": "#/$defs/entity" },
+        "old_payload": { "$ref": "#/$defs/nullableJsonObject" },
+        "new_payload": { "$ref": "#/$defs/nullableJsonObject" },
+        "old_payload_sha256": { "$ref": "#/$defs/nullableSha256" },
+        "candidate_payload_sha256": { "$ref": "#/$defs/nullableSha256" },
+        "dependency_conversion_ids": { "$ref": "#/$defs/stringArray" }
+      }
+    },
+    "ownerRow": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "project_ref",
+        "entity",
+        "json_ordered",
+        "payload_sha256",
+        "role",
+        "owner",
+        "state_code"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "const": "foundry-incremental-change-set-owner-row.v1" },
+        "project_ref": { "$ref": "#/$defs/nonEmptyString" },
+        "entity": { "$ref": "#/$defs/entity" },
+        "json_ordered": { "$ref": "#/$defs/jsonObject" },
+        "payload_sha256": { "$ref": "#/$defs/sha256" },
+        "role": { "const": "writable_target" },
+        "owner": { "$ref": "#/$defs/ownerIdentity" },
+        "state_code": { "const": 0 }
+      }
+    },
+    "ownerSnapshotReceipt": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "project_ref",
+        "owner",
+        "snapshot",
+        "scope_binding",
+        "target_ledger",
+        "captured_at_utc",
+        "query_fingerprint_sha256",
+        "deployment_fingerprint_sha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "foundry-incremental-change-set-owner-snapshot-receipt.v1"
+        },
+        "project_ref": { "$ref": "#/$defs/nonEmptyString" },
+        "owner": { "$ref": "#/$defs/owner" },
+        "snapshot": { "$ref": "#/$defs/snapshotFacts" },
+        "scope_binding": { "$ref": "#/$defs/ownerScopeBinding" },
+        "target_ledger": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/ownerTargetLedgerRow" },
+          "uniqueItems": true
+        },
+        "captured_at_utc": { "$ref": "#/$defs/utcTimestamp" },
+        "query_fingerprint_sha256": { "$ref": "#/$defs/sha256" },
+        "deployment_fingerprint_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "boundRuleProperties": {
+      "type": "object",
+      "required": [
+        "entity_key",
+        "pointer",
+        "old_value_sha256",
+        "candidate_value_sha256",
+        "current_value_sha256",
+        "evidence_sha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "entity_key": { "$ref": "#/$defs/nonEmptyString" },
+        "pointer": { "$ref": "#/$defs/nonEmptyJsonPointer" },
+        "old_value_sha256": { "$ref": "#/$defs/sha256" },
+        "candidate_value_sha256": { "$ref": "#/$defs/sha256" },
+        "current_value_sha256": { "$ref": "#/$defs/sha256" },
+        "evidence_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "semanticNoiseRule": {
+      "type": "object",
+      "required": [
+        "entity_key",
+        "pointer",
+        "old_value_sha256",
+        "candidate_value_sha256",
+        "current_value_sha256",
+        "evidence_sha256",
+        "transform_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "entity_key": { "$ref": "#/$defs/nonEmptyString" },
+        "pointer": { "$ref": "#/$defs/nonEmptyJsonPointer" },
+        "old_value_sha256": { "$ref": "#/$defs/sha256" },
+        "candidate_value_sha256": { "$ref": "#/$defs/sha256" },
+        "current_value_sha256": { "$ref": "#/$defs/sha256" },
+        "evidence_sha256": { "$ref": "#/$defs/sha256" },
+        "transform_id": { "const": "decimal_lexical_equivalence_v1" }
+      }
+    },
+    "conflictRule": {
+      "type": "object",
+      "required": [
+        "entity_key",
+        "pointer",
+        "old_value_sha256",
+        "candidate_value_sha256",
+        "current_value_sha256",
+        "evidence_sha256",
+        "mode"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "entity_key": { "$ref": "#/$defs/nonEmptyString" },
+        "pointer": { "$ref": "#/$defs/nonEmptyJsonPointer" },
+        "old_value_sha256": { "$ref": "#/$defs/sha256" },
+        "candidate_value_sha256": { "$ref": "#/$defs/sha256" },
+        "current_value_sha256": { "$ref": "#/$defs/sha256" },
+        "evidence_sha256": { "$ref": "#/$defs/sha256" },
+        "mode": { "type": "string", "enum": ["preserve_owner", "take_candidate"] }
+      }
+    },
+    "arrayMergeRule": {
+      "type": "object",
+      "description": "A three-array evidence binding. The old, candidate, and current value hashes bind the complete arrays at pointer before stable index identity is considered.",
+      "required": [
+        "entity_key",
+        "pointer",
+        "old_value_sha256",
+        "candidate_value_sha256",
+        "current_value_sha256",
+        "evidence_sha256",
+        "mode",
+        "element_identity_pointer"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "entity_key": { "$ref": "#/$defs/nonEmptyString" },
+        "pointer": { "$ref": "#/$defs/nonEmptyJsonPointer" },
+        "old_value_sha256": {
+          "description": "SHA-256 of the bound old array value envelope.",
+          "$ref": "#/$defs/sha256"
+        },
+        "candidate_value_sha256": {
+          "description": "SHA-256 of the bound candidate array value envelope.",
+          "$ref": "#/$defs/sha256"
+        },
+        "current_value_sha256": {
+          "description": "SHA-256 of the bound current array value envelope.",
+          "$ref": "#/$defs/sha256"
+        },
+        "evidence_sha256": { "$ref": "#/$defs/sha256" },
+        "mode": { "const": "stable_identity_by_index_v1" },
+        "element_identity_pointer": { "$ref": "#/$defs/nonEmptyJsonPointer" }
+      }
+    },
+    "tablePolicy": {
+      "type": "object",
+      "required": [
+        "allow_insert",
+        "allow_update",
+        "semantic_noise_rules",
+        "conflict_rules",
+        "array_merge_rules"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "allow_insert": { "type": "boolean" },
+        "allow_update": { "type": "boolean" },
+        "semantic_noise_rules": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/semanticNoiseRule" },
+          "uniqueItems": true
+        },
+        "conflict_rules": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/conflictRule" },
+          "uniqueItems": true
+        },
+        "array_merge_rules": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/arrayMergeRule" },
+          "uniqueItems": true
+        }
+      }
+    },
+    "tablePolicies": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "contacts": { "$ref": "#/$defs/tablePolicy" },
+        "sources": { "$ref": "#/$defs/tablePolicy" },
+        "unitgroups": { "$ref": "#/$defs/tablePolicy" },
+        "flowproperties": { "$ref": "#/$defs/tablePolicy" },
+        "flows": { "$ref": "#/$defs/tablePolicy" },
+        "processes": { "$ref": "#/$defs/tablePolicy" }
+      }
+    },
+    "preservationPolicy": {
+      "type": "object",
+      "required": ["schema_version", "table_policies"],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "foundry-incremental-change-set-preservation-policy.v1"
+        },
+        "semantic_domain": { "$ref": "#/$defs/nonEmptyString" },
+        "type_rank": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/table" },
+          "uniqueItems": true
+        },
+        "table_policies": { "$ref": "#/$defs/tablePolicies" }
+      }
+    },
+    "terminalExclusion": {
+      "type": "object",
+      "required": ["schema_version", "action_id", "desired_sha256", "success_receipt"],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "const": "foundry-incremental-change-set-terminal-exclusion.v1" },
+        "action_id": {
+          "type": "string",
+          "pattern": "^.+@[a-f0-9]{64}$"
+        },
+        "desired_sha256": { "$ref": "#/$defs/sha256" },
+        "success_receipt": { "$ref": "#/$defs/terminalSuccessReceiptReference" }
+      }
+    },
+    "terminalSuccessReceiptReference": {
+      "type": "object",
+      "required": ["path", "schema_version", "status", "bytes", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "#/$defs/nonEmptyString" },
+        "schema_version": {
+          "const": "foundry-incremental-change-set-terminal-success-receipt.v1"
+        },
+        "status": { "const": "success" },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "terminalSuccessReceipt": {
+      "type": "object",
+      "required": ["schema_version", "status", "action_id", "desired_sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "foundry-incremental-change-set-terminal-success-receipt.v1"
+        },
+        "status": { "const": "success" },
+        "action_id": { "type": "string", "pattern": "^.+@[a-f0-9]{64}$" },
+        "desired_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "hashSet": {
+      "type": "object",
+      "required": ["payload_sha256", "semantic_sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "payload_sha256": { "$ref": "#/$defs/nullableSha256" },
+        "semantic_sha256": { "$ref": "#/$defs/nullableSha256" }
+      }
+    },
+    "eventInputRefs": {
+      "type": "object",
+      "required": [
+        "comparison_line",
+        "comparison_raw_sha256",
+        "owner_snapshot_receipt_sha256",
+        "old",
+        "candidate",
+        "current"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "comparison_line": { "type": "integer", "minimum": 1 },
+        "comparison_raw_sha256": { "$ref": "#/$defs/sha256" },
+        "owner_snapshot_receipt_sha256": { "$ref": "#/$defs/sha256" },
+        "old": { "$ref": "#/$defs/hashSet" },
+        "candidate": { "$ref": "#/$defs/hashSet" },
+        "current": { "$ref": "#/$defs/hashSet" }
+      }
+    },
+    "eventNormalization": {
+      "type": "object",
+      "required": ["noise_paths"],
+      "additionalProperties": false,
+      "properties": {
+        "noise_paths": { "$ref": "#/$defs/jsonPointerArray" }
+      }
+    },
+    "eventCuration": {
+      "type": "object",
+      "required": ["preserved_paths", "conflict_paths"],
+      "additionalProperties": false,
+      "properties": {
+        "preserved_paths": { "$ref": "#/$defs/jsonPointerArray" },
+        "conflict_paths": { "$ref": "#/$defs/jsonPointerArray" }
+      }
+    },
+    "decisionEvidence": {
+      "type": "object",
+      "required": [
+        "policy_sha256",
+        "noise_evidence_sha256",
+        "preserve_owner_evidence_sha256",
+        "take_candidate_evidence_sha256",
+        "stable_array_evidence_sha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "policy_sha256": { "$ref": "#/$defs/sha256" },
+        "noise_evidence_sha256": { "$ref": "#/$defs/sha256Array" },
+        "preserve_owner_evidence_sha256": { "$ref": "#/$defs/sha256Array" },
+        "take_candidate_evidence_sha256": { "$ref": "#/$defs/sha256Array" },
+        "stable_array_evidence_sha256": { "$ref": "#/$defs/sha256Array" }
+      }
+    },
+    "terminalSuccessBinding": {
+      "type": "object",
+      "required": [
+        "action_id",
+        "desired_sha256",
+        "receipt_path",
+        "receipt_schema_version",
+        "receipt_status",
+        "receipt_bytes",
+        "receipt_sha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "action_id": { "type": "string", "pattern": "^.+@[a-f0-9]{64}$" },
+        "desired_sha256": { "$ref": "#/$defs/sha256" },
+        "receipt_path": { "$ref": "#/$defs/nonEmptyString" },
+        "receipt_schema_version": {
+          "const": "foundry-incremental-change-set-terminal-success-receipt.v1"
+        },
+        "receipt_status": { "const": "success" },
+        "receipt_bytes": { "type": "integer", "minimum": 1 },
+        "receipt_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "nullableTerminalSuccessBinding": {
+      "anyOf": [{ "$ref": "#/$defs/terminalSuccessBinding" }, { "type": "null" }]
+    },
+    "eventDiff": {
+      "type": "object",
+      "required": ["applied_paths", "forbidden_paths"],
+      "additionalProperties": false,
+      "properties": {
+        "applied_paths": { "$ref": "#/$defs/jsonPointerArray" },
+        "forbidden_paths": { "$ref": "#/$defs/jsonPointerArray" }
+      }
+    },
+    "eventOutcome": {
+      "type": "object",
+      "required": [
+        "disposition",
+        "reason_codes",
+        "expected_operation",
+        "before_sha256",
+        "desired_sha256",
+        "action_id",
+        "terminal_success",
+        "executable"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "disposition": { "$ref": "#/$defs/disposition" },
+        "reason_codes": { "$ref": "#/$defs/reasonCodes" },
+        "expected_operation": { "$ref": "#/$defs/nullableExpectedOperation" },
+        "before_sha256": { "$ref": "#/$defs/nullableSha256" },
+        "desired_sha256": { "$ref": "#/$defs/nullableSha256" },
+        "action_id": { "$ref": "#/$defs/nullableNonEmptyString" },
+        "terminal_success": { "$ref": "#/$defs/nullableTerminalSuccessBinding" },
+        "executable": { "const": false }
+      }
+    },
+    "dependencyDisposition": {
+      "type": "object",
+      "required": ["dependency_conversion_id", "disposition"],
+      "additionalProperties": false,
+      "properties": {
+        "dependency_conversion_id": { "$ref": "#/$defs/nonEmptyString" },
+        "disposition": {
+          "type": "string",
+          "enum": [
+            "held_missing",
+            "held_dependency",
+            "satisfied_by_action",
+            "satisfied_terminal_success",
+            "satisfied_current_exact"
+          ]
+        }
+      }
+    },
+    "eventDependencies": {
+      "type": "object",
+      "required": ["declared_conversion_ids", "dispositions", "dependency_action_ids"],
+      "additionalProperties": false,
+      "properties": {
+        "declared_conversion_ids": { "$ref": "#/$defs/stringArray" },
+        "dispositions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/dependencyDisposition" },
+          "uniqueItems": true
+        },
+        "dependency_action_ids": { "$ref": "#/$defs/stringArray" }
+      }
+    },
+    "eventOutput": {
+      "type": "object",
+      "required": ["artifact", "line", "row_sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "artifact": { "$ref": "#/$defs/nonEmptyString" },
+        "line": { "type": "integer", "minimum": 1 },
+        "row_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "conversionEvent": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "sequence",
+        "terminal",
+        "input_sequence",
+        "conversion_id",
+        "entity",
+        "input_refs",
+        "normalization",
+        "curation",
+        "evidence",
+        "diff",
+        "outcome",
+        "dependencies",
+        "duration_ms",
+        "recorded_at_utc",
+        "output",
+        "decision_binding_sha256",
+        "previous_event_sha256",
+        "event_sha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "const": "foundry-incremental-change-set-conversion-event.v1" },
+        "sequence": { "type": "integer", "minimum": 1 },
+        "terminal": { "const": true },
+        "input_sequence": { "type": "integer", "minimum": 1 },
+        "conversion_id": { "$ref": "#/$defs/nonEmptyString" },
+        "entity": { "$ref": "#/$defs/entity" },
+        "input_refs": { "$ref": "#/$defs/eventInputRefs" },
+        "normalization": { "$ref": "#/$defs/eventNormalization" },
+        "curation": { "$ref": "#/$defs/eventCuration" },
+        "evidence": { "$ref": "#/$defs/decisionEvidence" },
+        "diff": { "$ref": "#/$defs/eventDiff" },
+        "outcome": { "$ref": "#/$defs/eventOutcome" },
+        "dependencies": { "$ref": "#/$defs/eventDependencies" },
+        "duration_ms": { "type": "number", "minimum": 0 },
+        "recorded_at_utc": { "$ref": "#/$defs/utcTimestamp" },
+        "output": { "$ref": "#/$defs/eventOutput" },
+        "decision_binding_sha256": { "$ref": "#/$defs/sha256" },
+        "previous_event_sha256": { "$ref": "#/$defs/nullableSha256" },
+        "event_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "noWriteRow": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "conversion_id",
+        "entity",
+        "reason_codes",
+        "current_sha256",
+        "desired_sha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "const": "foundry-incremental-change-set-no-write-row.v1" },
+        "conversion_id": { "$ref": "#/$defs/nonEmptyString" },
+        "entity": { "$ref": "#/$defs/entity" },
+        "reason_codes": { "$ref": "#/$defs/reasonCodes" },
+        "current_sha256": { "$ref": "#/$defs/nullableSha256" },
+        "desired_sha256": { "$ref": "#/$defs/nullableSha256" }
+      }
+    },
+    "holdConflict": {
+      "type": "object",
+      "required": ["pointer", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "pointer": { "$ref": "#/$defs/jsonPointer" },
+        "reason": {
+          "type": "string",
+          "enum": ["unattributed_current_drift", "three_way_conflict", "array_identity_unstable"]
+        }
+      }
+    },
+    "holdRow": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "conversion_id",
+        "entity",
+        "reason_codes",
+        "dependency_dispositions",
+        "conflicts",
+        "forbidden_paths"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "const": "foundry-incremental-change-set-hold-row.v1" },
+        "conversion_id": { "$ref": "#/$defs/nonEmptyString" },
+        "entity": { "$ref": "#/$defs/entity" },
+        "reason_codes": { "$ref": "#/$defs/reasonCodes" },
+        "dependency_dispositions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/dependencyDisposition" },
+          "uniqueItems": true
+        },
+        "conflicts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/holdConflict" },
+          "uniqueItems": true
+        },
+        "forbidden_paths": { "$ref": "#/$defs/jsonPointerArray" }
+      }
+    },
+    "dependencyEdge": {
+      "type": "object",
+      "required": ["conversion_id", "dependency_conversion_id", "disposition"],
+      "additionalProperties": false,
+      "properties": {
+        "conversion_id": { "$ref": "#/$defs/nonEmptyString" },
+        "dependency_conversion_id": { "$ref": "#/$defs/nonEmptyString" },
+        "disposition": {
+          "type": "string",
+          "enum": [
+            "held_missing",
+            "held_dependency",
+            "satisfied_by_action",
+            "satisfied_terminal_success",
+            "satisfied_current_exact"
+          ]
+        }
+      }
+    },
+    "dependencyClosure": {
+      "type": "object",
+      "required": ["schema_version", "ordered_conversion_ids", "edges"],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "foundry-incremental-change-set-dependency-closure.v1"
+        },
+        "ordered_conversion_ids": { "$ref": "#/$defs/stringArray" },
+        "edges": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/dependencyEdge" },
+          "uniqueItems": true
+        }
+      }
+    },
+    "cliAction": {
+      "type": "object",
+      "required": [
+        "action_id",
+        "desired_sha256",
+        "expected_operation",
+        "table",
+        "id",
+        "version",
+        "before_sha256",
+        "dependency_action_ids"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "action_id": {
+          "type": "string",
+          "pattern": "^.+@[a-f0-9]{64}$"
+        },
+        "desired_sha256": { "$ref": "#/$defs/sha256" },
+        "expected_operation": { "$ref": "#/$defs/expectedOperation" },
+        "table": { "$ref": "#/$defs/table" },
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "version": { "$ref": "#/$defs/nonEmptyString" },
+        "before_sha256": { "$ref": "#/$defs/nullableSha256" },
+        "dependency_action_ids": { "$ref": "#/$defs/stringArray" }
+      }
+    },
+    "cliContract": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "execution_id",
+        "project_ref",
+        "target_mode",
+        "owner",
+        "actions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "const": "dataset-save-draft-execution-contract.v1" },
+        "execution_id": { "$ref": "#/$defs/nonEmptyString" },
+        "project_ref": { "$ref": "#/$defs/nonEmptyString" },
+        "target_mode": { "const": "owner_draft" },
+        "owner": { "$ref": "#/$defs/owner" },
+        "actions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/cliAction" },
+          "uniqueItems": true
+        }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "required": [
+        "universe",
+        "insert",
+        "update",
+        "no_write",
+        "hold",
+        "actions",
+        "delta_rows",
+        "conversion_log_rows",
+        "delete_actions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "universe": { "type": "integer", "minimum": 0 },
+        "insert": { "type": "integer", "minimum": 0 },
+        "update": { "type": "integer", "minimum": 0 },
+        "no_write": { "type": "integer", "minimum": 0 },
+        "hold": { "type": "integer", "minimum": 0 },
+        "actions": { "type": "integer", "minimum": 0 },
+        "delta_rows": { "type": "integer", "minimum": 0 },
+        "conversion_log_rows": { "type": "integer", "minimum": 0 },
+        "delete_actions": { "const": 0 }
+      }
+    },
+    "findings": {
+      "type": "object",
+      "required": ["p0", "p1"],
+      "additionalProperties": false,
+      "properties": {
+        "p0": { "type": "integer", "minimum": 0 },
+        "p1": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "algebra": {
+      "type": "object",
+      "required": [
+        "passed",
+        "equation",
+        "actions_equal_delta",
+        "events_equal_universe",
+        "delete_actions_zero",
+        "terminal_replay_zero",
+        "hash_chain_valid"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "passed": { "type": "boolean" },
+        "equation": { "const": "insert + update + no_write + hold = universe" },
+        "actions_equal_delta": { "type": "boolean" },
+        "events_equal_universe": { "type": "boolean" },
+        "delete_actions_zero": { "const": true },
+        "terminal_replay_zero": { "const": true },
+        "hash_chain_valid": { "const": true }
+      }
+    },
+    "dispatchCounts": {
+      "type": "object",
+      "required": ["network", "database", "cli", "dml"],
+      "additionalProperties": false,
+      "properties": {
+        "network": { "const": 0 },
+        "database": { "const": 0 },
+        "cli": { "const": 0 },
+        "dml": { "const": 0 }
+      }
+    },
+    "report": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "status",
+        "production_authority",
+        "change_set_id",
+        "project_ref",
+        "target_mode",
+        "owner",
+        "consumer",
+        "counts",
+        "findings",
+        "algebra",
+        "blockers",
+        "next_gate",
+        "dispatch_counts",
+        "files",
+        "examples",
+        "execution_requirements",
+        "rerun"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "const": "foundry-incremental-change-set-report.v1" },
+        "status": { "$ref": "#/$defs/status" },
+        "production_authority": { "const": false },
+        "change_set_id": { "$ref": "#/$defs/nonEmptyString" },
+        "project_ref": { "$ref": "#/$defs/nonEmptyString" },
+        "target_mode": { "const": "owner_draft" },
+        "owner": { "$ref": "#/$defs/owner" },
+        "consumer": { "$ref": "#/$defs/consumerBinding" },
+        "counts": { "$ref": "#/$defs/counts" },
+        "findings": { "$ref": "#/$defs/findings" },
+        "algebra": { "$ref": "#/$defs/algebra" },
+        "blockers": { "$ref": "#/$defs/stringArray" },
+        "next_gate": { "$ref": "#/$defs/nonEmptyString" },
+        "dispatch_counts": { "$ref": "#/$defs/dispatchCounts" },
+        "files": {
+          "type": "object",
+          "required": [
+            "request",
+            "events",
+            "delta",
+            "no_write",
+            "holds",
+            "dependency_closure",
+            "cli_input",
+            "execution_contract",
+            "manifest"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "request": { "$ref": "#/$defs/nonEmptyString" },
+            "events": { "$ref": "#/$defs/nonEmptyString" },
+            "delta": { "$ref": "#/$defs/nonEmptyString" },
+            "no_write": { "$ref": "#/$defs/nonEmptyString" },
+            "holds": { "$ref": "#/$defs/nonEmptyString" },
+            "dependency_closure": { "$ref": "#/$defs/nonEmptyString" },
+            "cli_input": { "$ref": "#/$defs/nullableNonEmptyString" },
+            "execution_contract": { "$ref": "#/$defs/nullableNonEmptyString" },
+            "manifest": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        "examples": {
+          "type": "object",
+          "required": ["insert", "update", "noop", "hold"],
+          "additionalProperties": false,
+          "properties": {
+            "insert": { "$ref": "#/$defs/stringArray" },
+            "update": { "$ref": "#/$defs/stringArray" },
+            "noop": { "$ref": "#/$defs/stringArray" },
+            "hold": { "$ref": "#/$defs/stringArray" }
+          }
+        },
+        "execution_requirements": {
+          "type": "object",
+          "required": [
+            "cli_contract_present",
+            "ordered_batch",
+            "support_action_count",
+            "allow_account_local_support"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "cli_contract_present": { "type": "boolean" },
+            "ordered_batch": { "const": true },
+            "support_action_count": { "type": "integer", "minimum": 0 },
+            "allow_account_local_support": { "type": "boolean" }
+          }
+        },
+        "rerun": {
+          "type": "object",
+          "required": ["allowed", "condition", "command"],
+          "additionalProperties": false,
+          "properties": {
+            "allowed": { "const": true },
+            "condition": { "$ref": "#/$defs/nonEmptyString" },
+            "command": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        }
+      }
+    },
+    "artifactFacts": {
+      "type": "object",
+      "required": ["path", "schema_version", "rows", "bytes", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "#/$defs/nonEmptyString" },
+        "schema_version": { "$ref": "#/$defs/nullableNonEmptyString" },
+        "rows": {
+          "anyOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }]
+        },
+        "bytes": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "nullableArtifactFacts": {
+      "anyOf": [{ "$ref": "#/$defs/artifactFacts" }, { "type": "null" }]
+    },
+    "manifestInputArtifacts": {
+      "type": "object",
+      "required": [
+        "request",
+        "comparisons",
+        "owner_snapshot",
+        "owner_snapshot_receipt",
+        "policy",
+        "terminal_exclusions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "request": { "$ref": "#/$defs/artifactFacts" },
+        "comparisons": { "$ref": "#/$defs/artifactFacts" },
+        "owner_snapshot": { "$ref": "#/$defs/artifactFacts" },
+        "owner_snapshot_receipt": { "$ref": "#/$defs/artifactFacts" },
+        "policy": { "$ref": "#/$defs/artifactFacts" },
+        "terminal_exclusions": { "$ref": "#/$defs/nullableArtifactFacts" }
+      }
+    },
+    "manifest": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "status",
+        "production_authority",
+        "change_set_id",
+        "input_artifacts",
+        "output_artifacts",
+        "output_binding_sha256",
+        "counts",
+        "findings"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "const": "foundry-incremental-change-set-manifest.v1" },
+        "status": { "$ref": "#/$defs/status" },
+        "production_authority": { "const": false },
+        "change_set_id": { "$ref": "#/$defs/nonEmptyString" },
+        "input_artifacts": { "$ref": "#/$defs/manifestInputArtifacts" },
+        "output_artifacts": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/artifactFacts" },
+          "uniqueItems": true
+        },
+        "output_binding_sha256": { "$ref": "#/$defs/sha256" },
+        "counts": { "$ref": "#/$defs/counts" },
+        "findings": { "$ref": "#/$defs/findings" }
+      }
+    }
+  }
+}

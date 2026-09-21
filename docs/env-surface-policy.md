@@ -3,15 +3,71 @@ title: Environment Surface Policy
 docType: policy
 scope: runtime-env
 status: active
+authoritative: true
 owner: tiangong-lca-data-foundry
 language: en
-lastReviewedAt: 2026-06-06
-lastReviewedCommit: 631bd2273fc14e55802301d211beaf968646340b
+whenToUse:
+  - when adding, removing, or documenting Foundry environment variables
+  - when changing credential-free toolchain or acceptance-hook environment boundaries
+whenToUpdate:
+  - when .env.example or an executable runtime environment consumer changes
+  - when pnpm, CLI, skill, or account-guard environment ownership changes
+checkPaths:
+  - .env.example
+  - .codex/hooks/run-foundry-acceptance-check.sh
+  - docs/env-surface-policy.md
+  - scripts/foundry.ts
+  - scripts/foundry-golden-diff.ts
+  - scripts/commands/core.ts
+  - scripts/with-lca-account.ts
+  - scripts/lib/foundry-runtime-environment.ts
+  - scripts/lib/foundry-runtime-qualification.ts
+  - scripts/lib/foundry-execution-admission.ts
+  - scripts/foundry-facade.ts
+  - scripts/runtime-entry.ts
+  - scripts/lib/tidas-adapter.ts
+  - scripts/lib/foundry-runtime-utils.ts
+  - scripts/build-foundry-package.ts
+  - scripts/pack-foundry-package.ts
+  - scripts/verify-foundry-package.ts
+  - scripts/package-entry.ts
+  - scripts/public-api.ts
+  - test/scenarios/foundry-package-consumer.test.mts
+  - test/unit/foundry-runtime-environment.test.mts
+lastReviewedAt: 2026-09-20
+lastReviewedCommit: 6a48836f88194c68a95e0bb13c0daaf32ce9685f
+lastReviewedNote: "Reviewed for Foundry #180: the exact installed CLI 0.1.18 pin does not change environment allowlists, OAuth session handling, or account-scoped execution authority."
 ---
 
 # Environment Surface Policy
 
 Foundry `.env.example` is a public runtime contract, not a mirror of every adjacent repository environment variable.
+
+Package build, descriptor verification and packing do not load `.env`. The public staging manifest has no lifecycle scripts. Clean-consumer tests pass only platform process variables, isolated HOME/package-cache paths and optional network proxy/CA settings to package tools; credential-shaped variables are rejected from that projection. Installed workspace/task operations retain the facade's explicit account-intent/session-reference contract and never search the package directory for credentials.
+
+The managed package bin consumes only the inherited CLI IPC context for runtime authority. `metadata/foundry-runtime.json` and any selected target manifest are read through independently verified component inventory facts; no environment variable or ordinary argument can replace them. The host adds no credential storage or login step. Returned managed command actions re-enter the same verified CLI manager launch; no environment variable supplies a replacement manifest, runtime or credential. The public manifest cache snapshot is bound by the independent IPC digest and cannot establish trust by itself. Its mutable per-workspace cache namespace sits outside component roots within the manager-owned cache, while the whole manager cache remains excluded from workspace roots. Failed or interrupted admission returns through the existing public result/signal adapter before workspace operations.
+
+The source-only release-version preparer reads no `.env` and has no runtime or registry authority. Its CLI binds the executing repository root by native filesystem directory identity, clears inherited Git repository variables before clean-worktree checks, and writes only the three validated version projections after explicit `--apply`. Equivalent directory casing cannot redirect it to another physical repository.
+
+The source-only runtime component assembler accepts only a fresh output plus optional `--published` verification mode. It obtains production/native inputs through their process-local owners, packs the exact source and optionally verifies the matching public npm artifact. It never restores authority from an output receipt or reads a task-selected runtime manifest. Its native qualifier supplies an empty tool PATH and private HOME/temp/workspace directories, uses the selected component Node executable, and counts manager downloads separately from preparation-time public artifact retrieval. It performs local workspace/task qualification without account intent or business operations. The candidate CI step has read-only permissions and does not upload or publish the component binaries.
+
+Release inspection similarly binds its own Git root and ignores inherited Git repository bindings and replacement objects. Its optional `GITHUB_ACTIONS`/`GITHUB_OUTPUT` transport writes only validated release scalars for CI; these are not public runtime configuration. The source-only npm verifier makes uncredentialed HTTPS requests to fixed public npm endpoints and Sigstore trust services, with no `.env`, npm configuration, account session or token input. Its private temporary trust cache is removed after verification; optional evidence output requires a fresh explicit directory. Sigstore remains a development dependency outside the shipped runtime.
+
+The source-only workflow context command additionally reads GitHub's event file and repository/ref/source/workflow bindings. Its `GITHUB_TOKEN` is used only for the bounded merged-PR lookup. The separate `release-tag` job receives contents-write permission after all native qualification jobs pass, revalidates that same context and uses its token only for bounded canonical-repository tag reads and create-only refs. No project dependencies are installed in that job. The token is not forwarded to native tests or public npm verification, and no token, event-file contents or environment map is included in output. Source qualification remains read-only, and checkout credentials are not persisted. These CI variables stay out of `.env.example` and the installed runtime.
+
+Repository pack/verification tools and consumer tests share `scripts/lib/package-manager-command.ts`. On Windows, it selects a native `pnpm.exe` from an absolute `PNPM_HOME` or `PATH` entry. npm requires one complete PATH installation containing `npm.cmd`, `node.exe` and `node_modules/npm/bin/npm-cli.js`; the colocated Node executes the script. These tooling selectors never execute `.cmd` or a shell, never reinterpret argv, and never become public Foundry environment variables or shipped runtime code. The clean package-consumer scenario uses an owned `COREPACK_HOME` shared only by its temporary tool homes, verifies the declared pnpm version once, and disables Corepack network and latest-version lookup for subsequent packing. Its application dependency cache and online/offline consumer checks stay separate; no operator home or cache is inherited.
+
+The `npm-package` job receives read permissions for GitHub contents/PR evidence and `id-token: write` for signing and npm authentication. It binds the exact hosted job, event, source/workflow SHA/ref and numeric repository/run/attempt identities. `ACTIONS_ID_TOKEN_REQUEST_URL` and `ACTIONS_ID_TOKEN_REQUEST_TOKEN` are used only for bounded authenticated HTTPS requests to GitHub Actions with the fixed audience `sigstore` or `npm:registry.npmjs.org`; redirects, alternate origins, malformed/oversized responses and static `SIGSTORE_ID_TOKEN` input are rejected. The signing identity is supplied directly to Sigstore. The npm identity must be exchanged at the fixed package-specific registry endpoint for a fresh short-lived OIDC credential before invoking pnpm. No identity or registry credential is saved or printed.
+
+The publication child omits inherited GitHub/npm credentials, OIDC endpoints and `NODE_OPTIONS`. Its `NODE_AUTH_TOKEN` exists only in that child environment and comes from the just-completed OIDC exchange. Explicit upper/lowercase npm user/global configuration selectors point to owned temporary files containing fixed settings and a literal environment placeholder, never a token value; inherited user configuration cannot provide a fallback. The pinned client receives prepacked files outside Git, no stdin, a bounded execution time and zero fetch retries. Public verification is uncredentialed, and preparation/download verification adds no installed-runtime environment input or account credential store.
+
+Frozen production materialization and metadata collection are source release operations. They read the selected owning lock and reviewed assets, fetch only its fixed public-registry tarball URLs without credentials, and never load `.env`, run package lifecycle hooks, resolve floating versions or accept a serialized lock as installation authority. Missing optional peers remain absent. Package extraction uses owned fresh directories and complete content checks; metadata reads license bytes and the checksum-bound upstream schema/supplement from source. These APIs add no public runtime environment variables or authentication store.
+
+The `release:prepare-production` command binds its own clean physical Git root and the source Node/pnpm declarations. Its only input is a fresh explicit output directory. Public C1 provenance comes from the reviewed runtime input file; package/registry/source expectations cannot be supplied through environment or command options. Its independent C1 inspection child receives platform process settings only, never source account credentials or Node options. Failed assembly removes only the newly owned output.
+
+`release:prepare-native` similarly takes only a fresh output and the current supported tuple. Its URLs/digests come from reviewed source data. Redirects remain on the fixed official HTTPS artifact hosts and carry no account authorization. Native inspection uses only platform settings and a fresh private child home, without inherited Node options, TIDAS overrides or user sessions. The downloaded Node/TIDAS artifacts and upstream license texts are inputs, not sources of runtime authority or business permissions.
+
+CI tooling additionally uses `FOUNDRY_CI_BASE_SHA` and `FOUNDRY_CI_SOURCE_SHA` for exact PR/caller-source selection. `FOUNDRY_CI_PACKAGE_DIR`, `FOUNDRY_CI_PACKAGE_MANIFEST_SHA256` and `FOUNDRY_CI_PACKAGE_SHA256` are a complete source-job-only artifact selection supplied from independent producing-job outputs. Partial or invalid selection fails; it never silently rebuilds or reads an operator credential. The package context includes only non-secret Git/toolchain/run facts. These variables are excluded from `.env.example`, ordinary task inputs and installed runtime configuration.
 
 ## Allowed Variables
 
@@ -28,6 +84,7 @@ Allowed families:
 - public `TIANGONG_LCA_API_*`, session, QA LLM, KB search, and unstructured-document runtime keys used by CLI-backed workflows;
 - `TIANGONG_AI_*` keys used by runtime-installed Tiangong AI KB skills such as `tiangong-kb-sci-search`;
 - `UNSTRUCTURED_*` aliases used by the runtime-installed Tiangong AI `$document-granular-decompose` skill;
+- `TIDAS_BIN`, `TIDAS_CONFIG`, `TIDAS_MEMORY_BUDGET_MIB`, and `TIDAS_QUEUE_CAPACITY` for the public Rust tidas machine contract;
 - `LCA_DATA_AGENT_*`, `TIANGONG_LCA_CLI_BIN`, `TIANGONG_LCA_CLI_DIR`, `TIANGONG_LCA_SKILLS_ROOT`, and `LCA_SKILLS_ROOT` path indirection keys.
 
 ## Forbidden Variables
@@ -37,7 +94,6 @@ Do not add adjacent-repo internal test or quality toggles to foundry `.env.examp
 Examples that must stay out of foundry:
 
 - `TIANGONG_LCA_COVERAGE`
-- `TIANGONG_LCA_TIDAS_SDK_DIR`
 - generic `SUPABASE_URL` / `SUPABASE_KEY`
 - tracker secrets such as `LINEAR_API_KEY` / `GITHUB_TOKEN`
 - operator-specific source pointers such as `SOURCE_REPO_URL`
@@ -53,8 +109,52 @@ When a variable is needed by more than one project, record the owner before docu
 - skills should consume CLI variables through wrapper contracts and should not introduce database credentials or private transport variables;
 - private operator convenience variables stay in local `.env` and must not become reusable project examples.
 
+The account wrapper reads only public OAuth configuration, an absolute private CLI session reference, and expected project/user intent from the selected ignored account profile. Legacy user API keys, username/password and access-token profiles are rejected; the CLI owns session contents and refresh. Blank public inputs use the CLI official Production profile. A custom project requires complete public OAuth configuration. Each execution obtains a new server-verified identity receipt, requires the expected project/user and a live OAuth session, and enforces receipt TTL/hash checks without requiring another password login. The child receives the session reference and a restricted environment; Foundry filesystem env loading is disabled inside that boundary. `FOUNDRY_AUTH_RECEIPT_*` values are safe, wrapper-generated child bindings and must not be configured in `.env` or account profiles. `FOUNDRY_ACCOUNT_PROFILE_SKIP_AUTH_CHECK` and equivalent bypass variables are unsupported and must not be documented or propagated.
+
+## Internal Credential-Free Child Policy
+
+The explicit npm OIDC diagnostic is confined to its owning GitHub-hosted release workflow dispatch. It uses only the Actions identity endpoint for the intended npm package and discards the exchanged credential after reporting fixed validation facts and timing differences. Failure output contains only fixed stage identifiers and, when available, a bounded HTTP status; rejected validation or request failures exit nonzero. Raw errors, response fields, credential values and account configuration never enter output or child processes. The input selects diagnostic execution only and disables every release continuation; it is not an installed-runtime environment option or publication authorization.
+
+`FOUNDRY_RUNTIME_ENV_FILE_POLICY=disabled` is an internal child-process binding, not a user-configurable `.env.example` variable. The Golden harness sets it only inside an explicit allowlisted environment shared byte-for-byte by baseline and current commands. Both sides run in isolated source snapshots: candidate files come only from Git-visible tracked/untracked source, excluding ignored operator inputs, credentials, task state and prior reports. That environment replaces HOME, temp, XDG, npm, git and Corepack state with task-local directories, preserves only required platform launcher keys, accepts only `TIANGONG_LCA_CLI_BIN` and `TIDAS_BIN` as caller overrides, and drops ambient `NODE_OPTIONS`, tokens, keys, passwords, sessions, credential URLs and other configuration injection. The legacy developer entry keeps explicit CLI startup behavior for repository maintenance. The explicit workspace runtime never loads `.env`, and user-workspace commands do not fall back to the developer path. Tests seed only temporary environment files and intercept operator-state access before it can occur.
+
+Golden dependency installation has a separate cache-only exception when the snapshot and current package-manager pins match: it discovers the active pnpm content store and reuses Corepack's tool cache. Frozen installs keep scripts disabled and explicitly enable store integrity verification; they do not copy or link the current `node_modules`, disable supply-chain policy checks, or use offline staleness overrides. Snapshot HOME/config remain isolated. Baseline/current Foundry commands still receive the original identical isolated environment, without these installer-only cache locations. Windows installation uses the existing native package-manager resolver and argv dispatch.
+
+Runtime qualification passes the same explicit isolated environment into both TIDAS handshake invocations. It copies the independently hashed TIDAS executable into a private temporary directory, rehashes the copy and invokes only that copy; ambient `TIDAS_*` settings cannot alter executable selection or resource budgets. The execution-context document stores runtime, authorization, input and CommandSpec digests only. It contains no environment map, OAuth material, session reference or credential path.
+
+The W05 facade receives runtime expectations and the selected TIDAS executable only through an explicit process-local host argument. `FOUNDRY_CLI_EXPECTATION`, ambient `TIDAS_BIN`, task spec fields, ordinary argv and `.env` are not trust sources; unsupported public options are rejected before workspace mutation. The final CLI manager/manifest binding is W06/W08 work.
+
+Consumer doctor may receive expected project/user and an absolute private session reference. It verifies only that the reference is a bounded regular non-link file and reports `configured_unverified`; it never opens the file or claims server authentication. Missing reference metadata returns `needs_auth` with a human OAuth action. Task start does not authenticate or cache an identity. Restricted resume continues to require a fresh CLI-owned identity at the W04 boundary.
+
+Public read-only identity preflight shares `foundry-authentication-environment.ts` with fresh account verification. It takes explicit host OAuth/headless configuration, preserves required system launcher/session discovery keys, and omits ambient credentials, executable overrides, Node options and result-cache settings. Its expected project/user bindings come from the verified current task account. The receipt passed to the runner is temporary non-secret proof; headless tokens remain only in the child environment and are not registered as artifacts.
+
+The public finalize composition injects explicit environments into queue, handoff and preflight helpers. Local checks remain credential-free; remote read/dry-run stages use current task account configuration. Ambient preflight concurrency/reuse-map settings and source-runner shard dispatch do not enter this path. Native validation runs the copied, rehashed qualified executable. Finalize rejects mutation flags and cannot dispatch a commit.
+
 ## Automatic Check
 
-`npm run env:check` validates `.env.example` against the allowlist and forbidden-key list in `scripts/foundry.mjs`.
+`pnpm env:check` validates `.env.example` against the allowlist and forbidden-key list in `scripts/foundry.ts`.
 
-The same env-surface check is included in `npm run acceptance:check`, so the Codex Stop hook can block future automatic runs when an internal variable is accidentally promoted into foundry's public env example.
+The same env-surface check is included in `pnpm acceptance:check`, so the Codex Stop hook can block future automatic runs when an internal variable is accidentally promoted into Foundry's public env example. The clean arbitrary-worktree toolchain gate is offline and must not read `.env`, account profiles, or `.foundry` runtime state.
+
+The pre-push hook removes every repository-local Git environment binding reported by `git rev-parse --local-env-vars` before starting the full gate. Fixture repository initialization must not reuse the outer push repository or index; direct fixture runners also use an isolated Git environment. `test/unit/git-hook-isolation.test.mts` verifies the actual hook preserves the outer repository config while the nested test repository is created separately.
+
+Canonical-support refresh passes only public OAuth configuration, the CLI session reference and essential platform/home paths to its CLI child. It uses a fresh temporary cwd, so the CLI cannot load the operator checkout `.env`. Username/password, legacy API keys, unrelated secrets and shell configuration are not propagated. The caller must provide the account wrapper's expected project/user intent.
+
+The consumer identity runner uses a fresh private cwd and an explicit environment allowlist. OAuth uses CLI-owned defaults or complete public configuration and an optional private session reference. Headless mode forwards the caller-supplied actor token only in the one CLI process environment, disables the session cache, removes its temporary environment binding after verification, and never stores or serializes the token. Current CLI headless receipts have no token-expiry timestamp; Foundry enforces fresh server identity and does not invent token lifetime evidence.
+
+Constructing an internal `createFoundryApplication` does not call `loadRuntimeEnv`, discover a workspace or mutate process environment. The developer `main(argv)` explicitly performs its existing env loading before creating that application. This constructor guarantee does not qualify every legacy leaf command for consumer use; each leaf must receive the admitted runtime I/O and child-process environment before the facade exposes it.
+
+Migration inventory never opens recognized `.env`, OAuth/session, token/cookie or private-account storage, or the independently selected session reference under any filename; it records only path/size/classification and omits content hashes. Transfer plans project explicit account intent as project/user only and never carry a session reference, environment map or grant. No migration environment variable or alternate trust-anchor source is introduced.
+
+Transfer staging uses the public CLI batch lock in a destination-keyed cache domain outside the source. It creates no auth session or business process. Root task queues receive the same private-file projection as `.foundry`, and explicit external inputs cannot be the selected session reference or recognized private storage.
+
+The host can select an independently trusted workspace read/write manifest and explicit runtime-manager options. These never come from `.env`, task specifications or ordinary argv. Registered `state/task-accounts/<id>.json` is identity intent, not OAuth storage. The explicitly selected session path is checked before marker and protected migration reads, including aliases. Source specifications and raw migration evidence do not carry session contents into current task state.
+
+Public finalization, handoff and readback set `FOUNDRY_ACCOUNT_MODE` only from the registered task intent. Public traceHash acceptance supplies an explicit qualified CLI get adapter and never calls the legacy default adapter that inherits `process.env`. Tokens remain in the existing process-only child environment; mode, CommandSpec and payload-read evidence contain no credential authority.
+
+## Source CI recovery inputs
+
+`FOUNDRY_QUALIFICATION_CAPSULE`, `FOUNDRY_RESUME_RUN`, `FOUNDRY_CI_CAN_SEAL`, `FOUNDRY_STAGE_PASSED` and `FOUNDRY_SOURCE_PACKAGE_*` are source-workflow inputs only. They never enter the public environment example, task configuration or installed runtime. A path or success flag grants no trust: the owning job, exact current source/toolchain, signed capsule and complete payload inventory are independently checked. GitHub tokens remain process-only. Preflight returns fixed OIDC validation facts and discards credentials; native diagnostics strip OIDC and package-publishing credentials before executing the selected immutable source.
+
+The owning public-bootstrap workflow uses `BOOTSTRAP_WORK` and `BOOTSTRAP_PROOF` only to select runner-temporary work and proof directories for a filesystem staging step. The qualification command's `BOOTSTRAP_OUTPUT` selects the work directory; the stage receives only its completed report. These values are not forwarded to the installed bootstrap/application, select no runtime trust anchor and grant no authentication or business authority.
+
+Public reference selection introduces no environment variable. It uses explicit descriptor/file digests and credential/session-path guards, retains task snapshots, and forwards the resulting paths through the existing credential-free QA and authenticated read-only verification child policies.

@@ -1,5 +1,33 @@
+---
+title: Historical USLCI Import Runbook
+docType: runbook
+scope: import-profile/uslci-history
+status: historical
+authoritative: false
+owner: tiangong-lca-data-foundry
+language: zh
+whenToUse:
+  - when reconstructing the 2026-06 USLCI import execution record and diagnostics
+whenToUpdate:
+  - when a current contract changes how this historical runbook should be interpreted
+checkPaths:
+  - docs/uslci-import-runbook.md
+  - docs/uslci-import-plan.md
+  - docs/import-profiles/uslci/**
+  - scripts/lib/import-curation/**
+lastReviewedAt: 2026-08-25
+lastReviewedCommit: a2832001e1b67bdc8a1a9eb7707a99187f787a58
+lastReviewedNote: "Reviewed for Issue #67 Wave 22b: the typed USLCI profile wrapper preserves its exact configuration and leaves this retained Python-era runbook historical and non-authoritative."
+related:
+  - docs/uslci-import-plan.md
+  - docs/import-profiles/uslci/profile.md
+  - inputs/source-packages/uslci-database-public.md
+---
+
 # USLCI 导入运行手册（goal 入口文档）
 
+> **Rust cutover note:** 本文保留 2026-06 Python `tidas-tools`、PyPI/SDK 版本与旧 CLI wrapper 命令作为历史证据；这些路径不再是可执行入口，也不得用于新任务。当前确定性转换/校验统一使用 `node scripts/foundry.mjs dataset-tidas-import|dataset-tidas-validate` → Rust `tidas` 0.2.x；AI curation、QA、remote handoff 继续使用 Foundry/CLI。
+>
 > **完整方案见 [`docs/uslci-import-plan.md`](uslci-import-plan.md)（自包含、端到端的权威计划）。本文是逐会话的操作日志/快照入口（§6 当前状态、§R 摘要、分诊表）。**
 >
 > 目标读者：接手 USLCI 持续导入的任何一个 agent 会话或人工操作者。读完本文应能：知道当前阶段在哪、用哪条命令继续、遇到 blocker 怎么分诊，而不需要重新逆向工程。最后更新：2026-06-25（**§R 为当前权威计划**：2026-06 ILCD-alignment 发布 tidas-tools 0.0.34 / sdk 0.1.45·0.2.14 / cli 0.0.19 已修 42-bug 审计并收紧 schema → 计划改为 conversion-v7 重转换，手工补丁链 v2..v6 作废）。更新本文时同步更新「§6 当前状态快照」。
@@ -160,7 +188,7 @@ inputs(合并源包) → tidas-tools 转换（CLI 包装入口，见 §5 Phase 1
 
 ### Phase 3A — classification 授权（process 2,112 + flow-product 1,638 = 3,750，杠杆 1）✅ 链已验证
 
-走**完全 generic、profile 中立**的链（`classification-decisions.mjs` 零 bafu 引用）。**pilot（15 process + 85 flow-product）已端到端打通**：6 scope 仅凭 classification 即 ready、pilot-15 classification blocker 归零。**经验证的精确配方 + 坑**（细节见 `$RUN/phase-journal.md`）：
+走**完全 generic、profile 中立**的链（`classification-decisions.ts` 零 bafu 引用）。**pilot（15 process + 85 flow-product）已端到端打通**：6 scope 仅凭 classification 即 ready、pilot-15 classification blocker 归零。**经验证的精确配方 + 坑**（细节见 `$RUN/phase-journal.md`）：
 
 1. **context pack**（USLCI 此前无，必须生成；process/flow 各一次，profile 值是 `ai-import` 不是 uslci）： `tiangong-lca dataset context-pack --type <process|flow> --profile ai-import --out-dir <SR>/context/<type> --json`。
 2. **队列**：`dataset-bundle-sample-rows --profile uslci --bundles-dir $RUN/conversion-v3/process-bundles [--sample-size N] --out-dir <SR>` → `classification-authoring-queue.jsonl`（含两类）+ `rows/*.jsonl`。⚠️ `authoring-plan-v1` 模板和 resolution blocked-ledger **都不能替代**队列（缺 `classification_workflow.commands.input_rows`）。

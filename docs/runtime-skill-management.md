@@ -19,8 +19,9 @@ checkPaths:
   - package.json
   - .agents/shared-skills.json
   - .agents/skills/**
-lastReviewedAt: 2026-06-04
-lastReviewedCommit: 0fc91c903b375a013a5d5f912db957132f5fe18f
+lastReviewedAt: 2026-09-10
+lastReviewedCommit: d34c8dac60f5872d6e2f7ae5d7ac05a5df21cfa2
+lastReviewedNote: "Reviewed for Foundry #161: active shared-skill URLs use agent-skills; installed release locks and task/account authorization remain unchanged."
 related:
   - AGENTS.md
   - WORKFLOW.md
@@ -32,17 +33,17 @@ related:
 
 Foundry treats skills as execution surfaces, not as a place to copy reusable business logic.
 
-`.agents/skills` is the single project-visible skill root. Project-owned Foundry skills live there and are tracked by git. Shared or public runtime skills may also be installed into the same directory so agents can read them locally, but installation and update must use the npm `skills` package. `.agents/shared-skills.json` is a command inventory and ownership record, not a custom skill manager. Runtime-installed shared skill directories are ignored by git, and each source-evidence run records the resolved upstream ref as task evidence.
+`.agents/skills` is the project-visible installation root. The ordinary `foundry-tidas-import` entry and internal `foundry-tidas-authoring` role are maintained in the canonical `https://github.com/tiangong-lca/agent-skills` repository. Their locally installed copies are ignored, along with other shared/public runtime skills. Installation and update use the `skills` registry package through pnpm. `.agents/shared-skills.json` is a command inventory and ownership record, not a custom skill manager. Runtime-installed shared skill directories are ignored by git, and each source-evidence run records the resolved upstream ref as task evidence.
 
 ## Skill Classes
 
 | Class | Source | Storage rule | Update rule |
 | --- | --- | --- | --- |
-| Foundry-local orchestration skills | this repository | tracked under `.agents/skills` and listed in `.agents/shared-skills.json` | changed through normal Foundry PRs |
-| TianGong LCA shared skills | sibling `tiangong-lca-skills` | installed into `.agents/skills` by `npx --yes skills@latest add`; ignored in this repo | update the sibling checkout, then run `npm run skills:install:shared` or `npm run skills:update` |
+| Foundry entry and on-demand authoring | canonical `tiangong-lca/agent-skills` | installed under `.agents/skills`; ignored here | update through Skills; preserve the ordinary entry's shipped release lock |
+| TianGong LCA shared skills | sibling `tiangong-lca-skills` | installed into `.agents/skills` by `pnpm dlx skills@latest add`; ignored in this repo | update the sibling checkout, then run `pnpm skills:install:shared` or `pnpm skills:update` |
 | Source-evidence and document-extraction skills | external skill repos such as `tiangong-ai/skills` | installed or read into `.agents/skills` runtime state; ignored in this repo | resolve latest before each source-evidence run |
 
-Runtime skill names must not collide with Foundry-local skill names. The external source-evidence class is intentionally floating. Reproducibility is kept by task artifacts that record the resolved repository ref, command, retrieved evidence, and timestamps, not by committing a copied skill version to Foundry.
+Foundry retains no separately maintained copy of the migrated entry or authoring role. The external source-evidence class is intentionally floating. Reproducibility is kept by task artifacts that record the resolved repository ref, command, retrieved evidence, and timestamps, not by committing a copied skill version to Foundry.
 
 ## Required Tiangong AI Runtime Skills
 
@@ -65,35 +66,35 @@ https://github.com/tiangong-ai/skills/tree/main/tiangong-kb-sci-search
 Install or refresh configured shared runtime skills into `.agents/skills`:
 
 ```bash
-npm run skills:install:shared
+pnpm skills:install:shared
 ```
 
 Update locally installed project skills:
 
 ```bash
-npm run skills:update
+pnpm skills:update
 ```
 
 Inspect local project skill state:
 
 ```bash
-npm run skills:list
+pnpm skills:list
 ```
 
 List available remote Tiangong AI skills:
 
 ```bash
-npx --yes skills@latest add https://github.com/tiangong-ai/skills --list --full-depth
+pnpm dlx skills@latest add https://github.com/tiangong-ai/skills --list --full-depth
 ```
 
 Read and use the latest document extraction or SCI skill instructions for the current agent turn:
 
 ```bash
-npx --yes skills@latest use https://github.com/tiangong-ai/skills \
+pnpm dlx skills@latest use https://github.com/tiangong-ai/skills \
   --skill document-granular-decompose \
   --full-depth
 
-npx --yes skills@latest use https://github.com/tiangong-ai/skills \
+pnpm dlx skills@latest use https://github.com/tiangong-ai/skills \
   --skill tiangong-kb-sci-search \
   --full-depth
 ```
@@ -101,7 +102,7 @@ npx --yes skills@latest use https://github.com/tiangong-ai/skills \
 Install only Tiangong AI runtime skills into the local checkout:
 
 ```bash
-npx --yes skills@latest add https://github.com/tiangong-ai/skills \
+pnpm dlx skills@latest add https://github.com/tiangong-ai/skills \
   --skill tiangong-kb-sci-search document-granular-decompose \
   --agent '*' \
   --yes \
@@ -118,18 +119,20 @@ For GitHub URL sources, do not use `<repo>@<skill>` syntax. Use the repository U
 
 ## Environment Matrix
 
-Runtime skills use the same `.env` file as Foundry. Keep `.env.example` as the public key inventory and keep real values only in local `.env`.
+The developer checkout may use its local `.env` as described by `env-surface-policy.md`. The explicit consumer runtime does not load that file: the CLI owns OAuth sessions, and a host supplies only the configuration needed by the selected operation. Keep credentials outside task artifacts and skill directories.
 
 | Skill | Required env | Optional env | Notes |
 | --- | --- | --- | --- |
-| `$dataset-rls-maintenance` | `TIANGONG_LCA_API_BASE_URL`, `TIANGONG_LCA_API_KEY`, `TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY` when remote snapshot/apply/verify is needed | `TIANGONG_LCA_SESSION_FILE`, `TIANGONG_LCA_DISABLE_SESSION_CACHE`, `TIANGONG_LCA_FORCE_REAUTH`, `FOUNDRY_ACCOUNT_LABEL`, `FOUNDRY_ENABLE_REMOTE_COMMIT`, `FOUNDRY_SINGLE_RECORD_COMMIT`, `FOUNDRY_REMOTE_COMMIT_LIMIT` | No skill-private Supabase env. The skill must use CLI-owned current-user RLS paths and Foundry commit gates. |
-| `$external-dataset-curated-import`, `$foundry-tidas-import`, `$foundry-tidas-authoring` | no extra env for local conversion/curation beyond a working CLI checkout | `TIANGONG_LCA_CLI_BIN`, `TIANGONG_LCA_CLI_DIR`, `TIANGONG_LCA_SKILLS_ROOT`, `FOUNDRY_AGENT_SKILLS_ROOT`, current-user LCA account env for remote readback/write handoff | Packaged import conversion, validation, QA, and curation are mostly local; remote stages require the LCA account block above. |
+| `$dataset-rls-maintenance` | Current CLI OAuth identity for remote snapshot/apply/verify; official public defaults require no API key | CLI-owned session reference and explicit public OAuth configuration for another deployment; the CLI's existing explicit headless contract when selected by a trusted host | No skill-private Supabase credentials. The skill uses CLI-owned current-user RLS paths and current task authorization/commit gates. Login and legacy `FOUNDRY_*` commit flags are not task approval. |
+| `$external-dataset-curated-import` in its standalone CLI workflow | a qualified native `tidas` on `PATH` or selected by `TIDAS_BIN`; a working CLI for context/QA/curation/handoff | `TIDAS_CONFIG`, `TIDAS_MEMORY_BUDGET_MIB`, `TIDAS_QUEUE_CAPACITY`, `TIANGONG_LCA_CLI_BIN`, `TIANGONG_LCA_CLI_DIR`, `TIANGONG_LCA_SKILLS_ROOT`, `FOUNDRY_AGENT_SKILLS_ROOT`, current-user LCA account env for remote readback/write handoff | Rust tidas owns deterministic conversion and schema validation. CLI owns context, QA/curation, and remote stages; remote stages require the LCA account block above. |
+| `$foundry-tidas-import` | qualified Skills distribution with its adjacent release lock | current runtime-returned account intent and CLI-owned session selection | Managed Node/CLI/Foundry/TIDAS come from the verified distribution; no developer checkout or global Node/pnpm is required. |
+| `$foundry-tidas-authoring` | a current complete semantic work item and referenced context | none | Data-only on-demand role; returns decisions/patches through the public task protocol. |
 | `$source-evidence-dataset-development` | source-dependent | `TIANGONG_AI_APIKEY`, `TIANGONG_AI_API_BASE_URL`, `TIANGONG_AI_CLI`, `TIANGONG_AI_CLI_BIN`, `TIANGONG_LCA_KB_SEARCH_API_BASE_URL`, `TIANGONG_LCA_KB_SEARCH_API_KEY`, `TIANGONG_LCA_KB_SEARCH_REGION` | Source documents use `$document-granular-decompose`; SCI literature uses `$tiangong-kb-sci-search`; LCA CLI evidence-search helpers use the `TIANGONG_LCA_KB_SEARCH_*` family. |
 | `$tiangong-kb-sci-search` | `TIANGONG_AI_APIKEY` unless `api_key` or `sci_api_key` is passed in the wrapper JSON | `TIANGONG_AI_API_BASE_URL`, `TIANGONG_AI_CLI`, `TIANGONG_AI_CLI_BIN` | Searches only the `sci` source through `@tiangong-ai/cli`; record the upstream skill ref in task artifacts. |
 | `$document-granular-decompose` | `UNSTRUCTURED_API_BASE_URL`, `UNSTRUCTURED_AUTH_TOKEN` | `UNSTRUCTURED_PROVIDER`, `UNSTRUCTURED_MODEL` | Runtime-installed from `https://github.com/tiangong-ai/skills`. The CLI document-authoring path uses `TIANGONG_LCA_UNSTRUCTURED_*`; local `.env` should keep the `UNSTRUCTURED_*` aliases in sync for this skill. |
 | CLI QA with LLM review | none unless `--enable-llm` is used | `TIANGONG_LCA_REVIEW_LLM_BASE_URL`, `TIANGONG_LCA_REVIEW_LLM_API_KEY`, `TIANGONG_LCA_REVIEW_LLM_MODEL` | Deterministic QA does not need these keys. |
 
-Foundry Node commands load the repository `.env` automatically. Direct skill shell/Python wrappers do not all do that. When invoking a wrapper directly, either export the needed variables in the shell first or use the wrapper's `env_file` option when it supports one. `$tiangong-kb-sci-search` supports `env_file`; `$document-granular-decompose` reads only process environment variables.
+Only the legacy developer command path loads the repository `.env`; the explicit workspace runtime does not. Direct skill wrappers have their own documented configuration surfaces: `$tiangong-kb-sci-search` supports `env_file`, while `$document-granular-decompose` reads process environment. Supply the selected retrieval provider's required values only to that operation; never forward LCA passwords, API keys, OAuth sessions or headless tokens to a retrieval/authoring model.
 
 ## Task Artifact Contract
 
@@ -149,20 +152,20 @@ Minimum fields:
   "source_ref": "refs/heads/main",
   "resolved_commit": "<git-ls-remote-sha>",
   "skill_name": "document-granular-decompose",
-  "install_command": "npx --yes skills@latest add https://github.com/tiangong-ai/skills --skill document-granular-decompose --agent '*' --yes --full-depth",
-  "use_command": "npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill document-granular-decompose --full-depth",
+  "install_command": "pnpm dlx skills@latest add https://github.com/tiangong-ai/skills --skill document-granular-decompose --agent '*' --yes --full-depth",
+  "use_command": "pnpm dlx skills@latest use https://github.com/tiangong-ai/skills --skill document-granular-decompose --full-depth",
   "evidence_channel": "document-fulltext",
   "local_install_path": ".agents/skills/document-granular-decompose",
   "output_artifacts": ["evidence/fulltext.txt", "evidence/source-extract.json"]
 }
 ```
 
-If an operator installs shared/runtime skills locally, `.agents/skills/tiangong-kb-*/`, `.agents/skills/document-granular-decompose/`, `.agents/skills/external-dataset-curated-import/`, `.agents/skills/source-evidence-dataset-development/`, `.agents/skills/dataset-rls-maintenance/`, and `skills-lock.json` remain local runtime state by default. Commit them only when the task deliberately changes from a floating-latest policy to a pinned reproducibility policy, and record that decision in the relevant issue or design document.
+If an operator installs shared/runtime skills locally, `.agents/skills/foundry-tidas-import/`, `.agents/skills/foundry-tidas-authoring/`, `.agents/skills/tiangong-kb-*/`, `.agents/skills/document-granular-decompose/`, `.agents/skills/external-dataset-curated-import/`, `.agents/skills/source-evidence-dataset-development/`, `.agents/skills/dataset-rls-maintenance/`, and `skills-lock.json` remain local runtime state by default. Commit them only when the task deliberately changes from a floating-latest policy to a pinned reproducibility policy, and record that decision in the relevant issue or design document.
 
 ## Agent Rules
 
-- Run `npm run skills:install:shared` when configured shared/runtime skills may be missing or stale.
-- Run `npm run skills:update` to refresh already installed project skills.
+- Run `pnpm skills:install:shared` when configured shared/runtime skills may be missing or stale.
+- Run `pnpm skills:update` to refresh already installed project skills.
 - Resolve latest external source-evidence skills before source-document extraction or SCI evidence retrieval.
 - Read the current remote skill instructions in the same session before relying on them.
 - Record the resolved upstream commit and command in the task workspace.

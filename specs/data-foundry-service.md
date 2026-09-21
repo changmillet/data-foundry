@@ -26,7 +26,7 @@ Data Foundry is a local control plane for producing TianGong-ready TIDAS data fr
 
 Supported production lanes:
 
-- `external-dataset-curated-import`: packaged LCA datasets converted through `tidas-tools` and the CLI.
+- `external-dataset-curated-import`: packaged LCA datasets converted and schema-validated through unified Rust `tidas`.
 - `source-evidence-dataset-development`: PDF, Excel, web exports, screenshots, or free text authored into TIDAS candidate data with explicit source evidence.
 
 Foundry owns:
@@ -41,14 +41,14 @@ Foundry owns:
 Foundry does not own:
 
 - TIDAS schemas, YAML methodology, or runtime rulesets;
-- source package converters;
+- source package parsing/conversion and schema-validation engines;
 - AI authoring implementation;
 - external source-evidence research skills;
-- dataset validators and QA engines;
+- deterministic QA engines;
 - curation queue state machines;
 - database write semantics.
 
-Those capabilities belong in `tidas-sdk`, `tidas-tools`, `tiangong-lca-cli`, `tiangong-lca-skills`, external runtime skill repositories such as `tiangong-ai/skills`, Edge Functions, database, or calculator projects.
+Those capabilities belong in Rust `tidas`, `tidas-sdk`, `tiangong-lca-cli`, `tiangong-lca-skills`, external runtime skill repositories such as `tiangong-ai/skills`, Edge Functions, database, or calculator projects.
 
 ## Required Artifacts
 
@@ -59,7 +59,7 @@ Every import task should produce:
 - source package or source document manifest;
 - conversion report or source extraction report;
 - CLI curation queue build/next/verify reports;
-- validation and QA reports;
+- Rust tidas batch-validation evidence, Foundry compatibility validation reports, and CLI QA reports;
 - repair queue or explicit blocker report when validation fails;
 - dry-run publish/import plan before any remote write;
 - write policy, account guard, commit handoff, and verification/readback artifacts when remote writes are profile-gated and explicitly in scope.

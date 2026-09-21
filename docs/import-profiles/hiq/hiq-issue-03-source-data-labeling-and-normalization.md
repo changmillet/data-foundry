@@ -12,6 +12,8 @@ related:
 
 # HiQLCD Source Data Labeling And Normalization Issues
 
+> Historical tool-path note: Python `tidas-tools` source references below are evidence for the archived diagnosis, not active implementation or invocation paths. Current deterministic validation/conversion routes to Rust `tidas` 0.2.x.
+
 This archive records source-data labeling and normalization defects in `inputs/HIQ-ILCD`. These are not reasons to make a generic adapter absorb HiQLCD-specific source mistakes. The preferred remediation is source repair, a temporary HiQLCD normalization script, or profile-scoped normalization with explicit trace.
 
 ## HIQ-LABEL-001: Chinese Text Is Marked As `xml:lang="en"`

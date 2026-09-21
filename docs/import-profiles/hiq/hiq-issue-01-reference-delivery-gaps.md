@@ -14,7 +14,7 @@ related:
 
 # HiQLCD ILCD Reference Delivery Gaps
 
-This archive records delivery-closure problems in `inputs/HIQ-ILCD`. It intentionally separates package reference gaps from tidas-tools capabilities such as ILCD adapter support, writer multilingual output, classification passthrough, or process-bundle generation.
+This archive records delivery-closure problems in `inputs/HIQ-ILCD`. It intentionally separates package reference gaps from the deterministic converter capabilities that existed when this archive was written. Any old Python converter references are historical evidence; current reusable import/conversion/validation capabilities belong in Rust tidas.
 
 Current package shape:
 

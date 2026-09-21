@@ -1,7 +1,7 @@
 {
   "$schema": "../specs/schemas/file-location-registry.schema.json",
   "schema_version": 1,
-  "updated_at_utc": "2026-07-23T00:00:00Z",
+  "updated_at_utc": "2026-09-20T07:47:44Z",
   "policy_doc": "docs/file-organization.md",
   "entries": [
     {
@@ -65,10 +65,54 @@
       "current_path": "specs/automated-lca-capability-registry.json",
       "previous_paths": [],
       "owner": "tiangong-lca-data-foundry",
-      "referenced_by": ["specs/workspace-capability-adapters.md", "scripts/foundry.mjs"],
+      "referenced_by": ["specs/workspace-capability-adapters.md", "scripts/foundry.ts"],
       "sensitivity": "non-sensitive command and artifact contracts; no credentials or private payloads",
       "tracked": true,
-      "notes": "Routes data import and source-document authoring work to SDK-backed CLI contracts and shared gates."
+      "notes": "Routes deterministic import/conversion/schema validation to unified Rust tidas and keeps CLI context, QA/curation, remote operations, and Foundry-owned gates explicit."
+    },
+    {
+      "id": "zero-javascript-ratchet",
+      "status": "active",
+      "classification": "toolchain-permanent-ratchet",
+      "current_path": "test/unit/zero-javascript-ratchet.test.mts",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "AGENTS.md",
+        "README.md",
+        "docs/architecture.md",
+        "docs/foundry-ai-navigation.md",
+        "test/README.md"
+      ],
+      "sensitivity": "non-sensitive tracked source/test extension contract; no runtime payloads or credentials",
+      "tracked": true,
+      "notes": "Permanently rejects tracked first-party JavaScript and compatibility compiler/test/lint globs after completion of the Issue #63 TypeScript 7 migration."
+    },
+    {
+      "id": "foundry-command-spec",
+      "status": "active",
+      "classification": "typed-handoff-contract",
+      "current_path": "scripts/lib/foundry-command-spec.ts",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "AGENTS.md",
+        "README.md",
+        "WORKFLOW.md",
+        "docs/architecture.md",
+        "docs/capability-ownership-policy.md",
+        "docs/foundry-ai-navigation.md",
+        "docs/foundry-command-surface.md",
+        "docs/foundry-task-contracts.md",
+        "docs/safety-policy.md",
+        "scripts/commands/commit-handoff.ts",
+        "scripts/commands/bafu-batch-import-run.ts",
+        "scripts/commands/bafu-process-scope-e2e.ts",
+        "test/unit/foundry-command-spec.test.mts"
+      ],
+      "sensitivity": "non-sensitive typed executable/argv and artifact-fact contract; contains no credentials or runtime payloads",
+      "tracked": true,
+      "notes": "Defines exact-key CommandSpec parsing, critical-flag uniqueness, reader-only display rendering, command hashing, final-row artifact facts, and pre-spawn byte drift checks."
     },
     {
       "id": "import-profiles",
@@ -79,7 +123,7 @@
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
         "README.md",
-        "scripts/lib/import-curation.mjs",
+        "scripts/lib/import-curation.ts",
         "docs/import-profiles/bafu/profile.md",
         "docs/import-profiles/bafu/constraints.md",
         "docs/import-profiles/bafu/leaf-process-classification-authoring.md"
@@ -120,7 +164,7 @@
       ],
       "sensitivity": "non-sensitive runtime skill dependency policy; contains no credentials and no private evidence payloads",
       "tracked": true,
-      "notes": "Defines how Foundry resolves floating external source-evidence and document-extraction skills with the npm skills package while keeping runtime-installed shared skills untracked by default."
+      "notes": "Defines how Foundry resolves floating external source-evidence and document-extraction skills through pnpm dlx while keeping runtime-installed shared skills untracked by default."
     },
     {
       "id": "shared-skills-config",
@@ -137,7 +181,7 @@
       ],
       "sensitivity": "non-sensitive skill source and update policy config; contains no credentials",
       "tracked": true,
-      "notes": "Lists Foundry-owned tracked orchestration skills, shared/runtime skills that may be installed into the same .agents/skills root, and the direct npm skills package commands used to manage them."
+      "notes": "Lists Foundry-owned tracked orchestration skills, shared/runtime skills that may be installed into the same .agents/skills root, and the pnpm dlx skills package commands used to manage them."
     },
     {
       "id": "foundry-task-contracts",
@@ -151,11 +195,31 @@
         "AGENTS.md",
         "WORKFLOW.md",
         "docs/skill-orchestration/dataset-authoring-skill-architecture.md",
-        "docs/skill-orchestration/source-evidence-top-level-skill-design.md"
+        "docs/skill-orchestration/source-evidence-top-level-skill-design.md",
+        "scripts/lib/foundry-task-registration.ts",
+        "scripts/lib/foundry-task-store.ts",
+        "scripts/lib/foundry-task-authorization.ts",
+        "scripts/lib/foundry-workflow-import.ts",
+        "scripts/lib/foundry-workflow-context.ts",
+        "scripts/lib/foundry-workflow-rows.ts",
+        "scripts/lib/foundry-workflow-assessment.ts",
+        "scripts/lib/foundry-semantic-input.ts",
+        "scripts/lib/foundry-workflow-semantic.ts",
+        "scripts/lib/foundry-workflow-state.ts",
+        "scripts/lib/foundry-workflow-identity.ts",
+        "scripts/lib/foundry-workflow-identity-apply.ts",
+        "scripts/lib/foundry-workflow-finalize.ts",
+        "scripts/lib/foundry-authorization-input.ts",
+        "scripts/lib/foundry-workflow-authorization.ts",
+        "scripts/lib/foundry-workflow-approval-continuation.ts",
+        "docs/public-runtime-contract.md",
+        "scripts/lib/foundry-owner-execution-store.ts",
+        "scripts/lib/foundry-workflow-reference-verify.ts",
+        "scripts/lib/foundry-owner-trace-acceptance.ts"
       ],
       "sensitivity": "non-sensitive task ledger schema examples; contains no credentials and no private payloads",
       "tracked": true,
-      "notes": "Defines the minimal Foundry-owned foundry-job, source-manifest, seed-manifest, checkpoint, artifact-index, blocked-scope-ledger, and blocked-scope-report contracts. Runtime artifacts stay under ignored .foundry/workspaces/<task-id>/."
+      "notes": "Defines immutable source/input lineage, producer-backed operation receipts, current approval, and owner attempt/readback evidence. The dedicated consume operation owns attempts/owner-v1/<scope>/consumed.json; execution requests, observations and results remain registered under task outputs. Canonical reference query/check/result artifacts bind current identity decisions and are verified before reference-only completion. Explicit ordinary/production-test intent is retained in account registration and migration templates; public traceHash acceptance retains original/fresh-read/accepted evidence under owner-readback outputs."
     },
     {
       "id": "foundry-safety-policy",
@@ -186,7 +250,7 @@
       "referenced_by": [
         "README.md",
         "docs/foundry-command-surface.md",
-        "scripts/commands/execution-capsule.mjs"
+        "scripts/commands/execution-capsule.ts"
       ],
       "sensitivity": "non-sensitive local evidence contract; no credentials or private payloads",
       "tracked": true,
@@ -201,45 +265,209 @@
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
         "docs/execution-capsule-contract.md",
-        "scripts/commands/execution-capsule.mjs",
-        "test/commands/execution-capsule.test.mjs"
+        "scripts/commands/execution-capsule.ts",
+        "test/commands/execution-capsule.test.mts"
       ],
       "sensitivity": "non-sensitive schema; no credentials or private payloads",
       "tracked": true,
       "notes": "Machine-readable input schema for foundry-execution-capsule-stage.v1."
     },
     {
-      "id": "final-delivery-promotion-contract",
+      "id": "incremental-change-set-contract",
       "status": "active",
-      "classification": "offline-final-delivery-promotion-contract",
-      "current_path": "docs/final-delivery-promotion-contract.md",
+      "classification": "offline-incremental-planning-contract",
+      "current_path": "docs/incremental-change-set-contract.md",
       "previous_paths": [],
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
+        "AGENTS.md",
         "README.md",
         "WORKFLOW.md",
         "docs/foundry-command-surface.md",
-        "scripts/commands/final-delivery-promotion.mjs"
+        "scripts/commands/incremental-change-set.ts"
       ],
-      "sensitivity": "non-sensitive local delivery gate contract; no credentials or private payloads",
+      "sensitivity": "non-sensitive local planning contract; private payloads remain in ignored workspaces",
       "tracked": true,
-      "notes": "Defines the reusable manifest-bound artifact, algebra, workbook, redaction, independent-review, and detached-seal promotion gate."
+      "notes": "Defines SHA-bound three-way planning, dependency isolation, per-conversion logs, output algebra, and the no-authority CLI handoff boundary."
     },
     {
-      "id": "final-delivery-manifest-schema",
+      "id": "incremental-change-set-schema",
       "status": "active",
-      "classification": "machine-readable-final-delivery-schema",
-      "current_path": "specs/schemas/final-delivery-manifest.schema.json",
+      "classification": "machine-readable-incremental-planning-schema",
+      "current_path": "specs/schemas/incremental-change-set.schema.json",
       "previous_paths": [],
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
-        "docs/final-delivery-promotion-contract.md",
-        "scripts/commands/final-delivery-promotion.mjs",
-        "test/commands/final-delivery-promotion.test.mjs"
+        "docs/incremental-change-set-contract.md",
+        "scripts/commands/incremental-change-set.ts",
+        "test/commands/incremental-change-set.test.mts"
       ],
       "sensitivity": "non-sensitive schema; no credentials or private payloads",
       "tracked": true,
-      "notes": "Machine-readable input schema for foundry-final-delivery-manifest.v1."
+      "notes": "Machine-readable request, comparison, owner snapshot, preservation policy, and conversion-event shapes for the offline composer."
+    },
+    {
+      "id": "topology-convergence-contract",
+      "status": "active",
+      "classification": "offline-topology-convergence-contract",
+      "current_path": "docs/topology-convergence-contract.md",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "AGENTS.md",
+        "README.md",
+        "WORKFLOW.md",
+        "docs/foundry-command-surface.md",
+        "scripts/commands/topology-convergence.ts"
+      ],
+      "sensitivity": "non-sensitive planning contract; private candidate and owner payloads remain in ignored workspaces",
+      "tracked": true,
+      "notes": "Defines occurrence-aware F/P/D composition, multilingual preservation, zero-inbound deletion barriers, exact logs, and the no-authority handoff boundary."
+    },
+    {
+      "id": "topology-convergence-schema",
+      "status": "active",
+      "classification": "machine-readable-topology-convergence-schema",
+      "current_path": "specs/schemas/topology-convergence.schema.json",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "docs/topology-convergence-contract.md",
+        "scripts/commands/topology-convergence.ts",
+        "test/commands/topology-convergence.test.mts"
+      ],
+      "sensitivity": "non-sensitive schema; no credentials or private payloads",
+      "tracked": true,
+      "notes": "Machine-readable request, candidate index, audited classification, conversion event, report, and manifest shapes for topology convergence."
+    },
+    {
+      "id": "foundry-tidas-runtime-expectation-schema",
+      "status": "active",
+      "classification": "machine-readable-runtime-qualification-schema",
+      "current_path": "specs/schemas/tidas-runtime-expectation.schema.json",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "docs/runtime-context-contract.md",
+        "scripts/lib/foundry-runtime-qualification.ts",
+        "test/unit/foundry-runtime-authority-schemas.test.mts"
+      ],
+      "sensitivity": "non-sensitive content and protocol expectations; no executable bytes or credentials",
+      "tracked": true,
+      "notes": "Strict four-platform TIDAS executable, version, protocol, event-schema and asset-fingerprint expectation."
+    },
+    {
+      "id": "foundry-runtime-qualification-schema",
+      "status": "active",
+      "classification": "machine-readable-runtime-qualification-schema",
+      "current_path": "specs/schemas/runtime-qualification.schema.json",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "docs/runtime-context-contract.md",
+        "scripts/lib/foundry-runtime-qualification.ts",
+        "test/unit/foundry-runtime-authority-schemas.test.mts"
+      ],
+      "sensitivity": "non-sensitive diagnostic component identity; no paths, credentials or private payloads",
+      "tracked": true,
+      "notes": "Portable diagnostic view of a process-local CLI/TIDAS qualification; serialized content never grants authority."
+    },
+    {
+      "id": "foundry-authorization-derivation-schema",
+      "status": "active",
+      "classification": "machine-readable-task-authorization-schema",
+      "current_path": "specs/schemas/authorization-derivation.schema.json",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "docs/task-authorization-contract.md",
+        "docs/foundry-task-contracts.md",
+        "scripts/lib/foundry-task-authorization.ts"
+      ],
+      "sensitivity": "non-sensitive task content facts; private payload bytes remain outside Git",
+      "tracked": true,
+      "notes": "Binds an exact approved input, derived task artifact and unchanged parent/successor authorization identities."
+    },
+    {
+      "id": "foundry-execution-context-schema",
+      "status": "active",
+      "classification": "machine-readable-qualified-execution-schema",
+      "current_path": "specs/schemas/execution-context.schema.json",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "docs/runtime-context-contract.md",
+        "docs/task-authorization-contract.md",
+        "docs/execution-capsule-contract.md",
+        "scripts/lib/foundry-execution-admission.ts"
+      ],
+      "sensitivity": "non-sensitive task/runtime digests and paths; no environment or credential material",
+      "tracked": true,
+      "notes": "Content-addressed current-task child handoff requiring fresh process-local rehydration before an owner CommandSpec is returned."
+    },
+    {
+      "id": "foundry-operation-result-schema",
+      "status": "active",
+      "classification": "machine-readable-public-facade-schema",
+      "current_path": "specs/schemas/foundry-operation-result.schema.json",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "docs/public-runtime-contract.md",
+        "scripts/lib/foundry-operation-result.ts",
+        "test/unit/foundry-facade-schemas.test.mts"
+      ],
+      "sensitivity": "non-sensitive public protocol; runtime paths may appear only in local results",
+      "tracked": true,
+      "notes": "Strict one-object stdout envelope, status, blocker, artifact, next-action and permission contract."
+    },
+    {
+      "id": "foundry-task-start-schema",
+      "status": "active",
+      "classification": "machine-readable-public-facade-schema",
+      "current_path": "specs/schemas/foundry-task-start.schema.json",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "docs/public-runtime-contract.md",
+        "scripts/lib/foundry-task-start-spec.ts",
+        "test/unit/foundry-facade-schemas.test.mts"
+      ],
+      "sensitivity": "non-sensitive schema; credentials and session contents are forbidden",
+      "tracked": true,
+      "notes": "Bounded request, actor, lane, profile, source/seed, account-intent and local-preparation input contract."
+    },
+    {
+      "id": "foundry-facade-request-index-schema",
+      "status": "active",
+      "classification": "machine-readable-task-ledger-schema",
+      "current_path": "specs/schemas/foundry-facade-request-index.schema.json",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "docs/public-runtime-contract.md",
+        "docs/foundry-task-contracts.md",
+        "scripts/lib/foundry-facade-store.ts"
+      ],
+      "sensitivity": "non-sensitive schema; local request instances can contain private path facts",
+      "tracked": true,
+      "notes": "Monotonic request revisions, deterministic task ids, predecessor and input/spec content bindings. Descendants recheck every retained predecessor publication and cannot continue around observed attempt state or missing history."
+    },
+    {
+      "id": "foundry-workspace-migration-plan-schema",
+      "status": "active",
+      "classification": "machine-readable-migration-schema",
+      "current_path": "specs/schemas/foundry-workspace-migration-plan.schema.json",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "docs/public-runtime-contract.md",
+        "scripts/lib/foundry-migration-inventory.ts",
+        "test/unit/foundry-facade-schemas.test.mts"
+      ],
+      "sensitivity": "non-sensitive schema; local plans contain path/hash inventory but no file contents",
+      "tracked": true,
+      "notes": "Read-only W10 input plan for current, legacy, attempted, terminal and authorization state classes."
     },
     {
       "id": "uslci-source-package",
@@ -288,6 +516,232 @@
       "sensitivity": "non-sensitive runbook; no credentials and no private payloads",
       "tracked": true,
       "notes": "Continuous-run goal entry document for the USLCI import: phases, invariants, parallel-work isolation rules, blocker triage, and the current-state snapshot agents must keep updated."
+    },
+    {
+      "id": "foundry-package-distribution-contract",
+      "status": "active",
+      "classification": "package-distribution-contract",
+      "current_path": "docs/package-distribution-contract.md",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "AGENTS.md",
+        "README.md",
+        "docs/runtime-context-contract.md",
+        ".docpact/config.yaml"
+      ],
+      "sensitivity": "public package contract; no credentials or private payloads",
+      "tracked": true,
+      "notes": "Authoritative W06 package identity, compiler/staging, file allowlist, descriptor, install and W08 publication boundary."
+    },
+    {
+      "id": "foundry-package-descriptor-schema",
+      "status": "active",
+      "classification": "machine-readable-package-schema",
+      "current_path": "specs/schemas/foundry-package-descriptor.schema.json",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "docs/package-distribution-contract.md",
+        "scripts/lib/foundry-package-contract.ts",
+        "test/unit/foundry-facade-schemas.test.mts"
+      ],
+      "sensitivity": "non-sensitive package identity and content-hash schema",
+      "tracked": true,
+      "notes": "Strict package/bin/API/runtime/platform/protocol and sorted payload fact contract."
+    },
+    {
+      "id": "foundry-package-public-entry",
+      "status": "active",
+      "classification": "public-package-entry",
+      "current_path": "scripts/package-entry.ts",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "package.json",
+        "scripts/public-api.ts",
+        "docs/package-distribution-contract.md",
+        "test/scenarios/foundry-package-consumer.test.mts"
+      ],
+      "sensitivity": "public source entry; no credentials or task payloads",
+      "tracked": true,
+      "notes": "Public-only tiangong-foundry bin source; never falls back to the 63-command developer dispatcher."
+    },
+    {
+      "id": "foundry-package-consumer-qualification",
+      "status": "active",
+      "classification": "package-qualification-test",
+      "current_path": "test/scenarios/foundry-package-consumer.test.mts",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "docs/package-distribution-contract.md",
+        "test/README.md",
+        ".docpact/config.yaml"
+      ],
+      "sensitivity": "public synthetic package/install fixtures; live OAuth evidence remains private",
+      "tracked": true,
+      "notes": "Deterministic double build/pack, online/offline clean consumers, read-only six-operation facade and tamper/leakage negatives."
+    },
+    {
+      "id": "foundry-migration-adoption-plan-schema",
+      "status": "active",
+      "classification": "machine-readable-migration-schema",
+      "current_path": "specs/schemas/foundry-migration-adoption-plan.schema.json",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "docs/workspace-migration-contract.md",
+        "scripts/lib/foundry-migration-adoption-plan.ts",
+        "test/scenarios/workspace-migration-adoption.test.mts"
+      ],
+      "sensitivity": "non-sensitive schema; runtime records contain identity and content references, never credential contents",
+      "tracked": true,
+      "notes": "Independent task specifications, archived source scope and current-owner adoption mapping."
+    },
+    {
+      "id": "foundry-migration-activation-schema",
+      "status": "active",
+      "classification": "machine-readable-migration-schema",
+      "current_path": "specs/schemas/foundry-migration-activation.schema.json",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "docs/workspace-migration-contract.md",
+        "scripts/lib/foundry-migration-authority.ts",
+        "test/scenarios/workspace-migration-adoption.test.mts"
+      ],
+      "sensitivity": "non-sensitive schema; runtime records contain identity and content references, never credential contents",
+      "tracked": true,
+      "notes": "Immutable source, task-origin and no-replay evidence anchored by an active workspace marker."
+    },
+    {
+      "id": "foundry-workspace-v2-schema",
+      "status": "active",
+      "classification": "machine-readable-migration-schema",
+      "current_path": "specs/schemas/foundry-workspace-v2.schema.json",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "docs/workspace-migration-contract.md",
+        "scripts/lib/foundry-runtime-context.ts",
+        "test/scenarios/workspace-migration-adoption.test.mts"
+      ],
+      "sensitivity": "non-sensitive schema; runtime records contain identity and content references, never credential contents",
+      "tracked": true,
+      "notes": "Migrated workspace identity, required features, preserved extension fields and activation binding."
+    },
+    {
+      "id": "foundry-runtime-selection-schema",
+      "status": "active",
+      "classification": "machine-readable-migration-schema",
+      "current_path": "specs/schemas/foundry-runtime-selection.schema.json",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "docs/workspace-migration-contract.md",
+        "scripts/lib/foundry-runtime-selection.ts",
+        "test/scenarios/workspace-migration-adoption.test.mts"
+      ],
+      "sensitivity": "non-sensitive schema; runtime records contain identity and content references, never credential contents",
+      "tracked": true,
+      "notes": "Explicit qualified runtime selection and persistent current/previous component lease references."
+    },
+    {
+      "id": "foundry-managed-runtime-schema",
+      "status": "active",
+      "classification": "machine-readable-runtime-qualification-schema",
+      "current_path": "specs/schemas/foundry-managed-runtime.schema.json",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "docs/package-distribution-contract.md",
+        "scripts/lib/foundry-managed-host.ts",
+        "test/unit/foundry-managed-runtime-schema.test.mts"
+      ],
+      "sensitivity": "non-sensitive runtime expectation and component-file reference schema; no credentials",
+      "tracked": true,
+      "notes": "Structural managed-host metadata contract. Current trusted manifest, installed package, platform, file bytes and launch/target relationships are revalidated by the package host before workspace operations."
+    },
+    {
+      "id": "native-insert-handoff",
+      "status": "active",
+      "classification": "native-execution-adapter",
+      "current_path": "scripts/lib/finalize-owners/native-insert-handoff.ts",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "scripts/lib/finalize-owners/commit-handoff.ts",
+        "scripts/lib/foundry-execution-admission.ts"
+      ],
+      "sensitivity": "non-sensitive consumer orchestration source; contains no credentials or task payloads",
+      "tracked": true,
+      "notes": "Validates the consumer binding of selected CLI insert contracts to exact final rows and builds no native transaction or attempt implementation."
+    },
+    {
+      "id": "native-insert-closeout",
+      "status": "active",
+      "classification": "native-execution-adapter",
+      "current_path": "scripts/lib/finalize-owners/native-insert-closeout.ts",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": ["scripts/lib/finalize-owners/post-write-closeout.ts"],
+      "sensitivity": "non-sensitive consumer orchestration source; contains no credentials or task payloads",
+      "tracked": true,
+      "notes": "Validates matching native CLI v2 execution receipts against handoff contracts and exact actions; independent root verification remains mandatory."
+    },
+    {
+      "id": "finalize-reference-inputs",
+      "status": "active",
+      "classification": "reference-evidence-adapter",
+      "current_path": "scripts/lib/finalize-owners/finalize-reference-inputs.ts",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": ["scripts/lib/finalize-owners/post-authoring.ts"],
+      "sensitivity": "non-sensitive runtime source; no credentials or task payloads",
+      "tracked": true,
+      "notes": "Validates explicit local reference selections before output and delegates scientific eligibility to CLI."
+    },
+    {
+      "id": "handoff-reference-intent",
+      "status": "active",
+      "classification": "reference-evidence-adapter",
+      "current_path": "scripts/lib/finalize-owners/handoff-reference-intent.ts",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "scripts/lib/finalize-owners/commit-handoff.ts",
+        "scripts/lib/foundry-execution-admission.ts"
+      ],
+      "sensitivity": "non-sensitive runtime source; no credentials or task payloads",
+      "tracked": true,
+      "notes": "Binds passing CLI consumer/intent/precommit/review evidence without owning reference eligibility."
+    },
+    {
+      "id": "reference-intent-closeout",
+      "status": "active",
+      "classification": "reference-evidence-adapter",
+      "current_path": "scripts/lib/finalize-owners/reference-intent-closeout.ts",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": ["scripts/lib/finalize-owners/post-write-closeout.ts"],
+      "sensitivity": "non-sensitive runtime source; no credentials or task payloads",
+      "tracked": true,
+      "notes": "Requires matching reference readback and complete current handoff evidence."
+    },
+    {
+      "id": "foundry-reference-input",
+      "status": "active",
+      "classification": "reference-evidence-adapter",
+      "current_path": "scripts/lib/foundry-reference-input.ts",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": ["scripts/foundry-facade.ts"],
+      "sensitivity": "non-sensitive runtime source; no credentials or task payloads",
+      "tracked": true,
+      "notes": "Parses explicit public reference input and records immutable indexed control snapshots."
     }
-  ]
+  ],
+  "lastReviewedCommit": "abac241b9dd9a302c4dc9a985f798d0eb77f62f3",
+  "lastReviewedNote": "Reviewed for Foundry #161: canonical GitHub release/CI/provenance identity moves to tiangong-lca/foundry (repository id 1260957221, owner id 327771381) with a 0.1.8 publication floor; workspace checkout owner labels continue to name the stable root-managed directories; the repository rename does not rename local paths."
 }

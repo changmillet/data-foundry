@@ -27,7 +27,7 @@ Foundry task / user entry
   -> Foundry router, workspace, profile, account context, checkpoint ledger
     -> source-evidence-dataset-development top-level skill
       -> reusable child skills
-        -> public tiangong-lca-cli, tidas-tools, search, validation, publish commands
+        -> Rust tidas plus public tiangong-lca-cli search, QA, curation, and publish commands
 ```
 
 Foundry 负责工作区、任务状态、账号/profile、source/evidence 冻结、checkpoint 恢复和缺口登记。Top-level skill 负责阶段顺序、输入是否足够、调用哪些子 skill、何时停止。子 skill 负责 flow/process/support 等可复用实体工作流。CLI 负责确定性执行、schema/QA、引用刷新、远端写入和回读验证。
@@ -199,7 +199,7 @@ evidence channel: sci
 
 Before document extraction or SCI retrieval, the top-level skill must:
 
-1. Resolve or read the latest remote skill instructions with `npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill document-granular-decompose --full-depth` or `npx --yes skills@latest use https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --full-depth`.
+1. Resolve or read the latest remote skill instructions with `pnpm dlx skills@latest use https://github.com/tiangong-ai/skills --skill document-granular-decompose --full-depth` or `pnpm dlx skills@latest use https://github.com/tiangong-ai/skills --skill tiangong-kb-sci-search --full-depth`.
 2. Record the upstream `refs/heads/main` commit from `git ls-remote https://github.com/tiangong-ai/skills.git refs/heads/main`.
 3. Write `.foundry/workspaces/<task-id>/runtime-skills/runtime-skill-resolution.json`.
 4. Keep SCI evidence separate from report, patent, standard, official, or web-page evidence channels.
@@ -504,8 +504,8 @@ Gate：
 
 ## Child Skill Map
 
-- Document fulltext extraction: runtime `document-granular-decompose` from `https://github.com/tiangong-ai/skills`, resolved through `npx skills` and recorded in the task workspace.
-- SCI literature evidence: runtime `tiangong-kb-sci-search` from `https://github.com/tiangong-ai/skills`, resolved through `npx skills` and recorded in the task workspace.
+- Document fulltext extraction: runtime `document-granular-decompose` from `https://github.com/tiangong-ai/skills`, resolved through `pnpm dlx skills@latest` and recorded in the task workspace.
+- SCI literature evidence: runtime `tiangong-kb-sci-search` from `https://github.com/tiangong-ai/skills`, resolved through `pnpm dlx skills@latest` and recorded in the task workspace.
 - Evidence search and process evidence fields: `process-automated-builder` evidence-search mode。
 - Flow authoring: `flow-governance-review`，必要时 `flow-hybrid-search` 只做 candidate retrieval。
 - Process authoring: `process-automated-builder`。

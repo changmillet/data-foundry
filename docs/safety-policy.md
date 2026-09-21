@@ -17,12 +17,71 @@ checkPaths:
   - README.md
   - AGENTS.md
   - docs/foundry-task-contracts.md
+  - docs/package-distribution-contract.md
   - docs/import-profiles/bafu/profile.md
   - docs/import-profiles/bafu/constraints.md
   - specs/automated-lca-capability-registry.json
   - specs/workspace-capability-adapters.md
-lastReviewedAt: 2026-06-05
-lastReviewedCommit: 18b9caed641add8f7c82f4d7abc5c9e34e50c29d
+  - scripts/foundry-golden-diff.ts
+  - scripts/check-tidas-cutover.ts
+  - scripts/lib/tidas-adapter.ts
+  - scripts/lib/foundry-package-contract.ts
+  - scripts/package-entry.ts
+  - test/scenarios/foundry-package-consumer.test.mts
+  - scripts/lib/post-authoring-finalize-utils.ts
+  - scripts/commands/tasks.ts
+  - scripts/commands/import-completion.ts
+  - scripts/commands/commit-handoff.ts
+  - scripts/commands/identity-decision-task.ts
+  - scripts/commands/support-cache.ts
+  - scripts/commands/cli-wrappers.ts
+  - scripts/commands/execution-capsule.ts
+  - scripts/commands/post-write-closeout.ts
+  - scripts/commands/library-scope-workflow.ts
+  - scripts/commands/bafu-leaf-classification-tasks.ts
+  - scripts/commands/bafu-auto-authoring.ts
+  - scripts/commands/bafu-process-scope-e2e.ts
+  - scripts/commands/bafu-batch-import-run.ts
+  - scripts/commands/core.ts
+  - scripts/commands/identity-preflight-run.ts
+  - scripts/commands/post-authoring-finalize.ts
+  - scripts/lib/import-curation/internal/prewrite-cleanup.ts
+  - scripts/lib/import-curation/internal/workflow-queue-context.ts
+  - scripts/lib/import-curation/internal/full-context-proof.ts
+  - scripts/lib/import-curation/internal/workflow-decision-apply-context.ts
+  - scripts/lib/import-curation/internal/profiles-config.ts
+  - scripts/lib/import-curation/internal/workflow-patch-collect.ts
+  - scripts/lib/import-curation/internal/workflow-identity-decision-context.ts
+  - scripts/lib/import-curation/internal/workflow-patch-evidence-context.ts
+  - scripts/lib/import-curation/internal/workflow-row-transform-context.ts
+  - scripts/lib/import-curation/internal/workflow-dry-run-context.ts
+  - scripts/lib/import-curation/internal/workflow-evidence-scope.ts
+  - scripts/lib/import-curation/internal/workflow-decision-full-context.ts
+  - scripts/lib/import-curation/internal/workflow-authoring-tasks.ts
+  - scripts/lib/import-curation/internal/workflow-semantic-actions.ts
+  - scripts/lib/import-curation/internal/workflow-patch-evidence.ts
+  - scripts/lib/import-curation/internal/workflow-identity-preflight.ts
+  - scripts/lib/import-curation/internal/authoring-task-workflow.ts
+  - scripts/lib/import-curation/internal/authoring-patch-workflow.ts
+  - scripts/lib/import-curation/internal/curation-gate-workflow.ts
+  - scripts/lib/import-curation/authoring-packages.ts
+  - scripts/lib/import-curation/patch-collect.ts
+  - scripts/lib/import-curation/curation-gate.ts
+  - scripts/lib/import-curation/curation-cleanup.ts
+  - scripts/lib/batch-orchestration/control-artifact-store.ts
+  - scripts/lib/batch-orchestration/scope-control-retention.ts
+  - scripts/lib/batch-orchestration/scope-safe-prune.ts
+  - scripts/lib/import-curation/internal/workflow-reference-closure.ts
+  - scripts/lib/import-curation/internal/workflow-source-reference-context.ts
+  - scripts/lib/import-curation/internal/mutation-manifest-workflow.ts
+  - scripts/lib/import-curation/mutation-manifest.ts
+  - scripts/lib/foundry-execution-admission.ts
+  - specs/schemas/execution-context.schema.json
+  - scripts/foundry-facade.ts
+  - scripts/lib/foundry-facade-store.ts
+lastReviewedAt: 2026-09-05
+lastReviewedCommit: 8cbbddb1a727ff2858918d0ff6d2efb1c8827390
+lastReviewedNote: "Reviewed for #106 W06: installed package bytes/manifest are verified before facade context, and the public bin cannot enter mutation owners."
 ---
 
 # Safety Policy
@@ -32,6 +91,8 @@ lastReviewedCommit: 18b9caed641add8f7c82f4d7abc5c9e34e50c29d
 `dry-run`.
 
 ## Remote Commit
+
+An installed package is usable only after its sanitized manifest, descriptor and complete allowed payload match. A modified, extra, linked or private/source file fails before a package-backed context is created. This package check is code/asset integrity, not task permission: it does not make a profile, completion report or mutation executable. The public bin cannot route flat developer commands, and a W06 candidate is not a published F1 component.
 
 Remote database writes are blocked unless:
 
@@ -55,11 +116,13 @@ Remote database writes are blocked unless:
 - mandatory schema fields cannot be marked resolved by moving the missing value to `common:other`; they need evidence-backed values or remain blocked before remote write
 - source-only-output exchange acceptance must be produced by same-row AI patch evidence with `resolution.mode=source_trace_verified`, or by deterministic cleanup proof generated from an explicit `source_rows_file` for the same row; both paths must write structured `tiangongfoundry:sourceExchangeCompleteness` with accepted status and structured source trace evidence, and deterministic proof must show the source row is Output-only and that the final row preserves the non-flow-reference exchange signature
 - for profiles that require full-context AI semantic completion, deterministic AI evidence is mandatory, not optional: classification queue fixes must carry completed `classification-decisions-apply` evidence, location queue fixes must carry completed `location-decisions-apply` evidence, and other patches must carry patch collect/apply evidence with `authoring_package_sha256` and `closes_action_items`
-- reference closure passes in the post-authoring mutation manifest; mutually-referencing writable contact/source rows must be grouped into a mixed `support` write scope when needed, Flow Properties and Unit Groups must resolve through the canonical support cache to existing database rows, and any referenced dataset outside the exact write scope must be proven by `dataset verify-remote` after its row exists remotely, or the dependent write scope remains blocked before commit handoff
+- reference closure passes in the post-authoring mutation manifest; mutually-referencing writable support rows must be grouped into one mixed `support` write scope when needed. Flow Properties and Unit Groups resolve through the canonical support cache by default; only a frozen profile may explicitly authorize canonical-cache-miss FP/UG as same-owner `state_code=0` candidates, ordered Unit Group before Flow Property and excluded from the public cache. Any referenced dataset outside the exact write scope must be proven by `dataset verify-remote` after its row exists remotely, or the dependent write scope remains blocked before commit handoff
 - support/source write scopes contain only true source identities for source rows; data-format, compliance-system, and placeholder identities such as `ILCD format` or `Not specified` must remain canonical reference rewrites/provenance and are blocked by the mutation manifest before commit handoff; true source rows with empty or type-only descriptions such as `Report` must be repaired from citation/name evidence before write planning
-- missing canonical unitgroups, flowproperties, elementary flows, compliance sources, data-format sources, contacts, or true sources block only the dependent write scope and are recorded for human/database governance; independent scopes with proven closure may continue
+- missing canonical unitgroups, flowproperties, elementary flows, compliance sources, data-format sources, contacts, or true sources block only the dependent write scope unless its frozen profile has a reviewed account-local candidate path. Every candidate still requires owner, unit-scale, schema, QA, curation, closure, audit, handoff, and readback proof; a failed support scope is deferred and independent scopes with proven closure may continue
 - blocked write scopes must append machine-readable import-ledger rows under `blocked.scopes.human-review.jsonl` and categorized `blocked.dependencies.*.jsonl` files with concrete blocker reasons, required human action, and the rerun path; successful readback-verified scopes must append `ok.*.verified.jsonl` rows so later batch reruns can skip already imported rows
 - curation cleanup has run and cleaned rows were revalidated
+- deterministic cleanup may externalize import-only source trace only after hashing it into a safe summary; circular/unserializable trace evidence fails before deletion. Retained Foundry trace evidence must carry its namespace, local machine locators must be deleted or SHA-redacted, and source-only-output proof remains bound to exact ordered non-flow-reference exchange signatures.
+- verified-scope scratch may be deleted only after every required report/plan/log/ledger reference is stored and reverified by SHA-256 in the run-level control store. The scope report must separate immutable artifact identity, original locator, store locator, and payload-pruned disposition. Missing evidence, invalid receipts, blob drift, repository/store path escape, or any scope/store/cache symlink blocks deletion. Failed or ambiguous scopes retain scratch; shared-context cache is recomputable-only and emits an explicit prune report.
 - post-authoring Foundry curation gate passes on the exact final rows and references a deterministic QA report for those rows
 - state-code-aware mutation plan exists
 - Foundry `dataset-mutation-manifest` is `ready_for_remote_write` for the exact write scope
@@ -67,14 +130,21 @@ Remote database writes are blocked unless:
 - when `common:other.tiangongfoundry:unresolvedTrace` or `sourceExchangeCompleteness` entries exist, the mutation manifest exports them as JSONL follow-up queues for later database-side curation
 - mutation-manifest evidence reports point to the exact write rows: schema and remote verification `input_path` match the rows file, cleanup `cleaned_rows_file` matches the rows file, and AI patch apply output chains into cleanup input when AI patching was used
 - `dataset-commit-handoff-plan` reports `ready_for_explicit_commit` for the exact finalize report, mutation manifest, final rows file, target user id, and expected state_code
+- commit and post-write verify are authoritative `tiangong-foundry.command-spec.v1` objects; their SHA-256 binds executable, argv, and the same final-row path/bytes/SHA-256, while display is never executed and every runner rechecks artifact bytes before `shell=false` spawn
+- a new process may receive a restricted commit CommandSpec only after `tiangong-foundry.execution-context.v1` is rehydrated from task evidence with current process-local runtime qualification and identity, approved-input ancestry, active exact actions/QA waivers, unchanged final rows, task-contained output path and reviewed owner CLI argv semantics; this admission returns the spec but never dispatches or retries it
+- facade task start performs no authentication and creates a new predecessor-bound task revision whenever selected path/content or task intent changes; it never resets or reuses an earlier task's attempt authority
+- facade task resume may automatically run only its registered deterministic local preparation; a nonempty, malformed or ambiguous attempt area blocks with readback-only recovery, and copied/unindexed completion files never yield `completed`
 - insert/versioned writes have explicit reasons
 - state_code=100 rows have source-review records instead of direct overwrite
 - a dry-run artifact exists
 - the configured remote/readback verification gate passes
 - after commit, `tiangong-lca dataset verify-remote --compare-root-payload --target-user-id <id> --state-code <code>` passes for the exact committed rows
+- explicit production case TDD runs only through a named `case:production:*` script outside ordinary CI. The designated test account may exercise every capability that account is authorized to use only on its isolated, unreviewed, unpublished rows; public production reads are allowed, while foreign/public/shared mutation and review/publish transitions are forbidden. Each write case requires a fresh intent-bound identity receipt, an exact argv/artifact binding, at most one mutation dispatch, and a unique owner/state/payload readback; transport ambiguity stops at read-only investigation without an automatic retry.
+- `missing_dataset` for a foreign or RLS-hidden `state_code=0` reference is always a hard blocker; another account's observation, a static trusted key, or a profile exception cannot rewrite the check/report to passed. Production-test accounts accept no post-write difference. Ordinary runs may normalize only an exact root payload mismatch proven to differ solely at `tiangongfoundry:importTraceSummary.traceHash` after a fresh CLI readback.
 - after commit and readback, Foundry `dataset-post-write-closeout` reports `completed`; it must prove the handoff was ready, the CLI commit report was a real commit with no row failures, post-write verification used the same final rows, root readback checks have equal local/remote payload hashes, owner/state_code match the handoff, profile-required full schema/YAML/context AI proof and evidence counts remain attached, and any `common:other` trace queues remain attached
 - for a task with one or more committed scopes, Foundry `dataset-import-completion-report` reports `completed` after aggregating every closeout report required by the task; missing closeouts, duplicate closeouts for the same dataset type/final rows, non-completed closeouts, mismatched finalize/mutation scopes, missing profile-required full-context proof or evidence counts, unreadable trace queues, or missing required dataset types keep the task blocked
 - for resumable batch imports, Foundry `dataset-import-ledger-report` must be able to summarize the append-only import ledger into `resume.skipped-verified.jsonl` and `resume.plan.jsonl`, preserving ready-only execution across reruns
+- high-level library/BAFU orchestration may resume, pause, stop claiming scopes, run bounded workers, or emit read-only preflight plans, but none of those states grants write authority; only an explicit commit request may delegate an artifact-bound, receipt-checked executable-plus-argv handoff after every scope gate passes
 - Foundry task state moves from `tasks/active` to `tasks/done` only through `task-complete`, which requires a matching `dataset-import-completion-report.completed` for the same task id, at least one post-write closeout scope, and profile-required full schema/YAML/context AI completion proof before entry
 
 For `state_code=0`, ordinary account-owned working-data repair should use update-first semantics. For missing or ambiguous `state_code`, stop at dry-run and create a follow-up task.

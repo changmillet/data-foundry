@@ -14,23 +14,29 @@ whenToUpdate:
 checkPaths:
   - docs/execution-capsule-contract.md
   - specs/schemas/execution-capsule-stage.schema.json
-  - scripts/commands/execution-capsule.mjs
-  - test/commands/execution-capsule.test.mjs
-  - test/unit/execution-capsule-attempt-state.test.mjs
-lastReviewedAt: 2026-07-23
-lastReviewedCommit: 2f1e80b02173fc20231f01ac9e6da62c16d63109
+  - scripts/commands/execution-capsule.ts
+  - test/commands/execution-capsule.test.mts
+  - test/unit/execution-capsule-attempt-state.test.mts
+  - test/unit/execution-capsule-command-factory.test.mts
+  - specs/schemas/execution-context.schema.json
+  - scripts/lib/foundry-execution-admission.ts
+lastReviewedAt: 2026-09-05
+lastReviewedCommit: 9f258f4632c091d2b12834c1699171e6cc714ed7
+lastReviewedNote: "Reviewed for #100 W04: this offline zero-attempt seal remains distinct from the qualified current-task child execution context."
 ---
 
 # Execution Capsule Admission Contract
 
 `execution-capsule-admit` is a Foundry-owned, workflow-internal offline gate. It turns one staged evidence revision into an immutable local admission record. It does not execute the consumer, create a session, access a network or database, dispatch a CLI write, or authorize production work.
 
+This `foundry-execution-capsule-stage.v1` contract is distinct from `tiangong-foundry.execution-context.v1` in `execution-context.schema.json`. The stage contract packages offline evidence and proves an unconsumed attempt. The newer child execution context binds current runtime qualification, identity, task authorization, final-row lineage and one reviewed CommandSpec immediately before handing that spec to the existing no-replay owner. Neither document authorizes replay or replaces the other's checks.
+
 ## Fast path
 
 Prepare a `foundry-execution-capsule-stage.v1` manifest and its content-addressed leaves, then run:
 
 ```bash
-node scripts/foundry.mjs execution-capsule-admit \
+node scripts/foundry.ts execution-capsule-admit \
   --stage-manifest .foundry/workspaces/<task-id>/stage-revisions/revision-0001.json \
   --out-dir .foundry/workspaces/<task-id>/admissions/revision-0001
 ```
@@ -65,3 +71,5 @@ The seal is local admission evidence only. `production_authority` is always `fal
 Pre-seal constructor, parser, validator, auditor, or composer failures do not consume an attempt because no dispatch occurred. Once dispatch is confirmed or becomes unknown, the modeled attempt is consumed. Exact desired readback makes success terminal; any non-exact or missing readback after a confirmed/unknown dispatch is `UNKNOWN_DO_NOT_REPLAY`.
 
 The admission command only accepts the pre-dispatch `UNATTEMPTED` state. The exported attempt-state model exists for deterministic evidence interpretation and performs no remote action.
+
+The pure attempt model is owned by `scripts/lib/foundry-execution-attempt.ts` and re-exported unchanged by the internal command owner. Migration planning reuses this leaf, adds zero-count/dispatch consistency checks, and binds selected stage bytes; it does not ship the command owner or claim a selected historical stage is a fresh admission.

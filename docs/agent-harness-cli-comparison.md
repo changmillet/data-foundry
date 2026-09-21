@@ -17,9 +17,10 @@ checkPaths:
   - docs/codex-stop-hook.md
   - .codex/hooks.json
   - .codex/hooks/run-foundry-acceptance-check.sh
-  - scripts/commands/core.mjs
-lastReviewedAt: 2026-06-05
-lastReviewedCommit: 76830c7adc67126a795f5fdc1c650fe56ac7b5e2
+  - scripts/commands/core.ts
+lastReviewedAt: 2026-09-11
+lastReviewedCommit: a69b7de2bb6aba5ce6e6db13957cf8e793ae69a6
+lastReviewedNote: "Reviewed for #122: the explicit reference-input workflow and qualified CLI 0.1.16 retain existing acceptance hooks, artifact locations and no-replay authority."
 related:
   - docs/file-organization.md
   - docs/codex-stop-hook.md
@@ -33,13 +34,17 @@ Useful pattern:
 
 - task-specific contracts live under `specs/acceptance/` when a task needs an explicit artifact checklist;
 - deterministic checks write JSON reports under `.foundry/state/`;
-- the Codex Stop hook runs `npm run acceptance:check`;
+- the Codex Stop hook runs `pnpm acceptance:check`;
 - blocking failures point the agent at concrete missing or inconsistent files.
+
+The pnpm/TS7 migration extends the same evidence model: `pnpm test:toolchain` checks the single lock/compiler graph and permanent compatibility ratchets, while a clean arbitrary-worktree run proves the project did not borrow dependencies, credentials, or ignored runtime state from the developer checkout. Issue #70 additionally proves exact CLI 0.1.3 public batch/auth consumption without changing acceptance-loop authority or artifact locations.
+
+`scripts/commands/core.ts` owns the local acceptance aggregation invoked by the existing package script. Its TypeScript migration preserves workflow, storage, environment and surface-check order plus the same `.foundry/state/acceptance/latest.json` artifact; it does not change Stop-hook registration or introduce a remote check.
 
 Run:
 
 ```bash
-npm run acceptance:check
+pnpm acceptance:check
 ```
 
 The loop checks `.env.example` policy on every run. Task-specific artifact contracts are optional; when `specs/acceptance/` has no JSON contracts, the acceptance loop only runs repository policy checks.

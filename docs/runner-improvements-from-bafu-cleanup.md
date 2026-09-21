@@ -1,5 +1,33 @@
+---
+title: Runner Improvements from BAFU Cleanup Debt
+docType: reference
+scope: import-curation-history
+status: historical
+authoritative: false
+owner: tiangong-lca-data-foundry
+language: en
+whenToUse:
+  - when investigating the historical BAFU and USLCI cleanup evidence that motivated current import safeguards
+whenToUpdate:
+  - when a current contract changes how this historical evidence should be interpreted
+checkPaths:
+  - docs/runner-improvements-from-bafu-cleanup.md
+  - docs/import-profiles/bafu/**
+  - docs/import-profiles/uslci/**
+  - scripts/lib/import-curation/**
+lastReviewedAt: 2026-08-25
+lastReviewedCommit: a2832001e1b67bdc8a1a9eb7707a99187f787a58
+lastReviewedNote: "Reviewed for Issue #67 Wave 25: native decision command paths do not change this historical BAFU/USLCI cleanup evidence, its owner routing, or the interpretation of classification and identity decision rounds."
+related:
+  - docs/import-profiles/bafu/profile.md
+  - docs/import-profiles/uslci/profile.md
+  - specs/import-profiles.json
+---
+
 # Runner improvements distilled from the BAFU post-import cleanup debt
 
+> **Historical converter references:** Python `tidas-tools` module/file references below document the 2026-06 root-cause evidence only. Current deterministic import/conversion/schema validation runs through the Foundry adapter over Rust `tidas` 0.2.x; any reusable defect now routes to that Rust owner rather than a Foundry-local patch.
+>
 > Source evidence (read-only, not executed by any runner): `inputs/BAFU-2025 Version 2 - TIDAS 2026-03-09/BAFU-需要确认事项.xlsx` (81 owner-confirmation flow decisions) and `inputs/BAFU-2025 Version 2 - TIDAS 2026-03-09/BAFU-AI清洗执行任务.xlsx` (10 FP/UG actions + 224 elementary flow remaps + validation).
 >
 > These workbooks describe cleanup the BAFU import created **after the fact**. Reversed, each cleanup bucket points at an import-time pitfall. This doc is the shared backlog (P1–P6) for **both** the BAFU runner (`dataset-bafu-batch-import-run`) and the USLCI runner (`dataset-uslci-batch-import-run`). Every fix lands in its owning project (tidas-tools converter / foundry runner+finalize / tiangong-lca-cli) and is BAFU-gated so the verified BAFU run is never regressed.

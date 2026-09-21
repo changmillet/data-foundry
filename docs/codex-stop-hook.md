@@ -3,7 +3,24 @@ title: Codex Stop Hook
 docType: runbook
 scope: repository
 status: active
+authoritative: true
 owner: tiangong-lca-data-foundry
+language: en
+whenToUse:
+  - when diagnosing or updating the repository-local Codex Stop hook
+  - when checking which acceptance command blocks task completion
+whenToUpdate:
+  - when Stop-hook registration, command invocation, output, or recursion behavior changes
+checkPaths:
+  - docs/codex-stop-hook.md
+  - docs/agent-harness-cli-comparison.md
+  - .codex/hooks.json
+  - .codex/hooks/run-foundry-acceptance-check.sh
+  - package.json
+  - scripts/commands/core.ts
+lastReviewedAt: 2026-09-11
+lastReviewedCommit: abc7672f3b3a806caa4219ab5b797f1d92421926
+lastReviewedNote: "Reviewed for #122: explicit task reference snapshots, CLI 0.1.16 QA/intent transport, sealed admission/readback evidence and no-replay recovery. Existing profile, permission, environment and historical delivery boundaries remain enforced."
 ---
 
 # Codex Stop Hook
@@ -19,7 +36,7 @@ Foundry uses a repository-local Codex Stop hook to prevent an agent turn from fi
 
 When Codex attempts to stop:
 
-1. the hook runs `npm run acceptance:check`;
+1. the hook runs `pnpm acceptance:check`;
 2. if checks pass, the hook exits without output and the turn may finish;
 3. if checks fail, the hook prints JSON:
 
@@ -46,7 +63,7 @@ These files are local runtime evidence and should not be committed.
 ## Manual Debugging
 
 ```bash
-npm run acceptance:check
+pnpm acceptance:check
 bash .codex/hooks/run-foundry-acceptance-check.sh
 ```
 

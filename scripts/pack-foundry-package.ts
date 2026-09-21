@@ -1,0 +1,121 @@
+import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
+import {
+  buildFoundryPackage,
+  foundryPackageRepoRoot,
+  foundryPackageStageRoot,
+} from "./build-foundry-package.ts";
+import {
+  assertFoundryPackage,
+  type FoundryPackageDescriptor,
+} from "./lib/foundry-package-contract.ts";
+import { resolvePackageManagerCommand } from "./lib/package-manager-command.ts";
+
+const maxArchiveBytes = 64 * 1024 * 1024;
+
+/** RFC1952 OS=255 removes pnpm's host marker without recompressing the payload. */
+export function canonicalizeFoundryPackageArchive(input: Uint8Array): Buffer {
+  if (
+    input.byteLength < 18 ||
+    input.byteLength > maxArchiveBytes ||
+    input[0] !== 0x1f ||
+    input[1] !== 0x8b ||
+    input[2] !== 8 ||
+    input[3] !== 0
+  )
+    throw new Error("Package gzip header differs from the qualified pnpm format.");
+  const bytes = Buffer.from(input);
+  bytes[9] = 255;
+  return bytes;
+}
+
+export interface PackedFoundryPackage {
+  readonly path: string;
+  readonly bytes: Buffer;
+  readonly descriptor: FoundryPackageDescriptor;
+}
+
+function archiveBytes(file: string): Buffer {
+  let fd: number;
+  try {
+    fd = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+  } catch {
+    throw new Error(`Package archive must be a regular file: ${file}`);
+  }
+  try {
+    const stat = fs.fstatSync(fd);
+    if (!stat.isFile() || stat.size < 1 || stat.size > maxArchiveBytes)
+      throw new Error(`Package archive has an invalid size: ${file}`);
+    return fs.readFileSync(fd);
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
+export function packFoundryPackage(
+  destination = path.join(foundryPackageRepoRoot, "package-artifacts"),
+): PackedFoundryPackage {
+  if (!path.isAbsolute(destination))
+    throw new Error("Package artifact destination must be absolute.");
+  buildFoundryPackage();
+  const descriptor = assertFoundryPackage(foundryPackageStageRoot);
+  const archiveName = `tiangong-lca-foundry-${descriptor.package.version}.tgz`;
+  if (fs.existsSync(destination)) {
+    const stat = fs.lstatSync(destination);
+    if (!stat.isDirectory() || stat.isSymbolicLink())
+      throw new Error("Package artifact destination must be a real directory.");
+  } else fs.mkdirSync(destination, { mode: 0o700 });
+  destination = fs.realpathSync(destination);
+  const temporaryDirectory = fs.mkdtempSync(path.join(destination, ".pack-"));
+  if (
+    path.dirname(temporaryDirectory) !== destination ||
+    !path.basename(temporaryDirectory).startsWith(".pack-")
+  )
+    throw new Error("Refusing to use an unsafe package temporary directory.");
+  try {
+    const invocation = resolvePackageManagerCommand("pnpm", [
+      "pack",
+      "--json",
+      "--pack-destination",
+      temporaryDirectory,
+    ]);
+    const result = spawnSync(invocation.executable, invocation.argv, {
+      shell: false,
+      cwd: foundryPackageStageRoot,
+      encoding: "utf8",
+      env: process.env,
+      maxBuffer: 16 * 1024 * 1024,
+    });
+    if (result.error) throw result.error;
+    if (result.status !== 0)
+      throw new Error(`Package archive failed with exit ${result.status ?? 1}.`);
+    const value = JSON.parse(result.stdout) as
+      { filename?: unknown } | Array<{ filename?: unknown }>;
+    const report = Array.isArray(value) ? value : [value];
+    if (report.length !== 1 || typeof report[0]?.filename !== "string")
+      throw new Error("Package archive command returned an invalid report.");
+    const temporaryArchive = path.resolve(report[0].filename);
+    if (
+      path.dirname(temporaryArchive) !== fs.realpathSync(temporaryDirectory) ||
+      path.basename(temporaryArchive) !== archiveName
+    )
+      throw new Error("Package archive command returned an unexpected output path.");
+    const generated = canonicalizeFoundryPackageArchive(archiveBytes(temporaryArchive));
+    const canonicalArchive = path.join(temporaryDirectory, "canonical-package.tgz");
+    fs.writeFileSync(canonicalArchive, generated, { flag: "wx", mode: 0o644 });
+    const target = path.join(destination, archiveName);
+    try {
+      fs.linkSync(canonicalArchive, target);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      if (!archiveBytes(target).equals(generated))
+        throw new Error("A different package archive already exists; it was not overwritten.");
+    }
+    return Object.freeze({ path: target, bytes: generated, descriptor });
+  } finally {
+    fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
+}
+
+if (import.meta.main) process.stdout.write(`${packFoundryPackage().path}\n`);

@@ -16,10 +16,11 @@ checkPaths:
   - AGENTS.md
   - WORKFLOW.md
   - package.json
-  - scripts/with-lca-account.mjs
-  - scripts/commands/commit-handoff.mjs
-lastReviewedAt: 2026-06-06
-lastReviewedCommit: 0c39afc18f1f2d8e01d2b33a39bdc0e21cea3a8f
+  - scripts/with-lca-account.ts
+  - scripts/commands/commit-handoff.ts
+lastReviewedAt: 2026-08-29
+lastReviewedCommit: 05fdeaf22520efb2325ffcde44f86b925e0a7b8a
+lastReviewedNote: "Reviewed for Issue #70: exact CLI 0.1.3 account receipts are parsed through the supported public subpath; private runtime/test internals remain closed and production authority is unchanged."
 ---
 
 # Account Context Policy
@@ -51,22 +52,36 @@ Use ignored account profile files instead:
 .foundry/account-profiles/<profile>.env
 ```
 
-Each profile keeps the standard variable names expected by existing CLI and Foundry commands:
+Each profile keeps the exact credential and intent values required by the installed CLI and Foundry wrapper:
 
 ```env
+TIANGONG_LCA_API_BASE_URL=https://<expected-project-ref>.supabase.co/functions/v1
 TIANGONG_LCA_API_KEY=...
-TIANGONG_LCA_SESSION_FILE=/Users/<user>/.local/state/tiangong-lca-cli/<profile>-session.json
+TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY=...
 FOUNDRY_ACCOUNT_LABEL=<profile>
+FOUNDRY_EXPECTED_PROJECT_REF=<expected-project-ref>
 FOUNDRY_EXPECTED_USER_ID=<resolved-user-id>
 ```
 
 Run commands through:
 
 ```bash
-npm run account:run -- <profile> -- <command> [args...]
+pnpm account:run -- <profile> -- <executable> [args...]
 ```
 
-The wrapper loads the selected profile into the child process using the same `TIANGONG_LCA_*` names, sets `FOUNDRY_ACCOUNT_PROFILE`, and verifies `FOUNDRY_EXPECTED_USER_ID` before running the command unless `--no-auth-check` is passed. This keeps account selection durable in the command and local task metadata instead of relying on chat memory.
+The wrapper selects only the required LCA credential values from the profile, disables the CLI session cache, forces a fresh signin, and invokes the exact installed CLI 0.1.3 as:
+
+```text
+auth identity-receipt --expected-project-ref <ref> --expected-user-id <uuid> --timeout-ms 10000 --json
+```
+
+It accepts only an exact, fresh `tiangong-lca.auth-identity-receipt.v1` whose assertions are `intent-bound`, whose project/user match both profile expectations, whose session is a cache-disabled forced signin, and whose CLI package/version match the installed package. Only then does it run the requested executable and argv with `shell:false` and a restricted environment. The child receives safe `FOUNDRY_AUTH_RECEIPT_*` bindings plus the required LCA credential values; unrelated parent environment variables are excluded.
+
+The wrapper never prints or persists the key and never relays the captured identity-receipt subprocess stdout/stderr on failure. The requested executable necessarily receives the credential and inherits terminal stdio; it is therefore part of the trusted computing boundary and must be a trusted project CLI or Foundry entrypoint. Its own output is not redacted by the wrapper. Child cancellation is returned as the stable shell-compatible `128 + signal` exit code (`130` for `SIGINT`, `143` for `SIGTERM`).
+
+There is no `--no-auth-check`, missing-expectation fallback, session-cache fallback, or environment-controlled skip path. Commands that do not need credentials should run directly instead of through `account:run`.
+
+Package installation, lint, typecheck, build, unit tests, and the clean arbitrary-worktree toolchain test are credential-free. They must not read `.env`, account profiles, thread guards, or `.foundry` runtime state. A real remote case enters this policy only when it deliberately invokes the exact installed CLI dependency (`pnpm exec tiangong-lca`, backed by `@tiangong-lca/cli@0.1.3`) through the approved receipt guard.
 
 ## Codex Thread Guards
 
@@ -82,16 +97,17 @@ Minimum shape:
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "scope": "codex-thread-runtime-account-guard",
   "codex_thread_id": "<CODEX_THREAD_ID>",
   "profile": "<profile>",
+  "expected_project_ref": "<expected-project-ref>",
   "expected_user_id": "<resolved-user-id>",
-  "required_command_prefix": "node scripts/with-lca-account.mjs <profile> --"
+  "required_command_prefix": "node scripts/with-lca-account.ts <profile> --"
 }
 ```
 
-`scripts/with-lca-account.mjs` reads this file when `CODEX_THREAD_ID` is present. If a guard exists for the active thread, the wrapper refuses any different profile before running the child command. This makes account selection survive context compaction and prevents cross-talk between two active Codex threads in the same repository.
+`scripts/with-lca-account.ts` requires this file whenever `CODEX_THREAD_ID` is present. It rejects a missing guard and any thread, profile, expected-project, or expected-user mismatch before invoking the CLI receipt command. This makes account selection survive context compaction and prevents cross-talk between two active Codex threads in the same repository.
 
 ## Private vs Public Surfaces
 

@@ -1,5 +1,4 @@
 node_modules/
-package-lock.json
 
 .foundry/
 .docpact/runs/
@@ -13,3 +12,9 @@ inputs/
 .agents/skills/dataset-rls-maintenance/
 .agents/skills/document-granular-decompose/
 .agents/skills/tiangong-kb-*/
+
+# Local Supabase CLI runtime metadata.
+supabase/.temp/
+
+# Preserve the checksum-bound, unmodified upstream SPDX schema.
+specs/release/spdx-2.3.schema.json

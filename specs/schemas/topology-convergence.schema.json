@@ -1,0 +1,321 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tiangong-lca.dev/schemas/foundry-topology-convergence.v1.json",
+  "title": "Foundry topology convergence artifacts",
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "uuid": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$"
+    },
+    "entity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["table", "id", "version"],
+      "properties": {
+        "table": { "enum": ["flows", "processes", "sources", "flowproperties", "unitgroups"] },
+        "id": { "$ref": "#/$defs/uuid" },
+        "version": { "type": "string", "pattern": "^[0-9]{2}\\.[0-9]{2}\\.[0-9]{3}$" }
+      }
+    },
+    "artifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes", "rows"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "bytes": { "type": "integer", "minimum": 0 },
+        "rows": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "campaign_id",
+        "production_authority",
+        "candidate_package",
+        "scope",
+        "input_artifacts",
+        "canonical_support",
+        "classification_policy",
+        "expected",
+        "cli_fingerprint"
+      ],
+      "properties": {
+        "schema_version": { "const": "foundry-topology-convergence-request.v1" },
+        "campaign_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$" },
+        "production_authority": { "const": false },
+        "candidate_package": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "sha256", "bytes"],
+          "properties": {
+            "path": { "type": "string", "minLength": 1 },
+            "sha256": { "$ref": "#/$defs/sha256" },
+            "bytes": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["email", "user_id", "project_ref", "state_code", "visibility"],
+          "properties": {
+            "email": { "type": "string", "format": "email" },
+            "user_id": { "$ref": "#/$defs/uuid" },
+            "project_ref": { "type": "string", "minLength": 1 },
+            "state_code": { "const": 0 },
+            "visibility": { "const": "owner_draft" }
+          }
+        },
+        "input_artifacts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "candidate_flows",
+            "candidate_processes",
+            "owner_flows",
+            "public_flows",
+            "foreign_flows",
+            "owner_processes",
+            "flow_mappings",
+            "target_classifications",
+            "german_synonyms",
+            "protected_no_write",
+            "admission_receipt"
+          ],
+          "properties": {
+            "candidate_flows": { "$ref": "#/$defs/artifactRef" },
+            "candidate_processes": { "$ref": "#/$defs/artifactRef" },
+            "owner_flows": { "$ref": "#/$defs/artifactRef" },
+            "public_flows": { "$ref": "#/$defs/artifactRef" },
+            "foreign_flows": { "$ref": "#/$defs/artifactRef" },
+            "owner_processes": { "$ref": "#/$defs/artifactRef" },
+            "flow_mappings": { "$ref": "#/$defs/artifactRef" },
+            "target_classifications": { "$ref": "#/$defs/artifactRef" },
+            "german_synonyms": { "$ref": "#/$defs/artifactRef" },
+            "protected_no_write": { "$ref": "#/$defs/artifactRef" },
+            "admission_receipt": { "$ref": "#/$defs/artifactRef" }
+          }
+        },
+        "canonical_support": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["flowproperties", "unitgroups"],
+          "properties": {
+            "flowproperties": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[a-f0-9-]{36}@[0-9]{2}\\.[0-9]{2}\\.[0-9]{3}$"
+              }
+            },
+            "unitgroups": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[a-f0-9-]{36}@[0-9]{2}\\.[0-9]{2}\\.[0-9]{3}$"
+              }
+            }
+          }
+        },
+        "classification_policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["conflict_flow_id", "selected_code"],
+          "properties": {
+            "conflict_flow_id": { "$ref": "#/$defs/uuid" },
+            "selected_code": { "type": "string", "minLength": 1 }
+          }
+        },
+        "expected": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "candidate_flows",
+            "processes",
+            "exchanges",
+            "flow_reference_changes",
+            "exchange_add",
+            "exchange_delete",
+            "direction_changes",
+            "amount_changes",
+            "german_synonyms",
+            "chinese_descriptions",
+            "protected_no_write",
+            "process_update",
+            "process_insert",
+            "process_no_write",
+            "obsolete_flow_delete_ceiling"
+          ],
+          "properties": {
+            "candidate_flows": { "type": "integer", "minimum": 0 },
+            "processes": { "type": "integer", "minimum": 0 },
+            "exchanges": { "type": "integer", "minimum": 0 },
+            "flow_reference_changes": { "type": "integer", "minimum": 0 },
+            "exchange_add": { "type": "integer", "minimum": 0 },
+            "exchange_delete": { "type": "integer", "minimum": 0 },
+            "direction_changes": { "type": "integer", "minimum": 0 },
+            "amount_changes": { "type": "integer", "minimum": 0 },
+            "german_synonyms": { "type": "integer", "minimum": 0 },
+            "chinese_descriptions": { "type": "integer", "minimum": 0 },
+            "protected_no_write": { "type": "integer", "minimum": 0 },
+            "process_update": { "type": "integer", "minimum": 0 },
+            "process_insert": { "type": "integer", "minimum": 0 },
+            "process_no_write": { "type": "integer", "minimum": 0 },
+            "obsolete_flow_delete_ceiling": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "cli_fingerprint": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["version", "git_head", "integrity"],
+          "properties": {
+            "version": { "type": "string", "minLength": 1 },
+            "git_head": {
+              "type": "string",
+              "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+            },
+            "integrity": { "type": "string", "pattern": "^sha512-" }
+          }
+        }
+      }
+    },
+    "admissionReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "captured_at_utc",
+        "select_only",
+        "fresh_owner_session",
+        "scope",
+        "candidate_package_sha256",
+        "request_binding_sha256",
+        "input_artifact_sha256",
+        "cli_fingerprint",
+        "fingerprints",
+        "guards"
+      ],
+      "properties": {
+        "schema_version": { "const": "foundry-topology-fresh-admission-receipt.v1" },
+        "captured_at_utc": { "type": "string", "minLength": 1 },
+        "select_only": { "const": true },
+        "fresh_owner_session": { "const": true },
+        "scope": { "type": "object" },
+        "candidate_package_sha256": { "$ref": "#/$defs/sha256" },
+        "request_binding_sha256": { "$ref": "#/$defs/sha256" },
+        "input_artifact_sha256": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/sha256" }
+        },
+        "cli_fingerprint": { "type": "object" },
+        "fingerprints": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["deployment", "rpc", "query"],
+          "properties": {
+            "deployment": { "$ref": "#/$defs/sha256" },
+            "rpc": { "$ref": "#/$defs/sha256" },
+            "query": { "$ref": "#/$defs/sha256" }
+          }
+        },
+        "guards": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["queue", "fence", "residue", "p0", "p1"],
+          "properties": {
+            "queue": { "const": 0 },
+            "fence": { "const": 0 },
+            "residue": { "const": 0 },
+            "p0": { "const": 0 },
+            "p1": { "const": 0 }
+          }
+        }
+      }
+    },
+    "candidateIndexRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "entity", "path", "sha256", "bytes"],
+      "properties": {
+        "schema_version": { "const": "foundry-topology-candidate-index-row.v1" },
+        "entity": { "$ref": "#/$defs/entity" },
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "bytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "classificationRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "entity", "classification", "source_kind", "evidence_sha256"],
+      "properties": {
+        "schema_version": { "const": "foundry-topology-flow-classification.v1" },
+        "entity": { "$ref": "#/$defs/entity" },
+        "classification": { "type": "object" },
+        "selected_code": { "type": ["string", "null"] },
+        "source_kind": { "type": "string", "minLength": 1 },
+        "evidence_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "conversionEvent": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "sequence",
+        "action_id",
+        "entity",
+        "exchange_key",
+        "mapping_kind",
+        "reason",
+        "before_sha",
+        "desired_sha",
+        "previous_event_sha256",
+        "event_sha256"
+      ],
+      "properties": {
+        "schema_version": { "const": "foundry-topology-conversion-event.v1" },
+        "sequence": { "type": "integer", "minimum": 1 },
+        "action_id": { "type": "string", "minLength": 1 },
+        "entity": { "$ref": "#/$defs/entity" },
+        "exchange_key": { "type": ["object", "null"] },
+        "mapping_kind": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 },
+        "before_sha": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+        "desired_sha": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+        "previous_event_sha256": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+        "event_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "report": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "status",
+        "production_authority",
+        "counts",
+        "algebra",
+        "dispatch_counts"
+      ]
+    },
+    "manifest": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "status",
+        "production_authority",
+        "input_artifacts",
+        "output_artifacts",
+        "counts"
+      ]
+    }
+  }
+}
