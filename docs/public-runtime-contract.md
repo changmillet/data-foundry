@@ -33,8 +33,8 @@ checkPaths:
   - test/scenarios/foundry-package-consumer.test.mts
   - docs/public-runtime-contract.md
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: bc41ba12a0fd9d6499c6ee992df891cf15e5303b
-lastReviewedNote: "Reviewed for Foundry #171 Windows CI correction: repair handoff and readback artifact paths reuse the existing canonical relative-path owner, matching strict native closeout on every platform. Payload, contract, authorization, exact readback and no-replay requirements are preserved."
+lastReviewedCommit: 5f848dab3c680c7ad5f5d768d9f1585e26f2427c
+lastReviewedNote: "Reviewed for Foundry #185: release-only 0.1.10 identity projection from qualified main 5f848dab3c680c7ad5f5d768d9f1585e26f2427c changes no runtime behavior, dependency, permission or command contract. Signed publication and native/bootstrap qualification remain required release gates."
 related:
   - docs/runtime-context-contract.md
   - docs/task-authorization-contract.md

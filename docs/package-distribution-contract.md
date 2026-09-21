@@ -35,8 +35,8 @@ checkPaths:
   - test/unit/runtime-layout.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 208f520f0771f2aacdde9422133255a76f0cc2fb
-lastReviewedNote: "Reviewed for Foundry #171: exact CLI 0.1.19 replaces 0.1.18 as the installed dependency and source identity while the native-draft module set, the sixteen-package production closure and the package authority model remain stable. The 0.1.19 POSIX and PowerShell bootstrap bytes equal the verified 0.1.18 scripts and were re-hashed at the new tag."
+lastReviewedCommit: 5f848dab3c680c7ad5f5d768d9f1585e26f2427c
+lastReviewedNote: "Reviewed for Foundry #185: release-only 0.1.10 identity projection from qualified main 5f848dab3c680c7ad5f5d768d9f1585e26f2427c changes no runtime behavior, dependency, permission or command contract. Signed publication and native/bootstrap qualification remain required release gates."
 related:
   - docs/public-runtime-contract.md
   - docs/runtime-context-contract.md
