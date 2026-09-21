@@ -89,9 +89,9 @@ checkPaths:
   - scripts/lib/import-curation/internal/mutation-manifest-workflow.ts
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-09-19
-lastReviewedCommit: 0088181d5da79d4dbcfd5e6271b97071c9c3cc80
-lastReviewedNote: "Reviewed for Foundry #178: bound W8 naming premises by source identity while retaining Foundry-local evidence, identity, authorization, and blocking policy. Existing navigation and operational boundaries are unchanged; Node 24 full tests, lint, build, and Docpact pass locally; hosted CI remains pending."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 1a6a3eae94661170bc6cbcd5774e145d8c0985f3
+lastReviewedNote: "Reviewed for Foundry #30: the workbook-reader test and its byte-reproducible openpyxl fixture live under the existing test/unit and test/fixtures locations recorded here. No location, owner or capability mapping changed."
 ---
 
 # Workspace Project Map

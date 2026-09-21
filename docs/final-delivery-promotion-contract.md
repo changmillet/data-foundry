@@ -96,16 +96,24 @@ One promotion pass checks all of these:
 - element and attribute lookup that is namespace-consistent at every level, not only at the root: a foreign-namespace `sheets`/`sheet` or attribute is never read as OOXML, unqualified OOXML attributes must be in no namespace, and a sheet relationship id must be in exactly the office-document relationship namespace;
 - rich-text shared and inline strings reconstructed from their runs in document order, with phonetic `<rPh>` annotation excluded because it is not the cell's main text — a literal split across runs is still reassembled, so it cannot hide from the scan;
 - relationship `TargetMode` honoured: an external relationship is never resolved as a local package part, and the office-document relationship type must equal the standard URI exactly rather than merely ending with it;
+- relationship targets resolved as OPC defines them: a target beginning with `/` is an absolute pack URI and resolves from the package root, while a relative target resolves against the part that declares the relationship. Resolving an absolute target against the declaring part would look for `xl/xl/worksheets/sheet1.xml` and reject every workbook written by a standard spreadsheet library. Whatever the form, the resolved path must still be a safe relative path inside the package, so a traversal target fails closed either way, and a target naming the package root or a directory names no part and is refused. A target that leaves the root and re-enters it resolves back inside and is judged on whether it names a usable worksheet, exactly like any other in-package target;
+- parts outside `xl/` are legal: `docProps/core.xml` and `docProps/app.xml` are ordinary OPC non-participating parts, so the root relationships that bind them are retained rather than treated as escapes. They are never worksheet or workbook candidates — that is decided by the relationship type and the content type — but they are shipped content and are scanned like every other part;
 - content-bound independent reviewer reports whose reviewer differs from the producer, reports `PASS` with zero P0/P1 findings, and individually binds every required artifact to the exact SHA-256 and byte count it reviewed;
 - algebra operands that resolve to explicit finite numbers only, with every sum step checked for finiteness and safe range, so a missing value or an overflow can never satisfy a check;
 - redaction scanning of **every** declared artifact, with decoded JSON keys **and** values and decoded CSV cells scanned alongside the raw bytes, and a non-text artifact failing closed rather than being claimed as fully scanned;
-- every XML and relationships part of a workbook strictly parsed and scanned through its **decoded** text and attribute values, so an entity-escaped literal is visible; text that is not a cell's body value — phonetic annotation, a shared string no cell references — is still shipped content and is scanned rather than skipped.
+- every XML and relationships part of a workbook strictly parsed and scanned through its **decoded** text and attribute values, so an entity-escaped literal is visible; text that is not a cell's body value — phonetic annotation, a shared string no cell references, `docProps` metadata — is still shipped content and is scanned rather than skipped.
 
 ## Supported text contract
 
 A textual artifact (`json-object`, `json-object-rows`, `json-array`, `jsonl`, `csv`, `none`) must be strict UTF-8 with no unsupported control byte: tab, newline and carriage return are the only control characters permitted. Silent replacement is not acceptable — content that does not decode is rejected rather than scanned as different text. There is no content-type sniffing: the supported encodings and formats are exactly those declared here, and anything else fails closed.
 
 A `none` row contract describes row shape only and can never weaken scanning. Its bytes are decoded and scanned under the same contract, and content that happens to be JSON or JSONL is parsed so the scan is never weaker than it would be under the matching explicit row contract.
+
+## Supported workbook profile
+
+The accepted XLSX profile is the one standard spreadsheet libraries actually emit, not a minimal hand-built package. A workbook written by openpyxl, xlsxwriter or Excel — DEFLATE entries, `docProps` present and bound from the root relationships, worksheet targets written as absolute pack URIs — promotes without post-processing, and `test/fixtures/openpyxl-native-workbook.xlsx` is a byte-reproducible openpyxl workbook kept as the regression guard for exactly that shape.
+
+The profile stays bounded: entries must be stored or deflated, every relationship target must resolve inside the package as a safe relative path, and a part is only ever interpreted through its declared relationship type and content type. Widening what resolves is not the same as widening what is trusted.
 
 ## Reviewer report contract
 

@@ -93,9 +93,9 @@ checkPaths:
   - scripts/lib/import-curation/internal/mutation-manifest-workflow.ts
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-09-19
-lastReviewedCommit: 0088181d5da79d4dbcfd5e6271b97071c9c3cc80
-lastReviewedNote: "Reviewed for Foundry #178: bound W8 naming premises by source identity while retaining Foundry-local evidence, identity, authorization, and blocking policy. Existing navigation and operational boundaries are unchanged; Node 24 full tests, lint, build, and Docpact pass locally; hosted CI remains pending."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 1a6a3eae94661170bc6cbcd5774e145d8c0985f3
+lastReviewedNote: "Reviewed for Foundry #30: the workbook-reader correction remains Foundry-owned local validation of a declared delivery artifact. It reimplements no CLI, SDK, database, converter or Edge behavior, and the new fixture is a Foundry-owned test artifact, not a sibling capability output."
 ---
 
 # Capability Ownership Policy

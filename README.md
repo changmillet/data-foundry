@@ -158,9 +158,9 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - test/unit/zero-javascript-ratchet.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
-lastReviewedAt: 2026-09-19
-lastReviewedCommit: 0088181d5da79d4dbcfd5e6271b97071c9c3cc80
-lastReviewedNote: "Reviewed for Foundry #178: bound W8 naming premises by source identity while retaining Foundry-local evidence, identity, authorization, and blocking policy. Existing navigation and operational boundaries are unchanged; Node 24 full tests, lint, build, and Docpact pass locally; hosted CI remains pending."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 1a6a3eae94661170bc6cbcd5774e145d8c0985f3
+lastReviewedNote: "Reviewed for Foundry #30: the offline final-delivery workbook reader now resolves OPC relationship targets correctly and retains legal docProps parts while scanning them. Navigation, quickstart, runtime inputs and capability ownership are unchanged; the added test/fixtures/openpyxl-native-workbook.xlsx is an ordinary repository fixture."
 ---
 
 # TianGong LCA Data Foundry

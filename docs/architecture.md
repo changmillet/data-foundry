@@ -152,9 +152,9 @@ checkPaths:
   - test/unit/foundry-runtime-environment.test.mts
   - test/unit/lint-suppression-audit.test.mts
   - docs/incremental-change-set-contract.md
-lastReviewedAt: 2026-09-19
-lastReviewedCommit: 0088181d5da79d4dbcfd5e6271b97071c9c3cc80
-lastReviewedNote: "Reviewed for Foundry #178: bound W8 naming premises by source identity while retaining Foundry-local evidence, identity, authorization, and blocking policy. Existing navigation and operational boundaries are unchanged; Node 24 full tests, lint, build, and Docpact pass locally; hosted CI remains pending."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 1a6a3eae94661170bc6cbcd5774e145d8c0985f3
+lastReviewedNote: "Reviewed for Foundry #30: scripts/lib/final-delivery-workbook.ts is documented as the bounded OOXML reader, and the correction stays inside that module's contract — absolute pack URIs resolve from the package root, legal docProps parts are retained and scanned, and traversal, external, encryption, compression, CRC, strict UTF-8, namespace and relationship-type boundaries are unchanged. No module boundary or dependency direction moved."
 ---
 
 # Architecture

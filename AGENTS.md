@@ -263,9 +263,9 @@ checkPaths:
   - test/unit/zero-javascript-ratchet.test.mts
   - test/unit/foundry-cli-spine.test.mts
   - specs/**
-lastReviewedAt: 2026-09-20
-lastReviewedCommit: 6a48836f88194c68a95e0bb13c0daaf32ce9685f
-lastReviewedNote: "Reviewed for Foundry #182: exact CLI 0.1.18, SDK 0.3.0 and Toolkit 0.3.2 adoption changes package/source pins, not authorization, workflow ownership, or write boundaries."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 1a6a3eae94661170bc6cbcd5774e145d8c0985f3
+lastReviewedNote: "Reviewed for Foundry #30: the final-delivery workbook-reader fix is confined to scripts/lib/final-delivery-workbook.ts and its test. It changes no command, toolchain, runtime, authorization or write boundary. The repository gains one binary OOXML fixture under test/fixtures; `* text=auto` already detects it as binary (NUL at byte 5), so no line-ending policy change is required and no rule, path or ownership entry moved."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry
