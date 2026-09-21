@@ -185,7 +185,7 @@ test("annual-supply deferral, full-context requirements, trace contracts, and na
       patchPath,
     });
     assert.equal(deferred[0].code, "patch_deferred_annual_supply_not_allowed");
-    assert.equal(deferred[0].sentinel_value, "9999 missing-data-sentinel/year");
+    assert.deepEqual(deferred[0].normalized_unknown_value, []);
 
     const fullContextTask = {
       ...baseTask(root),

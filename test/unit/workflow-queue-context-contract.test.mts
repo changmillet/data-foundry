@@ -103,7 +103,7 @@ function createQueueFixture(root: string) {
   return { queueDir, tasks };
 }
 
-test("annual-supply schema actions preserve coercion, sentinel policy, deterministic branches, and generic AI fallback", () => {
+test("annual-supply schema actions preserve coercion, unknown-evidence policy, deterministic branches, and generic AI fallback", () => {
   assert.equal(
     queue.annualSupplyFieldPath,
     "processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume",
@@ -113,7 +113,7 @@ test("annual-supply schema actions preserve coercion, sentinel policy, determini
   assert.equal(queue.isAnnualSupplyTarget("other", "other.path"), false);
   assert.equal(
     queue.schemaIssueInstruction({ code: "annual_supply_or_production_volume_missing" }),
-    "Use source evidence or an explicitly documented profile fallback to write annualSupplyOrProductionVolume as a real annualized quantity with unit, for example '<number> <unit>/year'. If no annualized source evidence exists, Foundry deterministic cleanup must write the intentionally non-physical sentinel '9999 missing-data-sentinel/year' so database-side follow-up can bulk-locate and replace it later.",
+    "Use source evidence or an explicitly documented profile fallback to write annualSupplyOrProductionVolume as a real annualized quantity with unit, for example '<number> <unit>/year'. Never invent a quantity from a reference flow or a default unit. If no annualized source evidence exists, Foundry deterministic cleanup normalizes the field to the supported empty array and records a row-level evidence gap; the historical '9999 missing-data-sentinel/year' marker is recognized only so rows written by earlier rounds can be normalized, and is never written again.",
   );
   assert.equal(
     queue.schemaIssueInstruction({ code: "invalid_format", path: "field" }),
@@ -126,11 +126,12 @@ test("annual-supply schema actions preserve coercion, sentinel policy, determini
     path: queue.annualSupplyFieldPath,
     message: "missing",
   });
-  assert.equal(annual.action_kind, "annual_supply_sentinel_completion");
+  assert.equal(annual.action_kind, "annual_supply_unknown_evidence_normalization");
   assert.equal(annual.required_owner, "foundry_deterministic_cleanup");
   assert.equal(annual.ai_required, false);
-  assert.equal(annual.sentinel_value, "9999 missing-data-sentinel/year");
-  assert.equal(annual.sentinel_cleanup_path, queue.annualSupplyFieldPath);
+  assert.equal(annual.unknown_normalization_allowed, true);
+  assert.deepEqual(annual.normalized_unknown_value, []);
+  assert.equal(annual.cleanup_field_path, queue.annualSupplyFieldPath);
 
   assert.deepEqual(
     queue.schemaIssueCurationAction({

@@ -3,7 +3,6 @@ import { normalizeTidasLanguageCode } from "../../tidas-language-utils.ts";
 import { fullContextAiCompletionRequirement } from "./context-inputs.ts";
 import { dataSetInformation, datasetRoot } from "./dataset-payload.ts";
 import { sha256Text } from "./hash-utils.ts";
-import { annualSupplyMissingDataSentinelText } from "./prewrite-cleanup.ts";
 import {
   asText,
   ensureArray,
@@ -1594,7 +1593,7 @@ export function buildPatchTemplate(packagePayload: unknown, packagePath: string)
       "Do not remove authoring_package; strict Foundry apply uses it for package lineage and action-item closure.",
       "Do not use common:other as a substitute for mandatory schema fields. Only action items whose allowed_resolution_modes include deferred_to_common_other may be deferred.",
       "For deferred_to_common_other, add tiangongfoundry:unresolvedTrace under common:other with status, action_item_code, blocked_path, reason, structured evidence, and next_action. Evidence must include source plus quote_or_trace/source_path/field_path/citation.",
-      `Do not defer annualSupplyOrProductionVolume to common:other. When source annual volume evidence is missing, Foundry deterministic cleanup writes '${annualSupplyMissingDataSentinelText}' so the required schema field remains present and later database-side curation can bulk-locate it.`,
+      "Do not defer annualSupplyOrProductionVolume to common:other and do not invent a quantity from a reference flow or a default unit. Supply a real annualized quantity from source evidence, or leave the field to Foundry deterministic cleanup, which normalizes it to the supported empty array and records a row-level evidence gap.",
       "For source_trace_verified, add tiangongfoundry:sourceExchangeCompleteness under common:other with accepted status and structured source trace evidence. Evidence must include source plus quote_or_trace/source_path/field_path/citation.",
     ],
     patch_sets: [

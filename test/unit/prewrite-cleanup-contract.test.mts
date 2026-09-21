@@ -202,36 +202,33 @@ test("datetime metadata rejects impossible calendars, invalid timezones, partial
   }
 });
 
-test("annual supply sentinel preserves process-only, real-value, wrapper, placeholder, and missing-container behavior", () => {
-  assert.equal(cleanup.annualSupplyMissingDataSentinelText, "9999 missing-data-sentinel/year");
+test("annual supply cleanup is process-scoped and preserves wrapper, real-value, and missing-container behavior", () => {
+  assert.equal(
+    cleanup.legacyAnnualSupplyMissingDataSentinelText,
+    "9999 missing-data-sentinel/year",
+  );
   const nonProcess = processRow({ annualSupply: "Not specified" });
-  assert.equal(cleanup.applyAnnualSupplyMissingDataSentinel(nonProcess, "flow"), false);
+  assert.deepEqual(cleanup.normalizeAnnualSupplyEvidence(nonProcess, "flow"), {
+    changed: false,
+    gap: null,
+  });
 
   const noContainer = { processDataSet: { processInformation: { dataSetInformation: {} } } };
-  assert.equal(cleanup.applyAnnualSupplyMissingDataSentinel(noContainer, "process"), false);
-
-  for (const placeholder of [
-    undefined,
-    "",
-    "9999",
-    "Not specified.",
-    { "#text": "Not declared in source package" },
-    { value: "Source production volume unavailable" },
-    ["array-is-not-a-supported-real-value"],
-  ]) {
-    const row = processRow({ annualSupply: placeholder });
-    assert.equal(cleanup.applyAnnualSupplyMissingDataSentinel(row, "process"), true);
-    assert.deepEqual(
-      row.processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness
-        .annualSupplyOrProductionVolume,
-      { "@xml:lang": "en", "#text": "9999 missing-data-sentinel/year" },
-    );
-  }
+  assert.deepEqual(cleanup.normalizeAnnualSupplyEvidence(noContainer, "process"), {
+    changed: false,
+    gap: null,
+  });
 
   const wrapped = { process: processRow({ annualSupply: "source evidence unavailable" }) };
-  assert.equal(cleanup.applyAnnualSupplyMissingDataSentinel(wrapped, "process"), true);
+  const wrappedResult = cleanup.normalizeAnnualSupplyEvidence(wrapped, "process");
+  assert.equal(wrappedResult.changed, true);
+  assert.equal(wrappedResult.gap?.reason, "explicit_missing_text");
+
   const real = processRow({ annualSupply: { "#text": "125 kg/year" } });
-  assert.equal(cleanup.applyAnnualSupplyMissingDataSentinel(real, "process"), false);
+  assert.deepEqual(cleanup.normalizeAnnualSupplyEvidence(real, "process"), {
+    changed: false,
+    gap: null,
+  });
   assert.equal(
     nestedValue(
       real,
@@ -243,6 +240,127 @@ test("annual supply sentinel preserves process-only, real-value, wrapper, placeh
     ),
     "125 kg/year",
   );
+});
+
+function annualSupplyValue(row: unknown): unknown {
+  return nestedValue(
+    row,
+    "processDataSet",
+    "modellingAndValidation",
+    "dataSourcesTreatmentAndRepresentativeness",
+    "annualSupplyOrProductionVolume",
+  );
+}
+
+test("annual supply cleanup preserves real single-object and language-array evidence verbatim", () => {
+  const singleObject = { "@xml:lang": "en", "#text": "3.2E4 kg/year" };
+  const singleLanguage: JsonObject[] = [{ "@xml:lang": "en", "#text": "3.2E4 kg/year" }];
+  const bilingual: JsonObject[] = [
+    { "@xml:lang": "en", "#text": "3.2E4 kg/year" },
+    { "@xml:lang": "zh", "#text": "3.2E4 kg/年" },
+  ];
+  // A real quantity that merely collides numerically with the historical marker stays real.
+  const numericCollision: JsonObject[] = [{ "@xml:lang": "en", "#text": "9999 kg/year" }];
+
+  for (const evidence of [singleObject, singleLanguage, bilingual, numericCollision]) {
+    const row = processRow({ annualSupply: evidence });
+    assert.deepEqual(
+      cleanup.normalizeAnnualSupplyEvidence(row, "process"),
+      { changed: false, gap: null },
+      `real annual supply ${JSON.stringify(evidence)} must be preserved unchanged`,
+    );
+    assert.deepEqual(
+      annualSupplyValue(row),
+      evidence,
+      `real annual supply ${JSON.stringify(evidence)} must survive verbatim`,
+    );
+  }
+
+  const ordered = processRow({ annualSupply: bilingual });
+  cleanup.normalizeAnnualSupplyEvidence(ordered, "process");
+  assert.deepEqual(
+    (annualSupplyValue(ordered) as JsonObject[]).map((entry) => entry["@xml:lang"]),
+    ["en", "zh"],
+    "language entry order must be preserved",
+  );
+});
+
+test("annual supply cleanup normalizes unknown volume and leaves unsupported shapes to the gates", () => {
+  // An unsupported shape is neither evidence nor unknown: it is preserved untouched so the
+  // existing SDK/CLI gates own rejecting it. Preserving it is not certifying it as evidence.
+  for (const unsupported of [
+    ["array-is-not-a-supported-real-value"],
+    ["3.2E4 kg/year", "3.2E4 kg/年"],
+    // A plain string array is not a language array even when its text looks like a marker, so it
+    // must reach the SDK unhappy rather than being repaired into [] and hiding the shape problem.
+    ["Not specified"],
+    // A language-array entry needs both a non-empty @xml:lang and a string #text.
+    [{ "#text": "Not specified" }],
+    [{ "@xml:lang": "", "#text": "Not specified" }],
+    [{ "@xml:lang": "en", value: "Not specified" }],
+    { "@xml:lang": "en" },
+  ]) {
+    const row = processRow({ annualSupply: unsupported });
+    assert.deepEqual(
+      cleanup.normalizeAnnualSupplyEvidence(row, "process"),
+      { changed: false, gap: null },
+      `unsupported shape ${JSON.stringify(unsupported)} must be left for the gates`,
+    );
+    assert.deepEqual(annualSupplyValue(row), unsupported);
+  }
+
+  // Prose that merely mentions an unknown or unavailable volume is evidence, not a missing marker.
+  for (const prose of [
+    { "@xml:lang": "en", "#text": "Annual output unknown; sector average 4.2E4 kg/year" },
+    { "@xml:lang": "en", "#text": "0 m/year; source production volume unavailable" },
+  ]) {
+    const row = processRow({ annualSupply: prose });
+    assert.deepEqual(
+      cleanup.normalizeAnnualSupplyEvidence(row, "process"),
+      { changed: false, gap: null },
+      JSON.stringify(prose),
+    );
+    assert.deepEqual(annualSupplyValue(row), prose);
+  }
+
+  // Missing, empty, and narrow complete-string markers normalize to the supported empty array.
+  const unknownCases: Array<[unknown, string]> = [
+    [undefined, "missing"],
+    [null, "missing"],
+    ["", "empty"],
+    [{ "@xml:lang": "en", "#text": "   " }, "empty"],
+    ["Not specified.", "explicit_missing_text"],
+    [{ "#text": "Not declared in source package" }, "explicit_missing_text"],
+    [{ value: "Source production volume unavailable" }, "explicit_missing_text"],
+    [{ "@xml:lang": "en", "#text": "9999 missing-data-sentinel/year" }, "legacy_marker"],
+    [[{ "@xml:lang": "en", "#text": "9999 missing-data-sentinel/year" }], "legacy_marker"],
+  ];
+  for (const [unknownValue, reason] of unknownCases) {
+    const row = processRow({ annualSupply: unknownValue });
+    const result = cleanup.normalizeAnnualSupplyEvidence(row, "process");
+    assert.equal(result.changed, true, JSON.stringify(unknownValue));
+    assert.equal(result.gap?.reason, reason, JSON.stringify(unknownValue));
+    assert.deepEqual(annualSupplyValue(row), [], JSON.stringify(unknownValue));
+  }
+
+  // An already-normalized row keeps reporting its gap without a further transform.
+  const already = processRow({ annualSupply: [] });
+  const alreadyResult = cleanup.normalizeAnnualSupplyEvidence(already, "process");
+  assert.equal(alreadyResult.changed, false);
+  assert.equal(alreadyResult.gap?.reason, "already_unknown");
+  assert.deepEqual(annualSupplyValue(already), []);
+
+  // A mixed array keeps every real element and is flagged for review instead of rewritten.
+  const mixed: JsonObject[] = [
+    { "@xml:lang": "en", "#text": "3.2E4 kg/year" },
+    { "@xml:lang": "en", "#text": "9999 missing-data-sentinel/year" },
+  ];
+  const mixedRow = processRow({ annualSupply: mixed });
+  const mixedResult = cleanup.normalizeAnnualSupplyEvidence(mixedRow, "process");
+  assert.equal(mixedResult.changed, false);
+  assert.equal(mixedResult.gap?.reason, "mixed_entries");
+  assert.equal(mixedResult.gap?.review_required, true);
+  assert.deepEqual(annualSupplyValue(mixedRow), mixed);
 });
 
 test("source row index preserves exact-version last-write and bare-id first-write precedence", () => {
@@ -510,13 +628,14 @@ test("trace evidence locator sanitization preserves trace order, deletes locator
 
 test("prewrite cleanup module retains its exact export surface", () => {
   assert.deepEqual(Object.keys(cleanup).sort(), [
-    "annualSupplyMissingDataSentinelText",
-    "applyAnnualSupplyMissingDataSentinel",
+    "annualSupplyFieldPath",
     "applyDeterministicSourceExchangeCompletenessProofs",
     "buildSourceRowsByIdentity",
     "ensureFoundryTraceNamespaces",
     "externalizeImportTraceMetadata",
     "foundryTraceNamespace",
+    "legacyAnnualSupplyMissingDataSentinelText",
+    "normalizeAnnualSupplyEvidence",
     "normalizeDateTimeMetadata",
     "normalizeUtcDateTimeString",
     "sanitizeFoundryTraceEvidenceLocators",

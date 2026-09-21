@@ -183,7 +183,7 @@ test("curation gate maps process QA functional unit findings to concrete TIDAS p
   }
 });
 
-test("annual supply schema issues route to deterministic missing-data sentinel cleanup", () => {
+test("annual supply schema issues route to deterministic unknown-evidence normalization", () => {
   fs.rmSync(annualSupplyFixtureRoot, { recursive: true, force: true });
   const processId = "eeeeeeee-ffff-4000-8111-222222222222";
   const rowsFile = path.join(annualSupplyFixtureRoot, "rows", "processes.jsonl");
@@ -258,12 +258,12 @@ test("annual supply schema issues route to deterministic missing-data sentinel c
       path.join(repoRoot, gate.json.processes[0].authoring_package),
     );
     const annualCleanupItems = authoringPackage.deterministic_cleanup_items.filter(
-      (item) => item.action_kind === "annual_supply_sentinel_completion",
+      (item) => item.action_kind === "annual_supply_unknown_evidence_normalization",
     );
     assert.equal(annualCleanupItems.length, 2);
     assert.deepEqual(
-      annualCleanupItems.map((item) => item.sentinel_value),
-      ["9999 missing-data-sentinel/year", "9999 missing-data-sentinel/year"],
+      annualCleanupItems.map((item) => item.normalized_unknown_value),
+      [[], []],
     );
 
     const cleanup = runFoundry([
@@ -277,15 +277,13 @@ test("annual supply schema issues route to deterministic missing-data sentinel c
     ]);
     assert.equal(cleanup.code, 0);
     assert.equal(cleanup.json.status, "completed");
-    assert.equal(cleanup.json.counts.annual_supply_missing_data_sentinels, 1);
+    assert.equal(cleanup.json.counts.annual_supply_unknown_normalized, 1);
+    assert.equal(cleanup.json.counts.annual_supply_evidence_gaps, 1);
     const cleaned = readJsonLines(path.join(repoRoot, cleanup.json.files.cleaned_rows))[0];
     assert.deepEqual(
       cleaned.processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness
         .annualSupplyOrProductionVolume,
-      {
-        "@xml:lang": "en",
-        "#text": "9999 missing-data-sentinel/year",
-      },
+      [],
     );
     assert.equal(
       cleaned.processDataSet.processInformation.dataSetInformation["common:other"],
@@ -296,7 +294,7 @@ test("annual supply schema issues route to deterministic missing-data sentinel c
   }
 });
 
-test("curation cleanup fills placeholder annual supply with searchable sentinel", () => {
+test("curation cleanup normalizes placeholder annual supply to the supported unknown array", () => {
   const root = path.join(repoRoot, "tmp", "annual-supply-deterministic-cleanup-test");
   fs.rmSync(root, { recursive: true, force: true });
   const processId = "eeeeeeee-ffff-4000-8111-222222222223";
@@ -315,16 +313,13 @@ test("curation cleanup fills placeholder annual supply with searchable sentinel"
     ]);
     assert.equal(cleanup.code, 0);
     assert.equal(cleanup.json.status, "completed");
-    assert.equal(cleanup.json.counts.annual_supply_missing_data_sentinels, 1);
+    assert.equal(cleanup.json.counts.annual_supply_unknown_normalized, 1);
 
     const cleaned = readJsonLines(path.join(repoRoot, cleanup.json.files.cleaned_rows))[0];
     assert.deepEqual(
       cleaned.processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness
         .annualSupplyOrProductionVolume,
-      {
-        "@xml:lang": "en",
-        "#text": "9999 missing-data-sentinel/year",
-      },
+      [],
     );
     assert.equal(
       cleaned.processDataSet.processInformation.dataSetInformation["common:other"],
@@ -367,7 +362,7 @@ test("curation cleanup CLI exits nonzero and emits only blocker evidence for an 
   }
 });
 
-test("curation cleanup treats unavailable annual production volume as sentinel", () => {
+test("curation cleanup normalizes an explicit unavailable-volume marker to the unknown array", () => {
   const root = path.join(repoRoot, "tmp", "annual-supply-unavailable-cleanup-test");
   fs.rmSync(root, { recursive: true, force: true });
   const processId = "eeeeeeee-ffff-4000-8111-222222222224";
@@ -375,7 +370,7 @@ test("curation cleanup treats unavailable annual production volume as sentinel",
   row.processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume =
     {
       "@xml:lang": "en",
-      "#text": "0 m/year; source production volume unavailable",
+      "#text": "Source production volume unavailable",
     };
   const rowsFile = path.join(root, "rows", "processes.jsonl");
   writeJsonLines(rowsFile, [row]);
@@ -392,17 +387,142 @@ test("curation cleanup treats unavailable annual production volume as sentinel",
     ]);
     assert.equal(cleanup.code, 0);
     assert.equal(cleanup.json.status, "completed");
-    assert.equal(cleanup.json.counts.annual_supply_missing_data_sentinels, 1);
+    assert.equal(cleanup.json.counts.annual_supply_unknown_normalized, 1);
+    assert.equal(cleanup.json.counts.annual_supply_evidence_gaps, 1);
 
     const cleaned = readJsonLines(path.join(repoRoot, cleanup.json.files.cleaned_rows))[0];
     assert.deepEqual(
       cleaned.processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness
         .annualSupplyOrProductionVolume,
+      [],
+    );
+    const gaps = cleanup.json.annual_supply_evidence_gaps as Array<Record<string, unknown>>;
+    assert.deepEqual(
+      gaps.map((gap) => gap.reason),
+      ["explicit_missing_text"],
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+function setAnnualSupply(row: unknown, value: unknown): void {
+  const sources = (
+    row as {
+      processDataSet: {
+        modellingAndValidation: {
+          dataSourcesTreatmentAndRepresentativeness: Record<string, unknown>;
+        };
+      };
+    }
+  ).processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness;
+  sources.annualSupplyOrProductionVolume = value;
+}
+
+test("curation cleanup preserves a real language-array annual supply instead of replacing it", () => {
+  const root = path.join(repoRoot, "tmp", "annual-supply-language-array-cleanup-test");
+  fs.rmSync(root, { recursive: true, force: true });
+  const processId = "eeeeeeee-ffff-4000-8111-222222222225";
+  const evidence = [
+    { "@xml:lang": "en", "#text": "3.2E4 kg/year" },
+    { "@xml:lang": "zh", "#text": "3.2E4 kg/年" },
+  ];
+  const row = processRowWithInvalidAnnualSupply(processId);
+  setAnnualSupply(row, evidence);
+  const rowsFile = path.join(root, "rows", "processes.jsonl");
+  writeJsonLines(rowsFile, [row]);
+
+  try {
+    const cleanup = runFoundry([
+      "dataset-curation-cleanup",
+      "--type",
+      "process",
+      "--rows-file",
+      rel(rowsFile),
+      "--out-dir",
+      rel(path.join(root, "cleanup")),
+    ]);
+    assert.equal(cleanup.code, 0);
+    assert.equal(cleanup.json.status, "completed");
+
+    const cleaned = readJsonLines(path.join(repoRoot, cleanup.json.files.cleaned_rows))[0];
+    assert.deepEqual(
+      cleaned.processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness
+        .annualSupplyOrProductionVolume,
+      evidence,
+    );
+    assert.equal(
+      cleanup.json.counts.annual_supply_unknown_normalized,
+      0,
+      "a preserved real annual volume is not a missing-data substitution",
+    );
+    assert.equal(
+      cleanup.json.counts.annual_supply_evidence_gaps,
+      0,
+      "real evidence is not an evidence gap",
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("curation cleanup reports unknown annual volume as a bound evidence gap instead of fabricating it", () => {
+  const root = path.join(repoRoot, "tmp", "annual-supply-unknown-gap-cleanup-test");
+  fs.rmSync(root, { recursive: true, force: true });
+  const processId = "eeeeeeee-ffff-4000-8111-222222222226";
+  const row = processRowWithInvalidAnnualSupply(processId);
+  const rowsFile = path.join(root, "rows", "processes.jsonl");
+  writeJsonLines(rowsFile, [row]);
+
+  try {
+    const cleanup = runFoundry([
+      "dataset-curation-cleanup",
+      "--type",
+      "process",
+      "--rows-file",
+      rel(rowsFile),
+      "--out-dir",
+      rel(path.join(root, "cleanup")),
+    ]);
+    assert.equal(cleanup.code, 0);
+    assert.equal(cleanup.json.status, "completed");
+    assert.equal(cleanup.json.counts.annual_supply_unknown_normalized, 1);
+
+    const cleaned = readJsonLines(path.join(repoRoot, cleanup.json.files.cleaned_rows))[0];
+    assert.deepEqual(
+      cleaned.processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness
+        .annualSupplyOrProductionVolume,
+      [],
+      "unknown annual volume must not be filled with an arbitrary quantity",
+    );
+
+    const gaps = cleanup.json.annual_supply_evidence_gaps as Array<Record<string, unknown>>;
+    assert.equal(gaps.length, 1);
+    assert.deepEqual(
       {
-        "@xml:lang": "en",
-        "#text": "9999 missing-data-sentinel/year",
+        row_index: gaps[0]?.row_index,
+        dataset_type: gaps[0]?.dataset_type,
+        dataset_id: gaps[0]?.dataset_id,
+        version: gaps[0]?.version,
+        field: gaps[0]?.field,
+        reason: gaps[0]?.reason,
+        review_required: gaps[0]?.review_required,
+      },
+      {
+        row_index: 0,
+        dataset_type: "process",
+        dataset_id: processId,
+        version: "00.00.001",
+        field:
+          "processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume",
+        reason: "explicit_missing_text",
+        review_required: false,
       },
     );
+    for (const hashKey of ["input_payload_sha256", "output_payload_sha256"]) {
+      assert.match(String(gaps[0]?.[hashKey]), /^[a-f0-9]{64}$/u, hashKey);
+    }
+    assert.notEqual(gaps[0]?.input_payload_sha256, gaps[0]?.output_payload_sha256);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

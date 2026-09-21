@@ -672,7 +672,7 @@ export const commandMetadata: Record<string, FoundryCommandMetadata> = {
     keyTests: [
       nodeTest(
         "test/scenarios/curation-cleanup-quality-gates.test.mts",
-        "curation cleanup fills placeholder annual supply with searchable sentinel",
+        "curation cleanup normalizes placeholder annual supply to the supported unknown array",
       ),
       nodeTest(
         "test/scenarios/curation-cleanup-quality-gates.test.mts",

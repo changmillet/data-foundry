@@ -89,7 +89,7 @@ export interface FixtureRecord {
   authoring_package: string;
   json_pointer: string;
   action_kind: string;
-  sentinel_value: string;
+  normalized_unknown_value: unknown[];
   shared_context_cache_dir: string;
   bytes: number;
   row_index: number;

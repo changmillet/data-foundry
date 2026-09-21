@@ -2,7 +2,12 @@ import { datasetIdentity, datasetRoot, unwrapDatasetPayload } from "./dataset-pa
 import { sha256Json, sha256Text } from "./hash-utils.ts";
 import { asText, ensureArray } from "./runtime-io.ts";
 
-export const annualSupplyMissingDataSentinelText = "9999 missing-data-sentinel/year";
+// Historical recognition marker only. Foundry no longer writes this value; it is retained so
+// service rows written by earlier rounds can still be recognized and normalized.
+export const legacyAnnualSupplyMissingDataSentinelText = "9999 missing-data-sentinel/year";
+
+export const annualSupplyFieldPath =
+  "processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume";
 
 export const foundryTraceNamespace = "https://tiangong-lca.dev/foundry/import-curation/1";
 
@@ -186,48 +191,149 @@ export function normalizeDateTimeMetadata(value: unknown): number {
   return updates.length;
 }
 
-function annualSupplyTextValue(value: unknown): string {
-  if (typeof value === "string") return value.trim();
-  if (isRecord(value)) {
-    return asText(value["#text"] ?? value.value);
+export type AnnualSupplyGapReason =
+  | "missing"
+  | "empty"
+  | "legacy_marker"
+  | "explicit_missing_text"
+  | "already_unknown"
+  | "mixed_entries";
+
+export interface AnnualSupplyGap {
+  field: string;
+  reason: AnnualSupplyGapReason;
+  review_required: boolean;
+}
+
+export interface AnnualSupplyResult {
+  changed: boolean;
+  gap: AnnualSupplyGap | null;
+}
+
+// Narrow, complete-string recognition only. Scientific prose that merely mentions an unknown or
+// unavailable volume stays untouched; the downstream SDK/CLI/authoring gates own rejecting it.
+const missingAnnualSupplyTexts = new Set([
+  "not specified",
+  "not declared in source package",
+  "source production volume unavailable",
+  "production volume unavailable",
+  "source evidence unavailable",
+]);
+
+type AnnualSupplyEntry =
+  { kind: "real"; text: string } | { kind: "unknown"; reason: AnnualSupplyGapReason };
+
+function normalizeAnnualSupplyText(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/gu, " ").replace(/\.$/u, "");
+}
+
+function classifyAnnualSupplyText(text: string): AnnualSupplyEntry {
+  const normalized = normalizeAnnualSupplyText(text);
+  if (normalized === normalizeAnnualSupplyText(legacyAnnualSupplyMissingDataSentinelText)) {
+    return { kind: "unknown", reason: "legacy_marker" };
   }
-  return "";
+  if (normalized === "") return { kind: "unknown", reason: "empty" };
+  if (missingAnnualSupplyTexts.has(normalized)) {
+    return { kind: "unknown", reason: "explicit_missing_text" };
+  }
+  return { kind: "real", text };
 }
 
-function isPlaceholderAnnualSupplyValue(value: unknown): boolean {
-  const text = annualSupplyTextValue(value);
-  const normalized = text.toLowerCase();
-  return (
-    !text ||
-    /^9999$/u.test(text) ||
-    /^not\s+specified\.?$/iu.test(text) ||
-    /^not\s+declared\s+in\s+source\s+package\.?$/iu.test(text) ||
-    normalized.includes("source production volume unavailable") ||
-    normalized.includes("production volume unavailable") ||
-    normalized.includes("source evidence unavailable")
-  );
+function classifyAnnualSupplyEntry(value: unknown): AnnualSupplyEntry | null {
+  if (typeof value === "string") return classifyAnnualSupplyText(value);
+  if (!isRecord(value)) return null;
+  const raw = value["#text"] ?? value.value;
+  if (typeof raw !== "string") return null;
+  return classifyAnnualSupplyText(raw);
 }
 
-function annualSupplySentinelValue(): JsonRecord {
+// A language-array entry must be an object carrying both a non-empty string `@xml:lang` and a
+// string `#text`. Any other element — including plain strings such as `["Not specified"]` — is an
+// unsupported shape and is preserved untouched so the SDK/CLI gate owns rejecting it.
+function classifyAnnualSupplyLanguageEntry(value: unknown): AnnualSupplyEntry | null {
+  if (!isRecord(value)) return null;
+  const language = value["@xml:lang"];
+  if (typeof language !== "string" || language.trim() === "") return null;
+  const text = value["#text"];
+  if (typeof text !== "string") return null;
+  return classifyAnnualSupplyText(text);
+}
+
+function unchangedAnnualSupplyResult(
+  reason: AnnualSupplyGapReason | null,
+  reviewRequired = false,
+): AnnualSupplyResult {
   return {
-    "@xml:lang": "en",
-    "#text": annualSupplyMissingDataSentinelText,
+    changed: false,
+    gap:
+      reason === null
+        ? null
+        : { field: annualSupplyFieldPath, reason, review_required: reviewRequired },
   };
 }
 
-export function applyAnnualSupplyMissingDataSentinel(row: unknown, datasetType: string): boolean {
-  if (datasetType !== "process") return false;
+function annualSupplyContainer(row: unknown, datasetType: string): JsonRecord | null {
   const payload = unwrapDatasetPayload(row, datasetType);
   const root = datasetRoot(payload, datasetType);
   const modelling = isRecord(root.modellingAndValidation) ? root.modellingAndValidation : {};
   const dataSources = modelling.dataSourcesTreatmentAndRepresentativeness;
-  if (!isRecord(dataSources)) return false;
+  return isRecord(dataSources) ? dataSources : null;
+}
+
+// Unknown volume is written as the supported empty language array; it is never filled with a
+// synthesized quantity, and the runner reports it as a row-level evidence gap.
+function unknownAnnualSupplyResult(
+  dataSources: JsonRecord,
+  reason: AnnualSupplyGapReason,
+): AnnualSupplyResult {
+  dataSources.annualSupplyOrProductionVolume = [];
+  return {
+    changed: true,
+    gap: { field: annualSupplyFieldPath, reason, review_required: false },
+  };
+}
+
+// Real evidence — single object or language array — is preserved byte-semantically, including its
+// original element order. Unsupported shapes are preserved for the SDK/CLI gate to reject.
+export function normalizeAnnualSupplyEvidence(
+  row: unknown,
+  datasetType: string,
+): AnnualSupplyResult {
+  if (datasetType !== "process") return unchangedAnnualSupplyResult(null);
+  const dataSources = annualSupplyContainer(row, datasetType);
+  if (!dataSources) return unchangedAnnualSupplyResult(null);
   const current = dataSources.annualSupplyOrProductionVolume;
-  if (current !== undefined && !isPlaceholderAnnualSupplyValue(current)) {
-    return false;
+
+  if (current === undefined || current === null) {
+    return unknownAnnualSupplyResult(dataSources, "missing");
   }
-  dataSources.annualSupplyOrProductionVolume = annualSupplySentinelValue();
-  return true;
+
+  if (Array.isArray(current)) {
+    if (current.length === 0) return unchangedAnnualSupplyResult("already_unknown");
+    const entries: AnnualSupplyEntry[] = [];
+    for (const element of current) {
+      const classified = classifyAnnualSupplyLanguageEntry(element);
+      if (classified === null) return unchangedAnnualSupplyResult(null);
+      entries.push(classified);
+    }
+    const realCount = entries.filter((entry) => entry.kind === "real").length;
+    if (realCount === entries.length) return unchangedAnnualSupplyResult(null);
+    if (realCount === 0) {
+      const legacyOnly = entries.every(
+        (entry) => entry.kind === "unknown" && entry.reason === "legacy_marker",
+      );
+      return unknownAnnualSupplyResult(
+        dataSources,
+        legacyOnly ? "legacy_marker" : "explicit_missing_text",
+      );
+    }
+    // Mixed real and unknown entries: keep every real element and flag the row for review.
+    return unchangedAnnualSupplyResult("mixed_entries", true);
+  }
+
+  const single = classifyAnnualSupplyEntry(current);
+  if (single === null || single.kind === "real") return unchangedAnnualSupplyResult(null);
+  return unknownAnnualSupplyResult(dataSources, single.reason);
 }
 
 function processDataSetInformation(row: unknown): JsonRecord | null {

@@ -2,7 +2,6 @@ import fs from "node:fs";
 import path from "node:path";
 import { type DatasetType, datasetTypePlural, supportedDatasetTypes } from "./dataset-types.ts";
 import { sha256Text } from "./hash-utils.ts";
-import { annualSupplyMissingDataSentinelText } from "./prewrite-cleanup.ts";
 import {
   asText,
   ensureArray,
@@ -432,7 +431,7 @@ The patch must:
 - preserve source-language content and provide evidence-backed English for fields required by the current TIDAS/profile contract; keep the same factual meaning
 - do not use \`common:other\` as a substitute for mandatory schema fields; schema-required values need evidence-backed values or must remain blocked
 - if a value cannot be inferred safely and the action item's allowed modes include \`deferred_to_common_other\`, add \`common:other.tiangongfoundry:unresolvedTrace\` with \`status\`, \`action_item_code\`, \`blocked_path\`, \`reason\`, structured \`evidence\`, and \`next_action\`; evidence must include source plus quote/trace/path/citation pointer
-- do not defer \`annualSupplyOrProductionVolume\` to \`common:other\`; if source annual volume evidence is missing, Foundry deterministic cleanup writes \`${annualSupplyMissingDataSentinelText}\` into the required field for later database-side curation
+- do not defer \`annualSupplyOrProductionVolume\` to \`common:other\` and never invent a quantity from a reference flow or a default unit; supply a real annualized quantity from source evidence, or leave the field to Foundry deterministic cleanup, which normalizes it to the supported empty array and records a row-level evidence gap
 - if source exchange completeness is being accepted as source-faithful, use \`resolution.mode=source_trace_verified\` and add \`common:other.tiangongfoundry:sourceExchangeCompleteness\` with accepted \`status\` and structured source trace evidence; evidence must include source plus quote/trace/path/citation pointer
 
 ## Deterministic Apply

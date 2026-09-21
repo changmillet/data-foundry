@@ -26,11 +26,8 @@ test("every static prewrite cleanup consumer targets the typed module", () => {
   const consumers = [
     "scripts/foundry.ts",
     "scripts/lib/import-curation/curation-cleanup.ts",
-    "scripts/lib/import-curation/internal/workflow-authoring-tasks.ts",
-    "scripts/lib/import-curation/internal/workflow-patch-collect.ts",
     "scripts/lib/import-curation/internal/workflow-queue-context.ts",
     "scripts/lib/import-curation/internal/workflow-reference-closure.ts",
-    "scripts/lib/import-curation/internal/workflow-semantic-actions.ts",
     "test/unit/prewrite-cleanup-contract.test.mts",
   ];
   for (const consumer of consumers) {
@@ -54,11 +51,12 @@ test("typed prewrite cleanup retains its exact zero-any export surface", () => {
   assert.deepEqual(
     [...source.matchAll(/export (?:const|function)\s+([A-Za-z0-9_]+)/gu)].map((match) => match[1]),
     [
-      "annualSupplyMissingDataSentinelText",
+      "legacyAnnualSupplyMissingDataSentinelText",
+      "annualSupplyFieldPath",
       "foundryTraceNamespace",
       "normalizeUtcDateTimeString",
       "normalizeDateTimeMetadata",
-      "applyAnnualSupplyMissingDataSentinel",
+      "normalizeAnnualSupplyEvidence",
       "applyDeterministicSourceExchangeCompletenessProofs",
       "buildSourceRowsByIdentity",
       "externalizeImportTraceMetadata",
