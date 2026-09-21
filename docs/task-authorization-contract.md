@@ -29,9 +29,9 @@ checkPaths:
   - test/unit/task-authorization.test.mts
   - test/unit/task-profile-authority.test.mts
   - test/scenarios/foundry-execution-admission.test.mts
-lastReviewedAt: 2026-09-20
-lastReviewedCommit: 6a48836f88194c68a95e0bb13c0daaf32ce9685f
-lastReviewedNote: "Reviewed for Foundry #180: CLI 0.1.18 changes the exact installed dependency and source identity only; task authorization, sealed admission, readback, and no-replay requirements remain unchanged."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: a969cb7e72cb82844c7cd32910370f34abdc435f
+lastReviewedNote: "Reviewed for Foundry #30 at a969cb7: the registered offline final-delivery stage adds no task, mutation, approval or replay authority; persisted-task and authorization bindings remain unchanged."
 related:
   - docs/architecture.md
   - docs/safety-policy.md

@@ -28,9 +28,9 @@ checkPaths:
   - specs/schemas/execution-context.schema.json
   - specs/import-profiles.json
   - tasks/**
-lastReviewedAt: 2026-09-20
-lastReviewedCommit: 138b79581aea4e8de53babeb46f34692c0e84fa5
-lastReviewedNote: "Reviewed for Foundry #182: CLI and native runtime versions advance without changing task authorization, persisted evidence or no-replay recovery."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: a969cb7e72cb82844c7cd32910370f34abdc435f
+lastReviewedNote: "Reviewed for Foundry #30 at a969cb7: the registered offline final-delivery stage adds no task, mutation, approval or replay authority; persisted-task and authorization bindings remain unchanged."
 related:
   - AGENTS.md
   - WORKFLOW.md
