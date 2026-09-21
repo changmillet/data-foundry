@@ -94,8 +94,8 @@ checkPaths:
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: ce94fc0e71ccf7792b4a012c6d3a2a8692a80c89
-lastReviewedNote: "Reviewed the combination of repair workflow ce94fc0 and merged final-delivery gate 13fa996: CLI 0.1.19 remains the exact runtime input; offline delivery seals grant no execution or publication authority. Reviewed for Foundry #171 native draft adapter/closeout: contract admission and closeout remain thin Foundry-local consumer adapters with no ownership, blocking-policy or remote-write change. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171. Reviewed for Foundry #30: the workbook-reader correction remains Foundry-owned local validation of a declared delivery artifact. It reimplements no CLI, SDK, database, converter or Edge behavior, and the new fixture is a Foundry-owned test artifact, not a sibling capability output."
+lastReviewedCommit: d7a701298c612f0313042a28c993249674fb2ea7
+lastReviewedNote: "Reviewed the combination of repair workflow ce94fc0 and merged final-delivery gate 13fa996: CLI 0.1.19 remains the exact runtime input; offline delivery seals grant no execution or publication authority. Reviewed for Foundry #171 native draft adapter/closeout: contract admission and closeout remain thin Foundry-local consumer adapters with no ownership, blocking-policy or remote-write change. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171. Reviewed for Foundry #30: the workbook-reader correction remains Foundry-owned local validation of a declared delivery artifact. It reimplements no CLI, SDK, database, converter or Edge behavior, and the new fixture is a Foundry-owned test artifact, not a sibling capability output. Reviewed for Foundry #171 safe no-dispatch successor at d7a7012: successor admission stays inside the existing Foundry control-plane ownership and moves no shared capability."
 ---
 
 # Capability Ownership Policy

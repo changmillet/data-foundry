@@ -26,6 +26,42 @@ export interface RepairCliCall {
   readonly env: NodeJS.ProcessEnv;
 }
 
+export interface RepairDispatchFailure {
+  readonly attemptsConsumed?: number;
+  readonly executed?: number;
+  readonly unknown?: number;
+  readonly prepared?: number;
+  readonly rowStatus?: string;
+  readonly rowOperation?: string;
+  readonly countsFailed?: number;
+  readonly countsBlocked?: number;
+  readonly exitCode?: number;
+  readonly statusText?: string;
+  readonly writeReport?: boolean;
+  readonly contractSha256?: string;
+}
+
+export interface RepairSuccessorOptions {
+  readonly candidateText?: string;
+  readonly beforeText?: string;
+  readonly executionId?: string;
+  readonly requestId?: string;
+  readonly actorId?: string;
+  readonly account?: { readonly project_ref: string; readonly user_id: string };
+  readonly predecessor?: { readonly task_id: string; readonly receipt_sha256: string } | null;
+  readonly sameCandidate?: boolean;
+  readonly onlyExecutionId?: boolean;
+  readonly version?: string;
+  readonly directory?: string;
+}
+
+export interface RepairSuccessor {
+  readonly specFile: string;
+  readonly contractFile: string;
+  readonly beforeFile: string;
+  readonly candidateFile: string;
+}
+
 export interface RepairApproval {
   readonly file: string;
   readonly descriptor: Json;
@@ -59,6 +95,14 @@ export interface RepairWorkflowFixture {
   };
   /** Write host approval material for the registered preparation of one task. */
   readonly approval: (taskId: string, options?: RepairApprovalOptions) => RepairApproval;
+  /** Build one successor task-start spec over a predecessor's terminal report digest. */
+  readonly successor: (
+    predecessorTaskId: string,
+    receiptSha256: string,
+    options?: RepairSuccessorOptions,
+  ) => RepairSuccessor;
+  /** The producer-registered terminal CLI report digest of one task. */
+  readonly terminalReportSha256: (taskId: string) => string;
   readonly specFile: string;
   readonly contractFile: string;
   readonly beforeFile: string;
@@ -71,6 +115,8 @@ export interface RepairWorkflowFixture {
   remoteMismatch: boolean;
   /** A dry run the owner CLI reports as retained or blocked. */
   blockedDryRun: boolean;
+  /** Serve the dispatch command as a definite no-dispatch failure, or as a chosen anomaly. */
+  dispatch: RepairDispatchFailure | null;
   /**
    * Root-proof knobs. They corrupt the checks records only: the summary keeps claiming a passed
    * verification with its declared counts, so a rejection proves the per-record proof.
@@ -109,10 +155,31 @@ function writeJsonl(file: string, rows: readonly Json[]): void {
   fs.writeFileSync(file, rows.map((row) => JSON.stringify(row)).join("\n") + "\n");
 }
 
+/** The payload the owner CLI was asked to act on, read from the served input rows. */
+function servedPayload(fallback: Json, input: string | null): Json {
+  if (!input) return fallback;
+  try {
+    const first = fs
+      .readFileSync(input, "utf8")
+      .split("\n")
+      .find((line) => line.trim());
+    return first ? (JSON.parse(first) as Json) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 /** The CLI writes every artifact under `<out-dir>/outputs/**`, so the directory must exist first. */
 function writeReport(file: string, value: unknown): void {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+/** Read one intercepted CLI option value, proving it is present. */
+function requiredArg(argv: readonly string[], name: string): string {
+  const index = argv.indexOf(name);
+  assert.ok(index >= 0 && index + 1 < argv.length, `the owner CLI must pass ${name}`);
+  return String(argv[index + 1]);
 }
 
 /** Assert one intercepted CLI argument is present, narrowing it without a cast. */
@@ -215,6 +282,9 @@ export function repairWorkflowFixture(
     profileId: options.profileId ?? "generic",
     facade: base.facade,
     approval: (taskId, approvalOptions) => repairApproval(fixture, taskId, approvalOptions),
+    successor: (predecessorTaskId, receiptSha256, successorOptions) =>
+      repairSuccessor(fixture, predecessorTaskId, receiptSha256, successorOptions),
+    terminalReportSha256: (taskId) => terminalReportSha256(fixture, taskId),
     specFile,
     contractFile,
     beforeFile,
@@ -232,6 +302,7 @@ export function repairWorkflowFixture(
     calls: [],
     remoteMismatch: false,
     blockedDryRun: false,
+    dispatch: null,
     rootReadback: {
       remoteUserId: null,
       remoteStateCode: null,
@@ -347,6 +418,165 @@ function taskIndex(fixture: RepairWorkflowFixture, taskId: string): Json[] {
  * the exact candidate bytes and the locked profile, and an authorization descriptor whose authority
  * is the registered preparation report - never a finalization report.
  */
+
+/**
+ * Append one extra chained index entry for a file the test wrote itself, borrowing an existing
+ * entry's receipt and operation identity — the forgery case that only a real producer-receipt walk
+ * can refuse. Returns the appended entry.
+ */
+export function appendForgedArtifact(
+  fixture: RepairWorkflowFixture,
+  taskId: string,
+  input: { readonly relativePath: string; readonly command: string; readonly content: string },
+): Json {
+  const taskRoot = repairTaskRoot(fixture, taskId);
+  const file = path.join(taskRoot, input.relativePath);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, input.content);
+  const fact = fileFact(file);
+  const index = taskIndex(fixture, taskId);
+  const previous = index.at(-1);
+  assert.ok(previous, "the index must already carry at least one entry");
+  const borrowed = [...index].reverse().find((entry) => typeof entry.receipt === "object");
+  assert.ok(borrowed, "one existing entry must carry a receipt to borrow");
+  const unsigned: Json = {
+    schema: "tiangong-foundry.artifact-index.v2",
+    sequence: Number(previous.sequence) + 1,
+    previous_sha256: String(previous.record_sha256),
+    operation_id: String(borrowed.operation_id),
+    command: input.command,
+    input_scope_sha256: String(borrowed.input_scope_sha256),
+    receipt: borrowed.receipt,
+    path: input.relativePath.split(path.sep).join("/"),
+    bytes: fact.bytes,
+    sha256: fact.sha256,
+  };
+  const entry = { ...unsigned, record_sha256: sha256Json(unsigned) };
+  fs.appendFileSync(path.join(taskRoot, "artifact-index.jsonl"), `${JSON.stringify(entry)}\n`);
+  return entry;
+}
+
+/** The producer-registered terminal CLI report digest of one task's owner execution. */
+function terminalReportSha256(fixture: RepairWorkflowFixture, taskId: string): string {
+  const taskRoot = repairTaskRoot(fixture, taskId);
+  const entries = taskIndex(fixture, taskId);
+  const result = [...entries]
+    .reverse()
+    .find(
+      (entry) =>
+        entry.command === "dataset-workflow-execution-result" &&
+        typeof entry.path === "string" &&
+        entry.path.endsWith("owner-execution-result.json"),
+    );
+  assert.ok(result, "the predecessor must register one terminal owner execution result");
+  const value = JSON.parse(
+    fs.readFileSync(path.join(taskRoot, String(result.path)), "utf8"),
+  ) as Json;
+  const observation = value.observation as Json;
+  const report = observation.report as Json;
+  assert.equal(typeof report.sha256, "string", "the terminal report must carry its digest");
+  return String(report.sha256);
+}
+
+/**
+ * Build one successor task-start spec over a predecessor's terminal report digest: the same lane,
+ * request, actor, account and entity identities, a new immutable candidate path, and an explicit
+ * predecessor binding. No knob lets a caller name a file of the predecessor.
+ */
+function repairSuccessor(
+  fixture: RepairWorkflowFixture,
+  predecessorTaskId: string,
+  receiptSha256: string,
+  options: RepairSuccessorOptions = {},
+): RepairSuccessor {
+  const reuseCandidate = options.sameCandidate === true || options.onlyExecutionId === true;
+  const before = payloadWith(options.beforeText ?? "Original source");
+  const candidate = reuseCandidate
+    ? structuredClone(fixture.candidatePayload)
+    : payloadWith(options.candidateText ?? "Renamed source again");
+  if (options.version) {
+    const publication = ((candidate.processDataSet as Json).administrativeInformation as Json)
+      .publicationAndOwnership as Json;
+    publication["common:dataSetVersion"] = options.version;
+  }
+  const identity = ((candidate.processDataSet as Json).processInformation as Json)
+    .dataSetInformation as Json;
+  const publication = ((candidate.processDataSet as Json).administrativeInformation as Json)
+    .publicationAndOwnership as Json;
+  const contract: Json = {
+    schema_version: "dataset-save-draft-execution-contract.v1",
+    execution_id: options.executionId ?? "repair-public-2",
+    project_ref: (options.account ?? fixture.account).project_ref,
+    target_mode: "owner_draft",
+    owner: {
+      user_id: (options.account ?? fixture.account).user_id,
+      email: "owner@example.com",
+      state_code: 0,
+    },
+    actions: [
+      {
+        action_id: "repair-2",
+        desired_sha256: sha256Json(candidate),
+        expected_operation: "save_draft",
+        table: "processes",
+        id: String(identity["common:UUID"]),
+        version: String(publication["common:dataSetVersion"]),
+        before_sha256: sha256Json(before),
+        dependency_action_ids: [],
+      },
+    ],
+  };
+  const directory = path.join(fixture.workspace, options.directory ?? "repair-inputs-2");
+  fs.mkdirSync(directory, { recursive: true });
+  const contractFile = path.join(directory, "repair-contract.json");
+  const beforeFile = path.join(directory, "repair-before.jsonl");
+  const candidateFile = path.join(directory, "repair-candidate.jsonl");
+  fs.writeFileSync(contractFile, `${JSON.stringify(contract, null, 2)}\n`);
+  writeJsonl(beforeFile, [before]);
+  writeJsonl(candidateFile, [candidate]);
+  const relative = (file: string) => path.relative(fixture.workspace, file);
+  const account = options.account ?? fixture.account;
+  const specFile = path.join(directory, "repair-successor-start.json");
+  fs.writeFileSync(
+    specFile,
+    `${JSON.stringify(
+      {
+        schema: "tiangong-foundry.task-start.v1",
+        request_id: options.requestId ?? "repair-public-request",
+        actor_id: options.actorId ?? "identity-actor",
+        lane: "existing-owner-draft-repair",
+        profile_id: fixture.profileId,
+        target_entities: ["process"],
+        sources: [
+          { path: relative(contractFile) },
+          { path: relative(beforeFile) },
+          { path: relative(candidateFile) },
+        ],
+        seed: null,
+        account_intent: {
+          project_ref: account.project_ref,
+          user_id: account.user_id,
+          session_reference: null,
+        },
+        preparation: null,
+        repair: {
+          kind: "existing-owner-draft-metadata",
+          contract: relative(contractFile),
+          before: relative(beforeFile),
+          candidate: relative(candidateFile),
+          predecessor:
+            options.predecessor === undefined
+              ? { task_id: predecessorTaskId, receipt_sha256: receiptSha256 }
+              : options.predecessor,
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  return { specFile, contractFile, beforeFile, candidateFile };
+}
+
 function repairApproval(
   fixture: RepairWorkflowFixture,
   taskId: string,
@@ -361,8 +591,11 @@ function repairApproval(
   );
   assert.ok(report, "the preparation report must be registered before it can be approved");
   const reportFile = path.join(taskRoot, String(report.path));
-  const candidate = fileFact(fixture.candidateFile);
-  const contract = fileFact(fixture.contractFile);
+  // Every task approves its own frozen selections, never the first task's fixture fields.
+  const job = JSON.parse(fs.readFileSync(path.join(taskRoot, "foundry-job.json"), "utf8")) as Json;
+  const selection = job.repair as Json;
+  const candidate = fileFact(path.resolve(fixture.workspace, String(selection.candidate)));
+  const contract = fileFact(path.resolve(fixture.workspace, String(selection.contract)));
   const marker = JSON.parse(
     fs.readFileSync(path.join(fixture.workspace, ".foundry", "workspace.json"), "utf8"),
   ) as Json;
@@ -420,7 +653,10 @@ function repairApproval(
     ...(options.omitContract
       ? {}
       : {
-          execution_contract: { file: fixture.contractFile, sha256: contract.sha256 },
+          execution_contract: {
+            file: path.resolve(fixture.workspace, String(selection.contract)),
+            sha256: contract.sha256,
+          },
         }),
     repair_preparation: { file: reportFile, sha256: boundPreparation },
     grant: { file: grantFile, sha256: fileFact(grantFile).sha256 },
@@ -475,8 +711,19 @@ function installOwnerCliMock(t: TestContext, fixture: RepairWorkflowFixture): vo
         userId: fixture.account.user_id,
         capturedAtUtc: new Date(Date.now()).toISOString(),
       });
+    } else if (verb === "save-draft" && argv.includes("--commit") && fixture.dispatch) {
+      report = serveFailedDispatch(
+        fixture,
+        required(input),
+        required(outDir),
+        requiredArg(argv, "--execution-contract"),
+      );
+      status = fixture.dispatch.exitCode ?? 1;
     } else if (verb === "save-draft") {
-      report = serveDryRun(fixture, required(input), required(outDir));
+      const contract = argv.includes("--execution-contract")
+        ? requiredArg(argv, "--execution-contract")
+        : null;
+      report = serveDryRun(fixture, required(input), required(outDir), contract);
     } else if (verb === "validate") {
       const served = serveValidate(fixture, required(input), required(outDir));
       report = served.report;
@@ -518,9 +765,33 @@ function validationLayers(): Json {
   };
 }
 
-function serveDryRun(fixture: RepairWorkflowFixture, input: string, outDir: string): Json {
-  const desiredSha = sha256Json(fixture.candidatePayload);
-  const beforeSha = sha256Json(fixture.beforePayload);
+function serveDryRun(
+  fixture: RepairWorkflowFixture,
+  input: string,
+  outDir: string,
+  contractFile: string | null,
+): Json {
+  const payload = servedPayload(fixture.candidatePayload, input);
+  const desiredSha = sha256Json(payload);
+  const contract = contractFile
+    ? (JSON.parse(fs.readFileSync(contractFile, "utf8")) as Json)
+    : null;
+  const contractAction = contract ? (contract.actions as Json[])[0] : null;
+  // The CLI reports the before state its own contract was admitted with, never a fixture default.
+  const beforeSha = contractAction
+    ? String(contractAction.before_sha256)
+    : sha256Json(fixture.beforePayload);
+  const executionId = contract ? String(contract.execution_id) : "repair-public-1";
+  const canonicalSha = contract
+    ? sha256Json({
+        schema_version: contract.schema_version,
+        execution_id: contract.execution_id,
+        project_ref: contract.project_ref,
+        target_mode: contract.target_mode,
+        owner: contract.owner,
+        actions: contract.actions,
+      })
+    : fixture.canonicalContractSha256;
   const blocked = fixture.blockedDryRun;
   const files = {
     selected_rows: path.join(outDir, "outputs", "selected-rows.jsonl"),
@@ -528,7 +799,7 @@ function serveDryRun(fixture: RepairWorkflowFixture, input: string, outDir: stri
     failures_jsonl: path.join(outDir, "outputs", "failures.jsonl"),
     summary_json: path.join(outDir, "outputs", "summary.json"),
   };
-  writeJsonl(files.selected_rows, [fixture.candidatePayload]);
+  writeJsonl(files.selected_rows, [payload]);
   writeJsonl(files.progress_jsonl, [
     {
       index: 0,
@@ -565,8 +836,8 @@ function serveDryRun(fixture: RepairWorkflowFixture, input: string, outDir: stri
     files,
     execution_contract: {
       path: fixture.contractFile,
-      sha256: fixture.canonicalContractSha256,
-      execution_id: "repair-public-1",
+      sha256: canonicalSha,
+      execution_id: executionId,
       target_mode: "owner_draft",
       max_parallel: 1,
       serial_prefix_actions: 0,
@@ -597,7 +868,7 @@ function serveDryRun(fixture: RepairWorkflowFixture, input: string, outDir: stri
           payload_sha256: desiredSha,
           validation_layers: validationLayers(),
         },
-        action_id: "repair-1",
+        action_id: contractAction ? String(contractAction.action_id) : "repair-1",
         desired_sha256: desiredSha,
         attempt_consumed: false,
         replayed: false,
@@ -619,12 +890,78 @@ function serveDryRun(fixture: RepairWorkflowFixture, input: string, outDir: stri
   return report;
 }
 
+/** Serve one definite no-dispatch dispatch failure, or the requested anomaly, as real bytes. */
+function serveFailedDispatch(
+  fixture: RepairWorkflowFixture,
+  input: string,
+  outDir: string,
+  contractFile: string,
+): Json {
+  const knobs = fixture.dispatch ?? {};
+  const contract = JSON.parse(fs.readFileSync(contractFile, "utf8")) as Json;
+  const actions = contract.actions as Json[];
+  const rowStatus = knobs.rowStatus ?? "failed";
+  const rows = actions.map((action, index) => ({
+    index,
+    type: "process",
+    table: action.table,
+    id: action.id,
+    version: action.version,
+    action_id: action.action_id,
+    desired_sha256: action.desired_sha256,
+    status: rowStatus,
+    operation: knobs.rowOperation ?? "save_draft",
+    attempt_consumed: false,
+    replayed: false,
+    readback: "not_performed",
+  }));
+  const unknown = knobs.unknown ?? 0;
+  const executed = knobs.executed ?? 0;
+  const prepared = knobs.prepared ?? 0;
+  const declared = knobs.countsFailed ?? rows.filter((row) => row.status === "failed").length;
+  const blocked = knobs.countsBlocked ?? rows.filter((row) => row.status === "blocked").length;
+  const file = path.join(outDir, "outputs", "dataset-save-draft", "summary.json");
+  const report: Json = {
+    schema_version: 2,
+    status: knobs.statusText ?? "completed_with_failures",
+    mode: "commit",
+    commit: true,
+    requested_type: "process",
+    input_path: input,
+    out_dir: outDir,
+    counts: {
+      selected: rows.length,
+      prepared,
+      executed,
+      failed: declared,
+      blocked,
+      unknown,
+      attempts_consumed: knobs.attemptsConsumed ?? 0,
+      by_table: { processes: rows.length },
+    },
+    files: { summary_json: file },
+    execution_contract: {
+      path: contractFile,
+      sha256: knobs.contractSha256 ?? sha256Json(contract),
+      execution_id: String(contract.execution_id),
+      target_mode: "owner_draft",
+      max_parallel: 1,
+      serial_prefix_actions: 0,
+      parallel_suffix_actions: actions.length,
+    },
+    rows,
+  };
+  if (knobs.writeReport !== false) writeReport(file, report);
+  return report;
+}
+
 function serveValidate(
   fixture: RepairWorkflowFixture,
   input: string,
   outDir: string,
 ): { report: Json; status: number } {
-  const payloadSha = sha256Json(fixture.candidatePayload);
+  const payload = servedPayload(fixture.candidatePayload, input);
+  const payloadSha = sha256Json(payload);
   fs.mkdirSync(outDir, { recursive: true });
   const report: Json = {
     schema_version: 2,
@@ -650,13 +987,16 @@ function serveValidate(
     ],
   };
   writeReport(path.join(outDir, "outputs", "validation-report.json"), report);
-  writeJsonl(path.join(outDir, "outputs", "invalid-rows.jsonl"), [fixture.candidatePayload]);
+  writeJsonl(path.join(outDir, "outputs", "invalid-rows.jsonl"), [payload]);
   writeJsonl(path.join(outDir, "outputs", "valid-rows.jsonl"), []);
   return { report, status: 1 };
 }
 
 function serveVerifyRemote(fixture: RepairWorkflowFixture, input: string, outDir: string): Json {
-  const expected = input.includes("candidate") ? fixture.candidatePayload : fixture.beforePayload;
+  const expected = servedPayload(
+    input.includes("candidate") ? fixture.candidatePayload : fixture.beforePayload,
+    input,
+  );
   const localSha = sha256Json(expected);
   const knobs = fixture.rootReadback;
   fs.mkdirSync(outDir, { recursive: true });

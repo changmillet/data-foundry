@@ -52,6 +52,31 @@ export type {
   FoundryTaskJob,
 } from "./foundry-task-types.ts";
 
+/**
+ * The synchronous verified snapshot of one task: registered job, bound account intent, hash-chained
+ * artifact index and re-verified frozen sources. It is the same verification the locked metadata
+ * transaction performs, exposed for read-only projections that cannot await; callers that read a
+ * *foreign* task synchronously must re-check the snapshot's stability themselves.
+ */
+export function readVerifiedTaskSnapshot(
+  context: FoundryRuntimeContext,
+  options: { verifyCommands?: readonly string[] } = {},
+): { readonly task: LoadedTask; readonly index: readonly ArtifactEntry[] } {
+  requiredTask(context);
+  const task = loadTask(context, {});
+  bindAccountIntent(context);
+  const index = readIndex(context);
+  const extra = index
+    .filter((entry) => options.verifyCommands?.includes(entry.command))
+    .map((entry) => ({
+      path: taskPath(context, entry.path),
+      bytes: entry.bytes,
+      sha256: entry.sha256,
+    }));
+  verifyInputs(context, task, index, [...context.inputs, ...extra]);
+  return { task, index };
+}
+
 export async function withFoundryTaskMetadata<T>(
   context: FoundryRuntimeContext,
   inspect: (task: LoadedTask, index: readonly ArtifactEntry[]) => T,
@@ -59,18 +84,8 @@ export async function withFoundryTaskMetadata<T>(
 ): Promise<T> {
   requiredTask(context);
   const inspectCurrent = () => {
-    const task = loadTask(context, {});
-    bindAccountIntent(context);
-    const index = readIndex(context);
-    const extra = index
-      .filter((entry) => options.verifyCommands?.includes(entry.command))
-      .map((entry) => ({
-        path: taskPath(context, entry.path),
-        bytes: entry.bytes,
-        sha256: entry.sha256,
-      }));
-    verifyInputs(context, task, index, [...context.inputs, ...extra]);
-    return inspect(task, index);
+    const snapshot = readVerifiedTaskSnapshot(context, options);
+    return inspect(snapshot.task, snapshot.index);
   };
   if (context.workspaceAccess === "read") return inspectCurrent();
   const runPath = resolveFoundryOutput(context, `task-locks/${context.taskId}.json`, "state");
