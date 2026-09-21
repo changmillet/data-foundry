@@ -1,5 +1,4 @@
 import path from "node:path";
-import { annualSupplyMissingDataSentinelText } from "./prewrite-cleanup.ts";
 import {
   asText,
   ensureArray,
@@ -124,8 +123,8 @@ export function validateCollectedPatchSet({
     blockers.push({
       code: "patch_deferred_annual_supply_not_allowed",
       message:
-        "annualSupplyOrProductionVolume is schema-required and must not be deferred to common:other; use Foundry deterministic cleanup to write the searchable 9999 missing-data sentinel when source evidence is missing.",
-      sentinel_value: annualSupplyMissingDataSentinelText,
+        "annualSupplyOrProductionVolume is schema-required and must not be deferred to common:other; supply a real annualized quantity from source evidence, or let Foundry deterministic cleanup normalize the field to the supported empty array and record a row-level evidence gap.",
+      normalized_unknown_value: [],
       patch_file: patchLocation,
       patch_set_index: patchSetIndex,
       entity,

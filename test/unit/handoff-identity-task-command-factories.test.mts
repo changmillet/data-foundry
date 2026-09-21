@@ -18,7 +18,7 @@ import { parseArgs, parseScalar } from "../../scripts/lib/foundry-args.ts";
 import { createFoundryRuntimeUtils } from "../../scripts/lib/foundry-runtime-utils.ts";
 import { createFoundryCommandSpec } from "../../scripts/lib/foundry-command-spec.ts";
 import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
-import { validateNativeInsertCloseout } from "../../scripts/lib/finalize-owners/native-insert-closeout.ts";
+import { validateNativeDraftCloseout } from "../../scripts/lib/finalize-owners/native-draft-closeout.ts";
 
 type JsonObject = Record<string, unknown>;
 
@@ -348,7 +348,7 @@ test("explicit native insert handoff binds each supported payload and contract w
         ],
       };
       const validateNative = (value: unknown) =>
-        validateNativeInsertCloseout({
+        validateNativeDraftCloseout({
           handoff: report,
           report: value as JsonObject,
           rowsFile: fixture.rows,
@@ -380,7 +380,7 @@ test("explicit native insert handoff binds each supported payload and contract w
       }
       const runtime = createFoundryRuntimeUtils({ repoRoot: root, parseScalar });
       assert.equal(
-        validateNativeInsertCloseout({
+        validateNativeDraftCloseout({
           handoff: equivalentHandoff,
           report: nativeReport,
           rowsFile: fixture.rows,
@@ -510,6 +510,544 @@ test("explicit native insert handoff binds each supported payload and contract w
       }
     });
   }
+});
+
+function draftPayloadFor(type: string, id: string, version: string, note: string): JsonObject {
+  return {
+    [`${type}DataSet`]: {
+      [`${type}Information`]: {
+        dataSetInformation: { "common:UUID": id, "common:generalComment": note },
+      },
+      ...(type === "flow"
+        ? { modellingAndValidation: { LCIMethod: { typeOfDataSet: "Product flow" } } }
+        : {}),
+      administrativeInformation: {
+        publicationAndOwnership: { "common:dataSetVersion": version },
+      },
+    },
+  };
+}
+
+function draftActionFor(
+  actionId: string,
+  payload: JsonObject,
+  table: string,
+  id: string,
+  version: string,
+  operation: string,
+  beforeSha256: string | null,
+  dependencyActionIds: string[] = [],
+): JsonObject {
+  return {
+    action_id: actionId,
+    desired_sha256: sha256Json(payload),
+    expected_operation: operation,
+    table,
+    id,
+    version,
+    before_sha256: beforeSha256,
+    dependency_action_ids: dependencyActionIds,
+  };
+}
+
+function draftContractFor(
+  executionId: string,
+  actions: JsonObject[],
+): JsonObject & { actions: JsonObject[] } {
+  return {
+    schema_version: "dataset-save-draft-execution-contract.v1",
+    execution_id: executionId,
+    project_ref: "abcdefghijklmnopqrst",
+    target_mode: "owner_draft",
+    owner: { user_id: "owner-1", email: "owner@example.invalid", state_code: 0 },
+    actions,
+  };
+}
+
+test("explicit native draft handoff binds a save_draft update and preserves the exact CLI action projection", () => {
+  for (const type of ["process", "source"]) {
+    withTempRoot(`native-save-draft-${type}`, (root) => {
+      const fixture = writeHandoffFixture(root);
+      const id = "22222222-2222-4222-8222-222222222222";
+      const version = "01.01.000";
+      const table = type === "process" ? "processes" : `${type}s`;
+      const beforePayload = draftPayloadFor(type, id, version, "before");
+      const payload = draftPayloadFor(type, id, version, "after");
+      const beforeSha256 = sha256Json(beforePayload);
+      assert.notEqual(beforeSha256, sha256Json(payload));
+      writeJsonLines(fixture.rows, [payload]);
+      const contractBytes = draftContractFor(`save-draft-${type}`, [
+        draftActionFor("update-one", payload, table, id, version, "save_draft", beforeSha256),
+      ]);
+      const contract = path.join(root, "save-draft-contract.json");
+      writeJson(contract, contractBytes);
+      const { commands } = handoffHarness(root, () => {}, {
+        FOUNDRY_VERIFIED_PROJECT_REF: "abcdefghijklmnopqrst",
+        FOUNDRY_VERIFIED_USER_ID: "owner-1",
+      });
+      const report = commands.runDatasetCommitHandoffPlan({
+        finalizeReport: fixture.finalize,
+        type,
+        executionContractFile: contract,
+        outDir: "native-handoff",
+      }) as HandoffReport;
+      assert.equal(report.status, "ready_for_explicit_commit");
+      const binding = report.execution_contract as JsonObject;
+      assert.equal(binding.operation, "save_draft");
+      assert.equal(binding.execution_id, `save-draft-${type}`);
+      assert.equal(binding.project_ref, "abcdefghijklmnopqrst");
+      // The canonical digest proves the projection is exactly the CLI's fixed eight-key action
+      // shape under the same canonical JSON hashing, so payload, identity and order are unchanged.
+      assert.equal(binding.canonical_sha256, sha256Json(contractBytes));
+      assert.equal(report.final_rows_artifact?.sha256, sha256(fs.readFileSync(fixture.rows)));
+      const argv = report.commands.commit!.argv;
+      assert.deepEqual(argv.slice(0, 5), [
+        "/installed/tiangong-lca.js",
+        "dataset",
+        "save-draft",
+        "--type",
+        type,
+      ]);
+      assert.equal(argv[argv.indexOf("--execution-contract") + 1], contract);
+      for (const spec of [report.commands.commit, report.commands.post_write_verify]) {
+        assert.ok(
+          spec!.binding.artifacts.some(
+            (artifact) =>
+              artifact.role === "execution_contract" &&
+              artifact.sha256 === sha256(fs.readFileSync(contract)),
+          ),
+        );
+      }
+      const nativeReport = {
+        schema_version: 2,
+        mode: "commit",
+        commit: true,
+        status: "completed",
+        requested_type: type,
+        input_path: fixture.rows,
+        counts: {
+          selected: 1,
+          executed: 1,
+          attempts_consumed: 1,
+          failed: 0,
+          unknown: 0,
+          blocked: 0,
+        },
+        execution_contract: {
+          path: contract,
+          sha256: sha256Json(contractBytes),
+          execution_id: `save-draft-${type}`,
+          target_mode: "owner_draft",
+        },
+        rows: [
+          {
+            index: 0,
+            type,
+            table,
+            id,
+            version,
+            action_id: "update-one",
+            desired_sha256: sha256Json(payload),
+            status: "executed",
+            operation: "save_draft",
+            attempt_consumed: true,
+            replayed: false,
+            readback: "desired_exact",
+          },
+        ],
+      };
+      const validateNative = (value: unknown) =>
+        validateNativeDraftCloseout({
+          handoff: report,
+          report: value as JsonObject,
+          rowsFile: fixture.rows,
+          datasetType: type,
+          targetUserId: "owner-1",
+          stateCode: "0",
+          expectedRows: 1,
+          resolveFile: (v) => resolveFrom(root, v),
+          relativePath: (file) => relativeTo(root, file),
+        });
+      assert.equal(validateNative(nativeReport), true);
+      const wrongOperation = structuredClone(nativeReport);
+      wrongOperation.rows[0].operation = "insert";
+      assert.throws(() => validateNative(wrongOperation), Error, "report operation must match");
+      const recovered = structuredClone(nativeReport);
+      recovered.rows[0].operation = "recovered_exact_readback";
+      assert.equal(validateNative(recovered), true);
+    });
+  }
+});
+
+test("explicit native draft handoff derives mixed insert/save_draft metadata from the hashed contract", () => {
+  const type = "process";
+  withTempRoot("native-mixed-draft-handoff", (root) => {
+    const fixture = writeHandoffFixture(root);
+    const insertId = "33333333-3333-4333-8333-333333333333";
+    const updateId = "44444444-4444-4444-8444-444444444444";
+    const version = "00.00.001";
+    const insertPayload = draftPayloadFor(type, insertId, version, "create");
+    const beforePayload = draftPayloadFor(type, updateId, version, "before");
+    const updatePayload = draftPayloadFor(type, updateId, version, "after");
+    writeJsonLines(fixture.rows, [insertPayload, updatePayload]);
+    const contractBytes = draftContractFor("mixed-process", [
+      draftActionFor("create-one", insertPayload, "processes", insertId, version, "insert", null),
+      draftActionFor(
+        "update-two",
+        updatePayload,
+        "processes",
+        updateId,
+        version,
+        "save_draft",
+        sha256Json(beforePayload),
+        ["create-one"],
+      ),
+    ]);
+    const contract = path.join(root, "mixed-draft-contract.json");
+    writeJson(contract, contractBytes);
+    const { commands } = handoffHarness(root, () => {}, {
+      FOUNDRY_VERIFIED_PROJECT_REF: "abcdefghijklmnopqrst",
+      FOUNDRY_VERIFIED_USER_ID: "owner-1",
+    });
+    const report = commands.runDatasetCommitHandoffPlan({
+      finalizeReport: fixture.finalize,
+      type,
+      executionContractFile: contract,
+      outDir: "native-handoff",
+    }) as HandoffReport;
+    assert.equal(report.status, "ready_for_explicit_commit");
+    const binding = report.execution_contract as JsonObject;
+    assert.equal(binding.operation, "mixed");
+    assert.equal(binding.canonical_sha256, sha256Json(contractBytes));
+    const nativeReport = {
+      schema_version: 2,
+      mode: "commit",
+      commit: true,
+      status: "completed",
+      requested_type: type,
+      input_path: fixture.rows,
+      counts: {
+        selected: 2,
+        executed: 2,
+        attempts_consumed: 2,
+        failed: 0,
+        unknown: 0,
+        blocked: 0,
+      },
+      execution_contract: {
+        path: contract,
+        sha256: sha256Json(contractBytes),
+        execution_id: "mixed-process",
+        target_mode: "owner_draft",
+      },
+      rows: [
+        {
+          index: 0,
+          type,
+          table: "processes",
+          id: insertId,
+          version,
+          action_id: "create-one",
+          desired_sha256: sha256Json(insertPayload),
+          status: "executed",
+          operation: "insert",
+          attempt_consumed: true,
+          replayed: false,
+          readback: "desired_exact",
+        },
+        {
+          index: 1,
+          type,
+          table: "processes",
+          id: updateId,
+          version,
+          action_id: "update-two",
+          desired_sha256: sha256Json(updatePayload),
+          status: "executed",
+          operation: "save_draft",
+          attempt_consumed: true,
+          replayed: false,
+          readback: "desired_exact",
+        },
+      ],
+    };
+    const validateNative = (value: unknown) =>
+      validateNativeDraftCloseout({
+        handoff: report,
+        report: value as JsonObject,
+        rowsFile: fixture.rows,
+        datasetType: type,
+        targetUserId: "owner-1",
+        stateCode: "0",
+        expectedRows: 2,
+        resolveFile: (v) => resolveFrom(root, v),
+        relativePath: (file) => relativeTo(root, file),
+      });
+    assert.equal(validateNative(nativeReport), true);
+    const swapped = structuredClone(nativeReport);
+    swapped.rows[0].operation = "save_draft";
+    swapped.rows[1].operation = "insert";
+    assert.throws(() => validateNative(swapped));
+    const recoveredSecond = structuredClone(nativeReport);
+    recoveredSecond.rows[1].operation = "recovered_exact_readback";
+    assert.equal(validateNative(recoveredSecond), true);
+  });
+});
+
+test("native draft handoff rejects invalid operation/before combinations, duplicates and forward dependencies", () => {
+  const type = "process";
+  const id = "55555555-5555-4555-8555-555555555555";
+  const version = "00.00.001";
+  const payload = draftPayloadFor(type, id, version, "candidate");
+  const otherPayload = draftPayloadFor(type, "66666666-6666-4666-8666-666666666666", version, "c2");
+  const validBefore = sha256Json(draftPayloadFor(type, id, version, "before"));
+  const invalidContracts: Array<{ name: string; contract: JsonObject }> = [
+    {
+      name: "save_draft without before hash",
+      contract: draftContractFor("invalid", [
+        draftActionFor("a", payload, "processes", id, version, "save_draft", null),
+      ]),
+    },
+    {
+      name: "insert with a before hash",
+      contract: draftContractFor("invalid", [
+        draftActionFor("a", payload, "processes", id, version, "insert", validBefore),
+      ]),
+    },
+    {
+      name: "uppercase before hash",
+      contract: draftContractFor("invalid", [
+        draftActionFor(
+          "a",
+          payload,
+          "processes",
+          id,
+          version,
+          "save_draft",
+          validBefore.toUpperCase(),
+        ),
+      ]),
+    },
+    {
+      name: "short before hash",
+      contract: draftContractFor("invalid", [
+        draftActionFor("a", payload, "processes", id, version, "save_draft", "0".repeat(63)),
+      ]),
+    },
+    {
+      name: "non-string before hash",
+      contract: draftContractFor("invalid", [
+        draftActionFor("a", payload, "processes", id, version, "save_draft", 123 as never),
+      ]),
+    },
+    {
+      name: "unsupported operation",
+      contract: draftContractFor("invalid", [
+        draftActionFor("a", payload, "processes", id, version, "update", validBefore),
+      ]),
+    },
+    {
+      name: "forward dependency",
+      contract: draftContractFor("invalid", [
+        draftActionFor("a", payload, "processes", id, version, "save_draft", validBefore, ["b"]),
+        draftActionFor(
+          "b",
+          otherPayload,
+          "processes",
+          "66666666-6666-4666-8666-666666666666",
+          version,
+          "insert",
+          null,
+        ),
+      ]),
+    },
+    {
+      name: "duplicate target identity",
+      contract: draftContractFor("invalid", [
+        draftActionFor("a", payload, "processes", id, version, "save_draft", validBefore),
+        draftActionFor("b", payload, "processes", id, version, "save_draft", validBefore),
+      ]),
+    },
+  ];
+  withTempRoot("native-draft-invalid", (root) => {
+    const fixture = writeHandoffFixture(root);
+    writeJsonLines(fixture.rows, [payload, otherPayload]);
+    const { commands } = handoffHarness(root, () => {}, {
+      FOUNDRY_VERIFIED_PROJECT_REF: "abcdefghijklmnopqrst",
+      FOUNDRY_VERIFIED_USER_ID: "owner-1",
+    });
+    invalidContracts.forEach(({ name, contract }, index) => {
+      const file = path.join(root, `invalid-draft-${index}.json`);
+      writeJson(file, contract);
+      const outDir = `invalid-draft-output-${index}`;
+      assert.throws(
+        () =>
+          commands.runDatasetCommitHandoffPlan({
+            finalizeReport: fixture.finalize,
+            type,
+            executionContractFile: file,
+            outDir,
+          }),
+        /execution-contract-file/u,
+        name,
+      );
+      assert.equal(fs.existsSync(path.join(root, outDir)), false, name);
+    });
+  });
+});
+
+test("native draft closeout rejects forged, incomplete or wrong-operation recovered rows", () => {
+  const type = "process";
+  withTempRoot("native-recovered-closeout", (root) => {
+    const fixture = writeHandoffFixture(root);
+    const id = "77777777-7777-4777-8777-777777777777";
+    const version = "00.00.001";
+    const beforePayload = draftPayloadFor(type, id, version, "before");
+    const payload = draftPayloadFor(type, id, version, "after");
+    writeJsonLines(fixture.rows, [payload]);
+    const contractBytes = draftContractFor("recovered-process", [
+      draftActionFor(
+        "update-one",
+        payload,
+        "processes",
+        id,
+        version,
+        "save_draft",
+        sha256Json(beforePayload),
+      ),
+    ]);
+    const contract = path.join(root, "recovered-contract.json");
+    writeJson(contract, contractBytes);
+    const { commands } = handoffHarness(root, () => {}, {
+      FOUNDRY_VERIFIED_PROJECT_REF: "abcdefghijklmnopqrst",
+      FOUNDRY_VERIFIED_USER_ID: "owner-1",
+    });
+    const report = commands.runDatasetCommitHandoffPlan({
+      finalizeReport: fixture.finalize,
+      type,
+      executionContractFile: contract,
+      outDir: "native-handoff",
+    }) as HandoffReport;
+    assert.equal(report.status, "ready_for_explicit_commit");
+    const nativeReport = {
+      schema_version: 2,
+      mode: "commit",
+      commit: true,
+      status: "completed",
+      requested_type: type,
+      input_path: fixture.rows,
+      counts: {
+        selected: 1,
+        executed: 1,
+        attempts_consumed: 1,
+        failed: 0,
+        unknown: 0,
+        blocked: 0,
+      },
+      execution_contract: {
+        path: contract,
+        sha256: sha256Json(contractBytes),
+        execution_id: "recovered-process",
+        target_mode: "owner_draft",
+      },
+      rows: [
+        {
+          index: 0,
+          type,
+          table: "processes",
+          id,
+          version,
+          action_id: "update-one",
+          desired_sha256: sha256Json(payload),
+          status: "executed",
+          operation: "recovered_exact_readback",
+          attempt_consumed: true,
+          replayed: false,
+          readback: "desired_exact",
+        },
+      ],
+    };
+    const validateNative = (value: unknown) =>
+      validateNativeDraftCloseout({
+        handoff: report,
+        report: value as JsonObject,
+        rowsFile: fixture.rows,
+        datasetType: type,
+        targetUserId: "owner-1",
+        stateCode: "0",
+        expectedRows: 1,
+        resolveFile: (v) => resolveFrom(root, v),
+        relativePath: (file) => relativeTo(root, file),
+      });
+    assert.equal(validateNative(nativeReport), true);
+    const forged: Array<{ name: string; mutate: (value: typeof nativeReport) => void }> = [
+      {
+        name: "wrong action identity",
+        mutate: (value) => {
+          value.rows[0].action_id = "another-action";
+        },
+      },
+      {
+        name: "wrong desired payload digest",
+        mutate: (value) => {
+          value.rows[0].desired_sha256 = "a".repeat(64);
+        },
+      },
+      {
+        name: "unconsumed attempt",
+        mutate: (value) => {
+          value.rows[0].attempt_consumed = false;
+        },
+      },
+      {
+        name: "attempt count not consumed",
+        mutate: (value) => {
+          value.counts.attempts_consumed = 0;
+        },
+      },
+      {
+        name: "readback not desired exact",
+        mutate: (value) => {
+          value.rows[0].readback = "not_desired";
+        },
+      },
+      {
+        name: "row marked replayed",
+        mutate: (value) => {
+          value.rows[0].replayed = true;
+        },
+      },
+      {
+        name: "unresolved row status",
+        mutate: (value) => {
+          value.rows[0].status = "unknown";
+        },
+      },
+      {
+        name: "unknown recovered-like operation",
+        mutate: (value) => {
+          value.rows[0].operation = "replayed_insert";
+        },
+      },
+      {
+        name: "contract digest drift",
+        mutate: (value) => {
+          value.execution_contract.sha256 = "b".repeat(64);
+        },
+      },
+      {
+        name: "execution id drift",
+        mutate: (value) => {
+          value.execution_contract.execution_id = "other-execution";
+        },
+      },
+    ];
+    for (const { name, mutate } of forged) {
+      const value = structuredClone(nativeReport);
+      mutate(value);
+      assert.throws(() => validateNative(value), Error, name);
+    }
+  });
 });
 
 test("mixed support handoff rechecks exact task actions against actual final rows", () => {

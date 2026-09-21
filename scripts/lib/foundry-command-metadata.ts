@@ -695,7 +695,7 @@ export const commandMetadata: Record<string, FoundryCommandMetadata> = {
     keyTests: [
       nodeTest(
         "test/scenarios/curation-cleanup-quality-gates.test.mts",
-        "curation cleanup fills placeholder annual supply with searchable sentinel",
+        "curation cleanup normalizes placeholder annual supply to the supported unknown array",
       ),
       nodeTest(
         "test/scenarios/curation-cleanup-quality-gates.test.mts",
@@ -1215,7 +1215,7 @@ export const commandMetadata: Record<string, FoundryCommandMetadata> = {
       "finalize report",
       "location audit evidence",
       "current task authorization for restricted final rows or QA exceptions",
-      "optional explicit native insert execution-contract file for Flow, Process or Source",
+      "optional explicit native draft execution-contract file (insert or save_draft) for Flow, Process or Source",
     ],
     outputs: [
       "commit handoff plan JSON report",
@@ -1232,6 +1232,14 @@ export const commandMetadata: Record<string, FoundryCommandMetadata> = {
       nodeTest(
         "test/scenarios/native-insert-closeout.test.mts",
         "native closeout rejects a completed report from a different contract despite exact root readback",
+      ),
+      nodeTest(
+        "test/unit/handoff-identity-task-command-factories.test.mts",
+        "explicit native draft handoff binds a save_draft update and preserves the exact CLI action projection",
+      ),
+      nodeTest(
+        "test/scenarios/foundry-public-native-draft.test.mts",
+        "public native draft repair accepts a bound save_draft contract without extra dispatch",
       ),
       nodeTest(
         "test/unit/handoff-identity-task-command-factories.test.mts",
@@ -1267,6 +1275,10 @@ export const commandMetadata: Record<string, FoundryCommandMetadata> = {
       nodeTest(
         "test/scenarios/native-insert-closeout.test.mts",
         "native closeout accepts exact consumed insert/readback evidence and still requires unique roots",
+      ),
+      nodeTest(
+        "test/unit/handoff-identity-task-command-factories.test.mts",
+        "native draft closeout rejects forged, incomplete or wrong-operation recovered rows",
       ),
       nodeTest(
         "test/scenarios/full-context-completion-closeout.test.mts",

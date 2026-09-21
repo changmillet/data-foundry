@@ -4,7 +4,7 @@ import type { FoundryArtifactFact } from "../foundry-command-spec.ts";
 import { normalizeAllowedTraceHashDifference } from "../remote-verification-accepted-diff.ts";
 import { canonicalPayloadSha256, validateUniqueRootReadbacks } from "../post-write-root-proof.ts";
 import type { IntendedRoot, RootReadbackCheck } from "../post-write-root-proof.ts";
-import { validateNativeInsertCloseout } from "./native-insert-closeout.ts";
+import { validateNativeDraftCloseout } from "./native-draft-closeout.ts";
 import { validateReferenceIntentReadback } from "./reference-intent-closeout.ts";
 
 type JsonRecord = Record<string, unknown>;
@@ -187,7 +187,7 @@ export function createPostWriteCloseoutCommands({
   }): void {
     try {
       if (
-        validateNativeInsertCloseout({
+        validateNativeDraftCloseout({
           handoff: handoffPlan ?? {},
           report: commitReport,
           rowsFile: finalRowsFile,

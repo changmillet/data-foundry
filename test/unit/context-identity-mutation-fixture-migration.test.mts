@@ -87,12 +87,12 @@ test("identity receipt bytes and native missing-file errors remain exact", () =>
   const receipt = identity.testAuthIdentityReceipt({
     capturedAtUtc: "2026-08-25T00:00:00.000Z",
   });
-  assert.equal(receipt.cli.package_version, "0.1.18");
+  assert.equal(receipt.cli.package_version, "0.1.19");
   const receiptText = JSON.stringify(receipt);
   assert.equal(Buffer.byteLength(receiptText, "utf8"), 1073);
   assert.equal(
     sha256(receiptText),
-    "a8d8a75bedeef1e6efd0a0dbe333a3f34a8a8ff6c7bcee1c0d671e70c8db8633",
+    "fb5c58ed1778a037213918da36c862d6b4388573f99b65ab088b8dfda0e9df84",
   );
 
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-identity-fixture-"));

@@ -16,10 +16,10 @@ import { readRows } from "../import-curation/internal/runtime-io.ts";
 import { flowPrewriteIdentityBlockers } from "../import-curation/internal/workflow-identity-preflight.ts";
 import {
   assertExecutionContractSelection,
-  readNativeInsertHandoff,
+  readNativeDraftHandoff,
   reserveNativeHandoffDirectory,
-  nativeInsertCommitArguments,
-} from "./native-insert-handoff.ts";
+  nativeDraftCommitArguments,
+} from "./native-draft-handoff.ts";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -390,7 +390,7 @@ export function createCommitHandoffCommands({
       throw new Error("--execution-contract-file requires a fresh handoff output directory.");
     const native =
       contractFile && finalRowsFile
-        ? readNativeInsertHandoff({
+        ? readNativeDraftHandoff({
             contractFile,
             rowsFile: finalRowsFile,
             datasetType,
@@ -599,7 +599,7 @@ export function createCommitHandoffCommands({
       : [resolveTiangongLcaCliBin()];
     const commitArgs =
       native && finalRowsFile && contractFile
-        ? nativeInsertCommitArguments(cliPrefix, datasetType, finalRowsFile, outDir, contractFile)
+        ? nativeDraftCommitArguments(cliPrefix, datasetType, finalRowsFile, outDir, contractFile)
         : legacyCommitArgs;
     const verifyArgs: string[] = finalRowsFile
       ? [

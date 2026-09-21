@@ -1,7 +1,10 @@
 import path from "node:path";
 import { resolveArtifactPath } from "./artifact-inputs.ts";
 import { identityKey, detectDatasetType, unwrapDatasetPayload } from "./dataset-payload.ts";
-import { annualSupplyMissingDataSentinelText } from "./prewrite-cleanup.ts";
+import {
+  annualSupplyFieldPath as canonicalAnnualSupplyFieldPath,
+  legacyAnnualSupplyMissingDataSentinelText,
+} from "./prewrite-cleanup.ts";
 import {
   asText,
   directoryExists,
@@ -84,8 +87,7 @@ function isQueueTask(value: unknown): value is QueueTask {
 }
 
 // part-00.mjs
-export const annualSupplyFieldPath =
-  "processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume";
+export const annualSupplyFieldPath = canonicalAnnualSupplyFieldPath;
 
 export function isAnnualSupplyTarget(code: unknown, itemPath: unknown): boolean {
   return (
@@ -104,7 +106,7 @@ export function schemaIssueInstruction(issue: unknown): string | null {
   const code = String(typedIssue?.code ?? "");
   const issuePath = String(typedIssue?.path ?? "");
   if (isAnnualSupplyTarget(code, issuePath)) {
-    return `Use source evidence or an explicitly documented profile fallback to write annualSupplyOrProductionVolume as a real annualized quantity with unit, for example '<number> <unit>/year'. If no annualized source evidence exists, Foundry deterministic cleanup must write the intentionally non-physical sentinel '${annualSupplyMissingDataSentinelText}' so database-side follow-up can bulk-locate and replace it later.`;
+    return `Use source evidence or an explicitly documented profile fallback to write annualSupplyOrProductionVolume as a real annualized quantity with unit, for example '<number> <unit>/year'. Never invent a quantity from a reference flow or a default unit. If no annualized source evidence exists, Foundry deterministic cleanup normalizes the field to the supported empty array and records a row-level evidence gap; the historical '${legacyAnnualSupplyMissingDataSentinelText}' marker is recognized only so rows written by earlier rounds can be normalized, and is never written again.`;
   }
   if (code === "invalid_format") {
     return "Use the SDK schema and methodology YAML for this field to replace the invalid value with a schema-valid source-backed value.";
@@ -125,18 +127,18 @@ export function schemaIssueCurationAction(issue: unknown): JsonRecord {
     instruction: schemaIssueInstruction(issue),
     ...(annualSupplyIssue
       ? {
-          sentinel_completion_allowed: true,
-          sentinel_cleanup_path: annualSupplyFieldPath,
-          sentinel_value: annualSupplyMissingDataSentinelText,
-          sentinel_policy:
-            "The 9999 missing-data sentinel is intentionally non-physical and easy to bulk-query; later database-side curation owns replacing it with real annual volume evidence.",
+          unknown_normalization_allowed: true,
+          cleanup_field_path: annualSupplyFieldPath,
+          normalized_unknown_value: [],
+          unknown_evidence_policy:
+            "An absent annual volume is normalized to the supported empty array and reported as a row-level evidence gap; Foundry never writes a synthesized quantity, and downstream schema, authoring, curation, and write gates keep owning rejection.",
         }
       : {}),
   };
   if (annualSupplyIssue) {
     return {
       ...base,
-      action_kind: "annual_supply_sentinel_completion",
+      action_kind: "annual_supply_unknown_evidence_normalization",
       required_owner: "foundry_deterministic_cleanup",
       ai_required: false,
       instruction: schemaIssueInstruction(issue),

@@ -27,6 +27,33 @@ import { sha256Json } from "./identity-preflight-proof.ts";
 import type { ArtifactEntry } from "./foundry-task-types.ts";
 
 export type OwnerExecutionRequest = ReturnType<typeof buildRequest>;
+
+/**
+ * The finalization and mutation evidence a sealed owner scope must retain. Only the registered repair
+ * scope — the repair kind whose handoff declares `repair_scope: true` — has neither; any other sealed
+ * scope that lost one is refused rather than prepared.
+ */
+export function ownerExecutionScopeFiles(
+  assetRoot: string,
+  authorizationValue: Record<string, unknown>,
+  handoff: Record<string, unknown>,
+) {
+  const repairScope =
+    authorizationValue.input_kind === "repair_rows" && handoff.repair_scope === true;
+  const file = (value: unknown, label: string): string | null => {
+    if (typeof value === "string" && value) return path.resolve(assetRoot, value);
+    if (repairScope) return null;
+    throw new FoundryContextError(
+      "execution_request_invalid",
+      `A sealed owner scope must retain its ${label}.`,
+    );
+  };
+  return Object.freeze({
+    finalize_file: file(handoff.finalize_report, "finalization report"),
+    mutation_file: file(handoff.mutation_manifest, "mutation manifest"),
+  });
+}
+
 function buildRequest(
   context: FoundryRuntimeContext,
   authorization: ReturnType<typeof readWorkflowArtifact>,
@@ -77,6 +104,9 @@ function buildRequest(
     state_code: 0,
     dataset_type: value.dataset_type,
     account_mode: String(handoff.account_mode ?? "ordinary"),
+    ...(value.input_kind === "repair_rows" && handoff.repair_scope === true
+      ? { repair_scope: true as const }
+      : {}),
   };
   const projection = JSON.parse(JSON.stringify(content)) as BatchJsonValue;
   const contract = createBatchContract({
@@ -93,8 +123,7 @@ function buildRequest(
     contract,
     item_contract: itemContract,
     handoff_file: path.resolve(context.assetRoot, String(workflowObject(handoff.files).report)),
-    finalize_file: path.resolve(context.assetRoot, String(handoff.finalize_report)),
-    mutation_file: path.resolve(context.assetRoot, String(handoff.mutation_manifest)),
+    ...ownerExecutionScopeFiles(context.assetRoot, value, handoff),
   };
 }
 
@@ -453,7 +482,18 @@ export function inspectOwnerExecutions(
             "execution_result_invalid",
             "Readback content fact is missing.",
           );
-        resolveFoundryOutput(context, fact.path);
+        if (item.request.policy.repair_scope === true && raw === proof.input) {
+          if (
+            fact.path !== item.request.content.input.path ||
+            fact.sha256 !== item.request.content.input.sha256 ||
+            fact.bytes !== item.request.content.input.bytes
+          )
+            throw new FoundryContextError(
+              "execution_result_invalid",
+              "Repair readback input must equal the registered source candidate.",
+            );
+          readFoundryInput(context, fact.path);
+        } else resolveFoundryOutput(context, fact.path);
         const current = captureFoundryInput(fact.path);
         if (current.sha256 !== fact.sha256 || current.bytes !== fact.bytes)
           throw new FoundryContextError(

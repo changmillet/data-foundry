@@ -1,4 +1,8 @@
+import { proveFoundryRepairRemoteIntegrity } from "./foundry-repair-reference-binding.ts";
 import fs from "node:fs";
+import { assertFoundryRepairExecution } from "./foundry-repair-execution.ts";
+import { withFoundryTaskMetadata } from "./foundry-task-store.ts";
+import { validateNativeDraftCloseout } from "./finalize-owners/native-draft-closeout.ts";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -28,8 +32,11 @@ import {
   datasetIdentity,
   unwrapDatasetPayload,
 } from "./import-curation/internal/dataset-payload.ts";
-import { buildReferenceClosureBlockers } from "./import-curation/internal/workflow-reference-closure.ts";
-import { readRows } from "./import-curation/internal/runtime-io.ts";
+import {
+  buildReferenceClosureBlockers,
+  referenceKey,
+} from "./import-curation/internal/workflow-reference-closure.ts";
+import { readRows, repoRelativePath } from "./import-curation/internal/runtime-io.ts";
 import { bundleRowTypes, type BundleRowType } from "./bundle-row-types.ts";
 import { workflowObject } from "./foundry-workflow-state.ts";
 import type { OwnerExecutionRequest } from "./foundry-owner-execution-store.ts";
@@ -43,6 +50,9 @@ export async function readbackFoundryOwner(
   commitReport?: string,
 ) {
   assertQualifiedFoundryRuntime(context, qualified);
+  const repair = await withFoundryTaskMetadata(context, (_, entries) =>
+    assertFoundryRepairExecution(context, entries, request),
+  );
   const identity = verifyFoundryRuntimeIdentity(context, authentication, process.env, qualified);
   if (
     identity.receipt.project.project_ref !== request.policy.project_ref ||
@@ -135,6 +145,12 @@ export async function readbackFoundryOwner(
       checksFile: string | null = null;
     try {
       report = workflowObject(JSON.parse(result.stdout));
+      if (
+        repair &&
+        (typeof report.input_path !== "string" ||
+          path.resolve(report.input_path) !== path.resolve(request.content.input.path))
+      )
+        throw new Error("Repair readback report must name the exact selected candidate input.");
       const files = workflowObject(report.files);
       for (const name of ["report", "checks"]) {
         const file =
@@ -173,7 +189,8 @@ export async function readbackFoundryOwner(
       !result.signal &&
       // The published CLI uses exit 1 for a completed, blocked remote report.
       result.status === 1 &&
-      request.policy.account_mode === "ordinary"
+      request.policy.account_mode === "ordinary" &&
+      !repair
     ) {
       const accepted = acceptFoundryOwnerTraceDifference(
         context,
@@ -192,7 +209,47 @@ export async function readbackFoundryOwner(
         );
       }
     }
-    if (result.error || result.signal || (result.status !== 0 && !acceptance))
+    let repairIntegrity: ReturnType<typeof proveFoundryRepairRemoteIntegrity> | null = null;
+    if (
+      repair &&
+      !blockers.length &&
+      reportFile &&
+      checksFile &&
+      !result.error &&
+      !result.signal &&
+      (result.status === 0 || result.status === 1)
+    ) {
+      try {
+        repairIntegrity = proveFoundryRepairRemoteIntegrity({
+          report,
+          checks: fs
+            .readFileSync(checksFile, "utf8")
+            .split(/\r?\n/u)
+            .filter((line) => line.trim())
+            .map((line) => JSON.parse(line) as unknown),
+          expectation: repair.expectation,
+          beforeRows: readRows(repair.beforeFile, (file) =>
+            readFoundryInput(context, file).toString("utf8"),
+          ),
+          candidateRows: readRows(request.content.input.path, (file) =>
+            readFoundryInput(context, file).toString("utf8"),
+          ),
+          content: "candidate",
+        });
+        if (result.status !== (repairIntegrity.retained_references ? 1 : 0))
+          throw new Error("Repair owner status and exit disagree.");
+      } catch (error) {
+        repairIntegrity = null;
+        blockers.push({
+          code: "repair_reference_integrity_unproven",
+          message:
+            error instanceof FoundryContextError
+              ? error.message
+              : "Repair reference evidence is invalid.",
+        });
+      }
+    }
+    if (result.error || result.signal || (result.status !== 0 && !acceptance && !repairIntegrity))
       blockers.push({ code: "readback_cli_failed", exit_code: result.status });
     if (!blockers.length && reportFile) {
       const rows = readRows(request.content.input.path).map((row) =>
@@ -223,20 +280,23 @@ export async function readbackFoundryOwner(
         environment,
         tidasExecutable: qualified.tidas.executable_path,
       });
-      const rootProof = owners.closeout.validatePostWriteVerifyForCloseout({
-        handoffPlan: JSON.parse(
-          readFoundryInput(context, request.handoff_file).toString("utf8"),
-        ) as Record<string, unknown>,
-        verifyReport: report,
-        verifyReportPath: reportFile,
-        finalRowsFile: request.content.input.path,
-        expectedRows: rows.length,
-        targetUserId: request.policy.user_id,
-        expectedStateCode: 0,
-        intendedRoots: intended,
-        allowTraceHashOnlyNormalization: request.policy.account_mode !== "production-test",
-        blockers,
-      });
+      const rootProof = repair
+        ? { referenceArtifacts: [] }
+        : owners.closeout.validatePostWriteVerifyForCloseout({
+            handoffPlan: JSON.parse(
+              readFoundryInput(context, request.handoff_file).toString("utf8"),
+            ) as Record<string, unknown>,
+            verifyReport: report,
+            verifyReportPath: reportFile,
+            finalRowsFile: request.content.input.path,
+            expectedRows: rows.length,
+            targetUserId: request.policy.user_id,
+            expectedStateCode: 0,
+            intendedRoots: intended,
+            allowTraceHashOnlyNormalization:
+              !repair && request.policy.account_mode !== "production-test",
+            blockers,
+          });
       referenceFacts = (rootProof.referenceArtifacts ?? []).map(({ path, sha256, bytes }) => ({
         path,
         sha256,
@@ -249,23 +309,49 @@ export async function readbackFoundryOwner(
           datasetType: type,
           remoteVerifyArtifact: { value: report },
           allowAccountLocalSupportAndElementary: false,
+          ...(repairIntegrity?.retained_references
+            ? {
+                provenReferenceKeys: new Set(
+                  repairIntegrity.retained_references.outdated.map(referenceKey),
+                ),
+              }
+            : {}),
         }),
       );
       if (commitReport) {
         try {
-          const closed = workflowObject(
-            owners.closeout.runDatasetPostWriteCloseout({
-              handoffPlan: request.handoff_file,
-              commitReport,
-              postWriteVerifyReport: reportFile,
-              rowsFile: request.content.input.path,
-              finalizeReport: request.finalize_file,
-              mutationManifest: request.mutation_file,
-              outDir: path.join(output, "closeout"),
-              targetUserId: request.policy.user_id,
-              stateCode: "0",
-            }),
-          );
+          const closed = repair
+            ? (() => {
+                if (
+                  !validateNativeDraftCloseout({
+                    handoff: repair.handoff,
+                    report: workflowObject(JSON.parse(fs.readFileSync(commitReport, "utf8"))),
+                    rowsFile: request.content.input.path,
+                    datasetType: request.policy.dataset_type,
+                    targetUserId: request.policy.user_id,
+                    stateCode: "0",
+                    expectedRows: rows.length,
+                    resolveFile: (value) =>
+                      typeof value === "string" ? path.resolve(context.assetRoot, value) : null,
+                    relativePath: (file) => repoRelativePath(context.assetRoot, file),
+                  })
+                )
+                  throw new Error("Repair requires its consumed native contract receipt.");
+                return { status: "completed" };
+              })()
+            : workflowObject(
+                owners.closeout.runDatasetPostWriteCloseout({
+                  handoffPlan: request.handoff_file,
+                  commitReport,
+                  postWriteVerifyReport: reportFile,
+                  rowsFile: request.content.input.path,
+                  finalizeReport: request.finalize_file,
+                  mutationManifest: request.mutation_file,
+                  outDir: path.join(output, "closeout"),
+                  targetUserId: request.policy.user_id,
+                  stateCode: "0",
+                }),
+              );
           if (closed.status !== "completed")
             blockers.push({ code: "owner_closeout_blocked", report: closed });
           if (commitFact && captureFoundryInput(commitReport).sha256 !== commitFact.sha256)
@@ -300,6 +386,13 @@ export async function readbackFoundryOwner(
       ...(referenceFacts.length ? { reference_evidence: referenceFacts } : {}),
       original_verification: original,
       acceptance,
+      ...(repair
+        ? {
+            repair_preparation: captureFoundryInput(repair.preparation.file),
+            publication_ready: false,
+            retained_reference_integrity: repairIntegrity?.retained_references ?? null,
+          }
+        : {}),
       blockers,
     };
     fs.writeFileSync(

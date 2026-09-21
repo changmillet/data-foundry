@@ -1,13 +1,14 @@
 import path from "node:path";
 import { datasetTypeFromOptions, datasetTypePlural } from "./internal/dataset-types.ts";
 import { datasetIdentity } from "./internal/dataset-payload.ts";
+import { sha256Json } from "./internal/hash-utils.ts";
 import {
-  annualSupplyMissingDataSentinelText,
-  applyAnnualSupplyMissingDataSentinel,
+  annualSupplyFieldPath,
   applyDeterministicSourceExchangeCompletenessProofs,
   buildSourceRowsByIdentity,
   ensureFoundryTraceNamespaces,
   externalizeImportTraceMetadata,
+  normalizeAnnualSupplyEvidence,
   normalizeDateTimeMetadata,
   sanitizeFoundryTraceEvidenceLocators,
 } from "./internal/prewrite-cleanup.ts";
@@ -86,7 +87,7 @@ export function runDatasetCurationCleanup({
         "node scripts/foundry.ts dataset-curation-cleanup --type <process|flow|lifecyclemodel|support|contact|source> --rows-file <rows.jsonl> [--source-rows-file <source-rows.jsonl>] --out-dir <cleanup-dir>",
       ],
       purpose:
-        "Run deterministic prewrite cleanup transforms: annual-supply sentinel completion, import trace externalization, Foundry trace namespace repair, local locator redaction, and timestamp normalization.",
+        "Run deterministic prewrite cleanup transforms: annual-supply evidence preservation, import trace externalization, Foundry trace namespace repair, local locator redaction, and timestamp normalization.",
       remote_write_mode: "read-only",
       blockers: [],
     };
@@ -175,12 +176,14 @@ export function runDatasetCurationCleanup({
         redacted_foundry_trace_evidence_locators: 0,
         added_foundry_trace_namespaces: 0,
         normalized_datetime_values: 0,
-        annual_supply_missing_data_sentinels: 0,
+        annual_supply_unknown_normalized: 0,
+        annual_supply_evidence_gaps: 0,
         source_exchange_completeness_proofs: 0,
       },
       source_rows_file:
         sourceRowsFile && hasFile(sourceRowsFile) ? repoRelativePath(root, sourceRowsFile) : null,
       source_exchange_completeness_proofs: [],
+      annual_supply_evidence_gaps: [],
       blockers,
       policy: {
         purpose:
@@ -202,12 +205,26 @@ export function runDatasetCurationCleanup({
   let externalizedSourceTraceSummaries = 0;
   let addedFoundryTraceNamespaces = 0;
   let redactedFoundryTraceEvidenceLocators = 0;
-  let annualSupplyMissingDataSentinels = 0;
+  let annualSupplyUnknownNormalized = 0;
   let sourceExchangeCompletenessProofs = 0;
   const sourceExchangeProofRows: JsonRecord[] = [];
+  const inputPayloadSha256 = rows.map((row, rowIndex) =>
+    sha256Json(datasetIdentity(row, rowIndex, datasetType).payload),
+  );
+  const pendingAnnualSupplyGaps: Array<{
+    index: number;
+    reason: string;
+    reviewRequired: boolean;
+  }> = [];
   cleanedRows.forEach((cleaned, rowIndex) => {
-    if (applyAnnualSupplyMissingDataSentinel(cleaned, datasetType)) {
-      annualSupplyMissingDataSentinels += 1;
+    const annualSupply = normalizeAnnualSupplyEvidence(cleaned, datasetType);
+    if (annualSupply.changed) annualSupplyUnknownNormalized += 1;
+    if (annualSupply.gap) {
+      pendingAnnualSupplyGaps.push({
+        index: rowIndex,
+        reason: annualSupply.gap.reason,
+        reviewRequired: annualSupply.gap.review_required,
+      });
     }
     if (
       applyDeterministicSourceExchangeCompletenessProofs(cleaned, datasetType, {
@@ -225,6 +242,24 @@ export function runDatasetCurationCleanup({
     externalizedSourceTraceSummaries += traceResult.summaries;
     redactedFoundryTraceEvidenceLocators += sanitizeFoundryTraceEvidenceLocators(cleaned);
     addedFoundryTraceNamespaces += ensureFoundryTraceNamespaces(cleaned);
+  });
+
+  // Bound only after every other cleanup transform has run, so the output hash describes the
+  // exact unwrapped payload the caller will write, with no row metadata mixed in.
+  const annualSupplyEvidenceGaps: JsonRecord[] = pendingAnnualSupplyGaps.map((pending) => {
+    const identity = datasetIdentity(rows[pending.index], pending.index, datasetType);
+    const outputIdentity = datasetIdentity(cleanedRows[pending.index], pending.index, datasetType);
+    return {
+      row_index: pending.index,
+      dataset_type: datasetType,
+      dataset_id: identity.id,
+      version: identity.version,
+      field: annualSupplyFieldPath,
+      reason: pending.reason,
+      review_required: pending.reviewRequired,
+      input_payload_sha256: inputPayloadSha256[pending.index] ?? null,
+      output_payload_sha256: sha256Json(outputIdentity.payload),
+    };
   });
   writeRows(outFile, jsonLines(cleanedRows));
 
@@ -245,12 +280,14 @@ export function runDatasetCurationCleanup({
       redacted_foundry_trace_evidence_locators: redactedFoundryTraceEvidenceLocators,
       added_foundry_trace_namespaces: addedFoundryTraceNamespaces,
       normalized_datetime_values: normalizedDateTimeValues,
-      annual_supply_missing_data_sentinels: annualSupplyMissingDataSentinels,
+      annual_supply_unknown_normalized: annualSupplyUnknownNormalized,
+      annual_supply_evidence_gaps: annualSupplyEvidenceGaps.length,
       source_exchange_completeness_proofs: sourceExchangeCompletenessProofs,
     },
     source_rows_file:
       sourceRowsFile && hasFile(sourceRowsFile) ? repoRelativePath(root, sourceRowsFile) : null,
     source_exchange_completeness_proofs: sourceExchangeProofRows,
+    annual_supply_evidence_gaps: annualSupplyEvidenceGaps,
     blockers: [],
     policy: {
       purpose:
@@ -264,7 +301,8 @@ export function runDatasetCurationCleanup({
         "Local machine paths from tiangongfoundry:* trace evidence are redacted from write payloads; authoring packages and patch evidence retain the full local context.",
       datetime_policy:
         "TIDAS/ILCD dateTime values with timezone offsets are normalized to UTC Z form when the UTC projection remains inside the accepted four-digit year grammar; valid year-boundary offsets retain their exact source bytes.",
-      annual_supply_placeholder_policy: `annualSupplyOrProductionVolume is schema-required. If source evidence is missing or converted as a placeholder such as 'Not specified', Foundry writes '${annualSupplyMissingDataSentinelText}' so the row remains importable and later database-side curation can bulk-locate the intentionally non-physical sentinel.`,
+      annual_supply_evidence_policy:
+        "annualSupplyOrProductionVolume is schema-required. Foundry preserves real evidence — a single object or a language array — byte-semantically and in its original element order, and never rewrites a real quantity that merely collides numerically with a historical marker. A missing, empty, or explicitly-marked-absent volume is normalized to the supported empty array and reported as a row-level evidence gap in annual_supply_evidence_gaps; Foundry never fills in a synthesized quantity. Unsupported shapes are left untouched for the SDK/CLI gate to reject. Cleanup completion means the local transform finished, not that the row is authoring, write, or publication ready; downstream schema, authoring, curation, and write gates remain the blocking owners.",
       source_exchange_completeness_policy:
         "For process rows, if an explicit source rows file is supplied and the source process row is Output-only with the same non-flow-reference exchange signature as the final row, Foundry may write deterministic tiangongfoundry:sourceExchangeCompleteness proof. Otherwise source-only-output acceptance still requires AI source_trace_verified evidence or exchange repair.",
     },

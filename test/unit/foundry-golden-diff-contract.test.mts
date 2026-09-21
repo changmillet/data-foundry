@@ -186,7 +186,7 @@ test("Golden normalizes canonical and pre-rename CLI schema-asset paths alike", 
   );
 });
 
-test("Golden admits only the reviewed CLI 0.1.14 to 0.1.18 schema migrations", () => {
+test("Golden admits only the reviewed CLI 0.1.14 to 0.1.19 schema migrations", () => {
   const source = fs.readFileSync(path.join(repoRoot, "scripts/foundry-golden-diff.ts"), "utf8");
   assert.match(source, /cliSchemaAssetMigrationHashes/u);
   for (const digest of [

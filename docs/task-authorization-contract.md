@@ -30,8 +30,8 @@ checkPaths:
   - test/unit/task-profile-authority.test.mts
   - test/scenarios/foundry-execution-admission.test.mts
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: a969cb7e72cb82844c7cd32910370f34abdc435f
-lastReviewedNote: "Reviewed for Foundry #30 at a969cb7: the registered offline final-delivery stage adds no task, mutation, approval or replay authority; persisted-task and authorization bindings remain unchanged."
+lastReviewedCommit: bc41ba12a0fd9d6499c6ee992df891cf15e5303b
+lastReviewedNote: "Reviewed for Foundry #171 Windows CI correction: repair handoff and readback artifact paths reuse the existing canonical relative-path owner, matching strict native closeout on every platform. Payload, contract, authorization, exact readback and no-replay requirements are preserved."
 related:
   - docs/architecture.md
   - docs/safety-policy.md

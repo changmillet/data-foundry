@@ -112,3 +112,85 @@ test("explicit account verification mode binds task identity and survives migrat
     }),
   );
 });
+
+const repairBase = {
+  ...base,
+  lane: "existing-owner-draft-repair",
+  target_entities: ["process"],
+  sources: [
+    { path: "inputs/repair-contract.json" },
+    { path: "inputs/before.jsonl" },
+    { path: "inputs/candidate.jsonl" },
+  ],
+  seed: null,
+  preparation: null,
+  repair: {
+    kind: "existing-owner-draft-metadata",
+    contract: "inputs/repair-contract.json",
+    before: "inputs/before.jsonl",
+    candidate: "inputs/candidate.jsonl",
+    predecessor: null,
+  },
+};
+
+test("RED/GREEN: repair tasks keep v1 tasks unchanged and require three selected sources", () => {
+  const parsed = parseFoundryTaskStartSpec(repairBase);
+  assert.equal(parsed.repair?.kind, "existing-owner-draft-metadata");
+  assert.equal(Object.isFrozen(parsed.repair), true);
+  // v1 specs without the repair key stay byte-identical, so their fingerprint and task id cannot change.
+  const legacy = parseFoundryTaskStartSpec(base);
+  assert.equal(Object.hasOwn(legacy, "repair"), false);
+  assert.deepEqual(legacy, base);
+  // The repair key is rejected outside the repair lane, and the lane requires it.
+  assert.throws(
+    () => parseFoundryTaskStartSpec({ ...base, repair: repairBase.repair }),
+    (error: unknown) => (error as { code?: string }).code === "task_spec_repair_lane_mismatch",
+  );
+  assert.throws(
+    () => parseFoundryTaskStartSpec({ ...repairBase, repair: null }),
+    (error: unknown) => (error as { code?: string }).code === "task_spec_repair_lane_mismatch",
+  );
+});
+
+test("repair selections must be independently selected sources with exact identity rules", () => {
+  assert.throws(() =>
+    parseFoundryTaskStartSpec({
+      ...repairBase,
+      repair: { ...repairBase.repair, before: "inputs/elsewhere.jsonl" },
+    }),
+  );
+  assert.throws(() =>
+    parseFoundryTaskStartSpec({
+      ...repairBase,
+      target_entities: ["flow", "process"],
+    }),
+  );
+  assert.throws(() =>
+    parseFoundryTaskStartSpec({
+      ...repairBase,
+      repair: {
+        ...repairBase.repair,
+        predecessor: { task_id: "task-1", receipt_sha256: "not-a-hash" },
+      },
+    }),
+  );
+  const bound = parseFoundryTaskStartSpec({
+    ...repairBase,
+    repair: {
+      ...repairBase.repair,
+      predecessor: { task_id: "task-1", receipt_sha256: "a".repeat(64) },
+    },
+  });
+  assert.equal(bound.repair?.predecessor?.receipt_sha256, "a".repeat(64));
+});
+
+test("the repair lane registers through the same facade wiring without a temporary block", async () => {
+  const source = await import("node:fs").then((fs) =>
+    fs.readFileSync("scripts/lib/foundry-task-registration.ts", "utf8"),
+  );
+  assert.equal(/repair_entry_enforcement_pending/u.test(source), false);
+  assert.match(source, /readFoundryRepairScope/u);
+  // task start stays credential-free: the fresh owner preflight belongs to task resume, never to
+  // registration, so the registration path must not reference the owner-CLI runner at all.
+  assert.equal(/runFoundryRepairPreflight/u.test(source), false);
+});

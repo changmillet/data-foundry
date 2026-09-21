@@ -4,6 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { runDatasetCurationCleanup } from "../../scripts/lib/import-curation/curation-cleanup.ts";
+import { datasetIdentity } from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
+import { sha256Json } from "../../scripts/lib/import-curation/internal/hash-utils.ts";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -175,10 +177,7 @@ test("process cleanup preserves deep-clone order, bytes, proofs, traces, and cou
   const cleanedBOther = record(cleanedBInfo["common:other"]);
   const cleanedBModelling = record(cleanedBRoot.modellingAndValidation);
   const cleanedBSources = record(cleanedBModelling.dataSourcesTreatmentAndRepresentativeness);
-  assert.deepEqual(cleanedBSources.annualSupplyOrProductionVolume, {
-    "@xml:lang": "en",
-    "#text": "9999 missing-data-sentinel/year",
-  });
+  assert.deepEqual(cleanedBSources.annualSupplyOrProductionVolume, []);
   assert.equal(cleanedBOther["tidasimport:sourceTrace"], undefined);
   assert.equal(cleanedBOther["@xmlns:tidasimport"], undefined);
   assert.equal(
@@ -205,7 +204,8 @@ test("process cleanup preserves deep-clone order, bytes, proofs, traces, and cou
       externalized_source_trace_summaries: counts.externalized_source_trace_summaries,
       redacted_foundry_trace_evidence_locators: counts.redacted_foundry_trace_evidence_locators,
       normalized_datetime_values: counts.normalized_datetime_values,
-      annual_supply_missing_data_sentinels: counts.annual_supply_missing_data_sentinels,
+      annual_supply_unknown_normalized: counts.annual_supply_unknown_normalized,
+      annual_supply_evidence_gaps: counts.annual_supply_evidence_gaps,
       source_exchange_completeness_proofs: counts.source_exchange_completeness_proofs,
     },
     {
@@ -214,10 +214,40 @@ test("process cleanup preserves deep-clone order, bytes, proofs, traces, and cou
       externalized_source_trace_summaries: 1,
       redacted_foundry_trace_evidence_locators: 1,
       normalized_datetime_values: 1,
-      annual_supply_missing_data_sentinels: 1,
+      annual_supply_unknown_normalized: 1,
+      annual_supply_evidence_gaps: 1,
       source_exchange_completeness_proofs: 1,
     },
   );
+
+  // The gap binds the row identity, the exact field, and the full pre/post payload hashes.
+  const gaps = records(result.annual_supply_evidence_gaps);
+  assert.equal(gaps.length, 1);
+  assert.deepEqual(
+    {
+      row_index: gaps[0]?.row_index,
+      dataset_type: gaps[0]?.dataset_type,
+      dataset_id: gaps[0]?.dataset_id,
+      version: gaps[0]?.version,
+      field: gaps[0]?.field,
+      reason: gaps[0]?.reason,
+      review_required: gaps[0]?.review_required,
+    },
+    {
+      row_index: 0,
+      dataset_type: "process",
+      dataset_id: processB,
+      version: "00.00.001",
+      field:
+        "processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume",
+      reason: "explicit_missing_text",
+      review_required: false,
+    },
+  );
+  for (const hashKey of ["input_payload_sha256", "output_payload_sha256"]) {
+    assert.match(String(gaps[0]?.[hashKey]), /^[a-f0-9]{64}$/u, hashKey);
+  }
+  assert.notEqual(gaps[0]?.input_payload_sha256, gaps[0]?.output_payload_sha256);
   const proofRows = records(result.source_exchange_completeness_proofs);
   assert.equal(proofRows.length, 1);
   assert.deepEqual(
@@ -240,6 +270,71 @@ test("process cleanup preserves deep-clone order, bytes, proofs, traces, and cou
     fs.readFileSync(path.join(root, String(files.report)), "utf8"),
     `${JSON.stringify(result, null, 2)}\n`,
   );
+});
+
+test("annual supply evidence gaps hash the unwrapped payload, never the row metadata", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-annual-supply-gap-payload-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const processId = "33333333-3333-4333-8333-333333333333";
+  const shared = processRow({
+    id: processId,
+    referenceId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    annualSupply: "Not specified",
+    trace: true,
+    timestamp: "2025-03-01T00:00:00.000Z",
+  });
+  // Both rows carry a byte-identical dataset payload and differ only in row-level metadata.
+  const rowA = structuredClone(shared);
+  rowA.id = "row-metadata-a";
+  rowA.version = "02.00.000";
+  const rowB = structuredClone(shared);
+  rowB.id = "row-metadata-b";
+  rowB.version = "03.00.000";
+  const rowsFile = path.join(root, "rows", "processes.jsonl");
+  writeJsonLines(rowsFile, [rowA, rowB]);
+
+  const result = record(
+    runDatasetCurationCleanup({
+      repoRoot: root,
+      options: {
+        type: "process",
+        rowsFile: "rows/processes.jsonl",
+        outDir: "cleanup",
+      },
+    }),
+  );
+  assert.equal(result.status, "completed");
+
+  const gaps = records(result.annual_supply_evidence_gaps);
+  assert.equal(gaps.length, 2);
+
+  // Identical payloads hash identically even though the row metadata differs, so metadata is
+  // provably outside the payload hash.
+  assert.equal(gaps[0]?.input_payload_sha256, gaps[1]?.input_payload_sha256);
+  assert.equal(
+    gaps[0]?.input_payload_sha256,
+    sha256Json(datasetIdentity(rowA, 0, "process").payload),
+  );
+  assert.notEqual(gaps[0]?.input_payload_sha256, sha256Json(rowA));
+
+  // The metadata is still bound by the identity fields; it is only excluded from the payload hash.
+  assert.equal(gaps[0]?.dataset_id, "row-metadata-a");
+  assert.equal(gaps[1]?.dataset_id, "row-metadata-b");
+  assert.equal(gaps[0]?.version, "02.00.000");
+  assert.equal(gaps[1]?.version, "03.00.000");
+
+  // The output hash covers every later cleanup transform, not just the annual-supply change.
+  const cleanedRows = fs
+    .readFileSync(path.join(root, String(record(result.files).cleaned_rows)), "utf8")
+    .trimEnd()
+    .split("\n")
+    .map((line) => record(JSON.parse(line)));
+  assert.equal(record(result.counts).removed_source_trace_blocks, 2);
+  assert.equal(
+    gaps[0]?.output_payload_sha256,
+    sha256Json(datasetIdentity(cleanedRows[0], 0, "process").payload),
+  );
+  assert.notEqual(gaps[0]?.output_payload_sha256, gaps[0]?.input_payload_sha256);
 });
 
 test("malformed readable rows retain native SyntaxError before output", (t) => {
@@ -336,7 +431,8 @@ test("impossible datetime blocks the whole cleanup before partial transforms or 
     redacted_foundry_trace_evidence_locators: 0,
     added_foundry_trace_namespaces: 0,
     normalized_datetime_values: 0,
-    annual_supply_missing_data_sentinels: 0,
+    annual_supply_unknown_normalized: 0,
+    annual_supply_evidence_gaps: 0,
     source_exchange_completeness_proofs: 0,
   });
   const files = record(result.files);

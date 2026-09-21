@@ -17,6 +17,35 @@ import {
   type FoundryTaskStartSpec,
 } from "./foundry-task-start-spec.ts";
 import { sha256Json } from "./identity-preflight-proof.ts";
+import { assertFoundryNoDispatchSuccessor } from "./foundry-successor-predecessor.ts";
+
+/** One retained revision of the same request, in chain order, as the successor rule sees it. */
+interface FacadeChainLink {
+  readonly task_id: string;
+  readonly spec: FoundryTaskStartSpec;
+  readonly inputs: readonly FoundryInputFact[];
+}
+
+function successorLinks(chain: readonly FacadeChainLink[]): ReadonlyMap<string, FacadeChainLink> {
+  return new Map(chain.slice(0, -1).map((link, index) => [link.task_id, chain[index + 1]]));
+}
+
+/**
+ * An explicitly declared predecessor must be a retained revision of this same request. A declaration
+ * naming a foreign task grants nothing and is refused, so a cross-request or dangling binding can
+ * never be mistaken for a verified successor link.
+ */
+function requireDeclaredPredecessor(
+  spec: FoundryTaskStartSpec,
+  retained: readonly { readonly task_id: string }[],
+): void {
+  const declared = spec.repair?.predecessor ?? null;
+  if (declared && !retained.some((revision) => revision.task_id === declared.task_id))
+    fail(
+      "facade_predecessor_readback_required",
+      `Declared predecessor ${declared.task_id} is not a retained revision of this request; use its original owner for status/readback before any revision can continue.`,
+    );
+}
 
 export const FOUNDRY_FACADE_REQUEST_INDEX_SCHEMA =
   "tiangong-foundry.facade-request-index.v1" as const;
@@ -335,9 +364,17 @@ function pointer(value: unknown, context: FoundryRuntimeContext): FacadeTaskPoin
   return item as unknown as FacadeTaskPointer;
 }
 
+/**
+ * Every retained predecessor must be unattempted, or carry its own explicitly declared successor
+ * whose evidence proves the predecessor's only terminal outcome was a CLI failure that dispatched
+ * nothing. The exception is additive: the failure code and message for every other case are
+ * unchanged, and it is re-derived from the predecessor's own index on every call, so start, status
+ * and resume always agree.
+ */
 function requireUnattemptedPredecessors(
   context: FoundryRuntimeContext,
   predecessors: readonly FacadeRequestRevision[],
+  successors: ReadonlyMap<string, FacadeChainLink>,
 ): void {
   for (const predecessor of predecessors) {
     const workspaces = path.join(context.controlRoot, "workspaces"),
@@ -401,11 +438,24 @@ function requireUnattemptedPredecessors(
         );
       const directory = fs.opendirSync(attempts);
       try {
-        if (directory.readSync())
-          fail(
-            "facade_predecessor_readback_required",
-            `Retained predecessor ${predecessor.task_id} has attempt evidence; use its original owner for status/readback before any revision can continue.`,
-          );
+        if (directory.readSync()) {
+          const successor = successors.get(predecessor.task_id);
+          if (!successor)
+            fail(
+              "facade_predecessor_readback_required",
+              `Retained predecessor ${predecessor.task_id} has attempt evidence; use its original owner for status/readback before any revision can continue.`,
+            );
+          assertFoundryNoDispatchSuccessor({
+            context,
+            predecessorTaskId: predecessor.task_id,
+            predecessorInputs: predecessor.inputs,
+            successor: {
+              task_id: successor.task_id,
+              spec: successor.spec,
+              inputs: successor.inputs,
+            },
+          });
+        }
       } finally {
         directory.closeSync();
       }
@@ -468,7 +518,18 @@ export async function registerFoundryFacadeTask(
       assertPendingFoundryTaskIntent(context, taskId, spec.request_id, spec.actor_id, fingerprint);
       const predecessors =
         stored.index?.revisions.filter((entry) => entry.task_id !== taskId) ?? [];
-      requireUnattemptedPredecessors(context, predecessors);
+      // The incoming revision is the chain's last link: an earlier predecessor's recorded exception
+      // is only current while this spec still declares it with the same terminal report digest.
+      const successors = successorLinks([
+        ...(stored.index?.revisions ?? []).map((entry) => ({
+          task_id: entry.task_id,
+          spec: entry.spec,
+          inputs: entry.inputs,
+        })),
+        { task_id: taskId, spec, inputs: options.inputs },
+      ]);
+      requireDeclaredPredecessor(spec, [...predecessors, { task_id: taskId }]);
+      requireUnattemptedPredecessors(context, predecessors, successors);
       let task: { created_at_utc: string; inputs_sha256: string };
       try {
         task = options.createOrLoad(taskId);
@@ -494,7 +555,7 @@ export async function registerFoundryFacadeTask(
         throw error;
       }
       let selected = latest;
-      requireUnattemptedPredecessors(context, predecessors);
+      requireUnattemptedPredecessors(context, predecessors, successors);
       if (!latest || latest.fingerprint_sha256 !== fingerprint) {
         const unsigned = {
           revision: revisionNumber,
@@ -580,7 +641,18 @@ export function loadFoundryFacadeTaskRecord(
     fail("facade_task_pointer_invalid", "Facade task pointer has no current request revision.");
   if (selected.spec.actor_id !== actorId)
     fail("task_actor_mismatch", "Current actor does not match the registered task intent.");
-  requireUnattemptedPredecessors(context, request.revisions.slice(0, taskPointer.revision - 1));
+  requireDeclaredPredecessor(selected.spec, request.revisions.slice(0, taskPointer.revision - 1));
+  requireUnattemptedPredecessors(
+    context,
+    request.revisions.slice(0, taskPointer.revision - 1),
+    successorLinks(
+      request.revisions.map((entry) => ({
+        task_id: entry.task_id,
+        spec: entry.spec,
+        inputs: entry.inputs,
+      })),
+    ),
+  );
   return Object.freeze({
     request_sha256: taskPointer.request_sha256,
     revision: selected.revision,

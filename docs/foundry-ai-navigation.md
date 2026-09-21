@@ -144,9 +144,9 @@ checkPaths:
   - test/unit/identity-preflight-run-command-factory.test.mts
   - test/unit/post-authoring-finalize-command-factory.test.mts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-09-16
-lastReviewedCommit: f456de2d102d19491010508b9c9b4dad31acd52b
-lastReviewedNote: "Reviewed for Foundry #172: the existing package-consumer scenario retains every build, install, integrity, runtime and tamper assertion while exposing 21 fixed-schema phase timings only through safe test diagnostics. Independent source and eight-document reviews, 14 focused tests and type/lint checks pass; partial timings do not confer success or publication authority. Full canonical and supported-platform CI qualification remain pending."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: e8e94788701dd52fc192724f6854bc5893753192
+lastReviewedNote: "Reviewed for Foundry #171: the manual closeout test now supplies the same canonical path projection as the real owner. Windows execution and successor CI already pass; successful completion and invalid receipt refusal assertions remain intact."
 ---
 
 # Foundry AI Navigation
@@ -241,7 +241,7 @@ Two focused leaves sit beside that factory. Navigate to `foundry-runtime-paths.t
 
 The typed location leaf is `location-quality-utils.ts`. Navigate there for classification and location authoring command strings, installed location-code map loading, schema/fallback location target keys, recursive target paths and `location_code_requires_authoring` evidence. It returns four helpers through `foundry.ts`; command/scenario tests cover their bundle, location-decision, curation and finalize consumers while `location-quality-utils-contract.test.mts` pins exact order and envelopes.
 
-The typed deterministic prewrite leaf is `import-curation/internal/prewrite-cleanup.ts`. Navigate there for strict timezone-qualified datetime classification, Gregorian/clock/offset validation, atomic normalization planning, annual-supply missing-data sentinel completion, source-row identity indexing, output-only exchange completeness proof, `tidasimport:sourceTrace` hash externalization, Foundry trace namespace repair and local locator redaction. `curation-cleanup.ts` owns row identity enrichment plus `blocked_invalid_datetime_metadata` report/no-output behavior. Its proof hashes intentionally preserve exchange array and object insertion order while excluding only `referenceToFlowDataSet`.
+The typed deterministic prewrite leaf is `import-curation/internal/prewrite-cleanup.ts`. Navigate there for strict timezone-qualified datetime classification, Gregorian/clock/offset validation, atomic normalization planning, annual-supply evidence preservation with unknown-evidence normalization and bound evidence gaps, source-row identity indexing, output-only exchange completeness proof, `tidasimport:sourceTrace` hash externalization, Foundry trace namespace repair and local locator redaction. `curation-cleanup.ts` owns row identity enrichment plus `blocked_invalid_datetime_metadata` report/no-output behavior. Its proof hashes intentionally preserve exchange array and object insertion order while excluding only `referenceToFlowDataSet`.
 
 The typed queue leaf is `import-curation/internal/workflow-queue-context.ts`. Navigate there for annual-supply schema actions, curation manifest loading, task/artifact path resolution, exact-version and id-only task selection, closure dependency/support attachment, authoring JSONL identity indexes and identity-preflight request paths. Its tests pin encounter order, duplicate-map behavior, portable paths and native fail-closed errors across all static consumers.
 
@@ -267,7 +267,7 @@ The typed decision proof leaf is `import-curation/internal/workflow-decision-ful
 
 The typed authoring entry layer is split by responsibility. `internal/authoring-task-workflow.ts` and `internal/authoring-patch-workflow.ts` are pure live-reference facades. `authoring-packages.ts` owns gate-entry selection, content-addressed snapshot copies, task directories and manifest/JSONL materialization. `patch-collect.ts` owns task-output admission, invalid-JSON/blocker classification, ordered patch-set aggregation and the blocker-free batch write. Navigate to the underlying workflow modules for validation rules; do not add duplicate logic to the facades or runners.
 
-The typed curation planner is split the same way. `internal/curation-gate-workflow.ts` is a pure live-reference aggregate; `curation-gate.ts` owns ordered local evidence aggregation and authoring-package/report materialization; `curation-cleanup.ts` owns deterministic deep-cloned prewrite rows, batch-wide datetime preflight, blocker-only reports, sentinel/trace/proof/redaction counts and JSONL/report bytes. Navigate to the typed internal owners for individual rules rather than duplicating them in either runner.
+The typed curation planner is split the same way. `internal/curation-gate-workflow.ts` is a pure live-reference aggregate; `curation-gate.ts` owns ordered local evidence aggregation and authoring-package/report materialization; `curation-cleanup.ts` owns deterministic deep-cloned prewrite rows, batch-wide datetime preflight, blocker-only reports, annual-supply/trace/proof/redaction counts, bound evidence-gap rows and JSONL/report bytes. Navigate to the typed internal owners for individual rules rather than duplicating them in either runner.
 
 The typed command factories are `scripts/commands/tasks.ts`, `import-completion.ts`, `commit-handoff.ts`, `identity-decision-task.ts`, and `support-cache.ts`. Navigate to them for filesystem task state, closeout aggregation, artifact-bound commit/verify CommandSpecs, content-addressed identity decision tasks, or canonical public-support read/autofill behavior respectively. They preserve the existing command registry and metadata names and must not absorb remote execution semantics.
 
@@ -359,7 +359,7 @@ Layer rules:
 - `dataset-payload.ts`: TIDAS row payload unwrap, dataset root/type detection, dataset identity, and identity map keys.
 - `profiles-config.ts`: import profile loading, normalization, listing, and lookup.
 - `trace-summary.ts`: Foundry trace entry collection and compact trace summaries.
-- `prewrite-cleanup.ts`: strict datetime validation and atomic write-preparation transforms such as annual-supply sentinel completion, import trace externalization, Foundry trace namespace repair and local locator redaction.
+- `prewrite-cleanup.ts`: strict datetime validation and atomic write-preparation transforms such as annual-supply evidence preservation and unknown-evidence normalization, import trace externalization, Foundry trace namespace repair and local locator redaction.
 - `full-context-proof.ts`: full-context package/task proof loading and blocker construction.
 - `authoring-task-workflow.ts`: typed facade for AI authoring package to task manifest/template preparation helpers.
 - `authoring-patch-workflow.ts`: typed facade for AI patch collection, patch-set validation, and full-context readiness helpers.
@@ -397,6 +397,6 @@ git diff --check
 
 Golden diff protects CLI JSON compatibility for the key command set. The full test suite protects workflow-specific artifact and proof behavior. Toolchain tests protect the pnpm/TS7 graph and migration ledger. Command metadata tests protect AI navigation.
 
-Explicit reference selection starts at `scripts/lib/foundry-reference-input.ts` and the public `--reference-input` descriptor. The indexed snapshots feed `foundry-workflow-finalize.ts`; `finalize-reference-inputs.ts`, `handoff-reference-intent.ts` and `reference-intent-closeout.ts` own flat-input validation, precommit evidence transport and readback binding. The public runtime contract defines the boundary; CLI 0.1.18 owns reference eligibility and unit-aware QA.
+Explicit reference selection starts at `scripts/lib/foundry-reference-input.ts` and the public `--reference-input` descriptor. The indexed snapshots feed `foundry-workflow-finalize.ts`; `finalize-reference-inputs.ts`, `handoff-reference-intent.ts` and `reference-intent-closeout.ts` own flat-input validation, precommit evidence transport and readback binding. The public runtime contract defines the boundary; CLI 0.1.19 owns reference eligibility and unit-aware QA.
 
 For industrial `foundry` terminology, start at `specs/prewrite-content-policy.json` and `test/unit/foundry-industrial-terminology.test.mts`. The existing evaluator in `import-curation/internal/workflow-identity-preflight.ts` retains per-leaf findings and independent markers. The command-surface contract documents local collocations and explicit runtime/workspace precedence; do not add a whole-field or task-specific exemption.
