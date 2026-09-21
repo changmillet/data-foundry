@@ -22,6 +22,7 @@ export const datasetPolicyCommands = [
   "execution-capsule-admit",
   "dataset-incremental-change-set-compose",
   "dataset-topology-convergence-compose",
+  "final-delivery-promote",
   "dataset-curation-queue-build",
   "dataset-curation-gate",
   "dataset-authoring-plan",
@@ -131,6 +132,8 @@ export function exitCodeForCommand(
       return result?.foundry_wrapper?.exit_code ?? 1;
     case "execution-capsule-admit":
       return statusIs(result, ["help", "sealed"]) ? 0 : 1;
+    case "final-delivery-promote":
+      return statusIs(result, ["help", "promoted"]) ? 0 : 1;
     case "dataset-incremental-change-set-compose":
       return statusIs(result, ["help", "completed", "completed_with_holds", "completed_no_actions"])
         ? 0

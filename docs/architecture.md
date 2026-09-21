@@ -15,6 +15,7 @@ checkPaths:
   - docs/architecture.md
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
+  - docs/final-delivery-promotion-contract.md
   - AGENTS.md
   - README.md
   - WORKFLOW.md
@@ -151,9 +152,9 @@ checkPaths:
   - test/unit/foundry-runtime-environment.test.mts
   - test/unit/lint-suppression-audit.test.mts
   - docs/incremental-change-set-contract.md
-lastReviewedAt: 2026-09-19
-lastReviewedCommit: 0088181d5da79d4dbcfd5e6271b97071c9c3cc80
-lastReviewedNote: "Reviewed for Foundry #178: bound W8 naming premises by source identity while retaining Foundry-local evidence, identity, authorization, and blocking policy. Existing navigation and operational boundaries are unchanged; Node 24 full tests, lint, build, and Docpact pass locally; hosted CI remains pending."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 1a6a3eae94661170bc6cbcd5774e145d8c0985f3
+lastReviewedNote: "Reviewed for Foundry #30: scripts/lib/final-delivery-workbook.ts is documented as the bounded OOXML reader, and the correction stays inside that module's contract — absolute pack URIs resolve from the package root, legal docProps parts are retained and scanned, and traversal, external, encryption, compression, CRC, strict UTF-8, namespace and relationship-type boundaries are unchanged. No module boundary or dependency direction moved."
 ---
 
 # Architecture
@@ -377,6 +378,7 @@ The handoff execution boundary is typed and content-addressed. `scripts/lib/foun
    - verify artifacts point to the same rows scope
    - accept identity/classification/location evidence across deterministic row transforms such as source/contact rewrites, canonical support rewrites, identity reference rewrites, unresolved-exchange externalization, and cleanup
    - reconcile deterministic source-only-output exchange proofs from cleanup against final-row `sourceExchangeCompleteness` traces
+   - validate completed delivery packages against manifest-bound content, row algebra, workbook, redaction, and independent-review contracts, then emit an offline detached seal only when every finding is zero
    - generate completion reports
 
 6. Whole-library scope orchestration

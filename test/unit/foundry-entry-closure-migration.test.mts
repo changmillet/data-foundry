@@ -15,10 +15,10 @@ const entryPath = path.join(repoRoot, "scripts", "foundry.ts");
 const legacyEntryPath = path.join(repoRoot, "scripts", "foundry.mjs");
 const cliPath = path.join(repoRoot, "scripts", "lib", "foundry-cli.ts");
 const legacyCliPath = path.join(repoRoot, "scripts", "lib", "foundry-cli.mjs");
-const helpBytes = 4961;
-const helpSha256 = "502efaffe1f2b5b549eae7e5534744398567a79f72d99ab179245f4a314f59e0";
-const unknownBytes = 1929;
-const unknownSha256 = "9373e1138674de51c53b842e66ca58d60b985585dc82f1c6ba48793e1a09c6ba";
+const helpBytes = 5021;
+const helpSha256 = "f7b775337c71691cd9c44ee460de6c77723e8caded9152a100e58a2bb407b638";
+const unknownBytes = 1953;
+const unknownSha256 = "2ff298f41371262e737526cbfe938027381e78a5b49ac402bfbcb728db33300f";
 
 function readRepoFile(relativePath: string): string {
   return fs.readFileSync(path.join(repoRoot, relativePath), "utf8");
@@ -86,7 +86,7 @@ function assertHelpAndUnknown(entry: string, cwd = repoRoot): void {
   assert.equal(Buffer.byteLength(help.stdout), helpBytes);
   assert.equal(sha256(help.stdout), helpSha256);
   const parsed = JSON.parse(help.stdout) as { commands?: unknown[] };
-  assert.equal(parsed.commands?.length, 63);
+  assert.equal(parsed.commands?.length, 64);
 
   for (const aliasArgs of [[], ["--help"], ["-h"]]) {
     const alias = runEntry(entry, aliasArgs, cwd);
@@ -153,7 +153,7 @@ test("runtime path resolution rejects unsupported entry mirrors", () => {
 });
 
 test("entry composition preserves all typed owners, registry metadata, and production case wiring", () => {
-  assert.equal(knownCommands.length, 63);
+  assert.equal(knownCommands.length, 64);
   assert.deepEqual(
     knownCommands.filter((command) => !commandMetadata[command]),
     [],

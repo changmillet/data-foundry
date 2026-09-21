@@ -9,6 +9,7 @@ import { createCliWrapperCommands } from "./commands/cli-wrappers.ts";
 import { createCommitHandoffCommands } from "./commands/commit-handoff.ts";
 import { createCoreCommands } from "./commands/core.ts";
 import { createExecutionCapsuleCommands } from "./commands/execution-capsule.ts";
+import { createFinalDeliveryPromotionCommands } from "./commands/final-delivery-promotion.ts";
 import { createIdentityDecisionTaskCommands } from "./commands/identity-decision-task.ts";
 import { createIdentityDecisionCommands } from "./commands/identity-decisions.ts";
 import { createIdentityPreflightRunCommands } from "./commands/identity-preflight-run.ts";
@@ -300,6 +301,9 @@ export function createFoundryApplication({ repoRoot, utilities }: FoundryApplica
   });
 
   const executionCapsuleCommands = bindFactory(createExecutionCapsuleCommands, { repoRoot });
+  const finalDeliveryPromotionCommands = bindFactory(createFinalDeliveryPromotionCommands, {
+    repoRoot,
+  });
   const incrementalChangeSetCommands = bindFactory(createIncrementalChangeSetCommands, {
     repoRoot,
   });
@@ -927,6 +931,7 @@ export function createFoundryApplication({ repoRoot, utilities }: FoundryApplica
       commitHandoffCommands,
       coreCommands,
       executionCapsuleCommands,
+      finalDeliveryPromotionCommands,
       identityDecisionCommands,
       identityDecisionTaskCommands,
       identityPreflightCommands,

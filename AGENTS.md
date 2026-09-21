@@ -24,6 +24,7 @@ checkPaths:
   - docs/execution-capsule-contract.md
   - docs/incremental-change-set-contract.md
   - docs/topology-convergence-contract.md
+  - docs/final-delivery-promotion-contract.md
   - docs/import-profiles/bafu/leaf-process-classification-authoring.md
   - docs/import-profiles/worldsteel/**
   - specs/import-profiles.json
@@ -262,9 +263,9 @@ checkPaths:
   - test/unit/zero-javascript-ratchet.test.mts
   - test/unit/foundry-cli-spine.test.mts
   - specs/**
-lastReviewedAt: 2026-09-20
-lastReviewedCommit: 6a48836f88194c68a95e0bb13c0daaf32ce9685f
-lastReviewedNote: "Reviewed for Foundry #182: exact CLI 0.1.18, SDK 0.3.0 and Toolkit 0.3.2 adoption changes package/source pins, not authorization, workflow ownership, or write boundaries."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 1a6a3eae94661170bc6cbcd5774e145d8c0985f3
+lastReviewedNote: "Reviewed for Foundry #30: the final-delivery workbook-reader fix is confined to scripts/lib/final-delivery-workbook.ts and its test. It changes no command, toolchain, runtime, authorization or write boundary. The repository gains one binary OOXML fixture under test/fixtures; `* text=auto` already detects it as binary (NUL at byte 5), so no line-ending policy change is required and no rule, path or ownership entry moved."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry
@@ -290,6 +291,7 @@ Receive external LCA packages or source documents, choose the correct import lan
 - Do not store API keys, tokens, `.env`, database dumps, or full private payload exports in git.
 - Runtime state belongs under ignored `.foundry/`.
 - Foundry owns task routing, local manifests, import profiles, curation packages, cleanup reports, and policy checks.
+- Foundry may promote a completed local delivery package through manifest-bound content, algebra, workbook, redaction, and independent-review checks. The detached `final-delivery-promote` seal is offline validation evidence and never production authority, and it is not an execution-authorization capsule.
 - Foundry identity-preflight adapters forward the canonical single lexical weight plus semantic weight; database and Edge repositories own search behavior.
 - Foundry does not own TIDAS schemas/YAML, package converters, dataset validators, deterministic QA engines, reusable skills, or remote write semantics.
 - `.agents/skills` is the project-visible installation root. `foundry-tidas-import` and `foundry-tidas-authoring` are maintained in the `tiangong-lca/agent-skills` repository (workspace checkout directory `tiangong-lca-skills`); Foundry records their canonical source and installation commands in `.agents/shared-skills.json`. Their local installations and other configured shared/runtime skills, together with `skills-lock.json`, stay untracked.

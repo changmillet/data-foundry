@@ -279,9 +279,9 @@ checkPaths:
   - AGENTS.md
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
-lastReviewedAt: 2026-09-20
-lastReviewedCommit: 6a48836f88194c68a95e0bb13c0daaf32ce9685f
-lastReviewedNote: "Reviewed for Foundry #182: exact CLI 0.1.18, SDK 0.3.0 and Toolkit 0.3.2 pins update package-consumer expectations without changing test authority or allowing production writes."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 57abdbc10a860aa5a100a666e9ea692d1c91e092
+lastReviewedNote: "Reviewed for Foundry #30 / PR #41 at 57abdbc: the offline final-delivery validator binds exact artifact content, strict text/XML parsing, redaction and independent review; it grants no execution-capsule or public-runtime authority. Current module, environment and test boundaries remain valid."
 ---
 
 # Test Layout
@@ -383,7 +383,7 @@ Test files should name the behavior surface they cover, for example `post-author
 
 ## OAuth and private qualification
 
-`unit/oauth-identity-contract.test.mts` preserves the real RC01 failure shape with synthetic identities: persisted OAuth sessions pass fresh live identity admission, while wrong project/user, stale/future/tampered receipts and non-OAuth sessions fail. Account wrapper tests protect session references and exact child dispatch. Historical attempt/resume fixtures keep their original CLI fingerprints and hashes. Golden compares isolated baseline and Git-visible candidate snapshots. The #112 TIDAS0.3 admission change normalizes only the two exact reviewed verification-gate text hashes for `cli.dataset.contract-context`; other fields and unreviewed text still compare. For OAuth, the only #97 metadata normalization is the two SHA-bound public env-surface reports for the deliberate 42-to-44-variable OAuth migration.
+`unit/oauth-identity-contract.test.mts` preserves the real RC01 failure shape with synthetic identities: persisted OAuth sessions pass fresh live identity admission, while wrong project/user, stale/future/tampered receipts and non-OAuth sessions fail. Account wrapper tests protect session references and exact child dispatch. Historical attempt/resume fixtures keep their original CLI fingerprints and hashes. Golden compares isolated baseline and Git-visible candidate snapshots. The #112 TIDAS0.3 admission change normalizes only the two exact reviewed verification-gate text hashes for `cli.dataset.contract-context`; other fields and unreviewed text still compare. The #30 final-delivery admission binds three whole reviewed projections in `unit/foundry-golden-normalization.test.mts`: the ordered command surface and its dataset-policy partition, the complete capability registry, and the surface-audit metadata category tally. That suite exercises the real projections built from `publicCommands`/`datasetPolicyCommands`, the capability registry spec and command metadata, and asserts that an extra command, a removed or reordered command, a modified or extra capability, a count that disagrees with the registry, and a wrong category tally are each refused rather than normalized. For OAuth, the only #97 metadata normalization is the two SHA-bound public env-surface reports for the deliberate 42-to-44-variable OAuth migration.
 
 ## TDD And TypeScript Migration
 

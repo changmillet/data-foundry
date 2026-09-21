@@ -151,15 +151,16 @@ checkPaths:
   - docs/foundry-task-contracts.md
   - docs/incremental-change-set-contract.md
   - docs/topology-convergence-contract.md
+  - docs/final-delivery-promotion-contract.md
   - specs/import-profiles.json
   - test/unit/foundry-entry-closure-migration.test.mts
   - test/unit/foundry-runtime-environment.test.mts
   - test/unit/lint-suppression-audit.test.mts
   - test/unit/zero-javascript-ratchet.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
-lastReviewedAt: 2026-09-19
-lastReviewedCommit: 0088181d5da79d4dbcfd5e6271b97071c9c3cc80
-lastReviewedNote: "Reviewed for Foundry #178: bound W8 naming premises by source identity while retaining Foundry-local evidence, identity, authorization, and blocking policy. Existing navigation and operational boundaries are unchanged; Node 24 full tests, lint, build, and Docpact pass locally; hosted CI remains pending."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 1a6a3eae94661170bc6cbcd5774e145d8c0985f3
+lastReviewedNote: "Reviewed for Foundry #30: the offline final-delivery workbook reader now resolves OPC relationship targets correctly and retains legal docProps parts while scanning them. Navigation, quickstart, runtime inputs and capability ownership are unchanged; the added test/fixtures/openpyxl-native-workbook.xlsx is an ordinary repository fixture."
 ---
 
 # TianGong LCA Data Foundry
@@ -524,6 +525,7 @@ Installed shared runtime skills such as `.agents/skills/tiangong-kb-sci-search/`
 - `specs/import-profiles.json`: data-driven import profiles.
 - `docs/foundry-task-contracts.md`: minimal task, source, seed, checkpoint, and artifact ledger contracts.
 - `docs/execution-capsule-contract.md`: reusable offline stage, exact predecessor lineage, content-addressed boundary admission, CAS evidence, and immutable seal contract.
+- `docs/final-delivery-promotion-contract.md`: reusable final-delivery content, algebra, workbook, redaction, independent-review, and detached-seal contract.
 - `docs/runtime-skill-management.md`: `pnpm dlx skills` runtime dependency contract.
 - `docs/import-profiles/bafu/`: BAFU profile context and constraints.
 - `tasks/`: lightweight task queue and task templates.

@@ -17,6 +17,7 @@ checkPaths:
   - docs/capability-ownership-policy.md
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
+  - docs/final-delivery-promotion-contract.md
   - test/README.md
   - specs/capability-ownership-rules.json
   - specs/workspace-capability-adapters.md
@@ -88,9 +89,9 @@ checkPaths:
   - scripts/lib/import-curation/internal/mutation-manifest-workflow.ts
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-09-19
-lastReviewedCommit: 0088181d5da79d4dbcfd5e6271b97071c9c3cc80
-lastReviewedNote: "Reviewed for Foundry #178: bound W8 naming premises by source identity while retaining Foundry-local evidence, identity, authorization, and blocking policy. Existing navigation and operational boundaries are unchanged; Node 24 full tests, lint, build, and Docpact pass locally; hosted CI remains pending."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 1a6a3eae94661170bc6cbcd5774e145d8c0985f3
+lastReviewedNote: "Reviewed for Foundry #30: the workbook-reader test and its byte-reproducible openpyxl fixture live under the existing test/unit and test/fixtures locations recorded here. No location, owner or capability mapping changed."
 ---
 
 # Workspace Project Map
@@ -110,6 +111,7 @@ The Wave 26 library, classification, authoring, process-scope and batch modules 
 | Need | Owning project | Normal surface |
 | --- | --- | --- |
 | Installed workspace/task facade, request revisions and local task evidence | `tiangong-lca-data-foundry` | W06 candidate `tiangong-foundry workspace ...`, `doctor`, and `task start/status/resume`; W08 publishes F1 |
+| Offline final-delivery promotion and reviewer gate | `tiangong-lca-data-foundry` | `node scripts/foundry.ts final-delivery-promote`, `foundry-final-delivery-manifest.v1`, immutable promotion ledger/report, detached non-production seal |
 | TIDAS schema/methodology runtime contract | Rust `tidas` for deterministic validation; `tidas-sdk`/`tiangong-lca-cli` for AI context | `tidas validate --describe`; `pnpm exec tiangong-lca dataset context-pack` |
 | Source package detection/import/conversion | Rust `tidas` (`tidas-tools`) | `node scripts/foundry.ts dataset-tidas-import` → `tidas import` |
 | Entity curation queue state | `tiangong-lca-cli` | `pnpm exec tiangong-lca dataset curation-queue build/next/verify` |

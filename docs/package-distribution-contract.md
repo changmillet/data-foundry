@@ -50,7 +50,7 @@ The npm identity is `@tiangong-lca/foundry`; the public bin is `tiangong-foundry
 
 CLI 0.1.18 is independently verified at source/tag `340c15df11692688467e1e3e1cdc9688b8240268`. Its original POSIX bootstrap preserves verified archive modes under the private umask; its PowerShell bytes are unchanged. The exact source/script digests in `specs/release/runtime-inputs.json` and runtime descriptor/schema expectations advance with the CLI lock entry and its transitive SDK 0.3.0 entry. The sixteen-package production closure retains its shape; its CLI/SDK identities and hashes advance.
 
-The package depends exactly on public `@tiangong-lca/cli@0.1.18`. Ajv remains a development dependency for internal commands and release-side SPDX validation. Sigstore 5.0.0, YAML 2.9.0, tar 7.5.22 and fflate 0.8.3 are also development-only release tools for signing/verification, lock parsing and bounded upstream archive selection. None enters the public compiler/dependency closure. TIDAS is an independently verified native component selected later by the CLI manager, not an npm dependency or bundled binary.
+The package depends exactly on public `@tiangong-lca/cli@0.1.18`. Ajv remains a development dependency for internal commands and release-side SPDX validation; Saxes 6.0.0 is a development dependency used only by the offline final-delivery workbook reader for namespace-aware OOXML parsing. Sigstore 5.0.0, YAML 2.9.0, tar 7.5.22 and fflate 0.8.3 are also development-only release tools for signing/verification, lock parsing and bounded upstream archive selection. None enters the public compiler/dependency closure. TIDAS is an independently verified native component selected later by the CLI manager, not an npm dependency or bundled binary.
 
 ## Public surface
 

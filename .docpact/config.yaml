@@ -1,6 +1,9 @@
 # Review note, 2026-09-13: Foundry #161 moves the canonical release/CI identity to tiangong-lca/foundry (repository id 1260957221, owner id 327771381) with version-bound provenance profiles, certificate OID binding and a 0.1.8 publication floor; the legacy profile (tiangong-lca/data-foundry / owner id 199785309) stays bound to published versions through 0.1.8 and no runtime or task authority changes.
 version: 1
 layout: repo
+# Review note, 2026-09-21: Issue #30's remaining-gate golden diff admitted the reviewed #30 addition through the existing exact before/after projection convention rather than a widened rule. `scripts/lib/foundry-golden-normalization.ts` binds three whole projections by exact canonical digest — the ordered command surface plus its dataset-policy partition, the complete capability registry, and the surface-audit metadata category tally — so an unreviewed addition, removal, reordering, text edit or field change still compares verbatim and fails. No golden rule, baseline, comparison scope or assertion was relaxed. docs/foundry-ai-navigation.md and test/README.md were updated to name the owner module and its test; the other required docs of foundry-control-plane-contract were reviewed and remain accurate.
+# Review note, 2026-09-21: Issue #30 ports the reusable final-delivery promotion and reviewer gate from the retired July .mjs proposal to the current TypeScript architecture. The gate is workflow-internal and offline: it reuses the shared read-only stage contract and adds no task ledger, attempt model or execution-authorization surface, so its detached seal stays distinct from the execution capsule. Manifest schema validation (Ajv 2020), a bounded namespace-aware XML reader (Saxes 6.0.0, development-only), content-bound reviewer bindings, explicit-number algebra, universal redaction coverage with a strict UTF-8/control-byte text contract, and content-safe failure labels are all local validation with zero dispatch, database or mutation authority. docs/execution-capsule-contract.md was read and needs no change: capsule reviewer semantics remain identity-and-coverage based and are deliberately not unified with the delivery seal.
+# Review note, 2026-09-21: Issue #30's real-case delivery found two workbook-reader defects and this fixes them in the reader rather than working around them in the package. `scripts/lib/final-delivery-workbook.ts` now resolves a relationship target the way OPC defines it: a leading-slash target is an absolute pack URI resolved from the package root, a relative target resolves against the declaring part, and the resolved path is still required to be a safe relative path inside the package, so traversal, backslash, root-naming and directory-naming targets fail closed in either form. The blanket `xl/` confinement is dropped, which is what rejected every workbook from a standard spreadsheet library: OOXML `docProps` parts are legal non-participating parts, their root relationships are retained, and they are never worksheet or workbook candidates because that is decided by relationship type and content type. This is a relaxation of what resolves, not of what is trusted — encryption, unsupported compression, unsafe or duplicate entry paths, CRC drift, decompression limits, strict UTF-8, namespace-consistent lookup, the exact relationship types, strict XML parsing and the decoded redaction scan are all unchanged, and `docProps` content is scanned rather than skipped. `test/fixtures/openpyxl-native-workbook.xlsx` is a byte-reproducible openpyxl workbook kept as the regression guard; `test/unit/final-delivery-workbook.test.mts` gained the native-workbook case, the absolute-target and docProps cases, and an escape-negative matrix. docs/final-delivery-promotion-contract.md records the resolution rule, the docProps position and the supported workbook profile; docs/execution-capsule-contract.md was read and needs no change. `.gitattributes` marks `*.xlsx` binary so line-ending normalisation cannot corrupt a checked-in workbook fixture.
 # Review note, 2026-09-06: #112 extends the existing package distribution rule to source-only version/Git/provenance/workflow admission, their tests and the reusable four-platform qualification workflows. No additional rule, document owner, registry-write or runtime permission is introduced.
 # Review note, 2026-09-05: #106 adds the W06 public npm candidate, dedicated compiler/staging manifest, strict package descriptor and installed-consumer route; W08 retains publication/component authority.
 # Review note, 2026-09-05: #100 adopts provenance-verified CLI 0.1.10 and its public runtime boundary; current dependency/test/runtime/doc routes cover the change without moving task or mutation authority.
@@ -48,6 +51,7 @@ catalog:
         - docs/foundry-command-surface.md
         - docs/incremental-change-set-contract.md
         - docs/topology-convergence-contract.md
+        - docs/final-delivery-promotion-contract.md
       workspaceIntegrationRequired: true
 
 ownership:
@@ -224,6 +228,7 @@ docInventory:
     - docs/execution-capsule-contract.md
     - docs/incremental-change-set-contract.md
     - docs/topology-convergence-contract.md
+    - docs/final-delivery-promotion-contract.md
     - test/README.md
     - docs/account-context-policy.md
     - docs/countable-product-functional-unit-design.md
@@ -968,3 +973,36 @@ rules:
       - path: test/README.md
         mode: review_or_update
     reason: Explicit migration must preserve original evidence, independently bind transfer facts and distinguish retained attempt interpretation from write or replay authority.
+
+  - id: foundry-final-delivery-promotion-contract
+    scope: repo
+    repo: data-foundry
+    triggers:
+      - path: docs/final-delivery-promotion-contract.md
+        kind: final-delivery-promotion-contract
+      - path: specs/schemas/final-delivery-manifest.schema.json
+        kind: final-delivery-manifest-schema
+      - path: scripts/commands/final-delivery-promotion.ts
+        kind: final-delivery-promotion-command
+      - path: scripts/lib/final-delivery-manifest.ts
+        kind: final-delivery-manifest-primitives
+      - path: scripts/lib/final-delivery-workbook.ts
+        kind: final-delivery-workbook-reader
+      - path: scripts/lib/final-delivery-rows.ts
+        kind: final-delivery-row-contracts
+      - path: scripts/lib/final-delivery-algebra.ts
+        kind: final-delivery-algebra
+      - path: scripts/lib/final-delivery-redaction.ts
+        kind: final-delivery-redaction
+      - path: scripts/lib/final-delivery-review.ts
+        kind: final-delivery-independent-review
+      - path: test/commands/final-delivery-promotion.test.mts
+        kind: final-delivery-promotion-command-test
+      - path: test/unit/final-delivery-workbook.test.mts
+        kind: final-delivery-workbook-test
+    requiredDocs:
+      - path: docs/final-delivery-promotion-contract.md
+        mode: review_or_update
+      - path: docs/execution-capsule-contract.md
+        mode: review_or_update
+    reason: The offline final-delivery seal must stay distinct from the execution-authorization capsule, and its artifact/workbook/algebra/redaction/reviewer bindings must remain synchronized with the authoritative contract.

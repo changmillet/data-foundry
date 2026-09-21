@@ -20,9 +20,9 @@ checkPaths:
   - test/unit/execution-capsule-command-factory.test.mts
   - specs/schemas/execution-context.schema.json
   - scripts/lib/foundry-execution-admission.ts
-lastReviewedAt: 2026-09-05
-lastReviewedCommit: 9f258f4632c091d2b12834c1699171e6cc714ed7
-lastReviewedNote: "Reviewed for #100 W04: this offline zero-attempt seal remains distinct from the qualified current-task child execution context."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 1a6a3eae94661170bc6cbcd5774e145d8c0985f3
+lastReviewedNote: "Reviewed for Foundry #30 / PR #41 at 1a6a3ea: the final-delivery workbook reader now resolves OPC relationship targets from the package root for absolute targets, retains legal docProps parts and still scans them, and keeps traversal, external, encrypted, compression, CRC, UTF-8, namespace and relationship-type boundaries unchanged. That is local offline parsing of a declared delivery artifact; it still grants no execution-capsule or public-runtime authority, and the capsule and delivery seal remain deliberately un-unified."
 ---
 
 # Execution Capsule Admission Contract
