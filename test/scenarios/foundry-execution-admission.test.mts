@@ -183,7 +183,7 @@ test("serialized child context rehydrates only through fresh runtime, identity, 
     grant: originalGrant,
     evidence: [{ id: "approval", kind: "user-decision", file: evidence }],
   });
-  assert.equal(runtime.describe().command_policy.total, 63);
+  assert.equal(runtime.describe().command_policy.total, 64);
   assert.deepEqual(runtime.describe().command_policy.public_facade, ["init", "doctor"]);
   const derived = await runtime.prepareDerivedAuthorization(identity, {
     approvedInputFile: source,

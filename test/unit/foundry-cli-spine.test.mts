@@ -39,6 +39,7 @@ const expectedDatasetPolicyCommands = [
   "execution-capsule-admit",
   "dataset-incremental-change-set-compose",
   "dataset-topology-convergence-compose",
+  "final-delivery-promote",
   "dataset-curation-queue-build",
   "dataset-curation-gate",
   "dataset-authoring-plan",

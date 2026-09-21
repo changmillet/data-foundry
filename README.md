@@ -151,6 +151,7 @@ checkPaths:
   - docs/foundry-task-contracts.md
   - docs/incremental-change-set-contract.md
   - docs/topology-convergence-contract.md
+  - docs/final-delivery-promotion-contract.md
   - specs/import-profiles.json
   - test/unit/foundry-entry-closure-migration.test.mts
   - test/unit/foundry-runtime-environment.test.mts
@@ -158,8 +159,8 @@ checkPaths:
   - test/unit/zero-javascript-ratchet.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 58f7ebb
-lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: the renamed native draft helpers and the insert/save_draft contract transport change local consumer orchestration only, so bootstrap, migration and authority statements remain accurate. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171."
+lastReviewedCommit: ce94fc0e71ccf7792b4a012c6d3a2a8692a80c89
+lastReviewedNote: "Reviewed the combination of repair workflow ce94fc0 and merged final-delivery gate 13fa996: CLI 0.1.19 remains the exact runtime input; offline delivery seals grant no execution or publication authority. Reviewed for Foundry #171 native draft adapter/closeout: the renamed native draft helpers and the insert/save_draft contract transport change local consumer orchestration only, so bootstrap, migration and authority statements remain accurate. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171. Reviewed for Foundry #30: the offline final-delivery workbook reader now resolves OPC relationship targets correctly and retains legal docProps parts while scanning them. Navigation, quickstart, runtime inputs and capability ownership are unchanged; the added test/fixtures/openpyxl-native-workbook.xlsx is an ordinary repository fixture."
 ---
 
 # TianGong LCA Data Foundry
@@ -524,6 +525,7 @@ Installed shared runtime skills such as `.agents/skills/tiangong-kb-sci-search/`
 - `specs/import-profiles.json`: data-driven import profiles.
 - `docs/foundry-task-contracts.md`: minimal task, source, seed, checkpoint, and artifact ledger contracts.
 - `docs/execution-capsule-contract.md`: reusable offline stage, exact predecessor lineage, content-addressed boundary admission, CAS evidence, and immutable seal contract.
+- `docs/final-delivery-promotion-contract.md`: reusable final-delivery content, algebra, workbook, redaction, independent-review, and detached-seal contract.
 - `docs/runtime-skill-management.md`: `pnpm dlx skills` runtime dependency contract.
 - `docs/import-profiles/bafu/`: BAFU profile context and constraints.
 - `tasks/`: lightweight task queue and task templates.

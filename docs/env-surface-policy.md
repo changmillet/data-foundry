@@ -35,8 +35,8 @@ checkPaths:
   - test/scenarios/foundry-package-consumer.test.mts
   - test/unit/foundry-runtime-environment.test.mts
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 208f520f0771f2aacdde9422133255a76f0cc2fb
-lastReviewedNote: "Reviewed for Foundry #171: the exact CLI 0.1.19 package/source pin advance and the repair task additions add no environment, credential or session surface. Focused recovery checks and the full test/build/package validation are recorded in Foundry #171; the canonical prepush gate passed on this tree."
+lastReviewedCommit: ce94fc0e71ccf7792b4a012c6d3a2a8692a80c89
+lastReviewedNote: "Reviewed the combination of repair workflow ce94fc0 and merged final-delivery gate 13fa996: CLI 0.1.19 remains the exact runtime input; offline delivery seals grant no execution or publication authority. Reviewed for Foundry #171: the exact CLI 0.1.19 package/source pin advance and the repair task additions add no environment, credential or session surface. Focused recovery checks and the full test/build/package validation are recorded in Foundry #171; the canonical prepush gate passed on this tree. Reviewed for Foundry #30 / PR #41 at 57abdbc: the offline final-delivery validator binds exact artifact content, strict text/XML parsing, redaction and independent review; it grants no execution-capsule or public-runtime authority. Current module, environment and test boundaries remain valid."
 ---
 
 # Environment Surface Policy

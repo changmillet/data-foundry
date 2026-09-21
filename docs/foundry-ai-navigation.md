@@ -15,6 +15,7 @@ whenToUpdate:
 checkPaths:
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
+  - docs/final-delivery-promotion-contract.md
   - test/README.md
   - scripts/foundry.ts
   - scripts/package-entry.ts
@@ -294,7 +295,7 @@ The typed final command owners are `scripts/commands/core.ts`, `identity-preflig
 
 The typed import-curation entry chain is `scripts/lib/import-curation.ts` → `import-curation/index.ts` → semantic owners. `profiles.ts` and `trace-summary.ts` are pure typed leaf barrels. Navigate through the public/index barrels to discover the complete namespace, but edit behavior only in the semantic owner named by command metadata.
 
-The typed adapter/tooling owners are `tidas-adapter.ts` for the external Rust machine contract, `post-authoring-finalize-utils.ts` for finalize-stage path/reuse/preflight coordination, `check-tidas-cutover.ts` for authoritative cutover inventory, and `foundry-golden-diff.ts` for isolated non-HEAD normalized comparison. Golden may admit an intentional contract migration only through an exact reviewed before/after hash-and-shape pair so later drift remains visible. Tests use controlled executables and local Git/filesystem fixtures only.
+The typed adapter/tooling owners are `tidas-adapter.ts` for the external Rust machine contract, `post-authoring-finalize-utils.ts` for finalize-stage path/reuse/preflight coordination, `check-tidas-cutover.ts` for authoritative cutover inventory, and `foundry-golden-diff.ts` for isolated non-HEAD normalized comparison. Golden may admit an intentional contract migration only through an exact reviewed before/after hash-and-shape pair so later drift remains visible. `foundry-golden-normalization.ts` owns those reviewed projections: the ordered command surface and its dataset-policy partition, the complete capability registry, and the surface-audit metadata category tally. Each projection is bound whole — never a filtered subset — and hashed canonically so object key order is not significant while array order still is; a projection that does not hash to exactly one of its reviewed states is compared verbatim. Tests use controlled executables and local Git/filesystem fixtures only.
 
 The typed fixture chain starts at `test/fixtures/foundry-core.ts` and `row-builders.ts`, then branches into full-context/identity/mutation evidence and independent incremental/topology packages. Navigate to `fake-tidas.ts` only for the stable Rust operation-report/exit harness; dispatch it as `process.execPath` plus script argv. Fixture modules preserve runtime export namespaces and artifact bytes but are never semantic command owners.
 
@@ -307,6 +308,8 @@ The supported toolchain is Node.js 24, `pnpm@11.24.0`, TypeScript `7.0.2` only w
 Issue #82 is a toolchain-only compatibility update: route package-manager failures to `package.json`, `test/unit/toolchain-contract.test.mts`, the sole root lock, and four-platform CI; do not treat them as orchestration or production-case failures.
 
 The typed handoff primitive is `scripts/lib/foundry-command-spec.ts`. Navigate there for exact-key parsing, canonical command hashing, critical-flag uniqueness, final-row artifact facts, or pre-spawn drift checks. Callers must never reconstruct argv from `display`.
+
+For completed delivery packages, navigate directly from `final-delivery-promote` to `scripts/commands/final-delivery-promotion.ts` and `docs/final-delivery-promotion-contract.md`. This is a local gate aggregator: package-specific counts, sheets, proof columns, and reviewer coverage belong in `foundry-final-delivery-manifest.v1`, not in the command implementation.
 
 ## Import-Curation Modules
 

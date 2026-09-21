@@ -29,8 +29,8 @@ checkPaths:
   - specs/import-profiles.json
   - tasks/**
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 58f7ebb
-lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: task authorization, persisted evidence and no-replay recovery statements remain unchanged. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171."
+lastReviewedCommit: ce94fc0e71ccf7792b4a012c6d3a2a8692a80c89
+lastReviewedNote: "Reviewed the combination of repair workflow ce94fc0 and merged final-delivery gate 13fa996: CLI 0.1.19 remains the exact runtime input; offline delivery seals grant no execution or publication authority. Reviewed for Foundry #171 native draft adapter/closeout: task authorization, persisted evidence and no-replay recovery statements remain unchanged. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171. Reviewed for Foundry #30 at a969cb7: the registered offline final-delivery stage adds no task, mutation, approval or replay authority; persisted-task and authorization bindings remain unchanged."
 related:
   - AGENTS.md
   - WORKFLOW.md

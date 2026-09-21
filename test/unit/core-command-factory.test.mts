@@ -293,10 +293,10 @@ test("core migration preserves exact Foundry help bytes", () => {
   });
   assert.equal(result.status, 0);
   assert.equal(result.stderr.length, 0);
-  assert.equal(result.stdout.length, 4961);
+  assert.equal(result.stdout.length, 5021);
   assert.equal(
     createHash("sha256").update(result.stdout).digest("hex"),
-    "502efaffe1f2b5b549eae7e5534744398567a79f72d99ab179245f4a314f59e0",
+    "f7b775337c71691cd9c44ee460de6c77723e8caded9152a100e58a2bb407b638",
   );
 });
 

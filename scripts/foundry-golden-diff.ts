@@ -16,6 +16,7 @@ import {
   symlinkSync,
   writeFileSync,
 } from "node:fs";
+import { normalizeGoldenReviewedProjection } from "./lib/foundry-golden-normalization.ts";
 import os from "node:os";
 import path from "node:path";
 import process from "node:process";
@@ -798,6 +799,11 @@ function normalizeWorldsteelProfileContract(value: JsonRecord): JsonRecord | nul
 }
 
 function normalizeKnownContractMigration(value: JsonRecord): JsonRecord {
+  // Reviewed whole-projection bindings. Each returns a record only when the value hashes to one of
+  // the exact reviewed digests, so an unreviewed addition, removal, reordering, text edit or field
+  // change is returned unchanged and therefore compared verbatim.
+  const reviewedProjection = normalizeGoldenReviewedProjection(value);
+  if (reviewedProjection) return reviewedProjection;
   const skillOwnership = normalizeGoldenSkillOwnership(value);
   if (skillOwnership !== value) return skillOwnership;
   if (

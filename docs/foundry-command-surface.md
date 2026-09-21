@@ -59,6 +59,7 @@ checkPaths:
   - scripts/commands/bundle-sample-rows.ts
   - scripts/commands/incremental-change-set.ts
   - scripts/commands/topology-convergence.ts
+  - scripts/commands/final-delivery-promotion.ts
   - scripts/commands/core.ts
   - scripts/commands/identity-preflight-run.ts
   - scripts/commands/post-authoring-finalize.ts
@@ -75,6 +76,7 @@ checkPaths:
   - scripts/lib/import-curation/mutation-manifest.ts
   - docs/incremental-change-set-contract.md
   - docs/topology-convergence-contract.md
+  - docs/final-delivery-promotion-contract.md
   - test/unit/foundry-command-metadata.test.mts
   - test/unit/foundry-entry-closure-migration.test.mts
   - test/unit/wave25-identity-decision-command-migration.test.mts
@@ -153,6 +155,8 @@ Every command must have `workflowEntry.status: "active"` and at least one key be
 `tidas-handshake`, `dataset-tidas-import`, and `dataset-tidas-validate` are the active deterministic TIDAS boundary. The handshake accepts compatible 0.2.x or 0.3.x binaries that advertise `tidas.operation-report.v1`; the import and validation adapters preserve Rust operation status, completeness, exit class/code, diagnostics, artifacts, next actions, cancellation, and atomic-output semantics. Foundry only maps official batch-validation results into its existing validation report and valid/invalid row files. It does not load a Python source tree, install a Python package, or infer a Python checkout/version.
 
 `execution-capsule-admit` is a `workflow-internal` offline evidence gate. Its contract lives in `docs/execution-capsule-contract.md`; it may snapshot, validate, report, and seal local evidence, but it cannot execute the consumer or grant production authority.
+
+`final-delivery-promote` is a `workflow-internal` offline delivery gate. Its contract lives in `docs/final-delivery-promotion-contract.md`; it validates manifest-bound artifacts, row algebra, workbook layout, redaction, and independent-review coverage, then emits a detached seal only on an all-PASS result. It cannot mutate delivery inputs, dispatch remote work, or grant production authority, and its seal is not an execution-authorization capsule.
 
 `dataset-incremental-change-set-compose` is a `workflow-internal` offline planner. Its contract lives in `docs/incremental-change-set-contract.md`; it strictly validates old/candidate/current plus owner-receipt evidence, applies only entity/path/value/evidence-bound merge rules, isolates absent/held dependency closures, and emits one hash-chained terminal log event per schema-valid conversion plus a non-empty CLI-compatible candidate contract when actions exist. It has no network, database, CLI, or DML dispatch and never grants production authority.
 

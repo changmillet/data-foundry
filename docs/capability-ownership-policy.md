@@ -17,6 +17,7 @@ checkPaths:
   - docs/workspace-project-map.md
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
+  - docs/final-delivery-promotion-contract.md
   - test/README.md
   - specs/capability-ownership-rules.json
   - specs/automated-lca-capability-registry.json
@@ -93,8 +94,8 @@ checkPaths:
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 58f7ebb
-lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: contract admission and closeout remain thin Foundry-local consumer adapters with no ownership, blocking-policy or remote-write change. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171."
+lastReviewedCommit: ce94fc0e71ccf7792b4a012c6d3a2a8692a80c89
+lastReviewedNote: "Reviewed the combination of repair workflow ce94fc0 and merged final-delivery gate 13fa996: CLI 0.1.19 remains the exact runtime input; offline delivery seals grant no execution or publication authority. Reviewed for Foundry #171 native draft adapter/closeout: contract admission and closeout remain thin Foundry-local consumer adapters with no ownership, blocking-policy or remote-write change. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171. Reviewed for Foundry #30: the workbook-reader correction remains Foundry-owned local validation of a declared delivery artifact. It reimplements no CLI, SDK, database, converter or Edge behavior, and the new fixture is a Foundry-owned test artifact, not a sibling capability output."
 ---
 
 # Capability Ownership Policy
@@ -152,6 +153,7 @@ Foundry owns:
 - offline old/candidate/current change-set composition, strict machine validation, entity/path/value/evidence-bound preservation, stable-identity array handling, absent-dependency isolation, immutable artifact manifests, and per-conversion terminal logs, without remote dispatch;
 - offline candidate-topology convergence composition, including fresh-census binding, owner/public/foreign target classification, process-local occurrence mapping, approved multilingual preservation, phased F/P/D artifacts, and zero-inbound delete candidates, without remote dispatch or delete authority;
 - acceptance checks and Stop-hook feedback loops;
+- offline final-delivery promotion that checks only Foundry-owned local artifacts, package-declared algebra/workbook/redaction policies, and content-bound independent-review evidence;
 - local test structure for Foundry-owned metadata, command contracts, scenario orchestration, and shared fixtures;
 - repository-wide TypeScript lint/typecheck inventory, root-only Oxlint configuration, Git-hook-isolated native-disable audit, erasable-syntax policy, safe stale-output build cleanup, trusted source/emitted entry discovery, and credential-free Golden child isolation;
 - thin adapters that select and call stable owner entrypoints, verify their machine contracts, and map reports into Foundry gates without reimplementing domain logic.
@@ -235,6 +237,8 @@ Treat a capability as foundry-specific when all of these are true:
 - it does not duplicate CLI, skill, database, Edge, converter, SDK, or schema behavior.
 
 Foundry tests follow the same boundary. Unit tests cover local metadata and helpers, command tests cover Foundry command artifacts, scenario tests cover multi-command orchestration, and fixtures remain local harness data rather than fake implementations of sibling project ownership.
+
+Final-delivery promotion follows this boundary as well. Foundry may aggregate and seal local evidence, but the seal cannot authorize publication, deployment, remote writes, owner sessions, or database behavior. Those actions remain with their owning CLI, release, and database surfaces.
 
 Deletion follows the same ownership rule. Remove Foundry-local aliases, empty categories, draft docs, or helpers only after command metadata, import references, tests, docs, and docpact show no remaining Foundry-owned consumer. If the surface is a shared CLI/skill/database concern, route the cleanup to the owning project instead of deleting local evidence first.
 

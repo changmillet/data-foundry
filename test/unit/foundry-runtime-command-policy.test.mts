@@ -12,7 +12,7 @@ const hasCode = (code: string) => (error: unknown) =>
 
 test("all internal commands have one explicit runtime and path ownership disposition", () => {
   assert.equal(foundryRuntimeCommandPolicies.length, knownCommands.length);
-  assert.equal(new Set(foundryRuntimeCommandPolicies.map((item) => item.command)).size, 63);
+  assert.equal(new Set(foundryRuntimeCommandPolicies.map((item) => item.command)).size, 64);
   assert.deepEqual(
     foundryRuntimeCommandPolicies.map((item) => item.command),
     knownCommands,

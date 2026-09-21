@@ -30,8 +30,8 @@ checkPaths:
   - test/unit/task-profile-authority.test.mts
   - test/scenarios/foundry-execution-admission.test.mts
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 208f520f0771f2aacdde9422133255a76f0cc2fb
-lastReviewedNote: "Reviewed for Foundry #171: CLI 0.1.19 advances only the exact installed dependency and source identity, and the repair scope adds a preparation-bound input kind whose activation binds the immutable candidate, contract and account; grant validation, sealed admission, readback and no-replay requirements are unchanged."
+lastReviewedCommit: ce94fc0e71ccf7792b4a012c6d3a2a8692a80c89
+lastReviewedNote: "Reviewed the combination of repair workflow ce94fc0 and merged final-delivery gate 13fa996: CLI 0.1.19 remains the exact runtime input; offline delivery seals grant no execution or publication authority. Reviewed for Foundry #171: CLI 0.1.19 advances only the exact installed dependency and source identity, and the repair scope adds a preparation-bound input kind whose activation binds the immutable candidate, contract and account; grant validation, sealed admission, readback and no-replay requirements are unchanged. Reviewed for Foundry #30 at a969cb7: the registered offline final-delivery stage adds no task, mutation, approval or replay authority; persisted-task and authorization bindings remain unchanged."
 related:
   - docs/architecture.md
   - docs/safety-policy.md

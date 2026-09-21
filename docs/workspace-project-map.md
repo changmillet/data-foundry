@@ -17,6 +17,7 @@ checkPaths:
   - docs/capability-ownership-policy.md
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
+  - docs/final-delivery-promotion-contract.md
   - test/README.md
   - specs/capability-ownership-rules.json
   - specs/workspace-capability-adapters.md
@@ -89,8 +90,8 @@ checkPaths:
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 58f7ebb
-lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: capability-ownership rows and sibling-project routing remain accurate because only Foundry-local consumer adapters changed. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171."
+lastReviewedCommit: ce94fc0e71ccf7792b4a012c6d3a2a8692a80c89
+lastReviewedNote: "Reviewed the combination of repair workflow ce94fc0 and merged final-delivery gate 13fa996: CLI 0.1.19 remains the exact runtime input; offline delivery seals grant no execution or publication authority. Reviewed for Foundry #171 native draft adapter/closeout: capability-ownership rows and sibling-project routing remain accurate because only Foundry-local consumer adapters changed. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171. Reviewed for Foundry #30: the workbook-reader test and its byte-reproducible openpyxl fixture live under the existing test/unit and test/fixtures locations recorded here. No location, owner or capability mapping changed."
 ---
 
 # Workspace Project Map
@@ -110,6 +111,7 @@ The Wave 26 library, classification, authoring, process-scope and batch modules 
 | Need | Owning project | Normal surface |
 | --- | --- | --- |
 | Installed workspace/task facade, request revisions and local task evidence | `tiangong-lca-data-foundry` | W06 candidate `tiangong-foundry workspace ...`, `doctor`, and `task start/status/resume`; W08 publishes F1 |
+| Offline final-delivery promotion and reviewer gate | `tiangong-lca-data-foundry` | `node scripts/foundry.ts final-delivery-promote`, `foundry-final-delivery-manifest.v1`, immutable promotion ledger/report, detached non-production seal |
 | TIDAS schema/methodology runtime contract | Rust `tidas` for deterministic validation; `tidas-sdk`/`tiangong-lca-cli` for AI context | `tidas validate --describe`; `pnpm exec tiangong-lca dataset context-pack` |
 | Source package detection/import/conversion | Rust `tidas` (`tidas-tools`) | `node scripts/foundry.ts dataset-tidas-import` → `tidas import` |
 | Entity curation queue state | `tiangong-lca-cli` | `pnpm exec tiangong-lca dataset curation-queue build/next/verify` |

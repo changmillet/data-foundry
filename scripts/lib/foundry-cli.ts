@@ -30,6 +30,7 @@ interface CommandDependencies {
   commitHandoffCommands: CommandGroup;
   coreCommands: CommandGroup;
   executionCapsuleCommands: CommandGroup;
+  finalDeliveryPromotionCommands: CommandGroup;
   identityDecisionCommands: CommandGroup;
   identityDecisionTaskCommands: CommandGroup;
   identityPreflightCommands: CommandGroup;
@@ -101,6 +102,7 @@ export function createFoundryCommandDispatcher({
     commitHandoffCommands,
     coreCommands,
     executionCapsuleCommands,
+    finalDeliveryPromotionCommands,
     identityDecisionCommands,
     identityDecisionTaskCommands,
     identityPreflightCommands,
@@ -153,6 +155,8 @@ export function createFoundryCommandDispatcher({
     "dataset-tidas-validate": (options) => tidasWorkflowCommands.runTidasPackageValidation(options),
     "execution-capsule-admit": (options) =>
       executionCapsuleCommands.runExecutionCapsuleAdmit(options),
+    "final-delivery-promote": (options) =>
+      finalDeliveryPromotionCommands.runFinalDeliveryPromote(options),
     "dataset-curation-queue-build": (options) =>
       cliWrapperCommands.runDatasetCurationQueueBuild(options),
     "dataset-curation-gate": (options) => runDatasetCurationGate({ repoRoot, options }),

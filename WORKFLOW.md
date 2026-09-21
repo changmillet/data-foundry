@@ -18,6 +18,7 @@ checkPaths:
   - docs/architecture.md
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
+  - docs/final-delivery-promotion-contract.md
   - docs/runtime-skill-management.md
   - docs/package-distribution-contract.md
   - docs/foundry-task-contracts.md
@@ -281,8 +282,8 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - test/README.md
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 58f7ebb
-lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: workflow order, execution authorization, package qualification and production authority are unchanged by the insert/save_draft contract generalization. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171."
+lastReviewedCommit: ce94fc0e71ccf7792b4a012c6d3a2a8692a80c89
+lastReviewedNote: "Reviewed the combination of repair workflow ce94fc0 and merged final-delivery gate 13fa996: CLI 0.1.19 remains the exact runtime input; offline delivery seals grant no execution or publication authority. Reviewed for Foundry #171 native draft adapter/closeout: workflow order, execution authorization, package qualification and production authority are unchanged by the insert/save_draft contract generalization. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171. Reviewed for Foundry #30: a workbook-reader correction inside the offline final-delivery gate does not alter workflow order, authorization, runtime inputs, package qualification or production authority. No stage, gate or handoff step changed."
 tracker:
   kind: filesystem
   inbox: tasks/inbox
@@ -553,7 +554,8 @@ When the task imports a newer release over existing owner-draft rows, do not res
 3. Run `dataset-incremental-change-set-compose` once into a fresh directory. Review its INSERT/UPDATE/NOOP/HOLD algebra and verify that conversion-event rows equal schema-valid input rows, event/decision/output hashes and chain pass, all dispatch counts are zero, absent dependencies are held, and every emitted action dependency points backward.
 4. Keep ordinary conflicts or missing dependencies on HOLD while independent actions remain eligible. Any owner/state/scope/hash trust-boundary finding rejects activation globally.
 5. Perform a fresh SELECT-only reconciliation and fresh owner session, obtain independent review, and admit the exact manifest/rows/contract with `execution-capsule-admit`.
-6. Only after separate execution authorization, pass `dataset-save-draft-input.jsonl` and `dataset-save-draft-execution-contract.json` to the published CLI. The CLI owns transactions, attempt records, no-replay recovery, and exact owner readback.
+6. For a completed reviewer-facing delivery package, run `final-delivery-promote` with a `foundry-final-delivery-manifest.v1` file and a fresh output directory. Treat the resulting detached seal as offline local validation evidence only; it authorizes no publication, deployment, or remote mutation and is not an execution capsule. The exact contract is `docs/final-delivery-promotion-contract.md`.
+7. Only after separate execution authorization, pass `dataset-save-draft-input.jsonl` and `dataset-save-draft-execution-contract.json` to the published CLI. The CLI owns transactions, attempt records, no-replay recovery, and exact owner readback.
 
 Every valid comparison row must have one terminal event even when its outcome is NOOP or HOLD. A full rewrite is not a recovery mechanism for incremental conflicts.
 

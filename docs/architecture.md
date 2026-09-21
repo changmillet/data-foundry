@@ -15,6 +15,7 @@ checkPaths:
   - docs/architecture.md
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
+  - docs/final-delivery-promotion-contract.md
   - AGENTS.md
   - README.md
   - WORKFLOW.md
@@ -152,8 +153,8 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - docs/incremental-change-set-contract.md
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 58f7ebb
-lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: the curation and finalize-owner descriptions remain accurate; the native draft handoff and closeout modules changed names and now cover insert plus bounded save_draft with strict recovered-row closeout. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171."
+lastReviewedCommit: ce94fc0e71ccf7792b4a012c6d3a2a8692a80c89
+lastReviewedNote: "Reviewed the combination of repair workflow ce94fc0 and merged final-delivery gate 13fa996: CLI 0.1.19 remains the exact runtime input; offline delivery seals grant no execution or publication authority. Reviewed for Foundry #171 native draft adapter/closeout: the curation and finalize-owner descriptions remain accurate; the native draft handoff and closeout modules changed names and now cover insert plus bounded save_draft with strict recovered-row closeout. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171. Reviewed for Foundry #30: scripts/lib/final-delivery-workbook.ts is documented as the bounded OOXML reader, and the correction stays inside that module's contract — absolute pack URIs resolve from the package root, legal docProps parts are retained and scanned, and traversal, external, encryption, compression, CRC, strict UTF-8, namespace and relationship-type boundaries are unchanged. No module boundary or dependency direction moved."
 ---
 
 # Architecture
@@ -377,6 +378,7 @@ The handoff execution boundary is typed and content-addressed. `scripts/lib/foun
    - verify artifacts point to the same rows scope
    - accept identity/classification/location evidence across deterministic row transforms such as source/contact rewrites, canonical support rewrites, identity reference rewrites, unresolved-exchange externalization, and cleanup
    - reconcile deterministic source-only-output exchange proofs from cleanup against final-row `sourceExchangeCompleteness` traces
+   - validate completed delivery packages against manifest-bound content, row algebra, workbook, redaction, and independent-review contracts, then emit an offline detached seal only when every finding is zero
    - generate completion reports
 
 6. Whole-library scope orchestration
