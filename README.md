@@ -158,8 +158,8 @@ checkPaths:
   - test/unit/zero-javascript-ratchet.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 4eebdb5
-lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: the renamed native draft helpers and the insert/save_draft contract transport change local consumer orchestration only, so bootstrap, migration and authority statements remain accurate. Reviewed against the uncommitted change on top of 4eebdb5."
+lastReviewedCommit: 58f7ebb
+lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: the renamed native draft helpers and the insert/save_draft contract transport change local consumer orchestration only, so bootstrap, migration and authority statements remain accurate. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171."
 ---
 
 # TianGong LCA Data Foundry

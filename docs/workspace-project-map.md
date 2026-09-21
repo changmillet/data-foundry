@@ -89,8 +89,8 @@ checkPaths:
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 4eebdb5
-lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: capability-ownership rows and sibling-project routing remain accurate because only Foundry-local consumer adapters changed. Reviewed against the uncommitted change on top of 4eebdb5."
+lastReviewedCommit: 58f7ebb
+lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: capability-ownership rows and sibling-project routing remain accurate because only Foundry-local consumer adapters changed. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171."
 ---
 
 # Workspace Project Map

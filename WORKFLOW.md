@@ -281,8 +281,8 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - test/README.md
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 4eebdb5
-lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: workflow order, execution authorization, package qualification and production authority are unchanged by the insert/save_draft contract generalization. Reviewed against the uncommitted change on top of 4eebdb5."
+lastReviewedCommit: 58f7ebb
+lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: workflow order, execution authorization, package qualification and production authority are unchanged by the insert/save_draft contract generalization. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171."
 tracker:
   kind: filesystem
   inbox: tasks/inbox

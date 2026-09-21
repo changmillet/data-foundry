@@ -35,8 +35,8 @@ checkPaths:
   - test/scenarios/foundry-package-consumer.test.mts
   - test/unit/foundry-runtime-environment.test.mts
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 4eebdb5
-lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: the change adds no environment, credential or session surface. Reviewed against the uncommitted change on top of 4eebdb5."
+lastReviewedCommit: 58f7ebb
+lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: the change adds no environment, credential or session surface. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171."
 ---
 
 # Environment Surface Policy

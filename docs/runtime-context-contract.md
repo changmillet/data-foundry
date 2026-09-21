@@ -41,8 +41,8 @@ checkPaths:
   - test/scenarios/foundry-execution-admission.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 4eebdb5
-lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: child admission revalidates per-action operation and before binding for insert and save_draft; qualification, root ownership and no-replay statements are unchanged. Reviewed against the uncommitted change on top of 4eebdb5."
+lastReviewedCommit: 58f7ebb
+lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: child admission revalidates per-action operation and before binding for insert and save_draft; qualification, root ownership and no-replay statements are unchanged. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171."
 related:
   - docs/architecture.md
   - docs/task-authorization-contract.md

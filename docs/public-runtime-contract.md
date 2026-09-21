@@ -33,8 +33,8 @@ checkPaths:
   - test/scenarios/foundry-package-consumer.test.mts
   - docs/public-runtime-contract.md
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 4eebdb5
-lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: the native draft report requirement now states per-action operation/before binding and strict recovered-exact-readback closure; root readback still cannot close a scope without the matching CLI report. Reviewed against the uncommitted change on top of 4eebdb5."
+lastReviewedCommit: 58f7ebb
+lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: the native draft report requirement now states per-action operation/before binding and strict recovered-exact-readback closure; root readback still cannot close a scope without the matching CLI report. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171."
 related:
   - docs/runtime-context-contract.md
   - docs/task-authorization-contract.md
