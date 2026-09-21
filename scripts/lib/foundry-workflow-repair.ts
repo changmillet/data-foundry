@@ -1,3 +1,5 @@
+import { proveFoundryRepairRemoteIntegrity } from "./foundry-repair-reference-binding.ts";
+import { readRows } from "./import-curation/internal/runtime-io.ts";
 import childProcess from "node:child_process";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
@@ -26,9 +28,7 @@ import { readWorkflowArtifact } from "./foundry-workflow-state.ts";
 import { readFoundryRepairScope, type FoundryRepairScope } from "./foundry-repair-scope.ts";
 import {
   FOUNDRY_REPAIR_PREPARATION_SCHEMA,
-  assertFoundryRepairRootProof,
   parseFoundryRepairDryRunReport,
-  parseFoundryRepairRemoteReport,
   parseFoundryRepairValidateReport,
   type FoundryRepairExpectation,
 } from "./foundry-repair-preflight.ts";
@@ -245,6 +245,13 @@ function runOwnerCli(input: {
   } catch {
     fail("repair_cli_report_invalid", "The owner CLI report is not one JSON object.");
   }
+  const selectedInput = input.argv[input.argv.indexOf("--input") + 1];
+  if (
+    input.argv.indexOf("--input") < 0 ||
+    typeof report.input_path !== "string" ||
+    path.resolve(report.input_path) !== path.resolve(selectedInput)
+  )
+    fail("repair_cli_report_invalid", "Repair owner report must name the exact selected input.");
   const out = input.argv[input.argv.indexOf("--out-dir") + 1];
   if (!out || input.argv.indexOf("--out-dir") < 0)
     fail("repair_cli_report_invalid", "A repair read must bind its evidence output directory.");
@@ -367,12 +374,18 @@ export function readFoundryRepairPreparation(
       const checks = verified.get(`verify-remote-${role}:out/outputs/remote-verification.jsonl`);
       if (!checks)
         fail("repair_report_invalid", "Repair evidence is missing its root check records.");
-      assertFoundryRepairRootProof(
+      return proveFoundryRepairRemoteIntegrity({
         report,
-        readRemoteChecks(resolveFoundryOutput(context, checks.path)),
-        expected,
-        role,
-      );
+        checks: readRemoteChecks(resolveFoundryOutput(context, checks.path)),
+        expectation: expected,
+        beforeRows: readRows(currentScope.beforeFile, (file) =>
+          readFoundryInput(context, file, MAX_REPORT_BYTES).toString("utf8"),
+        ),
+        candidateRows: readRows(currentScope.candidateFile, (file) =>
+          readFoundryInput(context, file, MAX_REPORT_BYTES).toString("utf8"),
+        ),
+        content: role,
+      });
     };
     if (value.status === "prepared") {
       if (currentScope.scope.status !== "dispatchable")
@@ -493,19 +506,25 @@ export async function prepareFoundryRepair(
             "--json",
           ],
         });
-        const referenceProof = parseFoundryRepairRemoteReport(verified.report, expectation);
-        assertFoundryRepairRootProof(
-          verified.report,
-          readRemoteChecks(path.join(verifyDir, "outputs", "remote-verification.jsonl")),
+        const referenceProof = proveFoundryRepairRemoteIntegrity({
+          report: verified.report,
+          checks: readRemoteChecks(path.join(verifyDir, "outputs", "remote-verification.jsonl")),
           expectation,
-          "before",
-        );
-        if (verified.exit !== 0)
+          beforeRows: readRows(beforeFile, (file) =>
+            readFoundryInput(context, file, MAX_REPORT_BYTES).toString("utf8"),
+          ),
+          candidateRows: readRows(candidateFile, (file) =>
+            readFoundryInput(context, file, MAX_REPORT_BYTES).toString("utf8"),
+          ),
+          content: "before",
+        });
+        if (verified.exit !== (referenceProof.retained_references ? 1 : 0))
           fail("repair_cli_failed", "Existing reference closure requires a successful owner read.");
         evidenceDetails.push({
           role: "reference_verification",
           exit: verified.exit,
-          counts: { ...referenceProof },
+          counts: { ...referenceProof.counts },
+          retained_references: referenceProof.retained_references,
         });
         status = "prepared";
       } else {
@@ -579,19 +598,29 @@ export async function prepareFoundryRepair(
               "--json",
             ],
           });
-          const counts = parseFoundryRepairRemoteReport(remoteRun.report, expectation);
-          assertFoundryRepairRootProof(
-            remoteRun.report,
-            readRemoteChecks(path.join(remoteDir, "outputs", "remote-verification.jsonl")),
+          const integrity = proveFoundryRepairRemoteIntegrity({
+            report: remoteRun.report,
+            checks: readRemoteChecks(path.join(remoteDir, "outputs", "remote-verification.jsonl")),
             expectation,
-            role,
-          );
-          if (remoteRun.exit !== 0)
+            beforeRows: readRows(beforeFile, (file) =>
+              readFoundryInput(context, file, MAX_REPORT_BYTES).toString("utf8"),
+            ),
+            candidateRows: readRows(candidateFile, (file) =>
+              readFoundryInput(context, file, MAX_REPORT_BYTES).toString("utf8"),
+            ),
+            content: role,
+          });
+          if (remoteRun.exit !== (integrity.retained_references ? 1 : 0))
             fail(
               "repair_cli_failed",
               "Exact remote verification requires a successful owner exit.",
             );
-          remote.push({ role, exit: remoteRun.exit, counts: { ...counts } });
+          remote.push({
+            role,
+            exit: remoteRun.exit,
+            counts: { ...integrity.counts },
+            retained_references: integrity.retained_references,
+          });
         }
         evidenceDetails.push({ role: "remote_readback", proofs: remote });
         status = "no_change_verified";

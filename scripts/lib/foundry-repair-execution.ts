@@ -1,3 +1,4 @@
+import type { FoundryRepairExpectation } from "./foundry-repair-preflight.ts";
 import path from "node:path";
 import { commandSpecOptionValue } from "@tiangong-lca/cli/command-spec";
 import {
@@ -69,5 +70,21 @@ export function assertFoundryRepairExecution(
     request.policy.project_ref !== context.accountIntent.projectRef
   )
     return fail();
-  return { preparation, handoff };
+  const scope = workflowObject(preparation.value.scope);
+  const contractProof = workflowObject(preparation.value.contract);
+  const expectation: FoundryRepairExpectation = {
+    dataset_type: "process",
+    contract_sha256: String(scope.contract_sha256),
+    execution_id: String(contractProof.execution_id),
+    owner_user_id: context.accountIntent.userId,
+    project_ref: context.accountIntent.projectRef,
+    state_code: "0",
+    actions: scope.actions as FoundryRepairExpectation["actions"],
+  };
+  return {
+    preparation,
+    handoff,
+    expectation,
+    beforeFile: resolveFoundryInputPath(context, selection.before),
+  };
 }

@@ -35,8 +35,8 @@ checkPaths:
   - test/scenarios/foundry-package-consumer.test.mts
   - test/unit/foundry-runtime-environment.test.mts
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: d7a701298c612f0313042a28c993249674fb2ea7
-lastReviewedNote: "Reviewed the combination of repair workflow ce94fc0 and merged final-delivery gate 13fa996: CLI 0.1.19 remains the exact runtime input; offline delivery seals grant no execution or publication authority. Reviewed for Foundry #171: the exact CLI 0.1.19 package/source pin advance and the repair task additions add no environment, credential or session surface. Focused recovery checks and the full test/build/package validation are recorded in Foundry #171; the canonical prepush gate passed on this tree. Reviewed for Foundry #30 / PR #41 at 57abdbc: the offline final-delivery validator binds exact artifact content, strict text/XML parsing, redaction and independent review; it grants no execution-capsule or public-runtime authority. Current module, environment and test boundaries remain valid. Reviewed for Foundry #171 safe no-dispatch successor at d7a7012: the rule adds no environment, credential or session surface."
+lastReviewedCommit: f059e4703438d661aa823d33c7cff0a9582645bc
+lastReviewedNote: "Reviewed for Foundry #171: metadata repair preserves exact historical references only with payload-derived occurrence and owner/state/content proof, retains raw CLI freshness blockers and false publication readiness, and changes no ordinary authoring, credential or publication authority. Producer-verified zero-dispatch successors require fresh scope and grant."
 ---
 
 # Environment Surface Policy

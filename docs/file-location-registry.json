@@ -215,6 +215,8 @@
         "scripts/lib/foundry-repair-handoff.ts",
         "scripts/lib/foundry-repair-execution.ts",
         "scripts/lib/foundry-repair-preflight.ts",
+        "scripts/lib/foundry-repair-reference-binding.ts",
+        "scripts/lib/foundry-repair-reference-proof.ts",
         "scripts/lib/foundry-repair-scope.ts",
         "scripts/lib/foundry-workflow-repair.ts",
         "scripts/lib/foundry-workflow-approval-continuation.ts",

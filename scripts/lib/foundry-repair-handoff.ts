@@ -61,7 +61,7 @@ export function createFoundryRepairHandoffPlan(input: {
     "--out-dir",
     path.join(input.outDir, "post-write-verify"),
     "--root-policy",
-    "candidate",
+    "existing",
     "--compare-root-payload",
     "--json",
     "--target-user-id",

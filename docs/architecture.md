@@ -153,8 +153,8 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - docs/incremental-change-set-contract.md
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: d7a701298c612f0313042a28c993249674fb2ea7
-lastReviewedNote: "Reviewed the combination of repair workflow ce94fc0 and merged final-delivery gate 13fa996: CLI 0.1.19 remains the exact runtime input; offline delivery seals grant no execution or publication authority. Reviewed for Foundry #171 native draft adapter/closeout: the curation and finalize-owner descriptions remain accurate; the native draft handoff and closeout modules changed names and now cover insert plus bounded save_draft with strict recovered-row closeout. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171. Reviewed for Foundry #30: scripts/lib/final-delivery-workbook.ts is documented as the bounded OOXML reader, and the correction stays inside that module's contract — absolute pack URIs resolve from the package root, legal docProps parts are retained and scanned, and traversal, external, encryption, compression, CRC, strict UTF-8, namespace and relationship-type boundaries are unchanged. No module boundary or dependency direction moved. Reviewed for Foundry #171 safe no-dispatch successor at d7a7012: each successor link is re-derived from the predecessor's own hash-chained index, so the control-plane, ledger and authority statements stay accurate."
+lastReviewedCommit: f059e4703438d661aa823d33c7cff0a9582645bc
+lastReviewedNote: "Reviewed for Foundry #171: metadata repair preserves exact historical references only with payload-derived occurrence and owner/state/content proof, retains raw CLI freshness blockers and false publication readiness, and changes no ordinary authoring, credential or publication authority. Producer-verified zero-dispatch successors require fresh scope and grant."
 ---
 
 # Architecture

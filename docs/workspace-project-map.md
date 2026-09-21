@@ -90,8 +90,8 @@ checkPaths:
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: d7a701298c612f0313042a28c993249674fb2ea7
-lastReviewedNote: "Reviewed the combination of repair workflow ce94fc0 and merged final-delivery gate 13fa996: CLI 0.1.19 remains the exact runtime input; offline delivery seals grant no execution or publication authority. Reviewed for Foundry #171 native draft adapter/closeout: capability-ownership rows and sibling-project routing remain accurate because only Foundry-local consumer adapters changed. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171. Reviewed for Foundry #30: the workbook-reader test and its byte-reproducible openpyxl fixture live under the existing test/unit and test/fixtures locations recorded here. No location, owner or capability mapping changed. Reviewed for Foundry #171 safe no-dispatch successor at d7a7012: no project route, capability or ownership mapping changes."
+lastReviewedCommit: f059e4703438d661aa823d33c7cff0a9582645bc
+lastReviewedNote: "Reviewed for Foundry #171: metadata repair preserves exact historical references only with payload-derived occurrence and owner/state/content proof, retains raw CLI freshness blockers and false publication readiness, and changes no ordinary authoring, credential or publication authority. Producer-verified zero-dispatch successors require fresh scope and grant."
 ---
 
 # Workspace Project Map

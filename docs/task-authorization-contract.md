@@ -30,8 +30,8 @@ checkPaths:
   - test/unit/task-profile-authority.test.mts
   - test/scenarios/foundry-execution-admission.test.mts
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: d7a701298c612f0313042a28c993249674fb2ea7
-lastReviewedNote: "Reviewed the combination of repair workflow ce94fc0 and merged final-delivery gate 13fa996: CLI 0.1.19 remains the exact runtime input; offline delivery seals grant no execution or publication authority. Reviewed for Foundry #171: CLI 0.1.19 advances only the exact installed dependency and source identity, and the repair scope adds a preparation-bound input kind whose activation binds the immutable candidate, contract and account; grant validation, sealed admission, readback and no-replay requirements are unchanged. Reviewed for Foundry #30 at a969cb7: the registered offline final-delivery stage adds no task, mutation, approval or replay authority; persisted-task and authorization bindings remain unchanged. Reviewed for Foundry #171 safe no-dispatch successor at d7a7012: a successor inherits no grant and still needs its own explicit authorization before any write."
+lastReviewedCommit: f059e4703438d661aa823d33c7cff0a9582645bc
+lastReviewedNote: "Reviewed for Foundry #171: metadata repair preserves exact historical references only with payload-derived occurrence and owner/state/content proof, retains raw CLI freshness blockers and false publication readiness, and changes no ordinary authoring, credential or publication authority. Producer-verified zero-dispatch successors require fresh scope and grant."
 related:
   - docs/architecture.md
   - docs/safety-policy.md

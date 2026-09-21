@@ -1,3 +1,4 @@
+import { retainContactReference } from "../fixtures/foundry-retained-reference-workflow.ts";
 import assert from "node:assert/strict";
 import childProcess from "node:child_process";
 import { syncBuiltinESMExports } from "node:module";
@@ -7,9 +8,18 @@ import test from "node:test";
 import { repairWorkflowFixture, repairDataCalls } from "../fixtures/foundry-repair-workflow.ts";
 import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
 
-for (const scenario of ["success", "wrong-owner-readback", "missing-receipt"] as const)
+for (const scenario of [
+  "success",
+  "wrong-owner-readback",
+  "missing-receipt",
+  "retained-references",
+  "wrong-input-readback",
+] as const)
   test(`repair execution ${scenario}: native receipt, exact readback and no replay`, async (t) => {
     const f = repairWorkflowFixture(t);
+    const retainedOptions: { reportInputPath?: string } = {};
+    if (scenario === "retained-references" || scenario === "wrong-input-readback")
+      retainContactReference(t, retainedOptions);
     const delegated = childProcess.spawnSync;
     let commits = 0;
     t.mock.method(
@@ -102,8 +112,13 @@ for (const scenario of ["success", "wrong-owner-readback", "missing-receipt"] as
     );
     await f.facade.resume(invocation);
     if (scenario === "wrong-owner-readback") f.rootReadback.remoteUserId = "foreign-owner";
+    if (scenario === "wrong-input-readback") retainedOptions.reportInputPath = "/other/rows.json";
     let completed = await f.facade.resume(invocation);
-    if (scenario !== "success") {
+    if (
+      scenario === "wrong-owner-readback" ||
+      scenario === "missing-receipt" ||
+      scenario === "wrong-input-readback"
+    ) {
       assert.equal(completed.status, "needs_input");
       assert.equal(commits, 1);
       const unresolved = await f.facade.resume(invocation);
@@ -111,6 +126,7 @@ for (const scenario of ["success", "wrong-owner-readback", "missing-receipt"] as
       assert.equal(commits, 1, "unresolved readback may never replay the mutation");
       if (scenario === "missing-receipt") return;
       f.rootReadback.remoteUserId = null;
+      delete retainedOptions.reportInputPath;
       completed = await f.facade.resume(invocation);
     }
     assert.equal(commits, 1, JSON.stringify(completed.blockers));
