@@ -43,7 +43,7 @@
       ]
     },
     "input_kind": {
-      "enum": ["current_rows", "final_rows"]
+      "enum": ["current_rows", "final_rows", "repair_rows"]
     },
     "input_sha256": {
       "type": "string",
@@ -132,6 +132,24 @@
           "pattern": "^[0-9a-f]{64}$"
         }
       }
+    },
+    "repair_preparation": {
+      "description": "The registered preparation report a repair scope is authorized from; it is the scope authority and its digest is the descriptor's finalization_sha256.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "sha256"],
+      "properties": {
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^[^\\u0000\\r\\n]+$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
     }
   },
   "allOf": [
@@ -145,11 +163,36 @@
       "then": {
         "properties": {
           "input_kind": {
-            "const": "final_rows"
+            "enum": ["final_rows", "repair_rows"]
           },
           "dataset_type": {
             "enum": ["flow", "process", "source"]
           }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["input_kind"],
+        "properties": {
+          "input_kind": {
+            "const": "repair_rows"
+          }
+        }
+      },
+      "then": {
+        "required": ["repair_preparation", "execution_contract"],
+        "properties": {
+          "repair_preparation": {},
+          "execution_contract": {},
+          "dataset_type": {
+            "const": "process"
+          }
+        }
+      },
+      "else": {
+        "not": {
+          "required": ["repair_preparation"]
         }
       }
     }

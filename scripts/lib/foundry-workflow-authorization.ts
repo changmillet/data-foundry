@@ -10,6 +10,7 @@ import {
   FoundryContextError,
   readFoundryInput,
   captureFoundryInput,
+  resolveFoundryInputPath,
   resolveFoundryOutput,
   type FoundryRuntimeContext,
   type FoundryInputFact,
@@ -39,6 +40,9 @@ import { parseFoundryCommandSpec } from "@tiangong-lca/cli/command-spec";
 import type { ValidatedTaskAuthorization } from "./task-authorization.ts";
 import type { ArtifactEntry } from "./foundry-task-types.ts";
 import { readNativeDraftHandoff } from "./finalize-owners/native-draft-handoff.ts";
+import { foundryRepairSelection, readFoundryRepairPreparation } from "./foundry-workflow-repair.ts";
+import { createFoundryRepairHandoffPlan } from "./foundry-repair-handoff.ts";
+import { readTaskJson } from "./foundry-task-io.ts";
 
 export async function authorizeFoundryWorkflow(
   context: FoundryRuntimeContext,
@@ -51,6 +55,8 @@ export async function authorizeFoundryWorkflow(
   assertQualifiedFoundryRuntime(context, qualified);
   const state = currentWorkflowState(context, entries),
     spec = selected.spec;
+  if (spec.input_kind === "repair_rows")
+    return authorizeFoundryRepair(context, qualified, entries, selected, authentication, state);
   const finalization = state.finalization;
   if (state.authorization?.value.submission_sha256 === selected.descriptor.sha256)
     return state.authorization.value;
@@ -155,6 +161,219 @@ export async function authorizeFoundryWorkflow(
   );
 }
 
+/**
+ * The repair authority. A repair approval names the registered preparation report, never a
+ * finalization: the report digest is the scope authority, the scope must be a prepared dispatchable
+ * metadata repair of the locked generic profile, and the signed native contract must still bind the
+ * immutable candidate rows and the exact owner account. No successor or closeout is produced here.
+ */
+async function authorizeFoundryRepair(
+  context: FoundryRuntimeContext,
+  qualified: QualifiedFoundryRuntime,
+  entries: readonly ArtifactEntry[],
+  selected: SelectedAuthorizationInput,
+  authentication: FoundryAuthentication,
+  state: ReturnType<typeof currentWorkflowState>,
+) {
+  const spec = selected.spec;
+  const preparationFact = selected.repairPreparation!;
+  if (state.authorization?.value.submission_sha256 === selected.descriptor.sha256)
+    return state.authorization.value;
+  const preparation = readFoundryRepairPreparation(context, entries);
+  if (!preparation)
+    throw new FoundryContextError(
+      "authorization_repair_preparation_missing",
+      "A repair approval requires the current registered preparation report.",
+    );
+  if (
+    preparation.entry.sha256 !== spec.finalization_sha256 ||
+    preparation.entry.sha256 !== preparationFact.sha256 ||
+    preparation.entry.bytes !== preparationFact.bytes
+  )
+    throw new FoundryContextError(
+      "authorization_repair_preparation_mismatch",
+      "Approval must select the registered preparation report bytes of this scope.",
+    );
+  const value = preparation.value;
+  if (value.status !== "prepared")
+    throw new FoundryContextError(
+      "authorization_repair_not_prepared",
+      "Only a prepared dispatchable repair may be authorized; a no-change or blocked preparation carries no write authority.",
+    );
+  if (value.publication_ready !== false || value.remote_writes !== 0)
+    throw new FoundryContextError(
+      "authorization_repair_not_prepared",
+      "Repair evidence must remain a non-publishing, zero-write preparation.",
+    );
+  const scope = workflowObject(value.scope);
+  const reportedActions = Array.isArray(scope.actions) ? scope.actions.map(workflowObject) : [];
+  if (scope.status !== "dispatchable" || !reportedActions.length)
+    throw new FoundryContextError(
+      "authorization_repair_scope_not_dispatchable",
+      "A repair approval requires a dispatchable scope with at least one action.",
+    );
+  const job = readTaskJson(context, "foundry-job.json");
+  if (job.target_profile !== "generic")
+    throw new FoundryContextError(
+      "authorization_repair_profile_unsupported",
+      "The repair lane admits only the generic profile.",
+    );
+  const selection = foundryRepairSelection(context);
+  const candidateFile = resolveFoundryInputPath(context, selection.candidate);
+  const beforeFile = resolveFoundryInputPath(context, selection.before);
+  const contractFile = selected.executionContract!.path;
+  let native: ReturnType<typeof readNativeDraftHandoff>;
+  try {
+    native = readNativeDraftHandoff({
+      contractFile,
+      rowsFile: candidateFile,
+      datasetType: spec.dataset_type,
+      targetUserId: context.accountIntent!.userId,
+      verifiedProjectRef: context.accountIntent!.projectRef,
+      stateCode: "0",
+      relativePath: (file) => path.relative(context.workspaceRoot, file),
+    });
+  } catch {
+    throw new FoundryContextError(
+      "authorization_execution_contract_invalid",
+      "Native draft contract must bind the current repair candidate rows, owner, project and draft state.",
+    );
+  }
+  const reportInputs = workflowObject(value.inputs);
+  const sameFileBytes = (fact: unknown, file: string) => {
+    const item = workflowObject(fact);
+    const current = captureFoundryInput(file);
+    return item.sha256 === current.sha256 && item.bytes === current.bytes;
+  };
+  if (
+    workflowObject(value.contract).canonical_sha256 !== native.canonical_sha256 ||
+    scope.contract_sha256 !== native.canonical_sha256 ||
+    !sameFileBytes(reportInputs.contract, contractFile) ||
+    !sameFileBytes(reportInputs.before, beforeFile) ||
+    !sameFileBytes(reportInputs.candidate, candidateFile) ||
+    workflowObject(reportInputs.candidate).sha256 !== spec.input_sha256
+  )
+    throw new FoundryContextError(
+      "authorization_repair_scope_mismatch",
+      "The registered preparation must bind the exact selected contract, before and candidate bytes.",
+    );
+  for (const [index, action] of native.contract.actions.entries()) {
+    const reported = reportedActions[index];
+    if (
+      reportedActions.length !== native.contract.actions.length ||
+      reported.action_id !== action.action_id ||
+      reported.table !== action.table ||
+      reported.id !== action.id ||
+      reported.version !== action.version ||
+      reported.before_sha256 !== action.before_sha256 ||
+      reported.desired_sha256 !== action.desired_sha256
+    )
+      throw new FoundryContextError(
+        "authorization_repair_action_mismatch",
+        "Registered repair actions must equal the signed native contract actions.",
+      );
+  }
+  const identity = verifyFoundryRuntimeIdentity(context, authentication, process.env, qualified);
+  const grant = JSON.parse(readSelectedSemanticBytes(selected.grant).toString("utf8"));
+  const current = (index: readonly ArtifactEntry[]) => {
+    assertSelectedAuthorizationInput(selected);
+    const again = readFoundryRepairPreparation(context, index);
+    if (
+      !again ||
+      again.entry.sha256 !== preparation.entry.sha256 ||
+      again.entry.bytes !== preparation.entry.bytes
+    )
+      throw new FoundryContextError(
+        "authorization_repair_preparation_changed",
+        "Repair evidence changed before approval activation.",
+      );
+  };
+  const registration = await registerFoundryTaskAuthorization(
+    context,
+    identity,
+    {
+      inputFile: candidateFile,
+      grant,
+      evidence: spec.evidence.map((item, index) => ({
+        id: item.id,
+        kind: item.kind,
+        file: selected.evidence[index],
+      })),
+      expectedPreviousSha256: spec.expected_previous_sha256,
+      validateCurrent: (_, index) => current(index),
+    },
+    qualified,
+  );
+  const authorization = await loadFoundryTaskAuthorization(
+    context,
+    identity,
+    candidateFile,
+    qualified,
+  );
+  return recordFoundryWorkflowAuthorization(
+    context,
+    qualified,
+    identity,
+    authorization,
+    authentication,
+    {
+      inputFile: candidateFile,
+      approvedInputFile: candidateFile,
+      scope: { type: spec.dataset_type, status: scope.status, actions: reportedActions },
+      finalizationSha256: spec.finalization_sha256,
+      datasetType: spec.dataset_type,
+      inputKind: spec.input_kind,
+      registration,
+      submissionSha256: selected.descriptor.sha256,
+      executionContract: selected.executionContract!,
+      repairPreparation: preparationFact,
+      validateCurrent: current,
+      operationOptions: {
+        submission: selected.descriptor,
+        grant: selected.grant,
+        evidence: selected.evidence,
+        repair_preparation: selected.repairPreparation,
+        finalization: spec.finalization_sha256,
+        authorization: registration.authorization_sha256,
+        execution_contract: selected.executionContract,
+      },
+    },
+  );
+}
+
+/**
+ * Re-bind every emitted handoff command to the host-selected execution inputs: the final-row fact is
+ * re-derived from the approved file and every other bound artifact is resolved against the asset root.
+ * The commands keep their exact argv, so only the artifact paths are normalized.
+ */
+function bindHandoffCommands(
+  context: FoundryRuntimeContext,
+  handoff: Record<string, unknown>,
+  inputFile: string,
+): Record<string, unknown> {
+  const commands = workflowObject(handoff.commands);
+  for (const key of ["commit", "post_write_verify"]) {
+    if (!commands[key]) continue;
+    const command = parseFoundryCommandSpec(commands[key]);
+    commands[key] = createFoundryCommandSpec({
+      executable: command.executable,
+      argv: [...command.argv],
+      binding: {
+        artifacts: [
+          createFileArtifactFact({ role: "final_rows", path: inputFile, filePath: inputFile }),
+          ...command.binding.artifacts
+            .filter((artifact) => artifact.role !== "final_rows")
+            .map((artifact) => ({
+              ...artifact,
+              path: path.resolve(context.assetRoot, artifact.path),
+            })),
+        ],
+      },
+    });
+  }
+  return handoff;
+}
+
 export async function recordFoundryWorkflowAuthorization(
   context: FoundryRuntimeContext,
   qualified: QualifiedFoundryRuntime,
@@ -167,10 +386,11 @@ export async function recordFoundryWorkflowAuthorization(
     scope: Record<string, unknown>;
     finalizationSha256: string;
     datasetType: string;
-    inputKind: "current_rows" | "final_rows";
+    inputKind: "current_rows" | "final_rows" | "repair_rows";
     registration: { authorization_sha256: string; pointer_sha256: string };
     submissionSha256: string;
     executionContract?: FoundryInputFact;
+    repairPreparation?: FoundryInputFact;
     operationOptions: Record<string, unknown>;
     validateCurrent: (index: readonly ArtifactEntry[]) => void;
   },
@@ -213,31 +433,12 @@ export async function recordFoundryWorkflowAuthorization(
             : {}),
         }),
       );
-      const commands = workflowObject(handoff.commands);
-      for (const key of ["commit", "post_write_verify"]) {
-        if (!commands[key]) continue;
-        const command = parseFoundryCommandSpec(commands[key]);
-        commands[key] = createFoundryCommandSpec({
-          executable: command.executable,
-          argv: [...command.argv],
-          binding: {
-            artifacts: [
-              createFileArtifactFact({ role: "final_rows", path: inputFile, filePath: inputFile }),
-              ...command.binding.artifacts
-                .filter((artifact) => artifact.role !== "final_rows")
-                .map((artifact) => ({
-                  ...artifact,
-                  path: path.resolve(context.assetRoot, artifact.path),
-                })),
-            ],
-          },
-        });
-      }
+      handoff = bindHandoffCommands(context, handoff, inputFile);
       fs.writeFileSync(
         path.join(output, "handoff", "dataset-commit-handoff-plan.json"),
         JSON.stringify(handoff, null, 2) + "\n",
       );
-      const command = commands.commit;
+      const command = workflowObject(handoff.commands).commit;
       if (command) {
         const requiredActions = authorization.allowed_actions.filter((action) =>
           request.datasetType === "flow"
@@ -271,6 +472,50 @@ export async function recordFoundryWorkflowAuthorization(
         });
       }
     }
+    if (request.inputKind === "repair_rows") {
+      // The repair scope has no finalization: its write plan is the reviewed native save-draft
+      // handoff over the immutable candidate rows and the selected execution contract. The capsule
+      // seals exactly that command, and the owner execution request stays a separate later stage.
+      const handoffDir = path.join(output, "handoff");
+      fs.mkdirSync(handoffDir, { recursive: true, mode: 0o700 });
+      handoff = bindHandoffCommands(
+        context,
+        createFoundryRepairHandoffPlan({
+          context,
+          candidateFile: inputFile,
+          contractFile: request.executionContract!.path,
+          outDir: handoffDir,
+        }),
+        inputFile,
+      );
+      fs.writeFileSync(
+        path.join(handoffDir, "dataset-commit-handoff-plan.json"),
+        JSON.stringify(handoff, null, 2) + "\n",
+      );
+      const command = workflowObject(handoff.commands).commit;
+      if (command) {
+        try {
+          assertVerifiedFoundryIdentity(context, identity, qualified);
+        } catch (error) {
+          if (!(error instanceof FoundryContextError) || error.code !== "identity_receipt_stale")
+            throw error;
+        }
+        const sealingIdentity = verifyFoundryRuntimeIdentity(
+          context,
+          authentication,
+          process.env,
+          qualified,
+        );
+        capsule = await createFoundryExecutionCapsule(context, qualified, sealingIdentity, {
+          command: "dataset-commit-handoff-plan",
+          approvedInputFile: request.approvedInputFile,
+          finalRowsFile: inputFile,
+          commandSpec: command,
+          requiredActions: [],
+          requiredQaWaivers: [],
+        });
+      }
+    }
     return await runFoundryTaskOperation(
       context,
       {
@@ -298,6 +543,9 @@ export async function recordFoundryWorkflowAuthorization(
           capsule,
           handoff,
           submission_sha256: request.submissionSha256,
+          ...(request.repairPreparation
+            ? { repair_preparation: { ...request.repairPreparation } }
+            : {}),
         };
         operation.writeJson(path.join(output, "foundry-authorization.json"), result);
         return result;

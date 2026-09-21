@@ -30,8 +30,8 @@ checkPaths:
   - test/unit/task-profile-authority.test.mts
   - test/scenarios/foundry-execution-admission.test.mts
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 58f7ebb
-lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: authorization-input native contract validation still binds current rows, owner, project and draft state, and insert plus bounded save_draft share that same boundary. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171."
+lastReviewedCommit: 208f520f0771f2aacdde9422133255a76f0cc2fb
+lastReviewedNote: "Reviewed for Foundry #171: CLI 0.1.19 advances only the exact installed dependency and source identity, and the repair scope adds a preparation-bound input kind whose activation binds the immutable candidate, contract and account; grant validation, sealed admission, readback and no-replay requirements are unchanged."
 related:
   - docs/architecture.md
   - docs/safety-policy.md

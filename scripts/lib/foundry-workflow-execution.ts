@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { assertFoundryRepairExecution } from "./foundry-repair-execution.ts";
 import path from "node:path";
 import { spawnSync, type SpawnSyncReturns } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -73,9 +74,10 @@ export async function executeFoundryOwnerScope(
     },
     async () => {
       assertQualifiedFoundryRuntime(context, qualified);
-      const inspected = await withFoundryTaskMetadata(context, (_, index) =>
-        inspectOwnerExecutions(context, index),
-      );
+      const inspected = await withFoundryTaskMetadata(context, (_, index) => {
+        assertFoundryRepairExecution(context, index, request);
+        return inspectOwnerExecutions(context, index);
+      });
       const consumed = inspected.consumed.get(request.scope_id);
       if (consumed && consumed.entry.sha256 !== requested.entry.sha256)
         throw new FoundryContextError(
@@ -146,6 +148,9 @@ export async function executeFoundryOwnerScope(
         );
         return lastRead.proof.status === "verified" ? lastRead : null;
       };
+      await withFoundryTaskMetadata(context, (_, index) =>
+        assertFoundryRepairExecution(context, index, request),
+      );
       const batch = await runBoundedBatch({
         contract: request.contract,
         items: [request],

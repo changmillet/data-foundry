@@ -1,0 +1,114 @@
+{
+  "schema_version": 2,
+  "generated_at_utc": "2026-09-21T00:00:00.000Z",
+  "input_path": "/fixture/rows.json",
+  "requested_type": "process",
+  "out_dir": "/fixture/output",
+  "commit": false,
+  "mode": "dry_run",
+  "status": "completed",
+  "counts": {
+    "selected": 1,
+    "prepared": 1,
+    "executed": 0,
+    "failed": 0,
+    "unknown": 0,
+    "blocked": 0,
+    "attempts_consumed": 0,
+    "by_table": {
+      "processes": 1
+    },
+    "operations": {
+      "would_sync": 1
+    }
+  },
+  "files": {
+    "selected_rows": "/fixture/output/selected_rows",
+    "progress_jsonl": "/fixture/output/progress_jsonl",
+    "failures_jsonl": "/fixture/output/failures_jsonl",
+    "summary_json": "/fixture/output/summary_json"
+  },
+  "rows": [
+    {
+      "index": 0,
+      "id": "22222222-2222-4222-8222-222222222222",
+      "version": "01.00.000",
+      "type": "process",
+      "table": "processes",
+      "status": "prepared",
+      "operation": "would_sync",
+      "validation": {
+        "ok": false,
+        "validator": "@tiangong-lca/tidas-sdk/ProcessSchema+tiangong/process-authoring-required-fields",
+        "issue_count": 1,
+        "issues": [
+          {
+            "code": "annual_supply_or_production_volume_missing",
+            "message": "Process payload must include annualSupplyOrProductionVolume as numeric text with a unit or context suffix.",
+            "path": "processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume"
+          }
+        ],
+        "payload_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "validation_layers": {
+          "schema": {
+            "status": "passed",
+            "issue_count": 0,
+            "issues": []
+          },
+          "authoring_evidence": {
+            "status": "failed",
+            "issue_count": 1,
+            "issues": [
+              {
+                "code": "annual_supply_or_production_volume_missing",
+                "message": "Process payload must include annualSupplyOrProductionVolume as numeric text with a unit or context suffix.",
+                "path": "processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume"
+              }
+            ]
+          },
+          "content": {
+            "status": "passed",
+            "issue_count": 0,
+            "issues": []
+          },
+          "multilingual": {
+            "status": "passed",
+            "issue_count": 0,
+            "issues": []
+          }
+        }
+      },
+      "action_id": "repair-1",
+      "desired_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "attempt_consumed": false,
+      "replayed": false,
+      "readback": "not_performed",
+      "visible_row": {
+        "id": "22222222-2222-4222-8222-222222222222",
+        "version": "01.00.000",
+        "user_id": "11111111-1111-4111-8111-111111111111",
+        "state_code": 0
+      },
+      "draft_repair_admission": {
+        "schema": "dataset-draft-repair-admission.v1",
+        "status": "admitted",
+        "policy": "process-metadata-unknown-annual.v1",
+        "before_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "desired_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "changed_paths": [
+          "processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.referenceToDataSource.common:shortDescription.#text"
+        ],
+        "publication_ready": false
+      }
+    }
+  ],
+  "execution_contract": {
+    "path": "/fixture/contract.json",
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "execution_id": "repair-exec-1",
+    "target_mode": "owner_draft",
+    "max_parallel": 1,
+    "serial_prefix_actions": 0,
+    "parallel_suffix_actions": 1
+  }
+}

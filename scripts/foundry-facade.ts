@@ -1,3 +1,4 @@
+import { assertFoundryRepairExecution } from "./lib/foundry-repair-execution.ts";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -70,6 +71,10 @@ import {
 import { selectFoundrySemanticInput } from "./lib/foundry-semantic-input.ts";
 import { runFoundryWorkflowIdentity } from "./lib/foundry-workflow-identity.ts";
 import { finalizeFoundryWorkflow } from "./lib/foundry-workflow-finalize.ts";
+import {
+  prepareFoundryRepair,
+  readFoundryRepairPreparation,
+} from "./lib/foundry-workflow-repair.ts";
 import {
   selectFoundryReferenceInput,
   recordFoundryReferenceInput,
@@ -617,6 +622,81 @@ function taskProjection(
       });
   }
   const workflow = currentWorkflowState(context, inspected.artifacts);
+  if (record.spec.repair && execution.verified.size) {
+    if (execution.requests.length !== 1 || execution.verified.size !== 1)
+      throw new FoundryContextError(
+        "repair_execution_mismatch",
+        "A repair task must retain one exact verified execution scope.",
+      );
+    const requested = execution.requests[0];
+    const repair = assertFoundryRepairExecution(context, inspected.artifacts, requested.request);
+    const verified = execution.verified.get(requested.request.scope_id);
+    const proof = verified?.value.readback as Record<string, unknown> | undefined;
+    const bound = proof?.repair_preparation as Record<string, unknown> | undefined;
+    if (
+      !repair ||
+      !verified ||
+      bound?.sha256 !== repair.preparation.entry.sha256 ||
+      bound?.bytes !== repair.preparation.entry.bytes ||
+      proof?.publication_ready !== false
+    )
+      throw new FoundryContextError(
+        "repair_execution_mismatch",
+        "Repair completion requires the same prepared scope and independent native receipt/readback proof.",
+      );
+    return createFoundryOperationResult({
+      operation,
+      status: "completed",
+      taskId: record.task_id,
+      artifacts,
+      blockers: [],
+      nextActions: [],
+      runtimeIdentity: identity,
+      permissions: noPermission(),
+    });
+  }
+  if (record.spec.repair && !workflow.authorization && !execution.completed.size) {
+    const found = readFoundryRepairPreparation(context, inspected.artifacts);
+    const noChange = found?.value.status === "no_change_verified";
+    const preparedRepair = found?.value.status === "prepared";
+    if (noChange && execution.requests.length)
+      throw new FoundryContextError(
+        "repair_noop_attempt_conflict",
+        "No-write completion cannot replace an owner execution request.",
+      );
+    return createFoundryOperationResult({
+      operation,
+      status: noChange ? "completed" : found ? "needs_input" : "ready",
+      taskId: record.task_id,
+      artifacts,
+      blockers:
+        noChange || !found
+          ? []
+          : [
+              {
+                code: preparedRepair ? "repair_authorization_required" : "repair_preflight_blocked",
+                message: preparedRepair
+                  ? "The exact draft repair is prepared. Current task approval is required before any write."
+                  : "Review the registered repair preflight findings; a resume may repeat only the read-only preparation.",
+                scope: record.task_id,
+              },
+            ],
+      nextActions: noChange
+        ? []
+        : preparedRepair
+          ? [
+              human(
+                "authorize_repair",
+                `Review the content-bound repair evidence ${found.file} before authorizing its exact owner-draft scope.`,
+              ),
+            ]
+          : [resumeCommand(context, record)],
+      runtimeIdentity: identity,
+      permissions: preparedRepair
+        ? { state: "required", requested_actions: [], approval_reference: null }
+        : noPermission(),
+    });
+  }
   const references = inspectFoundryReferences(context, inspected.artifacts);
   const scopeComplete =
     workflow.rows &&
@@ -1319,6 +1399,7 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
               profileId: selectedSpec.spec.profile_id,
               targetEntities: [...selectedSpec.spec.target_entities],
               seed: selectedSeed,
+              ...(selectedSpec.spec.repair ? { repair: selectedSpec.spec.repair } : {}),
             });
             return {
               created_at_utc: task.job.created_at_utc,
@@ -1426,6 +1507,11 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
         const qualified = qualification(context, options.runtimeSelection);
         const runtime = createFoundryRuntime(context, qualified);
         const before = await runtime.inspectTask();
+        if (record.spec.repair && (input.semanticInputFile || input.referenceInputFile))
+          throw new FoundryContextError(
+            "repair_revision_required",
+            "A repair keeps its before, candidate and contract immutable; changed inputs require an explicit revision.",
+          );
         assertNotInterrupted(options.signal);
         loadFoundryFacadeTaskRecord(current, record.task_id, record.spec.actor_id);
         const existing = taskProjection(
@@ -1630,6 +1716,26 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
         }
         const preparation = record.spec.preparation;
         const workflow = currentWorkflowState(context, before.artifacts);
+        if (record.spec.repair && !workflow.authorization && !execution.completed.size) {
+          if (!qualified)
+            throw new FoundryContextError(
+              "runtime_qualification_required",
+              "Repair preflight requires the qualified installed owners.",
+            );
+          await prepareFoundryRepair(
+            context,
+            qualified,
+            before.artifacts,
+            options.authentication ?? { mode: "oauth" },
+          );
+          return taskProjection(
+            "task.resume",
+            context,
+            record,
+            await runtime.inspectTask(),
+            runtimeIdentity(context, qualified),
+          );
+        }
         const references = inspectFoundryReferences(context, before.artifacts);
         if (!preparation && workflow.finalization && references.scope && !references.verified) {
           if (!qualified)

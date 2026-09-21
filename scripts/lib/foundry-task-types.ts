@@ -1,7 +1,10 @@
 import type { FoundryInputFact } from "./foundry-runtime-context.ts";
 
 export type JsonRecord = Record<string, unknown>;
-export type Lane = "external-dataset-curated-import" | "source-evidence-dataset-development";
+export type Lane =
+  | "external-dataset-curated-import"
+  | "source-evidence-dataset-development"
+  | "existing-owner-draft-repair";
 export interface FileReference {
   path: string;
   sha256: string;
@@ -27,6 +30,14 @@ export interface FoundryTaskJob {
   runtime_identity: TaskRuntimeIdentity;
   write_policy: { mode: "dry-run"; remote_state_code: 0 };
   created_at_utc: string;
+  /** Present only for the existing-owner-draft-repair lane; absent bytes stay byte-identical. */
+  repair?: Readonly<{
+    kind: string;
+    contract: string;
+    before: string;
+    candidate: string;
+    predecessor: Readonly<{ task_id: string; receipt_sha256: string }> | null;
+  }>;
 }
 export interface SourceManifest {
   schema: "tiangong-foundry.source-manifest.v2";
@@ -41,6 +52,13 @@ export interface FoundryTaskOptions {
   requestId?: string;
   targetEntities?: string[];
   seed?: JsonRecord;
+  repair?: Readonly<{
+    kind: string;
+    contract: string;
+    before: string;
+    candidate: string;
+    predecessor: Readonly<{ task_id: string; receipt_sha256: string }> | null;
+  }>;
 }
 export interface ArtifactFact extends FoundryInputFact {
   path: string;

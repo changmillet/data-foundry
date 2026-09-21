@@ -9,6 +9,15 @@ import {
 import type { ArtifactEntry } from "./foundry-task-types.ts";
 import { readTaskBytes } from "./foundry-task-io.ts";
 
+/**
+ * The repair producer's registration of the preparation report. These two values are repeated here
+ * rather than imported so this projection module stays a graph leaf; the public repair suite fails
+ * if the producer ever stops registering under them.
+ */
+const FOUNDRY_REPAIR_PREFLIGHT_COMMAND = "dataset-workflow-repair-preflight";
+const FOUNDRY_REPAIR_REPORT_NAME = "foundry-repair-preflight.json";
+const FOUNDRY_REPAIR_PREPARATION_SCHEMA = "tiangong-foundry.repair-preparation.v1";
+
 export interface WorkflowRowSet {
   type: string;
   file: string;
@@ -250,34 +259,85 @@ export function currentWorkflowState(
   }
   let authorization: WorkflowArtifact<Record<string, unknown>> | null = null;
   let preparedApproval: WorkflowArtifact<Record<string, unknown>> | null = null;
-  if (finalization && fs.existsSync(path.join(context.taskRoot!, "authorization.json"))) {
+  if (context.taskRoot && fs.existsSync(path.join(context.taskRoot, "authorization.json"))) {
     const pointer = createHash("sha256")
       .update(readTaskBytes(context, "authorization.json"))
       .digest("hex");
-    for (const entry of [...entries].reverse()) {
-      if (
-        entry.command !== "dataset-workflow-authorization" ||
-        path.basename(entry.path) !== "foundry-authorization.json"
-      )
-        continue;
-      const found = readWorkflowArtifact(context, entry);
-      if (found.value.schema !== "tiangong-foundry.authorization-stage.v1")
-        throw new FoundryContextError(
-          "workflow_authorization_invalid",
-          "Registered approval metadata is invalid.",
-        );
-      const prepared =
-        finalization.value.approval_source_sha256 === entry.sha256 &&
-        found.value.input_kind === "current_rows";
-      if (prepared) preparedApproval = found;
-      if (
-        (found.value.finalization_sha256 === finalization.entry.sha256 || prepared) &&
-        found.value.pointer_sha256 === pointer &&
-        typeof found.value.expires_at_utc === "string" &&
-        Date.parse(found.value.expires_at_utc) > Date.now()
-      ) {
-        authorization = found;
-        break;
+    if (finalization) {
+      for (const entry of [...entries].reverse()) {
+        if (
+          entry.command !== "dataset-workflow-authorization" ||
+          path.basename(entry.path) !== "foundry-authorization.json"
+        )
+          continue;
+        const found = readWorkflowArtifact(context, entry);
+        if (found.value.schema !== "tiangong-foundry.authorization-stage.v1")
+          throw new FoundryContextError(
+            "workflow_authorization_invalid",
+            "Registered approval metadata is invalid.",
+          );
+        const prepared =
+          finalization.value.approval_source_sha256 === entry.sha256 &&
+          found.value.input_kind === "current_rows";
+        if (prepared) preparedApproval = found;
+        if (
+          (found.value.finalization_sha256 === finalization.entry.sha256 || prepared) &&
+          found.value.pointer_sha256 === pointer &&
+          typeof found.value.expires_at_utc === "string" &&
+          Date.parse(found.value.expires_at_utc) > Date.now()
+        ) {
+          authorization = found;
+          break;
+        }
+      }
+    }
+    if (!authorization) {
+      // A repair scope has no finalization: its registered authority is the latest preparation report
+      // of this task, and only while that report is a prepared dispatchable write scope. An approval
+      // bound to a superseded report, or to evidence that has since become no-change or blocked,
+      // carries no current authority.
+      const latest = entries
+        .filter(
+          (entry) =>
+            entry.command === FOUNDRY_REPAIR_PREFLIGHT_COMMAND &&
+            path.basename(entry.path) === FOUNDRY_REPAIR_REPORT_NAME,
+        )
+        .sort((left, right) => left.sequence - right.sequence)
+        .at(-1);
+      if (latest) {
+        const report = readWorkflowArtifact(context, latest).value;
+        const reportScope = report.scope;
+        const dispatchable =
+          report.schema === FOUNDRY_REPAIR_PREPARATION_SCHEMA &&
+          report.status === "prepared" &&
+          Boolean(reportScope) &&
+          typeof reportScope === "object" &&
+          !Array.isArray(reportScope) &&
+          (reportScope as Record<string, unknown>).status === "dispatchable";
+        if (dispatchable)
+          for (const entry of [...entries].reverse()) {
+            if (
+              entry.command !== "dataset-workflow-authorization" ||
+              path.basename(entry.path) !== "foundry-authorization.json"
+            )
+              continue;
+            const found = readWorkflowArtifact(context, entry);
+            if (found.value.schema !== "tiangong-foundry.authorization-stage.v1")
+              throw new FoundryContextError(
+                "workflow_authorization_invalid",
+                "Registered approval metadata is invalid.",
+              );
+            if (
+              found.value.input_kind === "repair_rows" &&
+              found.value.finalization_sha256 === latest.sha256 &&
+              found.value.pointer_sha256 === pointer &&
+              typeof found.value.expires_at_utc === "string" &&
+              Date.parse(found.value.expires_at_utc) > Date.now()
+            ) {
+              authorization = found;
+              break;
+            }
+          }
       }
     }
   }

@@ -280,8 +280,8 @@ checkPaths:
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 58f7ebb
-lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: the new public native draft scenario file and the extended handoff/closeout unit matrix fit the existing test-layout contract and keep native evidence claims test-owned. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171."
+lastReviewedCommit: 208f520f0771f2aacdde9422133255a76f0cc2fb
+lastReviewedNote: "Reviewed for Foundry #171: exact CLI 0.1.19 pins update existing package-consumer expectations, and the repair unit/scenario/fixture suites fit the existing test-layout contract and keep native evidence claims test-owned."
 ---
 
 # Test Layout

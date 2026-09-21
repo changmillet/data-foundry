@@ -35,8 +35,8 @@ checkPaths:
   - test/scenarios/foundry-package-consumer.test.mts
   - test/unit/foundry-runtime-environment.test.mts
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: 58f7ebb
-lastReviewedNote: "Reviewed for Foundry #171 native draft adapter/closeout: the change adds no environment, credential or session surface. Independent delivery review completed at 58f7ebb; focused recovery checks and the full test/build/package validation are recorded in Foundry #171."
+lastReviewedCommit: 208f520f0771f2aacdde9422133255a76f0cc2fb
+lastReviewedNote: "Reviewed for Foundry #171: the exact CLI 0.1.19 package/source pin advance and the repair task additions add no environment, credential or session surface. Focused recovery checks and the full test/build/package validation are recorded in Foundry #171; the canonical prepush gate passed on this tree."
 ---
 
 # Environment Surface Policy

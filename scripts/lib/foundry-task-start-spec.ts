@@ -3,6 +3,10 @@ import type { FoundryInputFact } from "./foundry-runtime-context.ts";
 import { FoundryContextError } from "./foundry-runtime-context.ts";
 import { sha256Json } from "./identity-preflight-proof.ts";
 import type { Lane } from "./foundry-task-types.ts";
+import {
+  parseFoundryRepairSelection,
+  type FoundryRepairSelection,
+} from "./foundry-repair-scope.ts";
 
 export const FOUNDRY_TASK_START_SPEC_SCHEMA = "tiangong-foundry.task-start.v1" as const;
 
@@ -36,6 +40,8 @@ export interface FoundryTaskStartSpec {
   readonly seed: Readonly<SourceSelection> | null;
   readonly account_intent: Readonly<AccountIntentSelection> | null;
   readonly preparation: Readonly<CleanupPreparation> | null;
+  /** Present only for the existing-owner-draft-repair lane, so v1 fingerprints never change. */
+  readonly repair?: Readonly<FoundryRepairSelection>;
 }
 
 const idPattern = /^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,255}$/u;
@@ -174,6 +180,7 @@ export function parseFoundryTaskStartSpec(value: unknown): FoundryTaskStartSpec 
       "seed",
       "account_intent",
       "preparation",
+      ...(Object.hasOwn(item, "repair") ? ["repair"] : []),
     ],
     "Task-start spec",
   );
@@ -183,9 +190,11 @@ export function parseFoundryTaskStartSpec(value: unknown): FoundryTaskStartSpec 
     !idPattern.test(item.request_id) ||
     typeof item.actor_id !== "string" ||
     !idPattern.test(item.actor_id) ||
-    !["external-dataset-curated-import", "source-evidence-dataset-development"].includes(
-      String(item.lane),
-    ) ||
+    ![
+      "external-dataset-curated-import",
+      "source-evidence-dataset-development",
+      "existing-owner-draft-repair",
+    ].includes(String(item.lane)) ||
     typeof item.profile_id !== "string" ||
     !idPattern.test(item.profile_id) ||
     !Array.isArray(item.target_entities) ||
@@ -206,6 +215,36 @@ export function parseFoundryTaskStartSpec(value: unknown): FoundryTaskStartSpec 
     fail("task_seed_invalid", "Task seed must be one of the independently selected sources.");
   if (item.lane === "source-evidence-dataset-development" && !seed)
     fail("task_seed_required", "Source-evidence authoring requires one selected JSON seed file.");
+  const repair =
+    item.lane === "existing-owner-draft-repair"
+      ? item.repair === undefined || item.repair === null
+        ? fail(
+            "task_spec_repair_lane_mismatch",
+            "The existing-owner-draft-repair lane requires one repair selection.",
+          )
+        : parseFoundryRepairSelection(item.repair, sources)
+      : item.repair === undefined || item.repair === null
+        ? null
+        : fail(
+            "task_spec_repair_lane_mismatch",
+            "A repair selection is only valid under the existing-owner-draft-repair lane.",
+          );
+  if (repair) {
+    if (seed) fail("task_spec_repair_invalid", "A repair task never selects a seed manifest.");
+    if (item.preparation !== null)
+      fail(
+        "task_spec_repair_invalid",
+        "A repair task never selects a cleanup preparation; the contract and rows are its only inputs.",
+      );
+    if (
+      item.target_entities.length !== 1 ||
+      String((item.target_entities as string[])[0]) !== "process"
+    )
+      fail(
+        "task_spec_repair_invalid",
+        "Phase 1 repair admits exactly one target entity type: process.",
+      );
+  }
   const spec: FoundryTaskStartSpec = {
     schema: FOUNDRY_TASK_START_SPEC_SCHEMA,
     request_id: item.request_id,
@@ -217,6 +256,7 @@ export function parseFoundryTaskStartSpec(value: unknown): FoundryTaskStartSpec 
     seed,
     account_intent: account(item.account_intent),
     preparation: preparation(item.preparation, sources),
+    ...(repair ? { repair } : {}),
   };
   return Object.freeze(spec);
 }

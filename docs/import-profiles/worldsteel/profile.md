@@ -1,7 +1,7 @@
 ---
-lastReviewedAt: 2026-09-20
-lastReviewedCommit: 138b79581aea4e8de53babeb46f34692c0e84fa5
-lastReviewedNote: "Reviewed for Foundry #182: CLI 0.1.18 adoption leaves Worldsteel selection, authorization and write gates unchanged."
+lastReviewedAt: 2026-09-21
+lastReviewedCommit: 208f520f0771f2aacdde9422133255a76f0cc2fb
+lastReviewedNote: "Reviewed for Foundry #171: CLI 0.1.19 leaves Worldsteel selection, authorization and write gates unchanged."
 title: worldsteel Import Profile
 docType: profile
 scope: import-profile

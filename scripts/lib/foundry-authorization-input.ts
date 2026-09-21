@@ -20,10 +20,15 @@ export interface FoundryAuthorizationInput {
   actor_id: string;
   finalization_sha256: string;
   dataset_type: string;
-  input_kind: "current_rows" | "final_rows";
+  /**
+   * `repair_rows` is the existing-owner-draft repair scope: its authority is the registered repair
+   * preparation report, never a finalization report, and it always carries the native contract.
+   */
+  input_kind: "current_rows" | "final_rows" | "repair_rows";
   input_sha256: string;
   expected_previous_sha256: string | null;
   execution_contract?: { file: string; sha256: string };
+  repair_preparation?: { file: string; sha256: string };
   grant: { file: string; sha256: string };
   evidence: readonly {
     id: string;
@@ -39,6 +44,7 @@ export interface SelectedAuthorizationInput {
   readonly evidence: readonly FoundryInputFact[];
   readonly executionContract?: FoundryInputFact;
   readonly executionContractSource?: FoundryInputFact;
+  readonly repairPreparation?: FoundryInputFact;
 }
 const sha = /^[0-9a-f]{64}$/u;
 const identifier = /^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,255}$/u;
@@ -76,6 +82,7 @@ export function parseFoundryAuthorizationInput(value: unknown): FoundryAuthoriza
     "grant",
     "evidence",
     ...(Object.hasOwn(data, "execution_contract") ? ["execution_contract"] : []),
+    ...(Object.hasOwn(data, "repair_preparation") ? ["repair_preparation"] : []),
   ]);
   if (
     data.schema !== FOUNDRY_AUTHORIZATION_INPUT_SCHEMA ||
@@ -97,7 +104,9 @@ export function parseFoundryAuthorizationInput(value: unknown): FoundryAuthoriza
       "flowproperty",
       "lifecyclemodel",
     ].includes(data.dataset_type) ||
-    (data.input_kind !== "current_rows" && data.input_kind !== "final_rows") ||
+    (data.input_kind !== "current_rows" &&
+      data.input_kind !== "final_rows" &&
+      data.input_kind !== "repair_rows") ||
     (data.expected_previous_sha256 !== null &&
       (typeof data.expected_previous_sha256 !== "string" ||
         !sha.test(data.expected_previous_sha256))) ||
@@ -113,13 +122,33 @@ export function parseFoundryAuthorizationInput(value: unknown): FoundryAuthoriza
   let executionContract: { file: string; sha256: string } | undefined;
   if (Object.hasOwn(data, "execution_contract")) {
     if (
-      data.input_kind !== "final_rows" ||
+      !["final_rows", "repair_rows"].includes(String(data.input_kind)) ||
       !["flow", "process", "source"].includes(data.dataset_type)
     )
       invalid("Native draft contracts require finalized Flow, Process or Source rows.");
     const selected = workflowObject(data.execution_contract);
     exact(selected, ["file", "sha256"]);
     executionContract = Object.freeze(fileReference(selected));
+  }
+  let repairPreparation: { file: string; sha256: string } | undefined;
+  if (Object.hasOwn(data, "repair_preparation")) {
+    const selected = workflowObject(data.repair_preparation);
+    exact(selected, ["file", "sha256"]);
+    repairPreparation = Object.freeze(fileReference(selected));
+  }
+  if ((data.input_kind === "repair_rows") !== Boolean(repairPreparation))
+    invalid(
+      "A repair scope is exactly the repair_rows input kind carrying its registered preparation report.",
+    );
+  if (repairPreparation) {
+    if (data.dataset_type !== "process")
+      invalid("A repair scope admits only Process owner drafts.");
+    if (!executionContract)
+      invalid("A repair scope always carries the selected native execution contract.");
+    if (data.finalization_sha256 !== repairPreparation.sha256)
+      invalid(
+        "A repair scope authority is the registered preparation report digest; a finalization digest is not accepted.",
+      );
   }
   const evidence = data.evidence.map((raw) => {
     const item = workflowObject(raw);
@@ -149,6 +178,7 @@ export function parseFoundryAuthorizationInput(value: unknown): FoundryAuthoriza
     grant: Object.freeze(fileReference(grant)),
     evidence: Object.freeze(evidence),
     ...(executionContract ? { execution_contract: executionContract } : {}),
+    ...(repairPreparation ? { repair_preparation: repairPreparation } : {}),
   });
 }
 export function selectFoundryAuthorizationInput(
@@ -196,12 +226,16 @@ export function selectFoundryAuthorizationInput(
   const executionContract = spec.execution_contract ? select(spec.execution_contract.file) : null;
   if (executionContract && executionContract.sha256 !== spec.execution_contract!.sha256)
     invalid("Native execution contract bytes differ from the selected digest.");
+  const repairPreparation = spec.repair_preparation ? select(spec.repair_preparation.file) : null;
+  if (repairPreparation && repairPreparation.sha256 !== spec.repair_preparation!.sha256)
+    invalid("Repair preparation bytes differ from the selected digest.");
   const result = Object.freeze({
     spec,
     descriptor,
     grant: selected[0],
     evidence: Object.freeze(selected.slice(1)),
     ...(executionContract ? { executionContract } : {}),
+    ...(repairPreparation ? { repairPreparation } : {}),
   });
   selections.add(result);
   return result;

@@ -8,10 +8,16 @@ import {
   captureFoundryInput,
   resolveFoundryAsset,
   resolveFoundryOutput,
+  resolveFoundryInputPath,
   writeFoundryArtifact,
   type FoundryRuntimeContext,
 } from "./foundry-runtime-context.ts";
 import { sha256Json } from "./identity-preflight-proof.ts";
+import {
+  parseFoundryRepairSelection,
+  readFoundryRepairScope,
+  type FoundryRepairScope,
+} from "./foundry-repair-scope.ts";
 import {
   fail,
   object,
@@ -176,6 +182,7 @@ export function loadTask(context: FoundryRuntimeContext, options: FoundryTaskOpt
     "runtime_identity",
     "write_policy",
     "created_at_utc",
+    ...(Object.hasOwn(raw, "repair") ? ["repair"] : []),
   ]);
   if (raw.schema !== "tiangong-foundry.job.v2")
     fail("legacy_task_requires_migration", "Existing task schema must be migrated explicitly.");
@@ -190,9 +197,11 @@ export function loadTask(context: FoundryRuntimeContext, options: FoundryTaskOpt
     typeof raw.request_id !== "string" ||
     !raw.request_id ||
     !timestamp(raw.created_at_utc) ||
-    !["external-dataset-curated-import", "source-evidence-dataset-development"].includes(
-      String(raw.lane),
-    ) ||
+    ![
+      "external-dataset-curated-import",
+      "source-evidence-dataset-development",
+      "existing-owner-draft-repair",
+    ].includes(String(raw.lane)) ||
     typeof raw.target_profile !== "string" ||
     !Array.isArray(raw.target_entities) ||
     !raw.target_entities.length ||
@@ -263,6 +272,7 @@ export function loadTask(context: FoundryRuntimeContext, options: FoundryTaskOpt
       "profile-lock.json",
       "artifact-index.jsonl",
       ...(raw.seed_manifest ? ["seed-manifest.json"] : []),
+      ...(raw.repair ? ["repair-scope.json"] : []),
     ]);
     if (
       fs.readdirSync(context.taskRoot!).some((name) => !allowed.has(name)) ||
@@ -312,8 +322,30 @@ export function createTask(
       fail("input_changed", "Selected source changed before task creation.");
   const lane = options.lane ?? "external-dataset-curated-import";
   const profileId = options.profileId ?? "generic";
+  const repairSelection =
+    lane === "existing-owner-draft-repair"
+      ? parseFoundryRepairSelection(
+          options.repair ?? null,
+          context.inputs.map((fact) => ({ path: fact.path })),
+          (file) => resolveFoundryInputPath(context, file),
+        )
+      : options.repair
+        ? fail(
+            "task_spec_repair_lane_mismatch",
+            "A repair selection is only valid under the existing-owner-draft-repair lane.",
+          )
+        : null;
+  if (repairSelection && (options.targetEntities ?? []).join(",") !== "process")
+    fail(
+      "task_spec_repair_invalid",
+      "Phase 1 repair admits exactly one target entity type: process.",
+    );
   if (
-    !["external-dataset-curated-import", "source-evidence-dataset-development"].includes(lane) ||
+    ![
+      "external-dataset-curated-import",
+      "source-evidence-dataset-development",
+      "existing-owner-draft-repair",
+    ].includes(lane) ||
     (options.requestId !== undefined &&
       (typeof options.requestId !== "string" ||
         !options.requestId ||
@@ -352,6 +384,7 @@ export function createTask(
     runtime_identity: runtimeIdentity(context),
     write_policy: { mode: "dry-run", remote_state_code: 0 },
     created_at_utc: new Date().toISOString(),
+    ...(repairSelection ? { repair: repairSelection } : {}),
   };
   const registered = readRegistration(context);
   if (registered) {
@@ -387,6 +420,53 @@ export function createTask(
     "state",
   );
   fs.mkdirSync(staging, { recursive: true, mode: 0o700 });
+  let repairDocuments: [string, Buffer][] = [];
+  if (repairSelection) {
+    const userId = context.accountIntent?.userId;
+    const projectRef = context.accountIntent?.projectRef;
+    if (!userId || !projectRef)
+      fail(
+        "repair_scope_requires_account_intent",
+        "A repair task requires the exact owner account intent before its scope can be validated.",
+      );
+    const boundPath = (selected: string): string => {
+      const fact = context.inputs.find((input) => input.path === selected);
+      if (!fact)
+        fail(
+          "task_spec_repair_invalid",
+          "Repair contract, before rows and candidate rows must each be captured selected inputs.",
+        );
+      return fact.path;
+    };
+    // Offline only: the registered scope validates the three captured inputs against each other.
+    // No owner CLI runs here. The fresh owner/state/before preflight belongs to task resume, outside
+    // the task lock, and is registered as trusted producer evidence there.
+    const scope: FoundryRepairScope = readFoundryRepairScope({
+      contractFile: boundPath(repairSelection.contract),
+      beforeFile: boundPath(repairSelection.before),
+      candidateFile: boundPath(repairSelection.candidate),
+      datasetType: "process",
+      targetUserId: userId,
+      verifiedProjectRef: projectRef,
+      stateCode: "0",
+      relativePath: (file) => path.relative(context.workspaceRoot, file),
+    });
+    repairDocuments = [
+      [
+        "repair-scope.json",
+        bytes({
+          schema: "tiangong-foundry.repair-scope-record.v1" as const,
+          kind: scope.kind,
+          status: scope.status,
+          contract_sha256: scope.contract_sha256,
+          rows_sha256: scope.rows_sha256,
+          changed_paths: [...scope.changed_paths],
+          actions: scope.actions.map((action) => ({ ...action })),
+          remote_state_verified: false as const,
+        }),
+      ],
+    ];
+  }
   const documents: [string, Buffer][] = [
     ["source-manifest.json", sourceBytes],
     ["profile-lock.json", profileBytes],
@@ -394,6 +474,7 @@ export function createTask(
     ["artifact-index.jsonl", Buffer.alloc(0)],
   ];
   if (seedBytes) documents.push(["seed-manifest.json", seedBytes]);
+  documents.push(...repairDocuments);
   for (const [name, content] of documents) {
     const fd = fs.openSync(path.join(staging, name), "wx", 0o600);
     try {
