@@ -36,7 +36,7 @@ import {
   buildReferenceClosureBlockers,
   referenceKey,
 } from "./import-curation/internal/workflow-reference-closure.ts";
-import { readRows } from "./import-curation/internal/runtime-io.ts";
+import { readRows, repoRelativePath } from "./import-curation/internal/runtime-io.ts";
 import { bundleRowTypes, type BundleRowType } from "./bundle-row-types.ts";
 import { workflowObject } from "./foundry-workflow-state.ts";
 import type { OwnerExecutionRequest } from "./foundry-owner-execution-store.ts";
@@ -333,7 +333,7 @@ export async function readbackFoundryOwner(
                     expectedRows: rows.length,
                     resolveFile: (value) =>
                       typeof value === "string" ? path.resolve(context.assetRoot, value) : null,
-                    relativePath: (file) => path.relative(context.assetRoot, file),
+                    relativePath: (file) => repoRelativePath(context.assetRoot, file),
                   })
                 )
                   throw new Error("Repair requires its consumed native contract receipt.");

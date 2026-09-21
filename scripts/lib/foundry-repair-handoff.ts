@@ -6,6 +6,7 @@ import {
 } from "./finalize-owners/native-draft-handoff.ts";
 import type { FoundryRuntimeContext } from "./foundry-runtime-context.ts";
 import { resolveInstalledTiangongLcaCliPackage } from "./foundry-runtime-utils.ts";
+import { repoRelativePath } from "./import-curation/internal/runtime-io.ts";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -24,7 +25,7 @@ export function createFoundryRepairHandoffPlan(input: {
 }): JsonRecord {
   const account = input.context.accountIntent;
   if (!account) throw new Error("A repair handoff plan requires the current account intent.");
-  const relativePath = (file: string) => path.relative(input.context.assetRoot, file);
+  const relativePath = (file: string) => repoRelativePath(input.context.assetRoot, file);
   const native = readNativeDraftHandoff({
     contractFile: input.contractFile,
     rowsFile: input.candidateFile,

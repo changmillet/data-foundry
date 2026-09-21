@@ -33,8 +33,8 @@ checkPaths:
   - test/scenarios/foundry-package-consumer.test.mts
   - docs/public-runtime-contract.md
 lastReviewedAt: 2026-09-21
-lastReviewedCommit: f059e4703438d661aa823d33c7cff0a9582645bc
-lastReviewedNote: "Reviewed for Foundry #171: metadata repair preserves exact historical references only with payload-derived occurrence and owner/state/content proof, retains raw CLI freshness blockers and false publication readiness, and changes no ordinary authoring, credential or publication authority. Producer-verified zero-dispatch successors require fresh scope and grant."
+lastReviewedCommit: bc41ba12a0fd9d6499c6ee992df891cf15e5303b
+lastReviewedNote: "Reviewed for Foundry #171 Windows CI correction: repair handoff and readback artifact paths reuse the existing canonical relative-path owner, matching strict native closeout on every platform. Payload, contract, authorization, exact readback and no-replay requirements are preserved."
 related:
   - docs/runtime-context-contract.md
   - docs/task-authorization-contract.md
