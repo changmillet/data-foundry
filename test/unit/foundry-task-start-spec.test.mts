@@ -9,6 +9,7 @@ import {
   parseFoundryTaskStartSpec,
   taskStartSpecFingerprint,
 } from "../../scripts/lib/foundry-task-start-spec.ts";
+import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
 
 const base = {
   schema: FOUNDRY_TASK_START_SPEC_SCHEMA,
@@ -28,6 +29,83 @@ const base = {
     output_directory: "outputs/cleanup",
   },
 };
+
+const brief = {
+  original_request: "Please prepare this flow for internal review.",
+  goal: "Prepare an evidence-backed Flow draft",
+  intended_use: "Internal LCA comparison",
+  scope: "The selected Flow and its source evidence",
+  deliverables: ["A validated Flow draft", "An evidence summary"],
+  user_constraints: ["Do not publish"],
+  ai_assumptions: ["The selected source describes the intended period"],
+};
+
+test("optional brief is exact, frozen and changes only its selected request revision", () => {
+  const facts = [{ path: "/project/inputs/flow.json", bytes: 42, sha256: "1".repeat(64) }];
+  const legacy = parseFoundryTaskStartSpec(base);
+  assert.equal(Object.hasOwn(legacy, "brief"), false);
+  assert.equal(taskStartSpecFingerprint(legacy, facts), sha256Json({ spec: base, inputs: facts }));
+
+  const parsed = parseFoundryTaskStartSpec({ ...base, brief });
+  assert.deepEqual(parsed.brief, brief);
+  assert.deepEqual(materializeMigrationTaskSpec(migrationTaskTemplate(parsed)), parsed);
+  assert.equal(Object.isFrozen(parsed.brief), true);
+  assert.equal(Object.isFrozen(parsed.brief?.deliverables), true);
+  assert.equal(Object.isFrozen(parsed.brief?.user_constraints), true);
+  assert.equal(Object.isFrozen(parsed.brief?.ai_assumptions), true);
+  assert.notEqual(taskStartSpecFingerprint(parsed, facts), taskStartSpecFingerprint(legacy, facts));
+  assert.notEqual(
+    taskStartSpecFingerprint(parsed, facts),
+    taskStartSpecFingerprint(
+      parseFoundryTaskStartSpec({ ...base, brief: { ...brief, goal: "Revise the Flow draft" } }),
+      facts,
+    ),
+  );
+  assert.deepEqual(
+    parseFoundryTaskStartSpec({
+      ...base,
+      brief: {
+        ...brief,
+        original_request: null,
+        intended_use: null,
+        scope: null,
+        deliverables: [],
+        user_constraints: [],
+        ai_assumptions: [],
+      },
+    }).brief,
+    {
+      ...brief,
+      original_request: null,
+      intended_use: null,
+      scope: null,
+      deliverables: [],
+      user_constraints: [],
+      ai_assumptions: [],
+    },
+  );
+});
+
+test("brief rejects missing, extra, blank, oversized and mistyped content", () => {
+  const invalid = [
+    null,
+    { ...brief, goal: " " },
+    { ...brief, original_request: "\n" },
+    { ...brief, intended_use: " \t " },
+    { ...brief, scope: 5 },
+    { ...brief, goal: "x".repeat(4_097) },
+    { ...brief, original_request: "x".repeat(16_385) },
+    { ...brief, deliverables: Array(33).fill("item") },
+    { ...brief, user_constraints: ["x".repeat(2_049)] },
+    { ...brief, ai_assumptions: [" "] },
+    { ...brief, deliverables: [42] },
+    { ...brief, unsupported: true },
+    { goal: brief.goal },
+  ];
+  for (const value of invalid) {
+    assert.throws(() => parseFoundryTaskStartSpec({ ...base, brief: value }));
+  }
+});
 
 test("task-start spec strictly freezes lane, actor, sources, seed, account and preparation", () => {
   const parsed = parseFoundryTaskStartSpec(base);

@@ -29,6 +29,16 @@ interface CleanupPreparation {
   readonly output_directory: string;
 }
 
+export interface FoundryTaskBrief {
+  readonly original_request: string | null;
+  readonly goal: string;
+  readonly intended_use: string | null;
+  readonly scope: string | null;
+  readonly deliverables: readonly string[];
+  readonly user_constraints: readonly string[];
+  readonly ai_assumptions: readonly string[];
+}
+
 export interface FoundryTaskStartSpec {
   readonly schema: typeof FOUNDRY_TASK_START_SPEC_SCHEMA;
   readonly request_id: string;
@@ -40,6 +50,8 @@ export interface FoundryTaskStartSpec {
   readonly seed: Readonly<SourceSelection> | null;
   readonly account_intent: Readonly<AccountIntentSelection> | null;
   readonly preparation: Readonly<CleanupPreparation> | null;
+  /** Omitted for legacy requests, preserving their normalized bytes and fingerprints. */
+  readonly brief?: Readonly<FoundryTaskBrief>;
   /** Present only for the existing-owner-draft-repair lane, so v1 fingerprints never change. */
   readonly repair?: Readonly<FoundryRepairSelection>;
 }
@@ -165,6 +177,48 @@ function preparation(
   });
 }
 
+function briefText(value: unknown, label: string, maxLength: number): string {
+  if (typeof value !== "string" || !value.trim() || Array.from(value).length > maxLength)
+    fail("task_spec_brief_invalid", `${label} must be a bounded nonblank string.`);
+  return value;
+}
+
+function nullableBriefText(value: unknown, label: string, maxLength: number): string | null {
+  return value === null ? null : briefText(value, label, maxLength);
+}
+
+function briefItems(value: unknown, label: string): readonly string[] {
+  if (!Array.isArray(value) || value.length > 32)
+    fail("task_spec_brief_invalid", `${label} must be a bounded string list.`);
+  return Object.freeze(value.map((item) => briefText(item, `${label} item`, 2_048)));
+}
+
+function taskBrief(value: unknown): Readonly<FoundryTaskBrief> {
+  const item = record(value, "Task brief");
+  exact(
+    item,
+    [
+      "original_request",
+      "goal",
+      "intended_use",
+      "scope",
+      "deliverables",
+      "user_constraints",
+      "ai_assumptions",
+    ],
+    "Task brief",
+  );
+  return Object.freeze({
+    original_request: nullableBriefText(item.original_request, "Original request", 16_384),
+    goal: briefText(item.goal, "Task goal", 4_096),
+    intended_use: nullableBriefText(item.intended_use, "Intended use", 4_096),
+    scope: nullableBriefText(item.scope, "Task scope", 4_096),
+    deliverables: briefItems(item.deliverables, "Deliverables"),
+    user_constraints: briefItems(item.user_constraints, "User constraints"),
+    ai_assumptions: briefItems(item.ai_assumptions, "AI assumptions"),
+  });
+}
+
 export function parseFoundryTaskStartSpec(value: unknown): FoundryTaskStartSpec {
   const item = record(value, "Task-start spec");
   exact(
@@ -180,6 +234,7 @@ export function parseFoundryTaskStartSpec(value: unknown): FoundryTaskStartSpec 
       "seed",
       "account_intent",
       "preparation",
+      ...(Object.hasOwn(item, "brief") ? ["brief"] : []),
       ...(Object.hasOwn(item, "repair") ? ["repair"] : []),
     ],
     "Task-start spec",
@@ -256,6 +311,7 @@ export function parseFoundryTaskStartSpec(value: unknown): FoundryTaskStartSpec 
     seed,
     account_intent: account(item.account_intent),
     preparation: preparation(item.preparation, sources),
+    ...(Object.hasOwn(item, "brief") ? { brief: taskBrief(item.brief) } : {}),
     ...(repair ? { repair } : {}),
   };
   return Object.freeze(spec);
