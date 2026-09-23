@@ -33,8 +33,8 @@ checkPaths:
   - test/scenarios/foundry-package-consumer.test.mts
   - docs/public-runtime-contract.md
 lastReviewedAt: 2026-09-23
-lastReviewedCommit: 649385e48ad75e91031efec4b592ad55d18cf121
-lastReviewedNote: "Reviewed for Foundry #190: optional brief, interaction input, scoped assessment, semantic decision IDs and partial recap are current public source contracts."
+lastReviewedCommit: 53bebdb52a125a380d4470fbc398d3895694eba4
+lastReviewedNote: "Reviewed for Foundry #192: installed brief and interaction smoke exercises the existing public task start, resume and status result contracts without changing their semantics."
 related:
   - docs/runtime-context-contract.md
   - docs/task-authorization-contract.md
