@@ -158,9 +158,9 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - test/unit/zero-javascript-ratchet.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: 5f848dab3c680c7ad5f5d768d9f1585e26f2427c
-lastReviewedNote: "Reviewed for Foundry #185: release-only 0.1.10 identity projection from qualified main 5f848dab3c680c7ad5f5d768d9f1585e26f2427c changes no runtime behavior, dependency, permission or command contract. Signed publication and native/bootstrap qualification remain required release gates."
+lastReviewedAt: 2026-09-23
+lastReviewedCommit: 1e4f48bf8359f5e9bacba5741d15b7ff78f2eb41
+lastReviewedNote: "Current Foundry package, runtime, and authoring entrypoints are reviewed."
 ---
 
 # TianGong LCA Data Foundry
@@ -214,9 +214,7 @@ Public project/client settings may be blank for the official Production profile;
 
 Foundry is a pnpm-only, non-JSX Node.js 24 project. The reproducible toolchain is `pnpm@11.24.0`, TypeScript `7.0.2` as the only compiler anywhere in the dependency graph, Oxlint for linting, and Prettier for formatting; tracked `.jsx`/`.tsx` are rejected. TypeScript enforces erasable-only runtime syntax; root lint ignores nested Oxlint configs, bans TypeScript error-suppression comments, runs a comment-aware tracked-source audit that rejects native disable directives without treating strings as directives, and reconciles every Git-enumerated `.ts`/`.mts`/`.cts` file against intentional first-party includes. The audit clears inherited repository-local Git bindings before inspecting its target, preventing pre-push hook state from redirecting temporary fixtures into the parent index. Builds use the Node-native safe cleaner to remove stale `dist` output before `tsc`; `noEmitOnError` guarantees that TypeScript diagnostics emit no replacement JavaScript, without claiming arbitrary I/O failure atomicity. Source and built commands resolve one trusted repository root and their active `.ts`/`.js` entry independently of CWD. The repository keeps one root `pnpm-workspace.yaml` and `pnpm-lock.yaml`; npm/Yarn lockfiles, TypeScript 5/6 aliases, `@typescript-eslint`, and TypeScript-compiler-backed formatting plugins are outside the supported graph.
 
-Issue #82 updates only that exact package-manager contract to pnpm 11.24.0. A 11.24 lockfile-only reconciliation leaves the sole root lock byte-identical and preserves the resolved dependency graph; no runtime, profile, credential, production case, or remote-write behavior changes.
-
-Issue #63 began with a historical baseline of 160 tracked JavaScript artifacts: 95 runtime `.mjs` files, 64 `.mjs` tests, and one Prettier `.cjs` config. That monotonic migration is complete. `test/unit/zero-javascript-ratchet.test.mts` now permanently enforces zero tracked first-party JavaScript, native TypeScript configuration, and TS-only compiler/test/lint globs; characterization and real-case TDD remain mandatory for later changes.
+The permanent `test/unit/zero-javascript-ratchet.test.mts` requires zero tracked first-party JavaScript and a TypeScript-only compiler, lint, and test graph.
 
 The first completed CLI-spine slice migrates `scripts/lib/foundry-args.ts` and `scripts/lib/foundry-command-registry.ts`. Its focused test fixes parser coercion, exact help JSON and command order, exit-code families, and all static consumer imports before later entrypoint and dispatcher slices proceed.
 
