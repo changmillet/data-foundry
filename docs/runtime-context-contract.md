@@ -74,6 +74,8 @@ The TIDAS expectation admits only `linux-x64`, `linux-arm64`, `darwin-arm64` and
 
 Public semantic input remains separate from frozen task source selection and runtime trust. The invocation checks task/actor/current-assessment/work-item bindings, captures explicit non-credential input files, and registers immutable snapshots. Existing indexed work provides the collector context; submitted files provide candidate data only. Repaired rows retain source ancestry, and the next assessment must match the newest row manifest. No semantic data or local apply result is authorization for a remote action.
 
+Public interaction input is another explicit, bounded, credential-free file selection. It checks task/actor/current interaction digest, rejects session/credential paths and changed bytes, and stores the raw question/answer and interpreted decision under the task's indexed output root. Only hashes of frozen sources or already indexed artifacts can be cited as evidence. Current applicable decisions are projected into the authoring context and semantic input binding, without changing `source-manifest.json`, runtime qualification, authorization or the CLI's independent scientific proof.
+
 | Root | Meaning and authority |
 | --- | --- |
 | `runtimeRoot` | Immutable executing package. No user outputs or state may be written here. |

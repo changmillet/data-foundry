@@ -505,6 +505,8 @@ Toolchain and migration contracts must pass in a clean arbitrary Git worktree af
 
 ## Commands
 
+The task interaction contract has pure parser and decision-binding tests in `unit/foundry-interaction-contract.test.mts`, while `scenarios/foundry-interaction-workflow.test.mts` checks persistence, stale replies and resume across facade instances. The public workflow scenario verifies one-set assessment, selective recheck, completion fencing and semantic decision adoption with the qualified local owners. Keep these cases in their existing test families; no production account or remote mutation is required.
+
 - `pnpm test`: run the full suite.
 - `pnpm test:toolchain`: verify the pnpm/TS7 graph and migration inventory.
 - `pnpm test:unit`: run pure logic and metadata tests.

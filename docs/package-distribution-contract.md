@@ -58,6 +58,8 @@ The package depends exactly on public `@tiangong-lca/cli@0.1.19`. Ajv remains a 
 
 `scripts/public-api.ts` binds the facade's module identity internally. A consumer supplies workspace, optional runtime selection/account intent and host controls; it cannot redirect package discovery through its own `moduleUrl`. The root and `./runtime` exports expose only the facade, public command host, result/task/migration protocol types and validators, next-action binding verifier, and package descriptor verifier. Internal command factories, mutation dispatch and raw runtime/task stores are not package exports.
 
+The public package includes `foundry-interaction-input.schema.json` and advertises `tiangong-foundry.interaction-input.v1` beside the existing task-start and semantic protocols. Its source graph exposes only the strict interaction input/state types through `scripts/public-api.ts`; the task-local store and assessment implementation remain internal. Package validation checks the schema, descriptor protocol list and sanitized file inventory together.
+
 The installed `runtimeUse` facade can retain a CLI-managed cache containing its own package after the package descriptor and independently trusted current component set both verify that ownership. The source-free consumer test exercises that behavior from real installed application bytes, including rollback, restoration, retained leases and rejected cache drift. Its surrounding component metadata is explicitly a fixture; it does not establish F1 provenance, native launch qualification or publication.
 
 ## Managed process admission

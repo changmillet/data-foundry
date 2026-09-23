@@ -137,6 +137,7 @@ Foundry owns:
 - its exact pnpm package-manager contract, sole root workspace/lock, and repository-local validation gates;
 - its source-free public bin/API compiler graph, sanitized npm staging manifest, explicit file allowlist and package descriptor verification;
 - the six hierarchical workspace/task facade operations, strict result/task-spec schemas, request/revision indexes and actor-bound task projection;
+- task-local brief and interaction artifacts, evidence-bound answer history, per-type assessment coverage and applicable-decision projection; the Skills entry owns question wording and final prose;
 - deterministic local task preparation and read-only legacy inventory through existing runtime/task owners;
 
 - task queue and task state;

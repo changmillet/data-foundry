@@ -50,6 +50,8 @@ The runtime host revalidates persisted authorization through its explicit loader
 
 The public facade does not authenticate during workspace initialization or task start. A request revision may retain non-secret account intent, but login/session readiness and task permission remain separate. Local preparation and read-only identity preflight report `permissions.not_required`. Any restricted action must first register its requested actions and approval reference, then rehydrate current qualification, identity and this authorization before exposing a child CommandSpec.
 
+A task brief, question, raw answer, interpreted decision, AI assumption or decision recap is not user authorization. The separate interaction input can influence semantic authoring only in its registered scope and cannot approve a QA waiver, mint missing support data, or dispatch a remote write. Pending questions prevent write approval until the current assessment and relevant decision work are complete; independent local assessment can continue. Existing grant, account, content, capsule, readback and no-replay checks still run independently after the question is resolved.
+
 The extended public workflow may authenticate for read-only identity preflight after local semantic preparation. Its task account intent and fresh CLI receipt select the read scope. Host authentication is explicit; OAuth configuration is public and headless tokens stay process-only. Query receipts and current-row identity reports are evidence, never an action grant. Preflight does not consume, reset or dispatch a mutation attempt; subsequent permission admission still requires its own current identity and approval checks.
 
 ## Required binding and evidence

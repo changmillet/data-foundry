@@ -1,7 +1,7 @@
 {
   "$schema": "../specs/schemas/file-location-registry.schema.json",
   "schema_version": 1,
-  "updated_at_utc": "2026-09-21T03:05:00Z",
+  "updated_at_utc": "2026-09-23T10:02:33Z",
   "policy_doc": "docs/file-organization.md",
   "entries": [
     {
@@ -204,6 +204,11 @@
         "scripts/lib/foundry-workflow-rows.ts",
         "scripts/lib/foundry-workflow-assessment.ts",
         "scripts/lib/foundry-semantic-input.ts",
+        "scripts/lib/foundry-interaction-input.ts",
+        "scripts/lib/foundry-interaction-types.ts",
+        "scripts/lib/foundry-interaction-projection.ts",
+        "scripts/lib/foundry-workflow-interaction.ts",
+        "scripts/lib/foundry-semantic-interaction.ts",
         "scripts/lib/foundry-workflow-semantic.ts",
         "scripts/lib/foundry-workflow-state.ts",
         "scripts/lib/foundry-workflow-identity.ts",
@@ -227,7 +232,7 @@
       ],
       "sensitivity": "non-sensitive task ledger schema examples; contains no credentials and no private payloads",
       "tracked": true,
-      "notes": "Defines immutable source/input lineage, producer-backed operation receipts, current approval, and owner attempt/readback evidence. The dedicated consume operation owns attempts/owner-v1/<scope>/consumed.json; execution requests, observations and results remain registered under task outputs. Canonical reference query/check/result artifacts bind current identity decisions and are verified before reference-only completion. Explicit ordinary/production-test intent is retained in account registration and migration templates; public traceHash acceptance retains original/fresh-read/accepted evidence under owner-readback outputs."
+      "notes": "Defines immutable source/input lineage, producer-backed operation receipts, current approval, and owner attempt/readback evidence. Task-local question, raw answer, interpreted decision, AI assumption and per-set assessment context artifacts use the same indexed lineage. The dedicated consume operation owns attempts/owner-v1/<scope>/consumed.json; execution requests, observations and results remain registered under task outputs. Canonical reference query/check/result artifacts bind current identity decisions and are verified before reference-only completion. Explicit ordinary/production-test intent is retained in account registration and migration templates; public traceHash acceptance retains original/fresh-read/accepted evidence under owner-readback outputs."
     },
     {
       "id": "foundry-safety-policy",
@@ -443,7 +448,24 @@
       ],
       "sensitivity": "non-sensitive schema; credentials and session contents are forbidden",
       "tracked": true,
-      "notes": "Bounded request, actor, lane, profile, source/seed, account-intent and local-preparation input contract."
+      "notes": "Bounded request, actor, lane, profile, source/seed, account-intent and local-preparation input contract with an optional task brief that preserves legacy request fingerprints when omitted."
+    },
+    {
+      "id": "foundry-interaction-input-schema",
+      "status": "active",
+      "classification": "machine-readable-public-facade-schema",
+      "current_path": "specs/schemas/foundry-interaction-input.schema.json",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "docs/public-runtime-contract.md",
+        "docs/foundry-task-contracts.md",
+        "scripts/lib/foundry-interaction-input.ts",
+        "test/unit/foundry-interaction-contract.test.mts"
+      ],
+      "sensitivity": "non-sensitive schema; task-local raw answers stay in ignored runtime artifacts",
+      "tracked": true,
+      "notes": "Strict task, actor, current-state digest, question, raw-answer and AI-assumption submission shape; it grants no scientific or remote-write authority."
     },
     {
       "id": "foundry-facade-request-index-schema",
