@@ -282,8 +282,8 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - test/README.md
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: abd80f28c1eff58c19ae40c929cf130b8b7d2431
-lastReviewedNote: "Reviewed for Foundry #200: queue exit-1 blockers stay in local task evidence while independent assessment proceeds; stage order, CLI ownership, authorization and no-replay boundaries remain unchanged."
+lastReviewedCommit: 05e4bd11b08276d092d10051b3f4f376c2af52ef
+lastReviewedNote: "Reviewed for Foundry #197: release-only 0.1.12 identity projection from exact merged #200 main 05e4bd11b08276d092d10051b3f4f376c2af52ef; #196 early-question continuation and #200 indexed, human-readable blocked-queue behavior are already in the base. This projection changes no runtime behavior, CLI pin, dependencies, scientific or permission gates. Signed publication and installed qualification remain separate release gates."
 tracker:
   kind: filesystem
   inbox: tasks/inbox
