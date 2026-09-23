@@ -32,8 +32,8 @@ checkPaths:
   - prettier.config.ts
   - tsconfig*.json
 lastReviewedAt: 2026-09-23
-lastReviewedCommit: 53bebdb52a125a380d4470fbc398d3895694eba4
-lastReviewedNote: "Reviewed for installed interaction smoke: the local packed-consumer test retains Foundry's task-local context and separate scientific, authorization and no-replay gates."
+lastReviewedCommit: a836ddaa380a36c8b1466669c1716f6201e9d919
+lastReviewedNote: "Reviewed for Foundry #192: release-only 0.1.11 identity projection from exact merged #193 main a836ddaa380a36c8b1466669c1716f6201e9d919; task interaction, scientific evidence, permission and no-replay boundaries are unchanged. Signed publication and installed qualification remain separate release gates."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry
