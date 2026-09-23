@@ -13,6 +13,8 @@ import {
 import { runFoundryTaskOperation } from "../../scripts/lib/foundry-task-store.ts";
 import { selectFoundryInteractionInput } from "../../scripts/lib/foundry-interaction-input.ts";
 import { recordFoundryInteractionInput } from "../../scripts/lib/foundry-workflow-interaction.ts";
+import { workflowFixture } from "../fixtures/foundry-public-workflow.ts";
+import { flowRow } from "../fixtures/row-builders.ts";
 
 const moduleUrl = new URL("../../scripts/runtime-entry.ts", import.meta.url).href;
 const actor = "agent/session-190";
@@ -287,4 +289,169 @@ test("a live question and revised answer survive a new process and do not imply 
     ),
     { code: "interaction_after_approval" },
   );
+});
+
+test("a pending human question leaves independent local preparation runnable", async (t) => {
+  const { root, workspace, facade } = workflowFixture(t);
+  const scenarios = [
+    {
+      name: "ordinary-import",
+      lane: "external-dataset-curated-import",
+      type: "process",
+      source: "selected native-owner input",
+      seed: false,
+      cleanup: false,
+      expectedArtifact: "foundry-native-import.json",
+    },
+    {
+      name: "source-evidence",
+      lane: "source-evidence-dataset-development",
+      type: "flow",
+      source: JSON.stringify({ rows: [flowRow("81818181-8181-4818-8818-818181818181")] }),
+      seed: true,
+      cleanup: false,
+      expectedArtifact: "foundry-context.json",
+    },
+    {
+      name: "explicit-cleanup",
+      lane: "external-dataset-curated-import",
+      type: "flow",
+      source: JSON.stringify({ rows: [flowRow("82828282-8282-4828-8828-828282828282")] }),
+      seed: false,
+      cleanup: true,
+      expectedArtifact: "dataset-curation-cleanup-report.json",
+    },
+  ] as const;
+  for (const scenario of scenarios) {
+    const source = path.join(root, `${scenario.name}-source.json`);
+    const specFile = path.join(root, `${scenario.name}-request.json`);
+    const descriptor = path.join(root, `${scenario.name}-question.json`);
+    fs.writeFileSync(source, scenario.source);
+    fs.writeFileSync(
+      specFile,
+      JSON.stringify({
+        schema: "tiangong-foundry.task-start.v1",
+        request_id: `issue-196-${scenario.name}`,
+        actor_id: "issue-196-local",
+        lane: scenario.lane,
+        profile_id: "generic",
+        target_entities: [scenario.type],
+        sources: [{ path: source }],
+        seed: scenario.seed ? { path: source } : null,
+        account_intent: null,
+        preparation: scenario.cleanup
+          ? {
+              operation: "dataset-curation-cleanup",
+              type: scenario.type,
+              input: source,
+              source_input: null,
+              output_directory: `outputs/${scenario.name}`,
+            }
+          : null,
+      }),
+    );
+    const started = await facade.start({ specFile });
+    assert.equal(started.status, "ready");
+    assert.ok(started.task_id);
+    fs.writeFileSync(
+      descriptor,
+      JSON.stringify({
+        schema: "tiangong-foundry.interaction-input.v1",
+        task_id: started.task_id,
+        actor_id: "issue-196-local",
+        expected_state_sha256: null,
+        events: [
+          {
+            kind: "question",
+            id: `purpose-${scenario.name}`,
+            dataset_type: null,
+            missing: "The selected source leaves its intended use unclear.",
+            impact: "Scientific authoring depends on that choice.",
+            recommendation: "Ask now and continue independent local preparation.",
+            ask: "What is the intended use?",
+            choices: ["Specify the goal", "Investigate first"],
+            evidence_sha256: [sha(fs.readFileSync(source))],
+            supersedes: null,
+          },
+        ],
+      }),
+    );
+    const invocation = { taskId: started.task_id, actorId: "issue-196-local" };
+    const asked = await facade.resume({ ...invocation, interactionInputFile: descriptor });
+    assert.equal(asked.status, "needs_input", scenario.name);
+    assert.equal(asked.permissions.state, "not_required", scenario.name);
+    assert.ok(
+      asked.next_actions.some((action) => action.kind === "human"),
+      `${scenario.name} must preserve the human question`,
+    );
+    assert.ok(
+      asked.next_actions.some(
+        (action) => action.kind === "command" && action.code === "resume_local_preparation",
+      ),
+      `${scenario.name} must expose the independent local preparation`,
+    );
+    const progressed = await facade.resume(invocation);
+    assert.equal(progressed.status, "needs_input", scenario.name);
+    assert.ok(
+      progressed.artifacts.some((artifact) => artifact.role === scenario.expectedArtifact),
+      `${scenario.name} did not register its independent local stage`,
+    );
+    assert.equal(progressed.permissions.state, "not_required", scenario.name);
+    assert.ok(
+      progressed.artifacts.every(
+        (artifact) =>
+          ![
+            "foundry-finalize.json",
+            "foundry-authorization.json",
+            "owner-execution-request.json",
+            "consumed.json",
+          ].includes(artifact.role),
+      ),
+      `${scenario.name} cannot reach remote authority while the question is pending`,
+    );
+    const refused = await facade.resume({
+      ...invocation,
+      authorizationInputFile: path.join(root, "unselected-authorization.json"),
+    });
+    assert.equal(refused.blockers[0]?.code, "interaction_decision_pending", scenario.name);
+    let current = progressed;
+    for (let step = 0; step < 8; step += 1) {
+      if (!current.next_actions.some((action) => action.kind === "command")) break;
+      current = await facade.resume(invocation);
+      assert.equal(current.status, "needs_input", scenario.name);
+      assert.equal(current.permissions.state, "not_required", scenario.name);
+    }
+    assert.equal(
+      current.next_actions.some((action) => action.kind === "command"),
+      false,
+      `${scenario.name} must stop before identity, finalization and execution`,
+    );
+    assert.ok(current.next_actions.some((action) => action.kind === "human"));
+    assert.ok(
+      current.artifacts.every(
+        (artifact) =>
+          ![
+            "foundry-finalize.json",
+            "foundry-authorization.json",
+            "owner-execution-request.json",
+            "consumed.json",
+          ].includes(artifact.role),
+      ),
+    );
+    const index = path.join(
+      workspace,
+      ".foundry",
+      "workspaces",
+      started.task_id,
+      "artifact-index.jsonl",
+    );
+    const beforeRepeat = fs.readFileSync(index);
+    const repeated = await facade.resume(invocation);
+    assert.deepEqual(fs.readFileSync(index), beforeRepeat, "pending work must not replay stages");
+    assert.equal(
+      repeated.next_actions.some((action) => action.kind === "command"),
+      false,
+    );
+    assert.equal(repeated.permissions.state, "not_required");
+  }
 });

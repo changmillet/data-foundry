@@ -280,8 +280,8 @@ checkPaths:
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
 lastReviewedAt: 2026-09-23
-lastReviewedCommit: a836ddaa380a36c8b1466669c1716f6201e9d919
-lastReviewedNote: "Reviewed for Foundry #192: release-only 0.1.11 identity projection from exact merged #193 main a836ddaa380a36c8b1466669c1716f6201e9d919; #190/#193 public interaction behavior, CLI pin, dependencies, permission and scientific gates remain unchanged. Signed publication and native/installed qualification remain separate release gates."
+lastReviewedCommit: a3d7a738d24c1183b8198da40aa74f3a2215b959
+lastReviewedNote: "Reviewed for Foundry #196: one public scenario now proves unanswered questions retain native import, source context and cleanup continuations, then stop with no receipt replay or authorization."
 ---
 
 # Test Layout
@@ -505,7 +505,7 @@ Toolchain and migration contracts must pass in a clean arbitrary Git worktree af
 
 ## Commands
 
-The task interaction contract has pure parser and decision-binding tests in `unit/foundry-interaction-contract.test.mts`, while `scenarios/foundry-interaction-workflow.test.mts` checks persistence, stale replies and resume across facade instances. The public workflow scenario verifies one-set assessment, selective recheck, completion fencing and semantic decision adoption with the qualified local owners. Keep these cases in their existing test families; no production account or remote mutation is required.
+The task interaction contract has pure parser and decision-binding tests in `unit/foundry-interaction-contract.test.mts`, while `scenarios/foundry-interaction-workflow.test.mts` checks persistence, stale replies and resume across facade instances. It also proves that an unanswered question retains the next independent native import, source-evidence context, or explicit cleanup action, then stops before identity, finalization and authorization without replaying local receipts. The public workflow scenario verifies one-set assessment, selective recheck, completion fencing and semantic decision adoption with the qualified local owners. Keep these cases in their existing test families; no production account or remote mutation is required.
 
 - `pnpm test`: run the full suite.
 - `pnpm test:toolchain`: verify the pnpm/TS7 graph and migration inventory.

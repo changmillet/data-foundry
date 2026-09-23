@@ -95,6 +95,7 @@ import {
 import { authorizeFoundryWorkflow } from "./lib/foundry-workflow-authorization.ts";
 import { continueFoundryPreparedApproval } from "./lib/foundry-workflow-approval-continuation.ts";
 import type { FoundryAuthentication } from "./lib/foundry-runtime-identity.ts";
+import type { ArtifactEntry } from "./lib/foundry-task-types.ts";
 
 export interface FoundryFacadeRuntimeSelection {
   readonly cliExpectation: unknown;
@@ -527,6 +528,17 @@ function completionProven(
   return false;
 }
 
+function independentLocalPreparationPending(
+  record: FoundryFacadeTaskRecord,
+  workflow: ReturnType<typeof currentWorkflowState>,
+  entries: readonly ArtifactEntry[],
+): boolean {
+  if (record.spec.repair) return false;
+  if (record.spec.preparation)
+    return !entries.some((entry) => entry.command === "dataset-curation-cleanup");
+  return !workflow.rows || workflow.assessmentRemainingTypes.length > 0;
+}
+
 function taskProjection(
   operation: "task.start" | "task.status" | "task.resume",
   context: ReturnType<typeof createFoundryRuntimeContext>,
@@ -788,7 +800,9 @@ function taskProjection(
       })),
       nextActions: [
         ...askActions,
-        ...(workflow.assessmentRemainingTypes.length ? [resumeCommand(context, record)] : []),
+        ...(independentLocalPreparationPending(record, workflow, inspected.artifacts)
+          ? [resumeCommand(context, record)]
+          : []),
       ],
       runtimeIdentity: identity,
       permissions: noPermission(),
@@ -1889,7 +1903,8 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
         const workflow = currentWorkflowState(context, before.artifacts);
         if (
           hasUnresolvedInteraction &&
-          (workflow.authorization || !workflow.assessmentRemainingTypes.length)
+          (workflow.authorization ||
+            !independentLocalPreparationPending(record, workflow, before.artifacts))
         )
           return existing;
         if (record.spec.repair && !workflow.authorization && !execution.completed.size) {

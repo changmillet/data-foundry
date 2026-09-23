@@ -774,6 +774,6 @@
       "notes": "Parses explicit public reference input and records immutable indexed control snapshots."
     }
   ],
-  "lastReviewedCommit": "649385e48ad75e91031efec4b592ad55d18cf121",
-  "lastReviewedNote": "Reviewed for Foundry #190: task-local interaction input schema and decision state join the public package/task ledger under the existing ignored workspace runtime root; the optional brief remains in the facade request revision, and no credential or remote-write location changed."
+  "lastReviewedCommit": "a3d7a738d24c1183b8198da40aa74f3a2215b959",
+  "lastReviewedNote": "Reviewed for Foundry #196: local task continuation and its regression test add no durable path, credential store or remote-write location; the existing registry placement remains current."
 }

@@ -10,6 +10,7 @@ whenToUse:
   - when implementing the Foundry facade or consuming its next actions
 whenToUpdate:
   - when public command names, result envelopes or exit semantics change
+  - when task next-action availability or local continuation rules change
 checkPaths:
   - scripts/runtime-entry.ts
   - scripts/foundry-runtime.ts
@@ -31,10 +32,11 @@ checkPaths:
   - test/scenarios/foundry-public-facade.test.mts
   - test/scenarios/foundry-facade-request-store.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
+  - test/scenarios/foundry-interaction-workflow.test.mts
   - docs/public-runtime-contract.md
 lastReviewedAt: 2026-09-23
-lastReviewedCommit: a836ddaa380a36c8b1466669c1716f6201e9d919
-lastReviewedNote: "Reviewed for Foundry #192: release-only 0.1.11 identity projection from exact merged #193 main a836ddaa380a36c8b1466669c1716f6201e9d919; #190/#193 public interaction behavior, CLI pin, dependencies, permission and scientific gates remain unchanged. Signed publication and native/installed qualification remain separate release gates."
+lastReviewedCommit: a3d7a738d24c1183b8198da40aa74f3a2215b959
+lastReviewedNote: "Reviewed for Foundry #196: a pending question retains bound independent local preparation before rows and through due assessment, then stops before identity, finalization, approval and execution; consumed readback stays first."
 related:
   - docs/runtime-context-contract.md
   - docs/task-authorization-contract.md
@@ -84,7 +86,7 @@ The compatibility report retains native diagnostic fields and supplies curation'
 
 Curation blockers or authoring tasks produce `needs_input` with references to the registered reports and task manifests. Active row, schema, QA, curation and authoring files are checked before presenting that state; changed bytes block continuation. Public authoring artifacts omit developer-runner execution commands and retain full source/context evidence plus the required English guidance. Assessment readiness is distinct from semantic input acceptance, write authorization and final completion.
 
-When a current blocker truly needs a person, the entry skill turns its evidence into one plain-language question: what is missing, what it affects, what is recommended, and what decision is needed. The result exposes the exact pending question and its few choices while retaining full evidence in indexed artifacts. An answered question is not repeated. An `investigate` answer remains unresolved and directs investigation rather than silently accepting the recommendation. The task may still assess independent dataset types while waiting.
+When a current blocker truly needs a person, the entry skill turns its evidence into one plain-language question: what is missing, what it affects, what is recommended, and what decision is needed. The result exposes the exact pending question and its few choices while retaining full evidence in indexed artifacts. An answered question is not repeated. An `investigate` answer remains unresolved and directs investigation rather than silently accepting the recommendation. While waiting, the result retains a bound continuation for independent native conversion, contract context, row materialization, an unattempted explicit cleanup, or due dataset assessment. Once those local steps are exhausted, it returns only the pending human action. The question still blocks identity preflight, finalization, approval and owner execution; consumed owner attempts retain readback priority and cannot be replayed.
 
 After local semantic work is ready, a further resume performs process/flow identity preflight through the qualified CLI. The task spec must already identify the intended project and user; otherwise the result is `needs_auth`. The host may supply explicit OAuth public configuration or process-only headless authentication through `FoundryFacadeOptions.authentication`. Initialization and task start remain credential-free. The facade never inherits ambient tokens, CLI overrides, Node options or preflight result caches.
 

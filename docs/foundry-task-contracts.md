@@ -29,8 +29,8 @@ checkPaths:
   - specs/import-profiles.json
   - tasks/**
 lastReviewedAt: 2026-09-23
-lastReviewedCommit: 649385e48ad75e91031efec4b592ad55d18cf121
-lastReviewedNote: "Reviewed for Foundry #190: indexed answer history, current per-type assessment coverage and derived recap preserve task provenance and attempt safety."
+lastReviewedCommit: a3d7a738d24c1183b8198da40aa74f3a2215b959
+lastReviewedNote: "Reviewed for Foundry #196: pending questions allow only unattempted indexed local preparation and due assessment; repeated resume leaves receipts unchanged after those stages are exhausted."
 related:
   - AGENTS.md
   - WORKFLOW.md
@@ -82,7 +82,7 @@ Local native-import and CLI context-pack stages use the existing operation plan,
 
 Row materialization and assessment also use this local transaction. Materialized rows preserve domain payloads and row metadata, normalize typed API payload wrappers to the CLI-compatible `json` slot, and retain a producer chain to the original selected seed or primary native dataset. Original wrappers remain in the frozen source; bundled copies are excluded from row selection. Assessment reads only selected indexed rows/context, then registers native validation, local QA, queue, curation and authoring outputs. Its report records the owner's resolution base for relative references. Pending work is a current artifact state, not permission to execute a rendered command or dispatch a remote write.
 
-The public assessment advances one dataset type per resume and records cumulative coverage. A prior set is reusable only while its row file, schema/QA/curation/authoring artifacts, contract pack, process closure queue and applicable interaction digest still match current registered facts. A changed applicable answer or assumption makes only affected sets due for re-assessment; a task-wide item affects every set. Each new generation binds the previous report and retains source receipts for reused outputs. An `in_progress` report is visible for prompt human follow-up and independent work, but cannot prove finalization or completion.
+The public assessment advances one dataset type per resume and records cumulative coverage. A prior set is reusable only while its row file, schema/QA/curation/authoring artifacts, contract pack, process closure queue and applicable interaction digest still match current registered facts. A changed applicable answer or assumption makes only affected sets due for re-assessment; a task-wide item affects every set. Each new generation binds the previous report and retains source receipts for reused outputs. An `in_progress` report is visible for prompt human follow-up and independent work, but cannot prove finalization or completion. A pending question before rows exist still permits independently registered native import, contract context and row materialization; a pending question before explicit cleanup permits that one local preparation. Repeated resume after local work is exhausted retains the same indexed evidence and cannot enter account or owner-write stages.
 
 `dataset-workflow-interaction` uses the same metadata lock, immutable output generation and hash-chained index. Its selected input descriptor binds task, actor and current interaction-state SHA; question, raw answer, interpreted decision and AI assumption events are append-only. Its evidence hashes must name frozen sources or indexed task artifacts. A duplicate accepted descriptor reuses its result; stale compare-and-swap or changed selected bytes fail. The current `interaction-state.json` is a task-scoped decision source for assessment and semantic work. It does not mutate the frozen source manifest, grant write authority or clear a consumed attempt. The user-facing `decision_recap` is derived from that state for current and partial results, with `completion_proven` true only after current completion evidence; it is not a second task truth source.
 

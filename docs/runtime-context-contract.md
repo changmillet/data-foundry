@@ -41,8 +41,8 @@ checkPaths:
   - test/scenarios/foundry-execution-admission.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
 lastReviewedAt: 2026-09-23
-lastReviewedCommit: a836ddaa380a36c8b1466669c1716f6201e9d919
-lastReviewedNote: "Reviewed for Foundry #192: release-only 0.1.11 identity projection from exact merged #193 main a836ddaa380a36c8b1466669c1716f6201e9d919; #190/#193 public interaction behavior, CLI pin, dependencies, permission and scientific gates remain unchanged. Signed publication and native/installed qualification remain separate release gates."
+lastReviewedCommit: a3d7a738d24c1183b8198da40aa74f3a2215b959
+lastReviewedNote: "Reviewed for Foundry #196: pending questions can continue indexed local preparation without changing source selection, runtime qualification, credential, approval or no-replay admission."
 related:
   - docs/architecture.md
   - docs/task-authorization-contract.md
