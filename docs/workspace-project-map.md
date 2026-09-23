@@ -90,8 +90,8 @@ checkPaths:
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
 lastReviewedAt: 2026-09-23
-lastReviewedCommit: 649385e48ad75e91031efec4b592ad55d18cf121
-lastReviewedNote: "Reviewed for Foundry #190: task interaction state belongs to Foundry and user-facing instructions belong to Skills; CLI ownership remains unchanged."
+lastReviewedCommit: a836ddaa380a36c8b1466669c1716f6201e9d919
+lastReviewedNote: "Reviewed for Foundry #192: release-only 0.1.11 identity projection from exact merged #193 main a836ddaa380a36c8b1466669c1716f6201e9d919; #190/#193 public interaction behavior, CLI pin, dependencies, permission and scientific gates remain unchanged. Signed publication and native/installed qualification remain separate release gates."
 ---
 
 # Workspace Project Map

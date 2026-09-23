@@ -35,8 +35,8 @@ checkPaths:
   - test/unit/runtime-layout.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
 lastReviewedAt: 2026-09-23
-lastReviewedCommit: 53bebdb52a125a380d4470fbc398d3895694eba4
-lastReviewedNote: "Reviewed for Foundry #193: the local packed consumer now verifies the shipped interaction protocol and partial recap; public publication and native qualification remain separate."
+lastReviewedCommit: a836ddaa380a36c8b1466669c1716f6201e9d919
+lastReviewedNote: "Reviewed for Foundry #192: release-only 0.1.11 identity projection from exact merged #193 main a836ddaa380a36c8b1466669c1716f6201e9d919; #190/#193 public interaction behavior, CLI pin, dependencies, permission and scientific gates remain unchanged. Signed publication and native/installed qualification remain separate release gates."
 related:
   - docs/public-runtime-contract.md
   - docs/runtime-context-contract.md
