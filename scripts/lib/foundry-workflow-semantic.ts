@@ -33,6 +33,8 @@ import { runDatasetAuthoringPatchCollect } from "./import-curation/patch-collect
 import { readJsonOrJsonl, ensureArray, readRows } from "./import-curation/internal/runtime-io.ts";
 import { createFoundryDecisionOwners } from "./foundry-decision-owners.ts";
 import { applyFoundryIdentityDecisions } from "./foundry-workflow-identity-apply.ts";
+import { currentFoundryInteractionState } from "./foundry-interaction-input.ts";
+import { verifyFoundrySemanticInteraction } from "./foundry-semantic-interaction.ts";
 import {
   operationFullContextEvidenceBlockers,
   operationUsedContextKinds,
@@ -75,6 +77,9 @@ export async function applyFoundrySemanticInput(
 ) {
   assertSelectedSemanticInput(submission);
   assertQualifiedFoundryRuntime(context, qualified);
+  const interaction = currentFoundryInteractionState(context, entries);
+  if ((submission.spec.interaction_sha256 ?? null) !== (interaction?.entry.sha256 ?? null))
+    fail("semantic_interaction_changed", "Submit against the current registered task decisions.");
   const prior = priorApplication(context, entries, submission);
   if (prior) return prior;
   const state = currentWorkflowState(context, entries);
@@ -202,6 +207,16 @@ export async function applyFoundrySemanticInput(
       );
     rowOwners.add(item.type);
   }
+  const selectedScopes = new Map<string, string>();
+  for (const group of work)
+    for (const item of group.tasks)
+      selectedScopes.set(item.sha, text(group.set.type, "Dataset type"));
+  for (const item of decisionWork) selectedScopes.set(item.sha, item.type);
+  const adoptedDecisions = verifyFoundrySemanticInteraction(
+    submission.spec,
+    interaction ? { sha256: interaction.entry.sha256, state: interaction.state } : null,
+    selectedScopes,
+  );
   return runFoundryTaskOperation(
     context,
     {
@@ -210,12 +225,17 @@ export async function applyFoundrySemanticInput(
         submission: submission.descriptor,
         files: submission.files,
         assessment: assessment.entry.sha256,
+        ...(interaction
+          ? { interaction: interaction.entry.sha256, adopted_decisions: adoptedDecisions }
+          : {}),
       },
       validateCurrent(index) {
         const current = currentWorkflowState(context, index);
         if (
           current.assessment?.entry.sha256 !== assessment.entry.sha256 ||
-          current.rows?.entry.sha256 !== rows.entry.sha256
+          current.rows?.entry.sha256 !== rows.entry.sha256 ||
+          (currentFoundryInteractionState(context, index)?.entry.sha256 ?? null) !==
+            (interaction?.entry.sha256 ?? null)
         )
           fail(
             "semantic_assessment_changed",
@@ -483,6 +503,9 @@ export async function applyFoundrySemanticInput(
           submission_sha256: submission.descriptor.sha256,
           assessment_sha256: assessment.entry.sha256,
           work_items: [...used],
+          ...(interaction
+            ? { interaction_sha256: interaction.entry.sha256, adopted_decisions: adoptedDecisions }
+            : {}),
           results,
           blockers,
         };

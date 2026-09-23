@@ -34,9 +34,9 @@ checkPaths:
   - test/commands/foundry-release-*.test.mts
   - test/unit/runtime-layout.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: 5f848dab3c680c7ad5f5d768d9f1585e26f2427c
-lastReviewedNote: "Reviewed for Foundry #185: release-only 0.1.10 identity projection from qualified main 5f848dab3c680c7ad5f5d768d9f1585e26f2427c changes no runtime behavior, dependency, permission or command contract. Signed publication and native/bootstrap qualification remain required release gates."
+lastReviewedAt: 2026-09-23
+lastReviewedCommit: 649385e48ad75e91031efec4b592ad55d18cf121
+lastReviewedNote: "Reviewed for Foundry #190: the interaction schema and protocol join the explicit package closure; installed successor qualification remains separate."
 related:
   - docs/public-runtime-contract.md
   - docs/runtime-context-contract.md
@@ -57,6 +57,8 @@ The package depends exactly on public `@tiangong-lca/cli@0.1.19`. Ajv remains a 
 `scripts/package-entry.ts` is the only bin source. It calls `runFoundryPublicCommand`, which routes the six operations in `public-runtime-contract.md` and converts every other name into the stable unknown-operation envelope. It never falls back to `scripts/foundry.ts`, the repository doctor, 63-command dispatcher, production case runner or maintenance owners.
 
 `scripts/public-api.ts` binds the facade's module identity internally. A consumer supplies workspace, optional runtime selection/account intent and host controls; it cannot redirect package discovery through its own `moduleUrl`. The root and `./runtime` exports expose only the facade, public command host, result/task/migration protocol types and validators, next-action binding verifier, and package descriptor verifier. Internal command factories, mutation dispatch and raw runtime/task stores are not package exports.
+
+The public package includes `foundry-interaction-input.schema.json` and advertises `tiangong-foundry.interaction-input.v1` beside the existing task-start and semantic protocols. Its source graph exposes only the strict interaction input/state types through `scripts/public-api.ts`; the task-local store and assessment implementation remain internal. Package validation checks the schema, descriptor protocol list and sanitized file inventory together.
 
 The installed `runtimeUse` facade can retain a CLI-managed cache containing its own package after the package descriptor and independently trusted current component set both verify that ownership. The source-free consumer test exercises that behavior from real installed application bytes, including rollback, restoration, retained leases and rejected cache drift. Its surrounding component metadata is explicitly a fixture; it does not establish F1 provenance, native launch qualification or publication.
 

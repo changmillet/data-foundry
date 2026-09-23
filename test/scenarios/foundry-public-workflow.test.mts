@@ -4,6 +4,11 @@ import path from "node:path";
 import test from "node:test";
 import { qualifyFoundryRuntime } from "../../scripts/lib/foundry-runtime-qualification.ts";
 import { createFoundryRuntime } from "../../scripts/foundry-runtime.ts";
+import { assessFoundryWorkflowRows } from "../../scripts/lib/foundry-workflow-assessment.ts";
+import { currentWorkflowState } from "../../scripts/lib/foundry-workflow-state.ts";
+import { finalizeFoundryWorkflow } from "../../scripts/lib/foundry-workflow-finalize.ts";
+import { selectFoundryInteractionInput } from "../../scripts/lib/foundry-interaction-input.ts";
+import { recordFoundryInteractionInput } from "../../scripts/lib/foundry-workflow-interaction.ts";
 import {
   createFoundryRuntimeContext,
   captureFoundryInput,
@@ -36,12 +41,13 @@ test("qualified context owner accepts the registered Unicode task path directly"
     }),
   );
   const started = await facade.start({ specFile });
-  assert.ok(started.task_id);
+  const taskId = started.task_id;
+  assert.ok(taskId);
   const context = createFoundryRuntimeContext({
     moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
     workspace,
     cacheBase: path.join(root, "cache"),
-    taskId: started.task_id,
+    taskId,
     actorId: "context-actor",
     inputs: [captureFoundryInput(seed)],
   });
@@ -84,6 +90,229 @@ test("qualified context owner accepts the registered Unicode task path directly"
       item.path.endsWith("/foundry-assessment.json"),
     ),
   );
+});
+
+test("assessment records one row set at a time and cannot finalize partial coverage", async (t) => {
+  const { root, workspace, facade, runtimeSelection } = workflowFixture(t);
+  const seed = path.join(root, "partial-assessment-seed.json");
+  const specFile = path.join(root, "partial-assessment-request.json");
+  fs.writeFileSync(
+    seed,
+    JSON.stringify({
+      rows: [
+        flowRow("71717171-7171-4717-8717-717171717171"),
+        processRowWithInvalidLocation("72727272-7272-4727-8727-727272727272"),
+      ],
+    }),
+  );
+  fs.writeFileSync(
+    specFile,
+    JSON.stringify({
+      schema: "tiangong-foundry.task-start.v1",
+      request_id: "partial-assessment",
+      actor_id: "assessment-actor",
+      lane: "source-evidence-dataset-development",
+      profile_id: "generic",
+      target_entities: ["flow", "process"],
+      sources: [{ path: seed }],
+      seed: { path: seed },
+      account_intent: null,
+      preparation: null,
+    }),
+  );
+  const started = await facade.start({ specFile });
+  const taskId = started.task_id;
+  assert.ok(taskId);
+  const taskContext = (
+    entries: Awaited<
+      ReturnType<ReturnType<typeof createFoundryRuntime>["inspectTask"]>
+    >["artifacts"],
+  ) =>
+    createFoundryRuntimeContext({
+      moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+      workspace,
+      cacheBase: path.join(root, "cache"),
+      taskId,
+      actorId: "assessment-actor",
+      inputs: [
+        captureFoundryInput(seed),
+        ...entries.map((entry) => captureFoundryInput(path.resolve(context.taskRoot!, entry.path))),
+      ],
+    });
+  const context = createFoundryRuntimeContext({
+    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    workspace,
+    cacheBase: path.join(root, "cache"),
+    taskId,
+    actorId: "assessment-actor",
+    inputs: [captureFoundryInput(seed)],
+  });
+  const runtime = createFoundryRuntime(context, qualifyFoundryRuntime(context, runtimeSelection));
+  await runtime.prepareContext(["flow", "process"]);
+  await runtime.materializeRows([seed]);
+  const prepared = await runtime.inspectTask();
+  const rows = prepared.artifacts.find((entry) => entry.path.endsWith("/foundry-rows.json"));
+  const contracts = prepared.artifacts.filter((entry) =>
+    entry.path.endsWith("/contract-report.json"),
+  );
+  assert.ok(rows);
+  assert.equal(contracts.length, 2);
+  const firstContext = taskContext(prepared.artifacts);
+  const rowFile = path.resolve(context.taskRoot!, rows.path);
+  const contractFiles = contracts.map((entry) => path.resolve(context.taskRoot!, entry.path));
+  const first = await assessFoundryWorkflowRows(
+    firstContext,
+    qualifyFoundryRuntime(firstContext, runtimeSelection),
+    rowFile,
+    contractFiles,
+    undefined,
+    { scopeType: "flow" },
+  );
+  assert.equal(first.status, "in_progress");
+  assert.deepEqual(
+    (first.sets as Array<{ type: string }>).map((set) => set.type),
+    ["flow"],
+  );
+  const partiallyInspected = await runtime.inspectTask();
+  const partial = currentWorkflowState(context, partiallyInspected.artifacts);
+  assert.equal(partial.assessmentComplete, false);
+  assert.deepEqual(partial.assessmentRemainingTypes, ["process"]);
+  const firstQueue = partiallyInspected.artifacts.filter((entry) =>
+    entry.path.endsWith("/queue/outputs/curation-queue-manifest.json"),
+  );
+  assert.equal(firstQueue.length, 1, "the first assessed set owns its queue snapshot");
+  await assert.rejects(
+    finalizeFoundryWorkflow(
+      context,
+      qualifyFoundryRuntime(context, runtimeSelection),
+      partiallyInspected.artifacts,
+    ),
+    { code: "workflow_assessment_required" },
+  );
+  const secondContext = taskContext(partiallyInspected.artifacts);
+  const second = await assessFoundryWorkflowRows(
+    secondContext,
+    qualifyFoundryRuntime(secondContext, runtimeSelection),
+    rowFile,
+    contractFiles,
+    undefined,
+    { scopeType: "process", previousAssessment: partial.assessment?.file },
+  );
+  assert.equal(second.status, "completed");
+  assert.deepEqual(
+    (second.sets as Array<{ type: string }>).map((set) => set.type),
+    ["flow", "process"],
+  );
+  const completedInspection = await runtime.inspectTask();
+  const completed = currentWorkflowState(context, completedInspection.artifacts);
+  const queueSnapshots = completedInspection.artifacts.filter((entry) =>
+    entry.path.endsWith("/queue/outputs/curation-queue-manifest.json"),
+  );
+  assert.equal(queueSnapshots.length, 2, "each set owns a separate complete queue snapshot");
+  assert.notEqual(queueSnapshots[0].operation_id, queueSnapshots[1].operation_id);
+  assert.equal(completed.assessmentComplete, true);
+  assert.deepEqual(completed.assessmentRemainingTypes, []);
+  const originalSets = completed.assessment?.value.sets;
+  assert.ok(originalSets);
+  const interactionFile = path.join(root, "process-assumption.json");
+  fs.writeFileSync(
+    interactionFile,
+    JSON.stringify({
+      schema: "tiangong-foundry.interaction-input.v1",
+      task_id: taskId,
+      actor_id: "assessment-actor",
+      expected_state_sha256: null,
+      events: [
+        {
+          kind: "assumption",
+          id: "process-method",
+          dataset_type: "process",
+          statement: "Use the source's process boundary for this dataset.",
+          impact: "This changes which process fields need review.",
+          evidence_sha256: [],
+          supersedes: null,
+        },
+      ],
+    }),
+  );
+  const interactionContext = taskContext(completedInspection.artifacts);
+  await recordFoundryInteractionInput(
+    interactionContext,
+    completedInspection.artifacts,
+    selectFoundryInteractionInput(interactionContext, interactionFile),
+    ["flow", "process"],
+  );
+  const afterInteraction = await runtime.inspectTask();
+  const stale = currentWorkflowState(context, afterInteraction.artifacts);
+  assert.equal(stale.assessmentComplete, false);
+  assert.deepEqual(stale.assessmentRemainingTypes, ["process"]);
+  assert.deepEqual(
+    stale.assessment?.value.sets.map((set) => set.type),
+    ["flow"],
+  );
+  const selected = taskContext(afterInteraction.artifacts);
+  const reassessed = await assessFoundryWorkflowRows(
+    selected,
+    qualifyFoundryRuntime(selected, runtimeSelection),
+    rowFile,
+    contractFiles,
+    undefined,
+    {
+      scopeType: "process",
+      previousAssessment: stale.assessment?.file,
+      interactionSha256: stale.interactionSha256,
+    },
+  );
+  assert.equal(reassessed.status, "completed");
+  const current = currentWorkflowState(context, (await runtime.inspectTask()).artifacts);
+  assert.equal(current.assessmentComplete, true);
+  assert.equal(current.assessment?.value.sets[0]?.schema_report, originalSets[0]?.schema_report);
+  assert.notEqual(current.assessment?.value.sets[1]?.schema_report, originalSets[1]?.schema_report);
+  const decisionContext = current.assessment?.value.sets[1]?.interaction_context;
+  assert.equal(typeof decisionContext, "string");
+  const retainedContext = JSON.parse(fs.readFileSync(String(decisionContext), "utf8")) as {
+    source_state_sha256: string;
+    dataset_type: string;
+    ai_assumptions: Array<{ id: string }>;
+  };
+  assert.equal(retainedContext.source_state_sha256, stale.interactionSha256);
+  assert.equal(retainedContext.dataset_type, "process");
+  assert.deepEqual(
+    retainedContext.ai_assumptions.map((item) => item.id),
+    ["process-method"],
+  );
+  const globalFile = path.join(root, "global-assumption.json");
+  fs.writeFileSync(
+    globalFile,
+    JSON.stringify({
+      schema: "tiangong-foundry.interaction-input.v1",
+      task_id: taskId,
+      actor_id: "assessment-actor",
+      expected_state_sha256: current.interactionSha256,
+      events: [
+        {
+          kind: "assumption",
+          id: "task-boundary",
+          dataset_type: null,
+          statement: "Use the stated task boundary for every dataset type.",
+          impact: "Every row set needs a fresh review of this boundary.",
+          evidence_sha256: [],
+          supersedes: null,
+        },
+      ],
+    }),
+  );
+  const beforeGlobal = await runtime.inspectTask();
+  const globalContext = taskContext(beforeGlobal.artifacts);
+  await recordFoundryInteractionInput(
+    globalContext,
+    beforeGlobal.artifacts,
+    selectFoundryInteractionInput(globalContext, globalFile),
+    ["flow", "process"],
+  );
+  const global = currentWorkflowState(context, (await runtime.inspectTask()).artifacts);
+  assert.equal(global.assessmentComplete, false);
+  assert.deepEqual(global.assessmentRemainingTypes, ["flow", "process"]);
 });
 
 test("qualified public import dispatches the native owner and retains indexed stage evidence", async (t) => {
@@ -381,6 +610,46 @@ test("public decisions bind their owner and context, preserve rows on refusal, a
   await facade.resume(invocation);
   await facade.resume(invocation);
   let result = await facade.resume(invocation);
+  const interactionFile = path.join(root, "user-method.json");
+  fs.writeFileSync(
+    interactionFile,
+    JSON.stringify({
+      schema: "tiangong-foundry.interaction-input.v1",
+      task_id: invocation.taskId,
+      actor_id: invocation.actorId,
+      expected_state_sha256: null,
+      events: [
+        {
+          kind: "question",
+          id: "classification-method",
+          dataset_type: "process",
+          missing: "The process category needs a reviewed choice.",
+          impact: "A wrong category would misrepresent this process.",
+          recommendation: "Use the current controlled classification source.",
+          ask: "May this process use the evidenced controlled category?",
+          choices: ["Use the evidenced category", "Investigate first"],
+          evidence_sha256: [digestFile(seed)],
+          supersedes: null,
+        },
+        {
+          kind: "answer",
+          question_id: "classification-method",
+          decision_id: "use-evidenced-category",
+          supersedes_decision_id: null,
+          raw_answer: "Use the category supported by the current source.",
+          adopted_decision: "Use the current controlled classification source for this process.",
+          disposition: "decided",
+          evidence_sha256: [digestFile(seed)],
+        },
+      ],
+    }),
+  );
+  result = await facade.resume({ ...invocation, interactionInputFile: interactionFile });
+  const interaction = result.artifacts.find(
+    (artifact) => artifact.role === "current_interaction_state",
+  );
+  assert.ok(interaction?.kind === "file");
+  result = await facade.resume(invocation);
   const classes = JSON.parse(
     fs.readFileSync(
       path.join(resolveInstalledTiangongLcaCliPackage().schemaDir, "tidas_processes_category.json"),
@@ -448,6 +717,7 @@ test("public decisions bind their owner and context, preserve rows on refusal, a
       authoring_task_sha256: digestFile(work.task),
       file,
       sha256: digestFile(file),
+      decision_ids: ["use-evidenced-category"],
     });
     const write = (values = decisions, parts?: ReturnType<typeof part>[]) => {
       fs.writeFileSync(file, values.map((value) => JSON.stringify(value)).join("\n") + "\n");
@@ -458,6 +728,7 @@ test("public decisions bind their owner and context, preserve rows on refusal, a
           task_id: invocation.taskId,
           actor_id: invocation.actorId,
           assessment_sha256: artifact.sha256,
+          interaction_sha256: interaction.sha256,
           submissions: parts ?? [part()],
         }),
       );
@@ -497,8 +768,22 @@ test("public decisions bind their owner and context, preserve rows on refusal, a
     );
     assert.deepEqual(fs.readFileSync(set.rows), original);
     write();
+    const missingChoice = JSON.parse(fs.readFileSync(descriptor, "utf8")) as {
+      submissions: Array<{ decision_ids?: string[] }>;
+    };
+    delete missingChoice.submissions[0].decision_ids;
+    const missingChoiceFile = path.join(root, `${kind}-missing-choice.json`);
+    fs.writeFileSync(missingChoiceFile, JSON.stringify(missingChoice));
+    const omitted = await facade.resume({ ...invocation, semanticInputFile: missingChoiceFile });
+    assert.equal(omitted.blockers[0]?.code, "semantic_interaction_invalid");
     const applied = await facade.resume({ ...invocation, semanticInputFile: descriptor });
     assert.equal(applied.status, "ready", JSON.stringify(applied));
+    const adoption = applied.artifacts.findLast((value) => value.role === "semantic-result.json");
+    assert.ok(adoption?.kind === "file");
+    const adopted = JSON.parse(fs.readFileSync(adoption.path, "utf8")) as {
+      adopted_decisions: Array<{ decision_ids: string[] }>;
+    };
+    assert.deepEqual(adopted.adopted_decisions[0]?.decision_ids, ["use-evidenced-category"]);
     const duplicate = await facade.resume({ ...invocation, semanticInputFile: descriptor });
     assert.deepEqual(duplicate.artifacts, applied.artifacts);
     assert.deepEqual(fs.readFileSync(set.rows), original);

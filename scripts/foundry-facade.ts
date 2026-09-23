@@ -69,6 +69,15 @@ import {
   verifyFoundryReferences,
 } from "./lib/foundry-workflow-reference-verify.ts";
 import { selectFoundrySemanticInput } from "./lib/foundry-semantic-input.ts";
+import {
+  currentFoundryInteractionState,
+  currentFoundryQuestions,
+  currentFoundryDecisions,
+  currentFoundryInvestigations,
+  currentFoundryAssumptions,
+  selectFoundryInteractionInput,
+} from "./lib/foundry-interaction-input.ts";
+import { recordFoundryInteractionInput } from "./lib/foundry-workflow-interaction.ts";
 import { runFoundryWorkflowIdentity } from "./lib/foundry-workflow-identity.ts";
 import { finalizeFoundryWorkflow } from "./lib/foundry-workflow-finalize.ts";
 import {
@@ -526,12 +535,70 @@ function taskProjection(
   identity: unknown,
 ): FoundryOperationResult {
   const artifacts = taskArtifacts(context, inspected);
-  if (completionProven(context, record, inspected))
+  const interaction = currentFoundryInteractionState(context, inspected.artifacts);
+  const pendingQuestions = interaction ? currentFoundryQuestions(interaction.state) : [];
+  const investigations = interaction ? currentFoundryInvestigations(interaction.state) : [];
+  if (record.spec.brief) artifacts.push(inlineArtifact("task_brief", record.spec.brief));
+  if (interaction)
+    artifacts.push(
+      Object.freeze({
+        kind: "file" as const,
+        role: "current_interaction_state",
+        path: path.join(context.taskRoot!, interaction.entry.path),
+        bytes: interaction.entry.bytes,
+        sha256: interaction.entry.sha256,
+      }),
+    );
+  const recap = (completionProven: boolean) => {
+    const questions = new Map(
+      interaction?.state.events
+        .filter((event) => event.kind === "question")
+        .map((event) => [String(event.id), event]) ?? [],
+    );
+    return inlineArtifact("decision_recap", {
+      schema: "tiangong-foundry.decision-recap.v1",
+      task_id: record.task_id,
+      completion_proven: completionProven,
+      brief: record.spec.brief ?? null,
+      user_decisions: interaction
+        ? currentFoundryDecisions(interaction.state).map((answer) => ({
+            question_id: answer.question_id,
+            dataset_type: questions.get(String(answer.question_id))?.dataset_type ?? null,
+            impact: questions.get(String(answer.question_id))?.impact ?? null,
+            raw_answer_sha256: createHash("sha256").update(String(answer.raw_answer)).digest("hex"),
+            adopted_decision: answer.adopted_decision,
+            decision_id: answer.decision_id,
+            supersedes_decision_id: answer.supersedes_decision_id,
+            evidence_sha256: answer.evidence_sha256,
+          }))
+        : [],
+      ai_assumptions: interaction ? currentFoundryAssumptions(interaction.state) : [],
+      unresolved_questions: [...pendingQuestions, ...investigations].map((question) => ({
+        id: question.id,
+        dataset_type: question.dataset_type,
+        missing: question.missing,
+        impact: question.impact,
+        ask: question.ask,
+        choices: question.choices,
+      })),
+      source_interaction_sha256: interaction?.entry.sha256 ?? null,
+    });
+  };
+  if (record.spec.brief || interaction) artifacts.push(recap(false));
+  const completedArtifacts = () =>
+    record.spec.brief || interaction
+      ? [...artifacts.filter((artifact) => artifact.role !== "decision_recap"), recap(true)]
+      : artifacts;
+  if (
+    completionProven(context, record, inspected) &&
+    !pendingQuestions.length &&
+    !investigations.length
+  )
     return createFoundryOperationResult({
       operation,
       status: "completed",
       taskId: record.task_id,
-      artifacts,
+      artifacts: completedArtifacts(),
       blockers: [],
       nextActions: [],
       runtimeIdentity: identity,
@@ -648,7 +715,7 @@ function taskProjection(
       operation,
       status: "completed",
       taskId: record.task_id,
-      artifacts,
+      artifacts: completedArtifacts(),
       blockers: [],
       nextActions: [],
       runtimeIdentity: identity,
@@ -668,7 +735,7 @@ function taskProjection(
       operation,
       status: noChange ? "completed" : found ? "needs_input" : "ready",
       taskId: record.task_id,
-      artifacts,
+      artifacts: noChange ? completedArtifacts() : artifacts,
       blockers:
         noChange || !found
           ? []
@@ -697,6 +764,36 @@ function taskProjection(
         : noPermission(),
     });
   }
+  if (pendingQuestions.length || investigations.length) {
+    const describe = (question: Readonly<Record<string, unknown>>) =>
+      `${String(question.missing)} ${String(question.impact)} ${String(question.recommendation)} ${String(question.ask)}`;
+    const askActions = pendingQuestions.map((question) =>
+      human(
+        "answer_current_question",
+        `${describe(question)}${Array.isArray(question.choices) && question.choices.length ? ` ${question.choices.join(" / ")}` : ""}`,
+      ),
+    );
+    const investigationIds = new Set(investigations.map((question) => String(question.id)));
+    return createFoundryOperationResult({
+      operation,
+      status: "needs_input",
+      taskId: record.task_id,
+      artifacts,
+      blockers: [...pendingQuestions, ...investigations].map((question) => ({
+        code: investigationIds.has(String(question.id))
+          ? "interaction_investigation_pending"
+          : "interaction_decision_pending",
+        message: `${String(question.missing)} ${String(question.impact)}`,
+        scope: String(question.dataset_type ?? record.task_id),
+      })),
+      nextActions: [
+        ...askActions,
+        ...(workflow.assessmentRemainingTypes.length ? [resumeCommand(context, record)] : []),
+      ],
+      runtimeIdentity: identity,
+      permissions: noPermission(),
+    });
+  }
   const references = inspectFoundryReferences(context, inspected.artifacts);
   const scopeComplete =
     workflow.rows &&
@@ -707,7 +804,7 @@ function taskProjection(
       operation,
       status: "completed",
       taskId: record.task_id,
-      artifacts,
+      artifacts: completedArtifacts(),
       blockers: [],
       nextActions: [],
       runtimeIdentity: identity,
@@ -864,7 +961,7 @@ function taskProjection(
     });
   const assessment = workflow.assessment?.entry;
   if (assessment) {
-    const report: unknown = JSON.parse(
+    const rawReport: unknown = JSON.parse(
       readCaptured(
         { ...assessment, path: path.join(context.taskRoot!, assessment.path) },
         maxSeedBytes,
@@ -872,18 +969,18 @@ function taskProjection(
       ).toString("utf8"),
     );
     if (
-      !report ||
-      typeof report !== "object" ||
-      !("schema" in report) ||
-      report.schema !== "tiangong-foundry.assessment-stage.v1" ||
-      !("sets" in report) ||
-      !Array.isArray(report.sets)
+      !rawReport ||
+      typeof rawReport !== "object" ||
+      !("schema" in rawReport) ||
+      rawReport.schema !== "tiangong-foundry.assessment-stage.v1" ||
+      !("sets" in rawReport) ||
+      !Array.isArray(rawReport.sets)
     )
       throw new FoundryContextError(
         "workflow_assessment_invalid",
         "Registered assessment metadata is invalid.",
       );
-    const pending = report.sets.filter((value: unknown) => {
+    const pending = workflow.assessment!.value.sets.filter((value: unknown) => {
       if (
         !value ||
         typeof value !== "object" ||
@@ -954,18 +1051,21 @@ function taskProjection(
           message: `Resolve the current ${set.type} curation and authoring work before a write handoff.`,
           scope: record.task_id,
         })),
-        nextActions: pending.flatMap((set) => [
-          human(
-            "review_semantic_work",
-            `Read the registered curation report ${set.curation_report} and authoring manifest ${set.authoring_manifest}. Use their bound source/context evidence; no write permission is implied.`,
-          ),
-          ...(set.decisions ?? []).map((work) =>
+        nextActions: [
+          ...pending.flatMap((set) => [
             human(
-              `review_${work.kind}_decisions`,
-              `Read registered ${work.kind} task ${work.task} (${work.status}). Complete its bound decision template and submit it with semantic-input kind=${work.kind}.`,
+              "review_semantic_work",
+              `Read the registered curation report ${set.curation_report} and authoring manifest ${set.authoring_manifest}. Use their bound source/context evidence; no write permission is implied.`,
             ),
-          ),
-        ]),
+            ...(set.decisions ?? []).map((work) =>
+              human(
+                `review_${work.kind}_decisions`,
+                `Read registered ${work.kind} task ${work.task} (${work.status}). Complete its bound decision template and submit it with semantic-input kind=${work.kind}.`,
+              ),
+            ),
+          ]),
+          ...(workflow.assessmentRemainingTypes.length ? [resumeCommand(context, record)] : []),
+        ],
         runtimeIdentity: identity,
         permissions: noPermission(),
       });
@@ -977,7 +1077,7 @@ function taskProjection(
           "Review the current prepared artifacts and continue the returned task workflow.",
         ),
       ]
-    : record.spec.preparation || !workflow.assessment
+    : record.spec.preparation || !workflow.assessmentComplete
       ? [resumeCommand(context, record)]
       : [
           human(
@@ -1432,6 +1532,7 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
           artifacts: [
             fileArtifact("facade_request_index", requestIndex),
             fileArtifact("foundry_job", path.join(context.taskRoot!, "foundry-job.json")),
+            ...result.artifacts,
           ],
           nextActions: result.next_actions,
           runtimeIdentity: result.runtime_identity,
@@ -1486,6 +1587,7 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
       taskId: string;
       actorId: string;
       semanticInputFile?: string;
+      interactionInputFile?: string;
       authorizationInputFile?: string;
       referenceInputFile?: string;
     }): Promise<FoundryOperationResult> {
@@ -1500,6 +1602,26 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
             "reference_input_invalid",
             "An explicit reference input requires one nonempty file path.",
           );
+        if (
+          input.interactionInputFile !== undefined &&
+          (typeof input.interactionInputFile !== "string" || !input.interactionInputFile.trim())
+        )
+          throw new FoundryContextError(
+            "interaction_input_invalid",
+            "An explicit interaction input requires one nonempty file path.",
+          );
+        if (
+          [
+            input.semanticInputFile,
+            input.authorizationInputFile,
+            input.referenceInputFile,
+            input.interactionInputFile,
+          ].filter((file) => file !== undefined).length > 1
+        )
+          throw new FoundryContextError(
+            "task_input_conflict",
+            "Submit one task input kind at a time.",
+          );
         current = base();
         assertFoundryWorkspaceWrite(current);
         const record = loadFoundryFacadeTaskRecord(current, input.taskId, input.actorId);
@@ -1507,7 +1629,10 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
         const qualified = qualification(context, options.runtimeSelection);
         const runtime = createFoundryRuntime(context, qualified);
         const before = await runtime.inspectTask();
-        if (record.spec.repair && (input.semanticInputFile || input.referenceInputFile))
+        if (
+          record.spec.repair &&
+          (input.semanticInputFile || input.referenceInputFile || input.interactionInputFile)
+        )
           throw new FoundryContextError(
             "repair_revision_required",
             "A repair keeps its before, candidate and contract immutable; changed inputs require an explicit revision.",
@@ -1521,7 +1646,10 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
           before,
           runtimeIdentity(context, qualified),
         );
-        if (input.referenceInputFile && existing.status === "completed")
+        if (
+          (input.referenceInputFile || input.interactionInputFile) &&
+          existing.status === "completed"
+        )
           throw new FoundryContextError(
             "execution_scope_completed",
             "A completed task cannot replace its reference evidence.",
@@ -1529,7 +1657,12 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
         if (existing.status === "completed" || existing.status === "blocked") return existing;
         const execution = completedOwnerScopes(context, before.artifacts);
         if (execution.pending.length) {
-          if (input.authorizationInputFile || input.semanticInputFile || input.referenceInputFile)
+          if (
+            input.authorizationInputFile ||
+            input.semanticInputFile ||
+            input.referenceInputFile ||
+            input.interactionInputFile
+          )
             throw new FoundryContextError(
               "execution_recovery_required",
               "Recover the consumed request before submitting changes.",
@@ -1564,6 +1697,44 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
             runtimeIdentity(context, qualified),
           );
         }
+        if (input.interactionInputFile) {
+          if (execution.consumed.size)
+            throw new FoundryContextError(
+              "execution_scope_consumed",
+              "Recover and preserve consumed scope evidence before changing task decisions.",
+            );
+          const selected = selectFoundryInteractionInput(context, input.interactionInputFile);
+          const facts = before.artifacts.map((entry) => ({
+            path: path.join(context.taskRoot!, entry.path),
+            bytes: entry.bytes,
+            sha256: entry.sha256,
+          }));
+          await recordFoundryInteractionInput(
+            taskContext(options, current, record, facts),
+            before.artifacts,
+            selected,
+            record.spec.target_entities,
+          );
+          assertNotInterrupted(options.signal);
+          return taskProjection(
+            "task.resume",
+            context,
+            record,
+            await runtime.inspectTask(),
+            runtimeIdentity(context, qualified),
+          );
+        }
+        const unresolvedInteraction = currentFoundryInteractionState(context, before.artifacts);
+        const hasUnresolvedInteraction = Boolean(
+          unresolvedInteraction &&
+          (currentFoundryQuestions(unresolvedInteraction.state).length ||
+            currentFoundryInvestigations(unresolvedInteraction.state).length),
+        );
+        if (hasUnresolvedInteraction && input.authorizationInputFile)
+          throw new FoundryContextError(
+            "interaction_decision_pending",
+            "Resolve the current question or investigation before write approval.",
+          );
         if (input.referenceInputFile) {
           if (input.authorizationInputFile || input.semanticInputFile || record.spec.preparation)
             throw new FoundryContextError(
@@ -1716,6 +1887,11 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
         }
         const preparation = record.spec.preparation;
         const workflow = currentWorkflowState(context, before.artifacts);
+        if (
+          hasUnresolvedInteraction &&
+          (workflow.authorization || !workflow.assessmentRemainingTypes.length)
+        )
+          return existing;
         if (record.spec.repair && !workflow.authorization && !execution.completed.size) {
           if (!qualified)
             throw new FoundryContextError(
@@ -1737,7 +1913,13 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
           );
         }
         const references = inspectFoundryReferences(context, before.artifacts);
-        if (!preparation && workflow.finalization && references.scope && !references.verified) {
+        if (
+          !preparation &&
+          workflow.assessmentComplete &&
+          workflow.finalization &&
+          references.scope &&
+          !references.verified
+        ) {
           if (!qualified)
             throw new FoundryContextError(
               "runtime_unqualified",
@@ -1769,6 +1951,7 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
         }
         if (
           !preparation &&
+          (record.spec.repair || workflow.assessmentComplete) &&
           workflow.authorization?.value.status === "sealed" &&
           !execution.completed.has(String(workflow.authorization.value.dataset_type))
         ) {
@@ -1923,15 +2106,13 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
             facts.map((fact) => fact.path),
           );
           assertNotInterrupted(options.signal);
-        } else if (!preparation && !workflow.assessment) {
-          const selectedArtifacts = before.artifacts.filter((artifact) =>
-            [
-              "dataset-workflow-rows",
-              "dataset-context-pack",
-              "dataset-semantic-apply",
-              "dataset-workflow-identity",
-            ].includes(artifact.command),
-          );
+        } else if (
+          !preparation &&
+          workflow.rows &&
+          (workflow.assessmentRemainingTypes.length ||
+            (!workflow.assessmentComplete && !workflow.rows.value.sets.length))
+        ) {
+          const selectedArtifacts = before.artifacts;
           const facts = selectedArtifacts.map((artifact) => ({
             path: path.join(context.taskRoot!, artifact.path),
             bytes: artifact.bytes,
@@ -1949,14 +2130,34 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
             .filter((fact) => path.basename(fact.path) === "contract-report.json")
             .map((fact) => fact.path);
           const selected = taskContext(options, current, record, facts);
-          await createFoundryRuntime(selected, qualified).assessRows(
-            rows.path,
-            contracts,
-            workflow.identity?.value.status === "completed" ? workflow.identity.file : undefined,
-          );
+          const identityReport =
+            workflow.identity?.value.status === "completed" ? workflow.identity.file : undefined;
+          if (workflow.assessmentRemainingTypes.length)
+            await createFoundryRuntime(selected, qualified).assessRows(
+              rows.path,
+              contracts,
+              identityReport,
+              {
+                scopeType: workflow.assessmentRemainingTypes[0],
+                previousAssessment: workflow.assessment?.file,
+                interactionSha256:
+                  currentFoundryInteractionState(context, before.artifacts)?.entry.sha256 ?? null,
+              },
+            );
+          else
+            await createFoundryRuntime(selected, qualified).assessRows(
+              rows.path,
+              contracts,
+              identityReport,
+              {
+                interactionSha256:
+                  currentFoundryInteractionState(context, before.artifacts)?.entry.sha256 ?? null,
+              },
+            );
           assertNotInterrupted(options.signal);
         } else if (
           !preparation &&
+          workflow.assessmentComplete &&
           (existing.status === "ready" || workflow.identity?.value.status === "blocked") &&
           (!workflow.identity || workflow.identity.value.status === "blocked") &&
           workflow.rows?.value.sets.some((set) => ["flow", "process"].includes(set.type))
@@ -2002,7 +2203,7 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
         if (
           !preparation &&
           existing.status === "ready" &&
-          workflow.assessment &&
+          workflow.assessmentComplete &&
           !workflow.finalization &&
           (workflow.identity?.value.status === "completed" ||
             !workflow.rows?.value.sets.some((set) => ["flow", "process"].includes(set.type)))

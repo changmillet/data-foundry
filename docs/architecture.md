@@ -153,8 +153,8 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - docs/incremental-change-set-contract.md
 lastReviewedAt: 2026-09-23
-lastReviewedCommit: 1e4f48bf8359f5e9bacba5741d15b7ff78f2eb41
-lastReviewedNote: "Current Foundry runtime, package, and module ownership boundaries are reviewed."
+lastReviewedCommit: 649385e48ad75e91031efec4b592ad55d18cf121
+lastReviewedNote: "Reviewed for Foundry #190: an interaction type leaf avoids a module cycle, and per-type decision digests retain unaffected assessment evidence."
 ---
 
 # Architecture
@@ -166,6 +166,8 @@ Managed process admission is a Foundry adapter over the public CLI host context.
 Migration transfer planning is governed by [the workspace migration contract](workspace-migration-contract.md). W10 provides explicit source/queue/input staging, current-owner task adoption, audited v2 activation and separate runtime read/write selection. Preserved history blocks replay across requests and migrations; none of these records grants business permission. Operational qualification and release integration remain tracked in #108/#980.
 
 The v2 task store persists registered job/source/profile identity, account intent, producer receipts and artifact lineage; deterministic local retries reuse verified results. Exact C1/TIDAS qualification, all-command disposition, derived authorization and child admission form the W04 authority boundary. The W05 hierarchical facade adds strict result/task schemas, deterministic request revisions, actor-bound status/resume, local preparation and read-only migration inventory. W06 compiles that facade into the descriptor-bound `@tiangong-lca/foundry` candidate; W08 still owns F1 publication and platform components. See `docs/public-runtime-contract.md`, `docs/runtime-context-contract.md`, `docs/package-distribution-contract.md`, `docs/task-authorization-contract.md` and `docs/foundry-task-contracts.md`.
+
+Task-local interaction is a small owner over the existing facade and artifact transaction. The optional brief stays in the immutable request revision; question, raw-answer, interpreted-decision and AI-assumption events are indexed under the task lock. A graph-leaf interaction type module lets assessment read applicable projections without depending back on the input/store owner. Assessment projects one dataset type per resume, retains unchanged set reports through exact row/context/queue/applicable-decision bindings and exposes incomplete coverage immediately. Current user decisions and AI assumptions enter the type's authoring context; semantic apply binds the exact current decision ids before invoking the existing owner. Foundry derives a readable recap source from actual task/completion evidence, while Skills writes the human-facing wording. These records supply context, not scientific data or remote write authority.
 
 The explicit workspace runtime is defined by `docs/runtime-context-contract.md`: package layout comes from `package.json.foundryRuntime`, emitted execution needs no source TypeScript or Git, and selected inputs/task outputs are bound to an immutable runtime context. `scripts/runtime-entry.ts` now implements workspace init/migration, consumer doctor and task start/status/resume as the separate hierarchical facade. All 63 flat owner commands retain explicit public/internal/excluded, path, child, qualification and authorization dispositions; the facade reaches them only through registered task state and never falls back to the developer runner.
 

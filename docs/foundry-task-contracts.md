@@ -28,9 +28,9 @@ checkPaths:
   - specs/schemas/execution-context.schema.json
   - specs/import-profiles.json
   - tasks/**
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: f059e4703438d661aa823d33c7cff0a9582645bc
-lastReviewedNote: "Reviewed for Foundry #171: metadata repair preserves exact historical references only with payload-derived occurrence and owner/state/content proof, retains raw CLI freshness blockers and false publication readiness, and changes no ordinary authoring, credential or publication authority. Producer-verified zero-dispatch successors require fresh scope and grant."
+lastReviewedAt: 2026-09-23
+lastReviewedCommit: 649385e48ad75e91031efec4b592ad55d18cf121
+lastReviewedNote: "Reviewed for Foundry #190: indexed answer history, current per-type assessment coverage and derived recap preserve task provenance and attempt safety."
 related:
   - AGENTS.md
   - WORKFLOW.md
@@ -76,9 +76,15 @@ Installing or verifying `@tiangong-lca/foundry` does not create, migrate or rela
 
 Workspace registration retains the complete intended job/source/profile/seed metadata and a content digest. The task-local copies must match it. Account intent and approved grants also have separate immutable workspace registrations. These records contain no passwords, access tokens or session contents.
 
+The optional task-start brief belongs to the immutable facade request revision. It keeps bounded original user wording, goal, intended use, scope, deliverables, user constraints and distinct AI assumptions. An absent brief remains absent in older v1 fingerprints. It is projected for the caller and semantic authoring as task context, but it is not a selected data source, a scientific proof, or an authorization grant.
+
 Local native-import and CLI context-pack stages use the existing operation plan, receipt and artifact index. A successful repeated stage reuses its checked receipt. Native output is inspected before registration; CLI context runs in a fresh task-contained generation so its file references remain valid. Interrupted unindexed generations are not accepted as completed stages. Neither conversion nor context readiness supplies content acceptance, identity or write authority.
 
 Row materialization and assessment also use this local transaction. Materialized rows preserve domain payloads and row metadata, normalize typed API payload wrappers to the CLI-compatible `json` slot, and retain a producer chain to the original selected seed or primary native dataset. Original wrappers remain in the frozen source; bundled copies are excluded from row selection. Assessment reads only selected indexed rows/context, then registers native validation, local QA, queue, curation and authoring outputs. Its report records the owner's resolution base for relative references. Pending work is a current artifact state, not permission to execute a rendered command or dispatch a remote write.
+
+The public assessment advances one dataset type per resume and records cumulative coverage. A prior set is reusable only while its row file, schema/QA/curation/authoring artifacts, contract pack, process closure queue and applicable interaction digest still match current registered facts. A changed applicable answer or assumption makes only affected sets due for re-assessment; a task-wide item affects every set. Each new generation binds the previous report and retains source receipts for reused outputs. An `in_progress` report is visible for prompt human follow-up and independent work, but cannot prove finalization or completion.
+
+`dataset-workflow-interaction` uses the same metadata lock, immutable output generation and hash-chained index. Its selected input descriptor binds task, actor and current interaction-state SHA; question, raw answer, interpreted decision and AI assumption events are append-only. Its evidence hashes must name frozen sources or indexed task artifacts. A duplicate accepted descriptor reuses its result; stale compare-and-swap or changed selected bytes fail. The current `interaction-state.json` is a task-scoped decision source for assessment and semantic work. It does not mutate the frozen source manifest, grant write authority or clear a consumed attempt. The user-facing `decision_recap` is derived from that state for current and partial results, with `completion_proven` true only after current completion evidence; it is not a second task truth source.
 
 Identity preflight runs its qualified, account-bound remote reads before a local transaction captures the resulting files. Each capture has a distinct invocation identity and rechecks current rows under the task lock; the receipt cannot replay a query. A completed identity report binds the current row manifest and its combined preflight index, invalidating earlier assessments until curation consumes that index. Failed reads retain diagnostics and can be retried by a later resume; status remains read-only over stored files. Current-account write admission still requires fresh identity and separate authorization.
 

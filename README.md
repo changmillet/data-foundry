@@ -159,13 +159,15 @@ checkPaths:
   - test/unit/zero-javascript-ratchet.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
 lastReviewedAt: 2026-09-23
-lastReviewedCommit: 1e4f48bf8359f5e9bacba5741d15b7ff78f2eb41
-lastReviewedNote: "Current Foundry package, runtime, and authoring entrypoints are reviewed."
+lastReviewedCommit: 649385e48ad75e91031efec4b592ad55d18cf121
+lastReviewedNote: "Reviewed for Foundry #190: consumer interaction source behavior is documented while published runtime adoption stays a separate qualification gate."
 ---
 
 # TianGong LCA Data Foundry
 
 The ordinary user entry is the independently installed [TianGong Foundry skill](https://github.com/tiangong-lca/agent-skills/tree/main/foundry-tidas-import). Its qualified release lock selects the managed runtime for a separate user workspace. The internal authoring role is maintained in the same Skills repository and loads for current semantic work items. This source checkout retains the developer commands and runtime owners described below; it carries no second maintained copy of either skill.
+
+The public task protocol can retain a short goal and scope, register evidence-bound questions and raw answers, reassess only affected dataset types, and present a derived decision recap with the completed result. The entry skill explains human decisions in plain language and accepts natural answers; Foundry preserves the exact task evidence and the CLI keeps scientific validation and write permission separate. A source checkout implementing this protocol does not itself update the independently qualified installed skill/runtime lock.
 
 The package candidate now supports CLI-managed execution with verified runtime components and separate read/write workspace access. F1 publication and complete production qualification remain in progress; see `docs/package-distribution-contract.md` for the current release boundary.
 

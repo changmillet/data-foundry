@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tiangong-lca.local/foundry/interaction-input.schema.json",
+  "title": "Foundry task interaction input v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "task_id", "actor_id", "expected_state_sha256", "events"],
+  "properties": {
+    "schema": { "const": "tiangong-foundry.interaction-input.v1" },
+    "task_id": { "type": "string", "pattern": "^task-[0-9a-f]{64}-r[0-9]{4}$" },
+    "actor_id": { "$ref": "#/$defs/id" },
+    "expected_state_sha256": {
+      "oneOf": [{ "$ref": "#/$defs/sha" }, { "type": "null" }]
+    },
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/question" },
+          { "$ref": "#/$defs/answer" },
+          { "$ref": "#/$defs/assumption" }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$"
+    },
+    "sha": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "pattern": "^[^\\u0000\\r\\n]+$"
+    },
+    "shortText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1200,
+      "pattern": "^[^\\u0000\\r\\n]+$"
+    },
+    "scope": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "enum": [
+            "contact",
+            "source",
+            "support",
+            "flow",
+            "flowproperty",
+            "unitgroup",
+            "process",
+            "lifecyclemodel"
+          ]
+        }
+      ]
+    },
+    "evidence": {
+      "type": "array",
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/sha" }
+    },
+    "question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id",
+        "dataset_type",
+        "missing",
+        "impact",
+        "recommendation",
+        "ask",
+        "choices",
+        "evidence_sha256",
+        "supersedes"
+      ],
+      "properties": {
+        "kind": { "const": "question" },
+        "id": { "$ref": "#/$defs/id" },
+        "dataset_type": { "$ref": "#/$defs/scope" },
+        "missing": { "$ref": "#/$defs/shortText" },
+        "impact": { "$ref": "#/$defs/shortText" },
+        "recommendation": { "$ref": "#/$defs/shortText" },
+        "ask": { "$ref": "#/$defs/shortText" },
+        "choices": {
+          "type": "array",
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240,
+            "pattern": "^[^\\u0000\\r\\n]+$"
+          }
+        },
+        "evidence_sha256": { "$ref": "#/$defs/evidence" },
+        "supersedes": { "oneOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] }
+      }
+    },
+    "answer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "question_id",
+        "decision_id",
+        "supersedes_decision_id",
+        "raw_answer",
+        "adopted_decision",
+        "disposition",
+        "evidence_sha256"
+      ],
+      "properties": {
+        "kind": { "const": "answer" },
+        "question_id": { "$ref": "#/$defs/id" },
+        "decision_id": { "$ref": "#/$defs/id" },
+        "supersedes_decision_id": {
+          "oneOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }]
+        },
+        "raw_answer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384,
+          "pattern": "^[^\\u0000]+$"
+        },
+        "adopted_decision": { "oneOf": [{ "$ref": "#/$defs/text" }, { "type": "null" }] },
+        "disposition": { "enum": ["decided", "investigate"] },
+        "evidence_sha256": { "$ref": "#/$defs/evidence" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "disposition": { "const": "investigate" } },
+            "required": ["disposition"]
+          },
+          "then": { "properties": { "adopted_decision": { "type": "null" } } },
+          "else": { "properties": { "adopted_decision": { "$ref": "#/$defs/text" } } }
+        }
+      ]
+    },
+    "assumption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id",
+        "dataset_type",
+        "statement",
+        "impact",
+        "evidence_sha256",
+        "supersedes"
+      ],
+      "properties": {
+        "kind": { "const": "assumption" },
+        "id": { "$ref": "#/$defs/id" },
+        "dataset_type": { "$ref": "#/$defs/scope" },
+        "statement": { "$ref": "#/$defs/text" },
+        "impact": { "$ref": "#/$defs/text" },
+        "evidence_sha256": { "$ref": "#/$defs/evidence" },
+        "supersedes": { "oneOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] }
+      }
+    }
+  }
+}

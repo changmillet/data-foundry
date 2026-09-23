@@ -54,6 +54,24 @@ test("facade task, result, request and migration schemas compile and reject unsa
     validateTask({ ...task, account_intent: { ...account, account_mode: "unrestricted" } }),
     false,
   );
+  const brief = {
+    original_request: "Prepare this Flow for review.",
+    goal: "Prepare a Flow draft",
+    intended_use: null,
+    scope: null,
+    deliverables: [],
+    user_constraints: [],
+    ai_assumptions: [],
+  };
+  assert.equal(validateTask({ ...task, brief }), true, JSON.stringify(validateTask.errors));
+  assert.equal(validateTask({ ...task, brief: null }), false);
+  assert.equal(validateTask({ ...task, brief: { ...brief, goal: " " } }), false);
+  assert.equal(validateTask({ ...task, brief: { ...brief, extra: true } }), false);
+  assert.equal(validateTask({ ...task, brief: { ...brief, original_request: undefined } }), false);
+  assert.equal(
+    validateTask({ ...task, brief: { ...brief, deliverables: Array(33).fill("item") } }),
+    false,
+  );
 
   const validateResult = ajv.compile(read("foundry-operation-result.schema.json"));
   const result = createFoundryOperationResult({

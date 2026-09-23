@@ -92,6 +92,9 @@
         }
       ]
     },
+    "brief": {
+      "$ref": "#/$defs/taskBrief"
+    },
     "repair": {
       "oneOf": [
         {
@@ -162,6 +165,78 @@
     }
   ],
   "$defs": {
+    "taskBrief": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "original_request",
+        "goal",
+        "intended_use",
+        "scope",
+        "deliverables",
+        "user_constraints",
+        "ai_assumptions"
+      ],
+      "properties": {
+        "original_request": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16384,
+              "pattern": "\\S"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "goal": {
+          "$ref": "#/$defs/briefText"
+        },
+        "intended_use": {
+          "$ref": "#/$defs/nullableBriefText"
+        },
+        "scope": {
+          "$ref": "#/$defs/nullableBriefText"
+        },
+        "deliverables": {
+          "$ref": "#/$defs/briefItems"
+        },
+        "user_constraints": {
+          "$ref": "#/$defs/briefItems"
+        },
+        "ai_assumptions": {
+          "$ref": "#/$defs/briefItems"
+        }
+      }
+    },
+    "briefText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "pattern": "\\S"
+    },
+    "nullableBriefText": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/briefText"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "briefItems": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2048,
+        "pattern": "\\S"
+      }
+    },
     "id": {
       "type": "string",
       "minLength": 1,

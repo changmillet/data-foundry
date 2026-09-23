@@ -34,9 +34,9 @@ checkPaths:
   - scripts/public-api.ts
   - test/scenarios/foundry-package-consumer.test.mts
   - test/unit/foundry-runtime-environment.test.mts
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: 5f848dab3c680c7ad5f5d768d9f1585e26f2427c
-lastReviewedNote: "Reviewed for Foundry #185: release-only 0.1.10 identity projection from qualified main 5f848dab3c680c7ad5f5d768d9f1585e26f2427c changes no runtime behavior, dependency, permission or command contract. Signed publication and native/bootstrap qualification remain required release gates."
+lastReviewedAt: 2026-09-23
+lastReviewedCommit: 649385e48ad75e91031efec4b592ad55d18cf121
+lastReviewedNote: "Reviewed for Foundry #190: interaction input adds no environment variable, credential path or runtime trust anchor."
 ---
 
 # Environment Surface Policy
@@ -158,3 +158,5 @@ Public finalization, handoff and readback set `FOUNDRY_ACCOUNT_MODE` only from t
 The owning public-bootstrap workflow uses `BOOTSTRAP_WORK` and `BOOTSTRAP_PROOF` only to select runner-temporary work and proof directories for a filesystem staging step. The qualification command's `BOOTSTRAP_OUTPUT` selects the work directory; the stage receives only its completed report. These values are not forwarded to the installed bootstrap/application, select no runtime trust anchor and grant no authentication or business authority.
 
 Public reference selection introduces no environment variable. It uses explicit descriptor/file digests and credential/session-path guards, retains task snapshots, and forwards the resulting paths through the existing credential-free QA and authenticated read-only verification child policies.
+
+Task interaction also adds no environment variable. The selected descriptor and bounded raw answer stay in ignored task artifacts, while credential/session paths are excluded and evidence hashes resolve only to registered source or task files. A question, decision or assumption cannot supply a runtime trust anchor, CLI session or write approval.

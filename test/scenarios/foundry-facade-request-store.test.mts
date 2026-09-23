@@ -9,7 +9,7 @@ import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
 
 const moduleUrl = new URL("../../scripts/runtime-entry.ts", import.meta.url).href;
 
-function writeSpec(file: string, input: string) {
+function writeSpec(file: string, input: string, brief?: Record<string, unknown>) {
   fs.writeFileSync(
     file,
     `${JSON.stringify({
@@ -29,9 +29,52 @@ function writeSpec(file: string, input: string) {
         source_input: null,
         output_directory: "outputs/cleanup",
       },
+      ...(brief ? { brief } : {}),
     })}\n`,
   );
 }
+
+test("a changed task brief creates a retained request revision without changing selected inputs", async (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-facade-brief-revision-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const workspace = path.join(root, "workspace");
+  const input = path.join(root, "flow.jsonl");
+  const spec = path.join(root, "task.json");
+  fs.writeFileSync(input, '{"flowDataSet":{}}\n');
+  const facade = createFoundryFacade({ moduleUrl, workspace, cacheBase: path.join(root, "cache") });
+  assert.equal(facade.initialize().status, "ready");
+
+  writeSpec(spec, input);
+  const first = await facade.start({ specFile: spec });
+  assert.equal(first.status, "ready");
+  const brief = {
+    original_request: "Prepare this Flow for internal review.",
+    goal: "Prepare an evidence-backed Flow draft",
+    intended_use: "Internal comparison",
+    scope: "One selected Flow",
+    deliverables: ["Flow draft"],
+    user_constraints: ["Do not publish"],
+    ai_assumptions: [],
+  };
+  writeSpec(spec, input, brief);
+  const second = await facade.start({ specFile: spec });
+  assert.equal(second.status, "ready");
+  assert.match(second.task_id ?? "", /^task-[0-9a-f]{64}-r0002$/u);
+  assert.notEqual(second.task_id, first.task_id);
+  assert.deepEqual(await facade.start({ specFile: spec }), second);
+
+  const requestFile = fs
+    .readdirSync(path.join(workspace, ".foundry/state/facade-requests"))
+    .find((name) => name.endsWith(".json"));
+  assert.ok(requestFile);
+  const request = JSON.parse(
+    fs.readFileSync(path.join(workspace, ".foundry/state/facade-requests", requestFile), "utf8"),
+  );
+  assert.equal(request.revisions.length, 2);
+  assert.equal(request.revisions[1].predecessor_task_id, first.task_id);
+  assert.deepEqual(request.revisions[1].spec.brief, brief);
+  assert.deepEqual(request.revisions[1].inputs, request.revisions[0].inputs);
+});
 
 test("facade request revisions are deterministic, idempotent and preserve unattempted predecessor tasks", async (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-facade-request-"));

@@ -29,9 +29,9 @@ checkPaths:
   - test/unit/task-authorization.test.mts
   - test/unit/task-profile-authority.test.mts
   - test/scenarios/foundry-execution-admission.test.mts
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: bc41ba12a0fd9d6499c6ee992df891cf15e5303b
-lastReviewedNote: "Reviewed for Foundry #171 Windows CI correction: repair handoff and readback artifact paths reuse the existing canonical relative-path owner, matching strict native closeout on every platform. Payload, contract, authorization, exact readback and no-replay requirements are preserved."
+lastReviewedAt: 2026-09-23
+lastReviewedCommit: 649385e48ad75e91031efec4b592ad55d18cf121
+lastReviewedNote: "Reviewed for Foundry #190: human choices guide semantic work but are not QA waivers or write grants; owner attempt consumption rechecks current decision state."
 related:
   - docs/architecture.md
   - docs/safety-policy.md
@@ -49,6 +49,8 @@ The task host owns the current workspace/task/actor intent, frozen inputs and fr
 The runtime host revalidates persisted authorization through its explicit loader; every new process must obtain current identity and the same stored task/input binding. When qualification is present, registration and loading require an identity bound to that exact qualification. The profile API itself has no ambient file search or environment flag granting permission. Native validation and other public preparation remain available without a restricted action grant; only commands that select or hand off restricted scopes declare the authorization boundary.
 
 The public facade does not authenticate during workspace initialization or task start. A request revision may retain non-secret account intent, but login/session readiness and task permission remain separate. Local preparation and read-only identity preflight report `permissions.not_required`. Any restricted action must first register its requested actions and approval reference, then rehydrate current qualification, identity and this authorization before exposing a child CommandSpec.
+
+A task brief, question, raw answer, interpreted decision, AI assumption or decision recap is not user authorization. The separate interaction input can influence semantic authoring only in its registered scope and cannot approve a QA waiver, mint missing support data, or dispatch a remote write. Pending questions prevent write approval until the current assessment and relevant decision work are complete; independent local assessment can continue. Existing grant, account, content, capsule, readback and no-replay checks still run independently after the question is resolved.
 
 The extended public workflow may authenticate for read-only identity preflight after local semantic preparation. Its task account intent and fresh CLI receipt select the read scope. Host authentication is explicit; OAuth configuration is public and headless tokens stay process-only. Query receipts and current-row identity reports are evidence, never an action grant. Preflight does not consume, reset or dispatch a mutation attempt; subsequent permission admission still requires its own current identity and approval checks.
 

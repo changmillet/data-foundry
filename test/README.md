@@ -279,9 +279,9 @@ checkPaths:
   - AGENTS.md
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: 5f848dab3c680c7ad5f5d768d9f1585e26f2427c
-lastReviewedNote: "Reviewed for Foundry #185: release-only 0.1.10 identity projection from qualified main 5f848dab3c680c7ad5f5d768d9f1585e26f2427c changes no runtime behavior, dependency, permission or command contract. Signed publication and native/bootstrap qualification remain required release gates."
+lastReviewedAt: 2026-09-23
+lastReviewedCommit: 649385e48ad75e91031efec4b592ad55d18cf121
+lastReviewedNote: "Reviewed for Foundry #190: interaction parser, resume, decision binding and selective assessment tests use the existing unit/scenario layout."
 ---
 
 # Test Layout
@@ -504,6 +504,8 @@ Wave 26 completes the scenario boundary in four RED/GREEN families. `scenarios/s
 Toolchain and migration contracts must pass in a clean arbitrary Git worktree after `pnpm install --frozen-lockfile`. Tests must not borrow another worktree's `node_modules`, depend on the workspace superproject, read credentials, or use ignored `.foundry` artifacts as fixtures.
 
 ## Commands
+
+The task interaction contract has pure parser and decision-binding tests in `unit/foundry-interaction-contract.test.mts`, while `scenarios/foundry-interaction-workflow.test.mts` checks persistence, stale replies and resume across facade instances. The public workflow scenario verifies one-set assessment, selective recheck, completion fencing and semantic decision adoption with the qualified local owners. Keep these cases in their existing test families; no production account or remote mutation is required.
 
 - `pnpm test`: run the full suite.
 - `pnpm test:toolchain`: verify the pnpm/TS7 graph and migration inventory.
