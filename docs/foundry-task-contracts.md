@@ -28,9 +28,9 @@ checkPaths:
   - specs/schemas/execution-context.schema.json
   - specs/import-profiles.json
   - tasks/**
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: f059e4703438d661aa823d33c7cff0a9582645bc
-lastReviewedNote: "Reviewed for Foundry #171: metadata repair preserves exact historical references only with payload-derived occurrence and owner/state/content proof, retains raw CLI freshness blockers and false publication readiness, and changes no ordinary authoring, credential or publication authority. Producer-verified zero-dispatch successors require fresh scope and grant."
+lastReviewedAt: 2026-09-23
+lastReviewedCommit: 649385e48ad75e91031efec4b592ad55d18cf121
+lastReviewedNote: "Reviewed for Foundry #190: indexed answer history, current per-type assessment coverage and derived recap preserve task provenance and attempt safety."
 related:
   - AGENTS.md
   - WORKFLOW.md

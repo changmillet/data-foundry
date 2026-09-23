@@ -153,8 +153,8 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - docs/incremental-change-set-contract.md
 lastReviewedAt: 2026-09-23
-lastReviewedCommit: 1e4f48bf8359f5e9bacba5741d15b7ff78f2eb41
-lastReviewedNote: "Current Foundry runtime, package, and module ownership boundaries are reviewed."
+lastReviewedCommit: 649385e48ad75e91031efec4b592ad55d18cf121
+lastReviewedNote: "Reviewed for Foundry #190: an interaction type leaf avoids a module cycle, and per-type decision digests retain unaffected assessment evidence."
 ---
 
 # Architecture

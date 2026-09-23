@@ -282,8 +282,8 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - test/README.md
 lastReviewedAt: 2026-09-23
-lastReviewedCommit: 1e4f48bf8359f5e9bacba5741d15b7ff78f2eb41
-lastReviewedNote: "Current Foundry task order and validation gates are reviewed."
+lastReviewedCommit: 649385e48ad75e91031efec4b592ad55d18cf121
+lastReviewedNote: "Reviewed for Foundry #190: current facade actions carry goal clarification, friendly questions and partial recap without changing write authorization."
 tracker:
   kind: filesystem
   inbox: tasks/inbox

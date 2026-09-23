@@ -20,6 +20,22 @@ checkPaths:
   - scripts/foundry.ts
   - scripts/package-entry.ts
   - scripts/public-api.ts
+  - scripts/runtime-entry.ts
+  - scripts/foundry-facade.ts
+  - scripts/foundry-runtime.ts
+  - scripts/lib/foundry-task-start-spec.ts
+  - scripts/lib/foundry-interaction-types.ts
+  - scripts/lib/foundry-interaction-input.ts
+  - scripts/lib/foundry-interaction-projection.ts
+  - scripts/lib/foundry-workflow-interaction.ts
+  - scripts/lib/foundry-workflow-state.ts
+  - scripts/lib/foundry-workflow-assessment.ts
+  - scripts/lib/foundry-semantic-input.ts
+  - scripts/lib/foundry-semantic-interaction.ts
+  - scripts/lib/foundry-workflow-semantic.ts
+  - test/unit/foundry-interaction-contract.test.mts
+  - test/scenarios/foundry-interaction-workflow.test.mts
+  - test/scenarios/foundry-public-workflow.test.mts
   - scripts/build-foundry-package.ts
   - scripts/verify-foundry-package.ts
   - scripts/lib/foundry-package-contract.ts
@@ -144,9 +160,9 @@ checkPaths:
   - test/unit/identity-preflight-run-command-factory.test.mts
   - test/unit/post-authoring-finalize-command-factory.test.mts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: e8e94788701dd52fc192724f6854bc5893753192
-lastReviewedNote: "Reviewed for Foundry #171: the manual closeout test now supplies the same canonical path projection as the real owner. Windows execution and successor CI already pass; successful completion and invalid receipt refusal assertions remain intact."
+lastReviewedAt: 2026-09-23
+lastReviewedCommit: 649385e48ad75e91031efec4b592ad55d18cf121
+lastReviewedNote: "Reviewed for Foundry #190: public task brief and interaction inputs route through the facade into indexed per-set assessment and semantic decision bindings; Skills retains human wording and CLI keeps scientific/write authority."
 ---
 
 # Foundry AI Navigation
@@ -398,5 +414,7 @@ git diff --check
 Golden diff protects CLI JSON compatibility for the key command set. The full test suite protects workflow-specific artifact and proof behavior. Toolchain tests protect the pnpm/TS7 graph and migration ledger. Command metadata tests protect AI navigation.
 
 Explicit reference selection starts at `scripts/lib/foundry-reference-input.ts` and the public `--reference-input` descriptor. The indexed snapshots feed `foundry-workflow-finalize.ts`; `finalize-reference-inputs.ts`, `handoff-reference-intent.ts` and `reference-intent-closeout.ts` own flat-input validation, precommit evidence transport and readback binding. The public runtime contract defines the boundary; CLI 0.1.19 owns reference eligibility and unit-aware QA.
+
+Public goal clarification and human decisions start at `scripts/runtime-entry.ts` / `scripts/foundry-facade.ts`. `foundry-task-start-spec.ts` keeps the optional brief in the request revision. `foundry-interaction-types.ts` is the graph leaf; `foundry-interaction-input.ts` selects bounded question/answer/assumption descriptors, `foundry-interaction-projection.ts` chooses current applicable decisions, and `foundry-workflow-interaction.ts` records them under the task lock. `foundry-workflow-state.ts` and `foundry-workflow-assessment.ts` track one-set coverage and selective rechecks; `foundry-semantic-input.ts`, `foundry-semantic-interaction.ts` and `foundry-workflow-semantic.ts` verify decision IDs before deterministic apply. The public runtime contract owns the argument and artifact shapes. Unit interaction tests protect parsing and scope; public workflow scenarios protect resume, early blocker presentation and adoption. Skills own the language shown to people; this owner adds no data schema, remote write or approval action.
 
 For industrial `foundry` terminology, start at `specs/prewrite-content-policy.json` and `test/unit/foundry-industrial-terminology.test.mts`. The existing evaluator in `import-curation/internal/workflow-identity-preflight.ts` retains per-leaf findings and independent markers. The command-surface contract documents local collocations and explicit runtime/workspace precedence; do not add a whole-field or task-specific exemption.

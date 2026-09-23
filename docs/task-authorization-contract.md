@@ -29,9 +29,9 @@ checkPaths:
   - test/unit/task-authorization.test.mts
   - test/unit/task-profile-authority.test.mts
   - test/scenarios/foundry-execution-admission.test.mts
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: bc41ba12a0fd9d6499c6ee992df891cf15e5303b
-lastReviewedNote: "Reviewed for Foundry #171 Windows CI correction: repair handoff and readback artifact paths reuse the existing canonical relative-path owner, matching strict native closeout on every platform. Payload, contract, authorization, exact readback and no-replay requirements are preserved."
+lastReviewedAt: 2026-09-23
+lastReviewedCommit: 649385e48ad75e91031efec4b592ad55d18cf121
+lastReviewedNote: "Reviewed for Foundry #190: human choices guide semantic work but are not QA waivers or write grants; owner attempt consumption rechecks current decision state."
 related:
   - docs/architecture.md
   - docs/safety-policy.md

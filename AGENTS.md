@@ -32,8 +32,8 @@ checkPaths:
   - prettier.config.ts
   - tsconfig*.json
 lastReviewedAt: 2026-09-23
-lastReviewedCommit: 1e4f48bf8359f5e9bacba5741d15b7ff78f2eb41
-lastReviewedNote: "Current Foundry ownership, toolchain, task authorization, and operating gates are reviewed."
+lastReviewedCommit: 649385e48ad75e91031efec4b592ad55d18cf121
+lastReviewedNote: "Reviewed for Foundry #190: bounded task brief, task-local interaction, per-type assessment and semantic adoption preserve CLI validation, separate write approval and no-replay."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry

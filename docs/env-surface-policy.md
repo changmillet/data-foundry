@@ -34,9 +34,9 @@ checkPaths:
   - scripts/public-api.ts
   - test/scenarios/foundry-package-consumer.test.mts
   - test/unit/foundry-runtime-environment.test.mts
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: 5f848dab3c680c7ad5f5d768d9f1585e26f2427c
-lastReviewedNote: "Reviewed for Foundry #185: release-only 0.1.10 identity projection from qualified main 5f848dab3c680c7ad5f5d768d9f1585e26f2427c changes no runtime behavior, dependency, permission or command contract. Signed publication and native/bootstrap qualification remain required release gates."
+lastReviewedAt: 2026-09-23
+lastReviewedCommit: 649385e48ad75e91031efec4b592ad55d18cf121
+lastReviewedNote: "Reviewed for Foundry #190: interaction input adds no environment variable, credential path or runtime trust anchor."
 ---
 
 # Environment Surface Policy

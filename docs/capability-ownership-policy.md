@@ -93,9 +93,9 @@ checkPaths:
   - scripts/lib/import-curation/internal/mutation-manifest-workflow.ts
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: 5f848dab3c680c7ad5f5d768d9f1585e26f2427c
-lastReviewedNote: "Reviewed for Foundry #185: release-only 0.1.10 identity projection from qualified main 5f848dab3c680c7ad5f5d768d9f1585e26f2427c changes no runtime behavior, dependency, permission or command contract. Signed publication and native/bootstrap qualification remain required release gates."
+lastReviewedAt: 2026-09-23
+lastReviewedCommit: 649385e48ad75e91031efec4b592ad55d18cf121
+lastReviewedNote: "Reviewed for Foundry #190: Foundry owns deterministic task interaction state, Skills owns wording and authoring guidance, and CLI retains scientific and write primitives."
 ---
 
 # Capability Ownership Policy
