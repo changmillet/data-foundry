@@ -42,7 +42,7 @@ checkPaths:
   - test/scenarios/foundry-package-consumer.test.mts
 lastReviewedAt: 2026-09-23
 lastReviewedCommit: 53bebdb52a125a380d4470fbc398d3895694eba4
-lastReviewedNote: "Reviewed for Foundry #192: installed interaction input remains a bounded task-local selection and cannot change package roots, qualification or write authority."
+lastReviewedNote: "Reviewed for Foundry #193: installed interaction input remains a bounded task-local selection and cannot change package roots, qualification or write authority."
 related:
   - docs/architecture.md
   - docs/task-authorization-contract.md

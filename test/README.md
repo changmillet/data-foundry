@@ -281,7 +281,7 @@ checkPaths:
   - docs/foundry-command-surface.md
 lastReviewedAt: 2026-09-23
 lastReviewedCommit: 53bebdb52a125a380d4470fbc398d3895694eba4
-lastReviewedNote: "Reviewed for Foundry #192: installed-package interaction smoke belongs in the existing package consumer scenario and uses only synthetic local input."
+lastReviewedNote: "Reviewed for Foundry #193: installed-package interaction smoke belongs in the existing package consumer scenario and uses only synthetic local input."
 ---
 
 # Test Layout

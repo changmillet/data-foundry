@@ -36,7 +36,7 @@ checkPaths:
   - test/scenarios/foundry-package-consumer.test.mts
 lastReviewedAt: 2026-09-23
 lastReviewedCommit: 53bebdb52a125a380d4470fbc398d3895694eba4
-lastReviewedNote: "Reviewed for Foundry #192: the local packed consumer now verifies the shipped interaction protocol and partial recap; public publication and native qualification remain separate."
+lastReviewedNote: "Reviewed for Foundry #193: the local packed consumer now verifies the shipped interaction protocol and partial recap; public publication and native qualification remain separate."
 related:
   - docs/public-runtime-contract.md
   - docs/runtime-context-contract.md

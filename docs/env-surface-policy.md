@@ -36,7 +36,7 @@ checkPaths:
   - test/unit/foundry-runtime-environment.test.mts
 lastReviewedAt: 2026-09-23
 lastReviewedCommit: 53bebdb52a125a380d4470fbc398d3895694eba4
-lastReviewedNote: "Reviewed for Foundry #192: installed interaction smoke selects explicit task input while the process uses isolated HOME; no environment variable, credential path or runtime trust anchor changes."
+lastReviewedNote: "Reviewed for Foundry #193: installed interaction smoke selects explicit task input while the process uses isolated HOME; no environment variable, credential path or runtime trust anchor changes."
 ---
 
 # Environment Surface Policy

@@ -34,7 +34,7 @@ checkPaths:
   - docs/public-runtime-contract.md
 lastReviewedAt: 2026-09-23
 lastReviewedCommit: 53bebdb52a125a380d4470fbc398d3895694eba4
-lastReviewedNote: "Reviewed for Foundry #192: installed brief and interaction smoke exercises the existing public task start, resume and status result contracts without changing their semantics."
+lastReviewedNote: "Reviewed for Foundry #193: installed brief and interaction smoke exercise the existing public task start, resume and status result contracts without changing their semantics."
 related:
   - docs/runtime-context-contract.md
   - docs/task-authorization-contract.md
