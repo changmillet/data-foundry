@@ -282,8 +282,8 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - test/README.md
 lastReviewedAt: 2026-09-23
-lastReviewedCommit: 649385e48ad75e91031efec4b592ad55d18cf121
-lastReviewedNote: "Reviewed for Foundry #190: current facade actions carry goal clarification, friendly questions and partial recap without changing write authorization."
+lastReviewedCommit: 53bebdb52a125a380d4470fbc398d3895694eba4
+lastReviewedNote: "Reviewed for installed interaction smoke: brief, question and corrected reply are exercised through public task actions; no import order or write gate changes."
 tracker:
   kind: filesystem
   inbox: tasks/inbox

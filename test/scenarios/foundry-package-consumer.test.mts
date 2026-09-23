@@ -482,6 +482,15 @@ test("packed Foundry installs twice and runs only the public facade from a read-
         source_input: null,
         output_directory: "outputs/cleanup",
       },
+      brief: {
+        original_request: "Review this local flow sample and ask when a unit is missing.",
+        goal: "Keep the selected unit and its source clear before authoring.",
+        intended_use: "Offline installed-package check.",
+        scope: "One incomplete flow sample.",
+        deliverables: ["A traceable partial decision recap."],
+        user_constraints: ["Do not infer scientific values or write to the platform."],
+        ai_assumptions: [],
+      },
     })}\n`,
   );
   const started = runFacade(
@@ -492,6 +501,137 @@ test("packed Foundry installs twice and runs only the public facade from a read-
   );
   const taskId = String(started.task_id);
   assert.match(taskId, /^task-[0-9a-f]{64}-r0001$/u);
+  const selectedBrief = (started.artifacts as Array<Record<string, unknown>>).find(
+    (artifact) => artifact.role === "task_brief",
+  );
+  assert.ok(
+    selectedBrief && selectedBrief.kind === "inline",
+    "the installed bin must project the task brief",
+  );
+  assert.equal(
+    (selectedBrief.value as Record<string, unknown>).goal,
+    "Keep the selected unit and its source clear before authoring.",
+  );
+  const taskArgs = ["--workspace", workspace, "--task", taskId, "--actor", "package-consumer"];
+  const interactionInput = path.join(root, "interaction.json");
+  const sourceSha256 = createHash("sha256").update(fs.readFileSync(input)).digest("hex");
+  const submitInteraction = (expected: string | null, events: unknown[], expectedExit = 2) => {
+    fs.writeFileSync(
+      interactionInput,
+      JSON.stringify({
+        schema: "tiangong-foundry.interaction-input.v1",
+        task_id: taskId,
+        actor_id: "package-consumer",
+        expected_state_sha256: expected,
+        events,
+      }),
+    );
+    return runFacade(
+      entry,
+      cwd,
+      ["task", "resume", ...taskArgs, "--interaction-input", interactionInput, "--json"],
+      expectedExit,
+    );
+  };
+  const interactionArtifact = (result: Record<string, unknown>) => {
+    const artifact = (result.artifacts as Array<Record<string, unknown>>).find(
+      (item) => item.role === "current_interaction_state",
+    );
+    assert.ok(artifact && artifact.kind === "file");
+    assert.equal(typeof artifact.path, "string");
+    assert.equal(typeof artifact.sha256, "string");
+    return artifact as { path: string; sha256: string };
+  };
+  const partialRecap = (result: Record<string, unknown>) => {
+    const artifact = (result.artifacts as Array<Record<string, unknown>>).find(
+      (item) => item.role === "decision_recap",
+    );
+    assert.ok(artifact && artifact.kind === "inline");
+    const value = artifact.value as Record<string, unknown>;
+    assert.equal(value.completion_proven, false);
+    return value;
+  };
+  const asked = submitInteraction(null, [
+    {
+      kind: "question",
+      id: "unit-choice",
+      dataset_type: "flow",
+      missing: "The selected flow sample has no unit.",
+      impact: "Its quantity cannot be interpreted reliably.",
+      recommendation: "Check the source or keep the unit unresolved.",
+      ask: "What unit should be recorded for this sample?",
+      choices: ["Provide a unit", "Investigate first"],
+      evidence_sha256: [sourceSha256],
+      supersedes: null,
+    },
+  ]);
+  assert.equal(asked.status, "needs_input");
+  assert.equal(
+    asked.permissions && (asked.permissions as Record<string, unknown>).state,
+    "not_required",
+  );
+  assert.ok(
+    (asked.next_actions as Array<Record<string, unknown>>).some(
+      (action) => action.kind === "human" && action.code === "answer_current_question",
+    ),
+  );
+  const questionState = interactionArtifact(asked);
+  assert.equal((partialRecap(asked).unresolved_questions as unknown[]).length, 1);
+  const investigated = submitInteraction(questionState.sha256, [
+    {
+      kind: "answer",
+      question_id: "unit-choice",
+      decision_id: "investigate-unit",
+      supersedes_decision_id: null,
+      raw_answer: "I do not know; please investigate first.",
+      adopted_decision: null,
+      disposition: "investigate",
+      evidence_sha256: [],
+    },
+  ]);
+  assert.equal(investigated.status, "needs_input");
+  assert.equal((partialRecap(investigated).unresolved_questions as unknown[]).length, 1);
+  const investigatedState = interactionArtifact(investigated);
+  const correctedAnswer = "For this test, I choose kg; keep it labeled as my choice.";
+  const decided = submitInteraction(
+    investigatedState.sha256,
+    [
+      {
+        kind: "answer",
+        question_id: "unit-choice",
+        decision_id: "chosen-unit",
+        supersedes_decision_id: "investigate-unit",
+        raw_answer: correctedAnswer,
+        adopted_decision: "Record the user-selected kg unit without treating it as source proof.",
+        disposition: "decided",
+        evidence_sha256: [],
+      },
+    ],
+    0,
+  );
+  assert.equal(decided.status, "ready");
+  assert.equal((decided.permissions as Record<string, unknown>).state, "not_required");
+  const currentInteraction = interactionArtifact(decided);
+  const history = JSON.parse(fs.readFileSync(currentInteraction.path, "utf8")) as {
+    events: Array<Record<string, unknown>>;
+  };
+  assert.equal(history.events.length, 3);
+  assert.equal(history.events[1]?.raw_answer, "I do not know; please investigate first.");
+  assert.equal(history.events[2]?.raw_answer, correctedAnswer);
+  assert.equal(history.events[2]?.supersedes_decision_id, "investigate-unit");
+  const recap = partialRecap(decided);
+  const choices = recap.user_decisions as Array<Record<string, unknown>>;
+  assert.equal(choices.length, 1);
+  assert.equal(choices[0]?.decision_id, "chosen-unit");
+  assert.equal(choices[0]?.supersedes_decision_id, "investigate-unit");
+  assert.equal(
+    choices[0]?.raw_answer_sha256,
+    createHash("sha256").update(correctedAnswer).digest("hex"),
+  );
+  assert.equal(JSON.stringify(recap).includes(correctedAnswer), false);
+  const restarted = runFacade(entry, cwd, ["task", "status", ...taskArgs, "--json"], 0);
+  assert.equal(interactionArtifact(restarted).sha256, currentInteraction.sha256);
+  assert.equal(partialRecap(restarted).completion_proven, false);
   const status = runFacade(
     entry,
     cwd,
