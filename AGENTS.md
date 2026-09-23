@@ -32,8 +32,8 @@ checkPaths:
   - prettier.config.ts
   - tsconfig*.json
 lastReviewedAt: 2026-09-23
-lastReviewedCommit: 649385e48ad75e91031efec4b592ad55d18cf121
-lastReviewedNote: "Reviewed for Foundry #190: bounded task brief, task-local interaction, per-type assessment and semantic adoption preserve CLI validation, separate write approval and no-replay."
+lastReviewedCommit: 53bebdb52a125a380d4470fbc398d3895694eba4
+lastReviewedNote: "Reviewed for installed interaction smoke: the local packed-consumer test retains Foundry's task-local context and separate scientific, authorization and no-replay gates."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry
