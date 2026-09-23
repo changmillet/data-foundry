@@ -25,6 +25,39 @@ import {
 import { runFoundryTaskOperation } from "./foundry-task-store.ts";
 import { sha256Json } from "./identity-preflight-proof.ts";
 import type { ArtifactEntry } from "./foundry-task-types.ts";
+import { currentFoundryInteractionState } from "./foundry-interaction-input.ts";
+import {
+  currentFoundryQuestions,
+  currentFoundryInvestigations,
+  foundryInteractionScopeApplies,
+} from "./foundry-interaction-projection.ts";
+
+function assertOwnerInteractionReady(
+  context: FoundryRuntimeContext,
+  entries: readonly ArtifactEntry[],
+  datasetType: string,
+  repairScope: boolean,
+): void {
+  if (repairScope) return;
+  const state = currentWorkflowState(context, entries);
+  if (!state.assessmentComplete)
+    throw new FoundryContextError(
+      "execution_assessment_incomplete",
+      "Owner execution requires complete current assessment coverage.",
+    );
+  const interaction = currentFoundryInteractionState(context, entries);
+  if (
+    interaction &&
+    [
+      ...currentFoundryQuestions(interaction.state),
+      ...currentFoundryInvestigations(interaction.state),
+    ].some((question) => foundryInteractionScopeApplies(question.dataset_type, datasetType))
+  )
+    throw new FoundryContextError(
+      "interaction_decision_pending",
+      "An applicable question or investigation remains unresolved before owner execution.",
+    );
+}
 
 export type OwnerExecutionRequest = ReturnType<typeof buildRequest>;
 
@@ -139,19 +172,30 @@ export async function prepareFoundryOwnerExecution(
       "A current sealed approval is required.",
     );
   const request = buildRequest(context, approval);
+  assertOwnerInteractionReady(
+    context,
+    entries,
+    request.policy.dataset_type,
+    request.policy.repair_scope === true,
+  );
   return runFoundryTaskOperation(
     context,
     {
       command: "dataset-workflow-execution-prepare",
       options: { authorization: approval.entry.sha256 },
       validateCurrent(index) {
-        if (
-          currentWorkflowState(context, index).authorization?.entry.sha256 !== approval.entry.sha256
-        )
+        const latest = currentWorkflowState(context, index);
+        if (latest.authorization?.entry.sha256 !== approval.entry.sha256)
           throw new FoundryContextError(
             "execution_approval_changed",
             "Approval changed before execution preparation.",
           );
+        assertOwnerInteractionReady(
+          context,
+          index,
+          request.policy.dataset_type,
+          request.policy.repair_scope === true,
+        );
       },
     },
     (operation) => {
@@ -309,7 +353,33 @@ export async function markOwnerAttemptConsumed(
   };
   return runFoundryTaskOperation(
     context,
-    { command: "dataset-workflow-execution-consume", options: { request: artifact.entry.sha256 } },
+    {
+      command: "dataset-workflow-execution-consume",
+      options: { request: artifact.entry.sha256 },
+      validateCurrent(index) {
+        const current = readOwnerExecutionRequests(context, index);
+        if (!current.some((item) => item.entry.sha256 === artifact.entry.sha256))
+          throw new FoundryContextError(
+            "execution_request_changed",
+            "The owner request changed before its attempt was consumed.",
+          );
+        assertOwnerInteractionReady(
+          context,
+          index,
+          artifact.request.policy.dataset_type,
+          artifact.request.policy.repair_scope === true,
+        );
+        if (
+          artifact.request.policy.repair_scope !== true &&
+          currentWorkflowState(context, index).authorization?.entry.sha256 !==
+            artifact.request.content.authorization
+        )
+          throw new FoundryContextError(
+            "execution_approval_changed",
+            "Approval changed before the owner attempt was consumed.",
+          );
+      },
+    },
     (operation) => {
       operation.writeJson(`attempts/owner-v1/${artifact.request.scope_id}/consumed.json`, value);
       return value;

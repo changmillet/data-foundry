@@ -39,6 +39,12 @@ export {
   type SemanticDecisionInput,
   type SemanticSubmission,
 } from "./lib/foundry-semantic-input.ts";
+export {
+  FOUNDRY_INTERACTION_INPUT_SCHEMA,
+  FOUNDRY_INTERACTION_STATE_SCHEMA,
+  type FoundryInteractionInput,
+  type FoundryInteractionState,
+} from "./lib/foundry-interaction-input.ts";
 export type { FoundryWorkspaceAccess } from "./lib/foundry-runtime-context.ts";
 export {
   FOUNDRY_RUNTIME_SELECTION_SCHEMA,

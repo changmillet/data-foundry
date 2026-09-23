@@ -21,6 +21,15 @@ import { runDatasetAuthoringTaskBuild } from "./import-curation/authoring-packag
 import { routeFoundryDecisionAction } from "./foundry-decision-routing.ts";
 import { prepareFoundryDecisionWork } from "./foundry-workflow-decisions.ts";
 import {
+  currentWorkflowState,
+  workflowAssessmentQueueScopeSha256,
+} from "./foundry-workflow-state.ts";
+import { currentFoundryInteractionState } from "./foundry-interaction-input.ts";
+import {
+  applicableFoundryInteractionDigest,
+  applicableFoundryInteractionProjection,
+} from "./foundry-interaction-projection.ts";
+import {
   createWorkflowStageDirectory,
   createWorkflowDirectory,
   registerWorkflowStageFiles,
@@ -33,16 +42,35 @@ function record(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
+export interface FoundryAssessmentOptions {
+  /** Omit to retain the original all-set operation for direct callers. */
+  scopeType?: string;
+  previousAssessment?: string;
+  interactionSha256?: string | null;
+}
+
 export function assessFoundryWorkflowRows(
   context: FoundryRuntimeContext,
   qualified: QualifiedFoundryRuntime,
   rowsReport: string,
   contextReports: readonly string[],
   identityReport?: string,
+  options: FoundryAssessmentOptions = {},
 ) {
   assertQualifiedFoundryRuntime(context, qualified);
   resolveFoundryAsset(context, "specs/prewrite-content-policy.json");
   resolveFoundryAsset(context, "specs/import-profiles.json");
+  const previous = options.previousAssessment
+    ? captureFoundryInput(options.previousAssessment)
+    : null;
+  if (previous) readFoundryInput(context, previous.path);
+  if (options.previousAssessment && !options.scopeType)
+    throw new FoundryContextError(
+      "workflow_assessment_invalid",
+      "An assessment predecessor requires a selected row set.",
+    );
+  let selectedState: ReturnType<typeof currentWorkflowState> | null = null;
+  let selectedInteraction: ReturnType<typeof currentFoundryInteractionState> = null;
   return runFoundryTaskOperation(
     context,
     {
@@ -51,6 +79,50 @@ export function assessFoundryWorkflowRows(
         rows_report: rowsReport,
         context_reports: contextReports,
         identity_report: identityReport ?? null,
+        ...(options.scopeType
+          ? {
+              scope_type: options.scopeType,
+              previous_assessment_sha256: previous?.sha256 ?? null,
+            }
+          : {}),
+        ...(options.interactionSha256 ? { interaction_sha256: options.interactionSha256 } : {}),
+      },
+      validateCurrent(index) {
+        const state = currentWorkflowState(context, index);
+        selectedState = state;
+        selectedInteraction = currentFoundryInteractionState(context, index);
+        if (state.rows?.file !== rowsReport)
+          throw new FoundryContextError(
+            "workflow_rows_changed",
+            "Current rows changed before assessment.",
+          );
+        if (
+          (state.identity?.value.status === "completed" ? state.identity.file : null) !==
+          (identityReport ?? null)
+        )
+          throw new FoundryContextError(
+            "workflow_identity_changed",
+            "Current identity evidence changed before assessment.",
+          );
+        if (state.interactionSha256 !== (options.interactionSha256 ?? null))
+          throw new FoundryContextError(
+            "workflow_interaction_changed",
+            "Current task decisions changed before assessment.",
+          );
+        if (!options.scopeType) return;
+        const current = state.assessment;
+        if (current?.file === (previous?.path ?? null) || (!current && !previous)) return;
+        // A concurrent identical operation can have completed before this caller obtains the lock.
+        // The receipt path below will replay that exact result, without advancing another scope.
+        if (
+          current?.value.previous_assessment === (previous?.path ?? null) &&
+          current.value.assessed_type === options.scopeType
+        )
+          return;
+        throw new FoundryContextError(
+          "workflow_assessment_changed",
+          "Assessment progress changed before this row set was checked.",
+        );
       },
     },
     (operation) => {
@@ -75,6 +147,7 @@ export function assessFoundryWorkflowRows(
           "Identity preflight must bind these current rows.",
         );
       const contracts = new Map<string, Record<string, unknown>>();
+      const contractShaByType = new Map<string, string>();
       const retainedReports = (key: string) => {
         const value = rows[key] ?? [];
         if (!Array.isArray(value) || value.some((file) => typeof file !== "string"))
@@ -99,6 +172,7 @@ export function assessFoundryWorkflowRows(
             "A contract pack is incomplete.",
           );
         contracts.set(value.type, record(value.files));
+        contractShaByType.set(value.type, captureFoundryInput(file).sha256);
       }
       const output = createWorkflowStageDirectory(context, operation, "assessment");
       fs.mkdirSync(resolveFoundryOutput(context, "tmp"), { recursive: true, mode: 0o700 });
@@ -118,9 +192,54 @@ export function assessFoundryWorkflowRows(
           );
         const environment = createFoundryIsolatedChildEnvironment({ tempRoot: temporary });
         const selectedSets = rows.sets.map(record);
+        for (const set of selectedSets) {
+          if (typeof set.type !== "string" || typeof set.file !== "string")
+            throw new FoundryContextError("workflow_rows_invalid", "A row set is invalid.");
+          readFoundryInput(context, set.file);
+        }
+        const previousReport = previous
+          ? record(JSON.parse(readFoundryInput(context, previous.path).toString("utf8")))
+          : null;
+        const previousSets = selectedState?.assessment?.value.sets ?? [];
+        if (options.scopeType) {
+          if (
+            (previousReport &&
+              (previousReport.schema !== "tiangong-foundry.assessment-stage.v1" ||
+                previousReport.owner_base !== context.assetRoot ||
+                !["in_progress", "completed"].includes(String(previousReport.status)))) ||
+            (previous && selectedState?.assessment?.file !== previous.path) ||
+            (!previous && selectedState?.assessment) ||
+            previousSets.length >= selectedSets.length ||
+            !selectedState?.assessmentRemainingTypes.includes(options.scopeType)
+          )
+            throw new FoundryContextError(
+              "workflow_assessment_invalid",
+              "Select the next row set against the current registered assessment progress.",
+            );
+        }
+        for (const set of previousSets) {
+          for (const key of [
+            "rows",
+            "schema_report",
+            "qa_report",
+            "curation_report",
+            "authoring_manifest",
+            "interaction_context",
+          ]) {
+            const file = set[key];
+            if (file !== undefined) readFoundryInput(context, String(file));
+          }
+        }
+        const queueScopeSha256 = workflowAssessmentQueueScopeSha256(
+          selectedSets.map((set) => ({
+            type: String(set.type),
+            file: String(set.file),
+            count: Number(set.count),
+          })),
+        );
         const processes = selectedSets.find((set) => set.type === "process");
         let queueDir: string | undefined;
-        if (processes) {
+        if (processes && (!options.scopeType || ["flow", "process"].includes(options.scopeType))) {
           if (typeof processes.file !== "string")
             throw new FoundryContextError("workflow_rows_invalid", "Process rows are missing.");
           queueDir = path.join(output, "queue");
@@ -144,8 +263,11 @@ export function assessFoundryWorkflowRows(
           }
           runWorkflowLocalCli(context, qualified, temporary, args);
         }
-        const assessed: Array<Record<string, unknown>> = [];
-        for (const candidate of rows.sets) {
+        const assessed: Array<Record<string, unknown>> = previousSets.map(record);
+        const toAssess = options.scopeType
+          ? [selectedSets.find((set) => set.type === options.scopeType)]
+          : selectedSets;
+        for (const candidate of toAssess) {
           const set = record(candidate);
           if (
             typeof set.type !== "string" ||
@@ -253,6 +375,26 @@ export function assessFoundryWorkflowRows(
               includeExecutionCommands: false,
             },
           });
+          const interactionDigest = applicableFoundryInteractionDigest(
+            selectedInteraction?.state ?? null,
+            set.type,
+          );
+          const interactionContext = selectedInteraction
+            ? path.join(output, set.type, "interaction-context.json")
+            : null;
+          if (interactionContext && selectedInteraction) {
+            const projected = applicableFoundryInteractionProjection(
+              selectedInteraction.state,
+              set.type,
+            );
+            operation.writeJson(interactionContext, {
+              schema: projected.schema,
+              dataset_type: set.type,
+              source_state_sha256: selectedInteraction.entry.sha256,
+              decisions: projected.decisions,
+              ai_assumptions: projected.ai_assumptions,
+            });
+          }
           assessed.push({
             type: set.type,
             rows: set.file,
@@ -265,18 +407,39 @@ export function assessFoundryWorkflowRows(
             authoring_status: authoring.status,
             authoring_counts: authoring.counts,
             decisions: decisionWork,
+            ...(options.scopeType || selectedInteraction
+              ? { context_report_sha256: contractShaByType.get(set.type) }
+              : {}),
+            ...(queueScopeSha256 &&
+            ["flow", "process"].includes(set.type) &&
+            (options.scopeType || selectedInteraction)
+              ? { queue_scope_sha256: queueScopeSha256 }
+              : {}),
+            ...(interactionDigest ? { interaction_digest: interactionDigest } : {}),
+            ...(interactionContext ? { interaction_context: interactionContext } : {}),
           });
         }
+        const orderedAssessed = selectedSets
+          .map((set) => assessed.find((item) => item.type === set.type))
+          .filter((set): set is Record<string, unknown> => Boolean(set));
         for (const input of context.inputs) readFoundryInput(context, input.path);
         assertQualifiedFoundryRuntime(context, qualified);
         registerWorkflowStageFiles(context, operation, output);
         const report = {
           schema: "tiangong-foundry.assessment-stage.v1",
-          status: "completed",
+          status: orderedAssessed.length === selectedSets.length ? "completed" : "in_progress",
           owner_base: context.assetRoot,
           rows_report: rowsReport,
           identity_report: identityReport ?? null,
-          sets: assessed,
+          sets: orderedAssessed,
+          ...(options.scopeType
+            ? {
+                previous_assessment: previous?.path ?? null,
+                previous_assessment_sha256: previous?.sha256 ?? null,
+                assessed_type: options.scopeType,
+              }
+            : {}),
+          ...(options.interactionSha256 ? { interaction_sha256: options.interactionSha256 } : {}),
         };
         operation.writeJson(path.join(output, "foundry-assessment.json"), report);
         return report;

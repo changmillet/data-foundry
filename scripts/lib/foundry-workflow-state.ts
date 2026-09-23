@@ -2,12 +2,16 @@ import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import {
+  captureFoundryInput,
   FoundryContextError,
   resolveFoundryOutput,
   type FoundryRuntimeContext,
 } from "./foundry-runtime-context.ts";
 import type { ArtifactEntry } from "./foundry-task-types.ts";
 import { readTaskBytes } from "./foundry-task-io.ts";
+import { sha256Json } from "./identity-preflight-proof.ts";
+import { applicableFoundryInteractionDigest } from "./foundry-interaction-projection.ts";
+import type { FoundryInteractionState } from "./foundry-interaction-types.ts";
 
 /**
  * The repair producer's registration of the preparation report. These two values are repeated here
@@ -37,11 +41,46 @@ export interface WorkflowRows {
 }
 export interface WorkflowAssessment {
   schema: "tiangong-foundry.assessment-stage.v1";
-  status: string;
+  status: "in_progress" | "completed";
   owner_base: string;
   rows_report?: string;
   identity_report?: string | null;
+  previous_assessment?: string | null;
+  previous_assessment_sha256?: string | null;
+  interaction_sha256?: string;
+  assessed_type?: string;
   sets: Array<Record<string, unknown>>;
+}
+
+const queueTypes = new Set(["process", "flow", "contact", "source", "unitgroup", "flowproperty"]);
+
+export function workflowAssessmentQueueScopeSha256(sets: readonly WorkflowRowSet[]): string | null {
+  if (!sets.some((set) => set.type === "process")) return null;
+  return sha256Json(
+    sets
+      .filter((set) => queueTypes.has(set.type))
+      .map((set) => {
+        const fact = captureFoundryInput(set.file);
+        return { type: set.type, path: set.file, bytes: fact.bytes, sha256: fact.sha256 };
+      }),
+  );
+}
+
+function registeredAssessmentFile(
+  context: FoundryRuntimeContext,
+  entries: readonly ArtifactEntry[],
+  file: unknown,
+): boolean {
+  if (typeof file !== "string") return false;
+  const entry = entries.find((candidate) => resolveFoundryOutput(context, candidate.path) === file);
+  if (!entry) return false;
+  const fact = captureFoundryInput(file);
+  if (fact.bytes !== entry.bytes || fact.sha256 !== entry.sha256)
+    throw new FoundryContextError(
+      "workflow_assessment_changed",
+      "A registered assessment input or report changed.",
+    );
+  return true;
 }
 
 export function workflowObject(value: unknown): Record<string, unknown> {
@@ -153,6 +192,39 @@ export function currentWorkflowState(
       }
     }
   }
+  const interactionEntry = entries.findLast(
+    (entry) =>
+      entry.command === "dataset-workflow-interaction" &&
+      path.basename(entry.path) === "interaction-state.json",
+  );
+  const interactionSha256 = interactionEntry?.sha256 ?? null;
+  const interactionValue = interactionEntry
+    ? readWorkflowArtifact(context, interactionEntry).value
+    : null;
+  if (
+    interactionValue &&
+    (interactionValue.schema !== "tiangong-foundry.interaction-state.v1" ||
+      interactionValue.task_id !== context.taskId ||
+      interactionValue.actor_id !== context.actorId ||
+      !Array.isArray(interactionValue.events))
+  )
+    throw new FoundryContextError(
+      "workflow_interaction_invalid",
+      "Registered task decisions are invalid.",
+    );
+  const interaction = interactionValue as unknown as FoundryInteractionState | null;
+  const contextShaByType = new Map<string, string>();
+  for (const entry of entries) {
+    if (
+      entry.command !== "dataset-context-pack" ||
+      path.basename(entry.path) !== "contract-report.json"
+    )
+      continue;
+    const report = readWorkflowArtifact(context, entry).value;
+    if (report.status === "completed" && typeof report.type === "string")
+      contextShaByType.set(report.type, entry.sha256);
+  }
+  const queueScopeSha256 = rows ? workflowAssessmentQueueScopeSha256(rows.value.sets) : null;
   let assessment: WorkflowArtifact<WorkflowAssessment> | null = null;
   if (rows) {
     for (const entry of [...entries].reverse()) {
@@ -165,7 +237,8 @@ export function currentWorkflowState(
         value = found.value;
       if (
         value.schema !== "tiangong-foundry.assessment-stage.v1" ||
-        typeof value.owner_base !== "string" ||
+        value.owner_base !== context.assetRoot ||
+        !["in_progress", "completed"].includes(String(value.status)) ||
         !Array.isArray(value.sets)
       )
         throw new FoundryContextError(
@@ -173,32 +246,168 @@ export function currentWorkflowState(
           "Registered assessment metadata is invalid.",
         );
       const sets = value.sets.map(workflowObject);
-      const matchingRows =
-        sets.length === rows.value.sets.length &&
-        rows.value.sets.every((row) =>
-          sets.some((set) => set.type === row.type && set.rows === row.file),
+      const reportRowsEntry = entries.find(
+        (candidate) =>
+          ["dataset-workflow-rows", "dataset-semantic-apply"].includes(candidate.command) &&
+          path.basename(candidate.path) === "foundry-rows.json" &&
+          resolveFoundryOutput(context, candidate.path) === value.rows_report,
+      );
+      const reportRows = reportRowsEntry
+        ? readWorkflowArtifact(context, reportRowsEntry).value
+        : value.rows_report === undefined
+          ? rows.value
+          : null;
+      if (!reportRows || !Array.isArray(reportRows.sets))
+        throw new FoundryContextError(
+          "workflow_assessment_invalid",
+          "Assessment row ancestry is not registered.",
         );
-      if (
-        (value.rows_report === undefined || value.rows_report === rows.file) &&
-        matchingRows &&
-        (value.identity_report ?? null) ===
-          (identity?.value.status === "completed" ? identity.file : null)
-      ) {
-        assessment = {
-          ...found,
-          value: {
-            schema: "tiangong-foundry.assessment-stage.v1",
-            status: String(value.status),
-            owner_base: value.owner_base,
-            rows_report: rows.file,
-            identity_report: identity?.value.status === "completed" ? identity.file : null,
-            sets,
-          },
-        };
-        break;
+      // An empty reference-only row revision needs its own assessment receipt. There are
+      // no per-type set facts to reuse from a predecessor with different rows.
+      if (!rows.value.sets.length && value.rows_report !== rows.file) continue;
+      const originalRows = reportRows.sets.map(workflowObject);
+      let lastOriginal = -1;
+      for (const set of sets) {
+        const next = originalRows.findIndex(
+          (row, index) => index > lastOriginal && row.type === set.type && row.file === set.rows,
+        );
+        if (next < 0)
+          throw new FoundryContextError(
+            "workflow_assessment_invalid",
+            "Assessment contains an unbound or duplicate row set.",
+          );
+        lastOriginal = next;
       }
+      if ((value.status === "completed") !== (sets.length === originalRows.length))
+        throw new FoundryContextError(
+          "workflow_assessment_invalid",
+          "Assessment completion must match its registered row-set coverage.",
+        );
+      if (value.previous_assessment !== undefined) {
+        const previousPath = value.previous_assessment;
+        const previousSha = value.previous_assessment_sha256;
+        const previousEntry =
+          typeof previousPath === "string"
+            ? entries.find(
+                (candidate) =>
+                  candidate.command === "dataset-workflow-assessment" &&
+                  candidate.sequence < entry.sequence &&
+                  resolveFoundryOutput(context, candidate.path) === previousPath &&
+                  candidate.sha256 === previousSha,
+              )
+            : undefined;
+        if (
+          (previousPath === null && previousSha !== null) ||
+          (typeof previousPath === "string" && !previousEntry) ||
+          (previousPath !== null && typeof previousPath !== "string") ||
+          (previousPath === null && (sets.length !== 1 || value.assessed_type !== sets[0]?.type))
+        )
+          throw new FoundryContextError(
+            "workflow_assessment_invalid",
+            "Assessment progress has no matching registered predecessor.",
+          );
+        if (previousEntry) {
+          const prior = readWorkflowArtifact(context, previousEntry).value;
+          const priorSets = Array.isArray(prior.sets) ? prior.sets.map(workflowObject) : null;
+          if (
+            prior.schema !== "tiangong-foundry.assessment-stage.v1" ||
+            !priorSets ||
+            typeof value.assessed_type !== "string" ||
+            !sets.some((set) => set.type === value.assessed_type) ||
+            sets.some(
+              (set) =>
+                set.type !== value.assessed_type &&
+                !priorSets.some((old) => sha256Json(old) === sha256Json(set)),
+            )
+          )
+            throw new FoundryContextError(
+              "workflow_assessment_invalid",
+              "Assessment retained a set outside its registered predecessor.",
+            );
+        }
+      } else if (value.status === "in_progress") {
+        throw new FoundryContextError(
+          "workflow_assessment_invalid",
+          "Partial assessment must identify its predecessor boundary.",
+        );
+      }
+      const identityMatches =
+        (value.identity_report ?? null) ===
+        (identity?.value.status === "completed" ? identity.file : null);
+      const currentSets = identityMatches
+        ? sets.filter((set) => {
+            const row = rows.value.sets.find((candidate) => candidate.type === set.type);
+            if (!row || row.file !== set.rows) return false;
+            if (
+              (set.interaction_digest ?? null) !==
+              applicableFoundryInteractionDigest(interaction, row.type)
+            )
+              return false;
+            const expectedContext = contextShaByType.get(row.type);
+            if (
+              (set.context_report_sha256 !== undefined &&
+                set.context_report_sha256 !== expectedContext) ||
+              (set.context_report_sha256 === undefined && value.rows_report !== rows.file)
+            )
+              return false;
+            if (["flow", "process"].includes(row.type)) {
+              if (
+                (set.queue_scope_sha256 !== undefined &&
+                  set.queue_scope_sha256 !== queueScopeSha256) ||
+                (set.queue_scope_sha256 === undefined &&
+                  queueScopeSha256 !== null &&
+                  value.rows_report !== rows.file)
+              )
+                return false;
+            }
+            const files = [
+              set.rows,
+              set.schema_report,
+              set.qa_report,
+              set.curation_report,
+              set.authoring_manifest,
+            ];
+            if (set.interaction_context !== undefined) files.push(set.interaction_context);
+            if (files.some((file) => !registeredAssessmentFile(context, entries, file)))
+              throw new FoundryContextError(
+                "workflow_assessment_invalid",
+                "A reusable assessment file is not registered.",
+              );
+            return true;
+          })
+        : [];
+      const covered = new Set(currentSets.map((set) => set.type));
+      assessment = {
+        ...found,
+        value: {
+          schema: "tiangong-foundry.assessment-stage.v1",
+          status: covered.size === rows.value.sets.length ? "completed" : "in_progress",
+          owner_base: value.owner_base,
+          rows_report: rows.file,
+          identity_report: identity?.value.status === "completed" ? identity.file : null,
+          ...(value.previous_assessment !== undefined
+            ? {
+                previous_assessment: value.previous_assessment as string | null,
+                previous_assessment_sha256: value.previous_assessment_sha256 as string | null,
+              }
+            : {}),
+          ...(typeof value.interaction_sha256 === "string"
+            ? { interaction_sha256: value.interaction_sha256 }
+            : {}),
+          ...(typeof value.assessed_type === "string"
+            ? { assessed_type: value.assessed_type }
+            : {}),
+          sets: currentSets,
+        },
+      };
+      break;
     }
   }
+  const assessmentComplete = assessment?.value.status === "completed";
+  const coveredTypes = new Set(assessment?.value.sets.map((set) => set.type) ?? []);
+  const assessmentRemainingTypes = rows
+    ? rows.value.sets.filter((set) => !coveredTypes.has(set.type)).map((set) => set.type)
+    : [];
   const referenceInputs = new Map<string, WorkflowArtifact<Record<string, unknown>>>();
   for (const entry of entries) {
     if (
@@ -230,7 +439,7 @@ export function currentWorkflowState(
         .digest("hex")
     : null;
   let finalization: WorkflowArtifact<Record<string, unknown>> | null = null;
-  if (rows && assessment) {
+  if (rows && assessmentComplete && assessment) {
     for (const entry of [...entries].reverse()) {
       if (
         entry.command !== "dataset-workflow-finalize" ||
@@ -344,6 +553,9 @@ export function currentWorkflowState(
   return {
     rows,
     assessment,
+    assessmentComplete,
+    assessmentRemainingTypes,
+    interactionSha256,
     identity,
     finalization,
     authorization,

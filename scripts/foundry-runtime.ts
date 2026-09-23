@@ -48,7 +48,10 @@ import { readRows } from "./lib/import-curation/internal/runtime-io.ts";
 import { importFoundryWorkflowPackage } from "./lib/foundry-workflow-import.ts";
 import { prepareFoundryWorkflowContext } from "./lib/foundry-workflow-context.ts";
 import { materializeFoundryWorkflowRows } from "./lib/foundry-workflow-rows.ts";
-import { assessFoundryWorkflowRows } from "./lib/foundry-workflow-assessment.ts";
+import {
+  assessFoundryWorkflowRows,
+  type FoundryAssessmentOptions,
+} from "./lib/foundry-workflow-assessment.ts";
 import { applyFoundrySemanticInput } from "./lib/foundry-workflow-semantic.ts";
 import type { SelectedSemanticInput } from "./lib/foundry-semantic-input.ts";
 import type { ArtifactEntry } from "./lib/foundry-task-types.ts";
@@ -90,8 +93,20 @@ export function createFoundryRuntime(
       prepareFoundryWorkflowContext(context, requireQualification(), types),
     materializeRows: (sources: readonly string[]) =>
       materializeFoundryWorkflowRows(context, sources),
-    assessRows: (rows: string, contracts: readonly string[], identityReport?: string) =>
-      assessFoundryWorkflowRows(context, requireQualification(), rows, contracts, identityReport),
+    assessRows: (
+      rows: string,
+      contracts: readonly string[],
+      identityReport?: string,
+      options?: FoundryAssessmentOptions,
+    ) =>
+      assessFoundryWorkflowRows(
+        context,
+        requireQualification(),
+        rows,
+        contracts,
+        identityReport,
+        options,
+      ),
     applySemantic: (entries: readonly ArtifactEntry[], submission: SelectedSemanticInput) =>
       applyFoundrySemanticInput(context, requireQualification(), entries, submission),
     initializeWorkspace: () => initializeFoundryWorkspace(context),

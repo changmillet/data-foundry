@@ -16,6 +16,7 @@ export interface SemanticSubmission {
   readonly authoring_task_sha256: string;
   readonly file: string;
   readonly sha256: string;
+  readonly decision_ids?: readonly string[];
 }
 export type SemanticPatchInput = SemanticSubmission & { readonly kind: "patch" };
 export type SemanticDecisionInput = SemanticSubmission & {
@@ -26,6 +27,7 @@ export interface FoundrySemanticInput {
   task_id: string;
   actor_id: string;
   assessment_sha256: string;
+  interaction_sha256?: string;
   submissions: readonly SemanticSubmission[];
 }
 export interface SelectedSemanticInput {
@@ -45,7 +47,14 @@ function exact(value: Record<string, unknown>, keys: readonly string[]) {
 
 export function parseFoundrySemanticInput(value: unknown): FoundrySemanticInput {
   const data = workflowObject(value);
-  exact(data, ["schema", "task_id", "actor_id", "assessment_sha256", "submissions"]);
+  exact(data, [
+    "schema",
+    "task_id",
+    "actor_id",
+    "assessment_sha256",
+    "submissions",
+    ...(Object.hasOwn(data, "interaction_sha256") ? ["interaction_sha256"] : []),
+  ]);
   if (
     data.schema !== FOUNDRY_SEMANTIC_INPUT_SCHEMA ||
     typeof data.task_id !== "string" ||
@@ -54,6 +63,8 @@ export function parseFoundrySemanticInput(value: unknown): FoundrySemanticInput 
     !/^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,255}$/u.test(data.actor_id) ||
     typeof data.assessment_sha256 !== "string" ||
     !sha.test(data.assessment_sha256) ||
+    (Object.hasOwn(data, "interaction_sha256") &&
+      (typeof data.interaction_sha256 !== "string" || !sha.test(data.interaction_sha256))) ||
     !Array.isArray(data.submissions) ||
     !data.submissions.length ||
     data.submissions.length > 1000
@@ -61,7 +72,13 @@ export function parseFoundrySemanticInput(value: unknown): FoundrySemanticInput 
     invalid("Semantic input must bind a task, actor, assessment and bounded submission selection.");
   const submissions = data.submissions.map((item) => {
     const part = workflowObject(item);
-    exact(part, ["kind", "authoring_task_sha256", "file", "sha256"]);
+    exact(part, [
+      "kind",
+      "authoring_task_sha256",
+      "file",
+      "sha256",
+      ...(Object.hasOwn(part, "decision_ids") ? ["decision_ids"] : []),
+    ]);
     if (
       (part.kind !== "patch" &&
         part.kind !== "classification" &&
@@ -77,11 +94,24 @@ export function parseFoundrySemanticInput(value: unknown): FoundrySemanticInput 
       /[\0\r\n]/u.test(part.file)
     )
       invalid("A semantic submission reference is invalid.");
+    if (
+      Object.hasOwn(part, "decision_ids") &&
+      (!Array.isArray(part.decision_ids) ||
+        part.decision_ids.length > 100 ||
+        part.decision_ids.some(
+          (id) => typeof id !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,255}$/u.test(id),
+        ) ||
+        new Set(part.decision_ids).size !== part.decision_ids.length)
+    )
+      invalid("Semantic decision ids must be unique bounded identifiers.");
     return Object.freeze({
       kind: part.kind,
       authoring_task_sha256: part.authoring_task_sha256,
       file: part.file,
       sha256: part.sha256,
+      ...(Object.hasOwn(part, "decision_ids")
+        ? { decision_ids: Object.freeze([...(part.decision_ids as string[])]) }
+        : {}),
     });
   });
   if (new Set(submissions.map((part) => part.authoring_task_sha256)).size !== submissions.length)
@@ -91,6 +121,9 @@ export function parseFoundrySemanticInput(value: unknown): FoundrySemanticInput 
     task_id: data.task_id,
     actor_id: data.actor_id,
     assessment_sha256: data.assessment_sha256,
+    ...(Object.hasOwn(data, "interaction_sha256")
+      ? { interaction_sha256: data.interaction_sha256 as string }
+      : {}),
     submissions: Object.freeze(submissions),
   });
 }

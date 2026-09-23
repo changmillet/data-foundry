@@ -52,7 +52,7 @@ export async function finalizeFoundryWorkflow(
   assertQualifiedFoundryRuntime(context, qualified);
   const state = currentWorkflowState(context, entries),
     rows = state.rows;
-  if (!rows || !state.assessment)
+  if (!rows || !state.assessment || !state.assessmentComplete)
     throw new FoundryContextError(
       "workflow_assessment_required",
       "Assess the current rows before finalization.",
@@ -390,15 +390,21 @@ export async function finalizeFoundryWorkflow(
             : {}),
         },
         validateCurrent(index) {
-          if (currentWorkflowState(context, index).rows?.entry.sha256 !== rows.entry.sha256)
+          const current = currentWorkflowState(context, index);
+          if (current.rows?.entry.sha256 !== rows.entry.sha256)
             throw new FoundryContextError(
               "workflow_rows_changed",
               "Rows changed during finalization.",
             );
           if (
-            currentWorkflowState(context, index).referenceInputsSha256 !==
-            state.referenceInputsSha256
+            !current.assessmentComplete ||
+            current.assessment?.entry.sha256 !== state.assessment?.entry.sha256
           )
+            throw new FoundryContextError(
+              "workflow_assessment_changed",
+              "Assessment changed during finalization.",
+            );
+          if (current.referenceInputsSha256 !== state.referenceInputsSha256)
             throw new FoundryContextError(
               "reference_input_changed",
               "Reference selection changed during finalization.",

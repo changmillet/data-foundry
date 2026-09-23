@@ -1830,7 +1830,12 @@ export async function verifyDependentScopes(t: TestContext, support: boolean) {
   assert.ok(started.task_id, JSON.stringify(started));
   const invocation = { taskId: started.task_id, actorId: "scope-actor" };
   let current = started;
-  for (let step = 0; step < 4; step++) current = await facade.resume(invocation);
+  for (
+    let step = 0;
+    step < 8 && !current.artifacts.some((item) => item.role === "foundry-finalize.json");
+    step++
+  )
+    current = await facade.resume(invocation);
   const loadFinalize = (result: typeof current) => {
     const artifact = result.artifacts.findLast((item) => item.role === "foundry-finalize.json");
     assert.ok(artifact?.kind === "file", JSON.stringify(result));
