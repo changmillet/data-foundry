@@ -32,8 +32,8 @@ checkPaths:
   - prettier.config.ts
   - tsconfig*.json
 lastReviewedAt: 2026-09-23
-lastReviewedCommit: a836ddaa380a36c8b1466669c1716f6201e9d919
-lastReviewedNote: "Reviewed for Foundry #192: release-only 0.1.11 identity projection from exact merged #193 main a836ddaa380a36c8b1466669c1716f6201e9d919; task interaction, scientific evidence, permission and no-replay boundaries are unchanged. Signed publication and installed qualification remain separate release gates."
+lastReviewedCommit: a3d7a738d24c1183b8198da40aa74f3a2215b959
+lastReviewedNote: "Reviewed for Foundry #196: pending human questions retain bounded independent local preparation; Foundry ownership, scientific proof, permission and no-replay invariants remain unchanged."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry
