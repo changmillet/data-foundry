@@ -132,6 +132,16 @@ test("one Process question permits another Process patch, then binds only its ow
   for (const detail of [question.missing, question.impact, question.recommendation, question.ask])
     assert.ok(humanQuestion.instructions.includes(detail));
   assert.ok(humanQuestion.instructions.includes(firstId), "show which Process needs an answer");
+  assert.ok(humanQuestion.instructions.startsWith(`Question: ${question.ask}`));
+  assert.ok(
+    humanQuestion.instructions.indexOf(question.impact) <
+      humanQuestion.instructions.indexOf(firstId),
+    "explain the impact before the technical record locator",
+  );
+  assert.ok(
+    !humanQuestion.instructions.includes(firstScope.row_sha256),
+    "the full row proof stays in indexed artifacts instead of the question text",
+  );
   const partialRecap = pending.artifacts.find((artifact) => artifact.role === "decision_recap");
   assert.ok(partialRecap?.kind === "inline");
   const partial = partialRecap.value as {

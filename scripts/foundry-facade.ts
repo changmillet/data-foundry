@@ -687,26 +687,26 @@ function scopedAuthoringPresentation(
   for (const item of staleObjects) {
     blockers.push({
       code: "interaction_object_evidence_changed",
-      message: `The reviewed ${item.dataset_type} ${item.entity_id}@${item.version} changed without a decision-bound successor. Recheck only this object and its proven dependents before adopting the old answer.`,
+      message: `The reviewed ${item.dataset_type} changed without a proven link to the earlier decision. Recheck only this record and its proven dependents. Record ID: ${item.entity_id}; version: ${item.version}.`,
       scope: `${item.dataset_type}:${item.entity_id}`,
     });
     actions.push(
       human(
         "review_object_scope",
-        `Review ${item.dataset_type} ${item.entity_id}@${item.version} against its current registered row and source evidence. The old object decision is not current and cannot authorize or apply work.`,
+        `The earlier answer may no longer fit this ${item.dataset_type}. Recheck its current row and source evidence before using that answer. Record ID: ${item.entity_id}; version: ${item.version}.`,
       ),
     );
   }
   for (const item of reassessments) {
     blockers.push({
       code: "interaction_object_decision_changed",
-      message: `The corrected decision ${item.decision_id} for ${item.dataset_type} ${item.entity_id}@${item.version} has not been adopted against its current registered row. Review that object before authorization.`,
+      message: `A newer answer for this ${item.dataset_type} has not been applied to its current row. Review it before authorization. Record ID: ${item.entity_id}; version: ${item.version}; decision ID: ${item.decision_id}.`,
       scope: `${item.dataset_type}:${item.entity_id}`,
     });
     actions.push(
       human(
         "review_corrected_object_decision",
-        `Reassess ${item.dataset_type} ${item.entity_id}@${item.version} using current source evidence and decision ${item.decision_id}. Submit matching semantic work; if this task has no matching work left, start a revised task for the correction. Other objects can continue independently.`,
+        `A newer answer for this ${item.dataset_type} still needs to be reflected in the data. Check its current source evidence, then submit matching semantic work. If no matching work remains, start a revised task. Other records can continue. Record ID: ${item.entity_id}; version: ${item.version}; decision ID: ${item.decision_id}.`,
       ),
     );
   }
@@ -728,7 +728,7 @@ function scopedAuthoringPresentation(
       actions.push(
         human(
           `review_${decision.kind}_decisions`,
-          `Read registered ${decision.kind} task ${decision.task} (${String(decision.status)}). Review each queued object's current evidence and decisions; resolve any pending question for an affected object before submitting this decision task.`,
+          `A ${decision.kind} decision batch needs review. Check each affected record's evidence and resolve its pending questions before submitting the batch. Registered task: ${decision.task}; status: ${String(decision.status)}.`,
         ),
       );
     }
@@ -817,7 +817,7 @@ function scopedAuthoringPresentation(
         actions.push(
           human(
             "review_semantic_work",
-            `Independent ${type} ${entity.entity_id}@${entity.version} can continue. Read its registered authoring task ${taskFile} and matching object_interaction_context; cite only applicable decision IDs. No write permission is implied.`,
+            `This ${type} has independent authoring work ready. Review its remaining gaps and source evidence in the registered task and matching object_interaction_context, then cite only decisions that apply to this record. Record ID: ${entity.entity_id}; version: ${entity.version}; task: ${taskFile}. This does not grant write permission.`,
           ),
         );
       }
@@ -1174,9 +1174,9 @@ function taskProjection(
     const describe = (question: Readonly<Record<string, unknown>>) => {
       const object = question.object_scope as { entity_id: string; version: string } | undefined;
       const target = object
-        ? `For ${String(question.dataset_type)} ${object.entity_id}@${object.version}: `
+        ? ` Affected ${String(question.dataset_type)}: ID ${object.entity_id}, version ${object.version}. The indexed task artifacts retain its exact row and source evidence.`
         : "";
-      return `${target}${String(question.missing)} ${String(question.impact)} ${String(question.recommendation)} ${String(question.ask)}`;
+      return `Question: ${String(question.ask)} Missing information: ${String(question.missing)} Why it matters: ${String(question.impact)} Suggested next step: ${String(question.recommendation)}${target}`;
     };
     const askActions = pendingQuestions.map((question) =>
       human(
