@@ -159,7 +159,7 @@ checkPaths:
   - test/unit/zero-javascript-ratchet.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: f88ea3f60546c20bbcb7d7c10f929a60596180bb
+lastReviewedCommit: 2b9558a568c8a89232d9c49fdaa78aa6e79fd643
 lastReviewedNote: "Reviewed for Foundry #206: a human decision may bind one registered versioned object and row hash; separate Process work items retain independent semantic scope and indexed adoption lineage. Legacy task/type choices and scientific/write gates remain unchanged. Base retains #204 public CLI 0.1.22, SDK 0.4.1 and Toolkit 0.3.3 qualification."
 ---
 
@@ -167,7 +167,7 @@ lastReviewedNote: "Reviewed for Foundry #206: a human decision may bind one regi
 
 The ordinary user entry is the independently installed [TianGong Foundry skill](https://github.com/tiangong-lca/agent-skills/tree/main/foundry-tidas-import). Its qualified release lock selects the managed runtime for a separate user workspace. The internal authoring role is maintained in the same Skills repository and loads for current semantic work items. This source checkout retains the developer commands and runtime owners described below; it carries no second maintained copy of either skill.
 
-The public task protocol can retain a short goal and scope, register evidence-bound questions and raw answers, and distinguish task-wide, dataset-type-wide and exact registered-object choices. An object choice carries a versioned identity and current row hash; independent Process work can continue while another Process awaits an answer. Semantic results record only applicable decision IDs and their indexed before/after row hashes, while a concise recap points back to full evidence. The entry skill explains human decisions in plain language and accepts natural answers; Foundry preserves exact task evidence and the CLI keeps scientific validation and write permission separate. A source checkout implementing this protocol does not itself update the independently qualified installed skill/runtime lock.
+The public task protocol can retain a short goal and scope, register evidence-bound questions and raw answers, and distinguish task-wide, dataset-type-wide and exact registered-object choices. An object choice carries a versioned identity and current row hash; independent Process work can continue while another Process awaits an answer. Semantic results record only applicable decision IDs and their indexed before/after row hashes, while a concise recap points back to full evidence. The entry skill explains human decisions in plain language and accepts natural answers; Foundry presents the question, impact and next step before the exact record locator while preserving full evidence in indexed artifacts. The CLI keeps scientific validation and write permission separate. A source checkout implementing this protocol does not itself update the independently qualified installed skill/runtime lock.
 
 The package candidate now supports CLI-managed execution with verified runtime components and separate read/write workspace access. F1 publication and complete production qualification remain in progress; see `docs/package-distribution-contract.md` for the current release boundary.
 

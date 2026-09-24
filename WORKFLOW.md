@@ -282,7 +282,7 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - test/README.md
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: f88ea3f60546c20bbcb7d7c10f929a60596180bb
+lastReviewedCommit: 2b9558a568c8a89232d9c49fdaa78aa6e79fd643
 lastReviewedNote: "Reviewed for Foundry #206: per-object interaction proof and current authoring contexts keep one Process question from claiming or blocking another Process's local semantic work. Authorization and replay boundaries are unchanged. Base retains #204 public CLI 0.1.22, SDK 0.4.1 and Toolkit 0.3.3 qualification."
 tracker:
   kind: filesystem
