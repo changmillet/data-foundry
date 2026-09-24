@@ -489,4 +489,18 @@ test("one Process question permits another Process patch, then binds only its ow
     adoptedSuccessor.artifacts.some((artifact) => artifact.role === "foundry-assessment.json"),
   );
   assert.equal(adoptedSuccessor.permissions.state, "not_required");
+
+  const beforeOldScope = fs.readFileSync(index);
+  writeInteraction(correctedState.sha256, [
+    {
+      ...question,
+      id: "p1-follow-up-on-old-bytes",
+      supersedes: question.id,
+      object_scope: firstScope,
+    },
+  ]);
+  const oldScope = await facade.resume({ ...invocation, interactionInputFile: interactionFile });
+  assert.equal(oldScope.status, "blocked");
+  assert.equal(oldScope.blockers[0]?.code, "interaction_input_invalid");
+  assert.deepEqual(fs.readFileSync(index), beforeOldScope);
 });
