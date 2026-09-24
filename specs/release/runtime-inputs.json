@@ -2,19 +2,19 @@
   "schema": "tiangong-foundry.release-runtime-inputs.v1",
   "cli": {
     "package": "@tiangong-lca/cli",
-    "version": "0.1.19",
-    "source_commit": "7f7b313cebc30c96154860df30f5d666963bc0b7",
+    "version": "0.1.22",
+    "source_commit": "ba286d42db5a48f8b70fd649162fb45586e7cfa2",
     "repository": "https://github.com/tiangong-lca/cli",
-    "tag": "cli-v0.1.19",
-    "source_date": "2026-09-21T06:37:11.000Z",
+    "tag": "cli-v0.1.22",
+    "source_date": "2026-09-24T07:14:24.000Z",
     "bootstrap": {
       "posix": {
-        "source_url": "https://raw.githubusercontent.com/tiangong-lca/cli/7f7b313cebc30c96154860df30f5d666963bc0b7/scripts/bootstrap/tiangong-runtime-bootstrap.sh",
+        "source_url": "https://raw.githubusercontent.com/tiangong-lca/cli/ba286d42db5a48f8b70fd649162fb45586e7cfa2/scripts/bootstrap/tiangong-runtime-bootstrap.sh",
         "bytes": 11742,
         "sha256": "7aa826448f7b0e1d25f59a19a6f8c906621a82f0ee956124d9f93484885b9fac"
       },
       "powershell": {
-        "source_url": "https://raw.githubusercontent.com/tiangong-lca/cli/7f7b313cebc30c96154860df30f5d666963bc0b7/scripts/bootstrap/tiangong-runtime-bootstrap.ps1",
+        "source_url": "https://raw.githubusercontent.com/tiangong-lca/cli/ba286d42db5a48f8b70fd649162fb45586e7cfa2/scripts/bootstrap/tiangong-runtime-bootstrap.ps1",
         "bytes": 13126,
         "sha256": "a797bc5269386a0f45fbc5bebb7d634b37fc8a164500aaaa4905be5e61bf8f65"
       }
@@ -64,67 +64,67 @@
     "source_date": "2026-07-30T11:57:02.000Z"
   },
   "tidas": {
-    "version": "0.3.2",
+    "version": "0.3.3",
     "repository": "https://github.com/tiangong-lca/tidas-toolkit",
-    "source_commit": "d38448e7372baa84c50b20a8dbd501656b764d63",
-    "tag": "v0.3.2",
-    "checksum_source": "https://github.com/tiangong-lca/tidas-toolkit/releases/download/v0.3.2/SHA256SUMS",
+    "source_commit": "4f1be37fa3a9c9e939321e0d40776a63a2e005c8",
+    "tag": "v0.3.3",
+    "checksum_source": "https://github.com/tiangong-lca/tidas-toolkit/releases/download/v0.3.3/SHA256SUMS",
     "platforms": {
       "darwin-arm64": {
-        "url": "https://github.com/tiangong-lca/tidas-toolkit/releases/download/v0.3.2/tidas-v0.3.2-aarch64-apple-darwin.tar.gz",
-        "sha256": "98b0622c6a91bdae6376d3228432ea4dc80e8f1cdd52f1d506dd3d5ea98a9866",
+        "url": "https://github.com/tiangong-lca/tidas-toolkit/releases/download/v0.3.3/tidas-v0.3.3-aarch64-apple-darwin.tar.gz",
+        "sha256": "a9870ec8553d68afd37fa1870468e59d814d50ecc6ae9790a711a0777dbb2f87",
         "format": "tar-gzip",
         "target": "aarch64-apple-darwin",
-        "executable": "tidas-v0.3.2-aarch64-apple-darwin/bin/tidas",
-        "manifest": "tidas-v0.3.2-aarch64-apple-darwin/distribution-manifest.json",
-        "license": "tidas-v0.3.2-aarch64-apple-darwin/share/licenses/tidas/LICENSE"
+        "executable": "tidas-v0.3.3-aarch64-apple-darwin/bin/tidas",
+        "manifest": "tidas-v0.3.3-aarch64-apple-darwin/distribution-manifest.json",
+        "license": "tidas-v0.3.3-aarch64-apple-darwin/share/licenses/tidas/LICENSE"
       },
       "linux-arm64": {
-        "url": "https://github.com/tiangong-lca/tidas-toolkit/releases/download/v0.3.2/tidas-v0.3.2-aarch64-unknown-linux-gnu.tar.gz",
-        "sha256": "c90e87f080235a99de916ab12b1e4134c31b5270d03bf82dca3e1d721243785b",
+        "url": "https://github.com/tiangong-lca/tidas-toolkit/releases/download/v0.3.3/tidas-v0.3.3-aarch64-unknown-linux-gnu.tar.gz",
+        "sha256": "d5c3b8c798c1652ad08a1324709cf4ea065d4e6c563bf0496088d69f27d13692",
         "format": "tar-gzip",
         "target": "aarch64-unknown-linux-gnu",
-        "executable": "tidas-v0.3.2-aarch64-unknown-linux-gnu/bin/tidas",
-        "manifest": "tidas-v0.3.2-aarch64-unknown-linux-gnu/distribution-manifest.json",
-        "license": "tidas-v0.3.2-aarch64-unknown-linux-gnu/share/licenses/tidas/LICENSE",
+        "executable": "tidas-v0.3.3-aarch64-unknown-linux-gnu/bin/tidas",
+        "manifest": "tidas-v0.3.3-aarch64-unknown-linux-gnu/distribution-manifest.json",
+        "license": "tidas-v0.3.3-aarch64-unknown-linux-gnu/share/licenses/tidas/LICENSE",
         "requirements": {
           "glibc": "2.38",
-          "binary_sha256": "fe001fe60ab90e6739fcbedda6bc51fe980b034292aba87d8b9bdc0363b2f673",
-          "evidence": "ELF version-reference table observed with LLVM objdump; maximum required GLIBC version is 2.38."
+          "binary_sha256": "717dc98ebe6892ec0ba565700c4c9ddd604a1b858e61c6fe4d1c51b04412758c",
+          "evidence": "Public v0.3.3 ELF version-reference table independently inspected with objdump; maximum required GLIBC version is 2.38."
         }
       },
       "linux-x64": {
-        "url": "https://github.com/tiangong-lca/tidas-toolkit/releases/download/v0.3.2/tidas-v0.3.2-x86_64-unknown-linux-gnu.tar.gz",
-        "sha256": "82101fcbd3bf2fd149713d1c256410030f467b6dcacaebec06bed0463a0d4edf",
+        "url": "https://github.com/tiangong-lca/tidas-toolkit/releases/download/v0.3.3/tidas-v0.3.3-x86_64-unknown-linux-gnu.tar.gz",
+        "sha256": "2ad15e2b19e73d275b9e94dbd21b042d9fa9e143543eb3c32063d9b89fab82b5",
         "format": "tar-gzip",
         "target": "x86_64-unknown-linux-gnu",
-        "executable": "tidas-v0.3.2-x86_64-unknown-linux-gnu/bin/tidas",
-        "manifest": "tidas-v0.3.2-x86_64-unknown-linux-gnu/distribution-manifest.json",
-        "license": "tidas-v0.3.2-x86_64-unknown-linux-gnu/share/licenses/tidas/LICENSE",
+        "executable": "tidas-v0.3.3-x86_64-unknown-linux-gnu/bin/tidas",
+        "manifest": "tidas-v0.3.3-x86_64-unknown-linux-gnu/distribution-manifest.json",
+        "license": "tidas-v0.3.3-x86_64-unknown-linux-gnu/share/licenses/tidas/LICENSE",
         "requirements": {
           "glibc": "2.38",
-          "binary_sha256": "b18f9733c2640e1d9517e5f12a64ef509df5d6cf7ae6e81ccfa407f8b9b96711",
-          "evidence": "ELF version-reference table observed with LLVM objdump; maximum required GLIBC version is 2.38."
+          "binary_sha256": "1c82ee49e1fe3b1d966d8020f2c549bfbab5bbc14ca4e2e33f1128690bd5b052",
+          "evidence": "Public v0.3.3 ELF version-reference table independently inspected with objdump; maximum required GLIBC version is 2.38."
         }
       },
       "win32-x64": {
-        "url": "https://github.com/tiangong-lca/tidas-toolkit/releases/download/v0.3.2/tidas-v0.3.2-x86_64-pc-windows-msvc.zip",
-        "sha256": "07fd5201ce8adff2d3d3c92c525b68e5b41b66b37d453d2fe985b37b993002ae",
+        "url": "https://github.com/tiangong-lca/tidas-toolkit/releases/download/v0.3.3/tidas-v0.3.3-x86_64-pc-windows-msvc.zip",
+        "sha256": "57faa60519777a2b179bcfe4cc57325b548e696e9ba3c7b1f39893350db81550",
         "format": "zip",
         "target": "x86_64-pc-windows-msvc",
-        "executable": "tidas-v0.3.2-x86_64-pc-windows-msvc/bin/tidas.exe",
-        "manifest": "tidas-v0.3.2-x86_64-pc-windows-msvc/distribution-manifest.json",
-        "license": "tidas-v0.3.2-x86_64-pc-windows-msvc/share/licenses/tidas/LICENSE",
+        "executable": "tidas-v0.3.3-x86_64-pc-windows-msvc/bin/tidas.exe",
+        "manifest": "tidas-v0.3.3-x86_64-pc-windows-msvc/distribution-manifest.json",
+        "license": "tidas-v0.3.3-x86_64-pc-windows-msvc/share/licenses/tidas/LICENSE",
         "requirements": {
           "external_runtime_dlls": [],
-          "binary_sha256": "a6fa1978140015038928f6831c8ed7bb7b2ad7877687ef3a30dccaff69bde3ca",
+          "binary_sha256": "5610ec83d5028dead9ae09199fdd08ab705948df18208417189dcd256b5b0724",
           "status": "static-crt-verified",
           "issue": "https://github.com/tiangong-lca/tidas-toolkit/issues/187",
-          "evidence": "Public v0.3.2 archive verified against exact source-bound SLSA and SPDX attestations; independent LLVM PE import inspection finds only Windows OS DLLs. Native release run 35494516324 passed Windows packaged smoke."
+          "evidence": "Public v0.3.3 archive verified against exact source-bound SLSA and SPDX attestations; independent PE import inspection finds only Windows OS DLLs. Native release run 35987905049 passed Windows packaged smoke; separate issue #232 owns downloaded-archive deep-path qualification."
         }
       }
     },
-    "source_date": "2026-09-20T06:17:42.000Z"
+    "source_date": "2026-09-24T08:43:55.000Z"
   },
   "minimum_hosts": {
     "darwin-arm64": {

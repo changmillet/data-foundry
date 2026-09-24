@@ -354,7 +354,7 @@ test("packed Foundry installs twice and runs only the public facade from a read-
     resolveInstalledTiangongLcaCliPackage: () => { packageVersion: string; binPath: string };
   };
   const installedCli = installedResolver.resolveInstalledTiangongLcaCliPackage();
-  assert.equal(installedCli.packageVersion, "0.1.19");
+  assert.equal(installedCli.packageVersion, "0.1.22");
   assert.ok(fs.statSync(installedCli.binPath).isFile());
   timing.checkpoint("managed-cache");
   await verifyManagedPackageCache(firstPackage, root);
@@ -409,7 +409,7 @@ test("packed Foundry installs twice and runs only the public facade from a read-
     "parseFoundryTaskStartSpec",
     "runFoundryPublicCommand",
   ]);
-  assert.deepEqual(importedResult.cli, { name: "@tiangong-lca/cli", version: "0.1.19" });
+  assert.deepEqual(importedResult.cli, { name: "@tiangong-lca/cli", version: "0.1.22" });
   assert.equal(importedResult.doctor, "ready");
 
   timing.checkpoint("declarations");

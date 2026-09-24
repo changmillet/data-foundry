@@ -8,11 +8,11 @@ export const TIANGONG_LCA_CLI_TIDAS_SOURCE_SCHEMA =
 const expectedSource = Object.freeze({
   schema: TIANGONG_LCA_CLI_TIDAS_SOURCE_SCHEMA,
   spec_repository: "tiangong-lca/tidas-spec",
-  spec_commit: "d4cb089c753ffd20b173db2e56fb553a364f48f4",
-  spec_version: "0.2.1",
+  spec_commit: "f118660dbcbfbf736be74837cce0bf26cd177245",
+  spec_version: "0.2.3",
   source_repository: "https://github.com/tiangong-lca/tidas-toolkit",
   source_commit: "9c0d8b1c8ceb1841074f5bc6de5fbb7fcc9318f5",
-  manifest_sha256: "16d4d5950496544b50cd6b1570789930da104af313a325bb9eaa466507ec6bb5",
+  manifest_sha256: "5b69ab859e26a253dc51c6aeee68c971d727b1f8db44128143795113fe3eee6a",
 });
 
 export type TiangongLcaCliTidasSchemaSource = Readonly<{
@@ -59,7 +59,7 @@ function parseSource(value: JsonRecord): TiangongLcaCliTidasSchemaSource {
     value.manifest_sha256 !== expectedSource.manifest_sha256
   )
     throw new Error(
-      `Installed ${cliPackageName} TIDAS source manifest does not match the approved spec 0.2.1 source identity.`,
+      `Installed ${cliPackageName} TIDAS source manifest does not match the approved spec 0.2.3 source identity.`,
     );
   if (!Array.isArray(value.schemas) || value.schemas.length !== 18)
     throw new Error(
