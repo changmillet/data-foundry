@@ -35,8 +35,8 @@ checkPaths:
   - test/scenarios/foundry-package-consumer.test.mts
   - test/unit/foundry-runtime-environment.test.mts
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: b6e3a0a564af0e49032de1eef193c9927a2836e7
-lastReviewedNote: "Reviewed for Foundry #206: CI test duration weights change only partition planning; runtime environment, credential, native-input and write-authorization surfaces remain unchanged."
+lastReviewedCommit: be60f69ae57c45c4278b1744195f32aa3237af9d
+lastReviewedNote: "Reviewed for Foundry #205 version-only 0.1.13: no environment, credential, native-input or write-authorization surface changes; the existing public CLI/Toolkit locks remain exact."
 ---
 
 # Environment Surface Policy

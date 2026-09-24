@@ -35,8 +35,8 @@ checkPaths:
   - test/scenarios/foundry-interaction-workflow.test.mts
   - docs/public-runtime-contract.md
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: 2b9558a568c8a89232d9c49fdaa78aa6e79fd643
-lastReviewedNote: "Reviewed for Foundry #206: interaction v1 optionally binds one exact registered row identity/hash, status exposes current per-object context, and semantic results retain decision-bound row successors. Legacy scope and write boundaries remain. Base retains #204 public CLI 0.1.22, SDK 0.4.1 and Toolkit 0.3.3 qualification."
+lastReviewedCommit: be60f69ae57c45c4278b1744195f32aa3237af9d
+lastReviewedNote: "Reviewed for Foundry #205 version-only 0.1.13: no public facade, object-scope, runtime-input or write-handoff behavior changes; the package identity projection alone advances."
 related:
   - docs/runtime-context-contract.md
   - docs/task-authorization-contract.md
