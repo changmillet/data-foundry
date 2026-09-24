@@ -358,3 +358,80 @@ test("an independent P1 row change cannot carry an old decision while unchanged 
     [],
   );
 });
+
+test("an object assumption requires explicit same-object re-review after its registered row changes", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-assumption-scope-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const options = {
+    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    workspace: path.join(root, "workspace"),
+    cacheBase: path.join(root, "cache"),
+  };
+  initializeFoundryWorkspace(createFoundryRuntimeContext(options));
+  const context = createFoundryRuntimeContext({
+    ...options,
+    taskId: `task-${"b".repeat(64)}-r0001`,
+    actorId: "object-scope-actor",
+  });
+  const assumption = {
+    kind: "assumption",
+    id: "p1-energy-denominator",
+    dataset_type: "process",
+    object_scope: { entity_id: firstId, version, row_sha256: originalFirstHash },
+    statement: "The source reports energy per unit of raw coal.",
+    impact: "A different denominator would change this Process value.",
+    evidence_sha256: [],
+    supersedes: null,
+  };
+  const state = advanceFoundryInteractionState(
+    null,
+    parseFoundryInteractionInput({
+      schema: "tiangong-foundry.interaction-input.v1",
+      task_id: context.taskId,
+      actor_id: context.actorId,
+      expected_state_sha256: null,
+      events: [assumption],
+    }),
+    null,
+    new Set(),
+    new Set(["process"]),
+    new Set([foundryInteractionObjectProofKey("process", firstId, version, originalFirstHash)]),
+  );
+  const changed = new Map<string, CurrentFoundryObject>([
+    [
+      foundryInteractionObjectKey("process", firstId, version),
+      { dataset_type: "process", entity_id: firstId, version, row_sha256: changedFirstHash },
+    ],
+  ]);
+  assert.equal(
+    currentFoundryObjectScopeIsBound(context, [], state, changed, "process", firstId, version),
+    false,
+    "an assumption cannot ride another decision's row successor",
+  );
+  const rebound = advanceFoundryInteractionState(
+    state,
+    parseFoundryInteractionInput({
+      schema: "tiangong-foundry.interaction-input.v1",
+      task_id: context.taskId,
+      actor_id: context.actorId,
+      expected_state_sha256: "c".repeat(64),
+      events: [
+        {
+          ...assumption,
+          id: "p1-denominator-reviewed-again",
+          object_scope: { ...assumption.object_scope, row_sha256: changedFirstHash },
+          statement: "The current P1 source still reports per unit of raw coal.",
+          supersedes: assumption.id,
+        },
+      ],
+    }),
+    "c".repeat(64),
+    new Set(),
+    new Set(["process"]),
+    new Set([foundryInteractionObjectProofKey("process", firstId, version, changedFirstHash)]),
+  );
+  assert.equal(
+    currentFoundryObjectScopeIsBound(context, [], rebound, changed, "process", firstId, version),
+    true,
+  );
+});
