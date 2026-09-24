@@ -1,7 +1,7 @@
 {
   "$schema": "../specs/schemas/file-location-registry.schema.json",
   "schema_version": 1,
-  "updated_at_utc": "2026-09-24T11:24:14Z",
+  "updated_at_utc": "2026-09-24T12:17:28Z",
   "policy_doc": "docs/file-organization.md",
   "entries": [
     {
@@ -207,7 +207,9 @@
         "scripts/lib/foundry-interaction-input.ts",
         "scripts/lib/foundry-interaction-types.ts",
         "scripts/lib/foundry-interaction-projection.ts",
+        "scripts/lib/foundry-interaction-scope.ts",
         "scripts/lib/foundry-workflow-interaction.ts",
+        "scripts/lib/foundry-workflow-object-scope.ts",
         "scripts/lib/foundry-semantic-interaction.ts",
         "scripts/lib/foundry-workflow-semantic.ts",
         "scripts/lib/foundry-workflow-state.ts",
