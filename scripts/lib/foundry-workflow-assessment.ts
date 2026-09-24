@@ -17,6 +17,11 @@ import { copyFoundryIsolatedExecutable } from "./foundry-runtime-environment.ts"
 import { createFoundryIsolatedChildEnvironment } from "./foundry-runtime-environment.ts";
 import { runFoundryTaskOperation } from "./foundry-task-store.ts";
 import { runTidasRowsValidation } from "./tidas-adapter.ts";
+import {
+  nativeFailureFileName,
+  nativeFailureResultName,
+  nativeValidationFailureEvidence,
+} from "./foundry-native-validation-failure.ts";
 import { runDatasetCurationGate } from "./import-curation/curation-gate.ts";
 import { runDatasetAuthoringTaskBuild } from "./import-curation/authoring-packages.ts";
 import { routeFoundryDecisionAction } from "./foundry-decision-routing.ts";
@@ -502,11 +507,38 @@ export function assessFoundryWorkflowRows(
             },
             environment,
           });
-          if (typeof schema.report_file !== "string")
-            throw new FoundryContextError(
-              "workflow_schema_failed",
-              "Native validation returned no compatible report.",
+          if (typeof schema.report_file !== "string") {
+            const evidence = nativeValidationFailureEvidence(
+              schema,
+              set.type,
+              set.file,
+              captureFoundryInput(set.file).sha256,
+              Number(set.count),
             );
+            const evidenceFile = path.join(output, set.type, nativeFailureFileName);
+            operation.writeJson(evidenceFile, evidence);
+            const result = {
+              schema: "tiangong-foundry.assessment-failure.v1",
+              status: "blocked",
+              task_id: context.taskId,
+              rows_report: rowsReport,
+              rows_report_sha256: captureFoundryInput(rowsReport).sha256,
+              rows_file: set.file,
+              rows_file_sha256: evidence.rows_sha256,
+              row_count: evidence.row_count,
+              dataset_type: set.type,
+              exit_code: evidence.exit_code,
+              exit_class: evidence.exit_class,
+              diagnostic_code: evidence.diagnostic_code,
+              diagnostic_message: evidence.diagnostic_message,
+              evidence_file: evidenceFile,
+              evidence_sha256: "",
+            };
+            result.evidence_sha256 = captureFoundryInput(evidenceFile).sha256;
+            operation.writeJson(path.join(output, nativeFailureResultName), result);
+            registerWorkflowStageFiles(context, operation, output);
+            return result;
+          }
           const qaDir = path.join(output, set.type, "qa");
           let qaReport: string;
           if (["flow", "process", "lifecyclemodel"].includes(set.type)) {

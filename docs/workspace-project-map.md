@@ -90,8 +90,8 @@ checkPaths:
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: 05e4bd11b08276d092d10051b3f4f376c2af52ef
-lastReviewedNote: "Reviewed for Foundry #197: release-only 0.1.12 identity projection from exact merged #200 main 05e4bd11b08276d092d10051b3f4f376c2af52ef; #196 early-question continuation and #200 indexed, human-readable blocked-queue behavior are already in the base. This projection changes no runtime behavior, CLI pin, dependencies, scientific or permission gates. Signed publication and installed qualification remain separate release gates."
+lastReviewedCommit: b0f1fba338a6bb357babc9bcfbcd1aa40a594883
+lastReviewedNote: "Reviewed for Foundry #202: task-indexed native assessment failure evidence remains Foundry-owned, while Windows deep-path validation I/O is Toolkit-owned. Schema, scientific and write authority boundaries are unchanged."
 ---
 
 # Workspace Project Map
