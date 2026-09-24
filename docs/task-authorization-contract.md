@@ -29,9 +29,9 @@ checkPaths:
   - test/unit/task-authorization.test.mts
   - test/unit/task-profile-authority.test.mts
   - test/scenarios/foundry-execution-admission.test.mts
-lastReviewedAt: 2026-09-23
-lastReviewedCommit: 649385e48ad75e91031efec4b592ad55d18cf121
-lastReviewedNote: "Reviewed for Foundry #190: human choices guide semantic work but are not QA waivers or write grants; owner attempt consumption rechecks current decision state."
+lastReviewedAt: 2026-09-24
+lastReviewedCommit: 894b471a1da4f1eece401f5f86db9937f3000d28
+lastReviewedNote: "Reviewed for Foundry #204: exact public CLI 0.1.22 and native Toolkit 0.3.3 input identities advance; environment, task ledger, scientific and write authorization boundaries remain unchanged."
 related:
   - docs/architecture.md
   - docs/safety-policy.md

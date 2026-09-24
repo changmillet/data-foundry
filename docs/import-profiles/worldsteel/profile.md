@@ -1,7 +1,7 @@
 ---
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: 208f520f0771f2aacdde9422133255a76f0cc2fb
-lastReviewedNote: "Reviewed for Foundry #171: CLI 0.1.19 leaves Worldsteel selection, authorization and write gates unchanged."
+lastReviewedAt: 2026-09-24
+lastReviewedCommit: 894b471a1da4f1eece401f5f86db9937f3000d28
+lastReviewedNote: "Reviewed for Foundry #204: operator CLI pin advances to public 0.1.22; Worldsteel selection, source evidence, authorization, coverage and write policy remain unchanged."
 title: worldsteel Import Profile
 docType: profile
 scope: import-profile
