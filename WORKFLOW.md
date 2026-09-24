@@ -282,8 +282,8 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - test/README.md
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: 8d03b249f1d0666dbdda786af6481f04b1d748ef
-lastReviewedNote: "Reviewed for Foundry #202: native validation failures retain bounded indexed exit/diagnostic/stderr and current row-set evidence with a human blocker; Toolkit owns the Windows deep-path I/O repair. Scientific and write gates remain unchanged."
+lastReviewedCommit: 894b471a1da4f1eece401f5f86db9937f3000d28
+lastReviewedNote: "Reviewed for Foundry #204: pin public CLI 0.1.22, SDK 0.4.1 transitive source and Toolkit 0.3.3 native inputs; source/bootstrap identity and four-platform package checks updated, with task authorization and write gates unchanged."
 tracker:
   kind: filesystem
   inbox: tasks/inbox
@@ -408,7 +408,7 @@ All scenario suites are native `.test.mts`. Preserve every multi-command artifac
 
 Do not parse or execute rendered command strings. `tiangong-foundry.command-spec.v1` makes `executable` plus `argv` authoritative and keeps `display` reader-only. Its SHA-256 binds the authoritative command and exact artifact facts; commit and verify both bind the final rows path, bytes, and SHA-256, and runners reject same-path drift before `shell=false` spawn. Artifact-to-scope matching still normalizes platform separators. Durable writers fsync writable file descriptors, not read-only reopened handles.
 
-Use the exact installed project dependency as `pnpm exec tiangong-lca ...`. Foundry runtime adapters resolve that same `@tiangong-lca/cli@0.1.19` manifest and bin directly; only the external `skills@latest` source-evidence resolver remains intentionally floating, with the resolved ref recorded in task artifacts.
+Use the exact installed project dependency as `pnpm exec tiangong-lca ...`. Foundry runtime adapters resolve that same `@tiangong-lca/cli@0.1.22` manifest and bin directly; only the external `skills@latest` source-evidence resolver remains intentionally floating, with the resolved ref recorded in task artifacts.
 
 The npm candidate is built through `pnpm package:build` and checked through `pnpm package:check`; `pnpm package:pack` archives only the generated sanitized stage. The installed `tiangong-foundry` bin accepts the six public facade operations and never routes a flat developer command. Package installation performs no initialization, login, component download or hook setup. Treat the W06 tarball as a local candidate until W08 publishes the exact F1 release and product manifest.
 

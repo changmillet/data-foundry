@@ -35,8 +35,8 @@ checkPaths:
   - test/scenarios/foundry-package-consumer.test.mts
   - test/unit/foundry-runtime-environment.test.mts
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: 05e4bd11b08276d092d10051b3f4f376c2af52ef
-lastReviewedNote: "Reviewed for Foundry #197: release-only 0.1.12 identity projection from exact merged #200 main 05e4bd11b08276d092d10051b3f4f376c2af52ef; #196 early-question continuation and #200 indexed, human-readable blocked-queue behavior are already in the base. This projection changes no runtime behavior, CLI pin, dependencies, scientific or permission gates. Signed publication and installed qualification remain separate release gates."
+lastReviewedCommit: 894b471a1da4f1eece401f5f86db9937f3000d28
+lastReviewedNote: "Reviewed for Foundry #204: exact public CLI 0.1.22 and native Toolkit 0.3.3 input identities advance; environment, task ledger, scientific and write authorization boundaries remain unchanged."
 ---
 
 # Environment Surface Policy

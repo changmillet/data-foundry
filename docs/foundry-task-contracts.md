@@ -29,8 +29,8 @@ checkPaths:
   - specs/import-profiles.json
   - tasks/**
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: abd80f28c1eff58c19ae40c929cf130b8b7d2431
-lastReviewedNote: "Reviewed for Foundry #200: blocked CLI queue manifest and exact missing-reference rows are registered with current assessment while unchanged resume cannot re-run exhausted local stages."
+lastReviewedCommit: 894b471a1da4f1eece401f5f86db9937f3000d28
+lastReviewedNote: "Reviewed for Foundry #204: exact public CLI 0.1.22 and native Toolkit 0.3.3 input identities advance; environment, task ledger, scientific and write authorization boundaries remain unchanged."
 related:
   - AGENTS.md
   - WORKFLOW.md

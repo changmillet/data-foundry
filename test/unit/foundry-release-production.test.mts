@@ -8,7 +8,7 @@ import { projectFoundryProductionLock } from "../../scripts/lib/foundry-release-
 
 const root = path.resolve(import.meta.dirname, "../..");
 const lockBytes = fs.readFileSync(path.join(root, "pnpm-lock.yaml"));
-const direct = { "@tiangong-lca/cli": "0.1.19" };
+const direct = { "@tiangong-lca/cli": "0.1.22" };
 interface Fixture {
   importers: Record<
     string,
@@ -28,12 +28,12 @@ test("the actual frozen lock yields the full sixteen-package C1 production closu
   assert.equal(result.schema, "tiangong-foundry.production-lock.v1");
   assert.equal(result.source.sha256, createHash("sha256").update(lockBytes).digest("hex"));
   assert.equal(result.packages.length, 16);
-  const cli = result.packages.find((item) => item.id === "@tiangong-lca/cli@0.1.19");
+  const cli = result.packages.find((item) => item.id === "@tiangong-lca/cli@0.1.22");
   assert(cli);
-  assert.equal(cli.dependencies["@tiangong-lca/tidas-sdk"], "@tiangong-lca/tidas-sdk@0.3.0");
+  assert.equal(cli.dependencies["@tiangong-lca/tidas-sdk"], "@tiangong-lca/tidas-sdk@0.4.1");
   assert.equal(
     Buffer.from(cli.integrity.slice(7), "base64").toString("hex"),
-    "34aa14c413e6534cc8ef7858f5aabc7fb2c67551fbca9dd8ac8a17a118de86b707cb2b86de3e4868b4c28f5bceb5b14643f61e54b50bc28d4c3c9c201fe6402f",
+    "294704f3576118daeecbc624445b2cc8e52e6344989d794f2745f790d75feef735bcd4f1bed40ff7fad962c4fde3ac6d3480e27d25798b03cb0990a9c6dd9eea",
   );
   assert(
     result.packages.every((item) => item.download_url.startsWith("https://registry.npmjs.org/")),
@@ -73,7 +73,7 @@ test("root dependency drift and missing transitive snapshots cannot produce a lo
     () =>
       projectFoundryProductionLock(
         changed((value) => {
-          value.importers["."].dependencies["@tiangong-lca/cli"].specifier = "^0.1.19";
+          value.importers["."].dependencies["@tiangong-lca/cli"].specifier = "^0.1.22";
         }),
         direct,
       ),
@@ -84,14 +84,14 @@ test("root dependency drift and missing transitive snapshots cannot produce a lo
 test("non-registry resolutions, unbound package bytes and unsupported dependency locators fail", () => {
   for (const mutate of [
     (value: Fixture) => {
-      value.packages["@tiangong-lca/cli@0.1.19"].resolution.integrity = "sha512-bad";
+      value.packages["@tiangong-lca/cli@0.1.22"].resolution.integrity = "sha512-bad";
     },
     (value: Fixture) => {
-      value.packages["@tiangong-lca/cli@0.1.19"].resolution.tarball =
+      value.packages["@tiangong-lca/cli@0.1.22"].resolution.tarball =
         "https://elsewhere.invalid/cli.tgz";
     },
     (value: Fixture) => {
-      value.snapshots["@tiangong-lca/cli@0.1.19"].dependencies = { unsafe: "file:../outside" };
+      value.snapshots["@tiangong-lca/cli@0.1.22"].dependencies = { unsafe: "file:../outside" };
     },
   ])
     assert.throws(

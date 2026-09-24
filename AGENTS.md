@@ -32,8 +32,8 @@ checkPaths:
   - prettier.config.ts
   - tsconfig*.json
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: 8d03b249f1d0666dbdda786af6481f04b1d748ef
-lastReviewedNote: "Reviewed for Foundry #202: native validation failures retain bounded indexed exit/diagnostic/stderr and current row-set evidence with a human blocker; Toolkit owns the Windows deep-path I/O repair. Scientific and write gates remain unchanged."
+lastReviewedCommit: 894b471a1da4f1eece401f5f86db9937f3000d28
+lastReviewedNote: "Reviewed for Foundry #204: pin public CLI 0.1.22, SDK 0.4.1 transitive source and Toolkit 0.3.3 native inputs; source/bootstrap identity and four-platform package checks updated, with task authorization and write gates unchanged."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry
@@ -77,7 +77,7 @@ Receive external LCA packages or source documents, choose the correct import lan
 
 - Node.js 24, exact `pnpm@11.24.0`, and TypeScript `7.0.2` are the single toolchain. The root workspace and lockfile are the only dependency authorities. Oxlint owns linting, Prettier owns formatting, and TypeScript keeps `erasableSyntaxOnly`.
 - Tracked first-party JavaScript and JSX/TSX are forbidden. Keep the zero-JavaScript ratchet, the no-explicit-`any` rule, the suppression audit, and the intentional TypeScript lint/typecheck graph. Builds clear only the guarded `dist` tree before `tsc` and emit no JavaScript on type errors.
-- The installed owner CLI is exactly `@tiangong-lca/cli@0.1.19`, invoked through `pnpm exec tiangong-lca`. Foundry imports only the published `command-spec`, `batch`, `auth-identity-receipt`, and `runtime` subpaths; private CLI internals are not a compatibility surface.
+- The installed owner CLI is exactly `@tiangong-lca/cli@0.1.22`, invoked through `pnpm exec tiangong-lca`. Foundry imports only the published `command-spec`, `batch`, `auth-identity-receipt`, and `runtime` subpaths; private CLI internals are not a compatibility surface.
 - Executable handoffs use `tiangong-foundry.command-spec.v1`. The `executable` and `argv` array, exact input artifact facts, and SHA-256 are authoritative; `display` is derived and never executed. Ambiguous writes resolve through fresh readback and are never replayed blindly.
 - Keep import profiles as source rules and task authorization as a separate current-owner binding. Final-row, account, actor, runtime, profile, input, and write gates must remain independent of historical task artifacts and profile overrides.
 - Keep source and emitted execution bound to the same trusted package root, current CLI identity, and immutable runtime context. The Golden gate compares a non-`HEAD` merge base with full history and isolated child environments; clean-worktree validation must not rely on another checkout, ignored state, or credentials.

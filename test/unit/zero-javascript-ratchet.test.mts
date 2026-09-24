@@ -17,9 +17,9 @@ import { auditTrackedTypeScriptSuppressions } from "../../scripts/check-lint-sup
 // Complete components, Node/CLI bootstrap base, lock data, native qualification, aggregation and asset publication remain source-only TypeScript owners.
 // Portable gzip headers, copied-script qualification and final manifest publication remain native TypeScript release tooling.
 // Native selection, inspection and gracefully drained process fixtures remain native TypeScript.
-// CLI 0.1.19 runtime/host adoption remains native TypeScript and uses only public package exports.
+// CLI 0.1.22 runtime/host adoption remains native TypeScript and uses only public package exports.
 // Managed host admission and owning-cache verification retain full trusted selection in native TypeScript.
-// TIDAS 0.3.2 complete-notice intake, upstream notice entrypoints and exact Golden migration retain that boundary.
+// TIDAS 0.3.3 complete-notice intake, upstream notice entrypoints and exact Golden migration retain that boundary.
 // Issue #110's tool-policy retirement preserves Node 24 and the native TypeScript graph.
 // Issue #108's migration adoption, compatibility and replay guards remain native TypeScript.
 // Issue #68's Worldsteel profile-truth contract is native .mts and adds no compatibility path.
