@@ -19,6 +19,9 @@ export interface SemanticObjectIdentity {
   readonly version: string;
 }
 
+export type SemanticSelectedScope =
+  string | SemanticObjectIdentity | readonly SemanticObjectIdentity[];
+
 export interface SemanticInteractionScope {
   readonly work_item_sha256: string;
   readonly dataset_type: string;
@@ -46,7 +49,7 @@ function hasCurrentNarrowInteraction(state: FoundryInteractionState, type: strin
 export function verifyFoundrySemanticInteraction(
   input: FoundrySemanticInput,
   interaction: { readonly sha256: string; readonly state: FoundryInteractionState } | null,
-  selectedScopes: ReadonlyMap<string, string | SemanticObjectIdentity>,
+  selectedScopes: ReadonlyMap<string, SemanticSelectedScope>,
 ): readonly SemanticInteractionScope[] {
   if ((input.interaction_sha256 ?? null) !== (interaction?.sha256 ?? null))
     fail("Semantic input must name the current registered interaction state.");
@@ -54,20 +57,43 @@ export function verifyFoundrySemanticInteraction(
   for (const part of input.submissions) {
     const selected = selectedScopes.get(part.authoring_task_sha256);
     if (!selected) fail("Semantic work is not in the current assessed scope.");
-    const type = typeof selected === "string" ? selected : selected.dataset_type;
-    const object = typeof selected === "string" ? null : selected;
-    if (object && (!object.entity_id || !object.version))
-      fail("Semantic work has no verified current object identity.");
+    const objects: readonly SemanticObjectIdentity[] | null =
+      typeof selected === "string"
+        ? null
+        : Array.isArray(selected)
+          ? selected
+          : [selected as SemanticObjectIdentity];
+    const type = typeof selected === "string" ? selected : objects?.[0]?.dataset_type;
+    if (!type) fail("Semantic work has no verified current dataset type.");
+    if (objects) {
+      const keys = new Set<string>();
+      for (const object of objects) {
+        if (
+          object.dataset_type !== type ||
+          !object.entity_id ||
+          !object.version ||
+          keys.has(JSON.stringify([type, object.entity_id, object.version]))
+        )
+          fail("Semantic work has missing, mixed or duplicate current object identities.");
+        keys.add(JSON.stringify([type, object.entity_id, object.version]));
+      }
+    }
+    const expectedByObject = objects?.map((object) =>
+      interaction
+        ? currentFoundryDecisionsForObject(
+            interaction.state,
+            type,
+            object.entity_id,
+            object.version,
+          ).map((decision) => String(decision.decision_id))
+        : [],
+    );
     const expected = interaction
-      ? (object
-          ? currentFoundryDecisionsForObject(
-              interaction.state,
-              type,
-              object.entity_id,
-              object.version,
-            )
-          : currentFoundryDecisionsForType(interaction.state, type)
-        ).map((decision) => String(decision.decision_id))
+      ? objects
+        ? [...new Set(expectedByObject!.flat())]
+        : currentFoundryDecisionsForType(interaction.state, type).map((decision) =>
+            String(decision.decision_id),
+          )
       : [];
     const actual = part.decision_ids ?? [];
     if (
@@ -77,8 +103,8 @@ export function verifyFoundrySemanticInteraction(
     )
       fail("Semantic work must name exactly the current applicable user decision ids.");
     if (interaction) {
-      const unresolved = object
-        ? [
+      const unresolved = objects
+        ? objects.flatMap((object) => [
             ...currentFoundryQuestionsForObject(
               interaction.state,
               type,
@@ -91,7 +117,7 @@ export function verifyFoundrySemanticInteraction(
               object.entity_id,
               object.version,
             ),
-          ]
+          ])
         : [
             ...currentFoundryQuestions(interaction.state),
             ...currentFoundryInvestigations(interaction.state),
@@ -100,21 +126,27 @@ export function verifyFoundrySemanticInteraction(
         fail(
           "Resolve or investigate the current decision gap before applying dependent semantic work.",
         );
-      if (!object && hasCurrentNarrowInteraction(interaction.state, type))
+      if (!objects && hasCurrentNarrowInteraction(interaction.state, type))
         fail("A multi-object semantic owner cannot prove the applicable object decision scope.");
     }
-    result.push(
-      Object.freeze({
-        work_item_sha256: part.authoring_task_sha256,
-        dataset_type: type,
-        decision_ids: Object.freeze([...expected]),
-        ...(object
-          ? {
-              object_scope: Object.freeze({ entity_id: object.entity_id, version: object.version }),
-            }
-          : {}),
-      }),
-    );
+    if (objects) {
+      for (const [index, object] of objects.entries())
+        result.push(
+          Object.freeze({
+            work_item_sha256: part.authoring_task_sha256,
+            dataset_type: type,
+            decision_ids: Object.freeze([...(expectedByObject?.[index] ?? [])]),
+            object_scope: Object.freeze({ entity_id: object.entity_id, version: object.version }),
+          }),
+        );
+    } else
+      result.push(
+        Object.freeze({
+          work_item_sha256: part.authoring_task_sha256,
+          dataset_type: type,
+          decision_ids: Object.freeze([...expected]),
+        }),
+      );
   }
   return Object.freeze(result);
 }
