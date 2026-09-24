@@ -43,6 +43,7 @@ import { readNativeDraftHandoff } from "./finalize-owners/native-draft-handoff.t
 import { foundryRepairSelection, readFoundryRepairPreparation } from "./foundry-workflow-repair.ts";
 import { createFoundryRepairHandoffPlan } from "./foundry-repair-handoff.ts";
 import { readTaskJson } from "./foundry-task-io.ts";
+import { assertFoundryInteractionWriteReady } from "./foundry-workflow-object-scope.ts";
 
 export async function authorizeFoundryWorkflow(
   context: FoundryRuntimeContext,
@@ -53,6 +54,7 @@ export async function authorizeFoundryWorkflow(
 ) {
   assertSelectedAuthorizationInput(selected);
   assertQualifiedFoundryRuntime(context, qualified);
+  assertFoundryInteractionWriteReady(context, entries);
   const state = currentWorkflowState(context, entries),
     spec = selected.spec;
   if (spec.input_kind === "repair_rows")
@@ -107,6 +109,7 @@ export async function authorizeFoundryWorkflow(
   const grant = JSON.parse(readSelectedSemanticBytes(selected.grant).toString("utf8"));
   const current = (index: readonly ArtifactEntry[]) => {
     assertSelectedAuthorizationInput(selected);
+    assertFoundryInteractionWriteReady(context, index);
     if (
       currentWorkflowState(context, index).finalization?.entry.sha256 !== finalization.entry.sha256
     )

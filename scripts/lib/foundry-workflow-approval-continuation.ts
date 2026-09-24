@@ -28,6 +28,7 @@ import { deriveTaskAuthorizationGrant, validateTaskAuthorization } from "./task-
 import { sha256Json } from "./identity-preflight-proof.ts";
 import type { ArtifactEntry } from "./foundry-task-types.ts";
 import { completedOwnerScopes } from "./foundry-owner-execution-store.ts";
+import { assertFoundryInteractionWriteReady } from "./foundry-workflow-object-scope.ts";
 
 const digest = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
 function invalid(message: string): never {
@@ -41,6 +42,7 @@ export async function continueFoundryPreparedApproval(
   approval: WorkflowArtifact<Record<string, unknown>>,
   authentication: FoundryAuthentication = { mode: "oauth" },
 ) {
+  assertFoundryInteractionWriteReady(context, entries);
   const state = currentWorkflowState(context, entries),
     finalization = state.finalization;
   if (!finalization || approval.value.input_kind !== "current_rows")
@@ -114,6 +116,7 @@ export async function continueFoundryPreparedApproval(
   const identity = verifyFoundryRuntimeIdentity(context, authentication, process.env, qualified);
   const pointer = digest(readTaskBytes(context, "authorization.json"));
   const current = (index: readonly ArtifactEntry[]) => {
+    assertFoundryInteractionWriteReady(context, index);
     const now = currentWorkflowState(context, index);
     if (now.finalization?.entry.sha256 !== finalization.entry.sha256)
       invalid("Finalization changed during prepared-approval continuation.");

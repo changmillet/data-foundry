@@ -88,6 +88,7 @@ import {
 } from "./lib/foundry-interaction-input.ts";
 import {
   currentFoundryObjectDecisionReassessments,
+  currentFoundryInteractionWriteBlocker,
   currentFoundryObjectScopes,
   currentFoundryObjectScopeIsBound,
   currentFoundryNarrowObjects,
@@ -2200,6 +2201,12 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
           );
         }
         if (input.authorizationInputFile) {
+          const interactionBlocker = currentFoundryInteractionWriteBlocker(
+            context,
+            before.artifacts,
+          );
+          if (interactionBlocker)
+            throw new FoundryContextError(interactionBlocker.code, interactionBlocker.message);
           if (input.semanticInputFile || record.spec.preparation)
             throw new FoundryContextError(
               "task_authorization_input_invalid",
@@ -2315,6 +2322,11 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
         }
         const preparation = record.spec.preparation;
         const workflow = currentWorkflowState(context, before.artifacts);
+        if (
+          (workflow.authorization || workflow.preparedApproval) &&
+          currentFoundryInteractionWriteBlocker(context, before.artifacts)
+        )
+          return existing;
         if (
           hasUnresolvedInteraction &&
           (workflow.authorization ||

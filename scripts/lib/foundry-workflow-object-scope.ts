@@ -17,6 +17,7 @@ import {
   currentFoundryInvestigations,
   currentFoundryQuestions,
 } from "./foundry-interaction-projection.ts";
+import { currentFoundryInteractionState } from "./foundry-interaction-input.ts";
 import type { FoundryInteractionState } from "./foundry-interaction-types.ts";
 import {
   FoundryContextError,
@@ -288,7 +289,7 @@ function indexedAdoptionLineage(
   return { current: known === scope.row_sha256, adopted_decision_ids: adopted };
 }
 
-/** A corrected answer needs its own indexed adoption after an earlier answer changed the row. */
+/** A new answer needs its own indexed adoption after earlier semantic work on that object. */
 export function currentFoundryObjectDecisionReassessments(
   state: FoundryInteractionState,
   objects: ReadonlyMap<string, CurrentFoundryObject | null>,
@@ -318,10 +319,15 @@ export function currentFoundryObjectDecisionReassessments(
       String(original.row_sha256),
       decisionFamily(state, String(question.id)),
     );
+    const hasEarlierObjectWork = adoptions.some(
+      (adoption) =>
+        adoption.dataset_type === type &&
+        adoption.object_scope.entity_id === entityId &&
+        adoption.object_scope.version === version,
+    );
     if (
       lineage.current &&
-      answer.supersedes_decision_id &&
-      lineage.adopted_decision_ids.size > 0 &&
+      hasEarlierObjectWork &&
       !lineage.adopted_decision_ids.has(String(answer.decision_id))
     )
       pending.push({
@@ -423,4 +429,61 @@ export function requireCurrentFoundryObjectScope(
       "Object evidence changed without an indexed decision-bound row successor; review this object again before applying its old choice.",
     );
   return current;
+}
+
+/** Recheck the current indexed interaction before any write approval or approved continuation. */
+export function currentFoundryInteractionWriteBlocker(
+  context: FoundryRuntimeContext,
+  entries: readonly ArtifactEntry[],
+): Readonly<{ code: string; message: string }> | null {
+  const interaction = currentFoundryInteractionState(context, entries);
+  if (!interaction) return null;
+  if (
+    currentFoundryQuestions(interaction.state).length ||
+    currentFoundryInvestigations(interaction.state).length
+  )
+    return {
+      code: "interaction_decision_pending",
+      message: "Resolve the current question or investigation before a write handoff.",
+    };
+  const narrow = currentFoundryNarrowObjects(interaction.state);
+  if (!narrow.length) return null;
+  const objects = currentFoundryObjectScopes(context, entries);
+  const adoptions = indexedFoundryRowAdoptions(context, entries);
+  for (const item of narrow)
+    if (
+      !currentFoundryObjectScopeIsBound(
+        context,
+        entries,
+        interaction.state,
+        objects,
+        item.dataset_type,
+        item.entity_id,
+        item.version,
+        adoptions,
+      )
+    )
+      return {
+        code: "interaction_object_evidence_changed",
+        message: `Review ${item.dataset_type} ${item.entity_id}@${item.version} against its current registered row before a write handoff.`,
+      };
+  const pending = currentFoundryObjectDecisionReassessments(
+    interaction.state,
+    objects,
+    adoptions,
+  )[0];
+  return pending
+    ? {
+        code: "interaction_object_decision_changed",
+        message: `Review and adopt current decision ${pending.decision_id} for ${pending.dataset_type} ${pending.entity_id}@${pending.version} before a write handoff.`,
+      }
+    : null;
+}
+
+export function assertFoundryInteractionWriteReady(
+  context: FoundryRuntimeContext,
+  entries: readonly ArtifactEntry[],
+): void {
+  const blocker = currentFoundryInteractionWriteBlocker(context, entries);
+  if (blocker) throw new FoundryContextError(blocker.code, blocker.message);
 }

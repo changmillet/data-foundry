@@ -80,14 +80,16 @@ export async function recordFoundryInteractionInput(
       validateCurrent(index) {
         if (
           index.some((entry) =>
-            ["dataset-workflow-execution-prepare", "dataset-workflow-execution-consume"].includes(
-              entry.command,
-            ),
+            [
+              "dataset-workflow-authorization",
+              "dataset-workflow-execution-prepare",
+              "dataset-workflow-execution-consume",
+            ].includes(entry.command),
           )
         )
           throw new FoundryContextError(
             "interaction_after_approval",
-            "Preserve the approved or attempted scope; a changed decision needs a separately reviewed task revision.",
+            "Preserve the authorized or attempted scope; a changed decision needs a separately reviewed task revision.",
           );
         const present = currentFoundryInteractionState(context, index);
         if ((present?.entry.sha256 ?? null) !== currentSha)
