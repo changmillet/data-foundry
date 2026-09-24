@@ -250,6 +250,12 @@ test("one Process question permits another Process patch, then binds only its ow
   const adoptionSecond = fileArtifact(appliedSecond, "semantic-result.json");
   const adoptedSecond = readJson(adoptionSecond.path) as {
     adopted_decisions: Array<{ decision_ids: string[]; object_scope?: { entity_id: string } }>;
+    row_adoptions: Array<{
+      object_scope: { entity_id: string; version: string };
+      before_row_sha256: string;
+      after_row_sha256: string;
+      decision_ids: string[];
+    }>;
   };
   assert.deepEqual(adoptedSecond.adopted_decisions[0]?.decision_ids, []);
   assert.equal(adoptedSecond.adopted_decisions[0]?.object_scope?.entity_id, secondId);
@@ -261,6 +267,22 @@ test("one Process question permits another Process patch, then binds only its ow
   const updatedRows = readRowSet<(typeof rows)[number]>(afterSecondProcess.file);
   assert.deepEqual(updatedRows[0], registeredRows[0], "P2 work cannot rewrite P1");
   assert.notDeepEqual(updatedRows[1], registeredRows[1], "P2 work must update only P2");
+  assert.deepEqual(
+    adoptedSecond.row_adoptions.map((item) => ({
+      object_scope: item.object_scope,
+      before_row_sha256: item.before_row_sha256,
+      after_row_sha256: item.after_row_sha256,
+      decision_ids: item.decision_ids,
+    })),
+    [
+      {
+        object_scope: { entity_id: secondId, version: registeredRows[1].version },
+        before_row_sha256: sha256Json(registeredRows[1]),
+        after_row_sha256: sha256Json(updatedRows[1]),
+        decision_ids: [],
+      },
+    ],
+  );
   assert.equal(appliedSecond.permissions.state, "not_required");
 
   const beforeDuplicate = fs.readFileSync(index);
@@ -461,6 +483,12 @@ test("one Process question permits another Process patch, then binds only its ow
   assert.notEqual(appliedFirst.status, "blocked");
   const firstAdoption = readJson(fileArtifact(appliedFirst, "semantic-result.json").path) as {
     adopted_decisions: Array<{ decision_ids: string[]; object_scope?: { entity_id: string } }>;
+    row_adoptions: Array<{
+      object_scope: { entity_id: string; version: string };
+      before_row_sha256: string;
+      after_row_sha256: string;
+      decision_ids: string[];
+    }>;
   };
   assert.deepEqual(firstAdoption.adopted_decisions[0]?.decision_ids, ["p1-corrected-category"]);
   assert.equal(firstAdoption.adopted_decisions[0]?.object_scope?.entity_id, firstId);
@@ -472,6 +500,22 @@ test("one Process question permits another Process patch, then binds only its ow
   const afterFirstRows = readRowSet<(typeof rows)[number]>(afterFirstProcess.file);
   assert.deepEqual(afterFirstRows[1], updatedRows[1], "P1 work cannot rewrite P2");
   assert.notEqual(sha256Json(afterFirstRows[0]), firstScope.row_sha256);
+  assert.deepEqual(
+    firstAdoption.row_adoptions.map((item) => ({
+      object_scope: item.object_scope,
+      before_row_sha256: item.before_row_sha256,
+      after_row_sha256: item.after_row_sha256,
+      decision_ids: item.decision_ids,
+    })),
+    [
+      {
+        object_scope: { entity_id: firstId, version: registeredRows[0].version },
+        before_row_sha256: firstScope.row_sha256,
+        after_row_sha256: sha256Json(afterFirstRows[0]),
+        decision_ids: ["p1-corrected-category"],
+      },
+    ],
+  );
   assert.equal(
     afterFirstRows[0].json.processDataSet.processInformation.dataSetInformation
       .classificationInformation["common:classification"]["common:class"][0]["@classId"],
