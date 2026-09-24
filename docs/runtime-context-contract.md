@@ -41,8 +41,8 @@ checkPaths:
   - test/scenarios/foundry-execution-admission.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: 2b9558a568c8a89232d9c49fdaa78aa6e79fd643
-lastReviewedNote: "Reviewed for Foundry #206: registered object interaction proof uses existing task-local selected rows, artifact hashes and operation lock; runtime selection, credentials, child admission and write authority remain unchanged. Base retains #204 public CLI 0.1.22, SDK 0.4.1 and Toolkit 0.3.3 qualification."
+lastReviewedCommit: be60f69ae57c45c4278b1744195f32aa3237af9d
+lastReviewedNote: "Reviewed for Foundry #205 version-only 0.1.13: no runtime selection, cache, context, credential or owner admission change; installed component identities remain pinned."
 related:
   - docs/architecture.md
   - docs/task-authorization-contract.md

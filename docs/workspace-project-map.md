@@ -90,8 +90,8 @@ checkPaths:
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: 2b9558a568c8a89232d9c49fdaa78aa6e79fd643
-lastReviewedNote: "Reviewed for Foundry #206: task/type and exact registered-object interaction scope plus row-adoption evidence remain Foundry-owned; Skills wording and scientific/write owners stay separate. Base retains #204 public CLI 0.1.22, SDK 0.4.1 and Toolkit 0.3.3 qualification."
+lastReviewedCommit: be60f69ae57c45c4278b1744195f32aa3237af9d
+lastReviewedNote: "Reviewed for Foundry #205 version-only 0.1.13: Foundry package identity advances without changing workspace ownership, source/integration boundaries or Skills/data dependencies."
 ---
 
 # Workspace Project Map

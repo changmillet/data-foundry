@@ -153,8 +153,8 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - docs/incremental-change-set-contract.md
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: 2b9558a568c8a89232d9c49fdaa78aa6e79fd643
-lastReviewedNote: "Reviewed for Foundry #206: versioned object questions bind exact registered row bytes, per-object semantic work and successor lineage while retaining legacy broad choices and owner write controls. Base retains #204 public CLI 0.1.22, SDK 0.4.1 and Toolkit 0.3.3 qualification."
+lastReviewedCommit: be60f69ae57c45c4278b1744195f32aa3237af9d
+lastReviewedNote: "Reviewed for Foundry #205 version-only 0.1.13: package version metadata changes, while the merged #204 runtime inputs and #206 object interaction architecture remain unchanged. Publication and root inclusion require separate exact-source evidence."
 ---
 
 # Architecture

@@ -159,8 +159,8 @@ checkPaths:
   - test/unit/zero-javascript-ratchet.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: 2b9558a568c8a89232d9c49fdaa78aa6e79fd643
-lastReviewedNote: "Reviewed for Foundry #206: a human decision may bind one registered versioned object and row hash; separate Process work items retain independent semantic scope and indexed adoption lineage. Legacy task/type choices and scientific/write gates remain unchanged. Base retains #204 public CLI 0.1.22, SDK 0.4.1 and Toolkit 0.3.3 qualification."
+lastReviewedCommit: be60f69ae57c45c4278b1744195f32aa3237af9d
+lastReviewedNote: "Reviewed for Foundry #205 version-only 0.1.13: the canonical three-file package projection advances over merged #204/#206 source. Public CLI 0.1.22, SDK 0.4.1 and Toolkit 0.3.3 locks, public behavior and documentation body remain unchanged; publication and root integration stay separate."
 ---
 
 # TianGong LCA Data Foundry

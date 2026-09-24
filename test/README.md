@@ -280,8 +280,8 @@ checkPaths:
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: b6e3a0a564af0e49032de1eef193c9927a2836e7
-lastReviewedNote: "Reviewed for Foundry #206: hosted Windows per-file timings rebalance the complete four-platform CI test inventory after a shard-3 timeout; the unchanged 40-minute limit and complete fresh qualification remain required."
+lastReviewedCommit: be60f69ae57c45c4278b1744195f32aa3237af9d
+lastReviewedNote: "Reviewed for Foundry #205 version-only 0.1.13: package identity changes without removing test coverage or changing the complete four-platform qualification and 40-minute test-shard gate."
 ---
 
 # Test Layout

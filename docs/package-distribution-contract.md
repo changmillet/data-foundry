@@ -35,8 +35,8 @@ checkPaths:
   - test/unit/runtime-layout.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: b6e3a0a564af0e49032de1eef193c9927a2836e7
-lastReviewedNote: "Reviewed for Foundry #206: four-platform CI uses bounded Windows timing evidence to rebalance full test shards without weakening source, artifact, aggregation or 40-minute gates; a partial timed-out shard is not qualification."
+lastReviewedCommit: be60f69ae57c45c4278b1744195f32aa3237af9d
+lastReviewedNote: "Reviewed for Foundry #205 version-only 0.1.13: the canonical three-file version projection uses unchanged release, signing, npm, four-platform, runtime-manifest and recovery contracts; publication evidence is still required."
 related:
   - docs/public-runtime-contract.md
   - docs/runtime-context-contract.md
