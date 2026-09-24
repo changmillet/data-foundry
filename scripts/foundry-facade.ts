@@ -705,7 +705,7 @@ function scopedAuthoringPresentation(
     actions.push(
       human(
         "review_corrected_object_decision",
-        `Reassess ${item.dataset_type} ${item.entity_id}@${item.version} using current source evidence and decision ${item.decision_id}; submit exact semantic work or supersede the question. Other objects can continue independently.`,
+        `Reassess ${item.dataset_type} ${item.entity_id}@${item.version} using current source evidence and decision ${item.decision_id}. Submit matching semantic work; if this task has no matching work left, start a revised task for the correction. Other objects can continue independently.`,
       ),
     );
   }
