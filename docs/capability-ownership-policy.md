@@ -94,8 +94,8 @@ checkPaths:
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: 894b471a1da4f1eece401f5f86db9937f3000d28
-lastReviewedNote: "Reviewed for Foundry #204: pin public CLI 0.1.22, SDK 0.4.1 transitive source and Toolkit 0.3.3 native inputs; source/bootstrap identity and four-platform package checks updated, with task authorization and write gates unchanged."
+lastReviewedCommit: 5610002770ba873e9312b317878ed476dffe78eb
+lastReviewedNote: "Reviewed for Foundry #206: object-scoped human interaction proof, projection and adopted-row evidence are Foundry task-state behavior; Skills owns wording and CLI/TIDAS retain scientific/write authority. Base retains #204 public CLI 0.1.22, SDK 0.4.1 and Toolkit 0.3.3 qualification."
 ---
 
 # Capability Ownership Policy
@@ -137,7 +137,7 @@ Foundry owns:
 - its exact pnpm package-manager contract, sole root workspace/lock, and repository-local validation gates;
 - its source-free public bin/API compiler graph, sanitized npm staging manifest, explicit file allowlist and package descriptor verification;
 - the six hierarchical workspace/task facade operations, strict result/task-spec schemas, request/revision indexes and actor-bound task projection;
-- task-local brief and interaction artifacts, evidence-bound answer history, per-type assessment coverage and applicable-decision projection; the Skills entry owns question wording and final prose;
+- task-local brief and interaction artifacts, evidence-bound answer history, per-type assessment coverage and exact per-object decision projection/adoption; the Skills entry owns question wording and final prose;
 - deterministic local task preparation and read-only legacy inventory through existing runtime/task owners;
 
 - task queue and task state;
