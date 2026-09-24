@@ -86,6 +86,7 @@ import {
   selectFoundryInteractionInput,
 } from "./lib/foundry-interaction-input.ts";
 import {
+  currentFoundryObjectDecisionReassessments,
   currentFoundryObjectScopes,
   currentFoundryObjectScopeIsBound,
   currentFoundryNarrowObjects,
@@ -669,6 +670,9 @@ function scopedAuthoringPresentation(
   entries: Parameters<typeof currentWorkflowState>[1],
   workflow: ReturnType<typeof currentWorkflowState>,
   interaction: NonNullable<ReturnType<typeof currentFoundryInteractionState>>,
+  objects: ReturnType<typeof currentFoundryObjectScopes>,
+  reassessments: ReturnType<typeof currentFoundryObjectDecisionReassessments>,
+  staleObjects: ReturnType<typeof currentFoundryNarrowObjects>,
 ): {
   artifacts: FoundryOperationArtifact[];
   actions: FoundryOperationNextAction[];
@@ -676,13 +680,43 @@ function scopedAuthoringPresentation(
   types: readonly string[];
 } {
   const narrow = currentFoundryNarrowObjects(interaction.state);
-  if (!narrow.length || !workflow.assessment)
-    return { artifacts: [], actions: [], blockers: [], types: [] };
-  const narrowTypes = new Set(narrow.map((item) => item.dataset_type));
-  const objects = currentFoundryObjectScopes(context, entries);
   const artifacts: FoundryOperationArtifact[] = [];
   const actions: FoundryOperationNextAction[] = [];
   const blockers: Array<{ code: string; message: string; scope: string }> = [];
+  for (const item of staleObjects) {
+    blockers.push({
+      code: "interaction_object_evidence_changed",
+      message: `The reviewed ${item.dataset_type} ${item.entity_id}@${item.version} changed without a decision-bound successor. Recheck only this object and its proven dependents before adopting the old answer.`,
+      scope: `${item.dataset_type}:${item.entity_id}`,
+    });
+    actions.push(
+      human(
+        "review_object_scope",
+        `Review ${item.dataset_type} ${item.entity_id}@${item.version} against its current registered row and source evidence. The old object decision is not current and cannot authorize or apply work.`,
+      ),
+    );
+  }
+  for (const item of reassessments) {
+    blockers.push({
+      code: "interaction_object_decision_changed",
+      message: `The corrected decision ${item.decision_id} for ${item.dataset_type} ${item.entity_id}@${item.version} has not been adopted against its current registered row. Review that object before authorization.`,
+      scope: `${item.dataset_type}:${item.entity_id}`,
+    });
+    actions.push(
+      human(
+        "review_corrected_object_decision",
+        `Reassess ${item.dataset_type} ${item.entity_id}@${item.version} using current source evidence and decision ${item.decision_id}; submit exact semantic work or supersede the question. Other objects can continue independently.`,
+      ),
+    );
+  }
+  if (!narrow.length || !workflow.assessment) return { artifacts, actions, blockers, types: [] };
+  const narrowTypes = new Set(narrow.map((item) => item.dataset_type));
+  const reassessmentKeys = new Set(
+    reassessments.map((item) => JSON.stringify([item.dataset_type, item.entity_id, item.version])),
+  );
+  const staleKeys = new Set(
+    staleObjects.map((item) => JSON.stringify([item.dataset_type, item.entity_id, item.version])),
+  );
   let shown = 0;
   for (const set of workflow.assessment.value.sets) {
     const type = String(set.type);
@@ -741,15 +775,10 @@ function scopedAuthoringPresentation(
         entity.entity_id,
         entity.version,
       );
-      const bound = currentFoundryObjectScopeIsBound(
-        context,
-        entries,
-        interaction.state,
-        objects,
-        type,
-        entity.entity_id,
-        entity.version,
+      const decisionCurrent = !reassessmentKeys.has(
+        JSON.stringify([type, entity.entity_id, entity.version]),
       );
+      const bound = !staleKeys.has(JSON.stringify([type, entity.entity_id, entity.version]));
       artifacts.push(
         inlineArtifact("object_interaction_context", {
           ...projection,
@@ -763,22 +792,12 @@ function scopedAuthoringPresentation(
             entity.version,
           ),
           evidence_current: bound,
+          decision_current: decisionCurrent,
         }),
       );
       shown += 1;
-      if (!bound) {
-        blockers.push({
-          code: "interaction_object_evidence_changed",
-          message: `The reviewed ${type} ${entity.entity_id}@${entity.version} changed without a decision-bound successor. Recheck only this object and its proven dependents before adopting the old answer.`,
-          scope: `${type}:${entity.entity_id}`,
-        });
-        actions.push(
-          human(
-            "review_object_scope",
-            `Review ${type} ${entity.entity_id}@${entity.version} against its current registered row and source evidence. The old object decision is not current and cannot authorize or apply work.`,
-          ),
-        );
-      } else if (
+      if (
+        bound &&
         registered.status === "ready_for_ai_authoring" &&
         !projection.pending_questions.length &&
         !projection.investigations.length
@@ -806,10 +825,29 @@ function taskProjection(
   const interaction = currentFoundryInteractionState(context, inspected.artifacts);
   const pendingQuestions = interaction ? currentFoundryQuestions(interaction.state) : [];
   const investigations = interaction ? currentFoundryInvestigations(interaction.state) : [];
+  const narrow = interaction ? currentFoundryNarrowObjects(interaction.state) : [];
   const objectAdoptions =
-    interaction && currentFoundryNarrowObjects(interaction.state).length
-      ? indexedFoundryRowAdoptions(context, inspected.artifacts)
-      : [];
+    interaction && narrow.length ? indexedFoundryRowAdoptions(context, inspected.artifacts) : [];
+  const objectScopes = narrow.length
+    ? currentFoundryObjectScopes(context, inspected.artifacts)
+    : new Map();
+  const reassessments = interaction
+    ? currentFoundryObjectDecisionReassessments(interaction.state, objectScopes, objectAdoptions)
+    : [];
+  const staleObjects = narrow.filter(
+    (item) =>
+      !currentFoundryObjectScopeIsBound(
+        context,
+        inspected.artifacts,
+        interaction!.state,
+        objectScopes,
+        item.dataset_type,
+        item.entity_id,
+        item.version,
+        objectAdoptions,
+      ),
+  );
+  const objectEvidenceCurrent = staleObjects.length === 0;
   if (record.spec.brief) artifacts.push(inlineArtifact("task_brief", record.spec.brief));
   if (interaction)
     artifacts.push(
@@ -892,7 +930,9 @@ function taskProjection(
   if (
     completionProven(context, record, inspected) &&
     !pendingQuestions.length &&
-    !investigations.length
+    !investigations.length &&
+    !reassessments.length &&
+    objectEvidenceCurrent
   )
     return createFoundryOperationResult({
       operation,
@@ -1106,7 +1146,15 @@ function taskProjection(
     });
   }
   const scoped = interaction
-    ? scopedAuthoringPresentation(context, inspected.artifacts, workflow, interaction)
+    ? scopedAuthoringPresentation(
+        context,
+        inspected.artifacts,
+        workflow,
+        interaction,
+        objectScopes,
+        reassessments,
+        staleObjects,
+      )
     : { artifacts: [], actions: [], blockers: [], types: [] as readonly string[] };
   artifacts.push(...scoped.artifacts);
   if (pendingQuestions.length || investigations.length || scoped.blockers.length) {
@@ -1417,20 +1465,22 @@ function taskProjection(
         nextActions: [
           ...queueIssues.actions,
           ...scoped.actions,
-          ...pending
-            .filter((set) => !scoped.types.includes(set.type))
-            .flatMap((set) => [
+          ...pending.flatMap((set) => [
+            ...(!scoped.types.includes(set.type)
+              ? [
+                  human(
+                    "review_semantic_work",
+                    `Read the registered curation report ${set.curation_report} and authoring manifest ${set.authoring_manifest}. Use their bound source/context evidence; no write permission is implied.`,
+                  ),
+                ]
+              : []),
+            ...(set.decisions ?? []).map((work) =>
               human(
-                "review_semantic_work",
-                `Read the registered curation report ${set.curation_report} and authoring manifest ${set.authoring_manifest}. Use their bound source/context evidence; no write permission is implied.`,
+                `review_${work.kind}_decisions`,
+                `Read registered ${work.kind} task ${work.task} (${work.status}). Complete its bound decision template and submit it with semantic-input kind=${work.kind}.`,
               ),
-              ...(set.decisions ?? []).map((work) =>
-                human(
-                  `review_${work.kind}_decisions`,
-                  `Read registered ${work.kind} task ${work.task} (${work.status}). Complete its bound decision template and submit it with semantic-input kind=${work.kind}.`,
-                ),
-              ),
-            ]),
+            ),
+          ]),
           ...(workflow.assessmentRemainingTypes.length ? [resumeCommand(context, record)] : []),
         ],
         runtimeIdentity: identity,

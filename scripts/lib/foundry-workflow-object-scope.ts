@@ -265,25 +265,68 @@ export function indexedFoundryRowAdoptions(
   return adoptions;
 }
 
-function hasIndexedAdoptionLineage(
-  context: FoundryRuntimeContext,
-  entries: readonly ArtifactEntry[],
+function indexedAdoptionLineage(
+  adoptions: readonly IndexedFoundryRowAdoption[],
   scope: CurrentFoundryObject,
   originalRowSha256: string,
   decisionIds: ReadonlySet<string>,
-): boolean {
+): { readonly current: boolean; readonly adopted_decision_ids: ReadonlySet<string> } {
   let known = originalRowSha256;
-  for (const adoption of indexedFoundryRowAdoptions(context, entries)) {
+  const adopted = new Set<string>();
+  for (const adoption of adoptions) {
     if (
       adoption.dataset_type === scope.dataset_type &&
       adoption.object_scope.entity_id === scope.entity_id &&
       adoption.object_scope.version === scope.version &&
       adoption.before_row_sha256 === known &&
       adoption.decision_ids.some((id) => decisionIds.has(id))
-    )
+    ) {
       known = adoption.after_row_sha256;
+      for (const id of adoption.decision_ids) adopted.add(id);
+    }
   }
-  return known === scope.row_sha256;
+  return { current: known === scope.row_sha256, adopted_decision_ids: adopted };
+}
+
+/** A corrected answer needs its own indexed adoption after an earlier answer changed the row. */
+export function currentFoundryObjectDecisionReassessments(
+  state: FoundryInteractionState,
+  objects: ReadonlyMap<string, CurrentFoundryObject | null>,
+  adoptions: readonly IndexedFoundryRowAdoption[],
+): ReadonlyArray<{
+  readonly dataset_type: string;
+  readonly entity_id: string;
+  readonly version: string;
+  readonly decision_id: string;
+}> {
+  const questions = new Map(
+    state.events.filter((item) => item.kind === "question").map((item) => [String(item.id), item]),
+  );
+  const pending = [];
+  for (const answer of currentFoundryDecisions(state)) {
+    const question = questions.get(String(answer.question_id));
+    if (!question || !Object.hasOwn(question, "object_scope")) continue;
+    const original = record(question.object_scope);
+    const type = String(question.dataset_type);
+    const entityId = String(original.entity_id);
+    const version = String(original.version);
+    const current = requireCurrentFoundryObject(objects, type, entityId, version);
+    if (original.row_sha256 === current.row_sha256) continue;
+    const lineage = indexedAdoptionLineage(
+      adoptions,
+      current,
+      String(original.row_sha256),
+      decisionFamily(state, String(question.id)),
+    );
+    if (lineage.current && !lineage.adopted_decision_ids.has(String(answer.decision_id)))
+      pending.push({
+        dataset_type: type,
+        entity_id: entityId,
+        version,
+        decision_id: String(answer.decision_id),
+      });
+  }
+  return pending;
 }
 
 export function currentFoundryNarrowObjects(
@@ -325,6 +368,7 @@ export function currentFoundryObjectScopeIsBound(
   type: string,
   entityId: string,
   version: string,
+  adoptions?: readonly IndexedFoundryRowAdoption[],
 ): boolean {
   const current = requireCurrentFoundryObject(objects, type, entityId, version);
   const questions = new Map(
@@ -345,13 +389,12 @@ export function currentFoundryObjectScopeIsBound(
     if (scope.row_sha256 === current.row_sha256) continue;
     if (
       item.kind === "question" &&
-      hasIndexedAdoptionLineage(
-        context,
-        entries,
+      indexedAdoptionLineage(
+        adoptions ?? indexedFoundryRowAdoptions(context, entries),
         current,
         String(scope.row_sha256),
         decisionFamily(state, String(item.id)),
-      )
+      ).current
     )
       continue;
     return false;

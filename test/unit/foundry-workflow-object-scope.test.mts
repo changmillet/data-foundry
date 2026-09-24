@@ -16,8 +16,10 @@ import {
   initializeFoundryWorkspace,
 } from "../../scripts/lib/foundry-runtime-context.ts";
 import {
+  currentFoundryObjectDecisionReassessments,
   currentFoundryObjectScopeIsBound,
   foundryExplicitObjectIdentity,
+  indexedFoundryRowAdoptions,
   requireCurrentFoundryObjectScope,
   type CurrentFoundryObject,
 } from "../../scripts/lib/foundry-workflow-object-scope.ts";
@@ -253,5 +255,106 @@ test("an independent P1 row change cannot carry an old decision while unchanged 
       version,
     ),
     true,
+  );
+  const firstAdoption = registered("p1-answer");
+  assert.deepEqual(
+    currentFoundryObjectDecisionReassessments(
+      state,
+      objects,
+      indexedFoundryRowAdoptions(context, [firstAdoption]),
+    ),
+    [],
+  );
+  const corrected = advanceFoundryInteractionState(
+    state,
+    parseFoundryInteractionInput({
+      schema: "tiangong-foundry.interaction-input.v1",
+      task_id: context.taskId,
+      actor_id: context.actorId,
+      expected_state_sha256: "a".repeat(64),
+      events: [
+        {
+          kind: "answer",
+          question_id: "p1-method",
+          decision_id: "p1-corrected-answer",
+          supersedes_decision_id: "p1-answer",
+          raw_answer: "Correction for P1 only.",
+          adopted_decision: "Reassess the exact current P1 row.",
+          disposition: "decided",
+          evidence_sha256: [],
+        },
+      ],
+    }),
+    "a".repeat(64),
+    new Set(),
+    new Set(["process"]),
+  );
+  assert.equal(
+    currentFoundryObjectScopeIsBound(
+      context,
+      [firstAdoption],
+      corrected,
+      objects,
+      "process",
+      firstId,
+      version,
+    ),
+    true,
+    "recorded D1 row ancestry still permits a scoped D2 reapplication",
+  );
+  assert.deepEqual(
+    currentFoundryObjectDecisionReassessments(
+      corrected,
+      objects,
+      indexedFoundryRowAdoptions(context, [firstAdoption]),
+    ),
+    [
+      {
+        dataset_type: "process",
+        entity_id: firstId,
+        version,
+        decision_id: "p1-corrected-answer",
+      },
+    ],
+    "old D1 row adoption cannot silently satisfy the corrected D2 answer",
+  );
+  const secondRelative = "outputs/indexed2/semantic-result.json";
+  const secondFile = path.join(context.taskRoot!, secondRelative);
+  fs.mkdirSync(path.dirname(secondFile), { recursive: true });
+  const secondReport = {
+    status: "completed",
+    row_adoptions: [
+      {
+        ...rowAdoption,
+        before_row_sha256: changedFirstHash,
+        after_row_sha256: changedFirstHash,
+        decision_ids: ["p1-corrected-answer"],
+      },
+    ],
+    adopted_decisions: [
+      {
+        work_item_sha256: rowAdoption.work_item_sha256,
+        dataset_type: "process",
+        object_scope: rowAdoption.object_scope,
+        decision_ids: ["p1-corrected-answer"],
+      },
+    ],
+  };
+  const secondBytes = Buffer.from(JSON.stringify(secondReport));
+  fs.writeFileSync(secondFile, secondBytes);
+  const secondAdoption: ArtifactEntry = {
+    ...firstAdoption,
+    operation_id: "test-second-semantic",
+    path: secondRelative,
+    bytes: secondBytes.length,
+    sha256: createHash("sha256").update(secondBytes).digest("hex"),
+  };
+  assert.deepEqual(
+    currentFoundryObjectDecisionReassessments(
+      corrected,
+      objects,
+      indexedFoundryRowAdoptions(context, [firstAdoption, secondAdoption]),
+    ),
+    [],
   );
 });

@@ -616,4 +616,68 @@ test("one Process question permits another Process patch, then binds only its ow
   assert.equal(oldScope.status, "blocked");
   assert.equal(oldScope.blockers[0]?.code, "interaction_input_invalid");
   assert.deepEqual(fs.readFileSync(index), beforeOldScope);
+
+  writeInteraction(correctedState.sha256, [
+    {
+      kind: "answer",
+      question_id: question.id,
+      decision_id: "p1-after-adoption-correction",
+      supersedes_decision_id: "p1-corrected-category",
+      raw_answer: "Correction after the earlier P1 patch: verify the source category again.",
+      adopted_decision: "Reassess P1's current row before treating this correction as applied.",
+      disposition: "decided",
+      evidence_sha256: [fileSha256(seed)],
+    },
+  ]);
+  const correctedAfterAdoption = await facade.resume({
+    ...invocation,
+    interactionInputFile: interactionFile,
+  });
+  assert.equal(correctedAfterAdoption.status, "needs_input");
+  assert.ok(
+    correctedAfterAdoption.blockers.some(
+      (item) =>
+        item.code === "interaction_object_decision_changed" && item.scope?.includes(firstId),
+    ),
+    "D1's indexed row adoption must not authorize the corrected D2 answer",
+  );
+  assert.ok(
+    correctedAfterAdoption.next_actions.some(
+      (item) =>
+        item.kind === "human" &&
+        item.code === "review_corrected_object_decision" &&
+        item.instructions.includes(firstId),
+    ),
+  );
+  assert.equal(correctedAfterAdoption.permissions.state, "not_required");
+  const revisedRecap = correctedAfterAdoption.artifacts.find(
+    (artifact) => artifact.role === "decision_recap",
+  );
+  assert.ok(revisedRecap?.kind === "inline");
+  const revised = revisedRecap.value as {
+    completion_proven: boolean;
+    user_decisions: Array<{ decision_id: string; applied_to: unknown[] }>;
+  };
+  assert.equal(revised.completion_proven, false);
+  assert.equal(revised.user_decisions[0]?.decision_id, "p1-after-adoption-correction");
+  assert.deepEqual(revised.user_decisions[0]?.applied_to, []);
+  const afterReopen = await restoredFacade.status(invocation);
+  assert.ok(
+    afterReopen.blockers.some((item) => item.code === "interaction_object_decision_changed"),
+    "the scoped reassessment must persist across processes",
+  );
+  const afterReopenContexts = afterReopen.artifacts.flatMap((artifact) =>
+    artifact.role === "object_interaction_context" && artifact.kind === "inline"
+      ? [artifact.value as { object_scope: { entity_id: string }; decision_current: boolean }]
+      : [],
+  );
+  assert.equal(
+    afterReopenContexts.find((item) => item.object_scope.entity_id === firstId)?.decision_current,
+    false,
+  );
+  assert.equal(
+    afterReopenContexts.find((item) => item.object_scope.entity_id === secondId)?.decision_current,
+    true,
+    "P1's post-adoption correction must not reopen P2",
+  );
 });
