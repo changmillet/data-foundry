@@ -34,9 +34,9 @@ checkPaths:
   - test/commands/foundry-release-*.test.mts
   - test/unit/runtime-layout.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
-lastReviewedAt: 2026-09-23
-lastReviewedCommit: a836ddaa380a36c8b1466669c1716f6201e9d919
-lastReviewedNote: "Reviewed for Foundry #192: release-only 0.1.11 identity projection from exact merged #193 main a836ddaa380a36c8b1466669c1716f6201e9d919; #190/#193 public interaction behavior, CLI pin, dependencies, permission and scientific gates remain unchanged. Signed publication and native/installed qualification remain separate release gates."
+lastReviewedAt: 2026-09-24
+lastReviewedCommit: 05e4bd11b08276d092d10051b3f4f376c2af52ef
+lastReviewedNote: "Reviewed for Foundry #197: release-only 0.1.12 identity projection from exact merged #200 main 05e4bd11b08276d092d10051b3f4f376c2af52ef; #196 early-question continuation and #200 indexed, human-readable blocked-queue behavior are already in the base. This projection changes no runtime behavior, CLI pin, dependencies, scientific or permission gates. Signed publication and installed qualification remain separate release gates."
 related:
   - docs/public-runtime-contract.md
   - docs/runtime-context-contract.md

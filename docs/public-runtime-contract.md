@@ -35,8 +35,8 @@ checkPaths:
   - test/scenarios/foundry-interaction-workflow.test.mts
   - docs/public-runtime-contract.md
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: abd80f28c1eff58c19ae40c929cf130b8b7d2431
-lastReviewedNote: "Reviewed for Foundry #200: exact blocked queue reports retain indexed Flow-reference details and a plain next step while pending questions and independent local work remain visible; no authorization or completion is inferred."
+lastReviewedCommit: 05e4bd11b08276d092d10051b3f4f376c2af52ef
+lastReviewedNote: "Reviewed for Foundry #197: release-only 0.1.12 identity projection from exact merged #200 main 05e4bd11b08276d092d10051b3f4f376c2af52ef; #196 early-question continuation and #200 indexed, human-readable blocked-queue behavior are already in the base. This projection changes no runtime behavior, CLI pin, dependencies, scientific or permission gates. Signed publication and installed qualification remain separate release gates."
 related:
   - docs/runtime-context-contract.md
   - docs/task-authorization-contract.md
