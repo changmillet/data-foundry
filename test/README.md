@@ -280,8 +280,8 @@ checkPaths:
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: 05e4bd11b08276d092d10051b3f4f376c2af52ef
-lastReviewedNote: "Reviewed for Foundry #197: release-only 0.1.12 identity projection from exact merged #200 main 05e4bd11b08276d092d10051b3f4f376c2af52ef; #196 early-question continuation and #200 indexed, human-readable blocked-queue behavior are already in the base. This projection changes no runtime behavior, CLI pin, dependencies, scientific or permission gates. Signed publication and installed qualification remain separate release gates."
+lastReviewedCommit: 8d03b249f1d0666dbdda786af6481f04b1d748ef
+lastReviewedNote: "Reviewed for Foundry #202: native validation failures retain bounded indexed exit/diagnostic/stderr and current row-set evidence with a human blocker; Toolkit owns the Windows deep-path I/O repair. Scientific and write gates remain unchanged."
 ---
 
 # Test Layout
@@ -532,9 +532,11 @@ The synchronous public identity fixture sets an explicit fresh report timestamp 
 
 The Windows direct-context RED identified `ENOENT` from `mkdtemp` at a path containing the immutable task and operation digests. Workflow directory tests cover a prefix longer than260 characters while the legacy allocator is unavailable, independent empty generations, preserved prior evidence and rejected task-root escape. Actual Windows CI must confirm the qualified context path and all downstream stages.
 
+The public workflow scenario also injects an authentic TIDAS `io` exit during Process row assessment. It proves the whole native report and bounded stderr are indexed with the selected row file/count, that a fresh process sees a concise I/O blocker and full evidence path, that unchanged resume does not replay native validation, and that altered evidence cannot become completion. This characterizes the Foundry evidence adapter; real Windows deep-path issue-spool persistence is tracked separately in Toolkit #223 and must be tested with the native executable.
+
 ## CI test execution and release lanes
 
-The sixteen public workflow scenarios retain their assertions and names. Heavy identity/approval and dependent-scope cases have separate scenario entry files over `fixtures/foundry-public-workflow.ts`, so process-global mocks and environment remain isolated. The CI planner includes every test file exactly once in each platform partition and balances known slow files with measured durations; estimates never replace execution evidence. The runner and collector reject missing/duplicate files, wrong source/plan/platform, failed execution and changed event bytes.
+The public workflow scenarios retain their assertions and names. Heavy identity/approval and dependent-scope cases have separate scenario entry files over `fixtures/foundry-public-workflow.ts`, so process-global mocks and environment remain isolated. The CI planner includes every test file exactly once in each platform partition and balances known slow files with measured durations; estimates never replace execution evidence. The runner and collector reject missing/duplicate files, wrong source/plan/platform, failed execution and changed event bytes.
 
 Full CI retains all supported platforms, canonical platform checks, native assembly and copied bootstrap. Version-only PRs use the existing strict projection proof plus release/package/real-consumer checks; the final release workflow always selects full qualification. Workflow regression checks preserve the platform set, dependency guards and independent artifact-output bindings. Build-reuse tests reject changed bytes, self-authored digests, wrong source/toolchain/run, invalid paths, partial selection and serialized snapshots. Dedicated real builds, fresh installs and public-download qualification remain separate evidence.
 
