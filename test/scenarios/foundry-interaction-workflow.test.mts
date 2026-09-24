@@ -253,18 +253,6 @@ test("a live question and revised answer survive a new process and do not imply 
       ),
     ],
   });
-  await runFoundryTaskOperation(
-    selectedContext,
-    { command: "dataset-workflow-execution-prepare", options: { scenario: "interaction-lock" } },
-    (operation) => {
-      operation.writeJson("outputs/interaction-lock/owner-execution-request.json", {
-        schema: "test-only-owner-request",
-      });
-      const result = { status: "completed" };
-      operation.writeJson("outputs/interaction-lock/result.json", result);
-      return result;
-    },
-  );
   const latestState = decided.artifacts.find(
     (artifact) => artifact.role === "current_interaction_state",
   );
@@ -280,6 +268,40 @@ test("a live question and revised answer survive a new process and do not imply 
       supersedes: null,
     },
   ]);
+  await runFoundryTaskOperation(
+    selectedContext,
+    { command: "dataset-workflow-authorization", options: { scenario: "interaction-lock" } },
+    (operation) => {
+      const result = {
+        schema: "test-only-authorization",
+        status: "completed",
+      };
+      operation.writeJson("outputs/interaction-lock/foundry-authorization.json", result);
+      return result;
+    },
+  );
+  await assert.rejects(
+    recordFoundryInteractionInput(
+      selectedContext,
+      inspected.artifacts,
+      selectFoundryInteractionInput(selectedContext, descriptor),
+      ["flow"],
+    ),
+    { code: "interaction_after_approval" },
+    "the first indexed authorization freezes the reviewed decision scope",
+  );
+  await runFoundryTaskOperation(
+    selectedContext,
+    { command: "dataset-workflow-execution-prepare", options: { scenario: "interaction-lock" } },
+    (operation) => {
+      operation.writeJson("outputs/interaction-lock/owner-execution-request.json", {
+        schema: "test-only-owner-request",
+      });
+      const result = { status: "completed" };
+      operation.writeJson("outputs/interaction-lock/result.json", result);
+      return result;
+    },
+  );
   await assert.rejects(
     recordFoundryInteractionInput(
       selectedContext,
