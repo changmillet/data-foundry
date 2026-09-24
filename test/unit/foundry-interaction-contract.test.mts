@@ -4,7 +4,14 @@ import test from "node:test";
 import Ajv2020 from "ajv/dist/2020.js";
 import {
   advanceFoundryInteractionState,
+  applicableFoundryInteractionDigest,
+  applicableFoundryInteractionDigestForObject,
+  applicableFoundryInteractionProjectionForObject,
+  currentFoundryAssumptionsForObject,
+  currentFoundryDecisionsForObject,
   currentFoundryDecisionsForType,
+  currentFoundryQuestionsForObject,
+  foundryInteractionObjectProofKey,
   parseFoundryInteractionInput,
 } from "../../scripts/lib/foundry-interaction-input.ts";
 import { verifyFoundrySemanticInteraction } from "../../scripts/lib/foundry-semantic-interaction.ts";
@@ -13,6 +20,14 @@ import type { FoundrySemanticInput } from "../../scripts/lib/foundry-semantic-in
 const taskId = `task-${"a".repeat(64)}-r0001`;
 const actorId = "agent/session-001";
 const evidence = "b".repeat(64);
+const rowOne = "1".repeat(64);
+const rowTwo = "2".repeat(64);
+const objectOne = { entity_id: "process-one", version: "01.00.000", row_sha256: rowOne };
+const objectTwo = { entity_id: "process-two", version: "01.00.000", row_sha256: rowTwo };
+const verified = new Set([
+  foundryInteractionObjectProofKey("process", objectOne.entity_id, objectOne.version, rowOne),
+  foundryInteractionObjectProofKey("process", objectTwo.entity_id, objectTwo.version, rowTwo),
+]);
 
 function input(events: unknown[], expected: string | null = null) {
   return {
@@ -273,6 +288,309 @@ test("AI assumptions cannot replace another scope or fork one predecessor", () =
   );
 });
 
+test("narrow object scopes require exact registration proof and a concrete versioned identity", () => {
+  const narrowed = { ...question, object_scope: objectOne };
+  assert.deepEqual(
+    parseFoundryInteractionInput(input([narrowed])).events[0]?.object_scope,
+    objectOne,
+  );
+  assert.throws(
+    () =>
+      advanceFoundryInteractionState(
+        null,
+        parseFoundryInteractionInput(input([narrowed])),
+        null,
+        new Set([evidence]),
+        new Set(["process"]),
+      ),
+    /object scope|registered row/iu,
+  );
+  assert.equal(
+    advanceFoundryInteractionState(
+      null,
+      parseFoundryInteractionInput(input([narrowed])),
+      null,
+      new Set([evidence]),
+      new Set(["process"]),
+      verified,
+    ).events.length,
+    1,
+  );
+  for (const scope of [
+    { ...objectOne, version: null },
+    { ...objectOne, version: "" },
+    { ...objectOne, row_sha256: "A".repeat(64) },
+    { ...objectOne, unknown: true },
+  ]) {
+    assert.throws(
+      () => parseFoundryInteractionInput(input([{ ...question, object_scope: scope }])),
+      /invalid|missing|unsupported/iu,
+    );
+  }
+  for (const dataset_type of [null, "support"]) {
+    assert.throws(
+      () => parseFoundryInteractionInput(input([{ ...narrowed, dataset_type }])),
+      /concrete|scope|invalid/iu,
+    );
+  }
+  assert.throws(
+    () =>
+      advanceFoundryInteractionState(
+        null,
+        parseFoundryInteractionInput(
+          input([{ ...narrowed, object_scope: { ...objectOne, row_sha256: rowTwo } }]),
+        ),
+        null,
+        new Set([evidence]),
+        new Set(["process"]),
+        verified,
+      ),
+    /object scope|registered row/iu,
+  );
+});
+
+test("duplicate and supersession rules use stable object identity without leaking across rows", () => {
+  const p1 = { ...question, object_scope: objectOne };
+  const p2 = { ...question, id: "annual-volume-p2", object_scope: objectTwo };
+  const asked = advanceFoundryInteractionState(
+    null,
+    parseFoundryInteractionInput(input([p1, p2])),
+    null,
+    new Set([evidence]),
+    new Set(["process"]),
+    verified,
+  );
+  assert.deepEqual(
+    currentFoundryQuestionsForObject(asked, "process", objectOne.entity_id, objectOne.version).map(
+      (item) => item.id,
+    ),
+    ["annual-volume"],
+  );
+  assert.throws(
+    () =>
+      advanceFoundryInteractionState(
+        asked,
+        parseFoundryInteractionInput(input([{ ...p1, id: "same-row-duplicate" }], "c".repeat(64))),
+        "c".repeat(64),
+        new Set([evidence]),
+        new Set(["process"]),
+        verified,
+      ),
+    /duplicate/iu,
+  );
+  assert.throws(
+    () =>
+      advanceFoundryInteractionState(
+        asked,
+        parseFoundryInteractionInput(
+          input([{ ...p2, id: "cross-row-replacement", supersedes: p1.id }], "c".repeat(64)),
+        ),
+        "c".repeat(64),
+        new Set([evidence]),
+        new Set(["process"]),
+        verified,
+      ),
+    /same scope/iu,
+  );
+  const corrected = advanceFoundryInteractionState(
+    asked,
+    parseFoundryInteractionInput(
+      input(
+        [
+          {
+            ...p1,
+            id: "p1-corrected",
+            object_scope: { ...objectOne, row_sha256: rowTwo },
+            ask: "Which exact source table records the year?",
+            supersedes: p1.id,
+          },
+        ],
+        "c".repeat(64),
+      ),
+    ),
+    "c".repeat(64),
+    new Set([evidence]),
+    new Set(["process"]),
+    new Set([
+      ...verified,
+      foundryInteractionObjectProofKey("process", objectOne.entity_id, objectOne.version, rowTwo),
+    ]),
+  );
+  assert.deepEqual(
+    currentFoundryQuestionsForObject(
+      corrected,
+      "process",
+      objectTwo.entity_id,
+      objectTwo.version,
+    ).map((item) => item.id),
+    ["annual-volume-p2"],
+  );
+});
+
+test("narrow assumptions may coexist on distinct rows but cannot replace another row", () => {
+  const assumption = {
+    kind: "assumption",
+    id: "p1-assumption",
+    dataset_type: "process",
+    object_scope: objectOne,
+    statement: "Check the electricity denominator.",
+    impact: "Energy intensity may change.",
+    evidence_sha256: [],
+    supersedes: null,
+  };
+  const asked = advanceFoundryInteractionState(
+    null,
+    parseFoundryInteractionInput(
+      input([assumption, { ...assumption, id: "p2-assumption", object_scope: objectTwo }]),
+    ),
+    null,
+    new Set(),
+    new Set(["process"]),
+    verified,
+  );
+  assert.throws(
+    () =>
+      advanceFoundryInteractionState(
+        asked,
+        parseFoundryInteractionInput(
+          input([{ ...assumption, id: "p1-duplicate" }], "c".repeat(64)),
+        ),
+        "c".repeat(64),
+        new Set(),
+        new Set(["process"]),
+        verified,
+      ),
+    /duplicate/iu,
+  );
+  assert.throws(
+    () =>
+      advanceFoundryInteractionState(
+        asked,
+        parseFoundryInteractionInput(
+          input(
+            [
+              {
+                ...assumption,
+                id: "wrong-replacement",
+                object_scope: objectTwo,
+                supersedes: assumption.id,
+              },
+            ],
+            "c".repeat(64),
+          ),
+        ),
+        "c".repeat(64),
+        new Set(),
+        new Set(["process"]),
+        verified,
+      ),
+    /same scope/iu,
+  );
+});
+
+test("type projection preserves broad events while object projection adds only matching narrow events", () => {
+  const broad = { ...question, id: "broad-question" };
+  const p1 = { ...question, id: "p1-question", object_scope: objectOne };
+  const p2 = { ...question, id: "p2-question", object_scope: objectTwo };
+  const broadAssumption = {
+    kind: "assumption",
+    id: "broad-assumption",
+    dataset_type: "process",
+    statement: "Check the process unit.",
+    impact: "Unit review is needed.",
+    evidence_sha256: [],
+    supersedes: null,
+  };
+  const narrowAssumption = {
+    ...broadAssumption,
+    id: "p1-assumption",
+    object_scope: objectOne,
+  };
+  const answer = {
+    kind: "answer",
+    question_id: p1.id,
+    decision_id: "p1-decision",
+    supersedes_decision_id: null,
+    raw_answer: "Use the source table.",
+    adopted_decision: "Use the source table for P1.",
+    disposition: "decided",
+    evidence_sha256: [],
+  };
+  const first = advanceFoundryInteractionState(
+    null,
+    parseFoundryInteractionInput(input([broad, p1, p2, broadAssumption, narrowAssumption, answer])),
+    null,
+    new Set([evidence]),
+    new Set(["process"]),
+    verified,
+  );
+  const broadOnly = advanceFoundryInteractionState(
+    null,
+    parseFoundryInteractionInput(input([broad, broadAssumption])),
+    null,
+    new Set([evidence]),
+    new Set(["process"]),
+  );
+  assert.equal(
+    applicableFoundryInteractionDigest(first, "process"),
+    applicableFoundryInteractionDigest(broadOnly, "process"),
+  );
+  assert.deepEqual(currentFoundryDecisionsForType(first, "process"), []);
+  assert.deepEqual(
+    currentFoundryDecisionsForObject(first, "process", objectOne.entity_id, objectOne.version).map(
+      (item) => item.decision_id,
+    ),
+    ["p1-decision"],
+  );
+  assert.deepEqual(
+    currentFoundryAssumptionsForObject(
+      first,
+      "process",
+      objectTwo.entity_id,
+      objectTwo.version,
+    ).map((item) => item.id),
+    ["broad-assumption"],
+  );
+  const p1Projection = applicableFoundryInteractionProjectionForObject(
+    first,
+    "process",
+    objectOne.entity_id,
+    objectOne.version,
+  );
+  const p2Projection = applicableFoundryInteractionProjectionForObject(
+    first,
+    "process",
+    objectTwo.entity_id,
+    objectTwo.version,
+  );
+  assert.deepEqual(
+    p1Projection.pending_questions.map((item) => item.id),
+    ["broad-question"],
+  );
+  assert.deepEqual(
+    p2Projection.pending_questions.map((item) => item.id),
+    ["broad-question", "p2-question"],
+  );
+  assert.deepEqual(
+    p1Projection.decisions.map((item) => item.answer.decision_id),
+    ["p1-decision"],
+  );
+  assert.notEqual(
+    applicableFoundryInteractionDigestForObject(
+      first,
+      "process",
+      objectOne.entity_id,
+      objectOne.version,
+    ),
+    applicableFoundryInteractionDigestForObject(
+      first,
+      "process",
+      objectTwo.entity_id,
+      objectTwo.version,
+    ),
+  );
+});
+
 test("semantic work must cite the current applicable user decision and cannot reuse a replaced choice", () => {
   const asked = advanceFoundryInteractionState(
     null,
@@ -384,6 +702,19 @@ test("public interaction schema accepts the parser's bounded natural-language fo
   ) as unknown;
   const validate = new Ajv({ strict: true }).compile(schema);
   assert.equal(validate(input([question])), true);
+  assert.equal(validate(input([{ ...question, object_scope: objectOne }])), true);
+  assert.equal(
+    validate(input([{ ...question, dataset_type: "support", object_scope: objectOne }])),
+    false,
+  );
+  assert.equal(
+    validate(input([{ ...question, object_scope: { ...objectOne, version: null } }])),
+    false,
+  );
+  assert.equal(
+    validate(input([{ ...question, object_scope: { ...objectOne, extra: true } }])),
+    false,
+  );
   assert.equal(
     validate(
       input([

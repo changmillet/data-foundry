@@ -62,6 +62,27 @@
         }
       ]
     },
+    "concreteScope": {
+      "enum": [
+        "contact",
+        "source",
+        "flow",
+        "flowproperty",
+        "unitgroup",
+        "process",
+        "lifecyclemodel"
+      ]
+    },
+    "objectScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entity_id", "version", "row_sha256"],
+      "properties": {
+        "entity_id": { "$ref": "#/$defs/id" },
+        "version": { "$ref": "#/$defs/id" },
+        "row_sha256": { "$ref": "#/$defs/sha" }
+      }
+    },
     "evidence": {
       "type": "array",
       "maxItems": 16,
@@ -87,6 +108,7 @@
         "kind": { "const": "question" },
         "id": { "$ref": "#/$defs/id" },
         "dataset_type": { "$ref": "#/$defs/scope" },
+        "object_scope": { "$ref": "#/$defs/objectScope" },
         "missing": { "$ref": "#/$defs/shortText" },
         "impact": { "$ref": "#/$defs/shortText" },
         "recommendation": { "$ref": "#/$defs/shortText" },
@@ -104,7 +126,9 @@
         },
         "evidence_sha256": { "$ref": "#/$defs/evidence" },
         "supersedes": { "oneOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] }
-      }
+      },
+      "if": { "properties": { "object_scope": {} }, "required": ["object_scope"] },
+      "then": { "properties": { "dataset_type": { "$ref": "#/$defs/concreteScope" } } }
     },
     "answer": {
       "type": "object",
@@ -163,11 +187,14 @@
         "kind": { "const": "assumption" },
         "id": { "$ref": "#/$defs/id" },
         "dataset_type": { "$ref": "#/$defs/scope" },
+        "object_scope": { "$ref": "#/$defs/objectScope" },
         "statement": { "$ref": "#/$defs/text" },
         "impact": { "$ref": "#/$defs/text" },
         "evidence_sha256": { "$ref": "#/$defs/evidence" },
         "supersedes": { "oneOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] }
-      }
+      },
+      "if": { "properties": { "object_scope": {} }, "required": ["object_scope"] },
+      "then": { "properties": { "dataset_type": { "$ref": "#/$defs/concreteScope" } } }
     }
   }
 }

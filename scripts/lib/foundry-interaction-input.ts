@@ -16,8 +16,13 @@ import {
   FOUNDRY_INTERACTION_COMMAND,
   FOUNDRY_INTERACTION_REPORT,
   type FoundryInteractionInput,
+  type FoundryInteractionObjectScope,
   type FoundryInteractionState,
 } from "./foundry-interaction-types.ts";
+import {
+  foundryInteractionObjectProofKey,
+  sameFoundryInteractionScope,
+} from "./foundry-interaction-scope.ts";
 export {
   FOUNDRY_INTERACTION_INPUT_SCHEMA,
   FOUNDRY_INTERACTION_STATE_SCHEMA,
@@ -26,8 +31,13 @@ export {
 } from "./foundry-interaction-types.ts";
 export type {
   FoundryInteractionInput,
+  FoundryInteractionObjectScope,
   FoundryInteractionState,
 } from "./foundry-interaction-types.ts";
+export {
+  foundryInteractionObjectKey,
+  foundryInteractionObjectProofKey,
+} from "./foundry-interaction-scope.ts";
 
 const idPattern = /^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,255}$/u;
 const taskPattern = /^task-[0-9a-f]{64}-r\d{4}$/u;
@@ -99,6 +109,22 @@ function datasetType(value: unknown): string | null {
   return value;
 }
 
+function objectScope(
+  item: Record<string, unknown>,
+  type: string | null,
+): FoundryInteractionObjectScope | undefined {
+  if (!Object.hasOwn(item, "object_scope")) return undefined;
+  if (type === null || type === "support")
+    invalid("An object scope requires one concrete dataset type.");
+  const scope = record(item.object_scope);
+  exact(scope, ["entity_id", "version", "row_sha256"]);
+  const entityId = identifier(scope.entity_id, "Object entity id");
+  const version = identifier(scope.version, "Object version");
+  if (typeof scope.row_sha256 !== "string" || !shaPattern.test(scope.row_sha256))
+    invalid("Object row SHA-256 is invalid.");
+  return Object.freeze({ entity_id: entityId, version, row_sha256: scope.row_sha256 });
+}
+
 function event(value: unknown): Readonly<Record<string, unknown>> {
   const item = record(value);
   if (item.kind === "question") {
@@ -113,15 +139,19 @@ function event(value: unknown): Readonly<Record<string, unknown>> {
       "choices",
       "evidence_sha256",
       "supersedes",
+      ...(Object.hasOwn(item, "object_scope") ? ["object_scope"] : []),
     ]);
     if (!Array.isArray(item.choices) || item.choices.length > 4)
       invalid("A question may offer at most four short choices.");
     const choices = item.choices.map((choice) => bounded(choice, "Choice", 240));
     if (new Set(choices).size !== choices.length) invalid("Question choices must be unique.");
+    const type = datasetType(item.dataset_type);
+    const scope = objectScope(item, type);
     return Object.freeze({
       kind: "question",
       id: identifier(item.id, "Question id"),
-      dataset_type: datasetType(item.dataset_type),
+      dataset_type: type,
+      ...(scope ? { object_scope: scope } : {}),
       missing: bounded(item.missing, "Missing information", 1_200),
       impact: bounded(item.impact, "Impact", 1_200),
       recommendation: bounded(item.recommendation, "Recommendation", 1_200),
@@ -172,11 +202,15 @@ function event(value: unknown): Readonly<Record<string, unknown>> {
       "impact",
       "evidence_sha256",
       "supersedes",
+      ...(Object.hasOwn(item, "object_scope") ? ["object_scope"] : []),
     ]);
+    const type = datasetType(item.dataset_type);
+    const scope = objectScope(item, type);
     return Object.freeze({
       kind: "assumption",
       id: identifier(item.id, "Assumption id"),
-      dataset_type: datasetType(item.dataset_type),
+      dataset_type: type,
+      ...(scope ? { object_scope: scope } : {}),
       statement: bounded(item.statement, "Assumption"),
       impact: bounded(item.impact, "Assumption impact"),
       evidence_sha256: evidence(item.evidence_sha256),
@@ -219,6 +253,7 @@ export function advanceFoundryInteractionState(
   currentSha256: string | null,
   availableEvidence: ReadonlySet<string>,
   allowedTypes: ReadonlySet<string>,
+  verifiedObjectScopes: ReadonlySet<string> = new Set(),
 ): FoundryInteractionState {
   if (input.expected_state_sha256 !== currentSha256)
     invalid(
@@ -251,6 +286,20 @@ export function advanceFoundryInteractionState(
     const type = item.dataset_type;
     if (typeof type === "string" && !allowedTypes.has(type))
       invalid("Interaction scope is outside this task's target entity types.");
+    if (item.kind !== "answer" && Object.hasOwn(item, "object_scope")) {
+      const scope = item.object_scope as FoundryInteractionObjectScope;
+      if (
+        !verifiedObjectScopes.has(
+          foundryInteractionObjectProofKey(
+            String(type),
+            scope.entity_id,
+            scope.version,
+            scope.row_sha256,
+          ),
+        )
+      )
+        invalid("Interaction object scope is not bound to a registered row.");
+    }
     for (const sha of item.evidence_sha256 as readonly string[])
       if (!availableEvidence.has(sha))
         invalid("Interaction evidence is not a registered source or artifact.");
@@ -262,7 +311,7 @@ export function advanceFoundryInteractionState(
         if (
           !prior ||
           supersededQuestions.has(String(item.supersedes)) ||
-          prior.dataset_type !== item.dataset_type
+          !sameFoundryInteractionScope(prior, item)
         )
           invalid("A replacement question must name one current question in the same scope.");
         supersededQuestions.add(String(item.supersedes));
@@ -271,7 +320,7 @@ export function advanceFoundryInteractionState(
         [...questions.values()].some(
           (prior) =>
             !supersededQuestions.has(String(prior.id)) &&
-            prior.dataset_type === item.dataset_type &&
+            sameFoundryInteractionScope(prior, item) &&
             prior.missing === item.missing &&
             prior.ask === item.ask,
         )
@@ -299,12 +348,22 @@ export function advanceFoundryInteractionState(
         const prior = assumptions.get(String(item.supersedes));
         if (
           !prior ||
-          prior.dataset_type !== item.dataset_type ||
+          !sameFoundryInteractionScope(prior, item) ||
           supersededAssumptions.has(String(item.supersedes))
         )
           invalid("A replacement assumption must name one current assumption in the same scope.");
         supersededAssumptions.add(String(item.supersedes));
       }
+      if (
+        Object.hasOwn(item, "object_scope") &&
+        [...assumptions.values()].some(
+          (prior) =>
+            !supersededAssumptions.has(String(prior.id)) &&
+            sameFoundryInteractionScope(prior, item) &&
+            prior.statement === item.statement,
+        )
+      )
+        invalid("Duplicate current assumption for this object scope.");
       assumptions.set(String(item.id), item);
     }
     events.push(item);
@@ -402,11 +461,18 @@ export function currentFoundryInteractionState(
 
 export {
   applicableFoundryInteractionDigest,
+  applicableFoundryInteractionDigestForObject,
   applicableFoundryInteractionProjection,
+  applicableFoundryInteractionProjectionForObject,
   currentFoundryAssumptions,
+  currentFoundryAssumptionsForObject,
   currentFoundryAssumptionsForType,
   currentFoundryDecisions,
+  currentFoundryDecisionsForObject,
   currentFoundryDecisionsForType,
   currentFoundryInvestigations,
+  currentFoundryInvestigationsForObject,
   currentFoundryQuestions,
+  currentFoundryQuestionsForObject,
+  foundryInteractionEventAppliesToObject,
 } from "./foundry-interaction-projection.ts";

@@ -8,22 +8,30 @@
     "test/scenarios/foundry-public-approval-current-rows.test.mts": 286.395,
     "test/scenarios/foundry-public-approval-current-trace.test.mts": 268.169,
     "test/scenarios/foundry-public-identity-mixed-reuse.test.mts": 206.447,
-    "test/scenarios/foundry-public-trace-acceptance.test.mts": 181.682,
+    "test/scenarios/foundry-public-trace-acceptance.test.mts": 361,
     "test/scenarios/foundry-public-trace-strict-owner.test.mts": 200.324,
-    "test/scenarios/foundry-public-trace-unrelated-change.test.mts": 206.516,
+    "test/scenarios/foundry-public-trace-unrelated-change.test.mts": 397,
     "test/scenarios/foundry-public-dependent-source.test.mts": 124.441,
     "test/scenarios/foundry-public-dependent-flowproperty.test.mts": 510.735,
     "test/scenarios/foundry-public-workflow.test.mts": 248.961,
     "test/scenarios/foundry-package-consumer.test.mts": 853.824,
     "test/scenarios/foundry-public-native-insert.test.mts": 230.68,
-    "test/scenarios/foundry-public-native-reuse.test.mts": 242.822,
+    "test/scenarios/foundry-public-native-reuse.test.mts": 438,
     "test/scenarios/foundry-public-native-lost.test.mts": 177.858,
     "test/scenarios/foundry-public-native-missing.test.mts": 196.334,
     "test/scenarios/foundry-public-native-unknown.test.mts": 215.675,
-    "test/scenarios/foundry-public-native-draft.test.mts": 96.187,
-    "test/scenarios/foundry-public-reference-input.test.mts": 265,
-    "test/scenarios/foundry-public-reference-recovery.test.mts": 330,
-    "test/scenarios/foundry-public-reference-qa.test.mts": 45
+    "test/scenarios/foundry-public-native-draft.test.mts": 924,
+    "test/scenarios/foundry-public-reference-input.test.mts": 440,
+    "test/scenarios/foundry-public-reference-recovery.test.mts": 643,
+    "test/scenarios/foundry-public-reference-qa.test.mts": 45,
+    "test/scenarios/foundry-object-interaction-workflow.test.mts": 268,
+    "test/scenarios/foundry-public-repair.test.mts": 177,
+    "test/scenarios/foundry-repair-successor.test.mts": 950,
+    "test/scenarios/foundry-repair-execution.test.mts": 240,
+    "test/scenarios/foundry-interaction-workflow.test.mts": 109,
+    "test/scenarios/foundry-execution-admission.test.mts": 83,
+    "test/scenarios/post-authoring-finalize-gates.test.mts": 67,
+    "test/unit/foundry-golden-diff-contract.test.mts": 57
   },
   "additional_baselines": [
     {
@@ -32,12 +40,26 @@
       "platform": "win32-x64",
       "files": "foundry-public-native-{insert,reuse,lost,missing,unknown}.test.mts",
       "basis": "Unchanged cases split from one file; successful per-case elapsed seconds rounded up to milliseconds."
+    },
+    {
+      "run": 36003098891,
+      "job": 107645462422,
+      "platform": "win32-x64",
+      "files": "Eight successful heavy scenario file summaries in test shard 3, including foundry-object-interaction-workflow.test.mts.",
+      "basis": "Per-file elapsed seconds rounded up from test-events.jsonl. The shard timed out at 40 minutes; this is timing evidence, not a passing shard or qualification receipt.",
+      "artifact_id": 10810968042,
+      "test_events_sha256": "be8a165a716b179d076ce9b381d0d18251bf8710b951d6465376d87944c9996d"
+    },
+    {
+      "run": 35993959632,
+      "job": 107614474080,
+      "platform": "win32-x64",
+      "files": "foundry-repair-successor.test.mts",
+      "basis": "Successful full Windows shard 1 measured 688.1 seconds. The 950-second planning weight allows for the 1.3-1.4x slowdown observed across comparable heavy files in run 36003098891; it is not a passing result for that cancelled shard."
     }
   ],
   "estimated_weights": {
-    "test/scenarios/foundry-public-native-draft.test.mts": "Local macOS arm64 measurement of the three save_draft repair cases; replace after first hosted measurement.",
-    "test/scenarios/foundry-public-reference-input.test.mts": "Estimated from native insert Windows case with extra reference selection/refinalization. Replace after first hosted measurement.",
-    "test/scenarios/foundry-public-reference-recovery.test.mts": "Estimated from current-rows Windows case with extra reference selection/refinalization. Replace after first hosted measurement.",
-    "test/scenarios/foundry-public-reference-qa.test.mts": "Estimated from local 6.78-second Process public selection/owner QA transport; replace after first hosted measurement."
+    "test/scenarios/foundry-public-reference-qa.test.mts": "Estimated from local 6.78-second Process public selection/owner QA transport; replace after first hosted measurement.",
+    "test/scenarios/foundry-repair-successor.test.mts": "Conservative 950 seconds from successful 688.1-second Windows file summary and the later 1.3-1.4x heavy-file slowdown; replace after a passing current-head shard."
   }
 }

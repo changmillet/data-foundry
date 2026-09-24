@@ -17,6 +17,13 @@ import {
 } from "./foundry-interaction-input.ts";
 import { readWorkflowArtifact } from "./foundry-workflow-state.ts";
 import { createWorkflowStageDirectory } from "./foundry-workflow-io.ts";
+import { sha256Json } from "./identity-preflight-proof.ts";
+import {
+  currentFoundryObjectScopes,
+  currentFoundryNarrowObjects,
+  requireCurrentFoundryObjectScope,
+  verifiedFoundryObjectProofs,
+} from "./foundry-workflow-object-scope.ts";
 
 const resultName = "interaction-result.json";
 
@@ -53,12 +60,14 @@ export async function recordFoundryInteractionInput(
     ...context.inputs.map((fact) => fact.sha256),
     ...entries.map((entry) => entry.sha256),
   ]);
+  const newObjectScope = selected.spec.events.some((item) => Object.hasOwn(item, "object_scope"));
   const accepted = advanceFoundryInteractionState(
     current?.state ?? null,
     selected.spec,
     currentSha,
     known,
     new Set(targetEntities),
+    newObjectScope ? verifiedFoundryObjectProofs(context, entries) : new Set(),
   );
   return runFoundryTaskOperation(
     context,
@@ -71,20 +80,52 @@ export async function recordFoundryInteractionInput(
       validateCurrent(index) {
         if (
           index.some((entry) =>
-            ["dataset-workflow-execution-prepare", "dataset-workflow-execution-consume"].includes(
-              entry.command,
-            ),
+            [
+              "dataset-workflow-authorization",
+              "dataset-workflow-execution-prepare",
+              "dataset-workflow-execution-consume",
+            ].includes(entry.command),
           )
         )
           throw new FoundryContextError(
             "interaction_after_approval",
-            "Preserve the approved or attempted scope; a changed decision needs a separately reviewed task revision.",
+            "Preserve the authorized or attempted scope; a changed decision needs a separately reviewed task revision.",
           );
         const present = currentFoundryInteractionState(context, index);
         if ((present?.entry.sha256 ?? null) !== currentSha)
           throw new FoundryContextError(
             "interaction_state_changed",
             "Interaction state changed before this input acquired the task lock.",
+          );
+        if (accepted.events.some((item) => Object.hasOwn(item, "object_scope"))) {
+          const objects = currentFoundryObjectScopes(context, index);
+          for (const item of currentFoundryNarrowObjects(accepted)) {
+            requireCurrentFoundryObjectScope(
+              context,
+              index,
+              accepted,
+              objects,
+              item.dataset_type,
+              item.entity_id,
+              item.version,
+            );
+          }
+        }
+        const rechecked = advanceFoundryInteractionState(
+          present?.state ?? null,
+          selected.spec,
+          currentSha,
+          new Set([
+            ...context.inputs.map((fact) => fact.sha256),
+            ...index.map((item) => item.sha256),
+          ]),
+          new Set(targetEntities),
+          newObjectScope ? verifiedFoundryObjectProofs(context, index) : new Set(),
+        );
+        if (sha256Json(rechecked) !== sha256Json(accepted))
+          throw new FoundryContextError(
+            "interaction_state_changed",
+            "Object scope or current row evidence changed before this input acquired the task lock.",
           );
       },
     },

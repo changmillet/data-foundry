@@ -41,8 +41,8 @@ checkPaths:
   - test/scenarios/foundry-execution-admission.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: 894b471a1da4f1eece401f5f86db9937f3000d28
-lastReviewedNote: "Reviewed for Foundry #204: pin public CLI 0.1.22, SDK 0.4.1 transitive source and Toolkit 0.3.3 native inputs; source/bootstrap identity and four-platform package checks updated, with task authorization and write gates unchanged."
+lastReviewedCommit: 2b9558a568c8a89232d9c49fdaa78aa6e79fd643
+lastReviewedNote: "Reviewed for Foundry #206: registered object interaction proof uses existing task-local selected rows, artifact hashes and operation lock; runtime selection, credentials, child admission and write authority remain unchanged. Base retains #204 public CLI 0.1.22, SDK 0.4.1 and Toolkit 0.3.3 qualification."
 related:
   - docs/architecture.md
   - docs/task-authorization-contract.md

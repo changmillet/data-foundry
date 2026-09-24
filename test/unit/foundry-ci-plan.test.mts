@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
+import path from "node:path";
 import test from "node:test";
-import { planFoundryTestShards } from "../../scripts/lib/foundry-ci-plan.ts";
+import {
+  loadFoundryTestPlan,
+  planFoundryTestShards,
+  selectFoundryCiMode,
+} from "../../scripts/lib/foundry-ci-plan.ts";
 
 const files = [
   "test/unit/a.test.mts",
@@ -75,9 +80,33 @@ test("CI partition refuses empty shards rather than accidentally running the who
   assert.throws(() => planFoundryTestShards([], {}, 1), /shard count/);
 });
 
+test("hosted Windows timings keep heavy object, native and repair scenarios within each shard budget", () => {
+  const root = path.resolve(import.meta.dirname, "../..");
+  const plan = loadFoundryTestPlan(root);
+  const heavy = [
+    "foundry-public-reference-recovery",
+    "foundry-public-reference-input",
+    "foundry-public-native-reuse",
+    "foundry-public-trace-unrelated-change",
+    "foundry-public-trace-acceptance",
+    "foundry-public-native-draft",
+    "foundry-object-interaction-workflow",
+    "foundry-public-repair",
+    "foundry-repair-successor",
+  ].map((name) => `test/scenarios/${name}.test.mts`);
+  for (const file of heavy)
+    assert.ok(!plan.unprofiledFiles.includes(file), `${file} needs hosted duration evidence`);
+  assert.ok(
+    plan.shards.every((shard) => heavy.filter((file) => shard.files.includes(file)).length <= 3),
+    "heavy Windows cases must not converge on one timed-out partition",
+  );
+  assert.ok(
+    plan.shards.every((shard) => shard.estimatedSeconds < 40 * 60),
+    "every estimated shard must fit the unchanged 40-minute job budget",
+  );
+});
+
 import fs from "node:fs";
-import path from "node:path";
-import { selectFoundryCiMode } from "../../scripts/lib/foundry-ci-plan.ts";
 import {
   validateFoundryReleaseChange,
   type ReleaseFileChange,
