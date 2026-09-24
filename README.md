@@ -158,9 +158,9 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - test/unit/zero-javascript-ratchet.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
-lastReviewedAt: 2026-09-23
-lastReviewedCommit: a3d7a738d24c1183b8198da40aa74f3a2215b959
-lastReviewedNote: "Reviewed for Foundry #196: pending human questions retain bounded independent local preparation; package identity, ownership, runtime trust, authorization and no-replay boundaries remain unchanged."
+lastReviewedAt: 2026-09-24
+lastReviewedCommit: abd80f28c1eff58c19ae40c929cf130b8b7d2431
+lastReviewedNote: "Reviewed for Foundry #200: valid blocked local queue evidence is indexed and explained through the public task result; package identity, CLI science, runtime trust and write authority remain unchanged."
 ---
 
 # TianGong LCA Data Foundry

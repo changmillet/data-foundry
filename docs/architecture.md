@@ -152,9 +152,9 @@ checkPaths:
   - test/unit/foundry-runtime-environment.test.mts
   - test/unit/lint-suppression-audit.test.mts
   - docs/incremental-change-set-contract.md
-lastReviewedAt: 2026-09-23
-lastReviewedCommit: a3d7a738d24c1183b8198da40aa74f3a2215b959
-lastReviewedNote: "Reviewed for Foundry #196: the facade now exposes independent local preparation beside a pending question; module ownership, runtime qualification and owner execution boundaries remain unchanged."
+lastReviewedAt: 2026-09-24
+lastReviewedCommit: abd80f28c1eff58c19ae40c929cf130b8b7d2431
+lastReviewedNote: "Reviewed for Foundry #200: the assessment adapter verifies and indexes blocked CLI queue outputs, then the facade summarizes current missing Flow evidence; module ownership and owner execution boundaries remain unchanged."
 ---
 
 # Architecture

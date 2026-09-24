@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import childProcess from "node:child_process";
 import fs from "node:fs";
+import { syncBuiltinESMExports } from "node:module";
 import path from "node:path";
 import test from "node:test";
 import { qualifyFoundryRuntime } from "../../scripts/lib/foundry-runtime-qualification.ts";
@@ -13,7 +15,11 @@ import {
   createFoundryRuntimeContext,
   captureFoundryInput,
 } from "../../scripts/lib/foundry-runtime-context.ts";
-import { flowRow, processRowWithInvalidLocation } from "../fixtures/row-builders.ts";
+import {
+  flowRow,
+  processRowWithFlowRef,
+  processRowWithInvalidLocation,
+} from "../fixtures/row-builders.ts";
 import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
 import { digestFile, workflowFixture } from "../fixtures/foundry-public-workflow.ts";
 
@@ -90,6 +96,227 @@ test("qualified context owner accepts the registered Unicode task path directly"
       item.path.endsWith("/foundry-assessment.json"),
     ),
   );
+});
+
+for (const variant of [
+  "wrong-exit",
+  "wrong-status",
+  "wrong-input",
+  "wrong-hash",
+  "foreign-output",
+  "relative-output",
+  "manifest-edited",
+  "blocker-edited",
+] as const) {
+  test(`a blocked queue rejects an unbound ${variant} report before indexing`, async (t) => {
+    const { root, workspace, facade } = workflowFixture(t);
+    const seed = path.join(root, `${variant}-seed.json`);
+    const specFile = path.join(root, `${variant}-task.json`);
+    const missingFlowId = "91919191-9191-4919-8919-919191919191";
+    fs.writeFileSync(
+      seed,
+      JSON.stringify({
+        rows: [processRowWithFlowRef("90909090-9090-4909-8909-909090909090", missingFlowId)],
+      }),
+    );
+    fs.writeFileSync(
+      specFile,
+      JSON.stringify({
+        schema: "tiangong-foundry.task-start.v1",
+        request_id: `issue-200-${variant}`,
+        actor_id: "issue-200-local",
+        lane: "source-evidence-dataset-development",
+        profile_id: "generic",
+        target_entities: ["process"],
+        sources: [{ path: seed }],
+        seed: { path: seed },
+        account_intent: null,
+        preparation: null,
+      }),
+    );
+    const started = await facade.start({ specFile });
+    assert.ok(started.task_id);
+    const invocation = { taskId: started.task_id, actorId: "issue-200-local" };
+    assert.equal((await facade.resume(invocation)).status, "ready");
+    assert.equal((await facade.resume(invocation)).status, "ready");
+    const index = path.join(
+      workspace,
+      ".foundry",
+      "workspaces",
+      started.task_id,
+      "artifact-index.jsonl",
+    );
+    const before = fs.readFileSync(index);
+    const delegated = childProcess.spawnSync;
+    let intercepted = false;
+    t.mock.method(
+      childProcess,
+      "spawnSync",
+      (...args: Parameters<typeof childProcess.spawnSync>) => {
+        const result = delegated(...args);
+        const argv = Array.isArray(args[1]) ? args[1] : [];
+        if (argv[1] !== "dataset" || argv[2] !== "curation-queue" || argv[3] !== "build")
+          return result;
+        intercepted = true;
+        assert.equal(result.status, 1);
+        const report = JSON.parse(String(result.stdout));
+        if (variant === "wrong-exit") return { ...result, status: 0 };
+        if (variant === "wrong-status") report.status = "ready";
+        else if (variant === "wrong-input")
+          report.inputs.processes = path.join(root, "foreign.json");
+        else if (variant === "wrong-hash")
+          report.hashes.inputs[report.inputs.processes] = "0".repeat(64);
+        else if (variant === "foreign-output")
+          report.files.manifest = path.join(root, "outside-manifest.json");
+        else if (variant === "relative-output")
+          report.files.manifest = path.relative(workspace, report.files.manifest);
+        else if (variant === "manifest-edited") {
+          const manifest = JSON.parse(fs.readFileSync(report.files.manifest, "utf8"));
+          manifest.status = "ready";
+          fs.writeFileSync(report.files.manifest, JSON.stringify(manifest));
+        } else if (variant === "blocker-edited") {
+          const blockers = fs
+            .readFileSync(report.files.blockers, "utf8")
+            .trimEnd()
+            .split(/\r?\n/u)
+            .map((line) => JSON.parse(line));
+          blockers[0].details.missing_flow_refs[0].id = "forged-flow";
+          fs.writeFileSync(
+            report.files.blockers,
+            `${blockers.map((blocker: unknown) => JSON.stringify(blocker)).join("\n")}\n`,
+          );
+        }
+        return { ...result, stdout: JSON.stringify(report) };
+      },
+    );
+    syncBuiltinESMExports();
+    t.after(() => {
+      t.mock.restoreAll();
+      syncBuiltinESMExports();
+    });
+    const refused = await facade.resume(invocation);
+    assert.equal(intercepted, true);
+    assert.equal(refused.status, "blocked", JSON.stringify(refused.blockers));
+    assert.equal(refused.blockers[0]?.code, "workflow_queue_invalid");
+    assert.deepEqual(fs.readFileSync(index), before, "invalid queue outputs cannot gain authority");
+    assert.ok(
+      refused.artifacts.every(
+        (item) => !["curation-queue-manifest.json", "foundry-assessment.json"].includes(item.role),
+      ),
+    );
+  });
+}
+
+test("a blocked process queue explains the indexed missing Flow and stops local retries", async (t) => {
+  const { root, workspace, facade } = workflowFixture(t);
+  const seed = path.join(root, "missing-flow-seed.json");
+  const specFile = path.join(root, "missing-flow-task.json");
+  const missingFlowId = "92929292-9292-4929-8929-929292929292";
+  const selectedFlowId = "94949494-9494-4949-8949-949494949494";
+  const unversioned = processRowWithFlowRef("93939393-9393-4939-8939-939393939393", missingFlowId);
+  Reflect.deleteProperty(
+    unversioned.processDataSet.exchanges.exchange[0].referenceToFlowDataSet,
+    "@version",
+  );
+  unversioned.processDataSet.exchanges.exchange.push(
+    structuredClone(unversioned.processDataSet.exchanges.exchange[0]),
+  );
+  fs.writeFileSync(
+    seed,
+    JSON.stringify({
+      rows: [flowRow(selectedFlowId), unversioned],
+    }),
+  );
+  fs.writeFileSync(
+    specFile,
+    JSON.stringify({
+      schema: "tiangong-foundry.task-start.v1",
+      request_id: "issue-200-readable-queue",
+      actor_id: "issue-200-local",
+      lane: "source-evidence-dataset-development",
+      profile_id: "generic",
+      target_entities: ["flow", "process"],
+      sources: [{ path: seed }],
+      seed: { path: seed },
+      account_intent: null,
+      preparation: null,
+    }),
+  );
+  const started = await facade.start({ specFile });
+  assert.ok(started.task_id);
+  const invocation = { taskId: started.task_id, actorId: "issue-200-local" };
+  assert.equal((await facade.resume(invocation)).status, "ready");
+  assert.equal((await facade.resume(invocation)).status, "ready");
+  const firstAssessment = await facade.resume(invocation);
+  assert.equal(firstAssessment.status, "needs_input");
+  assert.ok(firstAssessment.next_actions.some((action) => action.kind === "command"));
+  const assessed = await facade.resume(invocation);
+  assert.equal(assessed.status, "needs_input");
+  assert.equal(assessed.permissions.state, "not_required");
+  const queueFiles = assessed.artifacts.filter(
+    (artifact) => artifact.role === "curation-queue-blockers.jsonl",
+  );
+  assert.equal(queueFiles.length, 2, "Flow and Process assessments each retain queue evidence");
+  const queue = queueFiles[0];
+  assert.ok(queue?.kind === "file");
+  assert.equal(queueFiles[1]?.sha256, queue.sha256);
+  const missing = JSON.parse(fs.readFileSync(queue.path, "utf8"));
+  const missingRefs = missing.details.missing_flow_refs;
+  assert.equal(missingRefs.length, 2, "each exchange path is a distinct unresolved occurrence");
+  assert.deepEqual(
+    missingRefs.map((ref: { id: string; version: string | null }) => [ref.id, ref.version]),
+    [
+      [missingFlowId, null],
+      [missingFlowId, null],
+    ],
+  );
+  assert.notEqual(missingRefs[0]?.path, missingRefs[1]?.path);
+  const queueBlockers = assessed.blockers.filter((item) => item.code === "curation_queue_blocked");
+  assert.equal(queueBlockers.length, 1, "identical closure gaps should be presented once");
+  const blocker = queueBlockers[0];
+  assert.ok(blocker);
+  assert.match(blocker.message, /2 unresolved Flow reference occurrences/u);
+  assert.match(blocker.message, /Process review is blocked/u);
+  assert.ok(blocker.message.includes(queue.path));
+  assert.equal(
+    assessed.next_actions.filter(
+      (action) =>
+        action.kind === "human" &&
+        action.code === "review_queue_blockers" &&
+        action.instructions.includes("Provide the cited Flow evidence"),
+    ).length,
+    1,
+  );
+  assert.equal(
+    assessed.next_actions.some((action) => action.kind === "command"),
+    false,
+  );
+  assert.ok(
+    assessed.artifacts.every(
+      (artifact) =>
+        ![
+          "foundry-finalize.json",
+          "foundry-authorization.json",
+          "owner-execution-request.json",
+          "consumed.json",
+        ].includes(artifact.role),
+    ),
+  );
+  const index = path.join(
+    workspace,
+    ".foundry",
+    "workspaces",
+    started.task_id,
+    "artifact-index.jsonl",
+  );
+  const before = fs.readFileSync(index);
+  const repeated = await facade.resume(invocation);
+  assert.deepEqual(fs.readFileSync(index), before);
+  assert.deepEqual(repeated, assessed);
+  fs.appendFileSync(queue.path, '{"forged":true}\n');
+  const tampered = await facade.status(invocation);
+  assert.notEqual(tampered.status, "needs_input");
+  assert.ok(tampered.blockers.length > 0, "changed queue evidence cannot support a human prompt");
 });
 
 test("assessment records one row set at a time and cannot finalize partial coverage", async (t) => {

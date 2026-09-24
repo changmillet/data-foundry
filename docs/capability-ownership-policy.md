@@ -93,9 +93,9 @@ checkPaths:
   - scripts/lib/import-curation/internal/mutation-manifest-workflow.ts
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-09-23
-lastReviewedCommit: a3d7a738d24c1183b8198da40aa74f3a2215b959
-lastReviewedNote: "Reviewed for Foundry #196: bounded local continuation while a question waits stays in Foundry orchestration; Skills wording, CLI science and remote-write ownership remain unchanged."
+lastReviewedAt: 2026-09-24
+lastReviewedCommit: abd80f28c1eff58c19ae40c929cf130b8b7d2431
+lastReviewedNote: "Reviewed for Foundry #200: Foundry owns binding and presenting CLI queue blockers, while the CLI still decides reference closure and Skills still owns conversational wording; no remote-write authority moves."
 ---
 
 # Capability Ownership Policy

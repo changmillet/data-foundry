@@ -119,6 +119,7 @@ export interface FoundryFacadeOptions {
 
 const maxSpecBytes = 1024 * 1024;
 const maxSeedBytes = 8 * 1024 * 1024;
+const maxQueueBytes = 32 * 1024 * 1024;
 
 function readCaptured(fact: FoundryInputFact, maxBytes: number, code: string): Buffer {
   if (fact.bytes > maxBytes)
@@ -539,6 +540,115 @@ function independentLocalPreparationPending(
   return !workflow.rows || workflow.assessmentRemainingTypes.length > 0;
 }
 
+function currentIndexedQueueBlockers(
+  context: ReturnType<typeof createFoundryRuntimeContext>,
+  workflow: ReturnType<typeof currentWorkflowState>,
+  entries: readonly ArtifactEntry[],
+) {
+  const blockers: Array<{ code: string; message: string; scope: string }> = [];
+  const actions: FoundryOperationNextAction[] = [];
+  const seenBlockerSha256 = new Set<string>();
+  const queueExpected = workflow.rows?.value.sets.some((set) => set.type === "process") ?? false;
+  for (const set of workflow.assessment?.value.sets ?? []) {
+    if (typeof set.curation_report !== "string") continue;
+    const curation = entries.find(
+      (entry) =>
+        entry.command === "dataset-workflow-assessment" &&
+        path.join(context.taskRoot!, entry.path) === set.curation_report,
+    );
+    if (!curation) continue;
+    // Artifact-index paths use '/' on every platform, including Windows.
+    const manifest = entries.find(
+      (entry) =>
+        entry.operation_id === curation.operation_id &&
+        entry.path.endsWith("/queue/outputs/curation-queue-manifest.json"),
+    );
+    if (!manifest) {
+      if (queueExpected && ["flow", "process"].includes(String(set.type)))
+        throw new FoundryContextError(
+          "workflow_queue_invalid",
+          "The registered assessment is missing its curation queue evidence.",
+        );
+      continue;
+    }
+    const blockerFile = entries.find(
+      (entry) =>
+        entry.operation_id === curation.operation_id &&
+        entry.path.endsWith("/queue/outputs/curation-queue-blockers.jsonl"),
+    );
+    if (!blockerFile)
+      throw new FoundryContextError(
+        "workflow_queue_invalid",
+        "The registered curation queue is missing its complete blocker evidence.",
+      );
+    const manifestFile = path.join(context.taskRoot!, manifest.path);
+    const detailsFile = path.join(context.taskRoot!, blockerFile.path);
+    const report = workflowObject(
+      JSON.parse(
+        readCaptured(
+          { path: manifestFile, bytes: manifest.bytes, sha256: manifest.sha256 },
+          maxQueueBytes,
+          "workflow_queue_invalid",
+        ).toString("utf8"),
+      ),
+    );
+    if (report.status !== "blocked") continue;
+    const reportFiles = workflowObject(report.files);
+    const reportCounts = workflowObject(report.counts);
+    if (
+      report.schema_version !== 1 ||
+      reportFiles.manifest !== manifestFile ||
+      reportFiles.blockers !== detailsFile ||
+      !Array.isArray(report.blockers) ||
+      !report.blockers.length ||
+      reportCounts.blockers !== report.blockers.length
+    )
+      throw new FoundryContextError(
+        "workflow_queue_invalid",
+        "The registered curation queue blocker manifest is invalid.",
+      );
+    const recorded = report.blockers;
+    let blockerRows: unknown[];
+    try {
+      blockerRows = readCaptured(
+        { path: detailsFile, bytes: blockerFile.bytes, sha256: blockerFile.sha256 },
+        maxQueueBytes,
+        "workflow_queue_invalid",
+      )
+        .toString("utf8")
+        .split(/\r?\n/u)
+        .filter((line) => line.length > 0)
+        .map((line) => JSON.parse(line));
+    } catch {
+      throw new FoundryContextError(
+        "workflow_queue_invalid",
+        "The registered curation queue blocker file is invalid or changed.",
+      );
+    }
+    if (JSON.stringify(blockerRows) !== JSON.stringify(recorded))
+      throw new FoundryContextError(
+        "workflow_queue_invalid",
+        "The registered curation queue blocker file does not match its manifest.",
+      );
+    if (seenBlockerSha256.has(blockerFile.sha256)) continue;
+    seenBlockerSha256.add(blockerFile.sha256);
+    const missing = recorded
+      .map(workflowObject)
+      .filter((item) => item.code === "process_flow_reference_unresolved")
+      .reduce((total, item) => {
+        const refs = workflowObject(item.details).missing_flow_refs;
+        return total + (Array.isArray(refs) ? refs.length : 0);
+      }, 0);
+    const scope = missing ? "process" : String(set.type);
+    const message = missing
+      ? `Selected Process data has ${missing} unresolved Flow reference occurrence${missing === 1 ? "" : "s"}: the cited Flow evidence is absent from the selected inputs and has no verified external declaration. Process review is blocked; unrelated records can continue. Provide the cited Flow evidence or verified references, or keep the gap open. Adding selected sources requires a new task revision because this task's inputs are frozen. Full IDs and paths: ${detailsFile}.`
+      : `The selected ${scope} dependency queue has ${recorded.length} blocker${recorded.length === 1 ? "" : "s"}. Independent types can continue. Review the exact registered evidence at ${detailsFile} before revising the source or closure.`;
+    blockers.push({ code: "curation_queue_blocked", message, scope });
+    actions.push(human("review_queue_blockers", message));
+  }
+  return { blockers, actions };
+}
+
 function taskProjection(
   operation: "task.start" | "task.status" | "task.resume",
   context: ReturnType<typeof createFoundryRuntimeContext>,
@@ -701,6 +811,7 @@ function taskProjection(
       });
   }
   const workflow = currentWorkflowState(context, inspected.artifacts);
+  const queueIssues = currentIndexedQueueBlockers(context, workflow, inspected.artifacts);
   if (record.spec.repair && execution.verified.size) {
     if (execution.requests.length !== 1 || execution.verified.size !== 1)
       throw new FoundryContextError(
@@ -791,15 +902,19 @@ function taskProjection(
       status: "needs_input",
       taskId: record.task_id,
       artifacts,
-      blockers: [...pendingQuestions, ...investigations].map((question) => ({
-        code: investigationIds.has(String(question.id))
-          ? "interaction_investigation_pending"
-          : "interaction_decision_pending",
-        message: `${String(question.missing)} ${String(question.impact)}`,
-        scope: String(question.dataset_type ?? record.task_id),
-      })),
+      blockers: [
+        ...[...pendingQuestions, ...investigations].map((question) => ({
+          code: investigationIds.has(String(question.id))
+            ? "interaction_investigation_pending"
+            : "interaction_decision_pending",
+          message: `${String(question.missing)} ${String(question.impact)}`,
+          scope: String(question.dataset_type ?? record.task_id),
+        })),
+        ...queueIssues.blockers,
+      ],
       nextActions: [
         ...askActions,
+        ...queueIssues.actions,
         ...(independentLocalPreparationPending(record, workflow, inspected.artifacts)
           ? [resumeCommand(context, record)]
           : []),
@@ -1060,12 +1175,16 @@ function taskProjection(
         status: "needs_input",
         taskId: record.task_id,
         artifacts,
-        blockers: pending.map((set) => ({
-          code: "curation_requires_input",
-          message: `Resolve the current ${set.type} curation and authoring work before a write handoff.`,
-          scope: record.task_id,
-        })),
+        blockers: [
+          ...queueIssues.blockers,
+          ...pending.map((set) => ({
+            code: "curation_requires_input",
+            message: `Resolve the current ${set.type} curation and authoring work before a write handoff.`,
+            scope: record.task_id,
+          })),
+        ],
         nextActions: [
+          ...queueIssues.actions,
           ...pending.flatMap((set) => [
             human(
               "review_semantic_work",
