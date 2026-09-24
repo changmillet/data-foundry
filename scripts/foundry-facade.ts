@@ -12,6 +12,7 @@ import {
   FoundryContextError,
   initializeFoundryWorkspace,
   pendingFoundryMigration,
+  resolveFoundryOutput,
   type FoundryInputFact,
   type FoundryAccountIntent,
   type FoundryRuntimeContextOptions,
@@ -58,7 +59,11 @@ import {
 } from "./lib/foundry-runtime-selection.ts";
 import type { TrustedRuntimeManifest } from "@tiangong-lca/cli/runtime";
 import { datasetTypePlural } from "./lib/import-curation/internal/dataset-types.ts";
-import { currentWorkflowState, workflowObject } from "./lib/foundry-workflow-state.ts";
+import {
+  currentWorkflowState,
+  readWorkflowArtifact,
+  workflowObject,
+} from "./lib/foundry-workflow-state.ts";
 import { currentNativeValidationFailure } from "./lib/foundry-native-validation-failure.ts";
 import {
   completedOwnerScopes,
@@ -76,8 +81,17 @@ import {
   currentFoundryDecisions,
   currentFoundryInvestigations,
   currentFoundryAssumptions,
+  applicableFoundryInteractionProjectionForObject,
+  applicableFoundryInteractionDigestForObject,
   selectFoundryInteractionInput,
 } from "./lib/foundry-interaction-input.ts";
+import {
+  currentFoundryObjectScopes,
+  currentFoundryObjectScopeIsBound,
+  currentFoundryNarrowObjects,
+  indexedFoundryRowAdoptions,
+  requireCurrentFoundryObject,
+} from "./lib/foundry-workflow-object-scope.ts";
 import { recordFoundryInteractionInput } from "./lib/foundry-workflow-interaction.ts";
 import { runFoundryWorkflowIdentity } from "./lib/foundry-workflow-identity.ts";
 import { finalizeFoundryWorkflow } from "./lib/foundry-workflow-finalize.ts";
@@ -650,6 +664,137 @@ function currentIndexedQueueBlockers(
   return { blockers, actions };
 }
 
+function scopedAuthoringPresentation(
+  context: ReturnType<typeof createFoundryRuntimeContext>,
+  entries: Parameters<typeof currentWorkflowState>[1],
+  workflow: ReturnType<typeof currentWorkflowState>,
+  interaction: NonNullable<ReturnType<typeof currentFoundryInteractionState>>,
+): {
+  artifacts: FoundryOperationArtifact[];
+  actions: FoundryOperationNextAction[];
+  blockers: Array<{ code: string; message: string; scope: string }>;
+  types: readonly string[];
+} {
+  const narrow = currentFoundryNarrowObjects(interaction.state);
+  if (!narrow.length || !workflow.assessment)
+    return { artifacts: [], actions: [], blockers: [], types: [] };
+  const narrowTypes = new Set(narrow.map((item) => item.dataset_type));
+  const objects = currentFoundryObjectScopes(context, entries);
+  const artifacts: FoundryOperationArtifact[] = [];
+  const actions: FoundryOperationNextAction[] = [];
+  const blockers: Array<{ code: string; message: string; scope: string }> = [];
+  let shown = 0;
+  for (const set of workflow.assessment.value.sets) {
+    const type = String(set.type);
+    if (!narrowTypes.has(type)) continue;
+    const manifestFile = String(set.authoring_manifest);
+    const manifestEntry = entries.find(
+      (entry) => resolveFoundryOutput(context, entry.path) === manifestFile,
+    );
+    if (!manifestEntry)
+      throw new FoundryContextError(
+        "workflow_assessment_invalid",
+        "Current object work has no registered authoring manifest.",
+      );
+    const manifest = readWorkflowArtifact(context, manifestEntry).value;
+    if (!Array.isArray(manifest.tasks))
+      throw new FoundryContextError(
+        "workflow_assessment_invalid",
+        "Current authoring manifest has no bounded task list.",
+      );
+    for (const raw of manifest.tasks) {
+      if (shown >= 64) {
+        actions.push(
+          human(
+            "review_remaining_object_work",
+            `More object work is indexed at ${manifestFile}; inspect its exact task identities before continuing.`,
+          ),
+        );
+        break;
+      }
+      const task = workflowObject(raw);
+      const files = workflowObject(task.files);
+      const taskFile = path.resolve(workflow.assessment.value.owner_base, String(files.task_json));
+      const taskEntry = entries.find(
+        (entry) => resolveFoundryOutput(context, entry.path) === taskFile,
+      );
+      if (!taskEntry)
+        throw new FoundryContextError(
+          "workflow_assessment_invalid",
+          "Current object work has no registered authoring task.",
+        );
+      const registered = readWorkflowArtifact(context, taskEntry).value;
+      const entity = workflowObject(registered.entity);
+      if (
+        entity.dataset_type !== type ||
+        typeof entity.entity_id !== "string" ||
+        typeof entity.version !== "string"
+      )
+        throw new FoundryContextError(
+          "workflow_assessment_invalid",
+          "Current authoring task has no exact object identity.",
+        );
+      const current = requireCurrentFoundryObject(objects, type, entity.entity_id, entity.version);
+      const projection = applicableFoundryInteractionProjectionForObject(
+        interaction.state,
+        type,
+        entity.entity_id,
+        entity.version,
+      );
+      const bound = currentFoundryObjectScopeIsBound(
+        context,
+        entries,
+        interaction.state,
+        objects,
+        type,
+        entity.entity_id,
+        entity.version,
+      );
+      artifacts.push(
+        inlineArtifact("object_interaction_context", {
+          ...projection,
+          work_item_sha256: taskEntry.sha256,
+          current_row_sha256: current.row_sha256,
+          source_state_sha256: interaction.entry.sha256,
+          applicable_digest: applicableFoundryInteractionDigestForObject(
+            interaction.state,
+            type,
+            entity.entity_id,
+            entity.version,
+          ),
+          evidence_current: bound,
+        }),
+      );
+      shown += 1;
+      if (!bound) {
+        blockers.push({
+          code: "interaction_object_evidence_changed",
+          message: `The reviewed ${type} ${entity.entity_id}@${entity.version} changed without a decision-bound successor. Recheck only this object and its proven dependents before adopting the old answer.`,
+          scope: `${type}:${entity.entity_id}`,
+        });
+        actions.push(
+          human(
+            "review_object_scope",
+            `Review ${type} ${entity.entity_id}@${entity.version} against its current registered row and source evidence. The old object decision is not current and cannot authorize or apply work.`,
+          ),
+        );
+      } else if (
+        registered.status === "ready_for_ai_authoring" &&
+        !projection.pending_questions.length &&
+        !projection.investigations.length
+      ) {
+        actions.push(
+          human(
+            "review_semantic_work",
+            `Independent ${type} ${entity.entity_id}@${entity.version} can continue. Read its registered authoring task ${taskFile} and matching object_interaction_context; cite only applicable decision IDs. No write permission is implied.`,
+          ),
+        );
+      }
+    }
+  }
+  return { artifacts, actions, blockers, types: [...narrowTypes] };
+}
+
 function taskProjection(
   operation: "task.start" | "task.status" | "task.resume",
   context: ReturnType<typeof createFoundryRuntimeContext>,
@@ -661,6 +806,10 @@ function taskProjection(
   const interaction = currentFoundryInteractionState(context, inspected.artifacts);
   const pendingQuestions = interaction ? currentFoundryQuestions(interaction.state) : [];
   const investigations = interaction ? currentFoundryInvestigations(interaction.state) : [];
+  const objectAdoptions =
+    interaction && currentFoundryNarrowObjects(interaction.state).length
+      ? indexedFoundryRowAdoptions(context, inspected.artifacts)
+      : [];
   if (record.spec.brief) artifacts.push(inlineArtifact("task_brief", record.spec.brief));
   if (interaction)
     artifacts.push(
@@ -687,6 +836,33 @@ function taskProjection(
         ? currentFoundryDecisions(interaction.state).map((answer) => ({
             question_id: answer.question_id,
             dataset_type: questions.get(String(answer.question_id))?.dataset_type ?? null,
+            ...(questions.get(String(answer.question_id))?.object_scope
+              ? {
+                  object_scope: questions.get(String(answer.question_id))?.object_scope,
+                  applied_to: objectAdoptions
+                    .filter((adoption) =>
+                      adoption.decision_ids.includes(String(answer.decision_id)),
+                    )
+                    .filter((adoption) => {
+                      const scope = questions.get(String(answer.question_id))?.object_scope as
+                        { entity_id: string; version: string } | undefined;
+                      return (
+                        scope &&
+                        adoption.dataset_type ===
+                          questions.get(String(answer.question_id))?.dataset_type &&
+                        adoption.object_scope.entity_id === scope.entity_id &&
+                        adoption.object_scope.version === scope.version
+                      );
+                    })
+                    .slice(-16)
+                    .map((adoption) => ({
+                      work_item_sha256: adoption.work_item_sha256,
+                      before_row_sha256: adoption.before_row_sha256,
+                      after_row_sha256: adoption.after_row_sha256,
+                      semantic_result_sha256: adoption.semantic_result_sha256,
+                    })),
+                }
+              : {}),
             impact: questions.get(String(answer.question_id))?.impact ?? null,
             raw_answer_sha256: createHash("sha256").update(String(answer.raw_answer)).digest("hex"),
             adopted_decision: answer.adopted_decision,
@@ -699,6 +875,7 @@ function taskProjection(
       unresolved_questions: [...pendingQuestions, ...investigations].map((question) => ({
         id: question.id,
         dataset_type: question.dataset_type,
+        ...(question.object_scope ? { object_scope: question.object_scope } : {}),
         missing: question.missing,
         impact: question.impact,
         ask: question.ask,
@@ -928,9 +1105,18 @@ function taskProjection(
         : noPermission(),
     });
   }
-  if (pendingQuestions.length || investigations.length) {
-    const describe = (question: Readonly<Record<string, unknown>>) =>
-      `${String(question.missing)} ${String(question.impact)} ${String(question.recommendation)} ${String(question.ask)}`;
+  const scoped = interaction
+    ? scopedAuthoringPresentation(context, inspected.artifacts, workflow, interaction)
+    : { artifacts: [], actions: [], blockers: [], types: [] as readonly string[] };
+  artifacts.push(...scoped.artifacts);
+  if (pendingQuestions.length || investigations.length || scoped.blockers.length) {
+    const describe = (question: Readonly<Record<string, unknown>>) => {
+      const object = question.object_scope as { entity_id: string; version: string } | undefined;
+      const target = object
+        ? `For ${String(question.dataset_type)} ${object.entity_id}@${object.version}: `
+        : "";
+      return `${target}${String(question.missing)} ${String(question.impact)} ${String(question.recommendation)} ${String(question.ask)}`;
+    };
     const askActions = pendingQuestions.map((question) =>
       human(
         "answer_current_question",
@@ -949,13 +1135,17 @@ function taskProjection(
             ? "interaction_investigation_pending"
             : "interaction_decision_pending",
           message: `${String(question.missing)} ${String(question.impact)}`,
-          scope: String(question.dataset_type ?? record.task_id),
+          scope: question.object_scope
+            ? `${String(question.dataset_type)}:${String((question.object_scope as { entity_id: string }).entity_id)}`
+            : String(question.dataset_type ?? record.task_id),
         })),
         ...queueIssues.blockers,
+        ...scoped.blockers,
       ],
       nextActions: [
         ...askActions,
         ...queueIssues.actions,
+        ...scoped.actions,
         ...(independentLocalPreparationPending(record, workflow, inspected.artifacts)
           ? [resumeCommand(context, record)]
           : []),
@@ -1226,18 +1416,21 @@ function taskProjection(
         ],
         nextActions: [
           ...queueIssues.actions,
-          ...pending.flatMap((set) => [
-            human(
-              "review_semantic_work",
-              `Read the registered curation report ${set.curation_report} and authoring manifest ${set.authoring_manifest}. Use their bound source/context evidence; no write permission is implied.`,
-            ),
-            ...(set.decisions ?? []).map((work) =>
+          ...scoped.actions,
+          ...pending
+            .filter((set) => !scoped.types.includes(set.type))
+            .flatMap((set) => [
               human(
-                `review_${work.kind}_decisions`,
-                `Read registered ${work.kind} task ${work.task} (${work.status}). Complete its bound decision template and submit it with semantic-input kind=${work.kind}.`,
+                "review_semantic_work",
+                `Read the registered curation report ${set.curation_report} and authoring manifest ${set.authoring_manifest}. Use their bound source/context evidence; no write permission is implied.`,
               ),
-            ),
-          ]),
+              ...(set.decisions ?? []).map((work) =>
+                human(
+                  `review_${work.kind}_decisions`,
+                  `Read registered ${work.kind} task ${work.task} (${work.status}). Complete its bound decision template and submit it with semantic-input kind=${work.kind}.`,
+                ),
+              ),
+            ]),
           ...(workflow.assessmentRemainingTypes.length ? [resumeCommand(context, record)] : []),
         ],
         runtimeIdentity: identity,

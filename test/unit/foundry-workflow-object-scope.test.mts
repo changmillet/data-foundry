@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -16,6 +17,7 @@ import {
 } from "../../scripts/lib/foundry-runtime-context.ts";
 import {
   currentFoundryObjectScopeIsBound,
+  foundryExplicitObjectIdentity,
   requireCurrentFoundryObjectScope,
   type CurrentFoundryObject,
 } from "../../scripts/lib/foundry-workflow-object-scope.ts";
@@ -26,6 +28,28 @@ const version = "00.00.001";
 const originalFirstHash = "1".repeat(64);
 const originalSecondHash = "2".repeat(64);
 const changedFirstHash = "3".repeat(64);
+
+test("narrow identity requires explicit agreeing row and payload identifiers", () => {
+  const row = {
+    id: firstId,
+    version,
+    json: {
+      processDataSet: {
+        processInformation: { dataSetInformation: { "common:UUID": firstId } },
+        administrativeInformation: {
+          publicationAndOwnership: { "common:dataSetVersion": version },
+        },
+      },
+    },
+  };
+  assert.deepEqual(foundryExplicitObjectIdentity(row, "process"), {
+    entity_id: firstId,
+    version,
+  });
+  assert.equal(foundryExplicitObjectIdentity({ ...row, id: secondId }, "process"), null);
+  assert.equal(foundryExplicitObjectIdentity({ ...row, version: "01.00.001" }, "process"), null);
+  assert.equal(foundryExplicitObjectIdentity({ json: { processDataSet: {} } }, "process"), null);
+});
 
 test("an independent P1 row change cannot carry an old decision while unchanged P2 stays bound", (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-object-scope-"));
@@ -162,5 +186,72 @@ test("an independent P1 row change cannot carry an old decision while unchanged 
       version,
     ).row_sha256,
     originalSecondHash,
+  );
+
+  const relative = "outputs/indexed/semantic-result.json";
+  const indexed = path.join(context.taskRoot!, relative);
+  fs.mkdirSync(path.dirname(indexed), { recursive: true });
+  const rowAdoption = {
+    dataset_type: "process",
+    object_scope: { entity_id: firstId, version },
+    work_item_sha256: "e".repeat(64),
+    before_row_sha256: originalFirstHash,
+    after_row_sha256: changedFirstHash,
+    decision_ids: ["p1-answer"],
+  };
+  const indexedReport = (decisionId: string) => ({
+    status: "completed",
+    row_adoptions: [rowAdoption],
+    adopted_decisions: [
+      {
+        work_item_sha256: rowAdoption.work_item_sha256,
+        dataset_type: "process",
+        object_scope: rowAdoption.object_scope,
+        decision_ids: [decisionId],
+      },
+    ],
+  });
+  const registered = (decisionId: string): ArtifactEntry => {
+    const bytes = Buffer.from(JSON.stringify(indexedReport(decisionId)));
+    fs.writeFileSync(indexed, bytes);
+    return {
+      schema: "tiangong-foundry.artifact-index.v2",
+      sequence: 1,
+      previous_sha256: null,
+      operation_id: "test-indexed-semantic",
+      command: "dataset-semantic-apply",
+      input_scope_sha256: "f".repeat(64),
+      receipt: { path: "receipt.json", sha256: "f".repeat(64) },
+      record_sha256: "f".repeat(64),
+      path: relative,
+      bytes: bytes.length,
+      sha256: createHash("sha256").update(bytes).digest("hex"),
+    };
+  };
+  assert.throws(
+    () =>
+      currentFoundryObjectScopeIsBound(
+        context,
+        [registered("unrelated-decision")],
+        state,
+        objects,
+        "process",
+        firstId,
+        version,
+      ),
+    { code: "interaction_scope_invalid" },
+    "a row lineage entry must agree with the independently recorded adopted decision",
+  );
+  assert.equal(
+    currentFoundryObjectScopeIsBound(
+      context,
+      [registered("p1-answer")],
+      state,
+      objects,
+      "process",
+      firstId,
+      version,
+    ),
+    true,
   );
 });

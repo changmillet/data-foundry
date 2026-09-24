@@ -34,7 +34,16 @@ import { readJsonOrJsonl, ensureArray, readRows } from "./import-curation/intern
 import { createFoundryDecisionOwners } from "./foundry-decision-owners.ts";
 import { applyFoundryIdentityDecisions } from "./foundry-workflow-identity-apply.ts";
 import { currentFoundryInteractionState } from "./foundry-interaction-input.ts";
-import { verifyFoundrySemanticInteraction } from "./foundry-semantic-interaction.ts";
+import {
+  verifyFoundrySemanticInteraction,
+  type SemanticObjectIdentity,
+} from "./foundry-semantic-interaction.ts";
+import {
+  currentFoundryObjectScopes,
+  requireCurrentFoundryObject,
+  requireCurrentFoundryObjectScope,
+  requireUniqueFoundryObjectInRows,
+} from "./foundry-workflow-object-scope.ts";
 import {
   operationFullContextEvidenceBlockers,
   operationUsedContextKinds,
@@ -207,10 +216,41 @@ export async function applyFoundrySemanticInput(
       );
     rowOwners.add(item.type);
   }
-  const selectedScopes = new Map<string, string>();
+  const narrowTypes = new Set(
+    interaction?.state.events
+      .filter((item) => Object.hasOwn(item, "object_scope"))
+      .map((item) => String(item.dataset_type)) ?? [],
+  );
+  const currentObjects = narrowTypes.size ? currentFoundryObjectScopes(context, entries) : null;
+  const selectedScopes = new Map<string, string | SemanticObjectIdentity>();
   for (const group of work)
-    for (const item of group.tasks)
-      selectedScopes.set(item.sha, text(group.set.type, "Dataset type"));
+    for (const item of group.tasks) {
+      const type = text(group.set.type, "Dataset type");
+      if (!narrowTypes.has(type)) {
+        selectedScopes.set(item.sha, type);
+        continue;
+      }
+      const entity = workflowObject(item.task.entity);
+      if (entity.dataset_type !== type)
+        fail(
+          "semantic_work_invalid",
+          "Authoring task entity type differs from its assessed row set.",
+        );
+      const entityId = text(entity.entity_id, "Authoring entity id");
+      const version = text(entity.version, "Authoring entity version");
+      if (interaction)
+        requireCurrentFoundryObjectScope(
+          context,
+          entries,
+          interaction.state,
+          currentObjects!,
+          type,
+          entityId,
+          version,
+        );
+      else requireCurrentFoundryObject(currentObjects!, type, entityId, version);
+      selectedScopes.set(item.sha, { dataset_type: type, entity_id: entityId, version });
+    }
   for (const item of decisionWork) selectedScopes.set(item.sha, item.type);
   const adoptedDecisions = verifyFoundrySemanticInteraction(
     submission.spec,
@@ -485,6 +525,39 @@ export async function applyFoundrySemanticInput(
         assertSelectedSemanticInput(submission);
         for (const input of context.inputs) readFoundryInput(context, input.path);
         assertQualifiedFoundryRuntime(context, qualified);
+        const rowAdoptions = blockers.length
+          ? []
+          : adoptedDecisions.flatMap((adopted) => {
+              const object = adopted.object_scope;
+              if (!object) return [];
+              const before = rows.value.sets.find((set) => set.type === adopted.dataset_type);
+              const after = updated.get(adopted.dataset_type);
+              if (!before || !after)
+                fail("semantic_row_scope_changed", "Object adoption has no exact row successor.");
+              const prior = requireUniqueFoundryObjectInRows(
+                before.file,
+                adopted.dataset_type,
+                object.entity_id,
+                object.version,
+                (file) => readFoundryInput(context, file).toString("utf8"),
+              );
+              const next = requireUniqueFoundryObjectInRows(
+                after.file,
+                adopted.dataset_type,
+                object.entity_id,
+                object.version,
+              );
+              return [
+                {
+                  dataset_type: adopted.dataset_type,
+                  object_scope: object,
+                  work_item_sha256: adopted.work_item_sha256,
+                  before_row_sha256: prior.row_sha256,
+                  after_row_sha256: next.row_sha256,
+                  decision_ids: adopted.decision_ids,
+                },
+              ];
+            });
         registerWorkflowStageFiles(context, operation, output);
         if (!blockers.length)
           operation.writeJson(path.join(output, "foundry-rows.json"), {
@@ -504,7 +577,11 @@ export async function applyFoundrySemanticInput(
           assessment_sha256: assessment.entry.sha256,
           work_items: [...used],
           ...(interaction
-            ? { interaction_sha256: interaction.entry.sha256, adopted_decisions: adoptedDecisions }
+            ? {
+                interaction_sha256: interaction.entry.sha256,
+                adopted_decisions: adoptedDecisions,
+                ...(rowAdoptions.length ? { row_adoptions: rowAdoptions } : {}),
+              }
             : {}),
           results,
           blockers,

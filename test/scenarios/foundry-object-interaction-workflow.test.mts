@@ -147,6 +147,36 @@ test("one Process question permits another Process patch, then binds only its ow
   const state = fileArtifact(pending, "current_interaction_state");
 
   const assessed = await facade.resume(invocation);
+  assert.ok(
+    assessed.next_actions.some(
+      (action) =>
+        action.kind === "human" &&
+        action.code === "review_semantic_work" &&
+        action.instructions.includes(secondId),
+    ),
+    "P1's pending answer must not hide P2's independent semantic work",
+  );
+  const objectContexts = assessed.artifacts.flatMap((artifact) =>
+    artifact.role === "object_interaction_context" && artifact.kind === "inline"
+      ? [
+          artifact.value as {
+            object_scope: { entity_id: string };
+            pending_questions: unknown[];
+            decisions: unknown[];
+          },
+        ]
+      : [],
+  );
+  assert.deepEqual(
+    objectContexts.find((item) => item.object_scope.entity_id === secondId)?.pending_questions,
+    [],
+    "P2 context must exclude P1's question",
+  );
+  assert.deepEqual(
+    objectContexts.find((item) => item.object_scope.entity_id === secondId)?.decisions,
+    [],
+    "P2 context must exclude P1's decisions",
+  );
   const assessmentArtifact = fileArtifact(assessed, "foundry-assessment.json");
   const assessment = readJson(assessmentArtifact.path) as {
     owner_base: string;
@@ -322,7 +352,11 @@ test("one Process question permits another Process patch, then binds only its ow
   assert.ok(answerRecap?.kind === "inline");
   const recap = answerRecap.value as {
     completion_proven: boolean;
-    user_decisions: Array<{ decision_id: string; object_scope?: { entity_id: string } }>;
+    user_decisions: Array<{
+      decision_id: string;
+      object_scope?: { entity_id: string };
+      applied_to?: unknown[];
+    }>;
   };
   assert.equal(recap.completion_proven, false);
   assert.deepEqual(
@@ -330,6 +364,28 @@ test("one Process question permits another Process patch, then binds only its ow
     ["p1-controlled-category"],
   );
   assert.deepEqual(recap.user_decisions[0]?.object_scope, firstScope);
+  assert.deepEqual(recap.user_decisions[0]?.applied_to, [], "an answer is not yet an applied row");
+  const answeredContexts = answered.artifacts.flatMap((artifact) =>
+    artifact.role === "object_interaction_context" && artifact.kind === "inline"
+      ? [
+          artifact.value as {
+            object_scope: { entity_id: string };
+            decisions: Array<{ answer: { decision_id: string } }>;
+          },
+        ]
+      : [],
+  );
+  assert.deepEqual(
+    answeredContexts.find((item) => item.object_scope.entity_id === secondId)?.decisions,
+    [],
+    "P2 authoring context must not expose P1's adopted text",
+  );
+  assert.deepEqual(
+    answeredContexts
+      .find((item) => item.object_scope.entity_id === firstId)
+      ?.decisions.map((item) => item.answer.decision_id),
+    ["p1-controlled-category"],
+  );
   assert.equal(fileArtifact(answered, "foundry-assessment.json").sha256, baselineAssessment.sha256);
 
   const beforeStale = fs.readFileSync(index);
@@ -531,6 +587,19 @@ test("one Process question permits another Process patch, then binds only its ow
   );
   assert.ok(
     adoptedSuccessor.artifacts.some((artifact) => artifact.role === "foundry-assessment.json"),
+  );
+  const adoptedRecap = adoptedSuccessor.artifacts.find(
+    (artifact) => artifact.role === "decision_recap",
+  );
+  assert.ok(adoptedRecap?.kind === "inline");
+  const appliedTo = (
+    adoptedRecap.value as {
+      user_decisions: Array<{ applied_to: Array<{ after_row_sha256: string }> }>;
+    }
+  ).user_decisions[0]?.applied_to;
+  assert.deepEqual(
+    appliedTo?.map((item) => item.after_row_sha256),
+    [sha256Json(afterFirstRows[0])],
   );
   assert.equal(adoptedSuccessor.permissions.state, "not_required");
 
