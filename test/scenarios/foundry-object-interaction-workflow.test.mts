@@ -131,6 +131,7 @@ test("one Process question permits another Process patch, then binds only its ow
   assert.ok(humanQuestion?.kind === "human");
   for (const detail of [question.missing, question.impact, question.recommendation, question.ask])
     assert.ok(humanQuestion.instructions.includes(detail));
+  assert.ok(humanQuestion.instructions.includes(firstId), "show which Process needs an answer");
   const partialRecap = pending.artifacts.find((artifact) => artifact.role === "decision_recap");
   assert.ok(partialRecap?.kind === "inline");
   const partial = partialRecap.value as {
@@ -142,6 +143,7 @@ test("one Process question permits another Process patch, then binds only its ow
     partial.unresolved_questions.map((item) => item.id),
     [question.id],
   );
+  assert.deepEqual(partial.unresolved_questions[0]?.object_scope, firstScope);
   const state = fileArtifact(pending, "current_interaction_state");
 
   const assessed = await facade.resume(invocation);
@@ -247,9 +249,10 @@ test("one Process question permits another Process patch, then binds only its ow
   assert.equal(appliedSecond.status, "needs_input", "P1 still needs a human answer");
   const adoptionSecond = fileArtifact(appliedSecond, "semantic-result.json");
   const adoptedSecond = readJson(adoptionSecond.path) as {
-    adopted_decisions: Array<{ decision_ids: string[] }>;
+    adopted_decisions: Array<{ decision_ids: string[]; object_scope?: { entity_id: string } }>;
   };
   assert.deepEqual(adoptedSecond.adopted_decisions[0]?.decision_ids, []);
+  assert.equal(adoptedSecond.adopted_decisions[0]?.object_scope?.entity_id, secondId);
   const afterSecondRows = readJson(fileArtifact(appliedSecond, "foundry-rows.json").path) as {
     sets: Array<{ type: string; file: string }>;
   };
@@ -304,6 +307,7 @@ test("one Process question permits another Process patch, then binds only its ow
     recap.user_decisions.map((item) => item.decision_id),
     ["p1-controlled-category"],
   );
+  assert.deepEqual(recap.user_decisions[0]?.object_scope, firstScope);
   assert.equal(fileArtifact(answered, "foundry-assessment.json").sha256, baselineAssessment.sha256);
 
   const beforeStale = fs.readFileSync(index);
