@@ -40,10 +40,12 @@ import {
 } from "./foundry-semantic-interaction.ts";
 import {
   currentFoundryObjectScopes,
+  foundryExplicitObjectIdentity,
   requireCurrentFoundryObject,
   requireCurrentFoundryObjectScope,
-  requireUniqueFoundryObjectInRows,
 } from "./foundry-workflow-object-scope.ts";
+import { foundryInteractionObjectKey } from "./foundry-interaction-scope.ts";
+import { sha256Json } from "./identity-preflight-proof.ts";
 import {
   operationFullContextEvidenceBlockers,
   operationUsedContextKinds,
@@ -58,6 +60,34 @@ function fail(code: string, message: string): never {
 function text(value: unknown, label: string): string {
   if (typeof value !== "string" || !value) fail("semantic_work_invalid", `${label} is missing.`);
   return value;
+}
+
+/** Index only selected identities while reading one row set once. Null marks an ambiguous match. */
+export function indexedFoundryAdoptionRows(
+  file: string,
+  type: string,
+  selectedKeys: ReadonlySet<string>,
+  reader?: (file: string) => string,
+): ReadonlyMap<string, string | null> {
+  const indexed = new Map<string, string | null>();
+  for (const row of readRows(file, reader)) {
+    const identity = foundryExplicitObjectIdentity(row, type);
+    if (!identity) continue;
+    const key = foundryInteractionObjectKey(type, identity.entity_id, identity.version);
+    if (!selectedKeys.has(key)) continue;
+    indexed.set(key, indexed.has(key) ? null : sha256Json(row));
+  }
+  return indexed;
+}
+
+function uniqueAdoptionRowSha(indexed: ReadonlyMap<string, string | null>, key: string): string {
+  const sha = indexed.get(key);
+  if (!sha)
+    fail(
+      "interaction_scope_invalid",
+      "Object scope is missing or duplicated in its registered row set.",
+    );
+  return sha;
 }
 
 function priorApplication(
@@ -525,35 +555,53 @@ export async function applyFoundrySemanticInput(
         assertSelectedSemanticInput(submission);
         for (const input of context.inputs) readFoundryInput(context, input.path);
         assertQualifiedFoundryRuntime(context, qualified);
+        const adoptionKeysByType = new Map<string, Set<string>>();
+        if (!blockers.length)
+          for (const adopted of adoptedDecisions) {
+            const object = adopted.object_scope;
+            if (!object) continue;
+            const keys = adoptionKeysByType.get(adopted.dataset_type) ?? new Set<string>();
+            keys.add(
+              foundryInteractionObjectKey(adopted.dataset_type, object.entity_id, object.version),
+            );
+            adoptionKeysByType.set(adopted.dataset_type, keys);
+          }
+        const adoptionRowsByType = new Map<
+          string,
+          { before: ReadonlyMap<string, string | null>; after: ReadonlyMap<string, string | null> }
+        >();
+        for (const [type, keys] of adoptionKeysByType) {
+          const before = rows.value.sets.find((set) => set.type === type);
+          const after = updated.get(type);
+          if (!before || !after)
+            fail("semantic_row_scope_changed", "Object adoption has no exact row successor.");
+          adoptionRowsByType.set(type, {
+            before: indexedFoundryAdoptionRows(before.file, type, keys, (file) =>
+              readFoundryInput(context, file).toString("utf8"),
+            ),
+            after: indexedFoundryAdoptionRows(after.file, type, keys),
+          });
+        }
         const rowAdoptions = blockers.length
           ? []
           : adoptedDecisions.flatMap((adopted) => {
               const object = adopted.object_scope;
               if (!object) return [];
-              const before = rows.value.sets.find((set) => set.type === adopted.dataset_type);
-              const after = updated.get(adopted.dataset_type);
-              if (!before || !after)
+              const key = foundryInteractionObjectKey(
+                adopted.dataset_type,
+                object.entity_id,
+                object.version,
+              );
+              const indexed = adoptionRowsByType.get(adopted.dataset_type);
+              if (!indexed)
                 fail("semantic_row_scope_changed", "Object adoption has no exact row successor.");
-              const prior = requireUniqueFoundryObjectInRows(
-                before.file,
-                adopted.dataset_type,
-                object.entity_id,
-                object.version,
-                (file) => readFoundryInput(context, file).toString("utf8"),
-              );
-              const next = requireUniqueFoundryObjectInRows(
-                after.file,
-                adopted.dataset_type,
-                object.entity_id,
-                object.version,
-              );
               return [
                 {
                   dataset_type: adopted.dataset_type,
                   object_scope: object,
                   work_item_sha256: adopted.work_item_sha256,
-                  before_row_sha256: prior.row_sha256,
-                  after_row_sha256: next.row_sha256,
+                  before_row_sha256: uniqueAdoptionRowSha(indexed.before, key),
+                  after_row_sha256: uniqueAdoptionRowSha(indexed.after, key),
                   decision_ids: adopted.decision_ids,
                 },
               ];
