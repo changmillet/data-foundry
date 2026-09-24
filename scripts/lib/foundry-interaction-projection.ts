@@ -1,12 +1,16 @@
 import { sha256Json } from "./identity-preflight-proof.ts";
 import type { FoundryInteractionState } from "./foundry-interaction-types.ts";
+import {
+  foundryInteractionEventAppliesToObject,
+  foundryInteractionScopeApplies,
+} from "./foundry-interaction-scope.ts";
+export {
+  foundryInteractionEventAppliesToObject,
+  foundryInteractionScopeApplies,
+} from "./foundry-interaction-scope.ts";
 
 type Item = Readonly<Record<string, unknown>>;
-const supportTypes = new Set(["contact", "source", "unitgroup", "flowproperty"]);
-
-export function foundryInteractionScopeApplies(scope: unknown, type: string): boolean {
-  return scope === null || scope === type || (scope === "support" && supportTypes.has(type));
-}
+const broad = (item: Item) => !Object.hasOwn(item, "object_scope");
 
 function current(state: FoundryInteractionState) {
   const questions = new Map<string, Item>();
@@ -59,8 +63,45 @@ export function currentFoundryDecisionsForType(
 ): Item[] {
   const { questions } = current(state);
   return currentFoundryDecisions(state).filter((answer) => {
-    const scope = questions.get(String(answer.question_id))?.dataset_type;
-    return foundryInteractionScopeApplies(scope, type);
+    const question = questions.get(String(answer.question_id));
+    return (
+      question && broad(question) && foundryInteractionScopeApplies(question.dataset_type, type)
+    );
+  });
+}
+
+export function currentFoundryQuestionsForObject(
+  state: FoundryInteractionState,
+  type: string,
+  entityId: string,
+  version: string,
+): Item[] {
+  return currentFoundryQuestions(state).filter((question) =>
+    foundryInteractionEventAppliesToObject(question, type, entityId, version),
+  );
+}
+
+export function currentFoundryInvestigationsForObject(
+  state: FoundryInteractionState,
+  type: string,
+  entityId: string,
+  version: string,
+): Item[] {
+  return currentFoundryInvestigations(state).filter((question) =>
+    foundryInteractionEventAppliesToObject(question, type, entityId, version),
+  );
+}
+
+export function currentFoundryDecisionsForObject(
+  state: FoundryInteractionState,
+  type: string,
+  entityId: string,
+  version: string,
+): Item[] {
+  const { questions } = current(state);
+  return currentFoundryDecisions(state).filter((answer) => {
+    const question = questions.get(String(answer.question_id));
+    return question && foundryInteractionEventAppliesToObject(question, type, entityId, version);
   });
 }
 
@@ -75,8 +116,20 @@ export function currentFoundryAssumptionsForType(
   state: FoundryInteractionState,
   type: string,
 ): Item[] {
+  return currentFoundryAssumptions(state).filter(
+    (assumption) =>
+      broad(assumption) && foundryInteractionScopeApplies(assumption.dataset_type, type),
+  );
+}
+
+export function currentFoundryAssumptionsForObject(
+  state: FoundryInteractionState,
+  type: string,
+  entityId: string,
+  version: string,
+): Item[] {
   return currentFoundryAssumptions(state).filter((assumption) =>
-    foundryInteractionScopeApplies(assumption.dataset_type, type),
+    foundryInteractionEventAppliesToObject(assumption, type, entityId, version),
   );
 }
 
@@ -85,7 +138,8 @@ export function applicableFoundryInteractionProjection(
   type: string,
 ) {
   const { questions } = current(state);
-  const applies = (item: Item) => foundryInteractionScopeApplies(item.dataset_type, type);
+  const applies = (item: Item) =>
+    broad(item) && foundryInteractionScopeApplies(item.dataset_type, type);
   return {
     schema: "tiangong-foundry.interaction-context.v1",
     dataset_type: type,
@@ -99,12 +153,51 @@ export function applicableFoundryInteractionProjection(
   };
 }
 
+export function applicableFoundryInteractionProjectionForObject(
+  state: FoundryInteractionState,
+  type: string,
+  entityId: string,
+  version: string,
+) {
+  const { questions } = current(state);
+  return {
+    schema: "tiangong-foundry.interaction-context.v1",
+    dataset_type: type,
+    object_scope: { entity_id: entityId, version },
+    pending_questions: currentFoundryQuestionsForObject(state, type, entityId, version),
+    investigations: currentFoundryInvestigationsForObject(state, type, entityId, version),
+    decisions: currentFoundryDecisionsForObject(state, type, entityId, version).map((answer) => ({
+      question: questions.get(String(answer.question_id)),
+      answer,
+    })),
+    ai_assumptions: currentFoundryAssumptionsForObject(state, type, entityId, version),
+  };
+}
+
 export function applicableFoundryInteractionDigest(
   state: FoundryInteractionState | null,
   type: string,
 ): string | null {
   if (!state) return null;
   const projected = applicableFoundryInteractionProjection(state, type);
+  if (
+    !projected.pending_questions.length &&
+    !projected.investigations.length &&
+    !projected.decisions.length &&
+    !projected.ai_assumptions.length
+  )
+    return null;
+  return sha256Json(projected);
+}
+
+export function applicableFoundryInteractionDigestForObject(
+  state: FoundryInteractionState | null,
+  type: string,
+  entityId: string,
+  version: string,
+): string | null {
+  if (!state) return null;
+  const projected = applicableFoundryInteractionProjectionForObject(state, type, entityId, version);
   if (
     !projected.pending_questions.length &&
     !projected.investigations.length &&
