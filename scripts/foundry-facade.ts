@@ -721,6 +721,16 @@ function scopedAuthoringPresentation(
   for (const set of workflow.assessment.value.sets) {
     const type = String(set.type);
     if (!narrowTypes.has(type)) continue;
+    for (const raw of Array.isArray(set.decisions) ? set.decisions : []) {
+      const decision = workflowObject(raw);
+      if (typeof decision.kind !== "string" || typeof decision.task !== "string") continue;
+      actions.push(
+        human(
+          `review_${decision.kind}_decisions`,
+          `Read registered ${decision.kind} task ${decision.task} (${String(decision.status)}). Review each queued object's current evidence and decisions; resolve any pending question for an affected object before submitting this decision task.`,
+        ),
+      );
+    }
     const manifestFile = String(set.authoring_manifest);
     const manifestEntry = entries.find(
       (entry) => resolveFoundryOutput(context, entry.path) === manifestFile,
@@ -1474,7 +1484,7 @@ function taskProjection(
                   ),
                 ]
               : []),
-            ...(set.decisions ?? []).map((work) =>
+            ...(!scoped.types.includes(set.type) ? (set.decisions ?? []) : []).map((work) =>
               human(
                 `review_${work.kind}_decisions`,
                 `Read registered ${work.kind} task ${work.task} (${work.status}). Complete its bound decision template and submit it with semantic-input kind=${work.kind}.`,

@@ -357,6 +357,46 @@ test("an independent P1 row change cannot carry an old decision while unchanged 
     ),
     [],
   );
+  const noOpRelative = "outputs/indexed-no-op/semantic-result.json";
+  const noOpFile = path.join(context.taskRoot!, noOpRelative);
+  fs.mkdirSync(path.dirname(noOpFile), { recursive: true });
+  const noOpBytes = Buffer.from(
+    JSON.stringify({
+      ...indexedReport("p1-answer"),
+      row_adoptions: [{ ...rowAdoption, after_row_sha256: originalFirstHash }],
+    }),
+  );
+  fs.writeFileSync(noOpFile, noOpBytes);
+  const noOpObjects = new Map(objects);
+  noOpObjects.set(foundryInteractionObjectKey("process", firstId, version), {
+    dataset_type: "process",
+    entity_id: firstId,
+    version,
+    row_sha256: originalFirstHash,
+  });
+  assert.deepEqual(
+    currentFoundryObjectDecisionReassessments(
+      corrected,
+      noOpObjects,
+      indexedFoundryRowAdoptions(context, [
+        {
+          ...firstAdoption,
+          path: noOpRelative,
+          bytes: noOpBytes.length,
+          sha256: createHash("sha256").update(noOpBytes).digest("hex"),
+        },
+      ]),
+    ),
+    [
+      {
+        dataset_type: "process",
+        entity_id: firstId,
+        version,
+        decision_id: "p1-corrected-answer",
+      },
+    ],
+    "even a recorded no-op D1 adoption must not satisfy a corrected D2 answer",
+  );
 });
 
 test("an object assumption requires explicit same-object re-review after its registered row changes", (t) => {

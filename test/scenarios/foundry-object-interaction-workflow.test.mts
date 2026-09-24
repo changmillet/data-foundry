@@ -184,10 +184,19 @@ test("one Process question permits another Process patch, then binds only its ow
       type: string;
       rows: string;
       authoring_manifest: string;
+      decisions?: Array<{ kind: string; task: string; status: string }>;
     }>;
   };
   const processSet = assessment.sets.find((set) => set.type === "process");
   assert.ok(processSet);
+  assert.ok(processSet.decisions?.length, "the fixture must include a Process decision owner");
+  for (const decision of processSet.decisions)
+    assert.ok(
+      assessed.next_actions.some(
+        (action) => action.kind === "human" && action.code === `review_${decision.kind}_decisions`,
+      ),
+      "P1's pending question must not hide the batch decision task or its dependency",
+    );
   const manifest = readJson(processSet.authoring_manifest) as {
     tasks: Array<{
       entity: { entity_id: string; version: string };

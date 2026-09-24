@@ -311,14 +311,18 @@ export function currentFoundryObjectDecisionReassessments(
     const entityId = String(original.entity_id);
     const version = String(original.version);
     const current = requireCurrentFoundryObject(objects, type, entityId, version);
-    if (original.row_sha256 === current.row_sha256) continue;
     const lineage = indexedAdoptionLineage(
       adoptions,
       current,
       String(original.row_sha256),
       decisionFamily(state, String(question.id)),
     );
-    if (lineage.current && !lineage.adopted_decision_ids.has(String(answer.decision_id)))
+    if (
+      lineage.current &&
+      answer.supersedes_decision_id &&
+      lineage.adopted_decision_ids.size > 0 &&
+      !lineage.adopted_decision_ids.has(String(answer.decision_id))
+    )
       pending.push({
         dataset_type: type,
         entity_id: entityId,
