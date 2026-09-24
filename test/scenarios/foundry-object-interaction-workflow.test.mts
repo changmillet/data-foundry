@@ -719,6 +719,83 @@ test("one Process question permits another Process patch, then binds only its ow
     true,
     "P1's post-adoption correction must not reopen P2",
   );
+
+  const beforeUnadoptedAuthorization = fs.readFileSync(index);
+  const refusedAuthorization = await facade.resume({
+    ...invocation,
+    authorizationInputFile: path.join(root, "unselected-authorization.json"),
+  });
+  assert.equal(refusedAuthorization.status, "blocked");
+  assert.ok(
+    refusedAuthorization.blockers.some(
+      (item) =>
+        item.code === "interaction_object_decision_changed" && item.message.includes(firstId),
+    ),
+    "authorization admission must enforce the pending P1 reassessment before reading a grant",
+  );
+  assert.deepEqual(fs.readFileSync(index), beforeUnadoptedAuthorization);
+
+  const successorQuestion = {
+    ...question,
+    id: "p1-new-question-after-adoption",
+    object_scope: { ...firstScope, row_sha256: sha256Json(afterFirstRows[0]) },
+    missing: "P1's adopted row needs a second source review.",
+    ask: "Which source-backed category applies to the revised P1 row?",
+    supersedes: question.id,
+  };
+  writeInteraction(fileArtifact(correctedAfterAdoption, "current_interaction_state").sha256, [
+    successorQuestion,
+    {
+      kind: "answer",
+      question_id: successorQuestion.id,
+      decision_id: "p1-successor-question-decision",
+      supersedes_decision_id: null,
+      raw_answer: "Use the revised P1 source classification after review.",
+      adopted_decision: "Recheck the current P1 row against the revised source category.",
+      disposition: "decided",
+      evidence_sha256: [fileSha256(seed)],
+    },
+  ]);
+  const replacedQuestion = await facade.resume({
+    ...invocation,
+    interactionInputFile: interactionFile,
+  });
+  assert.equal(replacedQuestion.status, "needs_input");
+  assert.ok(
+    replacedQuestion.blockers.some(
+      (item) =>
+        item.code === "interaction_object_decision_changed" && item.scope?.includes(firstId),
+    ),
+    "a new answered question on P1's adopted row must require its own indexed adoption",
+  );
+  const successorContexts = replacedQuestion.artifacts.flatMap((artifact) =>
+    artifact.role === "object_interaction_context" && artifact.kind === "inline"
+      ? [artifact.value as { object_scope: { entity_id: string }; decision_current: boolean }]
+      : [],
+  );
+  assert.equal(
+    successorContexts.find((item) => item.object_scope.entity_id === firstId)?.decision_current,
+    false,
+  );
+  assert.equal(
+    successorContexts.find((item) => item.object_scope.entity_id === secondId)?.decision_current,
+    true,
+    "P1's new question must not reopen independent P2",
+  );
+  const beforeSuccessorAuthorization = fs.readFileSync(index);
+  const refusedSuccessorAuthorization = await facade.resume({
+    ...invocation,
+    authorizationInputFile: path.join(root, "unselected-authorization.json"),
+  });
+  assert.equal(refusedSuccessorAuthorization.status, "blocked");
+  assert.ok(
+    refusedSuccessorAuthorization.blockers.some(
+      (item) =>
+        item.code === "interaction_object_decision_changed" && item.message.includes(firstId),
+    ),
+    "a newly answered P1 question must also block stale authorization",
+  );
+  assert.deepEqual(fs.readFileSync(index), beforeSuccessorAuthorization);
 });
 
 test("a registered P2-only classification decision task ignores P1's pending question", async (t) => {
