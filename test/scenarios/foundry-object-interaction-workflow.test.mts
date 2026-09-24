@@ -471,10 +471,22 @@ test("one Process question permits another Process patch, then binds only its ow
   assert.ok(afterFirstProcess);
   const afterFirstRows = readRowSet<(typeof rows)[number]>(afterFirstProcess.file);
   assert.deepEqual(afterFirstRows[1], updatedRows[1], "P1 work cannot rewrite P2");
+  assert.notEqual(sha256Json(afterFirstRows[0]), firstScope.row_sha256);
   assert.equal(
     afterFirstRows[0].json.processDataSet.processInformation.dataSetInformation
       .classificationInformation["common:classification"]["common:class"][0]["@classId"],
     "D",
   );
   assert.equal(appliedFirst.permissions.state, "not_required");
+
+  const adoptedSuccessor = await facade.resume(invocation);
+  assert.notEqual(
+    adoptedSuccessor.status,
+    "blocked",
+    "the indexed P1 adoption must allow review of its exact successor row",
+  );
+  assert.ok(
+    adoptedSuccessor.artifacts.some((artifact) => artifact.role === "foundry-assessment.json"),
+  );
+  assert.equal(adoptedSuccessor.permissions.state, "not_required");
 });
