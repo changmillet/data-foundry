@@ -186,6 +186,7 @@ export async function verifyPublicIdentityWorkflow(
   expireIdentityDuringLocalWork = false,
   nativeOperation: "insert" | "save_draft" = "insert",
   nativeContractInvalid = false,
+  terminalDecisionRecap = false,
 ) {
   const [identityDecision, approvalKind, trace, mixed, explicitMode, remoteDifference] = scenario;
   const accountMode = explicitMode ?? "ordinary";
@@ -271,6 +272,20 @@ export async function verifyPublicIdentityWorkflow(
       seed: { path: seed },
       account_intent: account,
       preparation: null,
+      ...(terminalDecisionRecap
+        ? {
+            brief: {
+              original_request:
+                "Review whether this Flow should reuse the selected public reference.",
+              goal: "Resolve the Flow identity without creating a duplicate dataset.",
+              intended_use: "A verified, no-write reference for this one Flow.",
+              scope: `Natural gas, Swiss market Flow (${id}@00.00.001)`,
+              deliverables: ["Exact reference verification and a decision recap."],
+              user_constraints: ["Do not write a new Flow."],
+              ai_assumptions: [],
+            },
+          }
+        : {}),
     }),
   );
   const started = await facade.start({ specFile });
@@ -281,6 +296,85 @@ export async function verifyPublicIdentityWorkflow(
   assert.equal(previous.status, "ready", JSON.stringify(previous));
   const assessment = previous.artifacts.findLast((item) => item.role === "foundry-assessment.json");
   assert.ok(assessment?.kind === "file");
+  const decisionId = "reuse-reviewed-flow-reference";
+  const questionId = "flow-reference-choice";
+  const answer =
+    "Please reuse the reviewed canonical Flow at version 00.00.001 after exact verification. Do not create a duplicate.";
+  const adoptedDecision =
+    "Reuse the reviewed canonical Flow only if its exact version and identity pass verification.";
+  const decisionImpact =
+    "This determines whether the task can finish by reference or needs a new Flow and write approval.";
+  const questionAsk = "Should the Natural gas, Swiss market Flow reuse the reviewed existing Flow?";
+  let interactionSha: string | null = null;
+  if (terminalDecisionRecap) {
+    // Identity reuse removes the candidate row. Keep this single-Flow choice at type scope,
+    // naming the exact object in the brief and question; a stale row-scoped choice must fail closed.
+    const interactionFile = path.join(root, "reference-decision.json");
+    const writeInteraction = (expected: string | null, events: unknown[]) =>
+      fs.writeFileSync(
+        interactionFile,
+        JSON.stringify({
+          schema: "tiangong-foundry.interaction-input.v1",
+          task_id: invocation.taskId,
+          actor_id: invocation.actorId,
+          expected_state_sha256: expected,
+          events,
+        }),
+      );
+    writeInteraction(null, [
+      {
+        kind: "question",
+        id: questionId,
+        dataset_type: "flow",
+        missing: "The Natural gas, Swiss market Flow's identity is not yet settled.",
+        impact: decisionImpact,
+        recommendation: `Check the reviewed canonical Flow against record ${id} before choosing reference reuse.`,
+        ask: questionAsk,
+        choices: ["Reuse after exact verification", "Request a different identity review"],
+        evidence_sha256: [digestFile(seed)],
+        supersedes: null,
+      },
+    ]);
+    const asked = await facade.resume({ ...invocation, interactionInputFile: interactionFile });
+    assert.equal(asked.status, "needs_input");
+    const prompt = asked.next_actions.find(
+      (action) => action.kind === "human" && action.code === "answer_current_question",
+    );
+    assert.ok(prompt?.kind === "human");
+    assert.ok(prompt.instructions.startsWith(`Question: ${questionAsk}`));
+    assert.ok(prompt.instructions.includes(id));
+    assert.ok(prompt.instructions.indexOf(decisionImpact) < prompt.instructions.indexOf(id));
+    const questionState = asked.artifacts.find(
+      (artifact) => artifact.role === "current_interaction_state",
+    );
+    assert.ok(questionState?.kind === "file");
+    writeInteraction(questionState.sha256, [
+      {
+        kind: "answer",
+        question_id: questionId,
+        decision_id: decisionId,
+        supersedes_decision_id: null,
+        raw_answer: answer,
+        adopted_decision: adoptedDecision,
+        disposition: "decided",
+        evidence_sha256: [digestFile(seed)],
+      },
+    ]);
+    const decided = await facade.resume({ ...invocation, interactionInputFile: interactionFile });
+    assert.equal(decided.status, "ready", JSON.stringify(decided.blockers));
+    const decidedState = decided.artifacts.find(
+      (artifact) => artifact.role === "current_interaction_state",
+    );
+    assert.ok(decidedState?.kind === "file");
+    interactionSha = decidedState.sha256;
+    const reassessed = await facade.resume(invocation);
+    assert.equal(reassessed.status, "ready", JSON.stringify(reassessed.blockers));
+    assert.ok(
+      reassessed.artifacts.findLast((item) => item.role === "foundry-assessment.json")?.sha256 !==
+        assessment.sha256,
+      "the answered identity choice is available to the refreshed assessment",
+    );
+  }
   const ambient = {
     TIANGONG_LCA_CLI_BIN: "/must-not-run",
     TIANGONG_LCA_ACCESS_TOKEN: "ambient-test-secret",
@@ -835,12 +929,14 @@ export async function verifyPublicIdentityWorkflow(
         task_id: invocation.taskId,
         actor_id: invocation.actorId,
         assessment_sha256: latest.sha256,
+        ...(interactionSha ? { interaction_sha256: interactionSha } : {}),
         submissions: [
           {
             kind: "identity",
             authoring_task_sha256: digestFile(work.task),
             file,
             sha256: digestFile(file),
+            ...(interactionSha ? { decision_ids: [decisionId] } : {}),
           },
         ],
       }),
@@ -883,6 +979,22 @@ export async function verifyPublicIdentityWorkflow(
       ? fs.readFileSync(semanticReport.path, "utf8")
       : JSON.stringify(applied.blockers),
   );
+  if (terminalDecisionRecap) {
+    assert.ok(semanticReport?.kind === "file");
+    const adopted = JSON.parse(fs.readFileSync(semanticReport.path, "utf8")) as {
+      interaction_sha256: string;
+      adopted_decisions: Array<{ dataset_type: string; decision_ids: string[] }>;
+    };
+    assert.equal(adopted.interaction_sha256, interactionSha);
+    assert.deepEqual(
+      adopted.adopted_decisions.map((item) => ({
+        dataset_type: item.dataset_type,
+        decision_ids: item.decision_ids,
+      })),
+      [{ dataset_type: "flow", decision_ids: [decisionId] }],
+      "the identity owner must cite the current human decision before reference reuse",
+    );
+  }
   assert.deepEqual(
     (await facade.resume({ ...invocation, semanticInputFile: descriptor })).artifacts,
     applied.artifacts,
@@ -1104,6 +1216,110 @@ export async function verifyPublicIdentityWorkflow(
     assert.equal(referenceQueries, 5);
     assert.equal(writes, 0, "reference reuse never mutates or asks for write approval");
     assert.equal(complete.permissions.state, "not_required");
+    if (terminalDecisionRecap) {
+      const recapArtifact = complete.artifacts.find((item) => item.role === "decision_recap");
+      assert.ok(recapArtifact?.kind === "inline");
+      const recap = recapArtifact.value as {
+        completion_proven: boolean;
+        brief: { scope: string };
+        user_decisions: Array<{
+          question_id: string;
+          dataset_type: string;
+          decision_id: string;
+          impact: string;
+          adopted_decision: string;
+          raw_answer_sha256: string;
+          evidence_sha256: string[];
+        }>;
+        unresolved_questions: unknown[];
+        source_interaction_sha256: string;
+      };
+      assert.equal(recap.completion_proven, true);
+      assert.equal(recap.brief.scope, `Natural gas, Swiss market Flow (${id}@00.00.001)`);
+      assert.deepEqual(recap.user_decisions, [
+        {
+          question_id: questionId,
+          dataset_type: "flow",
+          impact: decisionImpact,
+          raw_answer_sha256: createHash("sha256").update(answer).digest("hex"),
+          adopted_decision: adoptedDecision,
+          decision_id: decisionId,
+          supersedes_decision_id: null,
+          evidence_sha256: [digestFile(seed)],
+        },
+      ]);
+      assert.deepEqual(recap.unresolved_questions, []);
+      assert.equal(recap.source_interaction_sha256, interactionSha);
+      const state = complete.artifacts.find((item) => item.role === "current_interaction_state");
+      assert.ok(state?.kind === "file");
+      const history = JSON.parse(fs.readFileSync(state.path, "utf8")) as {
+        events: Array<{ kind: string; raw_answer?: string }>;
+      };
+      assert.equal(history.events.find((item) => item.kind === "answer")?.raw_answer, answer);
+      assert.equal(JSON.stringify(recap).includes(answer), false);
+      const beforeFresh = [authCalls, preflightCalls, referenceQueries, getCalls, writes];
+      const artifactIndex = path.join(
+        workspace,
+        ".foundry",
+        "workspaces",
+        invocation.taskId,
+        "artifact-index.jsonl",
+      );
+      const beforeIndex = fs.readFileSync(artifactIndex);
+      const probeFile = path.join(root, "fresh-recap-process.mjs");
+      fs.writeFileSync(
+        probeFile,
+        `import childProcess from "node:child_process";
+import { syncBuiltinESMExports } from "node:module";
+import path from "node:path";
+const original = childProcess.spawnSync;
+childProcess.spawnSync = (command, args, options) => {
+  if (command === process.execPath && Array.isArray(args) &&
+      path.basename(args[0] ?? "") === "tidas-runtime.ts" &&
+      (args[1] === "version" || (args[1] === "validate" && args[2] === "--describe")))
+    return original(command, args, options);
+  throw new Error("Completed recap replay attempted an unexpected subprocess");
+};
+syncBuiltinESMExports();
+const { createFoundryFacade } = await import(${JSON.stringify(new URL("../../scripts/public-api.ts", import.meta.url).href)});
+const facade = createFoundryFacade(${JSON.stringify({ workspace, cacheBase: path.join(root, "cache"), runtimeSelection })});
+const invocation = ${JSON.stringify(invocation)};
+process.stdout.write(JSON.stringify([await facade.status(invocation), await facade.resume(invocation)]));
+`,
+      );
+      const probe = Reflect.apply(originalSpawn, childProcess, [
+        process.execPath,
+        [probeFile],
+        {
+          encoding: "utf8",
+          timeout: 30_000,
+        },
+      ]);
+      assert.equal(probe.status, 0, String(probe.stderr));
+      const freshProjections = JSON.parse(String(probe.stdout)) as Array<{
+        status: string;
+        blockers: unknown[];
+        permissions: { state: string };
+        next_actions: unknown[];
+        artifacts: typeof complete.artifacts;
+      }>;
+      assert.equal(freshProjections.length, 2);
+      for (const projected of freshProjections) {
+        assert.equal(projected.status, "completed", JSON.stringify(projected.blockers));
+        assert.equal(projected.permissions.state, "not_required");
+        assert.deepEqual(projected.next_actions, []);
+        assert.deepEqual(
+          projected.artifacts.find((item) => item.role === "decision_recap"),
+          recapArtifact,
+        );
+      }
+      assert.deepEqual(fs.readFileSync(artifactIndex), beforeIndex);
+      assert.deepEqual(
+        [authCalls, preflightCalls, referenceQueries, getCalls, writes],
+        beforeFresh,
+        "recap replay cannot query or mutate the remote owner",
+      );
+    }
     assert.equal((await facade.resume(invocation)).status, "completed");
     assert.equal(referenceQueries, 5, "verified scope is reused without more network reads");
     const result = complete.artifacts.findLast(

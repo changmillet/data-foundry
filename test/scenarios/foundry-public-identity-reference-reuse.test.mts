@@ -7,3 +7,6 @@ import {
 
 const scenario = publicIdentityCases[1];
 test(publicIdentityTitle(scenario), (t) => verifyPublicIdentityWorkflow(t, scenario));
+
+test("verified reference reuse completes the human decision recap across fresh processes", (t) =>
+  verifyPublicIdentityWorkflow(t, scenario, false, "normal", false, false, "insert", false, true));
