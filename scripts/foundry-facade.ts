@@ -81,6 +81,7 @@ import {
   currentFoundryDecisions,
   currentFoundryInvestigations,
   currentFoundryAssumptions,
+  foundryInteractionObjectKey,
   applicableFoundryInteractionProjectionForObject,
   applicableFoundryInteractionDigestForObject,
   selectFoundryInteractionInput,
@@ -91,7 +92,6 @@ import {
   currentFoundryObjectScopeIsBound,
   currentFoundryNarrowObjects,
   indexedFoundryRowAdoptions,
-  requireCurrentFoundryObject,
 } from "./lib/foundry-workflow-object-scope.ts";
 import { recordFoundryInteractionInput } from "./lib/foundry-workflow-interaction.ts";
 import { runFoundryWorkflowIdentity } from "./lib/foundry-workflow-identity.ts";
@@ -778,7 +778,8 @@ function scopedAuthoringPresentation(
           "workflow_assessment_invalid",
           "Current authoring task has no exact object identity.",
         );
-      const current = requireCurrentFoundryObject(objects, type, entity.entity_id, entity.version);
+      const current =
+        objects.get(foundryInteractionObjectKey(type, entity.entity_id, entity.version)) ?? null;
       const projection = applicableFoundryInteractionProjectionForObject(
         interaction.state,
         type,
@@ -793,7 +794,7 @@ function scopedAuthoringPresentation(
         inlineArtifact("object_interaction_context", {
           ...projection,
           work_item_sha256: taskEntry.sha256,
-          current_row_sha256: current.row_sha256,
+          current_row_sha256: current?.row_sha256 ?? null,
           source_state_sha256: interaction.entry.sha256,
           applicable_digest: applicableFoundryInteractionDigestForObject(
             interaction.state,

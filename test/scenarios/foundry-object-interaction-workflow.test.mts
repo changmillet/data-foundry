@@ -197,6 +197,36 @@ test("one Process question permits another Process patch, then binds only its ow
       ),
       "P1's pending question must not hide the batch decision task or its dependency",
     );
+  const batchClassification = processSet.decisions.find(
+    (decision) => decision.kind === "classification",
+  );
+  assert.ok(batchClassification, "both Processes must occur in the classification decision batch");
+  const batchDecisionFile = path.join(root, "batch-classification-decisions.jsonl");
+  fs.writeFileSync(batchDecisionFile, "[]\n");
+  fs.writeFileSync(
+    semanticFile,
+    JSON.stringify({
+      schema: "tiangong-foundry.semantic-input.v1",
+      task_id: invocation.taskId,
+      actor_id: actorId,
+      assessment_sha256: assessmentArtifact.sha256,
+      interaction_sha256: state.sha256,
+      submissions: [
+        {
+          kind: "classification",
+          authoring_task_sha256: fileSha256(batchClassification.task),
+          file: batchDecisionFile,
+          sha256: fileSha256(batchDecisionFile),
+          decision_ids: [],
+        },
+      ],
+    }),
+  );
+  const beforeBatch = fs.readFileSync(index);
+  const pendingBatch = await facade.resume({ ...invocation, semanticInputFile: semanticFile });
+  assert.equal(pendingBatch.status, "blocked");
+  assert.equal(pendingBatch.blockers[0]?.code, "semantic_interaction_invalid");
+  assert.deepEqual(fs.readFileSync(index), beforeBatch);
   const manifest = readJson(processSet.authoring_manifest) as {
     tasks: Array<{
       entity: { entity_id: string; version: string };
@@ -689,4 +719,148 @@ test("one Process question permits another Process patch, then binds only its ow
     true,
     "P1's post-adoption correction must not reopen P2",
   );
+});
+
+test("a registered P2-only classification decision task ignores P1's pending question", async (t) => {
+  const { root, workspace, facade } = workflowFixture(t, false, "decisions");
+  const rows = [secondId, firstId].map((id) => {
+    const json = processRowWithInvalidLocation(id);
+    if (id === secondId)
+      json.processDataSet.processInformation.dataSetInformation.classificationInformation[
+        "common:classification"
+      ]["common:class"][0]["@classId"] = "INVALID";
+    return { id, version: "00.00.001", json };
+  });
+  const seed = path.join(root, "p2-classification.json");
+  const specFile = path.join(root, "request.json");
+  const interactionFile = path.join(root, "interaction.json");
+  const semanticFile = path.join(root, "semantic.json");
+  const decisionFile = path.join(root, "classification-decisions.jsonl");
+  fs.writeFileSync(seed, JSON.stringify({ rows }));
+  fs.writeFileSync(
+    specFile,
+    JSON.stringify({
+      schema: "tiangong-foundry.task-start.v1",
+      request_id: "p2-only-classification-scope",
+      actor_id: actorId,
+      lane: "source-evidence-dataset-development",
+      profile_id: "generic",
+      target_entities: ["process"],
+      sources: [{ path: seed }],
+      seed: { path: seed },
+      account_intent: null,
+      preparation: null,
+    }),
+  );
+  const started = await facade.start({ specFile });
+  assert.ok(started.task_id);
+  const invocation = { taskId: started.task_id, actorId };
+  await facade.resume(invocation);
+  const materialized = await facade.resume(invocation);
+  const manifest = readJson(fileArtifact(materialized, "foundry-rows.json").path) as {
+    sets: Array<{ type: string; file: string }>;
+  };
+  const currentRows = manifest.sets.find((set) => set.type === "process");
+  assert.ok(currentRows);
+  const firstRow = readRowSet<(typeof rows)[number]>(currentRows.file).find(
+    (row) => row.id === firstId,
+  );
+  assert.ok(firstRow);
+  fs.writeFileSync(
+    interactionFile,
+    JSON.stringify({
+      schema: "tiangong-foundry.interaction-input.v1",
+      task_id: invocation.taskId,
+      actor_id: actorId,
+      expected_state_sha256: null,
+      events: [
+        {
+          kind: "question",
+          id: "p1-category-source",
+          dataset_type: "process",
+          object_scope: {
+            entity_id: firstId,
+            version: firstRow.version,
+            row_sha256: sha256Json(firstRow),
+          },
+          missing: "P1 lacks a checked source for its category.",
+          impact: "P1 classification requires reviewer evidence.",
+          recommendation: "Inspect the P1 source first.",
+          ask: "Which source-backed category applies to P1?",
+          choices: ["Use the checked source", "Investigate first"],
+          evidence_sha256: [fileSha256(seed)],
+          supersedes: null,
+        },
+      ],
+    }),
+  );
+  const pending = await facade.resume({ ...invocation, interactionInputFile: interactionFile });
+  const interaction = fileArtifact(pending, "current_interaction_state");
+  const assessed = await facade.resume(invocation);
+  const assessment = fileArtifact(assessed, "foundry-assessment.json");
+  const report = readJson(assessment.path) as {
+    sets: Array<{
+      type: string;
+      decisions: Array<{ kind: string; task: string; queue: string; status: string }>;
+    }>;
+  };
+  const classification = report.sets
+    .find((set) => set.type === "process")
+    ?.decisions.find((decision) => decision.kind === "classification");
+  assert.ok(classification);
+  assert.equal(classification.status, "ready_for_ai_classification_decisions");
+  const decisionTask = readJson(classification.task) as {
+    classification_queue_rows: Array<{ dataset_id: string }>;
+  };
+  assert.deepEqual(
+    decisionTask.classification_queue_rows.map((row) => row.dataset_id),
+    [secondId],
+    "the registered task, not submitted rows, proves P2-only scope",
+  );
+  fs.writeFileSync(decisionFile, "{}\n");
+  fs.writeFileSync(
+    semanticFile,
+    JSON.stringify({
+      schema: "tiangong-foundry.semantic-input.v1",
+      task_id: invocation.taskId,
+      actor_id: actorId,
+      assessment_sha256: assessment.sha256,
+      interaction_sha256: interaction.sha256,
+      submissions: [
+        {
+          kind: "classification",
+          authoring_task_sha256: fileSha256(classification.task),
+          file: decisionFile,
+          sha256: fileSha256(decisionFile),
+          decision_ids: [],
+        },
+      ],
+    }),
+  );
+  const submitted = await facade.resume({ ...invocation, semanticInputFile: semanticFile });
+  assert.equal(submitted.status, "needs_input", JSON.stringify(submitted.blockers));
+  assert.equal(submitted.blockers[0]?.code, "semantic_input_rejected");
+  const semantic = readJson(fileArtifact(submitted, "semantic-result.json").path) as {
+    adopted_decisions: Array<{ object_scope: { entity_id: string }; decision_ids: string[] }>;
+  };
+  assert.deepEqual(
+    semantic.adopted_decisions.map((item) => [item.object_scope.entity_id, item.decision_ids]),
+    [[secondId, []]],
+    "P2 scope must never record P1's question as adopted",
+  );
+  const index = path.join(
+    workspace,
+    ".foundry/workspaces",
+    invocation.taskId,
+    "artifact-index.jsonl",
+  );
+  const beforeTamper = fs.readFileSync(index);
+  fs.appendFileSync(classification.queue, "\n");
+  const tampered = await facade.resume({ ...invocation, semanticInputFile: semanticFile });
+  assert.equal(tampered.status, "blocked");
+  assert.ok(
+    tampered.blockers.some((item) => item.code === "input_changed"),
+    JSON.stringify(tampered.blockers),
+  );
+  assert.deepEqual(fs.readFileSync(index), beforeTamper);
 });

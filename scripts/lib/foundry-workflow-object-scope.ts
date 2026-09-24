@@ -310,7 +310,8 @@ export function currentFoundryObjectDecisionReassessments(
     const type = String(question.dataset_type);
     const entityId = String(original.entity_id);
     const version = String(original.version);
-    const current = requireCurrentFoundryObject(objects, type, entityId, version);
+    const current = objects.get(foundryInteractionObjectKey(type, entityId, version));
+    if (!current) continue; // Missing or ambiguous row is separately marked stale for this object.
     const lineage = indexedAdoptionLineage(
       adoptions,
       current,
@@ -374,7 +375,8 @@ export function currentFoundryObjectScopeIsBound(
   version: string,
   adoptions?: readonly IndexedFoundryRowAdoption[],
 ): boolean {
-  const current = requireCurrentFoundryObject(objects, type, entityId, version);
+  const current = objects.get(foundryInteractionObjectKey(type, entityId, version));
+  if (!current) return false;
   const questions = new Map(
     state.events.filter((item) => item.kind === "question").map((item) => [String(item.id), item]),
   );

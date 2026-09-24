@@ -120,6 +120,26 @@ test("an independent P1 row change cannot carry an old decision while unchanged 
       { dataset_type: "process", entity_id: secondId, version, row_sha256: originalSecondHash },
     ],
   ]);
+  const missingFirst = new Map(objects);
+  missingFirst.delete(foundryInteractionObjectKey("process", firstId, version));
+  assert.equal(
+    currentFoundryObjectScopeIsBound(context, [], state, missingFirst, "process", firstId, version),
+    false,
+    "missing P1 identity remains a P1-only review blocker",
+  );
+  assert.equal(
+    currentFoundryObjectScopeIsBound(
+      context,
+      [],
+      state,
+      missingFirst,
+      "process",
+      secondId,
+      version,
+    ),
+    true,
+    "missing P1 identity must not block P2's independent scope",
+  );
 
   // A plausible local file is not adoption evidence until an owner receipt indexes it.
   const unindexed = path.join(context.taskRoot!, "outputs", "unindexed", "semantic-result.json");
