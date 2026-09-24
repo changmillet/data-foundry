@@ -280,8 +280,8 @@ checkPaths:
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: 894b471a1da4f1eece401f5f86db9937f3000d28
-lastReviewedNote: "Reviewed for Foundry #204: current CLI/Toolkit identities and public native evidence advance; test layout and historical local fixtures remain unchanged."
+lastReviewedCommit: b6e3a0a564af0e49032de1eef193c9927a2836e7
+lastReviewedNote: "Reviewed for Foundry #206: hosted Windows per-file timings rebalance the complete four-platform CI test inventory after a shard-3 timeout; the unchanged 40-minute limit and complete fresh qualification remain required."
 ---
 
 # Test Layout
@@ -554,6 +554,6 @@ Skill migration regression checks the canonical Skills sources/install commands,
 
 Reference-input regressions cover strict descriptor parsing, public task snapshots, actual installed-owner Process QA forwarding, native execution/readback and unknown-response recovery without replay. The Process transport case deliberately invokes the finalization owner on the registered public task without an account; it does not claim remote policy qualification. Native and recovery cases use controlled remote reports; public CLI release probes separately qualify the actual reference-intent policy.
 
-The five native execution cases are separate files so the existing four-way scheduler can balance them. Their weights come from successful Windows run 34520209609, job 103015642293. New reference-case weights are explicitly marked estimates in `specs/ci/test-durations.json` until hosted measurements replace them. No cases, assertions, platforms or gates are removed.
+The five native execution cases are separate files so the existing four-way scheduler can balance them. Their original weights come from successful Windows run 34520209609, job 103015642293. Foundry #206 refreshes eight heavy scenario weights from successful per-file Windows summaries in run 36003098891, whose /3 shard itself timed out; that partial event log is timing evidence only. Six previously unprofiled tests also receive bounded Windows weights, including a conservative repair-successor estimate from successful run 35993959632 and the later observed slowdown. The source plan retains all 368 test files, four platforms and the 40-minute test-job limit; its new split must pass a fresh full CI run before qualification. The remaining reference-QA weight stays marked as an estimate. No cases, assertions, platforms or gates are removed.
 
 `unit/foundry-industrial-terminology.test.mts` exercises the actual content-policy evaluator across Flow, Process and Lifecycle Model multilingual descriptions. It accepts industrial alloy/casting/metal collocations and checks case, Unicode dashes and punctuation; explicit runtime/workspace or other workflow markers still produce exact field-path findings, including later occurrences in the same text. Input wording and numerical provenance remain unchanged. These policy fixtures do not claim schema or remote-write qualification.
