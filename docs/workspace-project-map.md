@@ -89,9 +89,9 @@ checkPaths:
   - scripts/lib/import-curation/internal/mutation-manifest-workflow.ts
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-09-23
-lastReviewedCommit: a3d7a738d24c1183b8198da40aa74f3a2215b959
-lastReviewedNote: "Reviewed for Foundry #196: bounded local continuation under pending interaction remains a Foundry task-control change; child repository ownership and cross-repository routing remain unchanged."
+lastReviewedAt: 2026-09-24
+lastReviewedCommit: abd80f28c1eff58c19ae40c929cf130b8b7d2431
+lastReviewedNote: "Reviewed for Foundry #200: indexed local queue blocker handling remains in the Foundry child; repository ownership and cross-repository routing remain unchanged."
 ---
 
 # Workspace Project Map

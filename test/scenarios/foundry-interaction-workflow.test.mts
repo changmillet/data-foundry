@@ -14,7 +14,7 @@ import { runFoundryTaskOperation } from "../../scripts/lib/foundry-task-store.ts
 import { selectFoundryInteractionInput } from "../../scripts/lib/foundry-interaction-input.ts";
 import { recordFoundryInteractionInput } from "../../scripts/lib/foundry-workflow-interaction.ts";
 import { workflowFixture } from "../fixtures/foundry-public-workflow.ts";
-import { flowRow } from "../fixtures/row-builders.ts";
+import { flowRow, processRowWithFlowRef, sourceRow } from "../fixtures/row-builders.ts";
 
 const moduleUrl = new URL("../../scripts/runtime-entry.ts", import.meta.url).href;
 const actor = "agent/session-190";
@@ -313,6 +313,23 @@ test("a pending human question leaves independent local preparation runnable", a
       expectedArtifact: "foundry-context.json",
     },
     {
+      name: "blocked-process-queue",
+      lane: "source-evidence-dataset-development",
+      type: "process",
+      source: JSON.stringify({
+        rows: [
+          sourceRow("85858585-8585-4858-8858-858585858585"),
+          processRowWithFlowRef(
+            "83838383-8383-4838-8838-838383838383",
+            "84848484-8484-4848-8848-848484848484",
+          ),
+        ],
+      }),
+      seed: true,
+      cleanup: false,
+      expectedArtifact: "foundry-context.json",
+    },
+    {
       name: "explicit-cleanup",
       lane: "external-dataset-curated-import",
       type: "flow",
@@ -335,7 +352,8 @@ test("a pending human question leaves independent local preparation runnable", a
         actor_id: "issue-196-local",
         lane: scenario.lane,
         profile_id: "generic",
-        target_entities: [scenario.type],
+        target_entities:
+          scenario.name === "blocked-process-queue" ? ["source", "process"] : [scenario.type],
         sources: [{ path: source }],
         seed: scenario.seed ? { path: source } : null,
         account_intent: null,
@@ -415,11 +433,17 @@ test("a pending human question leaves independent local preparation runnable", a
     });
     assert.equal(refused.blockers[0]?.code, "interaction_decision_pending", scenario.name);
     let current = progressed;
+    let independentAfterQueueBlocker = false;
     for (let step = 0; step < 8; step += 1) {
       if (!current.next_actions.some((action) => action.kind === "command")) break;
       current = await facade.resume(invocation);
       assert.equal(current.status, "needs_input", scenario.name);
       assert.equal(current.permissions.state, "not_required", scenario.name);
+      if (
+        current.blockers.some((item) => item.code === "curation_queue_blocked") &&
+        current.next_actions.some((action) => action.kind === "command")
+      )
+        independentAfterQueueBlocker = true;
     }
     assert.equal(
       current.next_actions.some((action) => action.kind === "command"),
@@ -427,6 +451,47 @@ test("a pending human question leaves independent local preparation runnable", a
       `${scenario.name} must stop before identity, finalization and execution`,
     );
     assert.ok(current.next_actions.some((action) => action.kind === "human"));
+    if (scenario.name === "blocked-process-queue") {
+      assert.equal(
+        independentAfterQueueBlocker,
+        true,
+        "independent Source work must remain runnable after blocked Process closure",
+      );
+      const queue = current.artifacts.find(
+        (artifact) => artifact.role === "curation-queue-manifest.json",
+      );
+      const blockers = current.artifacts.find(
+        (artifact) => artifact.role === "curation-queue-blockers.jsonl",
+      );
+      assert.ok(queue?.kind === "file");
+      assert.ok(blockers?.kind === "file");
+      const manifest = JSON.parse(fs.readFileSync(queue.path, "utf8"));
+      assert.equal(manifest.status, "blocked");
+      assert.equal(manifest.counts.blockers, 1);
+      assert.equal(manifest.blockers[0]?.code, "process_flow_reference_unresolved");
+      assert.equal(
+        manifest.blockers[0]?.details?.missing_flow_refs?.[0]?.id,
+        "84848484-8484-4848-8848-848484848484",
+      );
+      assert.ok(
+        current.next_actions.some(
+          (action) => action.kind === "human" && action.code === "review_queue_blockers",
+        ),
+        "the pending question must not hide the exact registered closure gap",
+      );
+      assert.ok(current.artifacts.some((artifact) => artifact.role === "foundry-assessment.json"));
+      const assessment = current.artifacts.findLast(
+        (artifact) => artifact.role === "foundry-assessment.json",
+      );
+      assert.ok(assessment?.kind === "file");
+      assert.deepEqual(
+        JSON.parse(fs.readFileSync(assessment.path, "utf8"))
+          .sets.map((set: { type: string }) => set.type)
+          .sort(),
+        ["process", "source"],
+        "independent source assessment must remain recorded despite Process closure blockers",
+      );
+    }
     assert.ok(
       current.artifacts.every(
         (artifact) =>

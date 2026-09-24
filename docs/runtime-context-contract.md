@@ -40,9 +40,9 @@ checkPaths:
   - test/scenarios/runtime-workspace.test.mts
   - test/scenarios/foundry-execution-admission.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
-lastReviewedAt: 2026-09-23
-lastReviewedCommit: a3d7a738d24c1183b8198da40aa74f3a2215b959
-lastReviewedNote: "Reviewed for Foundry #196: pending questions can continue indexed local preparation without changing source selection, runtime qualification, credential, approval or no-replay admission."
+lastReviewedAt: 2026-09-24
+lastReviewedCommit: abd80f28c1eff58c19ae40c929cf130b8b7d2431
+lastReviewedNote: "Reviewed for Foundry #200: only a current, bounded exit-1 blocked queue report can be indexed as local evidence; runtime qualification, frozen source, credentials and write admission remain unchanged."
 related:
   - docs/architecture.md
   - docs/task-authorization-contract.md
@@ -63,6 +63,8 @@ The public task facade delegates sealed owner execution to `foundry-workflow-exe
 ## Runtime qualification and child admission
 
 The public workflow selects derived row/context facts from the current verified task index before assessment. `runFoundryTaskOperation` rechecks their producer ancestry and original sources. Native validation and the exact CLI's local QA/queue commands use the qualified runtime and isolated environment; curation and authoring write only to a fresh task-owned generation. Runtime assets and source-owner reference bases remain separate from user workspace paths.
+
+For queue build alone, the exact CLI's exit 1 can carry a valid `blocked` data report. Foundry verifies its schema/status pair, current selected row paths and SHA-256 values, and the complete regular-file queue output tree before indexing those artifacts. Other CLI exits retain their existing fail-closed treatment. A blocked closure is a local evidence gap; it cannot grant authorization, finalization or a replay of any owner attempt.
 
 `qualifyFoundryRuntime` compares an independently selected CLI expectation with the exact installed `@tiangong-lca/cli@0.1.19` runtime descriptor. It also compares a strict TIDAS expectation with the selected platform, executable bytes, compatible 0.2.x or 0.3.x version, validation protocols, event schemas and asset fingerprint. The selected TIDAS executable is copied into a private temporary directory, rehashed there and invoked with the credential-free child environment; both handshake calls must be silent. Qualification uses a process-local brand. The portable identity described by `runtime-qualification.schema.json` is diagnostic evidence and cannot be deserialized into authority.
 

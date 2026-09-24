@@ -34,9 +34,9 @@ checkPaths:
   - test/scenarios/foundry-package-consumer.test.mts
   - test/scenarios/foundry-interaction-workflow.test.mts
   - docs/public-runtime-contract.md
-lastReviewedAt: 2026-09-23
-lastReviewedCommit: a3d7a738d24c1183b8198da40aa74f3a2215b959
-lastReviewedNote: "Reviewed for Foundry #196: a pending question retains bound independent local preparation before rows and through due assessment, then stops before identity, finalization, approval and execution; consumed readback stays first."
+lastReviewedAt: 2026-09-24
+lastReviewedCommit: abd80f28c1eff58c19ae40c929cf130b8b7d2431
+lastReviewedNote: "Reviewed for Foundry #200: exact blocked queue reports retain indexed Flow-reference details and a plain next step while pending questions and independent local work remain visible; no authorization or completion is inferred."
 related:
   - docs/runtime-context-contract.md
   - docs/task-authorization-contract.md
@@ -81,6 +81,8 @@ Native conversion uses the selected qualified TIDAS executable with an isolated 
 After context preparation, the facade materializes typed row arrays from the selected seed or the primary native dataset tree. Process-bundle copies remain evidence and are not counted as additional source rows. Derived inputs must have a verified producer in the same task index. Context preparation includes the converted dependency types as well as the requested types.
 
 The public facade assesses one current dataset type per resume. It registers a cumulative report with explicit `in_progress` or `completed` coverage, so the first actionable blocker can be returned before the remaining types finish; an independent type retains its continuation command. Every generation binds the previous indexed assessment, current rows, relevant context and task-interaction digest. Existing current set reports may be reused only when their row, context, queue closure, applicable interaction digest and registered artifact facts still match. A process/flow assessment builds its complete CLI-owned closure queue inside its own generation. A partial assessment is usable for current semantic work but cannot enter identity preflight, finalization, approval or completion. Direct internal callers that omit the bounded-set options retain their original full-batch operation.
+
+The qualified CLI returns exit 1 with a valid `blocked` curation-queue report when selected Process references lack local Flow rows or declared external evidence. Foundry accepts that pair only after checking the report schema, current input paths and hashes, bounded output paths and matching manifest/task/lock/blocker files. It indexes the complete queue evidence and continues local validation, QA and curation; their blockers still prevent scientific completion and write handoff. The default result counts unresolved Flow reference occurrences, says what Process review cannot yet establish and what evidence to provide, and links the indexed blocker file with every exact ID and exchange path. A pending human question remains visible beside this gap. Once independent types have been assessed, unchanged resume does not repeat the blocked queue; adding selected source files requires a new task revision.
 
 The compatibility report retains native diagnostic fields and supplies curation's `code` and JSON-pointer `path` from the native issue code/location. Row normalization uses the canonical `json` payload slot for typed API wrappers so native validation, curation and CLI patch application address the same domain payload while preserving row metadata and source lineage.
 

@@ -279,9 +279,9 @@ checkPaths:
   - AGENTS.md
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
-lastReviewedAt: 2026-09-23
-lastReviewedCommit: a3d7a738d24c1183b8198da40aa74f3a2215b959
-lastReviewedNote: "Reviewed for Foundry #196: one public scenario now proves unanswered questions retain native import, source context and cleanup continuations, then stop with no receipt replay or authorization."
+lastReviewedAt: 2026-09-24
+lastReviewedCommit: abd80f28c1eff58c19ae40c929cf130b8b7d2431
+lastReviewedNote: "Reviewed for Foundry #200: public scenarios cover valid blocked queue indexing and readable prompts beside a pending question, plus malformed status, input, hash and output refusal without index mutation."
 ---
 
 # Test Layout
@@ -506,6 +506,8 @@ Toolchain and migration contracts must pass in a clean arbitrary Git worktree af
 ## Commands
 
 The task interaction contract has pure parser and decision-binding tests in `unit/foundry-interaction-contract.test.mts`, while `scenarios/foundry-interaction-workflow.test.mts` checks persistence, stale replies and resume across facade instances. It also proves that an unanswered question retains the next independent native import, source-evidence context, or explicit cleanup action, then stops before identity, finalization and authorization without replaying local receipts. The public workflow scenario verifies one-set assessment, selective recheck, completion fencing and semantic decision adoption with the qualified local owners. Keep these cases in their existing test families; no production account or remote mutation is required.
+
+The interaction scenario also checks a valid exit-1 blocked Process queue with a pending question: complete indexed missing-Flow evidence stays available, unrelated local work can finish, and unchanged resume does not retry the queue. The public workflow scenario refuses forged exit/status, current input path/hash, output path, and on-disk manifest/blocker bytes before indexing; a separate no-question case checks unversioned repeated references, one plain-language action across assessment sets, and the exact evidence pointer. These checks use the installed CLI's local queue implementation and fake native validator without credentials or platform writes.
 
 - `pnpm test`: run the full suite.
 - `pnpm test:toolchain`: verify the pnpm/TS7 graph and migration inventory.
