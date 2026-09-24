@@ -59,6 +59,7 @@ import {
 import type { TrustedRuntimeManifest } from "@tiangong-lca/cli/runtime";
 import { datasetTypePlural } from "./lib/import-curation/internal/dataset-types.ts";
 import { currentWorkflowState, workflowObject } from "./lib/foundry-workflow-state.ts";
+import { currentNativeValidationFailure } from "./lib/foundry-native-validation-failure.ts";
 import {
   completedOwnerScopes,
   prepareFoundryOwnerExecution,
@@ -812,6 +813,46 @@ function taskProjection(
   }
   const workflow = currentWorkflowState(context, inspected.artifacts);
   const queueIssues = currentIndexedQueueBlockers(context, workflow, inspected.artifacts);
+  const nativeFailure = currentNativeValidationFailure(
+    context,
+    inspected.artifacts,
+    workflow.rows
+      ? {
+          file: workflow.rows.file,
+          sha256: workflow.rows.entry.sha256,
+          sets: workflow.rows.value.sets,
+        }
+      : null,
+  );
+  if (nativeFailure) {
+    const report = nativeFailure.result;
+    const type = String(report.dataset_type);
+    const label = `${type.slice(0, 1).toUpperCase()}${type.slice(1)}`;
+    const code = String(report.diagnostic_code);
+    const detail = String(report.diagnostic_message);
+    const normalized = detail.replace(/\s+/gu, " ").trim();
+    const preview = normalized.length > 240 ? `${normalized.slice(0, 237)}…` : normalized;
+    const rowCount = Number(report.row_count);
+    const affectedRows = `${rowCount} selected ${label} row${rowCount === 1 ? "" : "s"}`;
+    const failureKind =
+      report.exit_class === "io"
+        ? `${context.platform.startsWith("win32") ? "Windows " : ""}file I/O`
+        : "native validation";
+    const message = `Native ${label} validation stopped on ${failureKind} (${report.exit_class}/${code}): ${preview} The ${affectedRows} remain unassessed; no write can proceed. Inspect the complete indexed diagnostic at ${nativeFailure.file}, correct the native runtime or filesystem failure, and start an explicitly reviewed task revision under the replacement runtime.`;
+    return createFoundryOperationResult({
+      operation,
+      status: "blocked",
+      taskId: record.task_id,
+      artifacts,
+      blockers: [
+        { code: "native_validation_failed", message, scope: type },
+        ...queueIssues.blockers,
+      ],
+      nextActions: [human("repair_native_validation", message), ...queueIssues.actions],
+      runtimeIdentity: identity,
+      permissions: noPermission(),
+    });
+  }
   if (record.spec.repair && execution.verified.size) {
     if (execution.requests.length !== 1 || execution.verified.size !== 1)
       throw new FoundryContextError(

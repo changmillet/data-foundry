@@ -98,6 +98,136 @@ test("qualified context owner accepts the registered Unicode task path directly"
   );
 });
 
+test("native validation I/O failure stays indexed and understandable after restart", async (t) => {
+  const { root, facade } = workflowFixture(t);
+  const seed = path.join(root, "native-io-process.json");
+  const specFile = path.join(root, "native-io-task.json");
+  fs.writeFileSync(
+    seed,
+    JSON.stringify({
+      rows: [processRowWithInvalidLocation("90909090-9090-4909-8909-909090909090")],
+    }),
+  );
+  fs.writeFileSync(
+    specFile,
+    JSON.stringify({
+      schema: "tiangong-foundry.task-start.v1",
+      request_id: "native-io-assessment-evidence",
+      actor_id: "native-io-local",
+      lane: "source-evidence-dataset-development",
+      profile_id: "generic",
+      target_entities: ["process"],
+      sources: [{ path: seed }],
+      seed: { path: seed },
+      account_intent: null,
+      preparation: null,
+    }),
+  );
+  const started = await facade.start({ specFile });
+  assert.ok(started.task_id);
+  const invocation = { taskId: started.task_id, actorId: "native-io-local" };
+  assert.equal((await facade.resume(invocation)).status, "ready");
+  assert.equal((await facade.resume(invocation)).status, "ready");
+  const delegated = childProcess.spawnSync;
+  let intercepted = 0;
+  const nativeMessage =
+    "failed to persist issue spool at task validation-events.jsonl: The system cannot find the path specified (os error 3)";
+  t.mock.method(childProcess, "spawnSync", (...args: Parameters<typeof childProcess.spawnSync>) => {
+    const result = delegated(...args);
+    const argv = Array.isArray(args[1]) ? args[1] : [];
+    if (!argv.includes("--protocol") || !argv.includes("document-validation-batch.v1"))
+      return result;
+    intercepted += 1;
+    const report = JSON.parse(String(result.stdout));
+    report.status = "failed";
+    report.exit_class = "io";
+    report.summary = {};
+    report.diagnostics = [
+      {
+        schema_version: "tidas.diagnostic.v1",
+        code: "validation_io_failed",
+        message: nativeMessage,
+        path: null,
+        details: {},
+      },
+    ];
+    return {
+      ...result,
+      status: 74,
+      stdout: `${JSON.stringify(report)}\n`,
+      stderr: "native validation I/O detail",
+    };
+  });
+  syncBuiltinESMExports();
+  t.after(() => {
+    t.mock.restoreAll();
+    syncBuiltinESMExports();
+  });
+  let blocked;
+  for (let step = 0; step < 4; step += 1) {
+    blocked = await facade.resume(invocation);
+    if (intercepted) break;
+  }
+  assert.equal(intercepted, 1);
+  assert.ok(blocked);
+  assert.equal(blocked.status, "blocked");
+  assert.equal(blocked.permissions.state, "not_required");
+  assert.ok(
+    blocked.blockers.some(
+      (item) =>
+        item.code === "native_validation_failed" &&
+        item.message.includes("validation_io_failed") &&
+        item.message.includes("Process") &&
+        item.message.includes("issue spool"),
+    ),
+    JSON.stringify(blocked.blockers),
+  );
+  assert.ok(
+    blocked.next_actions.some(
+      (item) => item.kind === "human" && item.code === "repair_native_validation",
+    ),
+  );
+  const evidence = blocked.artifacts.find((item) => item.role === "native-validation-failure.json");
+  assert.ok(evidence?.kind === "file");
+  const report = JSON.parse(fs.readFileSync(evidence.path, "utf8"));
+  assert.equal(report.schema, "tiangong-foundry.native-validation-failure.v1");
+  assert.equal(report.dataset_type, "process");
+  assert.equal(report.row_count, 1);
+  assert.equal(
+    report.rows_sha256,
+    blocked.artifacts.find((item) => item.role === "process.rows.json")?.sha256,
+  );
+  assert.equal(report.exit_code, 74);
+  assert.equal(report.exit_class, "io");
+  assert.equal(report.native_report.diagnostics[0].code, "validation_io_failed");
+  assert.equal(report.native_report.diagnostics[0].message, nativeMessage);
+  assert.equal(report.stderr_text, "native validation I/O detail");
+  assert.equal(report.stderr.bytes, Buffer.byteLength(report.stderr_text));
+  assert.equal(
+    blocked.artifacts.some((item) => item.role === "foundry-assessment.json"),
+    false,
+  );
+  assert.equal(
+    blocked.artifacts.some((item) => item.role === "foundry-finalize.json"),
+    false,
+  );
+  const fresh = await facade.status(invocation);
+  assert.equal(fresh.status, "blocked");
+  assert.equal(
+    fresh.artifacts.find((item) => item.role === "native-validation-failure.json")?.sha256,
+    evidence.sha256,
+  );
+  const unchanged = await facade.resume(invocation);
+  assert.equal(unchanged.status, "blocked");
+  assert.equal(intercepted, 1, "blocked native validation is not silently replayed");
+  fs.appendFileSync(evidence.path, "\n");
+  const altered = await facade.status(invocation);
+  assert.notEqual(altered.status, "completed");
+  assert.ok(
+    altered.blockers.some((item) => item.code.includes("changed") || item.code.includes("invalid")),
+  );
+});
+
 for (const variant of [
   "wrong-exit",
   "wrong-status",
