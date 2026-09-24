@@ -944,7 +944,8 @@ function taskProjection(
     !pendingQuestions.length &&
     !investigations.length &&
     !reassessments.length &&
-    objectEvidenceCurrent
+    objectEvidenceCurrent &&
+    !currentFoundryInteractionWriteBlocker(context, inspected.artifacts)
   )
     return createFoundryOperationResult({
       operation,
@@ -1214,6 +1215,34 @@ function taskProjection(
       permissions: noPermission(),
     });
   }
+  const writeBlocker = workflow.finalization
+    ? currentFoundryInteractionWriteBlocker(context, inspected.artifacts)
+    : null;
+  if (writeBlocker)
+    return createFoundryOperationResult({
+      operation,
+      status: "needs_input",
+      taskId: record.task_id,
+      artifacts,
+      blockers: [
+        ...queueIssues.blockers,
+        {
+          code: writeBlocker.code,
+          message: writeBlocker.message,
+          scope: writeBlocker.scope ?? record.task_id,
+        },
+      ],
+      nextActions: [
+        ...queueIssues.actions,
+        ...scoped.actions,
+        human(
+          "review_unadopted_object_decision",
+          `${writeBlocker.message} If this task has no matching semantic work left, start a revised task with the current source evidence.`,
+        ),
+      ],
+      runtimeIdentity: identity,
+      permissions: noPermission(),
+    });
   const references = inspectFoundryReferences(context, inspected.artifacts);
   const scopeComplete =
     workflow.rows &&

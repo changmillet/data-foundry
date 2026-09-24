@@ -404,6 +404,20 @@ test("one Process question permits another Process patch, then binds only its ow
   );
   assert.deepEqual(recap.user_decisions[0]?.object_scope, firstScope);
   assert.deepEqual(recap.user_decisions[0]?.applied_to, [], "an answer is not yet an applied row");
+  const beforeInitialAuthorization = fs.readFileSync(index);
+  const unadoptedInitialAnswer = await facade.resume({
+    ...invocation,
+    authorizationInputFile: path.join(root, "unselected-authorization.json"),
+  });
+  assert.equal(unadoptedInitialAnswer.status, "blocked");
+  assert.ok(
+    unadoptedInitialAnswer.blockers.some(
+      (item) =>
+        item.code === "interaction_object_decision_changed" && item.message.includes(firstId),
+    ),
+    "an initial P1 answer without P1 semantic adoption cannot authorize old rows",
+  );
+  assert.deepEqual(fs.readFileSync(index), beforeInitialAuthorization);
   const answeredContexts = answered.artifacts.flatMap((artifact) =>
     artifact.role === "object_interaction_context" && artifact.kind === "inline"
       ? [

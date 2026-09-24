@@ -294,6 +294,7 @@ export function currentFoundryObjectDecisionReassessments(
   state: FoundryInteractionState,
   objects: ReadonlyMap<string, CurrentFoundryObject | null>,
   adoptions: readonly IndexedFoundryRowAdoption[],
+  requireEarlierWork = true,
 ): ReadonlyArray<{
   readonly dataset_type: string;
   readonly entity_id: string;
@@ -327,7 +328,7 @@ export function currentFoundryObjectDecisionReassessments(
     );
     if (
       lineage.current &&
-      hasEarlierObjectWork &&
+      (!requireEarlierWork || hasEarlierObjectWork) &&
       !lineage.adopted_decision_ids.has(String(answer.decision_id))
     )
       pending.push({
@@ -435,7 +436,7 @@ export function requireCurrentFoundryObjectScope(
 export function currentFoundryInteractionWriteBlocker(
   context: FoundryRuntimeContext,
   entries: readonly ArtifactEntry[],
-): Readonly<{ code: string; message: string }> | null {
+): Readonly<{ code: string; message: string; scope?: string }> | null {
   const interaction = currentFoundryInteractionState(context, entries);
   if (!interaction) return null;
   if (
@@ -466,16 +467,19 @@ export function currentFoundryInteractionWriteBlocker(
       return {
         code: "interaction_object_evidence_changed",
         message: `Review ${item.dataset_type} ${item.entity_id}@${item.version} against its current registered row before a write handoff.`,
+        scope: `${item.dataset_type}:${item.entity_id}`,
       };
   const pending = currentFoundryObjectDecisionReassessments(
     interaction.state,
     objects,
     adoptions,
+    false,
   )[0];
   return pending
     ? {
         code: "interaction_object_decision_changed",
         message: `Review and adopt current decision ${pending.decision_id} for ${pending.dataset_type} ${pending.entity_id}@${pending.version} before a write handoff.`,
+        scope: `${pending.dataset_type}:${pending.entity_id}`,
       }
     : null;
 }

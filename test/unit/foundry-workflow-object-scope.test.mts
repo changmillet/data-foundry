@@ -120,6 +120,30 @@ test("an independent P1 row change cannot carry an old decision while unchanged 
       { dataset_type: "process", entity_id: secondId, version, row_sha256: originalSecondHash },
     ],
   ]);
+  const originalObjects = new Map(objects);
+  originalObjects.set(foundryInteractionObjectKey("process", firstId, version), {
+    dataset_type: "process",
+    entity_id: firstId,
+    version,
+    row_sha256: originalFirstHash,
+  });
+  assert.deepEqual(
+    currentFoundryObjectDecisionReassessments(state, originalObjects, []),
+    [],
+    "an initial answer must not prevent independent local assessment",
+  );
+  assert.deepEqual(
+    currentFoundryObjectDecisionReassessments(state, originalObjects, [], false),
+    [
+      {
+        dataset_type: "process",
+        entity_id: firstId,
+        version,
+        decision_id: "p1-answer",
+      },
+    ],
+    "write admission requires an indexed adoption even for the first answer",
+  );
   const missingFirst = new Map(objects);
   missingFirst.delete(foundryInteractionObjectKey("process", firstId, version));
   assert.equal(
