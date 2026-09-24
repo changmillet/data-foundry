@@ -32,8 +32,8 @@ checkPaths:
   - prettier.config.ts
   - tsconfig*.json
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: 2b9558a568c8a89232d9c49fdaa78aa6e79fd643
-lastReviewedNote: "Reviewed for Foundry #206: single-object questions bind exact registered versioned rows; separate Process work remains independent, while indexed row adoption, scientific review and write authority keep distinct roles. Base retains #204 public CLI 0.1.22, SDK 0.4.1 and Toolkit 0.3.3 qualification."
+lastReviewedCommit: be60f69ae57c45c4278b1744195f32aa3237af9d
+lastReviewedNote: "Reviewed for Foundry #205 version-only 0.1.13: the three canonical package-version files advance over fully integrated #204/#206 source. Agent ownership, human question/evidence handling, scientific gates, write authority and public runtime locks remain unchanged; publication and root integration require separate proof."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry
