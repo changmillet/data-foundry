@@ -90,7 +90,7 @@ checkPaths:
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
 lastReviewedAt: 2026-09-24
-lastReviewedCommit: 5610002770ba873e9312b317878ed476dffe78eb
+lastReviewedCommit: 12988721b3485408d827c04a24a6f54fed970a55
 lastReviewedNote: "Reviewed for Foundry #206: task/type and exact registered-object interaction scope plus row-adoption evidence remain Foundry-owned; Skills wording and scientific/write owners stay separate. Base retains #204 public CLI 0.1.22, SDK 0.4.1 and Toolkit 0.3.3 qualification."
 ---
 
