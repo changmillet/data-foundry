@@ -152,9 +152,9 @@ checkPaths:
   - test/unit/foundry-runtime-environment.test.mts
   - test/unit/lint-suppression-audit.test.mts
   - docs/incremental-change-set-contract.md
-lastReviewedAt: 2026-09-24
-lastReviewedCommit: be60f69ae57c45c4278b1744195f32aa3237af9d
-lastReviewedNote: "Reviewed for Foundry #205 version-only 0.1.13: package version metadata changes, while the merged #204 runtime inputs and #206 object interaction architecture remain unchanged. Publication and root inclusion require separate exact-source evidence."
+lastReviewedAt: 2026-10-01
+lastReviewedCommit: 6ab9993afb3587fefcc8d66a1461a4b5b39ab36a
+lastReviewedNote: "Reviewed Foundry #217: the existing dev-only brace-expansion leaf updates from 5.0.9 to compatible stable 5.0.12; the sixteen-package production closure, CLI/Foundry/native versions, audit threshold, release-age policy and runtime authority remain unchanged."
 ---
 
 # Architecture

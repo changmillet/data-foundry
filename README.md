@@ -158,9 +158,9 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - test/unit/zero-javascript-ratchet.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
-lastReviewedAt: 2026-09-24
-lastReviewedCommit: be60f69ae57c45c4278b1744195f32aa3237af9d
-lastReviewedNote: "Reviewed for Foundry #205 version-only 0.1.13: the canonical three-file package projection advances over merged #204/#206 source. Public CLI 0.1.22, SDK 0.4.1 and Toolkit 0.3.3 locks, public behavior and documentation body remain unchanged; publication and root integration stay separate."
+lastReviewedAt: 2026-10-01
+lastReviewedCommit: 6ab9993afb3587fefcc8d66a1461a4b5b39ab36a
+lastReviewedNote: "Reviewed Foundry #217: the existing dev-only brace-expansion leaf updates from 5.0.9 to compatible stable 5.0.12; the sixteen-package production closure, CLI/Foundry/native versions, audit threshold, release-age policy and runtime authority remain unchanged."
 ---
 
 # TianGong LCA Data Foundry
