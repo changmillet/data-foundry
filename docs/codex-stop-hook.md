@@ -18,9 +18,9 @@ checkPaths:
   - .codex/hooks/run-foundry-acceptance-check.sh
   - package.json
   - scripts/commands/core.ts
-lastReviewedAt: 2026-09-11
-lastReviewedCommit: abc7672f3b3a806caa4219ab5b797f1d92421926
-lastReviewedNote: "Reviewed for #122: explicit task reference snapshots, CLI 0.1.16 QA/intent transport, sealed admission/readback evidence and no-replay recovery. Existing profile, permission, environment and historical delivery boundaries remain enforced."
+lastReviewedAt: 2026-10-01
+lastReviewedCommit: 6ab9993afb3587fefcc8d66a1461a4b5b39ab36a
+lastReviewedNote: "Reviewed Foundry #215 adoption of verified public CLI 0.1.23: exact dependency/source/bootstrap facts advance while task permissions, OAuth ownership, scientific profiles and immutable publication boundaries remain unchanged; Foundry package version stays 0.1.13 pending a separate release."
 ---
 
 # Codex Stop Hook

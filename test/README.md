@@ -279,9 +279,9 @@ checkPaths:
   - AGENTS.md
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
-lastReviewedAt: 2026-09-24
-lastReviewedCommit: be60f69ae57c45c4278b1744195f32aa3237af9d
-lastReviewedNote: "Reviewed for Foundry #205 version-only 0.1.13: package identity changes without removing test coverage or changing the complete four-platform qualification and 40-minute test-shard gate."
+lastReviewedAt: 2026-10-01
+lastReviewedCommit: 6ab9993afb3587fefcc8d66a1461a4b5b39ab36a
+lastReviewedNote: "Reviewed Foundry #215 adoption of verified public CLI 0.1.23: exact dependency/source/bootstrap facts advance while task permissions, OAuth ownership, scientific profiles and immutable publication boundaries remain unchanged; Foundry package version stays 0.1.13 pending a separate release."
 ---
 
 # Test Layout

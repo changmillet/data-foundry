@@ -19,9 +19,9 @@ checkPaths:
   - package.json
   - .agents/shared-skills.json
   - .agents/skills/**
-lastReviewedAt: 2026-09-10
-lastReviewedCommit: d34c8dac60f5872d6e2f7ae5d7ac05a5df21cfa2
-lastReviewedNote: "Reviewed for Foundry #161: active shared-skill URLs use agent-skills; installed release locks and task/account authorization remain unchanged."
+lastReviewedAt: 2026-10-01
+lastReviewedCommit: 6ab9993afb3587fefcc8d66a1461a4b5b39ab36a
+lastReviewedNote: "Reviewed Foundry #215 exact CLI 0.1.23 adoption; acceptance loops, artifact locations and Skills ownership stay unchanged, and installed runtime publication remains a separate release."
 related:
   - AGENTS.md
   - WORKFLOW.md

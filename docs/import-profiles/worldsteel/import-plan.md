@@ -1,7 +1,7 @@
 ---
-lastReviewedAt: 2026-09-24
-lastReviewedCommit: 894b471a1da4f1eece401f5f86db9937f3000d28
-lastReviewedNote: "Reviewed for Foundry #204: operator CLI pin advances to public 0.1.22; Worldsteel selection, source evidence, authorization, coverage and write policy remain unchanged."
+lastReviewedAt: 2026-10-01
+lastReviewedCommit: 6ab9993afb3587fefcc8d66a1461a4b5b39ab36a
+lastReviewedNote: "Reviewed Foundry #215 adoption of verified public CLI 0.1.23: exact dependency/source/bootstrap facts advance while task permissions, OAuth ownership, scientific profiles and immutable publication boundaries remain unchanged; Foundry package version stays 0.1.13 pending a separate release."
 title: worldsteel EF3.1 ILCD Import Plan
 docType: plan
 scope: import-profile/worldsteel
@@ -331,7 +331,7 @@ The vast majority of those exchanges point at EF3.1 reference flows that will re
 
 ## 9. Risk register (consolidated gotchas)
 
-- **Use the project-installed CLI** — leave `TIANGONG_LCA_CLI_BIN` blank so Foundry resolves exact `@tiangong-lca/cli@0.1.22`; an override is only for an explicit local test binary. Credential-scoped execution still goes through the receipt-gated `pnpm account:run` wrapper.
+- **Use the project-installed CLI** — leave `TIANGONG_LCA_CLI_BIN` blank so Foundry resolves exact `@tiangong-lca/cli@0.1.23`; an override is only for an explicit local test binary. Credential-scoped execution still goes through the receipt-gated `pnpm account:run` wrapper.
 - **Don't copy BAFU/USLCI profile wholesale** — Worldsteel reuses every canonical row by UUID, caps the R3 elementary tail, and enables R5 only for materialized FP/UG canonical-cache misses behind the full account-local support gates.
 - **`databaseFallbackSourceConfig` silently inherits BAFU** for any unknown profile → ✅ worldsteel branch added.
 - **`source_contact_rewrites` gated to bafu/uslci** → ✅ widened to include `worldsteel`.

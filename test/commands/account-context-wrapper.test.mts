@@ -82,7 +82,7 @@ function baseDeps(
     },
     resolveInstalledCli: () => ({
       packageName: "@tiangong-lca/cli",
-      packageVersion: "0.1.22",
+      packageVersion: "0.1.23",
       binPath: path.join(root, "trusted", "tiangong-lca.js"),
     }),
     spawnSyncImpl: (executable: string, argv: readonly string[], options: SpawnCall["options"]) => {

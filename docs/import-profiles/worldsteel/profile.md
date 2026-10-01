@@ -1,7 +1,7 @@
 ---
-lastReviewedAt: 2026-09-24
-lastReviewedCommit: 894b471a1da4f1eece401f5f86db9937f3000d28
-lastReviewedNote: "Reviewed for Foundry #204: operator CLI pin advances to public 0.1.22; Worldsteel selection, source evidence, authorization, coverage and write policy remain unchanged."
+lastReviewedAt: 2026-10-01
+lastReviewedCommit: 6ab9993afb3587fefcc8d66a1461a4b5b39ab36a
+lastReviewedNote: "Reviewed Foundry #215 adoption of verified public CLI 0.1.23: exact dependency/source/bootstrap facts advance while task permissions, OAuth ownership, scientific profiles and immutable publication boundaries remain unchanged; Foundry package version stays 0.1.13 pending a separate release."
 title: worldsteel Import Profile
 docType: profile
 scope: import-profile
