@@ -31,9 +31,9 @@ checkPaths:
   - .oxlintrc.json
   - prettier.config.ts
   - tsconfig*.json
-lastReviewedAt: 2026-09-24
-lastReviewedCommit: be60f69ae57c45c4278b1744195f32aa3237af9d
-lastReviewedNote: "Reviewed for Foundry #205 version-only 0.1.13: the three canonical package-version files advance over fully integrated #204/#206 source. Agent ownership, human question/evidence handling, scientific gates, write authority and public runtime locks remain unchanged; publication and root integration require separate proof."
+lastReviewedAt: 2026-10-01
+lastReviewedCommit: 619e94633eab96d7457f2e8672c0e385823c49a0
+lastReviewedNote: "Reviewed Foundry #217 development-only brace-expansion5.0.12 security patch: package/CLI/runtime inputs, public dependency closure, authentication ownership and all normal gate policies are unchanged."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry
