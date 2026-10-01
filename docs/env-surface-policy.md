@@ -35,8 +35,8 @@ checkPaths:
   - test/scenarios/foundry-package-consumer.test.mts
   - test/unit/foundry-runtime-environment.test.mts
 lastReviewedAt: 2026-10-01
-lastReviewedCommit: 6ab9993afb3587fefcc8d66a1461a4b5b39ab36a
-lastReviewedNote: "Reviewed Foundry #217: the existing dev-only brace-expansion leaf updates from 5.0.9 to compatible stable 5.0.12; the sixteen-package production closure, CLI/Foundry/native versions, audit threshold, release-age policy and runtime authority remain unchanged."
+lastReviewedCommit: 45a90e7da7e99857bb8838ae53408e59232082e7
+lastReviewedNote: "Reviewed the combined Foundry #215 adoption of verified CLI 0.1.23 and merged #217 dev-only brace-expansion 5.0.12 security patch: exact source/bootstrap and bounded regressions are preserved, with unchanged Foundry 0.1.13, other runtime inputs, authorization, scientific profiles and normal gate policies; immutable publication remains separate #216 work."
 ---
 
 # Environment Surface Policy

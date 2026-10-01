@@ -160,9 +160,9 @@ checkPaths:
   - test/unit/identity-preflight-run-command-factory.test.mts
   - test/unit/post-authoring-finalize-command-factory.test.mts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-09-24
-lastReviewedCommit: 2b9558a568c8a89232d9c49fdaa78aa6e79fd643
-lastReviewedNote: "Reviewed for Foundry #206: object-scoped question parsing, current registered-row proof, per-work-item projection and indexed row-adoption lineage remain Foundry-owned; Skills and CLI boundaries are unchanged. Base retains #204 public CLI 0.1.22, SDK 0.4.1 and Toolkit 0.3.3 qualification."
+lastReviewedAt: 2026-10-01
+lastReviewedCommit: 6ab9993afb3587fefcc8d66a1461a4b5b39ab36a
+lastReviewedNote: "Reviewed Foundry #215 adoption of verified public CLI 0.1.23: exact dependency/source/bootstrap facts advance while task permissions, OAuth ownership, scientific profiles and immutable publication boundaries remain unchanged; Foundry package version stays 0.1.13 pending a separate release."
 ---
 
 # Foundry AI Navigation
@@ -413,7 +413,7 @@ git diff --check
 
 Golden diff protects CLI JSON compatibility for the key command set. The full test suite protects workflow-specific artifact and proof behavior. Toolchain tests protect the pnpm/TS7 graph and migration ledger. Command metadata tests protect AI navigation.
 
-Explicit reference selection starts at `scripts/lib/foundry-reference-input.ts` and the public `--reference-input` descriptor. The indexed snapshots feed `foundry-workflow-finalize.ts`; `finalize-reference-inputs.ts`, `handoff-reference-intent.ts` and `reference-intent-closeout.ts` own flat-input validation, precommit evidence transport and readback binding. The public runtime contract defines the boundary; CLI 0.1.22 owns reference eligibility and unit-aware QA.
+Explicit reference selection starts at `scripts/lib/foundry-reference-input.ts` and the public `--reference-input` descriptor. The indexed snapshots feed `foundry-workflow-finalize.ts`; `finalize-reference-inputs.ts`, `handoff-reference-intent.ts` and `reference-intent-closeout.ts` own flat-input validation, precommit evidence transport and readback binding. The public runtime contract defines the boundary; CLI 0.1.23 owns reference eligibility and unit-aware QA.
 
 Public goal clarification and human decisions start at `scripts/runtime-entry.ts` / `scripts/foundry-facade.ts`. `foundry-task-start-spec.ts` keeps the optional brief in the request revision. `foundry-interaction-types.ts` is the graph leaf; `foundry-interaction-input.ts` selects bounded question/answer/assumption descriptors, `foundry-interaction-scope.ts` distinguishes legacy broad and exact object keys, `foundry-interaction-projection.ts` chooses applicable decisions, and `foundry-workflow-interaction.ts` records them under the task lock and freezes new interaction after indexed authorization. `foundry-workflow-object-scope.ts` verifies unique current row identity/hash, indexed decision-bound successors and new-answer reassessment. `foundry-workflow-state.ts` and `foundry-workflow-assessment.ts` track one-set coverage and broad-context rechecks; `foundry-semantic-input.ts`, `foundry-semantic-interaction.ts` and `foundry-workflow-semantic.ts` bind exact per-item decision IDs, registered decision-task queue targets and before/after row evidence. `foundry-facade.ts` presents a question with its object identity plus live per-object context; an unrelated Process can still offer local semantic review. `foundry-workflow-authorization.ts`, `foundry-workflow-approval-continuation.ts` and `foundry-owner-execution-store.ts` recheck current interaction before write handoff. The public runtime contract owns argument/artifact shapes. Unit and dual-Process public scenarios protect scope, CAS, partial recap and no-authority behavior. Skills own wording shown to people; this owner adds no TIDAS schema, remote write or approval action.
 

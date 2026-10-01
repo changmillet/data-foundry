@@ -48,8 +48,8 @@ test("installed CLI resolution and runtime command precedence stay package-pinne
   withTempRoot("foundry-runtime-command", (root) => {
     const installed = resolveInstalledTiangongLcaCliPackage();
     assert.equal(installed.packageName, "@tiangong-lca/cli");
-    assert.equal(installed.packageVersion, "0.1.22");
-    assert.equal(installed.packageSpec, "@tiangong-lca/cli@0.1.22");
+    assert.equal(installed.packageVersion, "0.1.23");
+    assert.equal(installed.packageSpec, "@tiangong-lca/cli@0.1.23");
     assert.equal(installed.tidasSpecSource.schema, "tiangong-lca.cli-tidas-spec-source.v1");
     assert.equal(installed.tidasSpecSource.spec_commit, "f118660dbcbfbf736be74837cce0bf26cd177245");
     assert.equal(
@@ -57,6 +57,10 @@ test("installed CLI resolution and runtime command precedence stay package-pinne
       "9c0d8b1c8ceb1841074f5bc6de5fbb7fcc9318f5",
     );
     assert.equal(installed.tidasSpecSource.schemas.length, 18);
+    assert.equal(
+      installed.tidasSpecSource.manifest_sha256,
+      "5b69ab859e26a253dc51c6aeee68c971d727b1f8db44128143795113fe3eee6a",
+    );
     assert.equal(path.basename(installed.sourceManifestPath), "tidas-spec-source.json");
     assert.equal(path.basename(installed.packageJsonPath), "package.json");
     assert.equal(fs.statSync(installed.binPath).isFile(), true);
@@ -66,8 +70,8 @@ test("installed CLI resolution and runtime command precedence stay package-pinne
     assert.equal(defaultCommand.command, process.execPath);
     assert.deepEqual(defaultCommand.args, [installed.binPath]);
     assert.equal(defaultCommand.source, "installed_package");
-    assert.equal(defaultCommand.package, "@tiangong-lca/cli@0.1.22");
-    assert.equal(defaultCommand.package_version, "0.1.22");
+    assert.equal(defaultCommand.package, "@tiangong-lca/cli@0.1.23");
+    assert.equal(defaultCommand.package_version, "0.1.23");
     assert.equal(defaultCommand.bin_path, installed.binPath);
 
     const overridePath = path.join(root, "CLI folder", "owner-cli.mjs");

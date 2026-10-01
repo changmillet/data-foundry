@@ -1,7 +1,7 @@
 {
   "$schema": "../specs/schemas/file-location-registry.schema.json",
   "schema_version": 1,
-  "updated_at_utc": "2026-09-24T12:17:28Z",
+  "updated_at_utc": "2026-10-01T11:19:52Z",
   "policy_doc": "docs/file-organization.md",
   "entries": [
     {
@@ -710,7 +710,7 @@
       ],
       "sensitivity": "non-sensitive consumer orchestration source; contains no credentials or task payloads",
       "tracked": true,
-      "notes": "Validates the consumer binding of selected CLI owner-draft contracts — insert or bounded save_draft repair — to exact final rows, identity and operation/before state; builds no native transaction or attempt implementation."
+      "notes": "Validates the consumer binding of selected CLI owner-draft contracts \u2014 insert or bounded save_draft repair \u2014 to exact final rows, identity and operation/before state; builds no native transaction or attempt implementation."
     },
     {
       "id": "native-draft-closeout",
@@ -776,6 +776,6 @@
       "notes": "Parses explicit public reference input and records immutable indexed control snapshots."
     }
   ],
-  "lastReviewedCommit": "abd80f28c1eff58c19ae40c929cf130b8b7d2431",
-  "lastReviewedNote": "Reviewed for Foundry #200: blocked queue files stay under the existing ignored task output root and add no credential, permanent source-data or remote-write location."
+  "lastReviewedCommit": "6ab9993afb3587fefcc8d66a1461a4b5b39ab36a",
+  "lastReviewedNote": "Reviewed Foundry #215 CLI 0.1.23 adoption: ledger locations, lifecycle evidence and task authorization remain unchanged."
 }

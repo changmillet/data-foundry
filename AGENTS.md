@@ -32,8 +32,8 @@ checkPaths:
   - prettier.config.ts
   - tsconfig*.json
 lastReviewedAt: 2026-10-01
-lastReviewedCommit: 619e94633eab96d7457f2e8672c0e385823c49a0
-lastReviewedNote: "Reviewed Foundry #217 development-only brace-expansion5.0.12 security patch: package/CLI/runtime inputs, public dependency closure, authentication ownership and all normal gate policies are unchanged."
+lastReviewedCommit: 45a90e7da7e99857bb8838ae53408e59232082e7
+lastReviewedNote: "Reviewed the combined Foundry #215 adoption of verified CLI 0.1.23 and merged #217 dev-only brace-expansion 5.0.12 security patch: exact source/bootstrap and bounded regressions are preserved, with unchanged Foundry 0.1.13, other runtime inputs, authorization, scientific profiles and normal gate policies; immutable publication remains separate #216 work."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry
@@ -77,7 +77,7 @@ Receive external LCA packages or source documents, choose the correct import lan
 
 - Node.js 24, exact `pnpm@11.24.0`, and TypeScript `7.0.2` are the single toolchain. The root workspace and lockfile are the only dependency authorities. Oxlint owns linting, Prettier owns formatting, and TypeScript keeps `erasableSyntaxOnly`.
 - Tracked first-party JavaScript and JSX/TSX are forbidden. Keep the zero-JavaScript ratchet, the no-explicit-`any` rule, the suppression audit, and the intentional TypeScript lint/typecheck graph. Builds clear only the guarded `dist` tree before `tsc` and emit no JavaScript on type errors.
-- The installed owner CLI is exactly `@tiangong-lca/cli@0.1.22`, invoked through `pnpm exec tiangong-lca`. Foundry imports only the published `command-spec`, `batch`, `auth-identity-receipt`, and `runtime` subpaths; private CLI internals are not a compatibility surface.
+- The installed owner CLI is exactly `@tiangong-lca/cli@0.1.23`, invoked through `pnpm exec tiangong-lca`. Foundry imports only the published `command-spec`, `batch`, `auth-identity-receipt`, and `runtime` subpaths; private CLI internals are not a compatibility surface.
 - Executable handoffs use `tiangong-foundry.command-spec.v1`. The `executable` and `argv` array, exact input artifact facts, and SHA-256 are authoritative; `display` is derived and never executed. Ambiguous writes resolve through fresh readback and are never replayed blindly.
 - Keep import profiles as source rules and task authorization as a separate current-owner binding. Final-row, account, actor, runtime, profile, input, and write gates must remain independent of historical task artifacts and profile overrides.
 - Keep source and emitted execution bound to the same trusted package root, current CLI identity, and immutable runtime context. The Golden gate compares a non-`HEAD` merge base with full history and isolated child environments; clean-worktree validation must not rely on another checkout, ignored state, or credentials.
