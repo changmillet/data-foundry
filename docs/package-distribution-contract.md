@@ -35,8 +35,8 @@ checkPaths:
   - test/unit/runtime-layout.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
 lastReviewedAt: 2026-10-01
-lastReviewedCommit: 6ab9993afb3587fefcc8d66a1461a4b5b39ab36a
-lastReviewedNote: "Reviewed Foundry #215 adoption of verified public CLI 0.1.23: exact dependency/source/bootstrap facts advance while task permissions, OAuth ownership, scientific profiles and immutable publication boundaries remain unchanged; Foundry package version stays 0.1.13 pending a separate release."
+lastReviewedCommit: 45a90e7da7e99857bb8838ae53408e59232082e7
+lastReviewedNote: "Reviewed the combined Foundry #215 adoption of verified CLI 0.1.23 and merged #217 dev-only brace-expansion 5.0.12 security patch: exact source/bootstrap and bounded regressions are preserved, with unchanged Foundry 0.1.13, other runtime inputs, authorization, scientific profiles and normal gate policies; immutable publication remains separate #216 work."
 related:
   - docs/public-runtime-contract.md
   - docs/runtime-context-contract.md
@@ -53,6 +53,8 @@ CLI 0.1.23 is independently verified at exact `cli-v0.1.23` source `418900f90e25
 Foundry #215 adopts that owner release in source while retaining package version 0.1.13. Published Foundry 0.1.13 still bundles CLI 0.1.22; a later version-only release and qualified final runtime manifest/lock are required before installed adoption is complete. The source also contains the already merged #210 terminal decision-recap characterization, which changed only two test files and added no runtime behavior.
 
 The package depends exactly on public `@tiangong-lca/cli@0.1.23`. Ajv remains a development dependency for internal commands and release-side SPDX validation; Saxes 6.0.0 is a development dependency used only by the offline final-delivery workbook reader for namespace-aware OOXML parsing. Sigstore 5.0.0, YAML 2.9.0, tar 7.5.22 and fflate 0.8.3 are also development-only release tools for signing/verification, lock parsing and bounded upstream archive selection. None enters the public compiler/dependency closure. TIDAS is an independently verified native component selected later by the CLI manager, not an npm dependency or bundled binary.
+
+The development verification chain from Sigstore through minimatch 10.2.6 now locks brace-expansion 5.0.12, a compatible patch within its existing range. Bounded isolated regressions cover both stack-exhaustion advisories while retaining ordinary expansion behavior. The sixteen-package production closure is unchanged. The high-severity audit threshold, default 1,440-minute release age and all package/native input versions remain unchanged; no advisory ignore or new dependency override is added.
 
 ## Public surface
 
