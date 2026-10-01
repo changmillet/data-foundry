@@ -153,8 +153,8 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - docs/incremental-change-set-contract.md
 lastReviewedAt: 2026-10-01
-lastReviewedCommit: 45a90e7da7e99857bb8838ae53408e59232082e7
-lastReviewedNote: "Reviewed the combined Foundry #215 adoption of verified CLI 0.1.23 and merged #217 dev-only brace-expansion 5.0.12 security patch: exact source/bootstrap and bounded regressions are preserved, with unchanged Foundry 0.1.13, other runtime inputs, authorization, scientific profiles and normal gate policies; immutable publication remains separate #216 work."
+lastReviewedCommit: 4b119f34aa8047836a0f17e455ce4a58c8648d46
+lastReviewedNote: "Reviewed Foundry #216 version-only 0.1.14 over qualified #215/#217 main: only the three canonical package-version projections advance; CLI 0.1.23, dependency lock, Node/pnpm/Toolkit inputs, authentication and release/native/bootstrap/final-manifest gates stay fixed, with immutable publication still pending."
 ---
 
 # Architecture
