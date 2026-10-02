@@ -158,9 +158,9 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - test/unit/zero-javascript-ratchet.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
-lastReviewedAt: 2026-10-01
-lastReviewedCommit: 4b119f34aa8047836a0f17e455ce4a58c8648d46
-lastReviewedNote: "Reviewed Foundry #216 version-only 0.1.14 over qualified #215/#217 main: only the three canonical package-version projections advance; CLI 0.1.23, dependency lock, Node/pnpm/Toolkit inputs, authentication and release/native/bootstrap/final-manifest gates stay fixed, with immutable publication still pending."
+lastReviewedAt: 2026-10-02
+lastReviewedCommit: 56307ddc74565f85cf2e1315231d4f841a800f9b
+lastReviewedNote: "Reviewed Foundry #222 adoption of verified public CLI 0.1.24 source 89c71772: runtime/dependency pins advance with CLI-only lock change; scientific profiles, task permission and no-replay boundaries stay fixed. Foundry source version stays 0.1.14 pending a separate release."
 ---
 
 # TianGong LCA Data Foundry
@@ -342,9 +342,9 @@ pnpm case:production:contact-draft -- \
 
 The runner accepts no API key or alternate CLI path on argv. It reads only `TIANGONG_LCA_API_BASE_URL`, `TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY`, and `TIANGONG_LCA_TEST_API_KEY`; the test key exists only in the child environment. The env file must be a regular non-symlink file with POSIX mode `0600` or stricter and, when it is inside this repository, must be git-ignored. The new output directory must also be inside this repository, git-ignored, and reached without a symlinked parent.
 
-This production lane is POSIX-only. Windows execution fails closed until the runner can verify a user-exclusive ACL; Windows CI covers that refusal rather than a live case. On POSIX, the runner snapshots the exact installed CLI 0.1.23 package inside its pnpm dependency island, hashes and rechecks the full pnpm installation plus Foundry source/build/lock facts before every child boundary, executes from a clean directory with `shell=false`, fsyncs create-only private evidence, and publishes a content-addressed case manifest only after the runtime snapshot is removed. Any detected secret in stdout, a report, or a sidecar artifact fails the case and leaves only redacted failure evidence. The created contact remains isolated, unreviewed, and unpublished under the authenticated test account for later case evidence; the lane never performs review/publish transitions or mutates foreign/public/shared rows.
+This production lane is POSIX-only. Windows execution fails closed until the runner can verify a user-exclusive ACL; Windows CI covers that refusal rather than a live case. On POSIX, the runner snapshots the exact installed CLI 0.1.24 package inside its pnpm dependency island, hashes and rechecks the full pnpm installation plus Foundry source/build/lock facts before every child boundary, executes from a clean directory with `shell=false`, fsyncs create-only private evidence, and publishes a content-addressed case manifest only after the runtime snapshot is removed. Any detected secret in stdout, a report, or a sidecar artifact fails the case and leaves only redacted failure evidence. The created contact remains isolated, unreviewed, and unpublished under the authenticated test account for later case evidence; the lane never performs review/publish transitions or mutates foreign/public/shared rows.
 
-Credential-scoped commands use `pnpm account:run -- <profile> -- <executable> [args...]`. The ignored profile supplies both the expected Supabase project ref and canonical user UUID. The wrapper resolves the installed CLI 0.1.23, obtains a fresh intent-bound `auth identity-receipt`, and then executes the requested argv without a shell and without inheriting unrelated parent environment variables. Authentication bypass flags are unsupported.
+Credential-scoped commands use `pnpm account:run -- <profile> -- <executable> [args...]`. The ignored profile supplies both the expected Supabase project ref and canonical user UUID. The wrapper resolves the installed CLI 0.1.24, obtains a fresh intent-bound `auth identity-receipt`, and then executes the requested argv without a shell and without inheriting unrelated parent environment variables. Authentication bypass flags are unsupported.
 
 Issue #70 consumes CLI 0.1.3 through its supported `./batch` and `./auth-identity-receipt` subpaths. The production identity-preflight path uses the public strict parser; deterministic receipt construction exists only in a local test fixture, and the toolchain ratchet rejects every `@tiangong-lca/cli/dist/src/**` import. pnpm's 1,440-minute maturity gate remains enabled; the exact 0.1.3 exception is bound to the release already verified by tag, Sigstore/Rekor provenance, registry integrity, and clean public consumers.
 

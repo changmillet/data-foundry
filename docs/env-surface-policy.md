@@ -34,9 +34,9 @@ checkPaths:
   - scripts/public-api.ts
   - test/scenarios/foundry-package-consumer.test.mts
   - test/unit/foundry-runtime-environment.test.mts
-lastReviewedAt: 2026-10-01
-lastReviewedCommit: 4b119f34aa8047836a0f17e455ce4a58c8648d46
-lastReviewedNote: "Reviewed Foundry #216 version-only 0.1.14 over qualified #215/#217 main: only the three canonical package-version projections advance; CLI 0.1.23, dependency lock, Node/pnpm/Toolkit inputs, authentication and release/native/bootstrap/final-manifest gates stay fixed, with immutable publication still pending."
+lastReviewedAt: 2026-10-02
+lastReviewedCommit: 56307ddc74565f85cf2e1315231d4f841a800f9b
+lastReviewedNote: "Reviewed Foundry #222 adoption of verified public CLI 0.1.24 source 89c71772: runtime/dependency pins advance with CLI-only lock change; scientific profiles, task permission and no-replay boundaries stay fixed. Foundry source version stays 0.1.14 pending a separate release."
 ---
 
 # Environment Surface Policy

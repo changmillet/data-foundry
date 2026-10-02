@@ -1,7 +1,7 @@
 ---
-lastReviewedAt: 2026-10-01
-lastReviewedCommit: 6ab9993afb3587fefcc8d66a1461a4b5b39ab36a
-lastReviewedNote: "Reviewed Foundry #215 adoption of verified public CLI 0.1.23: exact dependency/source/bootstrap facts advance while task permissions, OAuth ownership, scientific profiles and immutable publication boundaries remain unchanged; Foundry package version stays 0.1.13 pending a separate release."
+lastReviewedAt: 2026-10-02
+lastReviewedCommit: 56307ddc74565f85cf2e1315231d4f841a800f9b
+lastReviewedNote: "Reviewed Foundry #222 adoption of verified public CLI 0.1.24 source 89c71772: runtime/dependency pins advance with CLI-only lock change; scientific profiles, task permission and no-replay boundaries stay fixed. Foundry source version stays 0.1.14 pending a separate release."
 title: worldsteel Import Constraints
 docType: constraints
 scope: import-profile
