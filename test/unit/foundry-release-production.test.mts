@@ -8,7 +8,7 @@ import { projectFoundryProductionLock } from "../../scripts/lib/foundry-release-
 
 const root = path.resolve(import.meta.dirname, "../..");
 const lockBytes = fs.readFileSync(path.join(root, "pnpm-lock.yaml"));
-const direct = { "@tiangong-lca/cli": "0.1.23" };
+const direct = { "@tiangong-lca/cli": "0.1.24" };
 interface Fixture {
   importers: Record<
     string,
@@ -28,12 +28,12 @@ test("the actual frozen lock yields the full sixteen-package C1 production closu
   assert.equal(result.schema, "tiangong-foundry.production-lock.v1");
   assert.equal(result.source.sha256, createHash("sha256").update(lockBytes).digest("hex"));
   assert.equal(result.packages.length, 16);
-  const cli = result.packages.find((item) => item.id === "@tiangong-lca/cli@0.1.23");
+  const cli = result.packages.find((item) => item.id === "@tiangong-lca/cli@0.1.24");
   assert(cli);
   assert.equal(cli.dependencies["@tiangong-lca/tidas-sdk"], "@tiangong-lca/tidas-sdk@0.4.1");
   assert.equal(
     Buffer.from(cli.integrity.slice(7), "base64").toString("hex"),
-    "61108b6726d609237e7c462a425d7ae6ea99b319f9c87e0434580cd2b510763b55a3c517a9e01b2ef640aee5ac6ee180b66645b01f4a4e56454eb8f9f72668a9",
+    "134ba458a61ed0f42df96ab7b65030f39e7c0ec4ba205272c8b0468e6bde4e41a873363361f242a99f6a7ad542adec99348db6637e9bbc682acec4e7448ae29c",
   );
   assert(
     result.packages.every((item) => item.download_url.startsWith("https://registry.npmjs.org/")),
@@ -73,7 +73,7 @@ test("root dependency drift and missing transitive snapshots cannot produce a lo
     () =>
       projectFoundryProductionLock(
         changed((value) => {
-          value.importers["."].dependencies["@tiangong-lca/cli"].specifier = "^0.1.23";
+          value.importers["."].dependencies["@tiangong-lca/cli"].specifier = "^0.1.24";
         }),
         direct,
       ),
@@ -84,14 +84,14 @@ test("root dependency drift and missing transitive snapshots cannot produce a lo
 test("non-registry resolutions, unbound package bytes and unsupported dependency locators fail", () => {
   for (const mutate of [
     (value: Fixture) => {
-      value.packages["@tiangong-lca/cli@0.1.23"].resolution.integrity = "sha512-bad";
+      value.packages["@tiangong-lca/cli@0.1.24"].resolution.integrity = "sha512-bad";
     },
     (value: Fixture) => {
-      value.packages["@tiangong-lca/cli@0.1.23"].resolution.tarball =
+      value.packages["@tiangong-lca/cli@0.1.24"].resolution.tarball =
         "https://elsewhere.invalid/cli.tgz";
     },
     (value: Fixture) => {
-      value.snapshots["@tiangong-lca/cli@0.1.23"].dependencies = { unsafe: "file:../outside" };
+      value.snapshots["@tiangong-lca/cli@0.1.24"].dependencies = { unsafe: "file:../outside" };
     },
   ])
     assert.throws(

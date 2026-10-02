@@ -1,7 +1,7 @@
 {
   "$schema": "../specs/schemas/file-location-registry.schema.json",
   "schema_version": 1,
-  "updated_at_utc": "2026-10-01T11:19:52Z",
+  "updated_at_utc": "2026-10-02T15:58:00Z",
   "policy_doc": "docs/file-organization.md",
   "entries": [
     {
@@ -776,6 +776,6 @@
       "notes": "Parses explicit public reference input and records immutable indexed control snapshots."
     }
   ],
-  "lastReviewedCommit": "6ab9993afb3587fefcc8d66a1461a4b5b39ab36a",
-  "lastReviewedNote": "Reviewed Foundry #215 CLI 0.1.23 adoption: ledger locations, lifecycle evidence and task authorization remain unchanged."
+  "lastReviewedCommit": "56307ddc74565f85cf2e1315231d4f841a800f9b",
+  "lastReviewedNote": "Reviewed Foundry #222 CLI 0.1.24 adoption: ledger paths, task authorization and runtime data locations remain unchanged."
 }

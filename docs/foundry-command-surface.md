@@ -92,9 +92,9 @@ checkPaths:
   - test/unit/identity-preflight-run-command-factory.test.mts
   - test/unit/post-authoring-finalize-command-factory.test.mts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: e8e94788701dd52fc192724f6854bc5893753192
-lastReviewedNote: "Reviewed for Foundry #171: the manual closeout test now supplies the same canonical path projection as the real owner. Windows execution and successor CI already pass; successful completion and invalid receipt refusal assertions remain intact."
+lastReviewedAt: 2026-10-02
+lastReviewedCommit: 56307ddc74565f85cf2e1315231d4f841a800f9b
+lastReviewedNote: "Reviewed Foundry #222 adoption of verified public CLI 0.1.24 source 89c71772: runtime/dependency pins advance with CLI-only lock change; scientific profiles, task permission and no-replay boundaries stay fixed. Foundry source version stays 0.1.14 pending a separate release."
 ---
 
 # Foundry Command Surface
