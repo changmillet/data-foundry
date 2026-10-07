@@ -1,5 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
+import {
+  readPreparationCliEvidence,
+  preparationValidationActions,
+  preparationValidationEvidence,
+} from "../foundry-preparation-cli-validation.ts";
 import * as curationGateWorkflow from "./internal/curation-gate-workflow.ts";
 
 const {
@@ -107,6 +112,7 @@ interface CurationGateArgs {
   options?: CurationGateOptions;
   routeAction?: (action: JsonRecord, datasetType: string, payload: unknown) => JsonRecord;
   requireIdentityPreflight?: boolean;
+  cliValidation?: { report: string; exit: number };
 }
 
 function asJsonRecord(value: unknown): JsonRecord {
@@ -122,6 +128,7 @@ export function runDatasetCurationGate({
   options = {},
   routeAction,
   requireIdentityPreflight = false,
+  cliValidation,
 }: CurationGateArgs = {}): JsonRecord {
   const datasetType = datasetTypeFromOptions(options);
   if (options.help) {
@@ -171,6 +178,11 @@ export function runDatasetCurationGate({
   }
 
   const rows = readRows(rowsFile);
+  const cliEvidence = cliValidation
+    ? readPreparationCliEvidence(cliValidation, rows, rowsFile)
+    : null;
+  const cliValidationRows = cliEvidence?.rows;
+  const cliValidationReportSha256 = cliEvidence?.sha256;
   const schemaReport = readJson<JsonRecord>(schemaReportPath);
   const qaReport = readJson<JsonRecord>(qaReportPath);
   const qaFindings = readQaFindings(root, qaReport, qaReportPath, datasetType);
@@ -379,6 +391,12 @@ export function runDatasetCurationGate({
     const locationQueueActionItems = unresolvedLocationAuthoringRows.map(locationQueueActionItem);
     const actionItems = [
       ...schemaActionItems.filter((item) => item.ai_required),
+      ...(cliValidationRows
+        ? preparationValidationActions(cliValidationRows[index], {
+            report_file: cliValidation!.report,
+            report_sha256: cliValidationReportSha256,
+          })
+        : []),
       ...qaActionItems,
       ...identityPreflightActionItems,
       ...classificationQueueActionItems,
@@ -498,6 +516,15 @@ export function runDatasetCurationGate({
           },
       missing_context_files: [...profileContext.missing, ...contractContext.missing],
       schema_issues: schemaIssues,
+      ...(cliValidationRows
+        ? {
+            cli_validation: preparationValidationEvidence(
+              cliValidationRows[index],
+              cliValidation!.report,
+              cliValidationReportSha256,
+            ),
+          }
+        : {}),
       qa_findings: entityQaFindings,
       waived_findings: waivedFindings.map((finding) => ({
         ...finding,
@@ -646,9 +673,21 @@ export function runDatasetCurationGate({
     dataset_type: datasetType,
     rows_file: repoRelativePath(root, rowsFile),
     schema_report: repoRelativePath(root, schemaReportPath),
+    ...(cliValidation
+      ? {
+          cli_validation_report: repoRelativePath(root, cliValidation.report),
+          cli_validation_report_sha256: cliValidationReportSha256,
+        }
+      : {}),
     qa_report: repoRelativePath(root, qaReportPath),
     policy: {
       cli_qa_role: "deterministic_qa_report_only",
+      ...(cliValidation
+        ? {
+            cli_validation_role:
+              "Current local save-equivalent schema, authoring, content, multilingual and allocation/reference profile evidence; final authenticated reference eligibility remains separate.",
+          }
+        : {}),
       foundry_role:
         "profile policy, AI authoring package, deterministic cleanup, waiver, final prewrite decision",
       waived_qa_codes: [...waivedQaCodes],

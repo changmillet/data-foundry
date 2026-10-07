@@ -367,6 +367,21 @@ export function currentWorkflowState(
               set.curation_report,
               set.authoring_manifest,
             ];
+            if (row.type === "process") {
+              if (
+                typeof set.cli_validation_report !== "string" ||
+                typeof set.cli_validation_exit !== "number" ||
+                ![0, 1].includes(set.cli_validation_exit)
+              )
+                return false;
+              const validationFile = resolveFoundryOutput(context, set.cli_validation_report);
+              if (captureFoundryInput(validationFile).sha256 !== set.cli_validation_report_sha256)
+                throw new FoundryContextError(
+                  "workflow_assessment_invalid",
+                  "CLI validation evidence has changed.",
+                );
+              files.push(set.cli_validation_report);
+            }
             if (set.interaction_context !== undefined) files.push(set.interaction_context);
             if (files.some((file) => !registeredAssessmentFile(context, entries, file)))
               throw new FoundryContextError(

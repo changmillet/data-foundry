@@ -24,6 +24,8 @@ import {
 } from "./foundry-native-validation-failure.ts";
 import { runDatasetCurationGate } from "./import-curation/curation-gate.ts";
 import { runDatasetAuthoringTaskBuild } from "./import-curation/authoring-packages.ts";
+import { readRows } from "./import-curation/internal/runtime-io.ts";
+import { parseFoundryPreparationCliReport } from "./foundry-preparation-cli-validation.ts";
 import { routeFoundryDecisionAction } from "./foundry-decision-routing.ts";
 import { prepareFoundryDecisionWork } from "./foundry-workflow-decisions.ts";
 import {
@@ -542,15 +544,16 @@ export function assessFoundryWorkflowRows(
           const qaDir = path.join(output, set.type, "qa");
           let qaReport: string;
           if (["flow", "process", "lifecyclemodel"].includes(set.type)) {
-            const qa = runWorkflowLocalCli(context, qualified, temporary, [
-              "qa",
-              set.type,
-              "--rows-file",
-              set.file,
-              "--out-dir",
-              qaDir,
-              "--json",
-            ]);
+            const qaArgv = ["qa", set.type, "--rows-file", set.file, "--out-dir", qaDir, "--json"];
+            if (set.type === "process") {
+              for (const referenceSet of selectedSets) {
+                if (["flow", "flowproperty", "unitgroup"].includes(String(referenceSet.type))) {
+                  readFoundryInput(context, String(referenceSet.file));
+                  qaArgv.push("--reference-rows-file", String(referenceSet.file));
+                }
+              }
+            }
+            const qa = runWorkflowLocalCli(context, qualified, temporary, qaArgv);
             const file = record(qa.files).report;
             if (typeof file !== "string")
               throw new FoundryContextError("workflow_qa_failed", "QA returned no report file.");
@@ -563,6 +566,38 @@ export function assessFoundryWorkflowRows(
             });
           }
           const gateDir = path.join(output, set.type, "curation");
+          let cliValidation: { report: string; exit: number } | undefined;
+          if (set.type === "process") {
+            const validationDir = path.join(output, set.type, "cli-validation");
+            const validation = runWorkflowLocalCliResult(context, qualified, temporary, [
+              "dataset",
+              "validate",
+              "--input",
+              set.file,
+              "--type",
+              "process",
+              "--out-dir",
+              validationDir,
+              "--json",
+            ]);
+            parseFoundryPreparationCliReport({
+              report: validation.report,
+              input: set.file,
+              outDir: validationDir,
+              rows: readRows(set.file),
+              exit: validation.exit,
+            });
+            const reportFile = path.join(validationDir, "outputs", "validation-report.json");
+            if (
+              JSON.stringify(JSON.parse(fs.readFileSync(reportFile, "utf8"))) !==
+              JSON.stringify(validation.report)
+            )
+              throw new FoundryContextError(
+                "workflow_validation_invalid",
+                "CLI validation file differs from its returned report.",
+              );
+            cliValidation = { report: reportFile, exit: validation.exit };
+          }
           const rewrite = identityRewriteReports.findLast(
             (report) => report.dataset_type === set.type,
           );
@@ -570,6 +605,7 @@ export function assessFoundryWorkflowRows(
             repoRoot: context.assetRoot,
             routeAction: routeFoundryDecisionAction,
             requireIdentityPreflight: Boolean(identity),
+            cliValidation,
             options: {
               type: set.type,
               rowsFile: set.file,
@@ -632,6 +668,13 @@ export function assessFoundryWorkflowRows(
             type: set.type,
             rows: set.file,
             schema_report: schema.report_file,
+            ...(cliValidation
+              ? {
+                  cli_validation_report: cliValidation.report,
+                  cli_validation_report_sha256: captureFoundryInput(cliValidation.report).sha256,
+                  cli_validation_exit: cliValidation.exit,
+                }
+              : {}),
             qa_report: qaReport,
             curation_report: gateReport,
             curation_status: gate.status,

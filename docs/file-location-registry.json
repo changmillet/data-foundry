@@ -1,7 +1,7 @@
 {
   "$schema": "../specs/schemas/file-location-registry.schema.json",
   "schema_version": 1,
-  "updated_at_utc": "2026-10-02T15:58:00Z",
+  "updated_at_utc": "2026-10-07T14:26:42Z",
   "policy_doc": "docs/file-organization.md",
   "entries": [
     {
@@ -777,5 +777,5 @@
     }
   ],
   "lastReviewedCommit": "0ab6b54513acccfe3253ea583b4f6b2e678c0485",
-  "lastReviewedNote": "Reviewed Foundry #230 CLI 0.1.26 adoption: ledger paths, task authorization and runtime data locations remain unchanged. Consumer qualification uses task-local selected input/report bytes and existing artifact paths."
+  "lastReviewedNote": "Reviewed Foundry #230 CLI 0.1.27 adoption: ledger paths, task authorization and runtime data locations remain unchanged. Consumer qualification uses task-local selected input/report bytes and existing artifact paths."
 }

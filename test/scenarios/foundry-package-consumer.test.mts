@@ -354,12 +354,43 @@ test("packed Foundry installs twice and runs only the public facade from a read-
     resolveInstalledTiangongLcaCliPackage: () => { packageVersion: string; binPath: string };
   };
   const installedCli = installedResolver.resolveInstalledTiangongLcaCliPackage();
-  assert.equal(installedCli.packageVersion, "0.1.26");
+  assert.equal(installedCli.packageVersion, "0.1.27");
   assert.ok(fs.statSync(installedCli.binPath).isFile());
   timing.checkpoint("managed-cache");
   await verifyManagedPackageCache(firstPackage, root);
   timing.checkpoint("managed-host");
-  await verifyManagedPackageHost(firstPackage, root);
+  await verifyManagedPackageHost(
+    firstPackage,
+    root,
+    process.env.FOUNDRY_QUALIFICATION_PUBLIC_TIDAS_BIN,
+  );
+  if (process.env.FOUNDRY_QUALIFICATION_RECEIPT) {
+    fs.writeFileSync(
+      process.env.FOUNDRY_QUALIFICATION_RECEIPT,
+      JSON.stringify(
+        {
+          schema: "tiangong-foundry.installed-process-preparation-qualification.v1",
+          cli_version: installedCli.packageVersion,
+          native_kind: process.env.FOUNDRY_QUALIFICATION_PUBLIC_TIDAS_BIN
+            ? "verified-public-executable"
+            : "explicit-transport-fixture",
+          native_sha256: process.env.FOUNDRY_QUALIFICATION_PUBLIC_TIDAS_BIN
+            ? createHash("sha256")
+                .update(fs.readFileSync(process.env.FOUNDRY_QUALIFICATION_PUBLIC_TIDAS_BIN))
+                .digest("hex")
+            : null,
+          cases: JSON.parse(
+            fs.readFileSync(
+              path.join(root, "managed-process-case", "managed-process-preparation-receipt.json"),
+              "utf8",
+            ),
+          ),
+        },
+        null,
+        2,
+      ),
+    );
+  }
   timing.checkpoint("api-import");
   const consumerModule = path.join(firstProject, "consumer.mjs");
   const apiWorkspace = path.join(root, "api workspace");
@@ -409,7 +440,7 @@ test("packed Foundry installs twice and runs only the public facade from a read-
     "parseFoundryTaskStartSpec",
     "runFoundryPublicCommand",
   ]);
-  assert.deepEqual(importedResult.cli, { name: "@tiangong-lca/cli", version: "0.1.26" });
+  assert.deepEqual(importedResult.cli, { name: "@tiangong-lca/cli", version: "0.1.27" });
   assert.equal(importedResult.doctor, "ready");
 
   timing.checkpoint("declarations");

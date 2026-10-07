@@ -1,8 +1,8 @@
 {
   "$schema": "schemas/capability-ownership-rules.schema.json",
   "schema_version": 1,
-  "updated_at_utc": "2026-07-27T00:00:00Z",
-  "principle": "Foundry owns routing, task state, manifests, report compatibility, and policy checks. Reusable deterministic import, conversion, and validation logic belongs to unified Rust tidas; reusable AI context, QA, curation, remote, skill, database, and API behavior remains with its owning project.",
+  "updated_at_utc": "2026-10-07T13:54:40Z",
+  "principle": "Foundry owns routing, task state, manifests, report compatibility, and policy checks. Reusable deterministic import, conversion and native conformance validation belong to Rust tidas; Process preparation consumes the published owning CLI validation layers and allocation/reference evidence. Foundry does not reimplement either validator. Reusable AI context, QA, curation, remote, skill, database and API behavior remain with their owning projects.",
   "owners": [
     {
       "owner_project": "tiangong-lca-data-foundry",

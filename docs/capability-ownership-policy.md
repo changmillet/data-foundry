@@ -94,8 +94,8 @@ checkPaths:
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
 lastReviewedAt: 2026-10-07
-lastReviewedCommit: c2f9cd316b07190e1755a677139d3b737ce927cf
-lastReviewedNote: "Reviewed Foundry #233 coherent version-only 0.1.16 projection from merged PR #232. CLI 0.1.26, SDK 0.5.1, runtime inputs, lock closure and authorization remain unchanged; actual publication and final manifest qualification remain separate."
+lastReviewedCommit: caa95a4808eda51dc5c7c78f3c39e4e079bdb802
+lastReviewedNote: "Reviewed Foundry #223 preparation consuming complete owning CLI 0.1.27 validation, exact candidate/Flow bindings and published Toolkit 0.3.4 applicable coverage; authorization and no-replay boundaries remain unchanged. Foundry source version stays 0.1.16 pending a separate release."
 ---
 
 # Capability Ownership Policy

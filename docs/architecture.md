@@ -153,8 +153,8 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - docs/incremental-change-set-contract.md
 lastReviewedAt: 2026-10-07
-lastReviewedCommit: c2f9cd316b07190e1755a677139d3b737ce927cf
-lastReviewedNote: "Reviewed Foundry #233 coherent version-only 0.1.16 projection from merged PR #232. CLI 0.1.26, SDK 0.5.1, runtime inputs, lock closure and authorization remain unchanged; actual publication and final manifest qualification remain separate."
+lastReviewedCommit: caa95a4808eda51dc5c7c78f3c39e4e079bdb802
+lastReviewedNote: "Reviewed Foundry #223 preparation consuming complete owning CLI 0.1.27 validation, exact candidate/Flow bindings and published Toolkit 0.3.4 applicable coverage; authorization and no-replay boundaries remain unchanged. Foundry source version stays 0.1.16 pending a separate release."
 ---
 
 # Architecture
@@ -181,7 +181,7 @@ The public task facade delegates sealed owner execution to `foundry-workflow-exe
 
 ## OAuth identity boundary
 
-Foundry selects a private session reference and exact project/user intent, then calls the published CLI for a fresh server-verified identity receipt. It validates TTL, canonical hash, expected identity and current OAuth session metadata without owning login, password decoding, token exchange or refresh. Candidate Golden execution uses an isolated Git-visible source snapshot so ignored operator state cannot change qualification. Support-cache transport is owned by the public CLI export. Foundry validates the fresh identity, project, public-state scope, completion marker, artifact paths and hashes, then summarizes rows and atomically replaces only the requested local cache. The CLI runs in a private temporary cwd with an allowlisted OAuth environment; the operator checkout .env and unrelated secrets cannot enter that child. Exact public CLI 0.1.26 and reviewed TIDAS 0.2.x/0.3.x expectations are independently selected and re-observed through the W04 qualification boundary. F1 component provenance and package qualification remain W06/W08 gates.
+Foundry selects a private session reference and exact project/user intent, then calls the published CLI for a fresh server-verified identity receipt. It validates TTL, canonical hash, expected identity and current OAuth session metadata without owning login, password decoding, token exchange or refresh. Candidate Golden execution uses an isolated Git-visible source snapshot so ignored operator state cannot change qualification. Support-cache transport is owned by the public CLI export. Foundry validates the fresh identity, project, public-state scope, completion marker, artifact paths and hashes, then summarizes rows and atomically replaces only the requested local cache. The CLI runs in a private temporary cwd with an allowlisted OAuth environment; the operator checkout .env and unrelated secrets cannot enter that child. Exact public CLI 0.1.27 and reviewed TIDAS 0.2.x/0.3.x expectations are independently selected and re-observed through the W04 qualification boundary. F1 component provenance and package qualification remain W06/W08 gates.
 
 ## Qualified execution boundary
 
@@ -194,6 +194,8 @@ Foundry selects a private session reference and exact project/user intent, then 
 `foundry-facade.ts` is the public orchestration boundary. `foundry-operation-result.ts` owns the strict single-result envelope and exits; `foundry-task-start-spec.ts` owns bounded user intent; `foundry-facade-store.ts` owns deterministic request/revision indexes and task pointers; `foundry-migration-inventory.ts` owns the read-only W10 input plan. The facade calls `createFoundryRuntime` for task creation, inspection, deterministic cleanup, qualified native conversion and CLI contract-context preparation. Each local stage uses the existing task transaction. It does not instantiate the legacy command graph for public requests.
 
 `foundry-workflow-decisions.ts` prepares classification/location work through the reusable factories in `lib/decision-owners/`; the original flat command modules remain thin adapters. `foundry-decision-owners.ts` composes these factories with installed CLI schemas, canonical row helpers and isolated local CLI execution. Semantic submission dispatches the selected owner against its exact current task context, publishes successful rows and requires reassessment before another owner consumes them.
+
+`foundry-preparation-cli-validation.ts` verifies the public CLI report transport and exact candidate/dependency bindings, then projects owner findings into existing authoring actions. `tidas-process-flow-context.ts` preserves explicit local Flow context in native batches and rejects identity/content conflicts. These adapters do not implement scientific validators; native TIDAS and the owning CLI retain their profiles.
 
 `foundry-workflow-identity.ts` performs fresh account verification and read-only CLI preflight before locally registering captured evidence. `foundry-identity-owners.ts` composes the existing query/request/runner owners with explicit executable/environment facts; `bundle-source-context.ts` shares unchanged source-trace and name extraction. `foundry-authentication-environment.ts` supplies the narrow authentication environment used by verification and preflight. A current preflight report invalidates the earlier assessment so manual-review findings become identity tasks.
 
@@ -346,7 +348,7 @@ Build and test resolution must be worktree-local. A clean arbitrary Git worktree
 
 Cross-platform characterization is also explicit: the Golden harness compares normalized outputs to a non-`HEAD` merge-base, performs recursive comparison in Node rather than calling an external Unix utility, and uses full Git history in CI. Script-backed executable overrides are represented as an executable plus argv prefix and run through Node on macOS, Linux, and Windows. The root `.gitattributes` fixes text files to LF while allowing Windows launcher exceptions, preventing checkout policy from masquerading as format drift.
 
-The first credential-bearing entrypoint on that spine is `scripts/with-lca-account.ts`. It does not authenticate against Supabase itself. It resolves the exact installed CLI 0.1.26, requests `auth identity-receipt` with both expected project and user assertions, accepts only a fresh intent-bound forced signin, and then launches the requested executable plus argv with `shell:false` and a restricted environment. The CLI owns session and live identity behavior; Foundry owns the profile/thread intent checks and safe process boundary.
+The first credential-bearing entrypoint on that spine is `scripts/with-lca-account.ts`. It does not authenticate against Supabase itself. It resolves the exact installed CLI 0.1.27, requests `auth identity-receipt` with both expected project and user assertions, accepts only a fresh intent-bound forced signin, and then launches the requested executable plus argv with `shell:false` and a restricted environment. The CLI owns session and live identity behavior; Foundry owns the profile/thread intent checks and safe process boundary.
 
 `scripts/lib/identity-preflight-proof.ts` imports the strict parser from the public `@tiangong-lca/cli/auth-identity-receipt` subpath. `test/fixtures/auth-identity-receipt.ts` is the sole test-only wire-fixture owner and produces bytes that must pass that public parser. No production module or fixture may load CLI `dist/src/**`; the installed-package contract also exercises public batch scheduling/run-lock behavior and proves the private path remains closed.
 

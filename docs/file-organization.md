@@ -15,9 +15,9 @@ checkPaths:
   - docs/file-organization.md
   - docs/file-location-registry.json
   - test/unit/zero-javascript-ratchet.test.mts
-lastReviewedAt: 2026-08-26
-lastReviewedCommit: af5573acf9d8731fc5d7445433f3f3caf633fa8e
-lastReviewedNote: "Reviewed for Issue #67 final cutover: native TypeScript configuration and the permanent zero-JavaScript ratchet replace the completed migration inventory without a compatibility ledger."
+lastReviewedAt: 2026-10-07
+lastReviewedCommit: caa95a4808eda51dc5c7c78f3c39e4e079bdb802
+lastReviewedNote: "Reviewed Foundry #223 preparation consuming complete owning CLI 0.1.27 validation, exact candidate/Flow bindings and published Toolkit 0.3.4 applicable coverage; authorization and no-replay boundaries remain unchanged. Foundry source version stays 0.1.16 pending a separate release."
 ---
 
 # Repository File Organization

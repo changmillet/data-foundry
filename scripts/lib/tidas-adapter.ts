@@ -5,6 +5,10 @@ import type { BinaryLike } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import {
+  assertTidasProcessCoverage,
+  augmentTidasProcessFlowContext,
+} from "./tidas-process-flow-context.ts";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -548,6 +552,11 @@ export function runTidasRowsValidation({
   if (!options.rowsFile && !options.input) throw new Error("--rows-file is required.");
   if (!options.outDir) throw new Error("--out-dir is required.");
   const rows = readRows(rowsFile);
+  const { documents, supplementalOwners } = augmentTidasProcessFlowContext(
+    rows,
+    payloadForRow,
+    identityForPayload,
+  );
   fs.mkdirSync(path.dirname(outDir), { recursive: true });
   const staging = path.join(path.dirname(outDir), `.tidas-validate-stage-${randomUUID()}`);
   // Keep staging beside the output for atomic rename; Windows mkdtemp rejects deep prefixes.
@@ -565,7 +574,7 @@ export function runTidasRowsValidation({
         dataset_version: string | null;
       };
     }> = [];
-    for (const [ordinal, row] of rows.entries()) {
+    for (const [ordinal, row] of documents.entries()) {
       const payload = payloadForRow(row);
       const { rootKey, category, informationKey } = documentCategory(payload);
       const identity = identityForPayload(payload, rootKey, informationKey);
@@ -614,6 +623,8 @@ export function runTidasRowsValidation({
     ) {
       throw new Error("tidas_validation_batch_final_invalid");
     }
+    if (record(finalEvent.summary)?.document_count !== documents.length)
+      throw new Error("tidas_validation_document_count_invalid");
     const finalFingerprints = record(finalEvent.fingerprints);
     if (finalFingerprints?.asset_fingerprint !== operation.validation_describe.asset_fingerprint) {
       throw new Error("tidas_validation_asset_fingerprint_mismatch");
@@ -627,35 +638,57 @@ export function runTidasRowsValidation({
     for (const event of events) {
       if (event.type !== "issue") continue;
       const ordinal = Number(event.document_ordinal);
-      if (!Number.isSafeInteger(ordinal) || ordinal < 0 || ordinal >= rows.length)
+      if (!Number.isSafeInteger(ordinal) || ordinal < 0 || ordinal >= documents.length)
         throw new Error("tidas_validation_issue_ordinal_invalid");
-      if (!issuesByOrdinal.has(ordinal)) issuesByOrdinal.set(ordinal, []);
+      const owners = supplementalOwners.get(ordinal) ?? new Map([[ordinal, ""]]);
       const nativeIssue = record(event.issue);
       if (!nativeIssue) throw new Error("tidas_validation_issue_invalid");
       const location = typeof nativeIssue.location === "string" ? nativeIssue.location : null;
-      const payload = payloadForRow(rows[ordinal]);
+      const payload = payloadForRow(documents[ordinal]);
       const wrapper =
-        payload === rows[ordinal]
+        payload === documents[ordinal]
           ? null
-          : Object.entries(rows[ordinal]).find(([, value]) => value === payload)?.[0];
+          : Object.entries(documents[ordinal]).find(([, value]) => value === payload)?.[0];
       const pointer =
         location === null
           ? null
           : location === "" || location.startsWith("/")
             ? location
             : `/${location}`;
-      issuesByOrdinal.get(ordinal)!.push({
-        ...nativeIssue,
-        code: nativeIssue.code ?? nativeIssue.issue_code,
-        path:
-          nativeIssue.path ??
-          (pointer === null ? null : `${wrapper ? `/${wrapper}` : ""}${pointer}`),
-      });
+      for (const [owner, contextPointer] of owners) {
+        if (!issuesByOrdinal.has(owner)) issuesByOrdinal.set(owner, []);
+        issuesByOrdinal.get(owner)!.push({
+          ...nativeIssue,
+          code: nativeIssue.code ?? nativeIssue.issue_code,
+          path:
+            nativeIssue.path ??
+            (pointer === null
+              ? null
+              : `${contextPointer}${wrapper ? `/${wrapper}` : ""}${pointer}`),
+          ...(supplementalOwners.has(ordinal)
+            ? { supplemental_document_key: event.document_key, supplemental_context: true }
+            : {}),
+        });
+      }
     }
     const invalidOrdinals = new Set(
       events
         .filter((event) => event.type === "issue" && record(event.issue)?.severity === "error")
-        .map((event) => Number(event.document_ordinal)),
+        .flatMap((event) => [
+          ...(supplementalOwners.get(Number(event.document_ordinal))?.keys() ?? [
+            Number(event.document_ordinal),
+          ]),
+        ]),
+    );
+    const processCount = rows.filter((row) => record(payloadForRow(row).processDataSet)).length;
+    const coverage = record(record(finalEvent.summary)?.semantic_coverage);
+    assertTidasProcessCoverage(
+      coverage,
+      operation.binary_version,
+      processCount,
+      rows.filter(
+        (row, index) => record(payloadForRow(row).processDataSet) && invalidOrdinals.has(index),
+      ).length,
     );
     const validRows = rows.filter((_, ordinal) => !invalidOrdinals.has(ordinal));
     const invalidRows = rows.filter((_, ordinal) => invalidOrdinals.has(ordinal));
@@ -671,7 +704,7 @@ export function runTidasRowsValidation({
       dataset_type: String(options.type ?? options.datasetType ?? "auto"),
       engine: "tidas",
       binary_version: operation.binary_version,
-      rows: manifest.map((entry, ordinal) => ({
+      rows: manifest.slice(0, rows.length).map((entry, ordinal) => ({
         index: ordinal,
         id: entry.identity.dataset_id,
         version: entry.identity.dataset_version,
@@ -693,6 +726,10 @@ export function runTidasRowsValidation({
         profile: finalEvent.profile,
         logical_issue_stream_sha256: finalEvent.logical_issue_stream_sha256,
         asset_fingerprint: finalFingerprints?.asset_fingerprint ?? null,
+        augmented_document_count: documents.length,
+        supplemental_document_count: documents.length - rows.length,
+        augmented_manifest_sha256: sha256(fs.readFileSync(manifestPath)),
+        semantic_coverage: record(finalEvent.summary)?.semantic_coverage ?? null,
         validation_describe_schema: TIDAS_VALIDATION_DESCRIBE_SCHEMA,
       },
       files: {
