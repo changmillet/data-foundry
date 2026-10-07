@@ -18,7 +18,7 @@
           "const": "@tiangong-lca/foundry"
         },
         "version": {
-          "const": "0.1.15"
+          "const": "0.1.16"
         },
         "cli_dependency": {
           "type": "object",

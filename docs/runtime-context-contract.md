@@ -41,8 +41,8 @@ checkPaths:
   - test/scenarios/foundry-execution-admission.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
 lastReviewedAt: 2026-10-07
-lastReviewedCommit: 10b718965bc5459ec84840dc1f2ce89d53620d2d
-lastReviewedNote: "Reviewed Foundry #231 compatible development HTTP cache leaf refresh and actual uncached signing transport qualification. Production closure, runtime ownership and authorization remain unchanged; generic upstream reuse behavior is not claimed fixed."
+lastReviewedCommit: c2f9cd316b07190e1755a677139d3b737ce927cf
+lastReviewedNote: "Reviewed Foundry #233 coherent version-only 0.1.16 projection from merged PR #232. CLI 0.1.26, SDK 0.5.1, runtime inputs, lock closure and authorization remain unchanged; actual publication and final manifest qualification remain separate."
 related:
   - docs/architecture.md
   - docs/task-authorization-contract.md
