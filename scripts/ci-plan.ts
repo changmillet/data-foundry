@@ -1,6 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
-import { loadFoundryTestPlan, selectFoundryCiMode } from "./lib/foundry-ci-plan.ts";
+import {
+  loadFoundryTestPlan,
+  selectFoundryCiMode,
+  foundryCiTestMatrix,
+} from "./lib/foundry-ci-plan.ts";
 import {
   inspectFoundryRelease,
   readFoundryReleaseGit,
@@ -52,7 +56,7 @@ function main(args: readonly string[]): void {
       throw new Error("CI outputs require the owning GitHub job.");
     fs.appendFileSync(
       output,
-      `mode=${mode}\nsource_sha=${source}\ntest_plan_sha256=${tests.planSha256}\nshards=${JSON.stringify(tests.shards.map((shard) => shard.index))}\ncapsule_name=${capsuleName}\nrun_id=${process.env.GITHUB_RUN_ID ?? ""}\nreuse_verified=${reuse.reused === true}\npackage_sha256=${String(reuse.package_sha256 ?? "")}\npackage_manifest_sha256=${String(reuse.package_manifest_sha256 ?? "")}\nsealable=${process.env.FOUNDRY_CI_CAN_SEAL === "true"}\n`,
+      `mode=${mode}\nsource_sha=${source}\ntest_plan_sha256=${tests.planSha256}\nshards=${JSON.stringify(tests.shards.map((shard) => shard.index))}\ntest_matrix=${JSON.stringify(foundryCiTestMatrix(tests))}\ncapsule_name=${capsuleName}\nrun_id=${process.env.GITHUB_RUN_ID ?? ""}\nreuse_verified=${reuse.reused === true}\npackage_sha256=${String(reuse.package_sha256 ?? "")}\npackage_manifest_sha256=${String(reuse.package_manifest_sha256 ?? "")}\nsealable=${process.env.FOUNDRY_CI_CAN_SEAL === "true"}\n`,
       "utf8",
     );
   }

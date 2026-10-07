@@ -39,6 +39,7 @@ jobs:
       source_sha: ${{ steps.plan.outputs.source_sha }}
       test_plan_sha256: ${{ steps.plan.outputs.test_plan_sha256 }}
       shards: ${{ steps.plan.outputs.shards }}
+      test_matrix: ${{ steps.plan.outputs.test_matrix }}
       capsule_name: ${{ steps.plan.outputs.capsule_name }}
       run_id: ${{ steps.plan.outputs.run_id }}
       reuse_verified: ${{ steps.plan.outputs.reuse_verified }}
@@ -111,22 +112,7 @@ jobs:
     strategy:
       fail-fast: false
       max-parallel: 16
-      matrix:
-        os:
-          - ubuntu-latest
-          - ubuntu-24.04-arm
-          - macos-latest
-          - windows-latest
-        shard: ${{ fromJSON(needs.plan.outputs.shards || '[1,2,3,4]') }}
-        include:
-          - os: ubuntu-latest
-            platform: linux-x64
-          - os: ubuntu-24.04-arm
-            platform: linux-arm64
-          - os: macos-latest
-            platform: darwin-arm64
-          - os: windows-latest
-            platform: win32-x64
+      matrix: ${{ fromJSON(needs.plan.outputs.test_matrix) }}
     steps:
       - uses: actions/checkout@v7
         with:

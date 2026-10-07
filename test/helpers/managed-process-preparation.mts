@@ -18,31 +18,51 @@ const rowsAt = (file: string): Json[] => {
   return Array.isArray(value) ? value : [value];
 };
 const hash = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
+export const managedPreparationCases = [
+  ["annual-invalid", "Input", "Product flow", "passed", "200000 kg"],
+  ["input-product", "Input", "Product flow", "passed", "200000 kg/year"],
+  ["output-product", "Output", "Product flow", "passed", "200000 kg/year"],
+  ["input-waste", "Input", "Waste flow", "passed", "200000 kg/year"],
+  ["output-waste", "Output", "Waste flow", "passed", "200000 kg/year"],
+  ["elementary", "Input", "Elementary flow", "failed", "200000 kg/year"],
+  ["unresolved", "Input", "Product flow", "unresolved", "200000 kg/year"],
+  ["wrong-version", "Input", "Product flow", "unresolved", "200000 kg/year"],
+  ["undeclared", "Input", "Product flow", "passed", "200000 kg/year"],
+  ["scalar-empty", "Input", "Product flow", "passed", "200000 kg/year"],
+  ["legacy-full", "Input", "Product flow", "passed", "200000 kg/year"],
+  ["legacy-percent", "Input", "Product flow", "passed", "200000 kg/year"],
+  ["legacy-output-share", "Input", "Product flow", "passed", "200000 kg/year"],
+  ["annual-unknown", "Input", "Product flow", "passed", null],
+] as const;
+export const managedPreparationGroups = {
+  annual: ["annual-invalid", "annual-unknown", "undeclared", "scalar-empty"],
+  targets: ["input-product", "output-product", "input-waste", "output-waste"],
+  unresolved: ["elementary", "unresolved", "wrong-version"],
+  legacy: ["legacy-full", "legacy-percent", "legacy-output-share"],
+} as const;
+
 /** Actual packaged Foundry operations over the managed host; no validator reconstruction. */
 export async function verifyManagedProcessPreparation(
   root: string,
   run: (argv: string[]) => Promise<FoundryOperationResult>,
+  names?: readonly string[],
 ) {
   const original = JSON.parse(
     fs.readFileSync(new URL("../fixtures/managed-allocation-input.json", import.meta.url), "utf8"),
   );
   const receipts: Json[] = [];
-  for (const [name, direction, flowType, expectedSemantic, annual] of [
-    ["annual-invalid", "Input", "Product flow", "passed", "200000 kg"],
-    ["input-product", "Input", "Product flow", "passed", "200000 kg/year"],
-    ["output-product", "Output", "Product flow", "passed", "200000 kg/year"],
-    ["input-waste", "Input", "Waste flow", "passed", "200000 kg/year"],
-    ["output-waste", "Output", "Waste flow", "passed", "200000 kg/year"],
-    ["elementary", "Input", "Elementary flow", "failed", "200000 kg/year"],
-    ["unresolved", "Input", "Product flow", "unresolved", "200000 kg/year"],
-    ["wrong-version", "Input", "Product flow", "unresolved", "200000 kg/year"],
-    ["undeclared", "Input", "Product flow", "passed", "200000 kg/year"],
-    ["scalar-empty", "Input", "Product flow", "passed", "200000 kg/year"],
-    ["legacy-full", "Input", "Product flow", "passed", "200000 kg/year"],
-    ["legacy-percent", "Input", "Product flow", "passed", "200000 kg/year"],
-    ["legacy-output-share", "Input", "Product flow", "passed", "200000 kg/year"],
-    ["annual-unknown", "Input", "Product flow", "passed", null],
-  ] as const) {
+  const selectedNames = new Set(names ?? managedPreparationCases.map(([name]) => name));
+  assert.equal(selectedNames.size, names?.length ?? managedPreparationCases.length);
+  assert.ok(
+    [...selectedNames].every((name) => managedPreparationCases.some(([id]) => id === name)),
+  );
+  for (const [
+    name,
+    direction,
+    flowType,
+    expectedSemantic,
+    annual,
+  ] of managedPreparationCases.filter(([name]) => selectedNames.has(name))) {
     const selected = structuredClone(original);
     const process = selected.payload.processDataSet;
     process.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume =

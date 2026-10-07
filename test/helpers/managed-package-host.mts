@@ -39,6 +39,7 @@ export async function verifyManagedPackageHost(
   installedPackage: string,
   parent: string,
   publicTidasBin?: string,
+  preparationCases?: readonly string[],
 ) {
   const root = path.join(parent, "managed-process-case");
   const input = path.join(root, "input");
@@ -260,6 +261,14 @@ export async function verifyManagedPackageHost(
     (doctor.runtime_identity as { qualification: { status: string } }).qualification.status,
     "ready",
   );
+  if (preparationCases) {
+    await verifyManagedProcessPreparation(
+      root,
+      (argv) => run("foundry", [...argv, "--workspace", workspace], undefined),
+      preparationCases,
+    );
+    return;
+  }
   const processEvidence = await verifyManagedAllocationConsumer(root, (argv) =>
     executeRuntimeLaunch(manifest, {
       ...manager,
@@ -370,9 +379,6 @@ export async function verifyManagedPackageHost(
   assert.equal(hash(fs.readFileSync(processRows.path)), processRows.sha256);
   assert.deepEqual(fs.readFileSync(processEvidence.input), processInputBytes);
   assert.deepEqual(fs.readFileSync(processEvidence.report), processReportBytes);
-  await verifyManagedProcessPreparation(root, (argv) =>
-    run("foundry", [...argv, "--workspace", workspace], undefined),
-  );
   const source = path.join(root, "action-source.json");
   fs.writeFileSync(source, JSON.stringify({ contactDataSet: {} }));
   const spec = path.join(root, "action-request.json");

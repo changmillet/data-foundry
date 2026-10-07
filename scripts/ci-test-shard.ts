@@ -2,14 +2,14 @@ import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { loadFoundryTestPlan } from "./lib/foundry-ci-plan.ts";
+import { loadFoundryTestPlan, foundryPlatformTestShards } from "./lib/foundry-ci-plan.ts";
 import { foundryCiReporterUrl } from "./ci-test-reporter.ts";
 import { readFoundryReleaseGit as git } from "./lib/foundry-release-contract.ts";
 import { readFoundryReleaseArtifact } from "./lib/foundry-release-prepared.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const usage =
-  "Usage: ci-test-shard --index <1-4> --plan-sha256 <sha256> --source-sha <commit> --output <new-absolute-directory>";
+  "Usage: ci-test-shard --index <1-8> --plan-sha256 <sha256> --source-sha <commit> --output <new-absolute-directory>";
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("Invalid test report record.");
@@ -28,7 +28,7 @@ async function main(args: readonly string[]): Promise<void> {
     expectedPlan = args[3],
     source = args[5];
   if (
-    !/^[1-4]$/u.test(args[1]) ||
+    !/^[1-8]$/u.test(args[1]) ||
     !/^[0-9a-f]{64}$/u.test(expectedPlan) ||
     !/^[0-9a-f]{40}$/u.test(source)
   )
@@ -44,7 +44,8 @@ async function main(args: readonly string[]): Promise<void> {
   const plan = loadFoundryTestPlan(root);
   if (plan.planSha256 !== expectedPlan)
     throw new Error("CI test plan does not match its independently selected digest.");
-  const shard = plan.shards.find((candidate) => candidate.index === index);
+  const platformShards = foundryPlatformTestShards(plan, `${process.platform}-${process.arch}`);
+  const shard = platformShards.find((candidate) => candidate.index === index);
   if (!shard?.files.length) throw new Error("CI test shard must not be empty.");
   if (!path.isAbsolute(args[7])) throw new Error(usage);
   const output = path.join(fs.realpathSync(path.dirname(args[7])), path.basename(args[7]));
@@ -129,7 +130,7 @@ async function main(args: readonly string[]): Promise<void> {
     platform: `${process.platform}-${process.arch}`,
     plan_sha256: expectedPlan,
     index,
-    total: plan.shards.length,
+    total: platformShards.length,
     files: shard.files,
     counts,
     test_events_sha256: eventsSha256,

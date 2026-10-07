@@ -31,7 +31,14 @@
     "test/scenarios/foundry-interaction-workflow.test.mts": 109,
     "test/scenarios/foundry-execution-admission.test.mts": 83,
     "test/scenarios/post-authoring-finalize-gates.test.mts": 67,
-    "test/unit/foundry-golden-diff-contract.test.mts": 57
+    "test/unit/foundry-golden-diff-contract.test.mts": 57,
+    "test/scenarios/foundry-preparation-annual.test.mts": 638,
+    "test/scenarios/foundry-preparation-targets.test.mts": 649,
+    "test/scenarios/foundry-preparation-unresolved.test.mts": 429,
+    "test/scenarios/foundry-package-preparation-annual.test.mts": 1050,
+    "test/scenarios/foundry-package-preparation-targets.test.mts": 800,
+    "test/scenarios/foundry-package-preparation-unresolved.test.mts": 600,
+    "test/scenarios/foundry-package-preparation-legacy.test.mts": 600
   },
   "additional_baselines": [
     {
@@ -56,10 +63,29 @@
       "platform": "win32-x64",
       "files": "foundry-repair-successor.test.mts",
       "basis": "Successful full Windows shard 1 measured 688.1 seconds. The 950-second planning weight allows for the 1.3-1.4x slowdown observed across comparable heavy files in run 36003098891; it is not a passing result for that cancelled shard."
+    },
+    {
+      "run": 37642994374,
+      "job": 112866525347,
+      "platform": "win32-x64",
+      "files": "foundry-preparation-{annual,targets,unresolved}.test.mts (ten unchanged cases split from formerly unprofiled file)",
+      "basis": "Exact successful per-case durations summed and rounded up. Original source shard timed out at40minutes; timings are not a passing shard qualification.",
+      "artifact_id": 11495716476,
+      "test_events_sha256": "fa36a3e55ec8923b7202908f8fa22e275a00b77bbef3f27a84e10de1e25be1a2"
     }
   ],
   "estimated_weights": {
     "test/scenarios/foundry-public-reference-qa.test.mts": "Estimated from local 6.78-second Process public selection/owner QA transport; replace after first hosted measurement.",
-    "test/scenarios/foundry-repair-successor.test.mts": "Conservative 950 seconds from successful 688.1-second Windows file summary and the later 1.3-1.4x heavy-file slowdown; replace after a passing current-head shard."
+    "test/scenarios/foundry-repair-successor.test.mts": "Conservative 950 seconds from successful 688.1-second Windows file summary and the later 1.3-1.4x heavy-file slowdown; replace after a passing current-head shard.",
+    "test/scenarios/foundry-package-preparation-annual.test.mts": "Conservative initial group estimate based on actual Windows per-case preparation costs in run37642994374; includes independent source-free install/managed setup. Replace after successful current-head hosted file timing. No passing receipt is inferred.",
+    "test/scenarios/foundry-package-preparation-targets.test.mts": "Conservative initial group estimate based on actual Windows per-case preparation costs in run37642994374; includes independent source-free install/managed setup. Replace after successful current-head hosted file timing. No passing receipt is inferred.",
+    "test/scenarios/foundry-package-preparation-unresolved.test.mts": "Conservative initial group estimate based on actual Windows per-case preparation costs in run37642994374; includes independent source-free install/managed setup. Replace after successful current-head hosted file timing. No passing receipt is inferred.",
+    "test/scenarios/foundry-package-preparation-legacy.test.mts": "Conservative initial group estimate based on actual Windows per-case preparation costs in run37642994374; includes independent source-free install/managed setup. Replace after successful current-head hosted file timing. No passing receipt is inferred."
+  },
+  "shards_by_platform": {
+    "linux-x64": 4,
+    "linux-arm64": 4,
+    "darwin-arm64": 4,
+    "win32-x64": 8
   }
 }

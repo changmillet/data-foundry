@@ -34,9 +34,9 @@ checkPaths:
   - scripts/public-api.ts
   - test/scenarios/foundry-package-consumer.test.mts
   - test/unit/foundry-runtime-environment.test.mts
-lastReviewedAt: 2026-10-07
-lastReviewedCommit: caa95a4808eda51dc5c7c78f3c39e4e079bdb802
-lastReviewedNote: "Reviewed Foundry #223 preparation consuming complete owning CLI 0.1.27 validation, exact candidate/Flow bindings and published Toolkit 0.3.4 applicable coverage; authorization and no-replay boundaries remain unchanged. Foundry source version stays 0.1.16 pending a separate release."
+lastReviewedAt: 2026-10-08
+lastReviewedCommit: 19e04525087228c8866d8232ce207dbe187782e9
+lastReviewedNote: "Reviewed Foundry #223 test-only preparation splits and full platform shard-map qualification; public runtime, package inputs, authorization and no-replay contracts remain unchanged."
 ---
 
 # Environment Surface Policy

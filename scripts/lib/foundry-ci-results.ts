@@ -1,4 +1,4 @@
-import type { FoundryTestPlan } from "./foundry-ci-plan.ts";
+import { foundryPlatformTestShards, type FoundryTestPlan } from "./foundry-ci-plan.ts";
 
 export const foundryCiPlatforms = [
   "linux-x64",
@@ -21,7 +21,11 @@ export function verifyFoundryTestShards(
 ) {
   if (
     !/^[0-9a-f]{40}$/u.test(source) ||
-    records.length !== foundryCiPlatforms.length * plan.shards.length
+    records.length !==
+      foundryCiPlatforms.reduce(
+        (n, platform) => n + foundryPlatformTestShards(plan, platform).length,
+        0,
+      )
   )
     throw new Error("Incomplete CI shard set.");
   const seen = new Set<string>();
@@ -34,13 +38,14 @@ export function verifyFoundryTestShards(
   for (const item of records) {
     const row = object(item);
     const platform = foundryCiPlatforms.find((value) => value === row.platform);
-    const shard = plan.shards.find((value) => value.index === row.index);
+    const selectedShards = platform ? foundryPlatformTestShards(plan, platform) : [];
+    const shard = selectedShards.find((value) => value.index === row.index);
     if (
       row.schema !== "tiangong-foundry.ci-test-shard.v1" ||
       row.status !== "passed" ||
       !platform ||
       !shard ||
-      row.total !== plan.shards.length ||
+      row.total !== selectedShards.length ||
       row.source !== source ||
       row.plan_sha256 !== plan.planSha256 ||
       !Array.isArray(row.errors) ||
