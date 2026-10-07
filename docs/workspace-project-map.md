@@ -89,9 +89,9 @@ checkPaths:
   - scripts/lib/import-curation/internal/mutation-manifest-workflow.ts
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-10-03
-lastReviewedCommit: 662bad77db397248478d55e07240842eb8438f78
-lastReviewedNote: "Reviewed Foundry #226 version-only 0.1.15 preparation from merged #222 source 662bad77 with verified CLI 0.1.24; only three canonical versions advance, dependency lock/runtime inputs and permission/no-replay boundaries remain unchanged. Publication and final public runtime qualification remain pending."
+lastReviewedAt: 2026-10-07
+lastReviewedCommit: 0ab6b54513acccfe3253ea583b4f6b2e678c0485
+lastReviewedNote: "Reviewed Foundry #230 verified CLI 0.1.26/SDK 0.5.1 adoption with exact source and production closure. Source remains 0.1.15; actor/task/runtime, scientific policy, authorization and no-replay boundaries remain unchanged. Public Foundry release and registered-task adoption remain separate requirements."
 ---
 
 # Workspace Project Map
@@ -130,7 +130,7 @@ The Wave 26 library, classification, authoring, process-scope and batch modules 
 | Generic ready-scope CommandSpec and bounded scheduling | `tiangong-lca-cli` for public contract, artifact checks, locked claims/pause/stop/no-retry; Foundry for LCA readiness, input-order reports and logs | scope CommandSpecs + full scope/spec/policy/CLI fingerprints → public CLI batch → Foundry checkpoints/blockers |
 | Same-id/version lost-success recovery | Foundry for strict structured-evidence eligibility and no-replay orchestration; `tiangong-lca-cli`, Edge Functions, and database for mutation outcome and readback truth | explicit `23505` plus exact conflict semantics → one commit dispatch → content-bound verify of owner/state/id/version/payload/root → closeout only on exact proof |
 | Remote commit, readback, and publish prep | `tiangong-lca-cli`, Edge Functions, database | `dataset-post-authoring-finalize` and source/contact support handoff artifacts, installed CLI commit commands, `pnpm exec tiangong-lca dataset verify-remote`, `publish run`, Edge verification; Foundry does not override foreign/RLS-hidden `missing_dataset` readback |
-| Credential-scoped identity proof and process guard | `tiangong-lca-cli` for live session/receipt; `tiangong-lca-data-foundry` for profile/thread intent and child isolation | `pnpm account:run -- <profile> -- <executable> [args...]` → installed CLI 0.1.24 `auth identity-receipt` |
+| Credential-scoped identity proof and process guard | `tiangong-lca-cli` for live session/receipt; `tiangong-lca-data-foundry` for profile/thread intent and child isolation | `pnpm account:run -- <profile> -- <executable> [args...]` → installed CLI 0.1.26 `auth identity-receipt` |
 | Foundry task routing and manifests | `tiangong-lca-data-foundry` | `scripts/foundry.ts route-task` |
 | Write/execution policy and blocked-scope ledgers/reports | `tiangong-lca-data-foundry` | `foundry-job.json`, library entity indexes, index-relative process-scope projections, deterministic transform evidence reconciliation, source-only-output exchange proof reconciliation, checkpoints, `blocked-scope-ledger.jsonl`, `blocked-scope-report.json`, mutation manifest aggregation, closeout reports |
 | Incremental release planning and conversion logs | `tiangong-lca-data-foundry` for offline composition; `tiangong-lca-cli` for execution/readback | `dataset-incremental-change-set-compose`, per-conversion JSONL, dependency closure, CLI candidate contract, then fresh reconciliation/capsule admission and published CLI execution |

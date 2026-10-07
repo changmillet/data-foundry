@@ -18,6 +18,7 @@ import {
 import { assertFoundryOperationResult } from "../../scripts/lib/foundry-operation-result.ts";
 import { createManagedComponentFixture } from "./managed-package-cache.mts";
 import { workspaceManifestFixture } from "./foundry-runtime-manifest.mts";
+import { verifyManagedAllocationConsumer } from "./managed-allocation-consumer.mts";
 
 const hash = (bytes: string | Buffer) => createHash("sha256").update(bytes).digest("hex");
 const managedSchema = "tiangong-foundry.managed-runtime.v1";
@@ -155,14 +156,28 @@ export async function verifyManagedPackageHost(installedPackage: string, parent:
         ...application.manifest.components,
         ...preparedNative.manifest.manifest.components,
       ],
-      launches: binding.launches.map((launch) => ({
-        id: launch.id,
-        platform: cli.platform,
-        executable: { component: nativeId, path: nodePath },
-        environment: "isolated",
-        context_protocol: RUNTIME_HOST_CONTEXT_PROTOCOL,
-        argv: [{ component: applicationId, path: entryPath }],
-      })),
+      launches: [
+        ...binding.launches.map((launch) => ({
+          id: launch.id,
+          platform: cli.platform,
+          executable: { component: nativeId, path: nodePath },
+          environment: "isolated" as const,
+          context_protocol: RUNTIME_HOST_CONTEXT_PROTOCOL,
+          argv: [{ component: applicationId, path: entryPath }],
+        })),
+        {
+          id: "allocation-validation",
+          platform: cli.platform,
+          executable: { component: nativeId, path: nodePath },
+          environment: "isolated" as const,
+          argv: [
+            {
+              component: applicationId,
+              path: "node_modules/@tiangong-lca/cli/bin/tiangong-lca.js",
+            },
+          ],
+        },
+      ],
     });
   const manifest = combined(preparedApplication.manifest);
   const cache = path.join(root, "components-cache");
@@ -203,6 +218,116 @@ export async function verifyManagedPackageHost(installedPackage: string, parent:
     (doctor.runtime_identity as { qualification: { status: string } }).qualification.status,
     "ready",
   );
+  const processEvidence = await verifyManagedAllocationConsumer(root, (argv) =>
+    executeRuntimeLaunch(manifest, {
+      ...manager,
+      entry: "allocation-validation",
+      cwd: root,
+      argv,
+      env: environment,
+      timeoutMs: 90_000,
+    }),
+  );
+  // CLI validation above is a direct verified-cache launch. The report is selected
+  // evidence below, not a Foundry semantic admission decision or remote authority.
+  const processSpec = path.join(root, "allocation-process-request.json");
+  fs.writeFileSync(
+    processSpec,
+    JSON.stringify({
+      schema: "tiangong-foundry.task-start.v1",
+      request_id: "managed-allocation-process",
+      actor_id: "allocation-actor",
+      lane: "source-evidence-dataset-development",
+      profile_id: "generic",
+      target_entities: ["process"],
+      sources: [{ path: processEvidence.input }, { path: processEvidence.report }],
+      seed: { path: processEvidence.input },
+      account_intent: null,
+      preparation: null,
+    }),
+  );
+  const processInputBytes = fs.readFileSync(processEvidence.input);
+  const processReportBytes = fs.readFileSync(processEvidence.report);
+  let processResult = await run(
+    "foundry",
+    ["task", "start", "--workspace", workspace, "--spec", processSpec, "--json"],
+    0,
+  );
+  const processTaskId = processResult.task_id;
+  const jobArtifact = processResult.artifacts.find(
+    (item) => item.kind === "file" && item.role === "foundry_job",
+  );
+  assert.ok(jobArtifact?.kind === "file");
+  const job = JSON.parse(fs.readFileSync(jobArtifact.path, "utf8"));
+  assert.equal(job.actor_id, "allocation-actor");
+  assert.equal(job.task_id, processTaskId);
+  const registeredRuntime = (
+    processResult.runtime_identity as {
+      foundry: {
+        package_name: string;
+        package_version: string;
+        package_manifest_sha256: string;
+        entry_sha256: string;
+      };
+    }
+  ).foundry;
+  assert.deepEqual(job.runtime_identity, {
+    package_name: registeredRuntime.package_name,
+    package_version: registeredRuntime.package_version,
+    manifest_sha256: registeredRuntime.package_manifest_sha256,
+    entry_sha256: registeredRuntime.entry_sha256,
+  });
+  assert.deepEqual(job.write_policy, { mode: "dry-run", remote_state_code: 0 });
+  const sourceBytes = fs.readFileSync(
+    path.join(path.dirname(jobArtifact.path), "source-manifest.json"),
+  );
+  assert.equal(hash(sourceBytes), job.source_manifest.sha256);
+  const selectedSources = JSON.parse(sourceBytes.toString()).source_paths as Array<{
+    path: string;
+    sha256: string;
+  }>;
+  for (const [file, bytes] of [
+    [processEvidence.input, processInputBytes],
+    [processEvidence.report, processReportBytes],
+  ] as const)
+    assert.equal(
+      selectedSources.find((item) => item.path === fs.realpathSync(file))?.sha256,
+      hash(bytes),
+    );
+  // Two returned IPC actions prepare the Process context and materialize its rows.
+  for (let stage = 0; stage < 2; stage++) {
+    const action = processResult.next_actions.find((item) => item.kind === "command");
+    assert.ok(action?.kind === "command");
+    const child = spawnSync(action.executable, [...action.argv], {
+      cwd: action.cwd,
+      env: environment,
+      shell: false,
+      encoding: "utf8",
+      timeout: 90_000,
+      maxBuffer: 8 * 1024 * 1024,
+    });
+    assert.equal(child.status, 0, child.stderr || child.stdout);
+    assert.equal(child.stderr, "");
+    processResult = assertFoundryOperationResult(JSON.parse(child.stdout));
+    assert.equal(processResult.task_id, processTaskId);
+    assert.equal(
+      (processResult.runtime_identity as { qualification: { status: string } }).qualification
+        .status,
+      "ready",
+    );
+  }
+  const processRows = processResult.artifacts.find(
+    (item) => item.kind === "file" && path.basename(item.path) === "process.rows.json",
+  );
+  assert.ok(processRows?.kind === "file");
+  const materialized = JSON.parse(fs.readFileSync(processRows.path, "utf8"));
+  const inputWrapper = JSON.parse(processInputBytes.toString());
+  assert.deepEqual(materialized, [
+    { semantic_context: inputWrapper.semantic_context, json: inputWrapper.json_ordered },
+  ]);
+  assert.equal(hash(fs.readFileSync(processRows.path)), processRows.sha256);
+  assert.deepEqual(fs.readFileSync(processEvidence.input), processInputBytes);
+  assert.deepEqual(fs.readFileSync(processEvidence.report), processReportBytes);
   const source = path.join(root, "action-source.json");
   fs.writeFileSync(source, JSON.stringify({ contactDataSet: {} }));
   const spec = path.join(root, "action-request.json");
