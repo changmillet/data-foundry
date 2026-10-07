@@ -279,9 +279,9 @@ checkPaths:
   - AGENTS.md
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
-lastReviewedAt: 2026-10-03
-lastReviewedCommit: 662bad77db397248478d55e07240842eb8438f78
-lastReviewedNote: "Reviewed Foundry #226 version-only 0.1.15 preparation from merged #222 source 662bad77 with verified CLI 0.1.24; only three canonical versions advance, dependency lock/runtime inputs and permission/no-replay boundaries remain unchanged. Publication and final public runtime qualification remain pending."
+lastReviewedAt: 2026-10-07
+lastReviewedCommit: 10b718965bc5459ec84840dc1f2ce89d53620d2d
+lastReviewedNote: "Reviewed Foundry #231 compatible development HTTP cache leaf refresh and actual uncached signing transport qualification. Production closure, runtime ownership and authorization remain unchanged; generic upstream reuse behavior is not claimed fixed."
 ---
 
 # Test Layout

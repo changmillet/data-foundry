@@ -160,9 +160,9 @@ checkPaths:
   - test/unit/identity-preflight-run-command-factory.test.mts
   - test/unit/post-authoring-finalize-command-factory.test.mts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-10-02
-lastReviewedCommit: 56307ddc74565f85cf2e1315231d4f841a800f9b
-lastReviewedNote: "Reviewed Foundry #222 adoption of verified public CLI 0.1.24 source 89c71772: runtime/dependency pins advance with CLI-only lock change; scientific profiles, task permission and no-replay boundaries stay fixed. Foundry source version stays 0.1.14 pending a separate release."
+lastReviewedAt: 2026-10-07
+lastReviewedCommit: 0ab6b54513acccfe3253ea583b4f6b2e678c0485
+lastReviewedNote: "Reviewed Foundry #230 verified CLI 0.1.26/SDK 0.5.1 adoption with exact source and production closure. Source remains 0.1.15; actor/task/runtime, scientific policy, authorization and no-replay boundaries remain unchanged. Public Foundry release and registered-task adoption remain separate requirements."
 ---
 
 # Foundry AI Navigation

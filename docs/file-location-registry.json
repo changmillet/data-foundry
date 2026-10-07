@@ -776,6 +776,6 @@
       "notes": "Parses explicit public reference input and records immutable indexed control snapshots."
     }
   ],
-  "lastReviewedCommit": "56307ddc74565f85cf2e1315231d4f841a800f9b",
-  "lastReviewedNote": "Reviewed Foundry #222 CLI 0.1.24 adoption: ledger paths, task authorization and runtime data locations remain unchanged."
+  "lastReviewedCommit": "0ab6b54513acccfe3253ea583b4f6b2e678c0485",
+  "lastReviewedNote": "Reviewed Foundry #230 CLI 0.1.26 adoption: ledger paths, task authorization and runtime data locations remain unchanged. Consumer qualification uses task-local selected input/report bytes and existing artifact paths."
 }

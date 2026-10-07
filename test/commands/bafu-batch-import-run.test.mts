@@ -184,7 +184,7 @@ function exactBafuResumeContract(
     applyResolutionRewrites: false,
     familySignatures: true,
     mintUnmatchedFpUgSupport: false,
-    cliPackage: "@tiangong-lca/cli@0.1.24",
+    cliPackage: "@tiangong-lca/cli@0.1.26",
     sourceContent: createBafuScopeSourceContent({
       scope,
       processBundlesDir: bundlesDir,

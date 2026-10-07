@@ -475,7 +475,7 @@ test("verified resume keeps exact report and ledger bytes across the single-scop
         applyResolutionRewrites: false,
         familySignatures: false,
         mintUnmatchedFpUgSupport: false,
-        cliPackage: "@tiangong-lca/cli@0.1.24",
+        cliPackage: "@tiangong-lca/cli@0.1.26",
         sourceContent: createBafuScopeSourceContent({
           scope,
           processBundlesDir,
