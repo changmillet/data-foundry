@@ -32,8 +32,8 @@ checkPaths:
   - prettier.config.ts
   - tsconfig*.json
 lastReviewedAt: 2026-10-07
-lastReviewedCommit: 0ab6b54513acccfe3253ea583b4f6b2e678c0485
-lastReviewedNote: "Reviewed Foundry #230 verified CLI 0.1.26/SDK 0.5.1 adoption with exact source and production closure. Source remains 0.1.15; actor/task/runtime, scientific policy, authorization and no-replay boundaries remain unchanged. Public Foundry release and registered-task adoption remain separate requirements."
+lastReviewedCommit: 10b718965bc5459ec84840dc1f2ce89d53620d2d
+lastReviewedNote: "Reviewed Foundry #231 compatible development HTTP cache leaf refresh and actual uncached signing transport qualification. Production closure, runtime ownership and authorization remain unchanged; generic upstream reuse behavior is not claimed fixed."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry
