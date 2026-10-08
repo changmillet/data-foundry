@@ -153,8 +153,8 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - docs/incremental-change-set-contract.md
 lastReviewedAt: 2026-10-08
-lastReviewedCommit: 19e04525087228c8866d8232ce207dbe187782e9
-lastReviewedNote: "Reviewed Foundry #223 test-only preparation splits and full platform shard-map qualification; public runtime, package inputs, authorization and no-replay contracts remain unchanged."
+lastReviewedCommit: d07ac492a3a5891502039a6cc83ef30b9fbba50b
+lastReviewedNote: "Reviewed Foundry #237 exact three-field 0.1.16 to 0.1.17 release projection from eligible PR236 Main d07ac492; CLI/native pins, lock closure, authorization and all business source remain unchanged. Official publication and final managed qualification remain pending."
 ---
 
 # Architecture

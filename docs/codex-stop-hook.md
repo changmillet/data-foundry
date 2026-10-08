@@ -18,9 +18,9 @@ checkPaths:
   - .codex/hooks/run-foundry-acceptance-check.sh
   - package.json
   - scripts/commands/core.ts
-lastReviewedAt: 2026-10-07
-lastReviewedCommit: caa95a4808eda51dc5c7c78f3c39e4e079bdb802
-lastReviewedNote: "Reviewed Foundry #223 preparation consuming complete owning CLI 0.1.27 validation, exact candidate/Flow bindings and published Toolkit 0.3.4 applicable coverage; authorization and no-replay boundaries remain unchanged. Foundry source version stays 0.1.16 pending a separate release."
+lastReviewedAt: 2026-10-08
+lastReviewedCommit: d07ac492a3a5891502039a6cc83ef30b9fbba50b
+lastReviewedNote: "Reviewed Foundry #237 exact three-field 0.1.16 to 0.1.17 release projection from eligible PR236 Main d07ac492; CLI/native pins, lock closure, authorization and all business source remain unchanged. Official publication and final managed qualification remain pending."
 ---
 
 # Codex Stop Hook
