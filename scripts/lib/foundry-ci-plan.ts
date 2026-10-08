@@ -14,6 +14,7 @@ export interface FoundryTestPlan {
   readonly planSha256: string;
   readonly unprofiledFiles: readonly string[];
   readonly shards: readonly FoundryTestShard[];
+  readonly platformShards?: Readonly<Record<string, readonly FoundryTestShard[]>>;
 }
 
 export function planFoundryTestShards(
@@ -112,5 +113,63 @@ export function loadFoundryTestPlan(root: string, count = 4): FoundryTestPlan {
     if (typeof seconds !== "number") throw new Error(`Invalid CI test duration: ${file}`);
     durations[file] = seconds;
   }
-  return planFoundryTestShards(walk("test"), durations, count);
+  const files = walk("test");
+  const base = planFoundryTestShards(files, durations, count);
+  const counts = input.shards_by_platform;
+  if (
+    !counts ||
+    typeof counts !== "object" ||
+    Array.isArray(counts) ||
+    JSON.stringify(Object.keys(counts).sort()) !==
+      JSON.stringify(Object.keys(foundryCiPlatformHosts).sort())
+  )
+    throw new Error("CI shard counts must bind every supported platform exactly.");
+  const configured = counts as Record<string, unknown>;
+  const plans = Object.keys(foundryCiPlatformHosts).map((platform) => {
+    const size = configured[platform];
+    if (typeof size !== "number" || !Number.isInteger(size) || size < 1 || size > 8)
+      throw new Error("Invalid platform CI shard count.");
+    return [platform, planFoundryTestShards(files, durations, size)] as const;
+  });
+  return Object.freeze({
+    ...base,
+    planSha256: createHash("sha256")
+      .update(
+        JSON.stringify(
+          plans.map(([platform, plan]) => ({ platform, plan_sha256: plan.planSha256 })),
+        ),
+      )
+      .digest("hex"),
+    platformShards: Object.freeze(
+      Object.fromEntries(plans.map(([platform, plan]) => [platform, plan.shards])),
+    ),
+  });
+}
+
+export const foundryCiPlatformHosts = Object.freeze({
+  "linux-x64": "ubuntu-latest",
+  "linux-arm64": "ubuntu-24.04-arm",
+  "darwin-arm64": "macos-latest",
+  "win32-x64": "windows-latest",
+});
+export function foundryPlatformTestShards(
+  plan: FoundryTestPlan,
+  platform: string,
+): readonly FoundryTestShard[] {
+  if (!Object.hasOwn(foundryCiPlatformHosts, platform))
+    throw new Error("Unsupported CI test platform.");
+  const shards = plan.platformShards?.[platform] ?? plan.shards;
+  if (!shards.length) throw new Error("CI platform must select test shards.");
+  return shards;
+}
+export function foundryCiTestMatrix(plan: FoundryTestPlan) {
+  return {
+    include: Object.entries(foundryCiPlatformHosts).flatMap(([platform, os]) =>
+      foundryPlatformTestShards(plan, platform).map(({ index: shard }) => ({
+        os,
+        platform,
+        shard,
+      })),
+    ),
+  };
 }

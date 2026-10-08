@@ -88,6 +88,7 @@ export function runWorkflowLocalCliResult(
   argv: readonly string[],
 ): { exit: number; report: Record<string, unknown> } {
   const local =
+    (argv[0] === "dataset" && argv[1] === "validate") ||
     (argv[0] === "qa" && ["flow", "process", "lifecyclemodel"].includes(argv[1])) ||
     (argv[0] === "dataset" && argv[1] === "curation-queue" && argv[2] === "build") ||
     (argv[0] === "dataset" &&
@@ -97,7 +98,7 @@ export function runWorkflowLocalCliResult(
   if (!local)
     throw new FoundryContextError(
       "workflow_command_invalid",
-      "This stage admits local QA, queue preparation and patch application only.",
+      "This stage admits local validation, QA, queue preparation and patch application only.",
     );
   assertQualifiedFoundryRuntime(context, qualified);
   const cli = resolveInstalledTiangongLcaCliPackage();

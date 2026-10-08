@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { planFoundryTestShards } from "../../scripts/lib/foundry-ci-plan.ts";
+import path from "node:path";
+import {
+  loadFoundryTestPlan,
+  foundryPlatformTestShards,
+  planFoundryTestShards,
+} from "../../scripts/lib/foundry-ci-plan.ts";
 import {
   foundryCiPlatforms,
   verifyFoundryTestShards,
@@ -58,4 +63,42 @@ test("CI aggregation rejects stale, skipped, foreign and mixed execution evidenc
     suites: 0,
   };
   assert.throws(() => verifyFoundryTestShards(input, source, plan), /finish/);
+});
+
+test("CI aggregation requires all20 host-specific receipts and rejects cross-platform substitution", () => {
+  const plan = loadFoundryTestPlan(path.resolve(import.meta.dirname, "../.."));
+  const rows = foundryCiPlatforms.flatMap((platform) =>
+    foundryPlatformTestShards(plan, platform).map((shard) => ({
+      schema: "tiangong-foundry.ci-test-shard.v1",
+      status: "passed",
+      source,
+      platform,
+      plan_sha256: plan.planSha256,
+      index: shard.index,
+      total: shard.total,
+      files: shard.files,
+      errors: [],
+      counts: {
+        tests: shard.files.length,
+        passed: shard.files.length,
+        failed: 0,
+        cancelled: 0,
+        skipped: 0,
+        todo: 0,
+        suites: 0,
+      },
+    })),
+  );
+  assert.equal(rows.length, 20);
+  verifyFoundryTestShards(rows, source, plan);
+  assert.throws(() => verifyFoundryTestShards(rows.slice(0, -1), source, plan), /Incomplete/);
+  const duplicate = structuredClone(rows);
+  duplicate[duplicate.length - 1] = duplicate[duplicate.length - 2];
+  assert.throws(() => verifyFoundryTestShards(duplicate, source, plan), /Duplicate/);
+  const foreign = structuredClone(rows);
+  foreign[foreign.length - 1].platform = "linux-x64";
+  assert.throws(() => verifyFoundryTestShards(foreign, source, plan), /differs/);
+  const stale = structuredClone(rows);
+  stale[0].plan_sha256 = "f".repeat(64);
+  assert.throws(() => verifyFoundryTestShards(stale, source, plan), /differs/);
 });

@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { parseDocument } from "yaml";
+import { loadFoundryTestPlan, foundryCiTestMatrix } from "../../scripts/lib/foundry-ci-plan.ts";
 import { foundryCiPlatforms } from "../../scripts/lib/foundry-ci-results.ts";
 import {
   inventoryCapsuleFiles,
@@ -121,20 +122,19 @@ test("full CI runs all platforms with independent tests and native qualification
   const jobs = object(workflow("quality-gate.yml").jobs);
   const tests = object(jobs["test-shards"]),
     native = object(jobs["quality-gate"]);
-  const testMatrix = object(object(tests.strategy).matrix),
+  assert.equal(object(tests.strategy).matrix, "${{ fromJSON(needs.plan.outputs.test_matrix) }}");
+  assert.equal(tests["timeout-minutes"], 40);
+  const testMatrix = foundryCiTestMatrix(loadFoundryTestPlan(root)),
     nativeMatrix = object(object(native.strategy).matrix);
   assert.ok(Array.isArray(testMatrix.include) && Array.isArray(nativeMatrix.include));
   const testHosts = testMatrix.include.map(object),
     nativeHosts = nativeMatrix.include.map(object);
-  assert.deepEqual(testHosts.map((host) => host.platform).sort(), [...foundryCiPlatforms].sort());
+  assert.deepEqual(
+    [...new Set(testHosts.map((host) => host.platform))].sort(),
+    [...foundryCiPlatforms].sort(),
+  );
   assert.deepEqual(nativeHosts.map((host) => host.platform).sort(), [...foundryCiPlatforms].sort());
-  assert.deepEqual(testMatrix.os, [
-    "ubuntu-latest",
-    "ubuntu-24.04-arm",
-    "macos-latest",
-    "windows-latest",
-  ]);
-  assert.match(String(testMatrix.shard), /needs\.plan\.outputs\.shards/u);
+  assert.equal(testHosts.length, 20);
   assert.equal(native.if, "always()");
   assert.ok(Array.isArray(native.needs));
   for (const requirement of ["plan", "build-package", "version-pr"])

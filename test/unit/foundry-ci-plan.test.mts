@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
 import path from "node:path";
+import fs from "node:fs";
+import os from "node:os";
 import test from "node:test";
 import {
   loadFoundryTestPlan,
+  foundryPlatformTestShards,
+  foundryCiTestMatrix,
   planFoundryTestShards,
   selectFoundryCiMode,
 } from "../../scripts/lib/foundry-ci-plan.ts";
@@ -83,6 +87,7 @@ test("CI partition refuses empty shards rather than accidentally running the who
 test("hosted Windows timings keep heavy object, native and repair scenarios within each shard budget", () => {
   const root = path.resolve(import.meta.dirname, "../..");
   const plan = loadFoundryTestPlan(root);
+  const windows = foundryPlatformTestShards(plan, "win32-x64");
   const heavy = [
     "foundry-public-reference-recovery",
     "foundry-public-reference-input",
@@ -97,16 +102,15 @@ test("hosted Windows timings keep heavy object, native and repair scenarios with
   for (const file of heavy)
     assert.ok(!plan.unprofiledFiles.includes(file), `${file} needs hosted duration evidence`);
   assert.ok(
-    plan.shards.every((shard) => heavy.filter((file) => shard.files.includes(file)).length <= 3),
+    windows.every((shard) => heavy.filter((file) => shard.files.includes(file)).length <= 3),
     "heavy Windows cases must not converge on one timed-out partition",
   );
   assert.ok(
-    plan.shards.every((shard) => shard.estimatedSeconds < 40 * 60),
+    windows.every((shard) => shard.estimatedSeconds < 40 * 60),
     "every estimated shard must fit the unchanged 40-minute job budget",
   );
 });
 
-import fs from "node:fs";
 import {
   validateFoundryReleaseChange,
   type ReleaseFileChange,
@@ -183,4 +187,59 @@ test("version gate never admits dependency changes, mixed source or changed docu
     () => classify(versionChanges().filter((_, index) => index !== 1)),
     /Missing release version/,
   );
+});
+
+test("host-specific shard matrix covers every file once with Windows8 and unchanged other4", () => {
+  const plan = loadFoundryTestPlan(path.resolve(import.meta.dirname, "../.."));
+  const matrix = foundryCiTestMatrix(plan).include;
+  assert.equal(matrix.length, 20);
+  const inventory = plan.shards.flatMap(({ files }) => files).sort();
+  for (const platform of ["linux-x64", "linux-arm64", "darwin-arm64", "win32-x64"]) {
+    const shards = foundryPlatformTestShards(plan, platform);
+    assert.equal(shards.length, platform === "win32-x64" ? 8 : 4);
+    const selected = shards.flatMap(({ files }) => files);
+    assert.equal(new Set(selected).size, inventory.length);
+    assert.deepEqual(selected.sort(), inventory);
+    assert.deepEqual(
+      matrix.filter((row) => row.platform === platform).map((row) => row.shard),
+      shards.map((row) => row.index),
+    );
+  }
+  assert.throws(() => foundryPlatformTestShards(plan, "darwin-x64"), /Unsupported/);
+});
+
+test("global CI digest binds all platform counts and rejects malformed mappings", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-ci-platform-plan-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(root, "test"));
+  fs.mkdirSync(path.join(root, "specs/ci"), { recursive: true });
+  for (let index = 0; index < 8; index++)
+    fs.writeFileSync(path.join(root, `test/${index}.test.mts`), "");
+  const counts = { "linux-x64": 4, "linux-arm64": 4, "darwin-arm64": 4, "win32-x64": 8 };
+  const write = (mapping: unknown) =>
+    fs.writeFileSync(
+      path.join(root, "specs/ci/test-durations.json"),
+      JSON.stringify({
+        schema: "tiangong-foundry.ci-test-durations.v1",
+        weights_seconds: {},
+        shards_by_platform: mapping,
+      }),
+    );
+  write(counts);
+  const original = loadFoundryTestPlan(root);
+  write({ ...counts, "win32-x64": 4 });
+  assert.notEqual(loadFoundryTestPlan(root).planSha256, original.planSha256);
+  for (const mapping of [
+    undefined,
+    [],
+    { "linux-x64": 4 },
+    { ...counts, "darwin-x64": 4 },
+    { ...counts, "win32-x64": "8" },
+    { ...counts, "win32-x64": 9 },
+    { ...counts, "win32-x64": 0 },
+    { ...counts, "win32-x64": 7.5 },
+  ]) {
+    write(mapping);
+    assert.throws(() => loadFoundryTestPlan(root), /shard count/);
+  }
 });

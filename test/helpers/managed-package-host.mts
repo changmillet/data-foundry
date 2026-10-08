@@ -15,7 +15,11 @@ import {
   type RuntimeManifest,
   type TrustedRuntimeManifest,
 } from "@tiangong-lca/cli/runtime";
-import { assertFoundryOperationResult } from "../../scripts/lib/foundry-operation-result.ts";
+import { verifyManagedProcessPreparation } from "./managed-process-preparation.mts";
+import {
+  exitCodeForFoundryOperationResult,
+  assertFoundryOperationResult,
+} from "../../scripts/lib/foundry-operation-result.ts";
 import { createManagedComponentFixture } from "./managed-package-cache.mts";
 import { workspaceManifestFixture } from "./foundry-runtime-manifest.mts";
 import { verifyManagedAllocationConsumer } from "./managed-allocation-consumer.mts";
@@ -30,8 +34,13 @@ function trusted(value: RuntimeManifest) {
   return trustRuntimeManifest(bytes, hash(bytes));
 }
 
-/** Real Node/installed packages and IPC; TIDAS and release metadata remain explicit fixtures. */
-export async function verifyManagedPackageHost(installedPackage: string, parent: string) {
+/** Real Node/installed packages and IPC; default native/release metadata are fixtures. Explicit public native qualification can bind an independently verified binary. */
+export async function verifyManagedPackageHost(
+  installedPackage: string,
+  parent: string,
+  publicTidasBin?: string,
+  preparationCases?: readonly string[],
+) {
   const root = path.join(parent, "managed-process-case");
   const input = path.join(root, "input");
   const native = path.join(root, "native-input");
@@ -48,9 +57,32 @@ export async function verifyManagedPackageHost(installedPackage: string, parent:
   });
   const nodePath = process.platform === "win32" ? "bin/node.exe" : "bin/node";
   fs.copyFileSync(process.execPath, path.join(native, nodePath));
-  const tidasPath = "bin/tidas.ts";
-  const tidasBytes = fs.readFileSync(new URL("../fixtures/fake-tidas.ts", import.meta.url));
-  fs.writeFileSync(path.join(native, tidasPath), tidasBytes);
+  const tidasPath = publicTidasBin
+    ? process.platform === "win32"
+      ? "bin/tidas.exe"
+      : "bin/tidas"
+    : "bin/tidas.ts";
+  const tidasBytes = fs.readFileSync(
+    publicTidasBin ?? new URL("../fixtures/fake-tidas.ts", import.meta.url),
+  );
+  let nativeVersion = "0.2.7";
+  let nativeFingerprint = "1".repeat(64);
+  if (publicTidasBin) {
+    const described = spawnSync(publicTidasBin, ["validate", "--describe", "--format", "json"], {
+      encoding: "utf8",
+      shell: false,
+    });
+    assert.equal(described.status, 0, described.stderr);
+    const contract = JSON.parse(described.stdout).summary.validation_describe;
+    nativeVersion = contract.package.version;
+    nativeFingerprint = contract.asset_fingerprint;
+    assert.equal(nativeVersion, "0.3.4");
+    assert.equal(
+      nativeFingerprint,
+      "64f744ae98aa2bd84555c0946fe5a9a42e5a3cb255ff250c1f9141f321d61b43",
+    );
+  }
+  fs.writeFileSync(path.join(native, tidasPath), tidasBytes, { mode: 0o755 });
   const environment: NodeJS.ProcessEnv = {
     HOME: path.join(root, "home"),
     USERPROFILE: path.join(root, "home"),
@@ -108,11 +140,11 @@ export async function verifyManagedPackageHost(installedPackage: string, parent:
       expectation: {
         schema: "tiangong-foundry.tidas-runtime-expectation.v1",
         platform: cli.platform,
-        binary_version: "0.2.7",
+        binary_version: nativeVersion,
         executable: { bytes: tidasBytes.length, sha256: hash(tidasBytes) },
         validation: {
           schema_version: "tidas.validation-describe.v1",
-          asset_fingerprint: "1".repeat(64),
+          asset_fingerprint: nativeFingerprint,
           protocols: ["document-validation-batch.v1"],
           event_schema_versions: [
             "tidas.validation-final-event.v1",
@@ -194,7 +226,12 @@ export async function verifyManagedPackageHost(installedPackage: string, parent:
   };
   assert.equal((await ensureRuntimeComponents(previous.manifest, manager)).status, "ready");
   const workspace = path.join(root, "workspace");
-  const run = async (entry: string, argv: string[], exit: number, selected = manifest) => {
+  const run = async (
+    entry: string,
+    argv: string[],
+    exit: number | undefined,
+    selected = manifest,
+  ) => {
     const result = await executeRuntimeLaunch(selected, {
       ...manager,
       entry,
@@ -203,12 +240,18 @@ export async function verifyManagedPackageHost(installedPackage: string, parent:
       env: environment,
       timeoutMs: 90_000,
     });
-    assert.equal(result.status, exit, result.stderr || result.stdout);
+    if (exit !== undefined) assert.equal(result.status, exit, result.stderr || result.stdout);
     assert.equal(result.signal, null);
     assert.equal(result.stderr, "");
     const lines = result.stdout.trimEnd().split("\n");
     assert.equal(lines.length, 1, result.stdout);
-    return assertFoundryOperationResult(JSON.parse(lines[0]));
+    const operation = assertFoundryOperationResult(JSON.parse(lines[0]));
+    assert.equal(
+      result.status,
+      exit ?? exitCodeForFoundryOperationResult(operation),
+      result.stdout,
+    );
+    return operation;
   };
   const init = (selected: string) => ["workspace", "init", "--workspace", selected, "--json"];
   assert.equal((await run("foundry", init(workspace), 0)).status, "ready");
@@ -218,6 +261,14 @@ export async function verifyManagedPackageHost(installedPackage: string, parent:
     (doctor.runtime_identity as { qualification: { status: string } }).qualification.status,
     "ready",
   );
+  if (preparationCases) {
+    await verifyManagedProcessPreparation(
+      root,
+      (argv) => run("foundry", [...argv, "--workspace", workspace], undefined),
+      preparationCases,
+    );
+    return;
+  }
   const processEvidence = await verifyManagedAllocationConsumer(root, (argv) =>
     executeRuntimeLaunch(manifest, {
       ...manager,

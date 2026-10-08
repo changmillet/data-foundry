@@ -365,3 +365,206 @@ test("cancelled row validation cleans staging and preserves the previous output"
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("Process native manifest preserves exact Flow context without inflating primary row counts", () => {
+  const { root, bin } = isolatedFixture();
+  try {
+    const fixture = JSON.parse(
+      fs.readFileSync(
+        new URL("../fixtures/managed-allocation-input.json", import.meta.url),
+        "utf8",
+      ),
+    );
+    const row = { json_ordered: fixture.payload, semantic_context: fixture.context };
+    const rowsFile = path.join(root, "processes.json");
+    const outDir = path.join(root, "validation");
+    fs.writeFileSync(rowsFile, JSON.stringify([row, row]));
+    const result = runTidasRowsValidation({
+      repoRoot: root,
+      options: { tidasBin: bin, rowsFile, outDir, type: "process" },
+    });
+    assert.equal(result.exit_code, 0);
+    assert.equal((result.report.counts as Record<string, unknown>).total, 2);
+    assert.equal((result.report.rows as unknown[]).length, 2);
+    const manifest = fs
+      .readFileSync(path.join(outDir, "input-manifest.jsonl"), "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    assert.equal(manifest.length, 3);
+    assert.equal(manifest[2].category, "flows");
+    assert.deepEqual(
+      JSON.parse(fs.readFileSync(path.join(outDir, "input", manifest[2].relative_path), "utf8")),
+      fixture.context.flow_documents[0],
+    );
+    const contract = result.report.rust_contract as Record<string, unknown>;
+    assert.equal(contract.augmented_document_count, 3);
+    assert.equal(contract.supplemental_document_count, 1);
+    const conflict = structuredClone(row);
+    conflict.semantic_context.flow_documents[0].flowDataSet.modellingAndValidation.LCIMethod.typeOfDataSet =
+      "Waste flow";
+    fs.writeFileSync(rowsFile, JSON.stringify([row, conflict]));
+    assert.throws(
+      () =>
+        runTidasRowsValidation({
+          repoRoot: root,
+          options: {
+            tidasBin: bin,
+            rowsFile,
+            outDir: path.join(root, "conflict"),
+            type: "process",
+          },
+        }),
+      /tidas_flow_context_identity_conflict/,
+    );
+    assert.equal(fs.existsSync(path.join(root, "conflict")), false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("supplemental native Flow failures invalidate their owning Process rows with context pointers", () => {
+  const { root, bin } = isolatedFixture();
+  try {
+    const fixture = JSON.parse(
+      fs.readFileSync(
+        new URL("../fixtures/managed-allocation-input.json", import.meta.url),
+        "utf8",
+      ),
+    );
+    const row = { json_ordered: fixture.payload, semantic_context: fixture.context };
+    fs.writeFileSync(
+      bin,
+      fs
+        .readFileSync(bin, "utf8")
+        .replace("document_ordinal: 0,", "document_ordinal: manifest.length - 1,"),
+    );
+    const rowsFile = path.join(root, "processes.json");
+    const outDir = path.join(root, "validation");
+    fs.writeFileSync(rowsFile, JSON.stringify([row]));
+    const result = runTidasRowsValidation({
+      repoRoot: root,
+      options: { tidasBin: bin, rowsFile, outDir, type: "process" },
+      environment: { ...process.env, FAKE_TIDAS_INVALID: "1" },
+    });
+    assert.equal(result.exit_code, 2);
+    const rows = result.report.rows as Array<{ issues: Array<Record<string, unknown>> }>;
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].issues.length, 1);
+    assert.equal(rows[0].issues[0].supplemental_context, true);
+    assert.equal(rows[0].issues[0].path, "/semantic_context/flow_documents/0/");
+    assert.equal((result.report.counts as Record<string, unknown>).invalid, 1);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("mixed primary and supplemental Flow documents cannot disagree on one exact identity", () => {
+  const { root, bin } = isolatedFixture();
+  try {
+    const fixture = JSON.parse(
+      fs.readFileSync(
+        new URL("../fixtures/managed-allocation-input.json", import.meta.url),
+        "utf8",
+      ),
+    );
+    const primary = structuredClone(fixture.context.flow_documents[0]);
+    primary.flowDataSet.modellingAndValidation.LCIMethod.typeOfDataSet = "Waste flow";
+    const rowsFile = path.join(root, "mixed.json");
+    const outDir = path.join(root, "validation");
+    fs.writeFileSync(
+      rowsFile,
+      JSON.stringify([
+        primary,
+        { json_ordered: fixture.payload, semantic_context: fixture.context },
+      ]),
+    );
+    assert.throws(
+      () =>
+        runTidasRowsValidation({
+          repoRoot: root,
+          options: { tidasBin: bin, rowsFile, outDir, type: "auto" },
+        }),
+      /tidas_flow_context_identity_conflict/,
+    );
+    assert.equal(fs.existsSync(outDir), false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("native incomplete Process coverage without an error cannot be admitted as valid", () => {
+  const { root, bin } = isolatedFixture();
+  try {
+    const fixture = JSON.parse(
+      fs.readFileSync(
+        new URL("../fixtures/managed-allocation-input.json", import.meta.url),
+        "utf8",
+      ),
+    );
+    fs.writeFileSync(
+      bin,
+      fs
+        .readFileSync(bin, "utf8")
+        .replace(
+          "document_count: manifest.length,",
+          "document_count: manifest.length, semantic_coverage: {profile: 'tidas.process-allocation-reference.v1', complete:false, process_count:1, checks:{}},",
+        ),
+    );
+    const rowsFile = path.join(root, "process.json");
+    const outDir = path.join(root, "validation");
+    fs.writeFileSync(
+      rowsFile,
+      JSON.stringify([{ json_ordered: fixture.payload, semantic_context: fixture.context }]),
+    );
+    assert.throws(
+      () =>
+        runTidasRowsValidation({
+          repoRoot: root,
+          options: { tidasBin: bin, rowsFile, outDir, type: "process" },
+        }),
+      /tidas_process_semantic_coverage_incomplete/,
+    );
+    assert.equal(fs.existsSync(outDir), false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("native passed Process report cannot omit required profile checks", () => {
+  const { root, bin } = isolatedFixture();
+  try {
+    const fixture = JSON.parse(
+      fs.readFileSync(
+        new URL("../fixtures/managed-allocation-input.json", import.meta.url),
+        "utf8",
+      ),
+    );
+    fs.writeFileSync(
+      bin,
+      fs
+        .readFileSync(bin, "utf8")
+        .replace(
+          "document_count: manifest.length,",
+          "document_count: manifest.length, semantic_coverage: {profile: 'tidas.process-allocation-reference.v1', complete:true, process_count:1, checks:{}},",
+        ),
+    );
+    const rowsFile = path.join(root, "process.json");
+    const outDir = path.join(root, "validation");
+    fs.writeFileSync(
+      rowsFile,
+      JSON.stringify([{ json_ordered: fixture.payload, semantic_context: fixture.context }]),
+    );
+    assert.throws(
+      () =>
+        runTidasRowsValidation({
+          repoRoot: root,
+          options: { tidasBin: bin, rowsFile, outDir, type: "process" },
+        }),
+      /tidas_process_semantic_coverage_invalid/,
+    );
+    assert.equal(fs.existsSync(outDir), false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
