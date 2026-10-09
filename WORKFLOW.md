@@ -282,7 +282,7 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - test/README.md
 lastReviewedAt: 2026-10-10
-lastReviewedCommit: 84f4cd573675e457c84213314ee228d0410b4ad3
+lastReviewedCommit: f068c4e825073aef1e9ec1ee8af82774e966c310
 lastReviewedNote: "Reviewed original managed-entry L=S+K qualification and explicit cli-auth projection, CLI0.1.28 compatible pin and genuine subprocess test boundaries. Complete original DATA account/business acceptance remains separate."
 tracker:
   kind: filesystem
