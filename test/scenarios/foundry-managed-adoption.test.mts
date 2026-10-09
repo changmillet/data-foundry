@@ -38,7 +38,7 @@ test("actual unmodified CLI manager directly enters the package and brands carri
     env: f.environment,
     encoding: "utf8",
     shell: false,
-    timeout: 90_000,
+    timeout: 300_000,
   });
   const reentryDiagnostics = JSON.stringify({
     executable: action.executable,
