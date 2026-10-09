@@ -1,13 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
+import { namePartText } from "./bundle-source-context.ts";
 import { createFileArtifactFact, createFoundryCommandSpec } from "./foundry-command-spec.ts";
 import type { FoundryCommandSpec } from "./foundry-command-spec.ts";
 
 type UnknownRecord = Record<string, unknown>;
-
-interface TextNode extends UnknownRecord {
-  "#text"?: unknown;
-}
 
 interface NamedReference extends UnknownRecord {
   "common:shortDescription"?: unknown;
@@ -35,10 +32,10 @@ interface ProcessDataSetRecord extends UnknownRecord {
   processInformation?: {
     dataSetInformation?: UnknownRecord & {
       name?: {
-        baseName?: TextNode;
-        treatmentStandardsRoutes?: TextNode;
-        mixAndLocationTypes?: TextNode;
-        functionalUnitFlowProperties?: TextNode;
+        baseName?: unknown;
+        treatmentStandardsRoutes?: unknown;
+        mixAndLocationTypes?: unknown;
+        functionalUnitFlowProperties?: unknown;
       };
     };
     quantitativeReference?: { referenceToReferenceFlow?: unknown };
@@ -341,16 +338,10 @@ export function createIdentityPreflightArtifactUtils({
   function processNameParts(payload: DatasetPayload) {
     const name = payload?.processDataSet?.processInformation?.dataSetInformation?.name ?? {};
     return {
-      base_name: asText(name.baseName?.["#text"] ?? name.baseName),
-      treatment_standards_routes: asText(
-        name.treatmentStandardsRoutes?.["#text"] ?? name.treatmentStandardsRoutes,
-      ),
-      mix_and_location_types: asText(
-        name.mixAndLocationTypes?.["#text"] ?? name.mixAndLocationTypes,
-      ),
-      functional_unit_flow_properties: asText(
-        name.functionalUnitFlowProperties?.["#text"] ?? name.functionalUnitFlowProperties,
-      ),
+      base_name: namePartText(name.baseName, asText),
+      treatment_standards_routes: namePartText(name.treatmentStandardsRoutes, asText),
+      mix_and_location_types: namePartText(name.mixAndLocationTypes, asText),
+      functional_unit_flow_properties: namePartText(name.functionalUnitFlowProperties, asText),
     };
   }
 
