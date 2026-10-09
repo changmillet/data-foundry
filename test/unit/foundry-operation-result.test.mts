@@ -33,6 +33,7 @@ test("public operation results have one exact immutable envelope and exit table"
     "task.start",
     "task.status",
     "task.resume",
+    "task.adopt-runtime",
     "workspace.migrate",
   ]);
   const ready = createFoundryOperationResult({
@@ -61,6 +62,8 @@ test("public operation results have one exact immutable envelope and exit table"
   assert.equal(Object.isFrozen(ready.permissions), true);
   assert.equal(exitCodeForFoundryOperationResult(ready), 0);
   assert.deepEqual(assertFoundryOperationResult(JSON.parse(JSON.stringify(ready))), ready);
+  const adoption = { ...ready, operation: "task.adopt-runtime", task_id: "original-task" };
+  assert.deepEqual(assertFoundryOperationResult(adoption), adoption);
 
   const exits = new Map([
     ["ready", 0],
@@ -112,6 +115,7 @@ test("operation result validation rejects extra fields, display commands and mal
     permissions: { state: "not_required", requested_actions: [], approval_reference: null },
   };
   assert.throws(() => assertFoundryOperationResult({ ...base, unexpected: true }));
+  assert.throws(() => assertFoundryOperationResult({ ...base, operation: "task.replace" }));
   assert.throws(() =>
     assertFoundryOperationResult({
       ...base,

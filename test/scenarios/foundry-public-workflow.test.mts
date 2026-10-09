@@ -382,6 +382,7 @@ test("a blocked process queue explains the indexed missing Flow and stops local 
   assert.ok(firstAssessment.next_actions.some((action) => action.kind === "command"));
   const assessed = await facade.resume(invocation);
   assert.equal(assessed.status, "needs_input");
+  assert.equal(assessed.task_id, started.task_id, "reference gaps retain the original task");
   assert.equal(assessed.permissions.state, "not_required");
   const queueFiles = assessed.artifacts.filter(
     (artifact) => artifact.role === "curation-queue-blockers.jsonl",
@@ -408,15 +409,21 @@ test("a blocked process queue explains the indexed missing Flow and stops local 
   assert.match(blocker.message, /2 unresolved Flow reference occurrences/u);
   assert.match(blocker.message, /Process review is blocked/u);
   assert.ok(blocker.message.includes(queue.path));
-  assert.equal(
-    assessed.next_actions.filter(
-      (action) =>
-        action.kind === "human" &&
-        action.code === "review_queue_blockers" &&
-        action.instructions.includes("Provide the cited Flow evidence"),
-    ).length,
-    1,
+  const queueActions = assessed.next_actions.filter(
+    (action) => action.kind === "human" && action.code === "review_queue_blockers",
   );
+  assert.equal(queueActions.length, 1, "duplicate closure gaps require one human action");
+  const queueAction = queueActions[0];
+  assert.ok(queueAction?.kind === "human");
+  assert.match(queueAction.instructions, /Select existing read-only Flow evidence/u);
+  assert.match(queueAction.instructions, /complete FlowProperty\/UnitGroup QA chain/u);
+  assert.match(queueAction.instructions, /this Process task's --reference-input/u);
+  assert.match(queueAction.instructions, /or keep the gap open/u);
+  assert.match(
+    queueAction.instructions,
+    /Only changing the frozen selected sources requires a new task revision/u,
+  );
+  assert.ok(queueAction.instructions.includes(queue.path));
   assert.equal(
     assessed.next_actions.some((action) => action.kind === "command"),
     false,

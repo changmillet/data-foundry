@@ -71,13 +71,21 @@ test("identity-preflight runner retains receipt, binding, cache, disk, and fail-
     "identity_preflight_timeout",
     "identity_preflight_execution_invalid",
     "stdout/disk mismatch",
-    "stale disk report",
-    "Every nonzero CLI exit",
+    "Missing/malformed or stale reports",
+    "Nonzero CLI exits fail except the qualified CLI 0.1.27 complete, bound, error-free needs_review/manual_review exit 1 diagnostic",
+    "execution signals/stderr and binding drift remain failures",
+    "the pinned manual-review exit 1 contract does not resolve identity or grant a write",
   ]) {
     assert.match(source, new RegExp(contract.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
   }
   assert.match(source, /spawnSync\(cli\.command, receiptArgs/u);
   assert.match(source, /spawnSync\(cli\.command, spawnArgs/u);
+  assert.match(source, /stderrText:\s*result\.stderr \|\| ""/u);
+  assert.match(source, /signal:\s*result\.signal/u);
+  assert.match(
+    source,
+    /if \(executionValidation\?\.ok\) \{\s*writeJson\(executionManifestFile, executionValidation\.manifest\)/u,
+  );
   assert.match(source, /shell:\s*false/u);
   assert.doesNotMatch(source, /execSync|execFileSync|shell:\s*true/u);
 });
