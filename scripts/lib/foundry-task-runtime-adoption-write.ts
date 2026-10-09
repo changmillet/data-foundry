@@ -322,10 +322,13 @@ export async function applyFoundryTaskRuntimeAdoption(
         transferWriteOnce(
           context.stateRoot,
           existing
-            ? path.relative(
-                context.stateRoot,
-                adoptionSuccessorPath(context, String(existing.tip.plan_sha256)),
-              )
+            ? path
+                .relative(
+                  context.stateRoot,
+                  adoptionSuccessorPath(context, String(existing.tip.plan_sha256)),
+                )
+                .split(path.sep)
+                .join("/")
             : `task-runtime-adoptions/${context.taskId}.json`,
           bytes(anchor),
         );
