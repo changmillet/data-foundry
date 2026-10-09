@@ -41,7 +41,7 @@ checkPaths:
   - test/scenarios/foundry-execution-admission.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
 lastReviewedAt: 2026-10-10
-lastReviewedCommit: f068c4e825073aef1e9ec1ee8af82774e966c310
+lastReviewedCommit: 759c975df38dd8324840aa3d674af1a207966f3f
 lastReviewedNote: "Reviewed original managed-entry L=S+K qualification and explicit cli-auth projection, CLI0.1.28 compatible pin and genuine subprocess test boundaries. Complete original DATA account/business acceptance remains separate."
 related:
   - docs/architecture.md
