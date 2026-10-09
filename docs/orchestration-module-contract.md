@@ -43,9 +43,9 @@ checkPaths:
   - test/commands/bafu-*.test.mts
   - package.json
   - pnpm-lock.yaml
-lastReviewedAt: 2026-10-07
-lastReviewedCommit: caa95a4808eda51dc5c7c78f3c39e4e079bdb802
-lastReviewedNote: "Reviewed Foundry #223 preparation consuming complete owning CLI 0.1.27 validation, exact candidate/Flow bindings and published Toolkit 0.3.4 applicable coverage; authorization and no-replay boundaries remain unchanged. Foundry source version stays 0.1.16 pending a separate release."
+lastReviewedAt: 2026-10-10
+lastReviewedCommit: 84f4cd573675e457c84213314ee228d0410b4ad3
+lastReviewedNote: "Reviewed original managed-entry L=S+K qualification and explicit cli-auth projection, CLI0.1.28 compatible pin and genuine subprocess test boundaries. Complete original DATA account/business acceptance remains separate."
 related:
   - https://github.com/tiangong-lca/data-foundry/issues/70
   - https://github.com/tiangong-lca/tiangong-cli/issues/232

@@ -173,6 +173,83 @@ export function cleanManagedAdoptionPackage() {
     fs.rmSync(build.root, { recursive: true, force: true });
   build = undefined;
 }
+function syntheticQueryableFlow(id: string) {
+  const basic = flowRow(id).flowDataSet;
+  return {
+    flowDataSet: {
+      ...basic,
+      flowInformation: {
+        ...basic.flowInformation,
+        dataSetInformation: {
+          ...basic.flowInformation.dataSetInformation,
+          name: {
+            ...basic.flowInformation.dataSetInformation.name,
+            mixAndLocationTypes: { "@xml:lang": "en", "#text": "Swiss market" },
+          },
+          classificationInformation: {
+            "common:classification": {
+              "common:class": [
+                { "@level": "0", "@classId": "06", "#text": "Crude petroleum and natural gas" },
+              ],
+            },
+          },
+        },
+      },
+      modellingAndValidation: { LCIMethod: { typeOfDataSet: "Product flow" } },
+      flowProperties: {
+        flowProperty: [
+          {
+            "@dataSetInternalID": "0",
+            meanValue: "1",
+            referenceToFlowPropertyDataSet: {
+              "@refObjectId": "93a60a56-a3c8-11da-a746-0800200b9a66",
+              "@version": "03.00.003",
+              "common:shortDescription": { "@xml:lang": "en", "#text": "Mass" },
+            },
+          },
+        ],
+      },
+    },
+  };
+}
+function syntheticQueryableProcess(id: string, flowId: string) {
+  const basic = processRowWithFlowRef(id, flowId).processDataSet;
+  return {
+    processDataSet: {
+      ...basic,
+      processInformation: {
+        ...basic.processInformation,
+        dataSetInformation: {
+          ...basic.processInformation.dataSetInformation,
+          classificationInformation: {
+            "common:classification": {
+              "common:class": [
+                { "@level": "0", "@classId": "35", "#text": "Electricity and heat production" },
+              ],
+            },
+          },
+        },
+        quantitativeReference: { referenceToReferenceFlow: "0" },
+        geography: { locationOfOperationSupplyOrProduction: { "@location": "CH" } },
+      },
+      exchanges: {
+        exchange: [
+          {
+            ...basic.exchanges.exchange[0],
+            "@dataSetInternalID": "0",
+            exchangeDirection: "Output",
+            meanAmount: "1",
+            referenceToFlowDataSet: {
+              ...basic.exchanges.exchange[0].referenceToFlowDataSet,
+              "common:shortDescription": { "@xml:lang": "en", "#text": "Natural gas" },
+            },
+          },
+        ],
+      },
+    },
+  };
+}
+
 export type ManagedFixtureMutation =
   | "control-mode"
   | "control-protocol"
@@ -380,7 +457,9 @@ export async function managedAdoptionFixture(t: TestContext, syntheticTransport 
     );
     const files = managedInventory(input),
       archive = path.join(root, `${id}-${digest(JSON.stringify(files))}.tar.gz`);
-    const archiveFact = await writeRuntimeComponentArchive(input, files, archive);
+    const archiveFact = fs.existsSync(archive)
+      ? { bytes: managedFileFact(archive).bytes, sha256: managedFileFact(archive).sha256 }
+      : await writeRuntimeComponentArchive(input, files, archive);
     const component: RuntimeComponent = {
       id,
       version,
@@ -566,11 +645,11 @@ export async function managedAdoptionFixture(t: TestContext, syntheticTransport 
   ];
   const rows = syntheticTransport
     ? [
-        ...flowIds.map((id) => ({ id, version: "00.00.001", json: flowRow(id) })),
+        ...flowIds.map((id) => ({ id, version: "00.00.001", json: syntheticQueryableFlow(id) })),
         {
           id: "88888888-8888-4888-8888-888888888888",
           version: "00.00.001",
-          json: processRowWithFlowRef("88888888-8888-4888-8888-888888888888", flowIds[0]),
+          json: syntheticQueryableProcess("88888888-8888-4888-8888-888888888888", flowIds[0]),
         },
         ...["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"].map(
           (id) => ({ id, version: "00.00.001", json: { sourceDataSet: { "common:UUID": id } } }),
@@ -885,13 +964,21 @@ export async function seedManagedIdentityHistory(
     base,
     { command: "dataset-workflow-assessment", options: { synthetic_setup: true } },
     (operation) => {
+      const assessedSets = sets.map((set) => {
+        const authoringManifest = path.join(
+          f.taskRoot,
+          `outputs/synthetic-history/authoring/${set.type}/authoring-task-manifest.json`,
+        );
+        operation.writeJson(authoringManifest, { tasks: [] });
+        return { type: set.type, rows: set.file, authoring_manifest: authoringManifest };
+      });
       const report = {
         schema: "tiangong-foundry.assessment-stage.v1",
         status: "completed",
         owner_base: base.assetRoot,
         rows_report: rowsFile,
         identity_report: "superseded-synthetic-identity",
-        sets: sets.map((set) => ({ type: set.type, rows: set.file })),
+        sets: assessedSets,
       };
       operation.writeJson("outputs/synthetic-history/foundry-assessment.json", report);
       return report;

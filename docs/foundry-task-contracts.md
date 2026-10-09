@@ -28,9 +28,9 @@ checkPaths:
   - specs/schemas/execution-context.schema.json
   - specs/import-profiles.json
   - tasks/**
-lastReviewedAt: 2026-10-09
-lastReviewedCommit: 392e943b
-lastReviewedNote: "Reviewed same-task continuation, durable explicit read-only identity stages, exact runtime/package binding, reference transport and authorization freshness; candidate qualification and original-consumer acceptance remain separate."
+lastReviewedAt: 2026-10-10
+lastReviewedCommit: 84f4cd573675e457c84213314ee228d0410b4ad3
+lastReviewedNote: "Reviewed original managed-entry L=S+K qualification and explicit cli-auth projection, CLI0.1.28 compatible pin and genuine subprocess test boundaries. Complete original DATA account/business acceptance remains separate."
 related:
   - AGENTS.md
   - WORKFLOW.md

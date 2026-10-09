@@ -785,7 +785,7 @@
       "notes": "Parses explicit public reference input and records immutable indexed control snapshots."
     }
   ],
-  "lastReviewedCommit": "392e943ba620abec53b81439845ad07bd77c8e89",
-  "lastReviewedNote": "Reviewed same-task runtime adoption and explicit read-only identity stage modules in the existing task contract; source/evidence paths and native owner boundaries remain unchanged.",
-  "lastReviewedAt": "2026-10-09"
+  "lastReviewedCommit": "84f4cd573675e457c84213314ee228d0410b4ad3",
+  "lastReviewedNote": "Reviewed managed carrier/authentication modules and true CLI subprocess fixtures in existing Foundry task/package ownership; no business ledger or default install introduced.",
+  "lastReviewedAt": "2026-10-10"
 }

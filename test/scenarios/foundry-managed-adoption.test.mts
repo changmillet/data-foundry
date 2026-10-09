@@ -75,9 +75,21 @@ test("ordinary argv/task self-authority cannot qualify managed adoption and read
       "foundry-read",
     )
   ).operation;
+  assert.equal(readonly.status, "ready", "A read-only dry-run remains observational.");
+  const planArtifact = readonly.artifacts.find((item) => item.role === "runtime_adoption_plan");
+  assert.ok(planArtifact?.kind === "inline");
+  const readonlyPlan = path.join(f.root, "read-only-adoption-plan.json");
+  f.json(readonlyPlan, planArtifact.value);
+  const denied = (
+    await f.run(
+      f.launch,
+      f.taskArgs("adopt-runtime", ["--apply", "--plan", readonlyPlan]),
+      "foundry-read",
+    )
+  ).operation;
   assert.ok(
-    readonly.blockers.some((item) => item.code === "workspace_read_only"),
-    JSON.stringify(readonly),
+    denied.blockers.some((item) => item.code === "workspace_read_only"),
+    JSON.stringify(denied),
   );
   assert.deepEqual(managedInventory(f.workspace), before);
 });

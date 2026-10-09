@@ -128,7 +128,7 @@ test("queue references require every selected exact Flow version in complete pay
     );
 });
 
-test("published CLI 0.1.27 keeps real SDK allocation outcomes for projected exact evidence", async (t) => {
+test("published CLI 0.1.28 keeps real SDK allocation outcomes for projected exact evidence", async (t) => {
   const fs = await import("node:fs");
   const os = await import("node:os");
   const path = await import("node:path");
@@ -137,7 +137,7 @@ test("published CLI 0.1.27 keeps real SDK allocation outcomes for projected exac
   const { captureFoundryInput } = await import("../../scripts/lib/foundry-runtime-context.ts");
   const { readPreparationCliEvidence } =
     await import("../../scripts/lib/foundry-preparation-cli-validation.ts");
-  assert.equal(describeCliRuntime().package.version, "0.1.27");
+  assert.equal(describeCliRuntime().package.version, "0.1.28");
   const fixture = JSON.parse(
     fs.readFileSync(new URL("../fixtures/managed-allocation-input.json", import.meta.url), "utf8"),
   );
