@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawn, spawnSync } from "node:child_process";
+import { spawn, spawnSync, type SpawnSyncReturns } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createRequire, stripTypeScriptTypes } from "node:module";
 import { pathToFileURL } from "node:url";
@@ -265,7 +265,31 @@ export type ManagedFixtureMutation =
 /** Real CLI manager + direct emitted package-entry subprocess. Release metadata/history are synthetic. */
 export async function managedAdoptionFixture(t: TestContext, syntheticTransport = false) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "foundry-managed-adoption-")));
-  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  let passed = false;
+  t.after(() => {
+    if (passed) fs.rmSync(root, { recursive: true, force: true });
+    else {
+      json(path.join(root, "retained-fixture.json"), {
+        scope:
+          "Failed or incomplete synthetic managed fixture retained for diagnosis; no DATA authority",
+        retained_at_utc: new Date().toISOString(),
+      });
+      t.diagnostic(`Retained failed synthetic managed fixture: ${root}`);
+    }
+  });
+  const markPassed = () => {
+    passed = true;
+  };
+  let subprocessNumber = 0;
+  const recordSubprocess = (record: Record<string, unknown>) => {
+    const file = path.join(
+      root,
+      "subprocess-records",
+      `${String(++subprocessNumber).padStart(3, "0")}.json`,
+    );
+    json(file, record);
+    return file;
+  };
   const stage = managedAdoptionPackage().stage;
   const cliRoot = fs.realpathSync(
     process.env.FOUNDRY_MANAGED_TEST_CLI_ROOT ??
@@ -603,22 +627,97 @@ export async function managedAdoptionFixture(t: TestContext, syntheticTransport 
       "--",
       ...argv,
     ];
-    const result = await new Promise<{ code: number | null; stdout: string; stderr: string }>(
-      (resolve, reject) => {
-        const child = spawn(selectedNode, args, {
-          cwd: root,
-          env: { ...environment, ...env },
-          shell: false,
+    const startedAt = Date.now();
+    const result = await new Promise<{
+      code: number | null;
+      signal: NodeJS.Signals | null;
+      stdout: string;
+      stderr: string;
+      error: Error | null;
+      timedOut: boolean;
+      termSent: boolean;
+      forceKillSent: boolean;
+      childPid: number | undefined;
+    }>((resolve) => {
+      const child = spawn(selectedNode, args, {
+        cwd: root,
+        env: { ...environment, ...env },
+        shell: false,
+      });
+      let stdout = "",
+        stderr = "",
+        error: Error | null = null,
+        timedOut = false,
+        termSent = false,
+        forceKillSent = false;
+      let force: ReturnType<typeof setTimeout> | undefined;
+      const deadline = setTimeout(() => {
+        timedOut = true;
+        error ??= new Error(
+          "Owned managed fixture subprocess exceeded its 300000 ms test deadline.",
+        );
+        termSent = child.kill("SIGTERM");
+        force = setTimeout(() => {
+          forceKillSent = child.kill("SIGKILL");
+        }, 10_000);
+      }, 300_000);
+      child.stdout.on("data", (bytes: Buffer) => (stdout += bytes.toString()));
+      child.stderr.on("data", (bytes: Buffer) => (stderr += bytes.toString()));
+      child.on("error", (failure) => {
+        error ??= failure;
+      });
+      child.on("close", (code, signal) => {
+        clearTimeout(deadline);
+        if (force) clearTimeout(force);
+        resolve({
+          code,
+          signal,
+          stdout,
+          stderr,
+          error,
+          timedOut,
+          termSent,
+          forceKillSent,
+          childPid: child.pid,
         });
-        let stdout = "",
-          stderr = "";
-        child.stdout.on("data", (bytes: Buffer) => (stdout += bytes.toString()));
-        child.stderr.on("data", (bytes: Buffer) => (stderr += bytes.toString()));
-        child.on("error", reject);
-        child.on("close", (code) => resolve({ code, stdout, stderr }));
+      });
+    });
+    const record = {
+      executable: selectedNode,
+      argv: args,
+      cwd: root,
+      started_at_utc: new Date(startedAt).toISOString(),
+      ended_at_utc: new Date().toISOString(),
+      elapsed_ms: Date.now() - startedAt,
+      error: result.error
+        ? {
+            name: result.error.name,
+            message: result.error.message,
+            code: "code" in result.error ? result.error.code : null,
+          }
+        : null,
+      status: result.code,
+      signal: result.signal,
+      stdout: result.stdout,
+      stderr: result.stderr,
+      stdout_bytes: Buffer.byteLength(result.stdout),
+      stderr_bytes: Buffer.byteLength(result.stderr),
+      test_deadline_ms: 300_000,
+      timed_out: result.timedOut,
+      owned_child: {
+        pid: result.childPid,
+        close_observed: true,
+        sigterm_sent: result.termSent,
+        sigkill_sent: result.forceKillSent,
       },
-    );
-    assert.equal(result.stderr, "", result.stderr);
+      manifest_sha256: selected.trusted.sha256,
+    };
+    recordSubprocess(record);
+    const diagnostics = JSON.stringify(record);
+    assert.equal(result.error, null, diagnostics);
+    assert.equal(result.timedOut, false, diagnostics);
+    assert.equal(result.signal, null, diagnostics);
+    assert.equal(result.stderr, "", diagnostics);
     assert.deepEqual(
       managedInventory(manager),
       managerInventory,
@@ -856,6 +955,8 @@ export async function managedAdoptionFixture(t: TestContext, syntheticTransport 
   };
   return {
     root,
+    markPassed,
+    recordSubprocess,
     workspace,
     taskRoot,
     taskId,
@@ -1063,3 +1164,72 @@ export const managedExplicitStage = (
   assert.ok(artifact?.kind === "inline", JSON.stringify(operation));
   return artifact.value as Record<string, unknown>;
 };
+
+/** Read native plan/receipt/output time evidence from this owned Task; never modifies a runtime owner. */
+export function managedContextTimeEvidence(taskRoot: string) {
+  const directory = path.join(taskRoot, "checkpoints");
+  if (!fs.existsSync(directory)) return [];
+  return fs
+    .readdirSync(directory)
+    .filter((name) => name.endsWith(".plan.json"))
+    .flatMap((name) => {
+      const file = path.join(directory, name);
+      const plan = JSON.parse(fs.readFileSync(file, "utf8")) as Record<string, unknown>;
+      if (plan.command !== "dataset-context-pack") return [];
+      const receiptFile = file.replace(/\.plan\.json$/u, ".json");
+      const receipt = fs.existsSync(receiptFile)
+        ? (JSON.parse(fs.readFileSync(receiptFile, "utf8")) as Record<string, unknown>)
+        : null;
+      return [
+        {
+          operation_id: plan.operation_id,
+          command: plan.command,
+          created_at_utc: plan.created_at_utc,
+          plan: managedFileFact(file),
+          plan_mtime_ms: fs.statSync(file).mtimeMs,
+          receipt: receipt ? managedFileFact(receiptFile) : null,
+          receipt_mtime_ms: receipt ? fs.statSync(receiptFile).mtimeMs : null,
+          receipt_status: receipt?.status ?? null,
+          result: receipt?.result ?? null,
+          timing_scope:
+            "Native owner plan creation and receipt filesystem times; not an instrumented admission/context subprocess duration",
+        },
+      ];
+    });
+}
+export function recordManagedReturnedAction(
+  fixture: Awaited<ReturnType<typeof managedAdoptionFixture>>,
+  action: { executable: string; argv: readonly string[]; cwd: string },
+  result: SpawnSyncReturns<string>,
+  startedAt: number,
+) {
+  const record = {
+    role: "actual-managed-returned-action",
+    executable: action.executable,
+    argv: action.argv,
+    cwd: action.cwd,
+    started_at_utc: new Date(startedAt).toISOString(),
+    ended_at_utc: new Date().toISOString(),
+    elapsed_ms: Date.now() - startedAt,
+    error: result.error
+      ? {
+          name: result.error.name,
+          message: result.error.message,
+          code: "code" in result.error ? result.error.code : null,
+        }
+      : null,
+    status: result.status,
+    signal: result.signal,
+    stdout: result.stdout,
+    stderr: result.stderr,
+    stdout_bytes: Buffer.byteLength(result.stdout ?? ""),
+    stderr_bytes: Buffer.byteLength(result.stderr ?? ""),
+    test_deadline_ms: 300_000,
+    owned_child: { pid: result.pid, synchronous_return_observed: true },
+    carrier_manifest_sha256: fixture.launch.trusted.sha256,
+    successor_manifest_sha256: fixture.successor.trusted.sha256,
+    native_context_time_evidence: managedContextTimeEvidence(fixture.taskRoot),
+  };
+  fixture.recordSubprocess(record);
+  return record;
+}

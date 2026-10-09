@@ -11,6 +11,7 @@ import {
   managedFileFact,
   managedFixtureToken,
   managedInventory,
+  recordManagedReturnedAction,
   seedManagedIdentityHistory,
   type ManagedFixtureMutation,
 } from "../helpers/managed-adoption-fixture.mts";
@@ -40,6 +41,15 @@ test("actual unmodified CLI manager directly enters the package and brands carri
     shell: false,
     timeout: 300_000,
   });
+  const actionRecord = recordManagedReturnedAction(f, action, child, actionStartedAt);
+  t.diagnostic(
+    JSON.stringify({
+      returned_action_elapsed_ms: actionRecord.elapsed_ms,
+      status: actionRecord.status,
+      error: actionRecord.error,
+      native_context_time_evidence: actionRecord.native_context_time_evidence,
+    }),
+  );
   const reentryDiagnostics = JSON.stringify({
     executable: action.executable,
     argv: action.argv,
@@ -70,6 +80,7 @@ test("actual unmodified CLI manager directly enters the package and brands carri
   t.diagnostic(
     "Actual CLI subprocess/one-use IPC/direct package entry; component metadata, task and compatibility evidence are synthetic; no auth or business write.",
   );
+  f.markPassed();
 });
 
 test("ordinary argv/task self-authority cannot qualify managed adoption and read launch cannot write", async (t) => {
@@ -116,6 +127,7 @@ test("ordinary argv/task self-authority cannot qualify managed adoption and read
     JSON.stringify(denied),
   );
   assert.deepEqual(managedInventory(f.workspace), before);
+  f.markPassed();
 });
 
 test("actual CLI managed host refuses changed carrier, qualification, execution and component expectations", async (t) => {
@@ -141,6 +153,7 @@ test("actual CLI managed host refuses changed carrier, qualification, execution 
     assert.ok(result.blockers.length, mutation);
     assert.deepEqual(managedInventory(f.workspace), before, mutation);
   }
+  f.markPassed();
 });
 
 test("real manager + synthetic owned auth/search transport performs exact Flow3/Process1 readonly stage and preserves Source2", async (t) => {
@@ -208,6 +221,7 @@ test("real manager + synthetic owned auth/search transport performs exact Flow3/
   t.diagnostic(
     "Only auth/search transport is synthetic; parent CLI manager, Foundry emitted code, IPC and direct package entry are real. Credentials are process-only fake values.",
   );
+  f.markPassed();
 });
 
 test("real managed subprocess preserves UNKNOWN after interrupted synthetic readonly query and never requeries", async (t) => {
@@ -228,6 +242,7 @@ test("real managed subprocess preserves UNKNOWN after interrupted synthetic read
   assert.deepEqual(managedFileFact(history.source), history.sourceBefore);
   assert.deepEqual(managedFileFact(history.predecessor), history.predecessorBefore);
   f.assertPreserved();
+  f.markPassed();
 });
 
 test("managed cli-auth admits neither wrong account, stale receipt, auth error nor incomplete process credentials", async (t) => {
@@ -261,4 +276,5 @@ test("managed cli-auth admits neither wrong account, stale receipt, auth error n
   );
   assert.equal(f.counts().filter((item) => ["flow", "process"].includes(item.kind)).length, 0);
   f.assertPreserved();
+  f.markPassed();
 });
