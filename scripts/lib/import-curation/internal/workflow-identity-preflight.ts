@@ -1,5 +1,6 @@
 import path from "node:path";
 import { validateIdentityPreflightEvidence } from "../../identity-preflight-proof.ts";
+import { validateIdentityPreflightRecoveryEvidence } from "../../identity-preflight-recovery-proof.ts";
 import { readJsonLinesIfExists, resolveArtifactPath } from "./artifact-inputs.ts";
 import {
   dataSetInformation,
@@ -313,7 +314,11 @@ export function readIdentityPreflightIndexRow(
   const executionManifestPath =
     resolveArtifactPath(
       repoRoot,
-      asText(typedRow.execution_manifest_file ?? typedRow.executionManifestFile),
+      asText(
+        typedRow.recovery_manifest_file ??
+          typedRow.execution_manifest_file ??
+          typedRow.executionManifestFile,
+      ),
       baseDir,
     ) ??
     (resultPath
@@ -326,7 +331,13 @@ export function readIdentityPreflightIndexRow(
     typedRow.target_sha256 ??
     typedRow.targetSha256 ??
     (request ? sha256Json(request.target ?? null) : null);
-  const executionEvidence = validateIdentityPreflightEvidence(executionManifest, {
+  const validateEvidence = typedRow.recovery_manifest_file
+    ? validateIdentityPreflightRecoveryEvidence
+    : validateIdentityPreflightEvidence;
+  const executionEvidence = validateEvidence(executionManifest, {
+    ...(typedRow.recovery_manifest_file
+      ? { expectedRetainedCliContentSha256: asText(typedRow.recovery_cli_content_sha256) }
+      : {}),
     requestText,
     reportText: resultText,
     datasetType,

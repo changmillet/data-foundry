@@ -16,6 +16,7 @@ import { resolveInstalledTiangongLcaCliPackage } from "./foundry-runtime-utils.t
 import { runFoundryTaskOperation } from "./foundry-task-store.ts";
 import { supportedDatasetTypes } from "./import-curation/internal/dataset-types.ts";
 import { createWorkflowDirectory } from "./foundry-workflow-io.ts";
+import { readFoundryTaskRuntimeAdoption } from "./foundry-task-runtime-adoption.ts";
 
 export async function prepareFoundryWorkflowContext(
   context: FoundryRuntimeContext,
@@ -35,9 +36,17 @@ export async function prepareFoundryWorkflowContext(
       ),
     ),
   ].sort();
+  const adoption = readFoundryTaskRuntimeAdoption(context);
   return runFoundryTaskOperation(
     context,
-    { command: "dataset-context-pack", options: { types, profile: "ai-import" } },
+    {
+      command: "dataset-context-pack",
+      options: {
+        types,
+        profile: "ai-import",
+        ...(adoption ? { runtime_adoption_plan_sha256: adoption.plan_sha256 } : {}),
+      },
+    },
     (operation) => {
       assertQualifiedFoundryRuntime(context, qualified);
       for (const input of context.inputs) readFoundryInput(context, input.path);

@@ -65,7 +65,7 @@ export function readVerifiedTaskSnapshot(
   requiredTask(context);
   const task = loadTask(context, {});
   bindAccountIntent(context);
-  const index = readIndex(context);
+  const index = readFoundryTaskArtifactIndex(context);
   const extra = index
     .filter((entry) => options.verifyCommands?.includes(entry.command))
     .map((entry) => ({
@@ -209,7 +209,7 @@ export async function assertFoundryTaskInputLineage(
   });
 }
 
-function readIndex(context: FoundryRuntimeContext): ArtifactEntry[] {
+export function readFoundryTaskArtifactIndex(context: FoundryRuntimeContext): ArtifactEntry[] {
   const content = readTaskBytes(context, "artifact-index.jsonl", maxIndexBytes).toString("utf8");
   if (content && !content.endsWith("\n"))
     fail(
@@ -379,6 +379,24 @@ function verifyInputs(
   }
 }
 
+/** Reuse the producer/source verifier for every indexed artifact without selecting a new runtime. */
+export function verifyFoundryTaskArtifactLineage(
+  context: FoundryRuntimeContext,
+  task: LoadedTask,
+  index: ArtifactEntry[],
+): void {
+  verifyInputs(
+    context,
+    task,
+    index,
+    index.map((entry) => ({
+      path: taskPath(context, entry.path),
+      bytes: entry.bytes,
+      sha256: entry.sha256,
+    })),
+  );
+}
+
 function replaceIndex(
   context: FoundryRuntimeContext,
   entries: ArtifactEntry[],
@@ -456,7 +474,7 @@ export async function runFoundryTaskOperation(
         : createTask(context, input.task ?? {});
       bindAccountIntent(context);
       const indexBefore = readTaskBytes(context, "artifact-index.jsonl", maxIndexBytes);
-      const index = readIndex(context);
+      const index = readFoundryTaskArtifactIndex(context);
       verifyInputs(context, task, index);
       input.validateCurrent?.(
         Object.freeze(

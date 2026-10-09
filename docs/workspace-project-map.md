@@ -140,3 +140,5 @@ The Wave 26 library, classification, authoring, process-scope and batch modules 
 | Foundry-local surface cleanup | `tiangong-lca-data-foundry` | remove old aliases, empty command categories, and orphaned draft docs only after metadata, tests, docs, and docpact show no remaining consumer |
 
 Before implementing a missing capability, classify it with `docs/capability-ownership-policy.md` and `specs/capability-ownership-rules.json`.
+
+Original-task compatibility belongs to the Foundry native receipt chain; candidate selection and human-facing questions remain Skills-owned. Its host qualification binds exact installed Foundry/CLI/Node/Toolkit bytes independently of version labels. Retained report recovery preserves indexed originals, while machine-gate and original-consumer validation remain separate. See [the public runtime contract](public-runtime-contract.md#same-task-compatibility-and-retained-identity-diagnostics).

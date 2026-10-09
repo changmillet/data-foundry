@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { registeredAssessmentSetProducerBase } from "./foundry-assessment-producer.ts";
 import { createHash } from "node:crypto";
 import {
   FoundryContextError,
@@ -251,6 +252,7 @@ export async function applyFoundrySemanticInput(
     set: Record<string, unknown>;
     manifest: Record<string, unknown>;
     manifestFile: string;
+    ownerBase: string;
     tasks: Array<{
       task: Record<string, unknown>;
       sha: string;
@@ -258,6 +260,7 @@ export async function applyFoundrySemanticInput(
     }>;
   }> = [];
   for (const set of assessment.value.sets) {
+    const ownerBase = registeredAssessmentSetProducerBase(context, entries, set);
     const manifestFile = text(set.authoring_manifest, "Authoring manifest");
     const manifest = workflowObject(
       JSON.parse(readFoundryInput(context, manifestFile).toString("utf8")),
@@ -268,10 +271,7 @@ export async function applyFoundrySemanticInput(
     for (const raw of manifest.tasks) {
       const task = workflowObject(raw),
         files = workflowObject(task.files);
-      const taskFile = path.resolve(
-        assessment.value.owner_base,
-        text(files.task_json, "Authoring task"),
-      );
+      const taskFile = path.resolve(ownerBase, text(files.task_json, "Authoring task"));
       const entry = entries.find(
         (candidate) => resolveFoundryOutput(context, candidate.path) === taskFile,
       );
@@ -290,7 +290,7 @@ export async function applyFoundrySemanticInput(
       used.add(entry.sha256);
       tasks.push({ task, sha: entry.sha256, fact: chosen.fact });
     }
-    if (tasks.length) work.push({ set, manifest, manifestFile, tasks });
+    if (tasks.length) work.push({ set, manifest, manifestFile, ownerBase, tasks });
     for (const raw of Array.isArray(set.decisions) ? set.decisions : []) {
       const decision = workflowObject(raw);
       if (
@@ -503,7 +503,7 @@ export async function applyFoundrySemanticInput(
           operation.writeJson(projectedFile, projected);
           if (blockers.length !== previousBlockers) continue;
           const collection = runDatasetAuthoringPatchCollect({
-            repoRoot: assessment.value.owner_base,
+            repoRoot: group.ownerBase,
             options: {
               taskManifest: projectedFile,
               outDir: path.join(output, type, "collect"),
@@ -523,7 +523,7 @@ export async function applyFoundrySemanticInput(
             group.tasks.map(({ task }) =>
               path.dirname(
                 path.resolve(
-                  assessment.value.owner_base,
+                  group.ownerBase,
                   text(workflowObject(task.files).authoring_package, "Authoring package"),
                 ),
               ),

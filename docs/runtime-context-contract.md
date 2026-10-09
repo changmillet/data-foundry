@@ -146,3 +146,11 @@ Managed command continuations retain the original verified launch id through the
 Public reference selection uses the internal `dataset-workflow-reference-input` task operation. It preserves selected source evidence, publishes indexed QA/review snapshots and a derived intent with only file locators changed. Current row and reference-selection digests fence finalization; snapshot files remain selected inputs for authorization, execution and readback. The selected package/CLI/TIDAS trust anchors and account authority are unchanged.
 
 The public execution owner verifies current identity separately for initial rehydration and the final complete pre-dispatch admission pass. Local work between them cannot reuse the earlier receipt as fresh authority. Both passes retain current runtime, account, grant, input and CommandSpec verification before the existing attempt-consumption boundary; no replay or additional grant is introduced.
+
+## Exact compatibility and diagnostic interpretation
+
+The public same-task adoption host is described in [the public runtime contract](public-runtime-contract.md#same-task-compatibility-and-retained-identity-diagnostics). Its immutable receipt chain qualifies complete old/new package and CLI inventories, retains identical Node/Toolkit bytes, and enforces the selected tip during current continuation. Four legacy identity fields or equal package versions cannot establish compatible code. Prior producer/context facts remain history and do not stand in for fresh current machine gates.
+
+Identity report interpretation supports the exact CLI 0.1.27 manual-review exit-1 pair after complete bound validation. Retained 0.1.22 reports require their own original account/CLI/producer facts and an independently qualified predecessor inventory. A recovery proof is a new interpretation, not a historical CLI execution manifest, and cannot replace a missing original raw authenticated receipt. Present retained executable/inventory readback is explicitly current observation.
+
+Explicit Process reference selection reaches initial queue/QA and the current CLI validation wrapper. Native input and scientific Process bytes remain unchanged. Missing/wrong exact bodies and projection/report/reference drift remain blocking evidence.

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import type { TrustedFoundryRuntimeAdoptionQualification } from "./lib/foundry-task-runtime-adoption.ts";
 import path from "node:path";
 import type { TrustedRuntimeManifest } from "@tiangong-lca/cli/runtime";
 import type { FoundryRuntimeManagerOptions } from "./lib/foundry-runtime-selection.ts";
@@ -32,6 +33,7 @@ export interface FoundryRuntimeCommandHost {
   readonly authentication?: FoundryAuthentication;
   readonly runtimeTarget?: TrustedRuntimeManifest;
   readonly runtimeManager?: FoundryRuntimeManagerOptions;
+  readonly runtimeAdoptionQualification?: TrustedFoundryRuntimeAdoptionQualification;
   readonly signal?: AbortSignal;
   readonly writeStdout?: (text: string) => void;
   readonly setExitCode?: (code: number) => void;
@@ -79,7 +81,7 @@ function publicCommand(argv: string[]): ParsedPublicCommand | null {
     return { operation: "workspace.init", args: parseArgs(rest) };
   if (group === "workspace" && action === "migrate")
     return { operation: "workspace.migrate", args: parseArgs(rest) };
-  if (group === "task" && ["start", "status", "resume"].includes(action))
+  if (group === "task" && ["start", "status", "resume", "adopt-runtime"].includes(action))
     return { operation: `task.${action}` as FoundryPublicOperation, args: parseArgs(rest) };
   if (group === "workspace" || group === "task")
     return { operation: "unknown", args: parseArgs([action, ...rest].filter(Boolean)) };
@@ -207,9 +209,11 @@ async function runPublicCommand(
                 "referenceInput",
                 "interactionInput",
               ]
-            : parsed.operation === "task.status"
-              ? ["task", "actor"]
-              : []),
+            : parsed.operation === "task.adopt-runtime"
+              ? ["task", "actor", "dryRun", "apply", "audit", "selection", "plan"]
+              : parsed.operation === "task.status"
+                ? ["task", "actor"]
+                : []),
   ]);
   const unknownOption = Object.keys(parsed.args).find((key) => !allowed.has(key));
   if (unknownOption)
@@ -237,6 +241,7 @@ async function runPublicCommand(
     authentication: host.authentication,
     workspaceAccess: host.workspaceAccess,
     runtimeManager: host.runtimeManager,
+    runtimeAdoptionQualification: host.runtimeAdoptionQualification,
     accountIntent:
       parsed.operation === "doctor"
         ? (doctorAccountIntent(parsed.args) ?? host.accountIntent)
@@ -467,20 +472,50 @@ async function runPublicCommand(
         "argument_task_actor_required",
         "Task status and resume require exact --task and --actor values.",
       );
-    result =
-      parsed.operation === "task.status"
-        ? await facade.status({ taskId, actorId })
-        : await facade.resume({
-            taskId,
-            actorId,
-            semanticInputFile: option(parsed.args.semanticInput, "--semantic-input") ?? undefined,
-            interactionInputFile:
-              option(parsed.args.interactionInput, "--interaction-input") ?? undefined,
-            referenceInputFile:
-              option(parsed.args.referenceInput, "--reference-input") ?? undefined,
-            authorizationInputFile:
-              option(parsed.args.authorizationInput, "--authorization-input") ?? undefined,
-          });
+    if (parsed.operation === "task.adopt-runtime") {
+      const modes = [parsed.args.dryRun, parsed.args.apply, parsed.args.audit];
+      if (
+        modes.filter((value) => value === true).length !== 1 ||
+        modes.some((value) => value !== undefined && value !== true)
+      )
+        throw new FoundryContextError(
+          "runtime_adoption_mode_invalid",
+          "Select exactly one of --dry-run, --apply or --audit.",
+        );
+      const selection = option(parsed.args.selection, "--selection"),
+        plan = option(parsed.args.plan, "--plan");
+      const readSelected = (file: string) => {
+        if (migrationCredentialPath(file))
+          throw new FoundryContextError(
+            "credential_input_forbidden",
+            "Private files cannot select runtime adoption.",
+          );
+        return JSON.parse(
+          transferRead(path.resolve(file), 8 * 1024 * 1024).toString("utf8"),
+        ) as unknown;
+      };
+      result = await facade.adoptTaskRuntime({
+        taskId,
+        actorId,
+        mode: parsed.args.dryRun === true ? "plan" : parsed.args.apply === true ? "apply" : "audit",
+        ...(selection ? { selection: readSelected(selection) } : {}),
+        ...(plan ? { plan: readSelected(plan) } : {}),
+      });
+    } else
+      result =
+        parsed.operation === "task.status"
+          ? await facade.status({ taskId, actorId })
+          : await facade.resume({
+              taskId,
+              actorId,
+              semanticInputFile: option(parsed.args.semanticInput, "--semantic-input") ?? undefined,
+              interactionInputFile:
+                option(parsed.args.interactionInput, "--interaction-input") ?? undefined,
+              referenceInputFile:
+                option(parsed.args.referenceInput, "--reference-input") ?? undefined,
+              authorizationInputFile:
+                option(parsed.args.authorizationInput, "--authorization-input") ?? undefined,
+            });
   }
   return result;
 }

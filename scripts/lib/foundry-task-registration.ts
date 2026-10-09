@@ -1,3 +1,4 @@
+import { assertTaskRuntimeIdentity } from "./foundry-task-runtime-adoption.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
@@ -116,11 +117,7 @@ function readRegistration(context: FoundryRuntimeContext): TaskRegistration | nu
     fail("task_binding_mismatch", "Registered task belongs to another workspace or task.");
   if (job.actor_id !== context.actorId)
     fail("task_actor_mismatch", "Task actor does not match the registered task intent.");
-  if (
-    context.workspaceAccess === "write" &&
-    sha256Json(job.runtime_identity) !== sha256Json(runtimeIdentity(context))
-  )
-    fail("task_runtime_changed", "Task runtime differs from its registration.");
+  if (context.workspaceAccess === "write") assertTaskRuntimeIdentity(context, job.runtime_identity);
   if (
     typeof job.target_profile !== "string" ||
     (context.workspaceAccess === "write" &&
@@ -215,11 +212,7 @@ export function loadTask(context: FoundryRuntimeContext, options: FoundryTaskOpt
     options.targetEntities?.some((kind) => !(raw.target_entities as string[]).includes(kind))
   )
     fail("task_request_mismatch", "Task request, lane, profile or entity scope changed.");
-  if (sha256Json(raw.runtime_identity) !== sha256Json(runtimeIdentity(context)))
-    fail(
-      "task_runtime_changed",
-      "Task runtime identity changed; use the pinned runtime or an explicit migration.",
-    );
+  assertTaskRuntimeIdentity(context, raw.runtime_identity);
   if (sha256Json(raw.write_policy) !== sha256Json({ mode: "dry-run", remote_state_code: 0 }))
     fail("task_write_policy_invalid", "Task metadata cannot grant remote write authority.");
   const sourceRef = reference(raw.source_manifest, "source-manifest.json");

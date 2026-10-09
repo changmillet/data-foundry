@@ -113,3 +113,9 @@ export {
   type FoundryPackageDescriptor,
   type FoundryPackageFileFact,
 } from "./lib/foundry-package-contract.ts";
+
+export {
+  createFoundryRuntimeAdoptionQualification,
+  type TrustedFoundryRuntimeAdoptionQualification,
+  type FoundryTaskRuntimeAdoptionInput,
+} from "./lib/foundry-task-runtime-adoption.ts";

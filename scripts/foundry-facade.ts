@@ -1,3 +1,14 @@
+import {
+  planFoundryTaskRuntimeAdoption,
+  applyFoundryTaskRuntimeAdoption,
+} from "./lib/foundry-task-runtime-adoption-write.ts";
+import {
+  assertRuntimeAdoptionToolkit,
+  assertAdoptedRuntimeToolkit,
+  readFoundryTaskRuntimeAdoption,
+  type FoundryTaskRuntimeAdoptionInput,
+  type TrustedFoundryRuntimeAdoptionQualification,
+} from "./lib/foundry-task-runtime-adoption.ts";
 import { assertFoundryRepairExecution } from "./lib/foundry-repair-execution.ts";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
@@ -132,6 +143,7 @@ export interface FoundryFacadeOptions {
   readonly signal?: AbortSignal;
   readonly workspaceAccess?: FoundryWorkspaceAccess;
   readonly runtimeManager?: FoundryRuntimeManagerOptions;
+  readonly runtimeAdoptionQualification?: TrustedFoundryRuntimeAdoptionQualification;
 }
 
 const maxSpecBytes = 1024 * 1024;
@@ -270,14 +282,17 @@ function accountReadiness(context: ReturnType<typeof createFoundryRuntimeContext
 function qualification(
   context: ReturnType<typeof createFoundryRuntimeContext>,
   selected: FoundryFacadeRuntimeSelection | undefined,
+  allowTransition = false,
 ): QualifiedFoundryRuntime | undefined {
-  return selected
+  const qualified = selected
     ? qualifyFoundryRuntime(context, {
         cliExpectation: selected.cliExpectation,
         tidasExpectation: selected.tidasExpectation,
         tidasExecutable: selected.tidasExecutable,
       })
     : undefined;
+  assertAdoptedRuntimeToolkit(context, qualified, allowTransition);
+  return qualified;
 }
 
 function runtimeIdentity(
@@ -338,8 +353,10 @@ function failure(
     error instanceof FoundryContextError
       ? error.message
       : `Foundry could not complete this operation${systemCode ? ` (${systemCode})` : ""}; selected state was preserved.`;
-  const needsAuth = code === "needs_auth" || code.startsWith("identity_");
+  const recoveryUnproven = code === "identity_preflight_recovery_unproven";
+  const needsAuth = !recoveryUnproven && (code === "needs_auth" || code.startsWith("identity_"));
   const needsInputCodes = new Set([
+    "identity_preflight_recovery_unproven",
     "task_not_found",
     "workspace_not_initialized",
     "input_not_selected",
@@ -355,6 +372,7 @@ function failure(
     "task_source_invalid",
   ]);
   const blockedCodes = new Set([
+    "runtime_adoption_plan_stale",
     "facade_crash_recovery_conflict",
     "task_actor_mismatch",
     "task_account_mismatch",
@@ -392,7 +410,14 @@ function failure(
     taskId,
     artifacts: [],
     blockers: [{ code, message, scope: taskId }],
-    nextActions: [],
+    nextActions: recoveryUnproven
+      ? [
+          human(
+            "verify_original_identity_recovery",
+            `Recovery remains UNKNOWN for original task ${taskId}. Verify the retained original producer, receipt, request and attempt binding through this task's recovery entry. Preserve the original attempt and do not repeat its CLI query.`,
+          ),
+        ]
+      : [],
     runtimeIdentity: identity,
     permissions: noPermission(),
   });
@@ -658,7 +683,7 @@ function currentIndexedQueueBlockers(
       }, 0);
     const scope = missing ? "process" : String(set.type);
     const message = missing
-      ? `Selected Process data has ${missing} unresolved Flow reference occurrence${missing === 1 ? "" : "s"}: the cited Flow evidence is absent from the selected inputs and has no verified external declaration. Process review is blocked; unrelated records can continue. Provide the cited Flow evidence or verified references, or keep the gap open. Adding selected sources requires a new task revision because this task's inputs are frozen. Full IDs and paths: ${detailsFile}.`
+      ? `Selected Process data has ${missing} unresolved Flow reference occurrence${missing === 1 ? "" : "s"}: the cited Flow evidence is absent from the selected inputs and has no verified external declaration. Process review is blocked; unrelated records can continue. Select existing read-only Flow evidence and its complete FlowProperty/UnitGroup QA chain using this Process task's --reference-input, or keep the gap open. Only changing the frozen selected sources requires a new task revision. Full IDs and paths: ${detailsFile}.`
       : `The selected ${scope} dependency queue has ${recorded.length} blocker${recorded.length === 1 ? "" : "s"}. Independent types can continue. Review the exact registered evidence at ${detailsFile} before revising the source or closure.`;
     blockers.push({ code: "curation_queue_blocked", message, scope });
     actions.push(human("review_queue_blockers", message));
@@ -1395,14 +1420,14 @@ function taskProjection(
         {
           code: "identity_preflight_requires_input",
           message:
-            "Review the identity preflight diagnostics. A subsequent resume retries this read-only stage against the same current rows.",
+            "Review the retained identity diagnostics. Resume verifies eligible original reports before continuing into semantic review; incomplete original proof remains UNKNOWN without repeating its query.",
           scope: record.task_id,
         },
       ],
       nextActions: [
         human(
           "review_identity_preflight",
-          `Read ${workflow.identity.file} and resolve the reported query or execution failure before retrying.`,
+          `Read ${workflow.identity.file}. Use the same task's resume entry to verify retained diagnostic evidence; preserve original attempts and report bindings.`,
         ),
       ],
       runtimeIdentity: identity,
@@ -1558,6 +1583,73 @@ function taskProjection(
 export function createFoundryFacade(options: FoundryFacadeOptions) {
   const base = () => createFoundryRuntimeContext(contextOptions(options));
   return Object.freeze({
+    async adoptTaskRuntime(
+      input: FoundryTaskRuntimeAdoptionInput,
+    ): Promise<FoundryOperationResult> {
+      try {
+        assertNotInterrupted(options.signal);
+        const current = base(),
+          record = loadFoundryFacadeTaskRecord(current, input.taskId, input.actorId);
+        const context = taskContext(options, current, record);
+        if (
+          (input.mode === "plan" && (input.selection === undefined || input.plan !== undefined)) ||
+          (input.mode === "apply" && (input.plan === undefined || input.selection !== undefined)) ||
+          (input.mode === "audit" && (input.plan !== undefined || input.selection !== undefined))
+        )
+          throw new FoundryContextError(
+            "runtime_adoption_selection_invalid",
+            "Select exactly one plan, apply or audit input.",
+          );
+        if (input.mode !== "audit" && options.runtimeAdoptionQualification)
+          assertRuntimeAdoptionToolkit(
+            qualification(context, options.runtimeSelection, true),
+            input.mode === "plan"
+              ? input.selection
+              : (input.plan as { selection?: unknown })?.selection,
+          );
+        const value =
+          input.mode === "plan"
+            ? planFoundryTaskRuntimeAdoption(
+                context,
+                record,
+                input.selection,
+                options.runtimeAdoptionQualification,
+              )
+            : input.mode === "apply"
+              ? await applyFoundryTaskRuntimeAdoption(
+                  context,
+                  record,
+                  input.plan,
+                  options.runtimeAdoptionQualification,
+                )
+              : input.mode === "audit"
+                ? readFoundryTaskRuntimeAdoption(context)
+                : null;
+        if (!value)
+          throw new FoundryContextError(
+            "runtime_adoption_missing",
+            "No explicit task runtime adoption exists.",
+          );
+        return createFoundryOperationResult({
+          operation: "task.adopt-runtime",
+          status: input.mode === "plan" ? "ready" : "completed",
+          taskId: record.task_id,
+          artifacts: [
+            inlineArtifact(
+              input.mode === "plan" ? "runtime_adoption_plan" : "runtime_adoption_result",
+              value,
+            ),
+          ],
+          blockers: [],
+          nextActions: [],
+          runtimeIdentity: runtimeIdentity(context),
+          permissions: noPermission(),
+        });
+      } catch (error) {
+        return failure("task.adopt-runtime", input.taskId, error);
+      }
+    },
+
     async runtimeUse(input: {
       manifest: TrustedRuntimeManifest;
       requestId: string;
@@ -2530,9 +2622,7 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
         const imported = before.artifacts.some(
           (artifact) => artifact.command === "dataset-tidas-import",
         );
-        const contextPrepared = before.artifacts.some(
-          (artifact) => artifact.command === "dataset-context-pack",
-        );
+        const contextPrepared = workflow.currentContextReports.length > 0;
         const nativeRows = before.artifacts.filter(
           (artifact) =>
             artifact.command === "dataset-tidas-import" &&
@@ -2596,9 +2686,7 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
               "workflow_rows_required",
               "Registered row preparation is required.",
             );
-          const contracts = facts
-            .filter((fact) => path.basename(fact.path) === "contract-report.json")
-            .map((fact) => fact.path);
+          const contracts = workflow.currentContextReports;
           const selected = taskContext(options, current, record, facts);
           const identityReport =
             workflow.identity?.value.status === "completed" ? workflow.identity.file : undefined;

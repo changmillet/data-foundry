@@ -586,3 +586,9 @@ Foundry tests are organized by behavior layer, not by historical incident number
 - `test/fixtures/` for shared Foundry row, report, command, and workflow-specific fixture helpers split by behavior surface.
 
 Use `pnpm test` for the full suite, `pnpm test:unit`, `pnpm test:commands`, and `pnpm test:scenarios` for targeted behavior, and `pnpm test:toolchain` for the pnpm/TS7 contract. New tests should be named after the behavior they protect rather than `full-context-gate-N`. Each typed migration slice starts with a failing characterization or real case, then passes the focused test, full suite, and clean arbitrary-worktree gate.
+
+## Original-task local continuation
+
+For a compatibility repair, retain the original Task/actor/registration, source rows, reports and attempts. Independently qualify exact installed old/new descriptors, CLI inventories, Node and the selected Toolkit; default Toolkit publication is not proof for a Task bound to another qualified executable. Use the public same-task plan/apply/audit host, stop the previous writer and bind each subsequent transition to the preceding immutable receipt. Current assessment is requalified separately from retained report interpretation.
+
+Valid bound manual review enters the Agent's existing semantic work and grants no save permission. Recovery performs no new query and requires the original registered raw authentication and producer proof; incomplete original evidence stays UNKNOWN with its inspection action. A newly authorized read-only stage would require a separate scope decision. Never replace the Task, rewrite history, manufacture an execution manifest or replay Source/owner writes. Full source tests and installed synthetic qualification still require the original data owner's real entry retest before delivery.

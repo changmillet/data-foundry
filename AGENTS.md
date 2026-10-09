@@ -148,3 +148,5 @@ These rules are mandatory for code changes in this repository:
 ## Commit Rules
 
 Keep commits small and thematic. Do not commit `.foundry/`, `.env`, logs, source packages under `tmp/`, workspace clones, credentials, or downloaded private payloads.
+
+Same-task compatibility and retained identity diagnostics follow `docs/public-runtime-contract.md`. Native v2 successor receipts retain the first anchor, original registration/job and all history; full package/CLI inventories matter even with equal version/summary fields. Previous machine assessment remains retained history and needs fresh current qualification. Missing original authenticated receipt/producer evidence remains UNKNOWN without query replay. Multilingual Flow/Process queries preserve source rows, and initial Process reference selection never creates Flow/support mutation targets. Explicit authorization refresh after locked metadata preserves the same CLI/account/mode, grant expiry, CAS and 60-second limit.

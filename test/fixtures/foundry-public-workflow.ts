@@ -16,6 +16,8 @@ import { syncBuiltinESMExports } from "node:module";
 import { testAuthIdentityReceipt } from "../fixtures/auth-identity-receipt.ts";
 import { canonicalPayloadSha256 } from "../../scripts/lib/post-write-root-proof.ts";
 import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
+import { publishLegacyIdentityFailure } from "./legacy-identity-producer.ts";
+import { validateIdentityPreflightRecoveryEvidence } from "../../scripts/lib/identity-preflight-recovery-proof.ts";
 import { readRows } from "../../scripts/lib/import-curation/internal/runtime-io.ts";
 import { unwrapDatasetPayload } from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
 import {
@@ -187,6 +189,18 @@ export async function verifyPublicIdentityWorkflow(
   nativeOperation: "insert" | "save_draft" = "insert",
   nativeContractInvalid = false,
   terminalDecisionRecap = false,
+  legacyIdentityRecovery = false,
+  legacyRecoveryFailure:
+    | "unproven"
+    | "auth"
+    | "empty-results"
+    | "missing-results"
+    | "missing-decision"
+    | "misleading-failure"
+    | "node"
+    | "node-missing"
+    | "missing-auth"
+    | null = null,
 ) {
   const [identityDecision, approvalKind, trace, mixed, explicitMode, remoteDifference] = scenario;
   const accountMode = explicitMode ?? "ordinary";
@@ -393,6 +407,7 @@ export async function verifyPublicIdentityWorkflow(
   let authCalls = 0,
     preflightCalls = 0,
     failRead = true;
+  let currentAuthFailure = false;
   let finalizing = false;
   let referenceQueries = 0;
   let referenceResponse: "missing" | "duplicate" | "outdated" | "wrong_target" | "passed" =
@@ -757,6 +772,15 @@ export async function verifyPublicIdentityWorkflow(
       let report: unknown;
       if (argv.includes("identity-receipt")) {
         authCalls++;
+        if (currentAuthFailure)
+          return {
+            status: 1,
+            signal: null,
+            stdout: JSON.stringify({ error: "fixture_auth_failed" }),
+            stderr: "",
+            pid: 1,
+            output: [],
+          };
         report = testAuthIdentityReceipt({
           projectRef: account.project_ref,
           userId: account.user_id,
@@ -780,9 +804,22 @@ export async function verifyPublicIdentityWorkflow(
         assert.equal(environment.FOUNDRY_VERIFIED_USER_ID, account.user_id);
         report = {
           schema_version: 1,
-          status: "needs_review",
-          decision: "manual_review",
+          generated_at_utc: new Date().toISOString(),
+          kind: "flow",
+          status: failRead ? "failed" : "needs_review",
+          decision: failRead ? null : "manual_review",
+          target: {
+            id: datasetIdentity(request.target, 0, "flow").id,
+            version: datasetIdentity(request.target, 0, "flow").version,
+          },
+          input_path: requestFile,
+          out_dir: outDir,
+          files: { identity_decision: path.join(outDir, "outputs", "identity-decision.json") },
           candidates: [],
+          candidate_sources: [],
+          findings: [],
+          blockers: [],
+          next_action: "queue_manual_review",
           ok: true,
         };
         fs.mkdirSync(path.join(outDir, "outputs"), { recursive: true });
@@ -809,7 +846,7 @@ export async function verifyPublicIdentityWorkflow(
           };
       }
       return {
-        status: 0,
+        status: argv.includes("identity-preflight") ? 1 : 0,
         signal: null,
         stdout: JSON.stringify(report),
         stderr: "",
@@ -827,13 +864,95 @@ export async function verifyPublicIdentityWorkflow(
     t.mock.restoreAll();
     syncBuiltinESMExports();
   });
-  const failed = await facade.resume(invocation);
+  let originalFacts: Array<{ path: string; sha256: string }> = [];
+  if (legacyIdentityRecovery) {
+    failRead = false;
+    const legacy = await publishLegacyIdentityFailure({
+      root,
+      workspace,
+      taskId: invocation.taskId,
+      actorId: invocation.actorId,
+      seed,
+      runtimeSelection,
+      account,
+      retainAuthReceipt: legacyRecoveryFailure !== "missing-auth",
+      unprovenArgv: legacyRecoveryFailure === "unproven",
+      incompleteAttempt:
+        legacyRecoveryFailure === "empty-results" ||
+        legacyRecoveryFailure === "missing-results" ||
+        legacyRecoveryFailure === "missing-decision" ||
+        legacyRecoveryFailure === "misleading-failure"
+          ? legacyRecoveryFailure
+          : undefined,
+      retainedNodeFailure:
+        legacyRecoveryFailure === "node" || legacyRecoveryFailure === "node-missing"
+          ? legacyRecoveryFailure
+          : undefined,
+    });
+    originalFacts = legacy.snapshot.index
+      .filter((item) => item.command === "dataset-workflow-identity")
+      .map((item) => ({
+        path: path.resolve(legacy.context.taskRoot!, item.path),
+        sha256: item.sha256,
+      }));
+  }
+  const failed = legacyIdentityRecovery
+    ? await facade.status(invocation)
+    : await facade.resume(invocation);
   if (childFailure) throw childFailure;
   assert.equal(failed.status, "needs_input", JSON.stringify(failed));
   assert.equal(failed.blockers[0]?.code, "identity_preflight_requires_input");
   assert.equal((await facade.status(invocation)).status, "needs_input");
   failRead = false;
+  currentAuthFailure = legacyRecoveryFailure === "auth";
   const read = await facade.resume(invocation);
+  if (legacyRecoveryFailure) {
+    assert.equal(
+      authCalls,
+      2,
+      "the current identity verification is separate from the original producer admission",
+    );
+    assert.equal(
+      read.status,
+      legacyRecoveryFailure !== "auth" ? "needs_input" : "needs_auth",
+      JSON.stringify(read),
+    );
+    assert.equal(read.task_id, invocation.taskId);
+    assert.equal(
+      preflightCalls,
+      1,
+      "unproven original evidence or real auth failure cannot replay the original query",
+    );
+    for (const item of originalFacts)
+      assert.equal(
+        digestFile(item.path),
+        item.sha256,
+        "original native producer remains unchanged",
+      );
+    if (legacyRecoveryFailure !== "auth") {
+      assert.equal(read.blockers[0]?.code, "identity_preflight_recovery_unproven");
+      assert.ok(
+        read.next_actions.some(
+          (action) =>
+            action.kind === "human" && action.code === "verify_original_identity_recovery",
+        ),
+      );
+      assert.ok(!read.next_actions.some((action) => action.kind === "command"));
+    }
+    t.diagnostic(
+      JSON.stringify({
+        public_recovery_negative: legacyRecoveryFailure,
+        task_id: read.task_id,
+        status: read.status,
+        blockers: read.blockers,
+        next_actions: read.next_actions,
+        auth_calls: authCalls,
+        original_query_calls: preflightCalls,
+        original_native_facts_unchanged: true,
+      }),
+    );
+    return;
+  }
   const evidence = read.artifacts.findLast((item) => item.role === "foundry-identity.json");
   assert.equal(
     read.status,
@@ -848,6 +967,112 @@ export async function verifyPublicIdentityWorkflow(
     index: string;
   };
   assert.equal(report.status, "completed");
+  if (legacyIdentityRecovery) {
+    for (const item of originalFacts)
+      assert.equal(digestFile(item.path), item.sha256, "original producer facts are immutable");
+    assert.equal((report as Record<string, unknown>).new_cli_execution, false);
+    const recoveredRows = readRows(report.index) as Array<{
+      recovery_manifest_file: string;
+      recovery_cli_content_sha256: string;
+      request_file: string;
+      expected_report_file: string;
+      dataset_type: string;
+      dataset_id: string;
+      dataset_version: string;
+      target_sha256: string;
+    }>;
+    const proof = JSON.parse(fs.readFileSync(recoveredRows[0].recovery_manifest_file, "utf8"));
+    assert.equal(proof.new_cli_execution, false);
+    assert.equal(proof.original.status, "failed");
+    assert.equal(
+      proof.original.producer_auth.captured_at_utc,
+      JSON.parse(fs.readFileSync(proof.original.facts.auth_receipt.path, "utf8")).captured_at_utc,
+    );
+    assert.notEqual(
+      proof.current_owner_interpretation_auth.receipt_scope_sha256,
+      proof.original.producer_auth.receipt_scope_sha256,
+    );
+    assert.equal(
+      preflightCalls,
+      1,
+      "same-task recovery interprets the one original query without replay",
+    );
+    assert.equal(
+      proof.current_retained_runtime_observation.role,
+      "current_retained_runtime_observation",
+    );
+    assert.equal(
+      proof.current_retained_runtime_observation.observed_at_utc,
+      proof.recovered_at_utc,
+    );
+    assert.equal(
+      proof.current_retained_runtime_observation.original_executable.sha256,
+      proof.current_retained_runtime_observation.qualified_node_sha256,
+    );
+    const input = {
+      requestText: fs.readFileSync(recoveredRows[0].request_file, "utf8"),
+      reportText: fs.readFileSync(recoveredRows[0].expected_report_file, "utf8"),
+      datasetType: recoveredRows[0].dataset_type,
+      datasetId: recoveredRows[0].dataset_id,
+      datasetVersion: recoveredRows[0].dataset_version,
+      targetSha256: recoveredRows[0].target_sha256,
+      expectedProjectRef: account.project_ref,
+      expectedUserId: account.user_id,
+      expectedRetainedCliContentSha256: recoveredRows[0].recovery_cli_content_sha256,
+    };
+    assert.equal(validateIdentityPreflightRecoveryEvidence(proof, input).ok, true);
+    for (const change of [
+      (value: typeof proof) => {
+        value.new_cli_execution = true;
+      },
+      (value: typeof proof) => {
+        value.task_id = "foreign-task";
+      },
+      (value: typeof proof) => {
+        value.actor_id = "foreign-actor";
+      },
+      (value: typeof proof) => {
+        value.original.producer_base = root;
+      },
+      (value: typeof proof) => {
+        value.original.producer_auth.captured_at_utc = value.recovered_at_utc;
+      },
+      (value: typeof proof) => {
+        value.original.producer_auth.receipt_scope_sha256 = "0".repeat(64);
+      },
+      (value: typeof proof) => {
+        value.original.cli_exit_code = 2;
+      },
+      (value: typeof proof) => {
+        value.original.status = "completed";
+      },
+      (value: typeof proof) => {
+        value.original.query_generated_at_utc = value.recovered_at_utc;
+      },
+      (value: typeof proof) => {
+        value.current_owner_interpretation_auth.user_id = "foreign-user";
+      },
+      (value: typeof proof) => {
+        value.current_owner_interpretation_auth.captured_at_utc = "2000-01-01T00:00:00Z";
+      },
+      (value: typeof proof) => {
+        value.original.facts.run.sha256 = "0".repeat(64);
+      },
+      (value: typeof proof) => {
+        delete value.original.facts.producer_receipt;
+      },
+    ]) {
+      const forged = structuredClone(proof);
+      change(forged);
+      const { proof_sha256: _digest, ...scope } = forged;
+      forged.proof_sha256 = sha256Json(scope);
+      assert.equal(
+        validateIdentityPreflightRecoveryEvidence(forged, input).ok,
+        false,
+        "changed proof must fail even with a recomputed envelope digest",
+      );
+    }
+  }
   for (const artifact of read.artifacts.filter(
     (item) => item.kind === "file" && item.path.includes("/outputs/identity/"),
   )) {
@@ -879,7 +1104,7 @@ export async function verifyPublicIdentityWorkflow(
   };
   assert.equal(current.identity_report, evidence.path);
   assert.ok(current.sets[0].decisions.some((item) => item.kind === "identity"));
-  if (!mixed) assert.equal(preflightCalls, 2);
+  if (!mixed) assert.equal(preflightCalls, legacyIdentityRecovery ? 1 : 2);
   const initialPreflightCalls = preflightCalls;
   assert.equal(authCalls, 2);
   await facade.status(invocation);

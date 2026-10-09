@@ -23,6 +23,7 @@ import { registerWorkflowStageFiles } from "./foundry-workflow-io.ts";
 import { datasetIdentity } from "./import-curation/internal/dataset-payload.ts";
 import { readRows } from "./import-curation/internal/runtime-io.ts";
 import type { ArtifactEntry } from "./foundry-task-types.ts";
+import { recoverFoundryWorkflowIdentity } from "./foundry-workflow-identity-recovery.ts";
 
 /** Run the existing read-only owner first; the local transaction only records its captured evidence. */
 export async function runFoundryWorkflowIdentity(
@@ -34,7 +35,7 @@ export async function runFoundryWorkflowIdentity(
   assertQualifiedFoundryRuntime(context, qualified);
   const state = currentWorkflowState(context, entries),
     rows = state.rows;
-  if (!rows || !state.assessment)
+  if (!rows || (!state.assessment && !state.retainedAssessment))
     throw new FoundryContextError(
       "workflow_rows_required",
       "Assess the current rows before identity preflight.",
@@ -52,6 +53,18 @@ export async function runFoundryWorkflowIdentity(
       );
   });
   const identity = verifyFoundryRuntimeIdentity(context, authentication, process.env, qualified);
+  const recovered = await recoverFoundryWorkflowIdentity(
+    context,
+    qualified,
+    entries,
+    identity.receipt,
+  );
+  if (recovered) return recovered;
+  if (!state.assessment)
+    throw new FoundryContextError(
+      "workflow_rows_required",
+      "Current runtime assessment is required before a new identity query.",
+    );
   const nonce = randomUUID();
   const output = resolveFoundryOutput(context, `outputs/identity/${nonce}`);
   const temporary = resolveFoundryOutput(context, `tmp/identity-${nonce}`);

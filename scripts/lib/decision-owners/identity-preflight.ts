@@ -863,6 +863,11 @@ export function createIdentityPreflightRunCommands({
               diskReportMtimeMs:
                 reportFile && fileExists(reportFile) ? fs.statSync(reportFile).mtimeMs : null,
               completedAtUtc: nowIso(),
+              requestFile: requestFile ?? undefined,
+              outputDir,
+              reportFile: reportFile ?? undefined,
+              stderrText: result.stderr || "",
+              signal: result.signal,
             });
         if (executionValidation?.ok) {
           writeJson(executionManifestFile, executionValidation.manifest);
@@ -1050,9 +1055,9 @@ export function createIdentityPreflightRunCommands({
       },
       policy: {
         fail_closed_execution:
-          "Every nonzero CLI exit, missing/malformed stdout or disk report, stale disk report, stdout/disk mismatch, ok:false, failed/error status, or execution-binding drift fails the selected row and batch.",
+          "Nonzero CLI exits fail except the qualified CLI 0.1.27 complete, bound, error-free needs_review/manual_review exit 1 diagnostic. Missing/malformed or stale reports, stdout/disk mismatch, ok:false, failed/error status, execution signals/stderr and binding drift remain failures.",
         valid_identity_findings:
-          "A blocked/needs_review report remains diagnostic evidence only when the CLI exits zero and stdout/disk bytes are bound by a valid execution manifest.",
+          "A blocked/needs_review report remains scientific diagnostic evidence only with a valid execution manifest; the pinned manual-review exit 1 contract does not resolve identity or grant a write.",
         curation_gate_usage:
           "Pass this same index to dataset-curation-gate with --identity-preflight-index so authoring packages include current and dependency identity-preflight context.",
       },

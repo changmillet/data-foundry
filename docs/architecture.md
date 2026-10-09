@@ -456,3 +456,9 @@ The public traceHash adapter delegates normalization to `remote-verification-acc
 The prepared-approval adapter can bridge cleanup byte changes for an otherwise valid support scope by using the existing registered grant derivation, then re-running the finalize owner on the bound descendant. Eligibility is limited to the support-permission blocker with complete scoped write/mint actions. It preserves completed dependency generations and stops on unchanged blocked authorization state. No profile hash check or write admission guard is relaxed.
 
 Source CI execution is separate from the consumer runtime: complete isolated test partitions and exact version-only PR classification are owned by CI tooling. One verified package snapshot may be reused across native qualification and signing through independently supplied artifact digests and exact source/toolchain/run binding. Downloaded manifests and serialized receipts cannot issue snapshot authority. The final release always performs full four-platform qualification; consumer credentials, task state, authorization and no-replay behavior are unchanged.
+
+## Qualified original-task continuation
+
+Foundry owns the same-task compatibility receipt chain and retained report interpretation described in [the public runtime contract](public-runtime-contract.md#same-task-compatibility-and-retained-identity-diagnostics). It keeps historical producer locators separate from current context/assessment coverage. The narrow identity diagnostic validator admits supported manual review without making a semantic decision; CLI continues to own authentication and identity search.
+
+Read-only reference transport supplies the existing queue/QA/CLI-validation owners, using an unchanged-payload validation wrapper. Authorization freshness is refreshed only through the explicit same-CLI host callback after locked metadata validation. These changes do not create another data writer, task ledger or scientific validator.

@@ -23,6 +23,7 @@ export const foundryPublicOperations = Object.freeze([
   "task.start",
   "task.status",
   "task.resume",
+  "task.adopt-runtime",
   "workspace.migrate",
 ] as const);
 

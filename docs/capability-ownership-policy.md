@@ -259,3 +259,5 @@ Every missing shared capability follow-up must include:
 The machine-readable rules live in `specs/capability-ownership-rules.json`.
 
 Canonical support reads and complete pagination belong to CLI `dataset support-cache export`. Foundry consumes its report/artifacts, validates provenance and public scope, and owns only cache summarization/mapping policy and atomic local replacement. It contains no password-grant or REST implementation for this path.
+
+Same-task compatibility and retained identity recovery are Foundry task/provenance capabilities. They preserve original registration, report, source and attempt ownership. Full package/CLI/Toolkit compatibility is independently qualified; CLI authentication/search, TIDAS conformance and Agent semantic identity decisions stay with their owners. Read-only dependency selection does not create dependency authoring/mutation targets. Incomplete historical authentication remains UNKNOWN rather than authorizing a replacement query or scientific approval.

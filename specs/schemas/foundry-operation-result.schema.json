@@ -25,6 +25,7 @@
         "task.start",
         "task.status",
         "task.resume",
+        "task.adopt-runtime",
         "workspace.migrate"
       ]
     },
