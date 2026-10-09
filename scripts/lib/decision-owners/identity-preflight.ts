@@ -274,6 +274,11 @@ export function createIdentityPreflightRunCommands({
     return timeoutMs + graceMs;
   }
 
+  function identityPreflightRunPath(value: unknown): string | null {
+    const resolved = resolveRepoPath(value);
+    return resolved ? path.resolve(resolved) : null;
+  }
+
   function identityPreflightRunReportFile(row: IdentityPreflightRow): string | null {
     const explicit =
       row.expected_report_file ||
@@ -281,22 +286,22 @@ export function createIdentityPreflightRunCommands({
       row.identityDecisionFile ||
       row.report_file ||
       row.reportFile;
-    if (explicit) return resolveRepoPath(explicit);
+    if (explicit) return identityPreflightRunPath(explicit);
     const outputDir = row.output_dir || row.outputDir;
     return outputDir
-      ? path.join(resolveRepoPath(outputDir)!, "outputs", "identity-decision.json")
+      ? path.join(identityPreflightRunPath(outputDir)!, "outputs", "identity-decision.json")
       : null;
   }
 
   function identityPreflightRunOutputDir(row: IdentityPreflightRow): string | null {
     const outputDir = row.output_dir || row.outputDir;
-    if (outputDir) return resolveRepoPath(outputDir);
+    if (outputDir) return identityPreflightRunPath(outputDir);
     const reportFile = identityPreflightRunReportFile(row);
     return reportFile ? path.dirname(path.dirname(reportFile)) : null;
   }
 
   function identityPreflightRunRequestFile(row: IdentityPreflightRow): string | null {
-    return resolveRepoPath(row.request_file || row.requestFile || row.input);
+    return identityPreflightRunPath(row.request_file || row.requestFile || row.input);
   }
 
   function identityPreflightRunRowKey(row: IdentityPreflightRow, index: number): string {

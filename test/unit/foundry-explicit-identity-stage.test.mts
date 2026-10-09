@@ -264,9 +264,16 @@ test("a raw orphan claim is observed without promoting its receipt or dispatchin
   t.mock.method(fs, "linkSync", (...args: Parameters<typeof fs.linkSync>) => {
     const source = String(args[0]),
       destination = String(args[1]);
-    if (interrupt && destination.includes("/checkpoints/") && source.endsWith(".tmp")) {
+    if (
+      interrupt &&
+      destination.split(path.sep).includes("checkpoints") &&
+      source.endsWith(".tmp")
+    ) {
       const text = fs.readFileSync(source, "utf8");
-      if (text.includes('"mode": "deterministic-local"') && text.includes("/dispatch/")) {
+      if (
+        text.includes('"mode": "deterministic-local"') &&
+        text.replace(/\\\\/gu, "/").includes("/dispatch/")
+      ) {
         interrupt = false;
         throw new Error("interruption before claim receipt");
       }
@@ -386,7 +393,7 @@ test("interruption after genuine owner completion adopts retained outputs withou
   t.mock.method(fs, "linkSync", (...args: Parameters<typeof fs.linkSync>) => {
     if (
       interrupt &&
-      String(args[1]).includes("/results/") &&
+      String(args[1]).split(path.sep).includes("results") &&
       String(args[1]).endsWith("foundry-identity.json")
     ) {
       interrupt = false;
