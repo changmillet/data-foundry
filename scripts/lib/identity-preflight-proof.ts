@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import path from "node:path";
 
 import {
   parseAuthIdentityReceipt,
@@ -249,6 +250,12 @@ function isFailure(value: JsonRecord | ValidationFailure): value is ValidationFa
   return value.ok === false && typeof value.code === "string" && typeof value.message === "string";
 }
 
+function isSelectedDiagnosticPath(reported: unknown, expected: string): boolean {
+  return (
+    reported === expected || (path.isAbsolute(expected) && reported === path.resolve(expected))
+  );
+}
+
 /** Current and retained qualified CLI contracts return one for manual review and execution failures. */
 function isPinnedManualReviewDiagnostic(
   input: Parameters<typeof validateIdentityPreflightExecution>[0],
@@ -280,10 +287,10 @@ function isPinnedManualReviewDiagnostic(
     typeof input.requestFile !== "string" ||
     typeof input.outputDir !== "string" ||
     typeof input.reportFile !== "string" ||
-    report.input_path !== input.requestFile ||
-    report.out_dir !== input.outputDir ||
+    !isSelectedDiagnosticPath(report.input_path, input.requestFile) ||
+    !isSelectedDiagnosticPath(report.out_dir, input.outputDir) ||
     !isRecord(report.files) ||
-    report.files.identity_decision !== input.reportFile ||
+    !isSelectedDiagnosticPath(report.files.identity_decision, input.reportFile) ||
     input.stderrText !== "" ||
     input.signal !== null ||
     !Array.isArray(report.candidates) ||

@@ -58,6 +58,15 @@ before(() => {
   );
   assert.equal(built.status, 0, built.stderr || built.stdout);
   packageRoot = path.join(buildRoot, "package-stage");
+  const cli = describeCliRuntime();
+  const ownedCli = path.join(packageRoot, "node_modules/@tiangong-lca/cli");
+  fs.cpSync(cli.package.root, ownedCli, { recursive: true });
+  for (const file of cli.files)
+    assert.equal(
+      fs.statSync(path.join(ownedCli, file.path)).nlink,
+      1,
+      "The initial successor must own its retained CLI payload independently of the pnpm store",
+    );
   moduleUrl = pathToFileURL(path.join(packageRoot, "package-dist/scripts/package-entry.js")).href;
 });
 after(() => {

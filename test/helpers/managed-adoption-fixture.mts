@@ -48,7 +48,11 @@ const json = (file: string, value: unknown) => {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(value, null, 2) + "\n");
 };
-export function managedInventory(root: string, relative = ""): ComponentFile[] {
+export function managedInventory(
+  root: string,
+  relative = "",
+  requireIndependentFiles = true,
+): ComponentFile[] {
   return fs
     .readdirSync(path.join(root, relative))
     .flatMap((name): ComponentFile[] => {
@@ -56,9 +60,9 @@ export function managedInventory(root: string, relative = ""): ComponentFile[] {
       const file = path.join(root, selected),
         stat = fs.lstatSync(file);
       assert.equal(stat.isSymbolicLink(), false, file);
-      if (stat.isDirectory()) return managedInventory(root, selected);
+      if (stat.isDirectory()) return managedInventory(root, selected, requireIndependentFiles);
       assert.ok(stat.isFile(), file);
-      assert.equal(stat.nlink, 1, file);
+      if (requireIndependentFiles) assert.equal(stat.nlink, 1, file);
       const bytes = fs.readFileSync(file);
       return [
         {
@@ -71,8 +75,8 @@ export function managedInventory(root: string, relative = ""): ComponentFile[] {
     })
     .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 }
-function packageFiles(root: string) {
-  return managedInventory(root)
+function packageFiles(root: string, requireIndependentFiles = true) {
+  return managedInventory(root, "", requireIndependentFiles)
     .filter((file) => !file.path.startsWith("node_modules/"))
     .map(({ mode: _mode, ...file }) => file);
 }
@@ -400,7 +404,7 @@ export async function managedAdoptionFixture(t: TestContext, syntheticTransport 
     production_packages: graph.map((pkg) => ({
       name: pkg.name,
       version: pkg.version,
-      source_files: packageFiles(pkg.root),
+      source_files: packageFiles(pkg.root, false),
       manager_files: packageFiles(path.join(manager, pkg.name)),
       application_files: packageFiles(path.join(app, "node_modules", pkg.name)),
     })),

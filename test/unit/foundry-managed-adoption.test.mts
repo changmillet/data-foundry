@@ -178,7 +178,13 @@ test("the complete runtime component records and every execution field must matc
       "minimum host",
       (v) => ({
         ...v,
-        minimum_hosts: { [f.metadata.platform]: { os_release: "1.0.0", glibc: null } },
+        minimum_hosts: {
+          ...v.minimum_hosts,
+          [f.metadata.platform]: {
+            ...v.minimum_hosts[f.metadata.platform],
+            os_release: "1.0.0",
+          },
+        },
       }),
     ],
     ["workspace write", (v) => ({ ...v, workspace: { ...v.workspace, write: [] } })],
@@ -329,7 +335,10 @@ test("metadata cannot select another component, absent or duplicate launch, fore
     { ...f.metadata, launches: [f.metadata.launches[0], f.metadata.launches[0]] },
     { ...f.metadata, launches: [{ ...f.metadata.launches[0], id: "missing" }] },
     { ...f.metadata, launches: [{ ...f.metadata.launches[0], id: "other" }] },
-    { ...f.metadata, platform: "win32-x64" },
+    {
+      ...f.metadata,
+      platform: f.metadata.platform === "win32-x64" ? "darwin-arm64" : "win32-x64",
+    },
     { ...f.metadata, task_id: "not-authority" },
   ]) {
     f.contents.set(FOUNDRY_MANAGED_ADOPTION_PATH, json(value));

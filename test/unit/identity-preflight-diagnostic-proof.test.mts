@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import path from "node:path";
 import test from "node:test";
 import {
   createIdentityPreflightBinding,
@@ -166,4 +167,62 @@ for (const type of ["flow", "process"] as const) {
 
 test("the separately supported retained 0.1.22 diagnostic requires its own exact receipt", () => {
   assert.equal(validateIdentityPreflightExecution(fixture("flow", "0.1.22").input).ok, true);
+});
+
+for (const type of ["flow", "process"] as const) {
+  test(`${type} Windows diagnostic accepts pinned owner native paths for the same absolute files`, (t) => {
+    t.mock.method(path, "resolve", (...paths: string[]) => path.win32.resolve(...paths));
+    t.mock.method(path, "isAbsolute", (value: string) => path.win32.isAbsolute(value));
+    const { report, input } = fixture(type, "0.1.28");
+    const selected = {
+      ...input,
+      requestFile: "C:/proof/项目 workspace/request.json",
+      outputDir: "C:/proof/项目 workspace/output",
+      reportFile: "C:/proof/项目 workspace/output/outputs/identity-decision.json",
+    };
+    const native = {
+      ...report,
+      input_path: "C:\\proof\\项目 workspace\\request.json",
+      out_dir: "C:\\proof\\项目 workspace\\output",
+      files: {
+        identity_decision: "C:\\proof\\项目 workspace\\output\\outputs\\identity-decision.json",
+      },
+    };
+    const checked = validateIdentityPreflightExecution({
+      ...selected,
+      stdoutText: JSON.stringify(native),
+      diskReportText: JSON.stringify(native, null, 2),
+    });
+    assert.equal(checked.ok, true);
+    assert.equal(checked.manifest.report.decision, "manual_review");
+    for (const change of [
+      { input_path: "D:\\proof\\项目 workspace\\request.json" },
+      { input_path: "proof\\项目 workspace\\request.json" },
+      { out_dir: "C:\\proof\\项目 workspace\\foreign" },
+      { files: { identity_decision: "C:\\proof\\foreign\\identity-decision.json" } },
+    ]) {
+      const value = { ...native, ...change };
+      assert.equal(
+        validateIdentityPreflightExecution({
+          ...selected,
+          stdoutText: JSON.stringify(value),
+          diskReportText: JSON.stringify(value),
+        }).ok,
+        false,
+      );
+    }
+  });
+}
+
+test("POSIX backslashes remain filename bytes rather than Windows separators", () => {
+  const { report, input } = fixture("flow", "0.1.28");
+  const changed = { ...report, input_path: "\\fixture\\request.json" };
+  assert.equal(
+    validateIdentityPreflightExecution({
+      ...input,
+      stdoutText: JSON.stringify(changed),
+      diskReportText: JSON.stringify(changed),
+    }).ok,
+    false,
+  );
 });
