@@ -139,6 +139,9 @@ function closure(cliRoot: string): Array<{ name: string; version: string; root: 
   visit(cliRoot);
   return [...selected.values()];
 }
+export function copyCliProductionClosure(cliRoot: string, destination: string) {
+  for (const pkg of closure(cliRoot)) physicalPackage(pkg.root, path.join(destination, pkg.name));
+}
 let build: { root: string; stage: string } | undefined;
 export function managedAdoptionPackage() {
   if (build) return build;

@@ -27,6 +27,7 @@ import { bytes, digest } from "../../scripts/lib/foundry-task-io.ts";
 import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
 import { workflowFixture } from "../fixtures/foundry-public-workflow.ts";
 import { runFoundryPublicCommand } from "../../scripts/runtime-entry.ts";
+import { copyCliProductionClosure } from "../helpers/managed-adoption-fixture.mts";
 
 // Build once in a test-owned root: the package-consumer scenario rebuilds the repo's stage concurrently.
 let buildRoot: string;
@@ -60,7 +61,7 @@ before(() => {
   packageRoot = path.join(buildRoot, "package-stage");
   const cli = describeCliRuntime();
   const ownedCli = path.join(packageRoot, "node_modules/@tiangong-lca/cli");
-  fs.cpSync(cli.package.root, ownedCli, { recursive: true });
+  copyCliProductionClosure(cli.package.root, path.join(packageRoot, "node_modules"));
   for (const file of cli.files)
     assert.equal(
       fs.statSync(path.join(ownedCli, file.path)).nlink,
