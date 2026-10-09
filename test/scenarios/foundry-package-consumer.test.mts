@@ -328,6 +328,7 @@ test("packed Foundry installs twice and runs only the public facade from a read-
     "assertFoundryPackageDescriptor",
     "commandNextActionBindingSha256",
     "createFoundryFacade",
+    "createFoundryRuntimeAdoptionQualification",
     "createFoundryWorkspaceAccess",
     "exitCodeForFoundryOperationResult",
     "foundryOperationPermissionStates",
