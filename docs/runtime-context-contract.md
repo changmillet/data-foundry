@@ -40,9 +40,9 @@ checkPaths:
   - test/scenarios/runtime-workspace.test.mts
   - test/scenarios/foundry-execution-admission.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
-lastReviewedAt: 2026-10-08
-lastReviewedCommit: d07ac492a3a5891502039a6cc83ef30b9fbba50b
-lastReviewedNote: "Reviewed Foundry #237 exact three-field 0.1.16 to 0.1.17 release projection from eligible PR236 Main d07ac492; CLI/native pins, lock closure, authorization and all business source remain unchanged. Official publication and final managed qualification remain pending."
+lastReviewedAt: 2026-10-09
+lastReviewedCommit: 392e943b
+lastReviewedNote: "Reviewed same-task continuation, durable explicit read-only identity stages, exact runtime/package binding, reference transport and authorization freshness; candidate qualification and original-consumer acceptance remain separate."
 related:
   - docs/architecture.md
   - docs/task-authorization-contract.md

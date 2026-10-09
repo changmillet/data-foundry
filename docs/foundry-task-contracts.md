@@ -28,9 +28,9 @@ checkPaths:
   - specs/schemas/execution-context.schema.json
   - specs/import-profiles.json
   - tasks/**
-lastReviewedAt: 2026-10-07
-lastReviewedCommit: caa95a4808eda51dc5c7c78f3c39e4e079bdb802
-lastReviewedNote: "Reviewed Foundry #223 preparation consuming complete owning CLI 0.1.27 validation, exact candidate/Flow bindings and published Toolkit 0.3.4 applicable coverage; authorization and no-replay boundaries remain unchanged. Foundry source version stays 0.1.16 pending a separate release."
+lastReviewedAt: 2026-10-09
+lastReviewedCommit: 392e943b
+lastReviewedNote: "Reviewed same-task continuation, durable explicit read-only identity stages, exact runtime/package binding, reference transport and authorization freshness; candidate qualification and original-consumer acceptance remain separate."
 related:
   - AGENTS.md
   - WORKFLOW.md
