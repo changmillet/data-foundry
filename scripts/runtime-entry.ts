@@ -208,6 +208,7 @@ async function runPublicCommand(
                 "authorizationInput",
                 "referenceInput",
                 "interactionInput",
+                "identityStageInput",
               ]
             : parsed.operation === "task.adopt-runtime"
               ? ["task", "actor", "dryRun", "apply", "audit", "selection", "plan"]
@@ -513,6 +514,8 @@ async function runPublicCommand(
                 option(parsed.args.interactionInput, "--interaction-input") ?? undefined,
               referenceInputFile:
                 option(parsed.args.referenceInput, "--reference-input") ?? undefined,
+              identityStageInputFile:
+                option(parsed.args.identityStageInput, "--identity-stage-input") ?? undefined,
               authorizationInputFile:
                 option(parsed.args.authorizationInput, "--authorization-input") ?? undefined,
             });

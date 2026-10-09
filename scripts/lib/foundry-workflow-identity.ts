@@ -24,6 +24,7 @@ import { datasetIdentity } from "./import-curation/internal/dataset-payload.ts";
 import { readRows } from "./import-curation/internal/runtime-io.ts";
 import type { ArtifactEntry } from "./foundry-task-types.ts";
 import { recoverFoundryWorkflowIdentity } from "./foundry-workflow-identity-recovery.ts";
+import { assertNoPendingFoundryIdentityStage } from "./foundry-identity-stage-state.ts";
 
 /** Run the existing read-only owner first; the local transaction only records its captured evidence. */
 export async function runFoundryWorkflowIdentity(
@@ -33,6 +34,7 @@ export async function runFoundryWorkflowIdentity(
   authentication: FoundryAuthentication = { mode: "oauth" },
 ) {
   assertQualifiedFoundryRuntime(context, qualified);
+  assertNoPendingFoundryIdentityStage(context, entries);
   const state = currentWorkflowState(context, entries),
     rows = state.rows;
   if (!rows || (!state.assessment && !state.retainedAssessment))
@@ -46,6 +48,7 @@ export async function runFoundryWorkflowIdentity(
       "Identity preflight requires a task spec with the intended project and user account.",
     );
   await withFoundryTaskMetadata(context, (_, index) => {
+    assertNoPendingFoundryIdentityStage(context, index);
     if (currentWorkflowState(context, index).rows?.entry.sha256 !== rows.entry.sha256)
       throw new FoundryContextError(
         "workflow_identity_rows_changed",

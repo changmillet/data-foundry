@@ -66,6 +66,8 @@ The source adoption of CLI 0.1.27 keeps Foundry's package version at 0.1.15. The
 
 The public package includes `foundry-interaction-input.schema.json` and advertises `tiangong-foundry.interaction-input.v1` beside the existing task-start and semantic protocols. Its source graph exposes only the strict interaction input/state types through `scripts/public-api.ts`; the task-local store and assessment implementation remain internal. Package validation checks the schema, descriptor protocol list and sanitized file inventory together.
 
+The explicit new read-only identity stage ships `foundry-identity-stage-input.schema.json` and the matching `tiangong-foundry.identity-stage-input.v1` descriptor protocol. It uses the existing public resume option; its strict input selection, native admission/claim projection and published identity-owner adapter remain internal to the emitted graph. Source, packed and installed qualification must preserve original evidence and validate duplicate/interrupted intents without retrying queries. Exact candidate CLI bytes and dependency closure require separate evidence from equal version labels; local candidate tests do not establish managed publication or original-consumer acceptance.
+
 The installed `runtimeUse` facade can retain a CLI-managed cache containing its own package after the package descriptor and independently trusted current component set both verify that ownership. The source-free consumer test exercises that behavior from real installed application bytes, including rollback, restoration, retained leases and rejected cache drift. Its surrounding component metadata is explicitly a fixture; it does not establish F1 provenance, native launch qualification or publication.
 
 ## Managed process admission

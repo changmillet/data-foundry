@@ -36,6 +36,7 @@ import {
   type IdentityRecoveryFact,
 } from "./identity-preflight-recovery-proof.ts";
 import type { ArtifactEntry } from "./foundry-task-types.ts";
+import { assertNoPendingFoundryIdentityStage } from "./foundry-identity-stage-state.ts";
 
 function fail(reason = "evidence"): never {
   throw new FoundryContextError(
@@ -52,6 +53,7 @@ export async function recoverFoundryWorkflowIdentity(
   currentAuth: AuthIdentityReceipt,
 ): Promise<Record<string, unknown> | null> {
   assertQualifiedFoundryRuntime(context, qualified);
+  assertNoPendingFoundryIdentityStage(context, entries);
   try {
     return await recoverRetainedIdentity(context, qualified, entries, currentAuth);
   } catch (error) {
@@ -75,6 +77,11 @@ async function recoverRetainedIdentity(
     rows = state.rows,
     assessment = state.retainedAssessment ?? state.assessment;
   if (!original || original.value.status !== "blocked") return null;
+  if (original.value.explicit_new_stage === true)
+    throw new FoundryContextError(
+      "identity_stage_unproven",
+      "The explicitly dispatched new read-only stage remains unproven. Inspect its retained claim and outcome evidence; ordinary resume cannot dispatch another query.",
+    );
   if (!rows || !assessment || !Array.isArray(original.value.sets) || !original.value.sets.length)
     fail("original-stage-context-missing");
   const originalSets = original.value.sets.map(workflowObject);

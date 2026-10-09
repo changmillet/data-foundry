@@ -436,6 +436,8 @@ export async function runFoundryTaskOperation(
       | "dataset-workflow-rows"
       | "dataset-workflow-assessment"
       | "dataset-workflow-identity"
+      | "dataset-workflow-identity-stage-prepare"
+      | "dataset-workflow-identity-stage-dispatch"
       | "dataset-workflow-finalize"
       | "dataset-workflow-authorization"
       | "dataset-workflow-native-contract"

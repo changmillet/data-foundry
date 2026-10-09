@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Foundry Explicit New Read-only Identity Stage Input v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "intent_id",
+    "task_id",
+    "actor_id",
+    "rows_report_sha256",
+    "predecessor_identity_sha256",
+    "targets"
+  ],
+  "properties": {
+    "schema": { "const": "tiangong-foundry.identity-stage-input.v1" },
+    "intent_id": { "$ref": "#/$defs/token" },
+    "task_id": { "type": "string", "pattern": "^task-[0-9a-f]{64}-r[0-9]{4}$" },
+    "actor_id": { "$ref": "#/$defs/token" },
+    "rows_report_sha256": { "$ref": "#/$defs/sha256" },
+    "predecessor_identity_sha256": { "$ref": "#/$defs/sha256" },
+    "targets": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["dataset_type", "dataset_id", "dataset_version", "source_row_sha256"],
+        "properties": {
+          "dataset_type": { "enum": ["flow", "process"] },
+          "dataset_id": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "dataset_version": { "type": "string", "pattern": "^[0-9]{2}\\.[0-9]{2}\\.[0-9]{3}$" },
+          "source_row_sha256": { "$ref": "#/$defs/sha256" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "token": { "type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,255}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  }
+}

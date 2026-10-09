@@ -107,6 +107,9 @@ import {
 } from "./lib/foundry-workflow-object-scope.ts";
 import { recordFoundryInteractionInput } from "./lib/foundry-workflow-interaction.ts";
 import { runFoundryWorkflowIdentity } from "./lib/foundry-workflow-identity.ts";
+import { pendingFoundryIdentityStage } from "./lib/foundry-identity-stage-state.ts";
+import { runExplicitFoundryIdentityStage } from "./lib/foundry-workflow-identity-stage.ts";
+import { selectFoundryIdentityStageInput } from "./lib/foundry-identity-stage-input.ts";
 import { finalizeFoundryWorkflow } from "./lib/foundry-workflow-finalize.ts";
 import {
   prepareFoundryRepair,
@@ -354,9 +357,16 @@ function failure(
       ? error.message
       : `Foundry could not complete this operation${systemCode ? ` (${systemCode})` : ""}; selected state was preserved.`;
   const recoveryUnproven = code === "identity_preflight_recovery_unproven";
-  const needsAuth = !recoveryUnproven && (code === "needs_auth" || code.startsWith("identity_"));
+  const stageInput = code.startsWith("identity_stage_");
+  const needsAuth =
+    !recoveryUnproven && !stageInput && (code === "needs_auth" || code.startsWith("identity_"));
   const needsInputCodes = new Set([
     "identity_preflight_recovery_unproven",
+    "identity_stage_unproven",
+    "identity_stage_input_invalid",
+    "identity_stage_interrupted",
+    "interaction_decision_pending",
+    "interaction_investigation_pending",
     "task_not_found",
     "workspace_not_initialized",
     "input_not_selected",
@@ -417,7 +427,14 @@ function failure(
             `Recovery remains UNKNOWN for original task ${taskId}. Verify the retained original producer, receipt, request and attempt binding through this task's recovery entry. Preserve the original attempt and do not repeat its CLI query.`,
           ),
         ]
-      : [],
+      : code === "identity_stage_unproven"
+        ? [
+            human(
+              "inspect_identity_stage",
+              "Inspect the indexed claim and retained outcome of the explicitly new read-only stage. Preserve UNKNOWN and do not dispatch another query through ordinary resume.",
+            ),
+          ]
+        : [],
     runtimeIdentity: identity,
     permissions: noPermission(),
   });
@@ -1011,6 +1028,33 @@ function taskProjection(
               "Use the retained owner attempt and readback evidence; do not dispatch another mutation.",
             ),
           ],
+      runtimeIdentity: identity,
+      permissions: noPermission(),
+    });
+  const pendingIdentity = pendingFoundryIdentityStage(context, inspected.artifacts);
+  if (pendingIdentity)
+    return createFoundryOperationResult({
+      operation,
+      status: "needs_input",
+      taskId: record.task_id,
+      artifacts: [
+        ...artifacts,
+        inlineArtifact("explicit_readonly_identity_stage", pendingIdentity),
+      ],
+      blockers: [
+        {
+          code: "identity_stage_unproven",
+          message:
+            "The indexed explicit read-only stage has no proven completed outcome. Preserve UNKNOWN and inspect its retained admission and claims.",
+          scope: record.task_id,
+        },
+      ],
+      nextActions: [
+        human(
+          "inspect_identity_stage",
+          "Inspect the indexed new-stage evidence. Ordinary resume cannot repeat the query or proceed to write stages.",
+        ),
+      ],
       runtimeIdentity: identity,
       permissions: noPermission(),
     });
@@ -2140,10 +2184,19 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
       interactionInputFile?: string;
       authorizationInputFile?: string;
       referenceInputFile?: string;
+      identityStageInputFile?: string;
     }): Promise<FoundryOperationResult> {
       let current: ReturnType<typeof createFoundryRuntimeContext> | null = null;
       try {
         assertNotInterrupted(options.signal);
+        if (
+          input.identityStageInputFile !== undefined &&
+          (typeof input.identityStageInputFile !== "string" || !input.identityStageInputFile.trim())
+        )
+          throw new FoundryContextError(
+            "identity_stage_input_invalid",
+            "An explicit identity stage requires one nonempty file path.",
+          );
         if (
           input.referenceInputFile !== undefined &&
           (typeof input.referenceInputFile !== "string" || !input.referenceInputFile.trim())
@@ -2166,6 +2219,7 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
             input.authorizationInputFile,
             input.referenceInputFile,
             input.interactionInputFile,
+            input.identityStageInputFile,
           ].filter((file) => file !== undefined).length > 1
         )
           throw new FoundryContextError(
@@ -2196,6 +2250,143 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
           before,
           runtimeIdentity(context, qualified),
         );
+        if (input.identityStageInputFile !== undefined) {
+          if (!qualified)
+            throw new FoundryContextError(
+              "runtime_unqualified",
+              "An explicit read-only identity stage requires exact qualified runtime owners.",
+            );
+          if (
+            record.spec.lane !== "source-evidence-dataset-development" ||
+            record.spec.preparation ||
+            record.spec.repair
+          )
+            throw new FoundryContextError(
+              "identity_stage_input_invalid",
+              "An explicit identity stage applies only to the original source-evidence Task.",
+            );
+          const selected = selectFoundryIdentityStageInput(context, input.identityStageInputFile);
+          const rowsEntry = before.artifacts.find(
+            (entry) =>
+              ["dataset-workflow-rows", "dataset-semantic-apply"].includes(entry.command) &&
+              path.basename(entry.path) === "foundry-rows.json" &&
+              entry.sha256 === selected.value.rows_report_sha256,
+          );
+          const priorEntry = before.artifacts.find(
+            (entry) =>
+              entry.command === "dataset-workflow-identity" &&
+              path.basename(entry.path) === "foundry-identity.json" &&
+              entry.sha256 === selected.value.predecessor_identity_sha256,
+          );
+          if (!rowsEntry || !priorEntry)
+            throw new FoundryContextError(
+              "identity_stage_input_invalid",
+              "Explicit identity stage must bind registered original rows and predecessor identity.",
+            );
+          const rowReport = readWorkflowArtifact(context, rowsEntry).value;
+          if (!Array.isArray(rowReport.sets))
+            throw new FoundryContextError(
+              "workflow_rows_invalid",
+              "Registered row report has no exact row sets.",
+            );
+          const rowFiles = rowReport.sets.map((set) => workflowObject(set).file);
+          const fixedEntries = [
+            rowsEntry,
+            priorEntry,
+            ...rowFiles.map((file) => {
+              if (typeof file !== "string")
+                throw new FoundryContextError(
+                  "workflow_rows_invalid",
+                  "Registered row file is invalid.",
+                );
+              const entry = before.artifacts.find(
+                (item) => resolveFoundryOutput(context, item.path) === file,
+              );
+              if (!entry)
+                throw new FoundryContextError(
+                  "workflow_rows_invalid",
+                  "Registered row file lacks its producer.",
+                );
+              return entry;
+            }),
+          ];
+          const fixedContext = taskContext(
+            options,
+            current,
+            record,
+            fixedEntries.map((entry) => ({
+              path: resolveFoundryOutput(context, entry.path),
+              bytes: entry.bytes,
+              sha256: entry.sha256,
+            })),
+          );
+          const stage = await runExplicitFoundryIdentityStage(
+            fixedContext,
+            qualified,
+            before.artifacts,
+            selected,
+            options.authentication,
+            { signal: options.signal },
+          );
+          const inspected = await runtime.inspectTask();
+          const projected = taskProjection(
+            "task.resume",
+            context,
+            record,
+            inspected,
+            runtimeIdentity(context, qualified),
+          );
+          const stageStatus = stage.status;
+          const stageUnproven =
+            stageStatus === "unproven" ||
+            (stageStatus === "blocked" &&
+              Array.isArray(stage.blockers) &&
+              stage.blockers.some(
+                (item) => workflowObject(item).code === "identity_stage_outcome_unproven",
+              ));
+          if (stageUnproven || stageStatus === "running")
+            return createFoundryOperationResult({
+              operation: "task.resume",
+              taskId: record.task_id,
+              status: stageStatus === "running" ? "running" : "needs_input",
+              artifacts: [
+                ...projected.artifacts,
+                inlineArtifact("explicit_readonly_identity_stage", stage),
+              ],
+              blockers: [
+                {
+                  code:
+                    stageStatus === "running"
+                      ? "identity_stage_running"
+                      : "identity_stage_unproven",
+                  message:
+                    "Inspect the retained explicit-stage admission and execution evidence. An incomplete dispatched read-only query cannot be repeated automatically.",
+                  scope: record.task_id,
+                },
+              ],
+              nextActions: [
+                human(
+                  "inspect_identity_stage",
+                  "Preserve the original Task and read its indexed new-stage evidence; no query or write replay is permitted.",
+                ),
+              ],
+              runtimeIdentity: projected.runtime_identity,
+              permissions: noPermission(),
+            });
+          return createFoundryOperationResult({
+            operation: "task.resume",
+            taskId: record.task_id,
+            status: projected.status,
+            artifacts: [
+              ...projected.artifacts,
+              inlineArtifact("explicit_readonly_identity_stage", stage),
+            ],
+            blockers: projected.blockers,
+            nextActions: projected.next_actions,
+            runtimeIdentity: projected.runtime_identity,
+            permissions: noPermission(),
+          });
+        }
         if (
           (input.referenceInputFile || input.interactionInputFile) &&
           existing.status === "completed"
@@ -2274,6 +2465,7 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
             runtimeIdentity(context, qualified),
           );
         }
+        if (pendingFoundryIdentityStage(context, before.artifacts)) return existing;
         const unresolvedInteraction = currentFoundryInteractionState(context, before.artifacts);
         const hasUnresolvedInteraction = Boolean(
           unresolvedInteraction &&
