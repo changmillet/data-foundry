@@ -171,8 +171,10 @@ test("the separately supported retained 0.1.22 diagnostic requires its own exact
 
 for (const type of ["flow", "process"] as const) {
   test(`${type} Windows diagnostic accepts pinned owner native paths for the same absolute files`, (t) => {
-    t.mock.method(path, "resolve", (...paths: string[]) => path.win32.resolve(...paths));
-    t.mock.method(path, "isAbsolute", (value: string) => path.win32.isAbsolute(value));
+    const windowsResolve = path.win32.resolve.bind(path.win32);
+    const windowsIsAbsolute = path.win32.isAbsolute.bind(path.win32);
+    t.mock.method(path, "resolve", windowsResolve);
+    t.mock.method(path, "isAbsolute", windowsIsAbsolute);
     const { report, input } = fixture(type, "0.1.28");
     const selected = {
       ...input,
