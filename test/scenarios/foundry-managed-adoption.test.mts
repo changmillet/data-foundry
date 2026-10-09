@@ -32,6 +32,7 @@ test("actual unmodified CLI manager directly enters the package and brands carri
   assert.equal(action.argv[action.argv.indexOf("--manifest-sha256") + 1], f.launch.trusted.sha256);
   assert.notEqual(f.launch.trusted.sha256, f.successor.trusted.sha256);
   assert.equal(action.argv[action.argv.indexOf("--entry") + 1], "foundry");
+  const actionStartedAt = Date.now();
   const child = spawnSync(action.executable, [...action.argv], {
     cwd: action.cwd,
     env: f.environment,
@@ -39,8 +40,27 @@ test("actual unmodified CLI manager directly enters the package and brands carri
     shell: false,
     timeout: 90_000,
   });
-  assert.equal(child.stderr, "");
-  assert.equal(child.status, 0, child.stdout);
+  const reentryDiagnostics = JSON.stringify({
+    executable: action.executable,
+    argv: action.argv,
+    cwd: action.cwd,
+    elapsed_ms: Date.now() - actionStartedAt,
+    error: child.error
+      ? { name: child.error.name, message: child.error.message, code: child.error.code }
+      : null,
+    status: child.status,
+    signal: child.signal,
+    stdout_bytes: Buffer.byteLength(child.stdout ?? ""),
+    stderr_bytes: Buffer.byteLength(child.stderr ?? ""),
+    stdout: child.stdout,
+    stderr: child.stderr,
+    carrier_manifest_sha256: f.launch.trusted.sha256,
+    successor_manifest_sha256: f.successor.trusted.sha256,
+  });
+  assert.equal(child.error, undefined, reentryDiagnostics);
+  assert.equal(child.signal, null, reentryDiagnostics);
+  assert.equal(child.stderr, "", reentryDiagnostics);
+  assert.equal(child.status, 0, reentryDiagnostics);
   assert.equal(JSON.parse(child.stdout).task_id, f.taskId);
   f.assertPreserved();
   t.diagnostic(
