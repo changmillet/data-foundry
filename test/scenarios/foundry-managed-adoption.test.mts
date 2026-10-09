@@ -46,7 +46,11 @@ test("actual unmodified CLI manager directly enters the package and brands carri
     cwd: action.cwd,
     elapsed_ms: Date.now() - actionStartedAt,
     error: child.error
-      ? { name: child.error.name, message: child.error.message, code: child.error.code }
+      ? {
+          name: child.error.name,
+          message: child.error.message,
+          code: "code" in child.error ? child.error.code : null,
+        }
       : null,
     status: child.status,
     signal: child.signal,
