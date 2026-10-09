@@ -29,7 +29,7 @@
               "const": "@tiangong-lca/cli"
             },
             "version": {
-              "const": "0.1.27"
+              "const": "0.1.28"
             }
           }
         },
@@ -87,6 +87,7 @@
             "tiangong-foundry.workspace.v2",
             "tiangong-foundry.workspace-runtime-selection.v1",
             "tiangong-foundry.managed-runtime.v1",
+            "tiangong-foundry.managed-adoption.v1",
             "tiangong-foundry.runtime-qualification.v1",
             "tiangong-foundry.tidas-runtime-expectation.v1",
             "tiangong-foundry.execution-context.v1",

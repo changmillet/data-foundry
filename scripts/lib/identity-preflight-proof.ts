@@ -249,7 +249,7 @@ function isFailure(value: JsonRecord | ValidationFailure): value is ValidationFa
   return value.ok === false && typeof value.code === "string" && typeof value.message === "string";
 }
 
-/** The qualified CLI 0.1.27 and retained 0.1.22 contracts return one for scientific manual review, as well as for execution failures. */
+/** Current and retained qualified CLI contracts return one for manual review and execution failures. */
 function isPinnedManualReviewDiagnostic(
   input: Parameters<typeof validateIdentityPreflightExecution>[0],
   report: JsonRecord,
@@ -258,7 +258,7 @@ function isPinnedManualReviewDiagnostic(
   const argv = binding.command.semantic_argv;
   if (
     binding.cli.package_name !== "@tiangong-lca/cli" ||
-    !["0.1.22", "0.1.27"].includes(binding.cli.package_version) ||
+    !["0.1.22", "0.1.27", "0.1.28"].includes(binding.cli.package_version) ||
     !/^sha256-[0-9a-f]{64}$/u.test(binding.cli.package_integrity ?? "") ||
     binding.inputs.authReceipt?.cli.package_name !== binding.cli.package_name ||
     binding.inputs.authReceipt.cli.package_version !== binding.cli.package_version ||

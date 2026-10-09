@@ -208,7 +208,11 @@ async function recoverRetainedIdentity(
       indexRows.length !== selected.count ||
       options.max_attempts !== 1 ||
       options.retry_failed !== null ||
-      !["@tiangong-lca/cli@0.1.22", "@tiangong-lca/cli@0.1.27"].includes(String(cli.package)) ||
+      ![
+        "@tiangong-lca/cli@0.1.22",
+        "@tiangong-lca/cli@0.1.27",
+        "@tiangong-lca/cli@0.1.28",
+      ].includes(String(cli.package)) ||
       !Array.isArray(prefix) ||
       prefix.length !== 1 ||
       typeof prefix[0] !== "string" ||

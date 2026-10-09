@@ -36,6 +36,7 @@ const packageFiles = [
   "specs/schemas/foundry-workspace-v2.schema.json",
   "specs/schemas/foundry-runtime-selection.schema.json",
   "specs/schemas/foundry-managed-runtime.schema.json",
+  "specs/schemas/foundry-managed-adoption.schema.json",
   "specs/schemas/runtime-qualification.schema.json",
   "specs/schemas/task-authorization.schema.json",
   "specs/schemas/tidas-runtime-expectation.schema.json",
@@ -91,7 +92,7 @@ test("Foundry package metadata exposes only the reviewed public closure", () => 
     },
   });
   assert.deepEqual(manifest.files, packageFiles);
-  assert.deepEqual(manifest.dependencies, { "@tiangong-lca/cli": "0.1.27" });
+  assert.deepEqual(manifest.dependencies, { "@tiangong-lca/cli": "0.1.28" });
   assert.equal((manifest.devDependencies as Record<string, string>).ajv, "8.20.0");
   for (const lifecycle of ["preinstall", "install", "postinstall", "prepare"]) {
     assert.equal(Object.hasOwn(manifest.scripts as object, lifecycle), false, lifecycle);

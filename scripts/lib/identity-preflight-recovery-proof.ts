@@ -200,7 +200,7 @@ export function validateIdentityPreflightRecoveryEvidence(
     binding_sha256 !== sha256Json(bindingScope) ||
     value.binding_sha256 !== binding_sha256 ||
     binding.cli.package_name !== "@tiangong-lca/cli" ||
-    !["0.1.22", "0.1.27"].includes(String(binding.cli.package_version)) ||
+    !["0.1.22", "0.1.27", "0.1.28"].includes(String(binding.cli.package_version)) ||
     typeof binding.cli.package_integrity !== "string" ||
     !/^sha256-[0-9a-f]{64}$/u.test(binding.cli.package_integrity) ||
     binding.dataset.type !== input.datasetType ||

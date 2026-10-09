@@ -11,6 +11,8 @@ import {
 } from "@tiangong-lca/cli/runtime";
 import type { PreparedFoundryRuntimeHost } from "../runtime-entry.ts";
 import { createManagedFoundryActionProjector } from "./foundry-managed-actions.ts";
+import { prepareFoundryManagedAdoption } from "./foundry-managed-adoption.ts";
+import { createManagedFoundryAuthentication } from "./foundry-managed-authentication.ts";
 import { FoundryContextError } from "./foundry-runtime-error.ts";
 import { describeFoundryRuntime } from "./foundry-runtime-paths.ts";
 import { assertFoundryPackage } from "./foundry-package-contract.ts";
@@ -187,9 +189,19 @@ function prepare(context: RuntimeHostContext): PreparedHost {
   );
   const policy = policies.find((item) => item.id === context.entry);
   if (!policy) fail("The selected launch has no Foundry access policy.");
+  const adoption = prepareFoundryManagedAdoption(context, bytes, policy.target);
+  if (
+    adoption &&
+    inspectRuntimeComponents(adoption.manifest, {
+      cacheDir: context.cacheDir,
+      host: context.host,
+    }).status !== "ready"
+  )
+    fail("The independently bound successor runtime changed before Foundry admission.");
+  const workspaceManifest = adoption?.manifest ?? context.manifest;
   const target = policy.target
     ? trustRuntimeManifest(bytes(policy.target, 32 * 1024 * 1024), file(policy.target).fact.sha256)
-    : context.manifest;
+    : workspaceManifest;
   if (target.manifest.product.id !== "tiangong-foundry")
     fail("Runtime selection targets must be Foundry manifests.");
   return Object.freeze({
@@ -198,13 +210,19 @@ function prepare(context: RuntimeHostContext): PreparedHost {
       observedCli,
       runtime.entryPath,
     ),
-    workspaceAccess: Object.freeze({ manifest: context.manifest, access: policy.access }),
+    workspaceAccess: Object.freeze({ manifest: workspaceManifest, access: policy.access }),
     runtimeSelection: Object.freeze({
       cliExpectation: Object.freeze(cli),
       tidasExpectation,
       tidasExecutable: tidasFile.absolute,
     }),
     runtimeTarget: target,
+    runtimeAdoptionQualification: adoption?.qualification,
+    authentication: createManagedFoundryAuthentication(
+      selected.environment,
+      adoption !== null,
+      process.env,
+    ),
     runtimeManager: Object.freeze({ cacheDir: context.cacheDir, host: context.host }),
     cacheBase: path.join(context.cacheDir, "foundry-workspaces"),
   });

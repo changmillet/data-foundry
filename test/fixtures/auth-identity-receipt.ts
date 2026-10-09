@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { describeCliRuntime } from "@tiangong-lca/cli/runtime";
 
 import type {
   AuthIdentityReceipt,
@@ -6,6 +7,7 @@ import type {
 } from "@tiangong-lca/cli/auth-identity-receipt";
 
 type JsonRecord = Record<string, unknown>;
+const currentCliVersion = describeCliRuntime().package.version;
 
 export interface TestAuthIdentityReceiptOptions {
   projectRef?: string;
@@ -62,7 +64,7 @@ export function testAuthIdentityReceipt({
   projectRef = "qgzvkongdjqiiamzbbts",
   userId = "c536ee37-64ab-427b-b7e3-4e2bb4fdffb7",
   capturedAtUtc = new Date().toISOString(),
-  packageVersion = "0.1.27",
+  packageVersion = currentCliVersion,
   displayEmail = "te****@example.com",
   scopeOverrides = {},
 }: TestAuthIdentityReceiptOptions = {}): AuthIdentityReceipt {

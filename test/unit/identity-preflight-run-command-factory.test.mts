@@ -72,7 +72,7 @@ test("identity-preflight runner retains receipt, binding, cache, disk, and fail-
     "identity_preflight_execution_invalid",
     "stdout/disk mismatch",
     "Missing/malformed or stale reports",
-    "Nonzero CLI exits fail except the qualified CLI 0.1.27 complete, bound, error-free needs_review/manual_review exit 1 diagnostic",
+    "Nonzero CLI exits fail except the qualified CLI 0.1.28 complete, bound, error-free needs_review/manual_review exit 1 diagnostic",
     "execution signals/stderr and binding drift remain failures",
     "the pinned manual-review exit 1 contract does not resolve identity or grant a write",
   ]) {

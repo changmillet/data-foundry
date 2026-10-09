@@ -142,3 +142,5 @@ The Wave 26 library, classification, authoring, process-scope and batch modules 
 Before implementing a missing capability, classify it with `docs/capability-ownership-policy.md` and `specs/capability-ownership-rules.json`.
 
 Original-task compatibility belongs to the Foundry native receipt chain; candidate selection and human-facing questions remain Skills-owned. Its host qualification binds exact installed Foundry/CLI/Node/Toolkit bytes independently of version labels. Retained report recovery preserves indexed originals, while machine-gate and original-consumer validation remain separate. See [the public runtime contract](public-runtime-contract.md#same-task-compatibility-and-retained-identity-diagnostics).
+
+Foundry owns the original managed-entry carrier reader and existing typed authentication adapter. The generic CLI runtime manager/IPC and OAuth/headless owner remain CLI-owned and unchanged. Full S execution inventory equality and independent L admission preserve that boundary; no repository-specific writer, replacement Task or default-install change is part of this repair.

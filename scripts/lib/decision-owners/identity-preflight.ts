@@ -1057,7 +1057,7 @@ export function createIdentityPreflightRunCommands({
       },
       policy: {
         fail_closed_execution:
-          "Nonzero CLI exits fail except the qualified CLI 0.1.27 complete, bound, error-free needs_review/manual_review exit 1 diagnostic. Missing/malformed or stale reports, stdout/disk mismatch, ok:false, failed/error status, execution signals/stderr and binding drift remain failures.",
+          "Nonzero CLI exits fail except the qualified CLI 0.1.28 complete, bound, error-free needs_review/manual_review exit 1 diagnostic. Missing/malformed or stale reports, stdout/disk mismatch, ok:false, failed/error status, execution signals/stderr and binding drift remain failures.",
         valid_identity_findings:
           "A blocked/needs_review report remains scientific diagnostic evidence only with a valid execution manifest; the pinned manual-review exit 1 contract does not resolve identity or grant a write.",
         curation_gate_usage:

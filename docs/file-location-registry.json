@@ -235,7 +235,11 @@
         "docs/public-runtime-contract.md",
         "scripts/lib/foundry-owner-execution-store.ts",
         "scripts/lib/foundry-workflow-reference-verify.ts",
-        "scripts/lib/foundry-owner-trace-acceptance.ts"
+        "scripts/lib/foundry-owner-trace-acceptance.ts",
+        "scripts/lib/foundry-managed-adoption.ts",
+        "scripts/lib/foundry-managed-authentication.ts",
+        "test/helpers/managed-adoption-fixture.mts",
+        "test/scenarios/foundry-managed-adoption.test.mts"
       ],
       "sensitivity": "non-sensitive task ledger schema examples; contains no credentials and no private payloads",
       "tracked": true,

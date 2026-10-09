@@ -85,7 +85,7 @@ for (const datasetType of ["flow", "process"] as const)
       semanticArgv: [datasetType, "identity-preflight", "--json", "--timeout-ms", "60000"],
       cli: {
         packageName: "@tiangong-lca/cli",
-        packageVersion: "0.1.27",
+        packageVersion: cli.packageVersion,
         packageIntegrity: `sha256-${sha256Text(fs.readFileSync(cli.binPath, "utf8"))}`,
       },
       authReceipt: testAuthIdentityReceipt({ capturedAtUtc: new Date(startedAtMs).toISOString() }),

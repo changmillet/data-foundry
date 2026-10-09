@@ -54,6 +54,7 @@
     "specs/schemas/foundry-workspace-v2.schema.json",
     "specs/schemas/foundry-runtime-selection.schema.json",
     "specs/schemas/foundry-managed-runtime.schema.json",
+    "specs/schemas/foundry-managed-adoption.schema.json",
     "specs/schemas/runtime-qualification.schema.json",
     "specs/schemas/task-authorization.schema.json",
     "specs/schemas/tidas-runtime-expectation.schema.json",
@@ -188,7 +189,7 @@
     ]
   },
   "dependencies": {
-    "@tiangong-lca/cli": "0.1.27"
+    "@tiangong-lca/cli": "0.1.28"
   },
   "foundryRuntime": {
     "schema": "tiangong-foundry.runtime-layout.v2",
