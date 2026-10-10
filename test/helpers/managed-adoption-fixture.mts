@@ -52,6 +52,7 @@ export function managedInventory(
   root: string,
   relative = "",
   requireIndependentFiles = true,
+  executables: readonly string[] = [],
 ): ComponentFile[] {
   return fs
     .readdirSync(path.join(root, relative))
@@ -60,7 +61,8 @@ export function managedInventory(
       const file = path.join(root, selected),
         stat = fs.lstatSync(file);
       assert.equal(stat.isSymbolicLink(), false, file);
-      if (stat.isDirectory()) return managedInventory(root, selected, requireIndependentFiles);
+      if (stat.isDirectory())
+        return managedInventory(root, selected, requireIndependentFiles, executables);
       assert.ok(stat.isFile(), file);
       if (requireIndependentFiles) assert.equal(stat.nlink, 1, file);
       const bytes = fs.readFileSync(file);
@@ -69,7 +71,7 @@ export function managedInventory(
           path: selected,
           bytes: bytes.length,
           sha256: digest(bytes),
-          mode: stat.mode & 0o111 ? 493 : 420,
+          mode: executables.includes(selected) || stat.mode & 0o111 ? 493 : 420,
         },
       ];
     })
@@ -477,7 +479,12 @@ export async function managedAdoptionFixture(t: TestContext, syntheticTransport 
   const version = (
     JSON.parse(fs.readFileSync(path.join(stage, "package.json"), "utf8")) as { version: string }
   ).version;
-  const prepareComponent = async (id: string, input: string, protocols: string[]) => {
+  const prepareComponent = async (
+    id: string,
+    input: string,
+    protocols: string[],
+    executables: readonly string[] = [],
+  ) => {
     for (const name of ["fixture-lock.json", "fixture-sbom.json", "fixture-provenance.json"])
       json(path.join(input, name), {
         boundary: "Synthetic release metadata; not publication authority",
@@ -486,7 +493,8 @@ export async function managedAdoptionFixture(t: TestContext, syntheticTransport 
       path.join(input, "fixture-license.txt"),
       "Synthetic component metadata only.\n",
     );
-    const files = managedInventory(input),
+    // Windows stat/chmod cannot supply portable archive execute bits.
+    const files = managedInventory(input, "", true, executables),
       archive = path.join(root, `${id}-${digest(JSON.stringify(files))}.tar.gz`);
     const archiveFact = fs.existsSync(archive)
       ? { bytes: managedFileFact(archive).bytes, sha256: managedFileFact(archive).sha256 }
@@ -513,7 +521,12 @@ export async function managedAdoptionFixture(t: TestContext, syntheticTransport 
   };
   const newApp = await prepareComponent("application", app, [managed]),
     oldApp = await prepareComponent("previous", previous, [managed]),
-    native = await prepareComponent("native", nativeInput, ["fixture-native.v1"]);
+    native = await prepareComponent(
+      "native",
+      nativeInput,
+      ["fixture-native.v1"],
+      [nodePath, nativePath],
+    );
   const launches: RuntimeManifest["launches"] = ["foundry", "foundry-read"].map((id) => ({
     id,
     platform,
