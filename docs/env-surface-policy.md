@@ -69,6 +69,8 @@ The `release:prepare-production` command binds its own clean physical Git root a
 
 CI tooling additionally uses `FOUNDRY_CI_BASE_SHA` and `FOUNDRY_CI_SOURCE_SHA` for exact PR/caller-source selection. `FOUNDRY_CI_PACKAGE_DIR`, `FOUNDRY_CI_PACKAGE_MANIFEST_SHA256` and `FOUNDRY_CI_PACKAGE_SHA256` are a complete source-job-only artifact selection supplied from independent producing-job outputs. Partial or invalid selection fails; it never silently rebuilds or reads an operator credential. The package context includes only non-secret Git/toolchain/run facts. These variables are excluded from `.env.example`, ordinary task inputs and installed runtime configuration.
 
+`FOUNDRY_MANAGED_TEST_DIAGNOSTICS_ROOT` is a source-test-only output selector supplied by the validated CI shard runner. Its fresh diagnostics directory binds the selected source, platform, plan and shard; partial observations cannot qualify a test or runtime. The managed fixture exports only bounded, allowlisted completion and failure facts, preserving null unknown counts and observed negative exits. It omits raw output, free-form messages, paths, arguments, environment, account/auth objects, credentials, queries and task payloads. The selector is not forwarded to managed product children and is excluded from `.env.example`, task inputs, component manifests and installed runtime authority.
+
 ## Allowed Variables
 
 Only document variables that meet at least one of these conditions:

@@ -28,6 +28,11 @@ import {
 import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
 import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
 import { flowRow, processRowWithFlowRef } from "../fixtures/row-builders.ts";
+import {
+  startManagedDiagnostics,
+  managedChildEnvironment,
+  managedDiagnosticsEnvironment,
+} from "../fixtures/managed-adoption-diagnostics.mts";
 
 const repo = path.resolve(import.meta.dirname, "../..");
 const entryRelative = "node_modules/@tiangong-lca/foundry/package-dist/scripts/package-entry.js";
@@ -280,10 +285,16 @@ export function managedAdoptionControlExecutables(
 /** Real CLI manager + direct emitted package-entry subprocess. Release metadata/history are synthetic. */
 export async function managedAdoptionFixture(t: TestContext, syntheticTransport = false) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "foundry-managed-adoption-")));
+  let diagnostics: ReturnType<typeof startManagedDiagnostics>["feedback"] = null;
   let passed = false;
   t.after(() => {
     if (passed) fs.rmSync(root, { recursive: true, force: true });
     else {
+      try {
+        diagnostics?.failure(root);
+      } catch {
+        t.diagnostic("Managed failure feedback could not be exported.");
+      }
       json(path.join(root, "retained-fixture.json"), {
         scope:
           "Failed or incomplete synthetic managed fixture retained for diagnosis; no DATA authority",
@@ -292,6 +303,9 @@ export async function managedAdoptionFixture(t: TestContext, syntheticTransport 
       t.diagnostic(`Retained failed synthetic managed fixture: ${root}`);
     }
   });
+  const feedback = startManagedDiagnostics(process.env[managedDiagnosticsEnvironment], t.name);
+  diagnostics = feedback.feedback;
+  if (feedback.omission) t.diagnostic("Managed feedback initialization is unavailable.");
   const markPassed = () => {
     passed = true;
   };
@@ -303,6 +317,11 @@ export async function managedAdoptionFixture(t: TestContext, syntheticTransport 
       `${String(++subprocessNumber).padStart(3, "0")}.json`,
     );
     json(file, record);
+    try {
+      diagnostics?.completion(record);
+    } catch {
+      t.diagnostic("Managed command feedback could not be exported.");
+    }
     return file;
   };
   const stage = managedAdoptionPackage().stage;
@@ -667,7 +686,7 @@ export async function managedAdoptionFixture(t: TestContext, syntheticTransport 
     }>((resolve) => {
       const child = spawn(selectedNode, args, {
         cwd: root,
-        env: { ...environment, ...env },
+        env: managedChildEnvironment({ ...environment, ...env }),
         shell: false,
       });
       let stdout = "",

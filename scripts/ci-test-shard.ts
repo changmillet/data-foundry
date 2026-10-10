@@ -6,6 +6,10 @@ import { loadFoundryTestPlan, foundryPlatformTestShards } from "./lib/foundry-ci
 import { foundryCiReporterUrl } from "./ci-test-reporter.ts";
 import { readFoundryReleaseGit as git } from "./lib/foundry-release-contract.ts";
 import { readFoundryReleaseArtifact } from "./lib/foundry-release-prepared.ts";
+import {
+  managedDiagnosticsEnvironment,
+  startManagedDiagnosticsOutput,
+} from "../test/fixtures/managed-adoption-diagnostics.mts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const usage =
@@ -59,6 +63,14 @@ async function main(args: readonly string[]): Promise<void> {
   const eventsFile = path.join(output, "test-events.jsonl");
   const diagnosticsFile = path.join(output, "test-diagnostics.tap");
   const environment = { ...process.env };
+  const managedFeedback = startManagedDiagnosticsOutput(output, {
+    source,
+    platform: `${process.platform}-${process.arch}`,
+    plan_sha256: expectedPlan,
+    shard: index,
+  });
+  delete environment[managedDiagnosticsEnvironment];
+  if (managedFeedback.root) environment[managedDiagnosticsEnvironment] = managedFeedback.root;
   delete environment.NODE_OPTIONS;
   delete environment.NODE_TEST_CONTEXT;
   const started = performance.now();
@@ -139,6 +151,10 @@ async function main(args: readonly string[]): Promise<void> {
     test_events_sha256: eventsSha256,
     elapsed_ms: performance.now() - started,
     errors,
+    managed_feedback: {
+      available: Boolean(managedFeedback.root),
+      omission: managedFeedback.omission,
+    },
   };
   fs.writeFileSync(path.join(output, "test-shard.json"), `${JSON.stringify(receipt, null, 2)}\n`, {
     flag: "wx",

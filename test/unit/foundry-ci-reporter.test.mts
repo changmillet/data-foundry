@@ -125,6 +125,17 @@ test(
     // only the external Git clean-check boundary is supplied by the synthetic source fixture.
     for (const file of ["ci-test-shard.ts", "ci-test-reporter.ts"])
       fs.copyFileSync(path.join(sourceRoot, "scripts", file), path.join(scripts, file));
+    const diagnosticHelper = path.join(
+      sourceRoot,
+      "test/fixtures/managed-adoption-diagnostics.mts",
+    );
+    if (fs.existsSync(diagnosticHelper)) {
+      fs.mkdirSync(path.join(fixtureRoot, "test/fixtures"), { recursive: true });
+      fs.copyFileSync(
+        diagnosticHelper,
+        path.join(fixtureRoot, "test/fixtures/managed-adoption-diagnostics.mts"),
+      );
+    }
     fs.symlinkSync(path.join(sourceRoot, "scripts/lib"), path.join(scripts, "lib"), "junction");
     const source = "a".repeat(40);
     const gitFixture = path.join(directory, "git-fixture.mjs");
@@ -149,12 +160,25 @@ syncBuiltinESMExports();
     const releaseFile = path.join(directory, "release-second");
     const finishedFile = path.join(directory, "second-finished");
     const assertionMessage = "early assertion diagnostic remains available";
+    const managedFailureDirectory = path.join(directory, "managed-failure-input");
+    fs.mkdirSync(managedFailureDirectory);
+    const managedFailureInput = fs.realpathSync(managedFailureDirectory);
+    const selectorObserved = path.join(directory, "selector-observed");
+    fs.writeFileSync(path.join(managedFailureInput, "synthetic-calls.jsonl"), "");
     fs.writeFileSync(
       path.join(fixtureRoot, "test/00-failing.test.mts"),
       `
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import test from "node:test";
-test("early fixture failure", () => assert.deepEqual({ value: "actual" }, { value: "expected" }, ${JSON.stringify(assertionMessage)}));
+import { createManagedDiagnostics, managedDiagnosticsEnvironment } from "./fixtures/managed-adoption-diagnostics.mts";
+test("early fixture failure", t => {
+  if (process.env[managedDiagnosticsEnvironment]) fs.writeFileSync(${JSON.stringify(selectorObserved)}, "present");
+  const feedback = createManagedDiagnostics(process.env[managedDiagnosticsEnvironment], t.name);
+  t.after(() => feedback?.failure(${JSON.stringify(managedFailureInput)}));
+  feedback?.completion({ status: 0, error: null, timed_out: false, stdout: JSON.stringify({ status: "needs_input", auth: { access_token: "must-not-export-credential" }, artifacts: [{role: "explicit_readonly_identity_stage", value: { status: "blocked", counts: { admitted_targets: 4, accepted_targets: 0, cli_invocations: null, underlying_retrievals: null } }}] }), stderr: "must-not-export-credential" });
+  assert.deepEqual({ value: "actual" }, { value: "expected" }, ${JSON.stringify(assertionMessage)});
+});
 `,
     );
     fs.writeFileSync(
@@ -275,6 +299,27 @@ test("second file awaits explicit release", async () => {
     assert.match(diagnostic, /actual:/u);
     assert.equal(fs.existsSync(finishedFile), false, "second file has not completed");
     assert.equal(closed, false, "runner has not reached terminal completion");
+    const managedContext = path.join(output, "managed-adoption/context.json");
+    assert.equal(
+      fs.existsSync(managedContext),
+      true,
+      "source-bound managed feedback context exists before terminal completion",
+    );
+    assert.equal(JSON.parse(read(managedContext)).source, source);
+    const feedbackRoot = path.dirname(managedContext);
+    const feedbackFixture = fs
+      .readdirSync(feedbackRoot)
+      .find((name) => name.startsWith("fixture-"));
+    assert.ok(feedbackFixture);
+    const feedback = path.join(feedbackRoot, feedbackFixture);
+    const commandFeedback = JSON.parse(read(path.join(feedback, "command-001.json")));
+    assert.equal(commandFeedback.stage_status, "blocked");
+    assert.equal(commandFeedback.counts.cli_invocations, null);
+    const failureFeedback = JSON.parse(read(path.join(feedback, "failure.json")));
+    assert.equal(failureFeedback.disposition, "failed-or-incomplete");
+    assert.equal(failureFeedback.synthetic_call_counts.flow, 0);
+    for (const file of fs.readdirSync(feedback))
+      assert.equal(read(path.join(feedback, file)).includes("must-not-export-credential"), false);
     assert.equal(
       records().some((row) => row.type === "summary" && row.file === undefined),
       false,
@@ -303,6 +348,51 @@ test("second file awaits explicit release", async () => {
     assert.equal(receipt.status, "failed");
     assert.deepEqual(receipt.counts, summary?.counts);
     assert.equal(summary?.success, false);
+    fs.unlinkSync(selectorObserved);
+    const failedOutput = path.join(directory, "failed-optional-diagnostics");
+    fs.appendFileSync(
+      gitFixture,
+      `\nimport fs from "node:fs"; const mkdir = fs.mkdirSync; fs.mkdirSync = (directory, ...rest) => { if (String(directory).endsWith("managed-adoption")) throw Object.assign(new Error("private-optional-diagnostic-message"), {code:"EACCES"}); return mkdir(directory, ...rest); };\n`,
+    );
+    const optionalFailure = spawnSync(
+      process.execPath,
+      [
+        "--import",
+        pathToFileURL(gitFixture).href,
+        path.join(scripts, "ci-test-shard.ts"),
+        "--index",
+        "1",
+        "--plan-sha256",
+        loadFoundryTestPlan(fixtureRoot).planSha256,
+        "--source-sha",
+        source,
+        "--output",
+        failedOutput,
+      ],
+      {
+        env: {
+          ...environment,
+          FOUNDRY_MANAGED_TEST_DIAGNOSTICS_ROOT: "must-not-use-inherited-selector",
+        },
+        encoding: "utf8",
+        timeout: 10000,
+      },
+    );
+    assert.equal(optionalFailure.status, 1, "the original fixture failure still fails the shard");
+    assert.equal(
+      fs.existsSync(path.join(failedOutput, "test-shard.json")),
+      true,
+      "optional diagnostic failure does not prevent test execution or receipt",
+    );
+    const failedReceipt = JSON.parse(read(path.join(failedOutput, "test-shard.json")));
+    assert.equal(failedReceipt.managed_feedback.available, false);
+    assert.equal(failedReceipt.managed_feedback.omission, "initialization-unavailable");
+    assert.equal(
+      fs.existsSync(selectorObserved),
+      false,
+      "failed diagnostics never use inherited selector",
+    );
+    assert.equal(optionalFailure.stderr.includes("private-optional-diagnostic-message"), false);
     assert.equal(read(eventsFile).includes(assertionMessage), false);
   },
 );
