@@ -31,9 +31,9 @@ checkPaths:
   - .oxlintrc.json
   - prettier.config.ts
   - tsconfig*.json
-lastReviewedAt: 2026-10-08
-lastReviewedCommit: d07ac492a3a5891502039a6cc83ef30b9fbba50b
-lastReviewedNote: "Reviewed Foundry #237 exact three-field 0.1.16 to 0.1.17 release projection from eligible PR236 Main d07ac492; CLI/native pins, lock closure, authorization and all business source remain unchanged. Official publication and final managed qualification remain pending."
+lastReviewedAt: 2026-10-10
+lastReviewedCommit: 59e9ff6adb3f736a0f9c2c70e4942f2e82600004
+lastReviewedNote: "Reviewed main-based #228 JSON/JSONL source-trace repair and exact-payload/semantic-lineage tests; ownership, CLI0.1.27 pin, auth/write gates and release policy stay unchanged. Original DATA acceptance is separately bound to the preserved PR240-dependent composition."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry
