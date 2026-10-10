@@ -35,8 +35,8 @@ checkPaths:
   - test/unit/runtime-layout.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
 lastReviewedAt: 2026-10-10
-lastReviewedCommit: 84f4cd573675e457c84213314ee228d0410b4ad3
-lastReviewedNote: "Reviewed original managed-entry L=S+K qualification and explicit cli-auth projection, CLI0.1.28 compatible pin and genuine subprocess test boundaries. Complete original DATA account/business acceptance remains separate."
+lastReviewedCommit: 261f835099b0d0dfe7cd6f6c03df9c76ea490e67
+lastReviewedNote: "Reviewed native preflight dispatch paths and strict retained command proof, explicit portable native fixture modes, measured/provisional CI weights and separate partial TAP diagnostics. Runtime/authentication/no-requery/scientific boundaries remain unchanged; original DATA acceptance is separate."
 related:
   - docs/public-runtime-contract.md
   - docs/runtime-context-contract.md

@@ -35,8 +35,8 @@ checkPaths:
   - test/scenarios/foundry-interaction-workflow.test.mts
   - docs/public-runtime-contract.md
 lastReviewedAt: 2026-10-10
-lastReviewedCommit: 759c975df38dd8324840aa3d674af1a207966f3f
-lastReviewedNote: "Reviewed original managed-entry L=S+K qualification and explicit cli-auth projection, CLI0.1.28 compatible pin and genuine subprocess test boundaries. Complete original DATA account/business acceptance remains separate."
+lastReviewedCommit: 261f835099b0d0dfe7cd6f6c03df9c76ea490e67
+lastReviewedNote: "Reviewed native preflight dispatch paths and strict retained command proof, explicit portable native fixture modes, measured/provisional CI weights and separate partial TAP diagnostics. Runtime/authentication/no-requery/scientific boundaries remain unchanged; original DATA acceptance is separate."
 related:
   - docs/runtime-context-contract.md
   - docs/task-authorization-contract.md
