@@ -159,8 +159,8 @@ checkPaths:
   - test/unit/zero-javascript-ratchet.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
 lastReviewedAt: 2026-10-10
-lastReviewedCommit: 7db9e7d390c56e4cbeeb4c7549a864d69d2656c8
-lastReviewedNote: "Reviewed native canonical retained-file resolution with existing generic fallback for different spelling or native failure at 7db9e7d3. Every fresh runtime/transaction/filesystem/hash check, regular/no-follow/inode/device/size/time/path/growth guard, 64 MiB bound and existing deadline remains. Exact983-file three-round facts and explicit guard counters match; focused21/21 passes. PriorFF51 installed6/4/2 failure remains retained; new full source/emitted/installed/native qualification is pending. No cached proof, new authority, scientific decision or original DATA acceptance."
+lastReviewedCommit: c9fae41b82efc64af06ebf1790a3f2c1fcf1d7b5
+lastReviewedNote: "Reviewed native canonical retained-file resolution and native-root traversal-budget precondition at c9fae41b. Different spelling/native failure retains the existing generic resolver. Every fresh runtime/transaction/filesystem/hash check, regular/no-follow/inode/device/size/time/path/growth guard, 64 MiB bound and existing deadline remains. Exact983-file three-round facts/direct guard counters match; focused21/21 passes. PriorFF51 installed6/4/2 failure and unused1878 artifact remain retained; new full source/emitted/installed/native qualification is pending. No cached proof, new authority, scientific decision or original DATA acceptance."
 ---
 
 # TianGong LCA Data Foundry
