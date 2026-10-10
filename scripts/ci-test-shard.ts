@@ -57,6 +57,7 @@ async function main(args: readonly string[]): Promise<void> {
     throw new Error("CI test reports must be outside the source checkout.");
   fs.mkdirSync(output, { mode: 0o700 });
   const eventsFile = path.join(output, "test-events.jsonl");
+  const diagnosticsFile = path.join(output, "test-diagnostics.tap");
   const environment = { ...process.env };
   delete environment.NODE_OPTIONS;
   delete environment.NODE_TEST_CONTEXT;
@@ -71,6 +72,8 @@ async function main(args: readonly string[]): Promise<void> {
         "--test-reporter-destination=stdout",
         `--test-reporter=${foundryCiReporterUrl}`,
         `--test-reporter-destination=${eventsFile}`,
+        "--test-reporter=tap",
+        `--test-reporter-destination=${diagnosticsFile}`,
         ...shard.files.map((file) => path.join(root, file)),
       ],
       { cwd: root, env: environment, stdio: "inherit", shell: false },
