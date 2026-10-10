@@ -12,7 +12,11 @@ import { bytes, digest, exact, fail, facts, object, readTaskBytes } from "./foun
 import { sha256Json } from "./identity-preflight-proof.ts";
 import { transferRead } from "./foundry-migration-transfer-io.ts";
 import { createRequire } from "node:module";
-import { transferFileFact, transferPath } from "./foundry-migration-transfer-io.ts";
+import {
+  transferFileContentFact,
+  transferFileFact,
+  transferPath,
+} from "./foundry-migration-transfer-io.ts";
 import type { TaskRuntimeIdentity } from "./foundry-task-types.ts";
 
 export interface TrustedFoundryRuntimeAdoptionQualification {
@@ -230,7 +234,7 @@ function verifyRetainedCli(entry: string, claim: Record<string, unknown>) {
       "Original CLI inventory does not match its independent expectation.",
     );
   for (const fact of oldFiles) {
-    const previous = transferFileFact(transferPath(oldRoot, fact.path));
+    const previous = transferFileContentFact(transferPath(oldRoot, fact.path));
     if (previous.bytes !== fact.bytes || previous.sha256 !== fact.sha256)
       fail(
         "runtime_adoption_dependency_changed",
@@ -292,7 +296,7 @@ function retainedRuntime(
   )
     fail("runtime_adoption_original_invalid", "Retained package inventory changed.");
   for (const fact of facts(inventory.files)) {
-    const current = transferFileFact(transferPath(root, fact.path));
+    const current = transferFileContentFact(transferPath(root, fact.path));
     if (current.bytes !== fact.bytes || current.sha256 !== fact.sha256)
       fail("runtime_adoption_original_invalid", "Retained package code or assets changed.");
   }
@@ -467,7 +471,7 @@ export function validateSelection(
   )
     fail("runtime_adoption_original_invalid", "Retained original package inventory changed.");
   for (const fact of facts(descriptor.files)) {
-    const current = transferFileFact(transferPath(originalRoot, fact.path));
+    const current = transferFileContentFact(transferPath(originalRoot, fact.path));
     if (current.bytes !== fact.bytes || current.sha256 !== fact.sha256)
       fail("runtime_adoption_original_invalid", "Original package code or assets changed.");
   }
