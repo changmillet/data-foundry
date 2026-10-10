@@ -428,7 +428,7 @@ test("retained file hashing rejects the per-file size limit before allocating sc
 
 test("fresh retained facts avoid interpreted ancestor traversal for canonical regular paths", (t) => {
   const fixture = hashFixture(t, Buffer.from("fresh retained bytes"));
-  const root = fs.realpathSync(fixture.root);
+  const root = fs.realpathSync.native(fixture.root);
   const file = path.join(root, "payload");
   const canonical = fs.realpathSync(file);
   const generic = t.mock.method(fs, "realpathSync", fs.realpathSync);
