@@ -29,7 +29,7 @@ checkPaths:
   - specs/import-profiles.json
   - tasks/**
 lastReviewedAt: 2026-10-10
-lastReviewedCommit: 759c975df38dd8324840aa3d674af1a207966f3f
+lastReviewedCommit: 7dfd8c00277b2cf1811feff8541381a8bc780c1d
 lastReviewedNote: "Reviewed original managed-entry L=S+K qualification and explicit cli-auth projection, CLI0.1.28 compatible pin and genuine subprocess test boundaries. Complete original DATA account/business acceptance remains separate."
 related:
   - AGENTS.md

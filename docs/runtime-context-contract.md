@@ -41,7 +41,7 @@ checkPaths:
   - test/scenarios/foundry-execution-admission.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
 lastReviewedAt: 2026-10-10
-lastReviewedCommit: 261f835099b0d0dfe7cd6f6c03df9c76ea490e67
+lastReviewedCommit: 7dfd8c00277b2cf1811feff8541381a8bc780c1d
 lastReviewedNote: "Reviewed native preflight dispatch paths and strict retained command proof, explicit portable native fixture modes, measured/provisional CI weights and separate partial TAP diagnostics. Runtime/authentication/no-requery/scientific boundaries remain unchanged; original DATA acceptance is separate."
 related:
   - docs/architecture.md
