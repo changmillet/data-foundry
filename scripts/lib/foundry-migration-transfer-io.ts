@@ -113,6 +113,18 @@ export function transferWriteOnce(
   }
 }
 
+function transferCanonicalPath(file: string): string {
+  // Canonical retained paths can avoid the interpreted absolute-ancestor walk.
+  // Other spellings and native failures retain the existing resolver behavior.
+  try {
+    const resolved = fs.realpathSync.native(file);
+    if (resolved === path.resolve(file)) return resolved;
+  } catch {
+    // The generic resolver also supports filesystems without native resolution.
+  }
+  return fs.realpathSync(file);
+}
+
 export function transferFileFact(file: string): FoundryInputFact {
   const before = fs.lstatSync(file, { bigint: true });
   if (!before.isFile() || before.isSymbolicLink() || before.size > 64n * 1024n * 1024n)
@@ -145,7 +157,7 @@ export function transferFileFact(file: string): FoundryInputFact {
       linked.dev !== before.dev
     )
       transferFail("migration_source_changed", "Transfer file changed during hashing.");
-    return { path: fs.realpathSync(file), bytes, sha256: hash.digest("hex") };
+    return { path: transferCanonicalPath(file), bytes, sha256: hash.digest("hex") };
   } finally {
     fs.closeSync(fd);
   }

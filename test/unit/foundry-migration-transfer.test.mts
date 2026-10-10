@@ -425,3 +425,65 @@ test("retained file hashing rejects the per-file size limit before allocating sc
   assert.throws(() => transferFileFact(file), code("migration_file_invalid"));
   assert.equal(allocation.mock.callCount(), 0);
 });
+
+test("fresh retained facts avoid interpreted ancestor traversal for canonical regular paths", (t) => {
+  const fixture = hashFixture(t, Buffer.from("fresh retained bytes"));
+  const root = fs.realpathSync(fixture.root);
+  const file = path.join(root, "payload");
+  const canonical = fs.realpathSync(file);
+  const generic = t.mock.method(fs, "realpathSync", fs.realpathSync);
+  for (const content of [fixture.content, Buffer.from("changed retained bytes")]) {
+    fs.writeFileSync(file, content);
+    assert.deepEqual(transferFileFact(file), {
+      path: canonical,
+      bytes: content.length,
+      sha256: createHash("sha256").update(content).digest("hex"),
+    });
+  }
+  assert.equal(
+    generic.mock.callCount(),
+    0,
+    "Canonical retained files must not repeat the interpreted absolute-ancestor walk",
+  );
+});
+
+test("retained facts preserve Unicode, spaces and selected path alias spelling", (t) => {
+  const fixture = hashFixture(t, Buffer.from("canonical path bytes"));
+  const directory = path.join(fixture.root, "Unicode 中文 space");
+  fs.mkdirSync(directory);
+  const file = path.join(directory, "目标 file.txt");
+  fs.writeFileSync(file, fixture.content);
+  const alias = `${directory}${path.sep}.${path.sep}目标 file.txt`;
+  assert.deepEqual(transferFileFact(alias), {
+    path: fs.realpathSync(alias),
+    bytes: fixture.content.length,
+    sha256: createHash("sha256").update(fixture.content).digest("hex"),
+  });
+});
+
+test("retained facts preserve the existing resolver when native path spelling differs", (t) => {
+  const { file, content } = hashFixture(t, Buffer.from("retained spelling bytes"));
+  const canonical = fs.realpathSync(file);
+  t.mock.method(fs.realpathSync, "native", () => `${canonical}.different-native-spelling`);
+  assert.deepEqual(transferFileFact(file), {
+    path: canonical,
+    bytes: content.length,
+    sha256: createHash("sha256").update(content).digest("hex"),
+  });
+});
+
+test("retained facts fall back after native resolution errors and still freshly hash changes", (t) => {
+  const { file, content } = hashFixture(t, Buffer.from("retained fallback bytes"));
+  const canonical = fs.realpathSync(file);
+  t.mock.method(fs.realpathSync, "native", () => {
+    throw Object.assign(new Error("synthetic native resolver unavailable"), { code: "ENOENT" });
+  });
+  for (const current of [content, Buffer.from("fresh fallback bytes")]) {
+    fs.writeFileSync(file, current);
+    assert.deepEqual(transferFileFact(file), {
+      path: canonical,
+      bytes: current.length,
+      sha256: createHash("sha256").update(current).digest("hex"),
+    });
+  }
+});
