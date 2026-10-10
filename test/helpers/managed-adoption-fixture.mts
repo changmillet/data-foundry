@@ -271,6 +271,12 @@ export type ManagedFixtureMutation =
   | "node-expectation"
   | "entry-argv";
 
+export function managedAdoptionControlExecutables(
+  mutation?: ManagedFixtureMutation,
+): readonly string[] {
+  return mutation === "control-mode" ? ["metadata/foundry-adoption.json"] : [];
+}
+
 /** Real CLI manager + direct emitted package-entry subprocess. Release metadata/history are synthetic. */
 export async function managedAdoptionFixture(t: TestContext, syntheticTransport = false) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "foundry-managed-adoption-")));
@@ -945,9 +951,12 @@ export async function managedAdoptionFixture(t: TestContext, syntheticTransport 
     });
     if (mutation === "control-mode")
       fs.chmodSync(path.join(input, "metadata/foundry-adoption.json"), 0o755);
-    const prepared = await prepareComponent("adoption", input, [
-      mutation === "control-protocol" ? "tiangong-foundry.managed-adoption.v999" : adoption,
-    ]);
+    const prepared = await prepareComponent(
+      "adoption",
+      input,
+      [mutation === "control-protocol" ? "tiangong-foundry.managed-adoption.v999" : adoption],
+      managedAdoptionControlExecutables(mutation),
+    );
     return install(
       { ...execution, components: [...execution.components, prepared.component] },
       `carrier-${digest(JSON.stringify(prepared.component))}.json`,
