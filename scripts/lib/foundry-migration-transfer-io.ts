@@ -123,7 +123,7 @@ export function transferFileFact(file: string): FoundryInputFact {
     if (opened.ino !== before.ino || opened.dev !== before.dev)
       transferFail("migration_source_changed", "Transfer file identity changed.");
     const hash = createHash("sha256"),
-      buffer = Buffer.alloc(1024 * 1024);
+      buffer = Buffer.alloc(Math.max(1, Math.min(1024 * 1024, Number(before.size))));
     let bytes = 0;
     while (true) {
       const count = fs.readSync(fd, buffer, 0, buffer.length, null);

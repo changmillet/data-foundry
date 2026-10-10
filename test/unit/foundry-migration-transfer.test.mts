@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import test, { type TestContext } from "node:test";
 import { pathToFileURL } from "node:url";
 import {
@@ -14,6 +15,7 @@ import {
   stageFoundryMigration,
   auditFoundryMigration,
 } from "../../scripts/lib/foundry-migration-transfer.ts";
+import { transferFileFact } from "../../scripts/lib/foundry-migration-transfer-io.ts";
 
 function setup(t: TestContext) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "transfer-unit-"));
@@ -314,4 +316,112 @@ test("registered account intent is preserved while CLI account storage stays pri
     result.receipt.files.some((item) => item.source === fs.realpathSync(session)),
     false,
   );
+});
+
+function hashFixture(t: TestContext, content: Buffer) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "retained-file-hash-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const file = path.join(root, "payload");
+  fs.writeFileSync(file, content);
+  return { root, file, content };
+}
+
+test("retained inventory hashing stays within the payload scratch budget and hashes every byte", (t) => {
+  const chunkLimit = 1024 * 1024;
+  const payloads = [0, 1, 31, 4097, 65_539, chunkLimit + 17].map((size, index) =>
+    hashFixture(t, Buffer.alloc(size, index + 1)),
+  );
+  const allocations: number[] = [];
+  const allocate = Buffer.alloc.bind(Buffer);
+  const allocation = t.mock.method(
+    Buffer,
+    "alloc",
+    (size: number, fill?: string | number | Uint8Array, encoding?: BufferEncoding) => {
+      allocations.push(size);
+      return allocate(size, fill, encoding);
+    },
+  );
+  for (const { file, content } of payloads)
+    assert.deepEqual(transferFileFact(file), {
+      path: fs.realpathSync(file),
+      bytes: content.length,
+      sha256: createHash("sha256").update(content).digest("hex"),
+    });
+  allocation.mock.restore();
+  const budget = payloads.reduce((total, { content }) => total + Math.max(1, content.length), 0);
+  const allocated = allocations.reduce((total, size) => total + size, 0);
+  assert.ok(allocations.length >= payloads.length);
+  assert.ok(allocations.every((size) => size >= 1 && size <= chunkLimit));
+  assert.ok(allocated <= budget, `${allocated} scratch bytes exceed the ${budget} payload budget`);
+});
+
+test("retained file hashing accepts fragmented reads without hashing unused scratch bytes", (t) => {
+  const { file, content } = hashFixture(t, Buffer.from("qualified retained payload".repeat(3)));
+  const read = fs.readSync;
+  let reads = 0;
+  t.mock.method(
+    fs,
+    "readSync",
+    (fd: number, buffer: Buffer, offset: number, length: number, position: number | null) => {
+      reads += 1;
+      return read(fd, buffer, offset, Math.min(7, length), position);
+    },
+  );
+  assert.deepEqual(transferFileFact(file), {
+    path: fs.realpathSync(file),
+    bytes: content.length,
+    sha256: createHash("sha256").update(content).digest("hex"),
+  });
+  assert.ok(reads > 2, "The actual hash must span several short reads");
+});
+
+test("retained file hashing rejects a premature end of read instead of publishing a prefix hash", (t) => {
+  const { file } = hashFixture(t, Buffer.from("complete retained payload"));
+  const read = fs.readSync;
+  let first = true;
+  t.mock.method(
+    fs,
+    "readSync",
+    (fd: number, buffer: Buffer, offset: number, length: number, position: number | null) => {
+      if (!first) return 0;
+      first = false;
+      return read(fd, buffer, offset, Math.min(7, length), position);
+    },
+  );
+  assert.throws(() => transferFileFact(file), code("migration_source_changed"));
+});
+
+for (const drift of ["empty-file growth", "truncation", "same-byte replacement"] as const)
+  test(`retained file hashing rejects ${drift} during its read`, (t) => {
+    const { root, file, content } = hashFixture(
+      t,
+      drift === "empty-file growth" ? Buffer.alloc(0) : Buffer.from("immutable retained bytes"),
+    );
+    const read = fs.readSync;
+    let first = true;
+    t.mock.method(
+      fs,
+      "readSync",
+      (fd: number, buffer: Buffer, offset: number, length: number, position: number | null) => {
+        if (first) {
+          first = false;
+          if (drift === "empty-file growth") fs.appendFileSync(file, "changed");
+          else if (drift === "truncation") fs.truncateSync(file, content.length - 3);
+          else {
+            fs.renameSync(file, path.join(root, "original"));
+            fs.writeFileSync(file, content);
+          }
+        }
+        return read(fd, buffer, offset, length, position);
+      },
+    );
+    assert.throws(() => transferFileFact(file), code("migration_source_changed"));
+  });
+
+test("retained file hashing rejects the per-file size limit before allocating scratch", (t) => {
+  const { file } = hashFixture(t, Buffer.alloc(0));
+  fs.truncateSync(file, 64 * 1024 * 1024 + 1);
+  const allocation = t.mock.method(Buffer, "alloc");
+  assert.throws(() => transferFileFact(file), code("migration_file_invalid"));
+  assert.equal(allocation.mock.callCount(), 0);
 });

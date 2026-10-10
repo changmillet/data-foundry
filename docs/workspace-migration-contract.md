@@ -73,6 +73,8 @@ Plans bind current runtime/package/entry/platform facts. Installed mode also bin
 
 A shared CLI-owned migration lock is keyed by canonical destination and independent of runtime version. Its complete cache path is checked before acquisition, including symlinked cache ancestors, and it cannot be placed in the preserved source. Copies are streamed, hashed and flushed before exclusive publication. Different existing files are preserved and rejected. A completed archive is audited rather than reconstructed after lost or corrupt evidence. Recognized temporary copy/metadata files are confined to owned scratch; unknown state remains a blocker.
 
+Retained file verification freshly reads and hashes every byte. Its zeroed scratch buffer is bounded by the observed file size and a 1 MiB ceiling, with a positive one-byte buffer for empty-file EOF and growth checks. The regular-file, no-follow, inode/device, size, timestamp, linked-path and growth checks remain required; smaller scratch allocation does not permit cached or partial hashes.
+
 ## Historical task classes
 
 | Evidence | Adoption behavior |
