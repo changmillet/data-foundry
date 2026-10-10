@@ -35,9 +35,9 @@ checkPaths:
   - test/scenarios/workspace-migration-planning.test.mts
   - test/unit/foundry-migration-transfer.test.mts
   - test/scenarios/workspace-migration-transfer.test.mts
-lastReviewedAt: 2026-09-08
-lastReviewedCommit: 3da2201c023a02053fd7325422b5e53fe9c84826
-lastReviewedNote: "Reviewed for Foundry #118 explicit ordinary/production-test intent through fingerprints, immutable account records, migration templates and sealed execution; qualified traceHash-only acceptance binds original/fresh raw hashes and preserves all verification evidence. Production-test rejects differences. Full release/live acceptance remains open."
+lastReviewedAt: 2026-10-10
+lastReviewedCommit: 9702911f
+lastReviewedNote: "Reviewed bounded zeroed retained-file hashing scratch allocation and portable control-mode negative fixtures at 9702911f. Actual reads/hash, regular/no-follow/inode/device/size/time/path/growth protection, 64 MiB bound and existing subprocess/product deadlines remain. No new authority, cached proof, scientific decision or original DATA acceptance; new concurrency/native qualification remains pending."
 related:
   - docs/public-runtime-contract.md
   - docs/runtime-context-contract.md

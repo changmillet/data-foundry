@@ -94,8 +94,8 @@ checkPaths:
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
 lastReviewedAt: 2026-10-10
-lastReviewedCommit: 759c975df38dd8324840aa3d674af1a207966f3f
-lastReviewedNote: "Reviewed original managed-entry L=S+K qualification and explicit cli-auth projection, CLI0.1.28 compatible pin and genuine subprocess test boundaries. Complete original DATA account/business acceptance remains separate."
+lastReviewedCommit: 9702911f
+lastReviewedNote: "Reviewed bounded zeroed retained-file hashing scratch allocation and portable control-mode negative fixtures at 9702911f. Actual reads/hash, regular/no-follow/inode/device/size/time/path/growth protection, 64 MiB bound and existing subprocess/product deadlines remain. No new authority, cached proof, scientific decision or original DATA acceptance; new concurrency/native qualification remains pending."
 ---
 
 # Capability Ownership Policy

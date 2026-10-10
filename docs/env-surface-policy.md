@@ -35,8 +35,8 @@ checkPaths:
   - test/scenarios/foundry-package-consumer.test.mts
   - test/unit/foundry-runtime-environment.test.mts
 lastReviewedAt: 2026-10-10
-lastReviewedCommit: 261f835099b0d0dfe7cd6f6c03df9c76ea490e67
-lastReviewedNote: "Reviewed native preflight dispatch paths and strict retained command proof, explicit portable native fixture modes, measured/provisional CI weights and separate partial TAP diagnostics. Runtime/authentication/no-requery/scientific boundaries remain unchanged; original DATA acceptance is separate."
+lastReviewedCommit: 9702911f
+lastReviewedNote: "Reviewed bounded zeroed retained-file hashing scratch allocation and portable control-mode negative fixtures at 9702911f. Actual reads/hash, regular/no-follow/inode/device/size/time/path/growth protection, 64 MiB bound and existing subprocess/product deadlines remain. No new authority, cached proof, scientific decision or original DATA acceptance; new concurrency/native qualification remains pending."
 ---
 
 # Environment Surface Policy
