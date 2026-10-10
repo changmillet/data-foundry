@@ -34,9 +34,9 @@ checkPaths:
   - test/scenarios/foundry-package-consumer.test.mts
   - test/scenarios/foundry-interaction-workflow.test.mts
   - docs/public-runtime-contract.md
-lastReviewedAt: 2026-10-10
-lastReviewedCommit: 7dfd8c00277b2cf1811feff8541381a8bc780c1d
-lastReviewedNote: "Reviewed shared fresh byte/hash inventory verification at 7dfd8c00: only the three retained package/CLI inventory loops omit discarded canonical locator output. Every selected relative path, full inventory, regular/no-follow/inode/device/size/time/linked-path/growth check and per-writer runtime revalidation remains; no fact/hash cache. Full entry/descriptor path facts retain native/generic resolution and its errors before close. Focused unit23/23 and complete adoption20/20 pass. Old564 local qualification and native Win1 timeout/cancellation remain distinct; new source/emitted/installed/native qualification is pending. No new authority, scientific approval, original DATA acceptance or default change."
+lastReviewedAt: 2026-10-11
+lastReviewedCommit: aa86f8067c0998a48b72f78151e7d04139f74be6
+lastReviewedNote: "Reviewed explicit-stage short private OS child CWD against the existing owner/CLI dotenv boundary: selected requests, receipts, outputs and index resolution remain task/asset-bound; single attempts, 60-second guards and UNKNOWN/no-replay are unchanged. Focused32/32 and repair-sensitive RED/GREEN plus real declared-bin offline dotenv sentinel and cleanup checks pass; new full source/emitted/installed/native qualification is pending. aa86 Native failure and original691 DATA acceptance remain separate; no original requery, authority/science/default/release change."
 related:
   - docs/runtime-context-contract.md
   - docs/task-authorization-contract.md
@@ -286,6 +286,8 @@ An original source-evidence Task may submit `task resume --identity-stage-input 
 The existing owner-scope locks exclude native dispatch and adoption. Short native Task operations durably index preparation and one claim per exact target before the published identity owner runs. The source snapshot, non-secret account receipt, request/audit/roster and exact qualified runtime/CLI facts are retained. Output roots are stable by Task/actor/intent and target/version. Duplicate or reformatted/relocated equivalent intent reads its original admission; changed intent content or another pending stage cannot create another dispatch. The original artifact-index prefix and old reports remain, with compliant append-only registration.
 
 A claimed target cannot invoke the owner again through retries or cache shortcuts. Complete retained execution evidence may be validated and captured; absent stdout/outcome, orphaned admission, real errors or drift remains visibly UNKNOWN without automatic requery. Selected request, output and report paths are resolved to native absolute paths before owner dispatch, so retained argv and CommandSpec are exactly the command executed on that host. Exact target/path/argv/account/runtime/time/stdout/disk/exit checks apply to every accepted result. Native finalization, authorization, consumed or UNKNOWN write history blocks this entry. Existing evidence is checked before dispatch and result acceptance.
+
+Each newly claimed query starts the existing owner in a fresh private OS temporary directory, removed after success or failure. This keeps digest-based evidence paths out of the child working directory and prevents the published CLI from loading the user workspace's `.env`. Request, authentication receipt, output and retained execution evidence remain at their absolute task-bound paths. The working directory changes no command, account, attempt, timeout or acceptance rule.
 
 Indexed preparation and dispatch remain visible to status and ordinary resume even if result capture was interrupted. They block replacement queries, finalization and write admission. Current questions/investigations must be resolved before dispatch and acceptance; an interaction answer can still be recorded on the same Task, after which an explicit duplicate may accept its retained execution without another query. The admitted OAuth/headless mode is retained and cannot change on a duplicate. `new_cli_execution` is true only for proven execution and stays null for an unproven claim; underlying retrieval counts remain unknown.
 

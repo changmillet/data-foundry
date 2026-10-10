@@ -39,9 +39,10 @@ export async function explicitIdentityStageFixture(
   t: TestContext,
   mixed = false,
   facilities = false,
+  temporaryParent = os.tmpdir(),
 ) {
   const root = fs.realpathSync(
-    fs.mkdtempSync(path.join(os.tmpdir(), "explicit-foundry-identity-")),
+    fs.mkdtempSync(path.join(temporaryParent, "explicit-foundry-identity-")),
   );
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const id = "77777777-7777-4777-8777-777777777777";

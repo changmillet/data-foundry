@@ -31,9 +31,9 @@ checkPaths:
   - .oxlintrc.json
   - prettier.config.ts
   - tsconfig*.json
-lastReviewedAt: 2026-10-10
-lastReviewedCommit: f068c4e825073aef1e9ec1ee8af82774e966c310
-lastReviewedNote: "Reviewed original managed-entry L=S+K qualification and explicit cli-auth projection, CLI0.1.28 compatible pin and genuine subprocess test boundaries. Complete original DATA account/business acceptance remains separate."
+lastReviewedAt: 2026-10-11
+lastReviewedCommit: aa86f8067c0998a48b72f78151e7d04139f74be6
+lastReviewedNote: "Reviewed explicit-stage short private OS child CWD against the existing owner/CLI dotenv boundary: selected requests, receipts, outputs and index resolution remain task/asset-bound; single attempts, 60-second guards and UNKNOWN/no-replay are unchanged. Focused32/32 and repair-sensitive RED/GREEN plus real declared-bin offline dotenv sentinel and cleanup checks pass; new full source/emitted/installed/native qualification is pending. aa86 Native failure and original691 DATA acceptance remain separate; no original requery, authority/science/default/release change."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry

@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { withBatchRunLock } from "@tiangong-lca/cli/batch";
 import { assertCliRuntimeMatches } from "@tiangong-lca/cli/runtime";
@@ -501,26 +502,33 @@ async function runLocked(
         signal?.throwIfAborted();
         if (!identity) reject("fresh-dispatch-identity");
         assertVerifiedFoundryIdentity(context, identity, qualified);
-        const owner = createFoundryIdentityOwners(context, qualified, target.dataset_type, {
-          environment,
-          cwd: path.dirname(prepareFile),
-        });
+        // Keep CLI startup independent of digest paths and the workspace's .env.
+        const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-identity-stage-"));
         try {
-          if (thisInvocation !== null) thisInvocation += 1;
-          owner.invoke(() =>
-            owner.preflight.runDatasetIdentityPreflightRun({
-              index: target.index,
-              outDir: runDir,
-              authReceipt: authFile,
-              expectedProjectRef: context.accountIntent!.projectRef,
-              expectedUserId: context.accountIntent!.userId,
-              maxAttempts: 1,
-              timeoutMs: 60_000,
-              authReceiptMaxAgeMs: 60_000,
-            }),
-          );
-        } catch {
-          // Retained logs may prove the original result; no new invocation follows this claim.
+          fs.chmodSync(temporary, 0o700);
+          const owner = createFoundryIdentityOwners(context, qualified, target.dataset_type, {
+            environment,
+            cwd: temporary,
+          });
+          try {
+            if (thisInvocation !== null) thisInvocation += 1;
+            owner.invoke(() =>
+              owner.preflight.runDatasetIdentityPreflightRun({
+                index: target.index,
+                outDir: runDir,
+                authReceipt: authFile,
+                expectedProjectRef: context.accountIntent!.projectRef,
+                expectedUserId: context.accountIntent!.userId,
+                maxAttempts: 1,
+                timeoutMs: 60_000,
+                authReceiptMaxAgeMs: 60_000,
+              }),
+            );
+          } catch {
+            // Retained logs may prove the original result; no new invocation follows this claim.
+          }
+        } finally {
+          fs.rmSync(temporary, { recursive: true, force: true });
         }
       }
       signal?.throwIfAborted();

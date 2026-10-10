@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
+import childProcess from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
+import { syncBuiltinESMExports } from "node:module";
 import test from "node:test";
 import {
   readFoundryTaskArtifactIndex,
@@ -17,6 +20,175 @@ const headless: FoundryAuthentication = {
   apiBaseUrl: "https://qgzvkongdjqiiamzbbts.supabase.co",
   publishableKey: "explicit-stage-fixture-public-key",
 };
+
+test("explicit identity CLI starts in a short private directory with deep absolute evidence paths", async (t) => {
+  const scratch = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "identity-cwd-")));
+  t.after(() => fs.rmSync(scratch, { recursive: true, force: true }));
+  const parent = path.join(
+    scratch,
+    "selected workspace ä " + "x".repeat(Math.max(1, 160 - scratch.length - 22)),
+  );
+  fs.mkdirSync(parent);
+  const nativeSpawn = childProcess.spawnSync;
+  const f = await explicitIdentityStageFixture(t, false, false, parent);
+  assert.ok(f.context.workspaceRoot.length < 260, "selected workspace fits the native CWD limit");
+  const envFile = path.join(f.context.workspaceRoot, ".env");
+  const envBytes = "FOUNDRY_IDENTITY_CWD_SENTINEL=synthetic-workspace-value\n";
+  fs.writeFileSync(envFile, envBytes);
+  const fixtureSpawn = childProcess.spawnSync;
+  const observed: string[] = [];
+  const startupRecords: Array<{ workspace_env_present: boolean }> = [];
+  t.mock.method(childProcess, "spawnSync", (...args: Parameters<typeof childProcess.spawnSync>) => {
+    const argv = args[1];
+    if (!Array.isArray(argv) || !argv.includes("identity-preflight"))
+      return Reflect.apply(fixtureSpawn, childProcess, args);
+    const cwd = args[2]?.cwd;
+    assert.equal(typeof cwd, "string");
+    const selectedCwd = String(cwd);
+    observed.push(selectedCwd);
+    // Model a Windows host whose long-CWD short-name fallback is unavailable.
+    if (selectedCwd.length >= 260)
+      return {
+        pid: 0,
+        output: [],
+        stdout: "",
+        stderr: "",
+        status: null,
+        signal: null,
+        error: Object.assign(new Error("Modeled native CWD limit"), { code: "ENOENT" }),
+      };
+    for (const option of ["--input", "--out-dir"]) {
+      const file = argv[argv.indexOf(option) + 1];
+      assert.ok(path.isAbsolute(file), option);
+      assert.ok(file.length > 260, "deep artifact paths remain explicit");
+    }
+    const probeScript = [
+      'import {pathToFileURL} from "node:url";',
+      'const cli=process.argv[1];process.argv=[process.execPath,cli,"flow","identity-preflight","--help"];',
+      "const write=process.stdout.write.bind(process.stdout);",
+      "process.stdout.write=()=>true;process.stderr.write=()=>true;",
+      'let calls=0;globalThis.fetch=async()=>{calls++;throw new Error("Offline startup probe");};',
+      "await import(pathToFileURL(cli).href);",
+      "const cliExit=process.exitCode;process.exitCode=0;",
+      "write(JSON.stringify({cwd:process.cwd(),workspace_env_present:process.env.FOUNDRY_IDENTITY_CWD_SENTINEL!==undefined,fetch_calls:calls,cli_exit:cliExit}));",
+    ].join("\n");
+    const probe = Reflect.apply(nativeSpawn, childProcess, [
+      String(args[0]),
+      ["--input-type=module", "-e", probeScript, argv[0]],
+      { ...args[2], timeout: 5_000 },
+    ]);
+    assert.equal(probe.error, undefined);
+    assert.equal(probe.status, 0);
+    assert.equal(probe.signal, null);
+    assert.equal(probe.stderr, "");
+    const startup = JSON.parse(String(probe.stdout)) as {
+      cwd: string;
+      workspace_env_present: boolean;
+      fetch_calls: number;
+    };
+    startupRecords.push(startup);
+    assert.equal(fs.realpathSync(startup.cwd), fs.realpathSync(selectedCwd));
+    assert.equal(
+      startup.workspace_env_present,
+      false,
+      "real CLI startup cannot load workspace .env",
+    );
+    assert.equal(startup.fetch_calls, 0, "startup probe is offline");
+    assert.notEqual(selectedCwd, f.context.workspaceRoot);
+    assert.deepEqual(fs.readdirSync(selectedCwd), [], "child CWD has no persistent inputs");
+    if (process.platform !== "win32") assert.equal(fs.statSync(selectedCwd).mode & 0o777, 0o700);
+    return Reflect.apply(fixtureSpawn, childProcess, args);
+  });
+  syncBuiltinESMExports();
+  const selected = f.selection();
+  const result = await runExplicitFoundryIdentityStage(
+    f.context,
+    f.qualified,
+    f.prefix,
+    selected,
+    headless,
+  );
+  if (startupRecords.length)
+    assert.equal(startupRecords[0].workspace_env_present, false, "workspace .env stays unread");
+  assert.equal(result.status, "completed", JSON.stringify(result));
+  assert.equal(observed.length, 1);
+  assert.equal(fs.existsSync(observed[0]), false, "owned private CWD is removed after execution");
+  assert.equal(fs.readFileSync(envFile, "utf8"), envBytes);
+  assert.equal(f.counts().queries, 1);
+  const duplicate = await runExplicitFoundryIdentityStage(
+    f.context,
+    f.qualified,
+    readFoundryTaskArtifactIndex(f.context),
+    selected,
+    headless,
+  );
+  assert.equal(duplicate.status, "completed");
+  assert.deepEqual(duplicate.this_invocation, { cli_invocations: 0, underlying_retrievals: null });
+  assert.equal(f.counts().queries, 1);
+  assert.equal(observed.length, 1);
+  f.assertPreserved();
+});
+
+test("an identity CLI startup error remains UNKNOWN without another dispatch", async (t) => {
+  const f = await explicitIdentityStageFixture(t);
+  const fixtureSpawn = childProcess.spawnSync;
+  let attempts = 0;
+  const attemptedCwds: string[] = [];
+  t.mock.method(childProcess, "spawnSync", (...args: Parameters<typeof childProcess.spawnSync>) => {
+    const argv = args[1];
+    if (!Array.isArray(argv) || !argv.includes("identity-preflight"))
+      return Reflect.apply(fixtureSpawn, childProcess, args);
+    attempts++;
+    attemptedCwds.push(String(args[2]?.cwd));
+    return {
+      pid: 0,
+      output: [],
+      stdout: "",
+      stderr: "",
+      status: null,
+      signal: null,
+      error: Object.assign(new Error("Synthetic startup failure"), { code: "EIO" }),
+    };
+  });
+  syncBuiltinESMExports();
+  const selected = f.selection();
+  const result = await runExplicitFoundryIdentityStage(
+    f.context,
+    f.qualified,
+    f.prefix,
+    selected,
+    headless,
+  );
+  assert.equal(result.status, "blocked");
+  assert.equal(result.new_cli_execution, null);
+  assert.equal(f.counts().queries, 0);
+  assert.ok(Array.isArray(result.blockers));
+  assert.ok(
+    result.blockers.some(
+      (blocker: unknown) =>
+        blocker !== null &&
+        typeof blocker === "object" &&
+        "disposition" in blocker &&
+        blocker.disposition === "UNKNOWN_DO_NOT_REPLAY",
+    ),
+  );
+  const duplicate = await runExplicitFoundryIdentityStage(
+    f.context,
+    f.qualified,
+    readFoundryTaskArtifactIndex(f.context),
+    selected,
+    headless,
+  );
+  assert.equal(duplicate.status, "blocked");
+  assert.deepEqual(duplicate.this_invocation, { cli_invocations: 0, underlying_retrievals: null });
+  assert.equal(f.counts().queries, 0);
+  assert.equal(attempts, 1);
+  assert.ok(
+    attemptedCwds.every((cwd) => !fs.existsSync(cwd)),
+    "failure removes its private CWD",
+  );
+  f.assertPreserved();
+});
 
 test("headless stage retains its explicit mode and genuine disabled-cache receipt without credentials", async (t) => {
   const f = await explicitIdentityStageFixture(t);
