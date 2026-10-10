@@ -35,8 +35,8 @@ checkPaths:
   - test/scenarios/foundry-interaction-workflow.test.mts
   - docs/public-runtime-contract.md
 lastReviewedAt: 2026-10-10
-lastReviewedCommit: 9702911f
-lastReviewedNote: "Reviewed bounded zeroed retained-file hashing scratch allocation and portable control-mode negative fixtures at 9702911f. Actual reads/hash, regular/no-follow/inode/device/size/time/path/growth protection, 64 MiB bound and existing subprocess/product deadlines remain. No new authority, cached proof, scientific decision or original DATA acceptance; new concurrency/native qualification remains pending."
+lastReviewedCommit: 7db9e7d390c56e4cbeeb4c7549a864d69d2656c8
+lastReviewedNote: "Reviewed native canonical retained-file resolution with existing generic fallback for different spelling or native failure at 7db9e7d3. Every fresh runtime/transaction/filesystem/hash check, regular/no-follow/inode/device/size/time/path/growth guard, 64 MiB bound and existing deadline remains. Exact983-file three-round facts and explicit guard counters match; focused21/21 passes. PriorFF51 installed6/4/2 failure remains retained; new full source/emitted/installed/native qualification is pending. No cached proof, new authority, scientific decision or original DATA acceptance."
 related:
   - docs/runtime-context-contract.md
   - docs/task-authorization-contract.md

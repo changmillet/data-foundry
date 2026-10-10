@@ -36,8 +36,8 @@ checkPaths:
   - test/unit/foundry-migration-transfer.test.mts
   - test/scenarios/workspace-migration-transfer.test.mts
 lastReviewedAt: 2026-10-10
-lastReviewedCommit: 9702911f
-lastReviewedNote: "Reviewed bounded zeroed retained-file hashing scratch allocation and portable control-mode negative fixtures at 9702911f. Actual reads/hash, regular/no-follow/inode/device/size/time/path/growth protection, 64 MiB bound and existing subprocess/product deadlines remain. No new authority, cached proof, scientific decision or original DATA acceptance; new concurrency/native qualification remains pending."
+lastReviewedCommit: 7db9e7d390c56e4cbeeb4c7549a864d69d2656c8
+lastReviewedNote: "Reviewed native canonical retained-file resolution with existing generic fallback for different spelling or native failure at 7db9e7d3. Every fresh runtime/transaction/filesystem/hash check, regular/no-follow/inode/device/size/time/path/growth guard, 64 MiB bound and existing deadline remains. Exact983-file three-round facts and explicit guard counters match; focused21/21 passes. PriorFF51 installed6/4/2 failure remains retained; new full source/emitted/installed/native qualification is pending. No cached proof, new authority, scientific decision or original DATA acceptance."
 related:
   - docs/public-runtime-contract.md
   - docs/runtime-context-contract.md
@@ -73,7 +73,7 @@ Plans bind current runtime/package/entry/platform facts. Installed mode also bin
 
 A shared CLI-owned migration lock is keyed by canonical destination and independent of runtime version. Its complete cache path is checked before acquisition, including symlinked cache ancestors, and it cannot be placed in the preserved source. Copies are streamed, hashed and flushed before exclusive publication. Different existing files are preserved and rejected. A completed archive is audited rather than reconstructed after lost or corrupt evidence. Recognized temporary copy/metadata files are confined to owned scratch; unknown state remains a blocker.
 
-Retained file verification freshly reads and hashes every byte. Its zeroed scratch buffer is bounded by the observed file size and a 1 MiB ceiling, with a positive one-byte buffer for empty-file EOF and growth checks. The regular-file, no-follow, inode/device, size, timestamp, linked-path and growth checks remain required; smaller scratch allocation does not permit cached or partial hashes.
+Retained file verification freshly reads and hashes every byte. Its zeroed scratch buffer is bounded by the observed file size and a 1 MiB ceiling, with a positive one-byte buffer for empty-file EOF and growth checks. The regular-file, no-follow, inode/device, size, timestamp, linked-path and growth checks remain required; smaller scratch allocation does not permit cached or partial hashes. Already-canonical retained paths use native path resolution; different native spelling or a native resolution error falls back to the existing generic resolver. Each fact still freshly reads and verifies the file, and every task writer and transaction retains its complete runtime revalidation.
 
 ## Historical task classes
 
