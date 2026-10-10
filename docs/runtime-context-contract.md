@@ -42,7 +42,7 @@ checkPaths:
   - test/scenarios/foundry-package-consumer.test.mts
 lastReviewedAt: 2026-10-10
 lastReviewedCommit: 7dfd8c00277b2cf1811feff8541381a8bc780c1d
-lastReviewedNote: "Reviewed native preflight dispatch paths and strict retained command proof, explicit portable native fixture modes, measured/provisional CI weights and separate partial TAP diagnostics. Runtime/authentication/no-requery/scientific boundaries remain unchanged; original DATA acceptance is separate."
+lastReviewedNote: "Reviewed shared fresh byte/hash inventory verification at 7dfd8c00: only the three retained package/CLI inventory loops omit discarded canonical locator output. Every selected relative path, full inventory, regular/no-follow/inode/device/size/time/linked-path/growth check and per-writer runtime revalidation remains; no fact/hash cache. Full entry/descriptor path facts retain native/generic resolution and its errors before close. Focused unit23/23 and complete adoption20/20 pass. Old564 local qualification and native Win1 timeout/cancellation remain distinct; new source/emitted/installed/native qualification is pending. No new authority, scientific approval, original DATA acceptance or default change."
 related:
   - docs/architecture.md
   - docs/task-authorization-contract.md
