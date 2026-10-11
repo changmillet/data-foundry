@@ -541,6 +541,41 @@ test("preflight artifacts bind exact request bytes, CommandSpec facts, and attac
   });
 });
 
+test("malformed identity source traces expose a safe diagnostic and preserve the original bytes", () => {
+  withFixture((root) => {
+    const utils = preflightUtils(root);
+    const payload = {
+      flowDataSet: {
+        flowInformation: { dataSetInformation: { "common:UUID": "flow-id" } },
+      },
+    };
+    for (const extension of ["json", "jsonl"]) {
+      const source = path.join(root, `private-source.${extension}`);
+      const privateText = "PRIVATE_SOURCE_CONTENT_NOT_FOR_DIAGNOSTICS";
+      const bytes = extension === "json" ? privateText : `{}\n\n${privateText}\n`;
+      fs.writeFileSync(source, bytes);
+      const outDir = path.join(root, extension);
+      assert.throws(
+        () =>
+          utils.buildIdentityPreflightArtifacts({
+            rowsByType: { flow: new Map([["flow-id", payload]]), process: new Map() },
+            sourceByType: { flow: new Map([["flow-id", source]]), process: new Map() },
+            outDir,
+            cliBin: [process.execPath, "cli-entry.js"],
+          }),
+        (error: unknown) => {
+          assert.ok(error instanceof Error && "code" in error);
+          assert.equal(error.code, "source_trace_invalid");
+          assert.doesNotMatch(error.message, /PRIVATE_SOURCE_CONTENT|private-source/u);
+          return true;
+        },
+      );
+      assert.equal(fs.readFileSync(source, "utf8"), bytes);
+      assert.equal(fs.existsSync(outDir), false);
+    }
+  });
+});
+
 test("preflight source-index loading is first-binding and fail-closed for missing index/context", () => {
   withFixture((root) => {
     const utils = preflightUtils(root);

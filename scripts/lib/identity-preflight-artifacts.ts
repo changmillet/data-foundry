@@ -3,6 +3,7 @@ import path from "node:path";
 import { namePartText } from "./bundle-source-context.ts";
 import { createFileArtifactFact, createFoundryCommandSpec } from "./foundry-command-spec.ts";
 import type { FoundryCommandSpec } from "./foundry-command-spec.ts";
+import { FoundryContextError } from "./foundry-runtime-error.ts";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -781,7 +782,19 @@ export function createIdentityPreflightArtifactUtils({
 
   function readSourceTracesFromFile(sourceFile: string | null | undefined) {
     if (!sourceFile || !fileExists(sourceFile)) return [];
-    return collectSourceTracePayloads(readJson(sourceFile));
+    let source: unknown;
+    try {
+      source = sourceFile.toLowerCase().endsWith(".jsonl")
+        ? readJsonLines(sourceFile)
+        : readJson(sourceFile);
+    } catch (error) {
+      if (isUnknownRecord(error) && typeof error.code === "string") throw error;
+      throw new FoundryContextError(
+        "source_trace_invalid",
+        "The selected identity source trace is not valid JSON or JSONL. Check the original source evidence before continuing.",
+      );
+    }
+    return collectSourceTracePayloads(source);
   }
 
   function buildIdentityPreflightArtifacts({
