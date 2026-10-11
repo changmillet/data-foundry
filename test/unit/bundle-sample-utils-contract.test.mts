@@ -232,7 +232,7 @@ function flowPayload(id: string, schemaType: string, classification: string) {
             baseName: { "#text": "Steel scrap" },
             treatmentStandardsRoutes: { "#text": "at sorting plant" },
             mixAndLocationTypes: { "#text": "CH" },
-            functionalUnitFlowProperties: { "#text": "Mass" },
+            flowProperties: { "#text": "Mass" },
           },
         },
       },

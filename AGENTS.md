@@ -31,9 +31,9 @@ checkPaths:
   - .oxlintrc.json
   - prettier.config.ts
   - tsconfig*.json
-lastReviewedAt: 2026-10-08
-lastReviewedCommit: d07ac492a3a5891502039a6cc83ef30b9fbba50b
-lastReviewedNote: "Reviewed Foundry #237 exact three-field 0.1.16 to 0.1.17 release projection from eligible PR236 Main d07ac492; CLI/native pins, lock closure, authorization and all business source remain unchanged. Official publication and final managed qualification remain pending."
+lastReviewedAt: 2026-10-11
+lastReviewedCommit: bf43cdf7ed694412bf6ddfc9a308b704600d1827
+lastReviewedNote: "Reviewed the bounded directory-batch repair on BF43 after its actual Native19/20 failure. One result captures only accepted original run and registered output roots; the owner report self-path binds its fixed original run file. TaskStore, fresh before/middle/after bookends, two output reads, final receipt/input/CAS checks, per-write checks, original assertions/deadlines and UNKNOWN/no-requery remain. Existing focused31/24/23 local results and independent foreign-locator RED-to-GREEN evidence are retained; new full Source/package/emitted/installed/Native qualification remains pending. No cross-operation proof cache, whole-parent capture, scientific approval, OriginalDATA replay/default/Toolkit034/release change."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry
@@ -77,7 +77,7 @@ Receive external LCA packages or source documents, choose the correct import lan
 
 - Node.js 24, exact `pnpm@11.24.0`, and TypeScript `7.0.2` are the single toolchain. The root workspace and lockfile are the only dependency authorities. Oxlint owns linting, Prettier owns formatting, and TypeScript keeps `erasableSyntaxOnly`.
 - Tracked first-party JavaScript and JSX/TSX are forbidden. Keep the zero-JavaScript ratchet, the no-explicit-`any` rule, the suppression audit, and the intentional TypeScript lint/typecheck graph. Builds clear only the guarded `dist` tree before `tsc` and emit no JavaScript on type errors.
-- The installed owner CLI is exactly `@tiangong-lca/cli@0.1.27`, invoked through `pnpm exec tiangong-lca`. Foundry imports only the published `command-spec`, `batch`, `auth-identity-receipt`, and `runtime` subpaths; private CLI internals are not a compatibility surface.
+- The installed owner CLI is exactly `@tiangong-lca/cli@0.1.28`, invoked through `pnpm exec tiangong-lca`. Foundry imports only the published `command-spec`, `batch`, `auth-identity-receipt`, and `runtime` subpaths; private CLI internals are not a compatibility surface.
 - Executable handoffs use `tiangong-foundry.command-spec.v1`. The `executable` and `argv` array, exact input artifact facts, and SHA-256 are authoritative; `display` is derived and never executed. Ambiguous writes resolve through fresh readback and are never replayed blindly.
 - Keep import profiles as source rules and task authorization as a separate current-owner binding. Final-row, account, actor, runtime, profile, input, and write gates must remain independent of historical task artifacts and profile overrides.
 - Keep source and emitted execution bound to the same trusted package root, current CLI identity, and immutable runtime context. The Golden gate compares a non-`HEAD` merge base with full history and isolated child environments; clean-worktree validation must not rely on another checkout, ignored state, or credentials.
@@ -148,3 +148,9 @@ These rules are mandatory for code changes in this repository:
 ## Commit Rules
 
 Keep commits small and thematic. Do not commit `.foundry/`, `.env`, logs, source packages under `tmp/`, workspace clones, credentials, or downloaded private payloads.
+
+Same-task compatibility and retained identity diagnostics follow `docs/public-runtime-contract.md`. Native v2 successor receipts retain the first anchor, original registration/job and all history; full package/CLI inventories matter even with equal version/summary fields. Previous machine assessment remains retained history and needs fresh current qualification. Missing original authenticated receipt/producer evidence remains UNKNOWN without query replay. Multilingual Flow/Process queries preserve source rows, and initial Process reference selection never creates Flow/support mutation targets. Explicit authorization refresh after locked metadata preserves the same CLI/account/mode, grant expiry, CAS and 60-second limit.
+
+An explicit new read-only identity stage is distinct from retained recovery and uses the existing public resume entry with `--identity-stage-input`. Stable intent and native per-target claims must precede dispatch; incomplete dispatched proof cannot be retried automatically. Preserve same Task/actor/frozen science and index prefix, retain new non-secret authentication durably, and return before write stages. Data-workspace engineering generations never enter Foundry native permission input.
+
+Actual original-task qualification must use CLI runtime exec → manifest-declared package entry → package-owned managed host. The L=S+K control carrier proves full executing runtime equality and preserves native S checks, the original read/write ceiling and L on reentry. Authentication uses only existing explicit CLI policy and fresh child receipts; a direct API host or parent role receipt cannot close this consumer gap.

@@ -13,10 +13,10 @@
     "test/scenarios/foundry-public-trace-unrelated-change.test.mts": 397,
     "test/scenarios/foundry-public-dependent-source.test.mts": 124.441,
     "test/scenarios/foundry-public-dependent-flowproperty.test.mts": 510.735,
-    "test/scenarios/foundry-public-workflow.test.mts": 248.961,
-    "test/scenarios/foundry-package-consumer.test.mts": 853.824,
+    "test/scenarios/foundry-public-workflow.test.mts": 684.279,
+    "test/scenarios/foundry-package-consumer.test.mts": 879.968,
     "test/scenarios/foundry-public-native-insert.test.mts": 230.68,
-    "test/scenarios/foundry-public-native-reuse.test.mts": 438,
+    "test/scenarios/foundry-public-native-reuse.test.mts": 461.12,
     "test/scenarios/foundry-public-native-lost.test.mts": 177.858,
     "test/scenarios/foundry-public-native-missing.test.mts": 196.334,
     "test/scenarios/foundry-public-native-unknown.test.mts": 215.675,
@@ -25,7 +25,7 @@
     "test/scenarios/foundry-public-reference-recovery.test.mts": 643,
     "test/scenarios/foundry-public-reference-qa.test.mts": 45,
     "test/scenarios/foundry-object-interaction-workflow.test.mts": 268,
-    "test/scenarios/foundry-public-repair.test.mts": 177,
+    "test/scenarios/foundry-public-repair.test.mts": 197.605,
     "test/scenarios/foundry-repair-successor.test.mts": 950,
     "test/scenarios/foundry-repair-execution.test.mts": 240,
     "test/scenarios/foundry-interaction-workflow.test.mts": 109,
@@ -38,7 +38,19 @@
     "test/scenarios/foundry-package-preparation-annual.test.mts": 1050,
     "test/scenarios/foundry-package-preparation-targets.test.mts": 800,
     "test/scenarios/foundry-package-preparation-unresolved.test.mts": 600,
-    "test/scenarios/foundry-package-preparation-legacy.test.mts": 600
+    "test/scenarios/foundry-package-preparation-legacy.test.mts": 600,
+    "test/commands/foundry-release-production.test.mts": 4.671,
+    "test/commands/foundry-release-qualify-bootstrap.test.mts": 3.48,
+    "test/commands/import-ledger.test.mts": 1.096,
+    "test/commands/location-decisions.test.mts": 11.293,
+    "test/scenarios/authoring-shared-context.test.mts": 5.98,
+    "test/scenarios/curation-cleanup-quality-gates.test.mts": 22.911,
+    "test/scenarios/flow-classification-authoring.test.mts": 9.902,
+    "test/scenarios/foundry-account-mode.test.mts": 0.288,
+    "test/scenarios/foundry-managed-adoption.test.mts": 2253,
+    "test/scenarios/foundry-task-runtime-adoption.test.mts": 517,
+    "test/scenarios/foundry-public-explicit-identity-stage.test.mts": 259,
+    "test/scenarios/foundry-public-identity-recovery.test.mts": 329
   },
   "additional_baselines": [
     {
@@ -72,6 +84,75 @@
       "basis": "Exact successful per-case durations summed and rounded up. Original source shard timed out at40minutes; timings are not a passing shard qualification.",
       "artifact_id": 11495716476,
       "test_events_sha256": "fa36a3e55ec8923b7202908f8fa22e275a00b77bbef3f27a84e10de1e25be1a2"
+    },
+    {
+      "run": 37999827748,
+      "job": 114054994323,
+      "platform": "win32-x64",
+      "source_head": "4aa242f57ad78f778f9b98c4ddc1e0d03a22bd9b",
+      "files": [
+        "test/commands/foundry-release-production.test.mts",
+        "test/commands/foundry-release-qualify-bootstrap.test.mts",
+        "test/commands/import-ledger.test.mts",
+        "test/commands/location-decisions.test.mts",
+        "test/scenarios/authoring-shared-context.test.mts",
+        "test/scenarios/curation-cleanup-quality-gates.test.mts",
+        "test/scenarios/flow-classification-authoring.test.mts",
+        "test/scenarios/foundry-account-mode.test.mts",
+        "test/scenarios/foundry-package-consumer.test.mts",
+        "test/scenarios/foundry-public-native-reuse.test.mts",
+        "test/scenarios/foundry-public-repair.test.mts",
+        "test/scenarios/foundry-public-workflow.test.mts"
+      ],
+      "basis": "Twelve successful per-file Node summaries, rounded up to milliseconds. The same shard was cancelled at 40 minutes and also retained three failed file summaries and 51 files without completion evidence. Successful file durations are scheduling evidence only, not a passing shard or qualification receipt. Failed-file durations are excluded from these measured weights.",
+      "artifact_id": 11650146823,
+      "artifact_archive_sha256": "9286d614c43ca7ce61b0c4d9921031b10845842c24d90845496428afba56930b",
+      "test_events_sha256": "a2a3fa93d7b9b1182da36e3608f6dcb2d78a3170032ee7ac5c0d4f507d8a60c2"
+    },
+    {
+      "run": 37999827748,
+      "job": 114054994255,
+      "platform": "darwin-arm64",
+      "source_head": "4aa242f57ad78f778f9b98c4ddc1e0d03a22bd9b",
+      "files": [
+        "test/scenarios/foundry-task-runtime-adoption.test.mts",
+        "test/scenarios/foundry-public-explicit-identity-stage.test.mts",
+        "test/scenarios/foundry-public-identity-recovery.test.mts"
+      ],
+      "basis": "Successful whole-file summaries of 368.260181291, 184.279696292 and 234.697476291 seconds, rounded up to initial 369/185/235-second planning estimates. These are other-platform estimates, not hosted Windows measurements. The Darwin shard itself failed 554/555; it does not qualify the current source. Replace with successful current-source Windows file measurements.",
+      "artifact_id": 11650495129,
+      "artifact_archive_sha256": "a8d22bff76f4a97081690b88eba1bfe971d2c22befb42ec966c3af3552aa1967",
+      "test_events_sha256": "e210a57f1165e5e6f800e86b69328db64609f254a3b33da0de9d071f042105f7",
+      "forecast_margin": 1.4,
+      "forecast_margin_basis": "A uniform conservative 1.4x forecast margin uses the historical hosted slowdown documented by run 36003098891/job 107645462422 and run 35993959632/job 107614474080. Round each initial estimate up, apply 1.4x, then round up to whole seconds. This is scheduling forecast only: not current native Windows measured timing, a passing receipt, or a claim that the deadline is sufficient.",
+      "initial_weights_seconds": {
+        "test/scenarios/foundry-task-runtime-adoption.test.mts": 369,
+        "test/scenarios/foundry-public-explicit-identity-stage.test.mts": 185,
+        "test/scenarios/foundry-public-identity-recovery.test.mts": 235
+      },
+      "forecast_weights_seconds": {
+        "test/scenarios/foundry-task-runtime-adoption.test.mts": 517,
+        "test/scenarios/foundry-public-explicit-identity-stage.test.mts": 259,
+        "test/scenarios/foundry-public-identity-recovery.test.mts": 329
+      }
+    },
+    {
+      "kind": "frozen-installed-qualification",
+      "platform": "darwin-arm64",
+      "source_head": "4aa242f57ad78f778f9b98c4ddc1e0d03a22bd9b",
+      "files": "test/scenarios/foundry-managed-adoption.test.mts",
+      "basis": "Initial other-platform estimate of 1609 seconds, rounding up the passed frozen-source installed whole-six run of 1608.459 seconds. Its six tests all passed. This is separate from the hosted Darwin file duration of 1616.048298417 seconds with five passes and one timeout; that failed hosted run is not the passing baseline. The estimate is not a Windows measurement or a sufficiency claim for corrected-source CI.",
+      "tests": 6,
+      "passed": 6,
+      "failed": 0,
+      "elapsed_seconds": 1608.459,
+      "qualification_result_sha256": "832f3b6de87dfedfdd2dcd988ab696ad89335867d12b945be81e86db2a94a7e4",
+      "qualification_output_sha256": "2ca510b84f8cc39926b70d134783aaa4f0c62217a2e0fec103e68926e23e0213",
+      "qualification_command_sha256": "2fa887fc4e7acbc7f8a9cc85ab961547e9ce12e4b495994f6f01659b128331b6",
+      "forecast_margin": 1.4,
+      "forecast_margin_basis": "A uniform conservative 1.4x forecast margin uses the historical hosted slowdown documented by run 36003098891/job 107645462422 and run 35993959632/job 107614474080. Round each initial estimate up, apply 1.4x, then round up to whole seconds. This is scheduling forecast only: not current native Windows measured timing, a passing receipt, or a claim that the deadline is sufficient.",
+      "initial_weight_seconds": 1609,
+      "forecast_weight_seconds": 2253
     }
   ],
   "estimated_weights": {
@@ -80,7 +161,11 @@
     "test/scenarios/foundry-package-preparation-annual.test.mts": "Conservative initial group estimate based on actual Windows per-case preparation costs in run37642994374; includes independent source-free install/managed setup. Replace after successful current-head hosted file timing. No passing receipt is inferred.",
     "test/scenarios/foundry-package-preparation-targets.test.mts": "Conservative initial group estimate based on actual Windows per-case preparation costs in run37642994374; includes independent source-free install/managed setup. Replace after successful current-head hosted file timing. No passing receipt is inferred.",
     "test/scenarios/foundry-package-preparation-unresolved.test.mts": "Conservative initial group estimate based on actual Windows per-case preparation costs in run37642994374; includes independent source-free install/managed setup. Replace after successful current-head hosted file timing. No passing receipt is inferred.",
-    "test/scenarios/foundry-package-preparation-legacy.test.mts": "Conservative initial group estimate based on actual Windows per-case preparation costs in run37642994374; includes independent source-free install/managed setup. Replace after successful current-head hosted file timing. No passing receipt is inferred."
+    "test/scenarios/foundry-package-preparation-legacy.test.mts": "Conservative initial group estimate based on actual Windows per-case preparation costs in run37642994374; includes independent source-free install/managed setup. Replace after successful current-head hosted file timing. No passing receipt is inferred.",
+    "test/scenarios/foundry-managed-adoption.test.mts": "2253-second provisional other-platform forecast: passed frozen 4aa installed whole-six elapsed 1608.459 seconds (6/6), first rounded up to 1609, then uniform historical 1.4x hosted slowdown margin and ceiling. Failed hosted Darwin 1616.048-second (5/6) timing stays separate. Not current native Windows measurement, corrected-source acceptance or deadline sufficiency; replace after successful current-source hosted file timing.",
+    "test/scenarios/foundry-task-runtime-adoption.test.mts": "517-second provisional other-platform forecast: successful frozen 4aa Darwin 20/20 file summary 368.260181291 seconds, first rounded up to 369, then uniform historical 1.4x hosted slowdown margin and ceiling. Windows /4 produced no file summary. Not current native Windows timing or deadline sufficiency; replace after successful current-source Windows file timing.",
+    "test/scenarios/foundry-public-explicit-identity-stage.test.mts": "259-second provisional other-platform forecast: successful frozen 4aa Darwin 5/5 file summary 184.279696292 seconds, first rounded up to 185, then uniform historical 1.4x hosted slowdown margin and ceiling. Cancelled Windows 3/5 failed-file duration is excluded as a passed baseline. Not current native Windows timing or deadline sufficiency; replace after successful current-source Windows file timing.",
+    "test/scenarios/foundry-public-identity-recovery.test.mts": "329-second provisional other-platform forecast: successful frozen 4aa Darwin 1/1 file summary 234.697476291 seconds, first rounded up to 235, then uniform historical 1.4x hosted slowdown margin and ceiling. Cancelled Windows 0/1 failed-file duration is excluded as a passed baseline. Not current native Windows timing or deadline sufficiency; replace after successful current-source Windows file timing."
   },
   "shards_by_platform": {
     "linux-x64": 4,

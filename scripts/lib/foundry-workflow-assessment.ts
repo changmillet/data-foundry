@@ -25,6 +25,10 @@ import {
 import { runDatasetCurationGate } from "./import-curation/curation-gate.ts";
 import { runDatasetAuthoringTaskBuild } from "./import-curation/authoring-packages.ts";
 import { readRows } from "./import-curation/internal/runtime-io.ts";
+import {
+  projectFoundryValidationReferences,
+  selectedFoundryExternalFlowReferences,
+} from "./foundry-validation-reference-context.ts";
 import { parseFoundryPreparationCliReport } from "./foundry-preparation-cli-validation.ts";
 import { routeFoundryDecisionAction } from "./foundry-decision-routing.ts";
 import { prepareFoundryDecisionWork } from "./foundry-workflow-decisions.ts";
@@ -56,6 +60,7 @@ function assertCurrentQueueBuild(
   queueDir: string,
   result: { exit: number; report: Record<string, unknown> },
   sets: readonly Record<string, unknown>[],
+  external?: { file: string; count: number },
 ): void {
   const invalid = (): never => {
     throw new FoundryContextError(
@@ -141,7 +146,7 @@ function assertCurrentQueueBuild(
     !expectedPath(inputs.processes, processes.file) ||
     (flows ? !expectedPath(inputs.flows, flows.file) : inputs.flows !== null) ||
     !exactJson(inputs.support, supportPaths) ||
-    !exactJson(inputs.external_flow_refs, [])
+    !exactJson(inputs.external_flow_refs, external ? [external.file] : [])
   )
     invalid();
   const expectedHashes = new Map(
@@ -151,6 +156,7 @@ function assertCurrentQueueBuild(
       return [file, captureFoundryInput(file).sha256] as const;
     }),
   );
+  if (external) expectedHashes.set(external.file, captureFoundryInput(external.file).sha256);
   const hashes = object(object(report.hashes).inputs);
   const taskRecords = Array.isArray(report.tasks) ? report.tasks.map(object) : invalid();
   const taskIds = taskRecords.map((task) => {
@@ -202,7 +208,7 @@ function assertCurrentQueueBuild(
     counts.process_rows !== processes.count ||
     counts.flow_rows !== (flows?.count ?? 0) ||
     counts.support_rows !== supportCount ||
-    counts.external_flow_refs !== 0 ||
+    counts.external_flow_refs !== (external?.count ?? 0) ||
     counts.tasks !== expectedTasks ||
     counts.blockers !== blockers.length ||
     tasks.length !== expectedTasks ||
@@ -282,6 +288,14 @@ export function assessFoundryWorkflowRows(
         rows_report: rowsReport,
         context_reports: contextReports,
         identity_report: identityReport ?? null,
+        ...(() => {
+          const references = context.inputs.filter(
+            (fact) => path.basename(fact.path) === "foundry-reference-input.json",
+          );
+          return references.length
+            ? { reference_inputs: references.map(({ path: file, sha256 }) => ({ file, sha256 })) }
+            : {};
+        })(),
         ...(options.scopeType
           ? {
               scope_type: options.scopeType,
@@ -400,6 +414,46 @@ export function assessFoundryWorkflowRows(
             throw new FoundryContextError("workflow_rows_invalid", "A row set is invalid.");
           readFoundryInput(context, set.file);
         }
+        const processSet = selectedSets.find((set) => set.type === "process");
+        const reference = selectedState?.referenceInputs.get("process");
+        let qaReferenceFiles: string[] = [];
+        if (
+          reference &&
+          processSet &&
+          (!options.scopeType || ["flow", "process"].includes(options.scopeType))
+        ) {
+          const intended = record(reference.value.input);
+          const current = captureFoundryInput(String(processSet.file));
+          if (current.sha256 !== intended.sha256 || current.bytes !== intended.bytes)
+            throw new FoundryContextError(
+              "reference_input_stale",
+              "Select reference evidence for the current Process rows before assessment.",
+            );
+          if (!Array.isArray(reference.value.qa_files))
+            throw new FoundryContextError(
+              "reference_input_invalid",
+              "Registered QA reference facts are invalid.",
+            );
+          qaReferenceFiles = reference.value.qa_files.map((value) => {
+            const fact = record(value);
+            if (typeof fact.path !== "string")
+              throw new FoundryContextError(
+                "reference_input_invalid",
+                "Reference path is missing.",
+              );
+            const bytes = readFoundryInput(context, fact.path);
+            if (
+              bytes.length !== fact.bytes ||
+              createHash("sha256").update(bytes).digest("hex") !== fact.sha256
+            )
+              throw new FoundryContextError(
+                "reference_input_invalid",
+                "Reference snapshot changed.",
+              );
+            return fact.path;
+          });
+        }
+        const referenceInputSha256 = qaReferenceFiles.length ? reference!.entry.sha256 : null;
         const previousReport = previous
           ? record(JSON.parse(readFoundryInput(context, previous.path).toString("utf8")))
           : null;
@@ -464,11 +518,29 @@ export function assessFoundryWorkflowRows(
             else if (["contact", "source", "unitgroup", "flowproperty"].includes(String(set.type)))
               args.push("--support", set.file);
           }
+          // Existing Flow evidence closes only exact selected interfaces. It is never a row set or write target.
+          const externalRows = selectedFoundryExternalFlowReferences(
+            readRows(processes.file, (name) => readFoundryInput(context, name).toString("utf8")),
+            qaReferenceFiles.flatMap((file) =>
+              readRows(file, (name) => readFoundryInput(context, name).toString("utf8")),
+            ),
+          );
+          const external = externalRows.length
+            ? {
+                file: path.join(output, "selected-external-flow-refs.json"),
+                count: externalRows.length,
+              }
+            : undefined;
+          if (external) {
+            operation.writeJson(external.file, externalRows);
+            args.push("--external-flow-ref", external.file);
+          }
           assertCurrentQueueBuild(
             context,
             queueDir,
             runWorkflowLocalCliResult(context, qualified, temporary, args),
             selectedSets,
+            external,
           );
         }
         const assessed: Array<Record<string, unknown>> = previousSets.map(record);
@@ -552,6 +624,7 @@ export function assessFoundryWorkflowRows(
                   qaArgv.push("--reference-rows-file", String(referenceSet.file));
                 }
               }
+              qaArgv.push(...qaReferenceFiles.flatMap((file) => ["--reference-rows-file", file]));
             }
             const qa = runWorkflowLocalCli(context, qualified, temporary, qaArgv);
             const file = record(qa.files).report;
@@ -566,14 +639,39 @@ export function assessFoundryWorkflowRows(
             });
           }
           const gateDir = path.join(output, set.type, "curation");
-          let cliValidation: { report: string; exit: number } | undefined;
+          let cliValidation:
+            | {
+                report: string;
+                exit: number;
+                input?: import("./foundry-runtime-context.ts").FoundryInputFact;
+              }
+            | undefined;
+          let validationProjection: Record<string, unknown> | undefined;
           if (set.type === "process") {
             const validationDir = path.join(output, set.type, "cli-validation");
+            let validationInput = String(set.file);
+            let validationRows = readRows(validationInput);
+            if (qaReferenceFiles.length) {
+              validationRows = projectFoundryValidationReferences(
+                validationRows,
+                qaReferenceFiles.flatMap((file) =>
+                  readRows(file, (name) => readFoundryInput(context, name).toString("utf8")),
+                ),
+              );
+              validationInput = path.join(validationDir, "validation-only.process.rows.json");
+              operation.writeJson(validationInput, validationRows);
+              validationProjection = {
+                cli_validation_input: captureFoundryInput(validationInput),
+                cli_validation_source_rows: captureFoundryInput(String(set.file)),
+                cli_validation_reference_input_sha256: referenceInputSha256,
+                cli_validation_reference_files: reference!.value.qa_files,
+              };
+            }
             const validation = runWorkflowLocalCliResult(context, qualified, temporary, [
               "dataset",
               "validate",
               "--input",
-              set.file,
+              validationInput,
               "--type",
               "process",
               "--out-dir",
@@ -582,9 +680,9 @@ export function assessFoundryWorkflowRows(
             ]);
             parseFoundryPreparationCliReport({
               report: validation.report,
-              input: set.file,
+              input: validationInput,
               outDir: validationDir,
-              rows: readRows(set.file),
+              rows: validationRows,
               exit: validation.exit,
             });
             const reportFile = path.join(validationDir, "outputs", "validation-report.json");
@@ -596,7 +694,11 @@ export function assessFoundryWorkflowRows(
                 "workflow_validation_invalid",
                 "CLI validation file differs from its returned report.",
               );
-            cliValidation = { report: reportFile, exit: validation.exit };
+            cliValidation = {
+              report: reportFile,
+              exit: validation.exit,
+              ...(validationProjection ? { input: captureFoundryInput(validationInput) } : {}),
+            };
           }
           const rewrite = identityRewriteReports.findLast(
             (report) => report.dataset_type === set.type,
@@ -675,6 +777,7 @@ export function assessFoundryWorkflowRows(
                   cli_validation_exit: cliValidation.exit,
                 }
               : {}),
+            ...(validationProjection ?? {}),
             qa_report: qaReport,
             curation_report: gateReport,
             curation_status: gate.status,
@@ -690,6 +793,9 @@ export function assessFoundryWorkflowRows(
             ["flow", "process"].includes(set.type) &&
             (options.scopeType || selectedInteraction)
               ? { queue_scope_sha256: queueScopeSha256 }
+              : {}),
+            ...(referenceInputSha256 && ["flow", "process"].includes(set.type)
+              ? { reference_input_sha256: referenceInputSha256 }
               : {}),
             ...(interactionDigest ? { interaction_digest: interactionDigest } : {}),
             ...(interactionContext ? { interaction_context: interactionContext } : {}),

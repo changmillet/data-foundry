@@ -12,6 +12,14 @@ import { readTaskBytes } from "./foundry-task-io.ts";
 import { sha256Json } from "./identity-preflight-proof.ts";
 import { applicableFoundryInteractionDigest } from "./foundry-interaction-projection.ts";
 import type { FoundryInteractionState } from "./foundry-interaction-types.ts";
+import { readRows } from "./import-curation/internal/runtime-io.ts";
+import { projectFoundryValidationReferences } from "./foundry-validation-reference-context.ts";
+import { parseFoundryPreparationCliReport } from "./foundry-preparation-cli-validation.ts";
+import {
+  readFoundryTaskRuntimeAdoption,
+  readFoundryTaskRuntimeAdoptionChain,
+} from "./foundry-task-runtime-adoption.ts";
+import { verifyRegisteredAssessmentProducer } from "./foundry-assessment-producer.ts";
 
 /**
  * The repair producer's registration of the preparation report. These two values are repeated here
@@ -124,6 +132,37 @@ export function currentWorkflowState(
   context: FoundryRuntimeContext,
   entries: readonly ArtifactEntry[],
 ) {
+  let adoption: ReturnType<typeof readFoundryTaskRuntimeAdoption> | undefined;
+  const runtimeAdoption = () => {
+    if (adoption === undefined) adoption = readFoundryTaskRuntimeAdoption(context);
+    return adoption;
+  };
+  let retainedRuntimeRoots: readonly string[] | undefined;
+  const assessmentOwner = (
+    value: unknown,
+    entry: ArtifactEntry,
+    report: Record<string, unknown>,
+  ): "current" | "adopted_original" => {
+    if (value === context.assetRoot) return "current";
+    if (retainedRuntimeRoots === undefined) {
+      runtimeAdoption();
+      retainedRuntimeRoots =
+        readFoundryTaskRuntimeAdoptionChain(context)?.retained_runtime_roots ?? [];
+    }
+    if (typeof value === "string" && retainedRuntimeRoots.includes(value)) {
+      verifyRegisteredAssessmentProducer(context, entry, report, entries);
+      return "adopted_original";
+    }
+    if (
+      !runtimeAdoption() &&
+      verifyRegisteredAssessmentProducer(context, entry, report, entries) === value
+    )
+      return "current";
+    throw new FoundryContextError(
+      "workflow_assessment_invalid",
+      "Assessment owner is neither the current runtime nor its verified adopted predecessor.",
+    );
+  };
   const rowEntry = entries.findLast(
     (entry) =>
       ["dataset-workflow-rows", "dataset-semantic-apply"].includes(entry.command) &&
@@ -214,6 +253,15 @@ export function currentWorkflowState(
     );
   const interaction = interactionValue as unknown as FoundryInteractionState | null;
   const contextShaByType = new Map<string, string>();
+  const contextFilesByType = new Map<string, string>();
+  const originalContextFacts = new Map(
+    ((readFoundryTaskRuntimeAdoptionChain(context)?.prior_context_reports ?? []) as unknown[]).map(
+      (item) => {
+        const fact = workflowObject(item);
+        return [fact.path, fact] as const;
+      },
+    ),
+  );
   for (const entry of entries) {
     if (
       entry.command !== "dataset-context-pack" ||
@@ -221,11 +269,46 @@ export function currentWorkflowState(
     )
       continue;
     const report = readWorkflowArtifact(context, entry).value;
-    if (report.status === "completed" && typeof report.type === "string")
+    const original = originalContextFacts.get(entry.path);
+    if (original && original.sha256 === entry.sha256 && original.bytes === entry.bytes) continue;
+    if (report.status === "completed" && typeof report.type === "string") {
       contextShaByType.set(report.type, entry.sha256);
+      contextFilesByType.set(report.type, resolveFoundryOutput(context, entry.path));
+    }
   }
+  const referenceInputs = new Map<string, WorkflowArtifact<Record<string, unknown>>>();
+  for (const entry of entries) {
+    if (
+      entry.command !== "dataset-workflow-reference-input" ||
+      path.basename(entry.path) !== "foundry-reference-input.json"
+    )
+      continue;
+    const found = readWorkflowArtifact(context, entry);
+    if (
+      found.value.schema !== "tiangong-foundry.reference-selection.v1" ||
+      found.value.status !== "selected" ||
+      typeof found.value.dataset_type !== "string"
+    )
+      throw new FoundryContextError(
+        "reference_input_invalid",
+        "Registered reference selection is invalid.",
+      );
+    referenceInputs.set(found.value.dataset_type, found);
+  }
+  const referenceInputsSha256 = referenceInputs.size
+    ? createHash("sha256")
+        .update(
+          JSON.stringify(
+            [...referenceInputs]
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([type, found]) => [type, found.entry.sha256]),
+          ),
+        )
+        .digest("hex")
+    : null;
   const queueScopeSha256 = rows ? workflowAssessmentQueueScopeSha256(rows.value.sets) : null;
   let assessment: WorkflowArtifact<WorkflowAssessment> | null = null;
+  let retainedAssessment: WorkflowArtifact<WorkflowAssessment> | null = null;
   if (rows) {
     for (const entry of [...entries].reverse()) {
       if (
@@ -237,7 +320,7 @@ export function currentWorkflowState(
         value = found.value;
       if (
         value.schema !== "tiangong-foundry.assessment-stage.v1" ||
-        value.owner_base !== context.assetRoot ||
+        typeof value.owner_base !== "string" ||
         !["in_progress", "completed"].includes(String(value.status)) ||
         !Array.isArray(value.sets)
       )
@@ -245,6 +328,7 @@ export function currentWorkflowState(
           "workflow_assessment_invalid",
           "Registered assessment metadata is invalid.",
         );
+      const owner = assessmentOwner(value.owner_base, entry, value);
       const sets = value.sets.map(workflowObject);
       const reportRowsEntry = entries.find(
         (candidate) =>
@@ -331,6 +415,18 @@ export function currentWorkflowState(
           "Partial assessment must identify its predecessor boundary.",
         );
       }
+      // Keep verified predecessor reports as immutable history, but qualify machine
+      // assessment afresh with the explicitly adopted runtime and CLI combination.
+      if (owner === "adopted_original") {
+        if (
+          !retainedAssessment &&
+          sets.every((set) =>
+            rows.value.sets.some((row) => row.type === set.type && row.file === set.rows),
+          )
+        )
+          retainedAssessment = { ...found, value: value as unknown as WorkflowAssessment };
+        continue;
+      }
       const identityMatches =
         (value.identity_report ?? null) ===
         (identity?.value.status === "completed" ? identity.file : null);
@@ -343,6 +439,17 @@ export function currentWorkflowState(
               applicableFoundryInteractionDigest(interaction, row.type)
             )
               return false;
+            if (
+              ["flow", "process"].includes(row.type) &&
+              rows.value.sets.some((set) => set.type === "process")
+            ) {
+              const selected = referenceInputs.get("process");
+              const expected =
+                Array.isArray(selected?.value.qa_files) && selected.value.qa_files.length
+                  ? selected.entry.sha256
+                  : null;
+              if ((set.reference_input_sha256 ?? null) !== expected) return false;
+            }
             const expectedContext = contextShaByType.get(row.type);
             if (
               (set.context_report_sha256 !== undefined &&
@@ -380,6 +487,69 @@ export function currentWorkflowState(
                   "workflow_assessment_invalid",
                   "CLI validation evidence has changed.",
                 );
+              let validationInput = set.rows;
+              let validationRows = readRows(validationInput);
+              const selected = referenceInputs.get("process");
+              const qa = Array.isArray(selected?.value.qa_files) ? selected.value.qa_files : [];
+              if (qa.length) {
+                const source = workflowObject(set.cli_validation_source_rows);
+                const derived = workflowObject(set.cli_validation_input);
+                const original = captureFoundryInput(validationInput);
+                if (
+                  sha256Json(source) !== sha256Json(original) ||
+                  set.cli_validation_reference_input_sha256 !== selected!.entry.sha256 ||
+                  sha256Json(set.cli_validation_reference_files) !== sha256Json(qa) ||
+                  typeof derived.path !== "string" ||
+                  !registeredAssessmentFile(context, entries, derived.path)
+                )
+                  throw new FoundryContextError(
+                    "workflow_assessment_invalid",
+                    "Validation projection lineage differs from current rows or selected references.",
+                  );
+                const references = qa.flatMap((raw) => {
+                  const fact = workflowObject(raw);
+                  if (
+                    typeof fact.path !== "string" ||
+                    !registeredAssessmentFile(context, entries, fact.path) ||
+                    sha256Json(captureFoundryInput(fact.path)) !== sha256Json(fact)
+                  )
+                    throw new FoundryContextError(
+                      "workflow_assessment_invalid",
+                      "Validation reference snapshot changed.",
+                    );
+                  return readRows(fact.path);
+                });
+                validationRows = projectFoundryValidationReferences(validationRows, references);
+                validationInput = derived.path;
+                const expected = Buffer.from(`${JSON.stringify(validationRows, null, 2)}\n`);
+                const actual = captureFoundryInput(validationInput);
+                if (
+                  sha256Json(actual) !== sha256Json(derived) ||
+                  !fs.readFileSync(validationInput).equals(expected)
+                )
+                  throw new FoundryContextError(
+                    "workflow_assessment_invalid",
+                    "Validation-only rows differ from the registered deterministic projection.",
+                  );
+                files.push(validationInput);
+              } else if (
+                set.cli_validation_input !== undefined ||
+                set.cli_validation_source_rows !== undefined ||
+                set.cli_validation_reference_input_sha256 !== undefined ||
+                set.cli_validation_reference_files !== undefined
+              ) {
+                throw new FoundryContextError(
+                  "workflow_assessment_invalid",
+                  "Validation projection requires current selected Flow evidence.",
+                );
+              }
+              parseFoundryPreparationCliReport({
+                report: JSON.parse(fs.readFileSync(validationFile, "utf8")),
+                input: validationInput,
+                outDir: path.dirname(path.dirname(validationFile)),
+                rows: validationRows,
+                exit: set.cli_validation_exit,
+              });
               files.push(set.cli_validation_report);
             }
             if (set.interaction_context !== undefined) files.push(set.interaction_context);
@@ -423,36 +593,6 @@ export function currentWorkflowState(
   const assessmentRemainingTypes = rows
     ? rows.value.sets.filter((set) => !coveredTypes.has(set.type)).map((set) => set.type)
     : [];
-  const referenceInputs = new Map<string, WorkflowArtifact<Record<string, unknown>>>();
-  for (const entry of entries) {
-    if (
-      entry.command !== "dataset-workflow-reference-input" ||
-      path.basename(entry.path) !== "foundry-reference-input.json"
-    )
-      continue;
-    const found = readWorkflowArtifact(context, entry);
-    if (
-      found.value.schema !== "tiangong-foundry.reference-selection.v1" ||
-      found.value.status !== "selected" ||
-      typeof found.value.dataset_type !== "string"
-    )
-      throw new FoundryContextError(
-        "reference_input_invalid",
-        "Registered reference selection is invalid.",
-      );
-    referenceInputs.set(found.value.dataset_type, found);
-  }
-  const referenceInputsSha256 = referenceInputs.size
-    ? createHash("sha256")
-        .update(
-          JSON.stringify(
-            [...referenceInputs]
-              .sort(([a], [b]) => a.localeCompare(b))
-              .map(([type, found]) => [type, found.entry.sha256]),
-          ),
-        )
-        .digest("hex")
-    : null;
   let finalization: WorkflowArtifact<Record<string, unknown>> | null = null;
   if (rows && assessmentComplete && assessment) {
     for (const entry of [...entries].reverse()) {
@@ -567,7 +707,9 @@ export function currentWorkflowState(
   }
   return {
     rows,
+    currentContextReports: [...contextFilesByType.values()],
     assessment,
+    retainedAssessment,
     assessmentComplete,
     assessmentRemainingTypes,
     interactionSha256,

@@ -16,6 +16,8 @@ import { syncBuiltinESMExports } from "node:module";
 import { testAuthIdentityReceipt } from "../fixtures/auth-identity-receipt.ts";
 import { canonicalPayloadSha256 } from "../../scripts/lib/post-write-root-proof.ts";
 import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
+import { publishLegacyIdentityFailure } from "./legacy-identity-producer.ts";
+import { validateIdentityPreflightRecoveryEvidence } from "../../scripts/lib/identity-preflight-recovery-proof.ts";
 import { readRows } from "../../scripts/lib/import-curation/internal/runtime-io.ts";
 import { unwrapDatasetPayload } from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
 import {
@@ -156,7 +158,13 @@ ${marker}`,
   const facade = createFoundryFacade(facadeOptions);
   assert.equal(facade.initialize().status, "ready");
   assert.equal(facade.doctor().status, "ready");
-  return { root, workspace, facade, runtimeSelection: facadeOptions.runtimeSelection };
+  return {
+    root,
+    workspace,
+    facade,
+    facadeOptions,
+    runtimeSelection: facadeOptions.runtimeSelection,
+  };
 }
 
 export const publicIdentityCases = [
@@ -187,11 +195,30 @@ export async function verifyPublicIdentityWorkflow(
   nativeOperation: "insert" | "save_draft" = "insert",
   nativeContractInvalid = false,
   terminalDecisionRecap = false,
+  legacyIdentityRecovery = false,
+  legacyRecoveryFailure:
+    | "unproven"
+    | "auth"
+    | "empty-results"
+    | "missing-results"
+    | "missing-decision"
+    | "misleading-failure"
+    | "node"
+    | "node-missing"
+    | "missing-auth"
+    | null = null,
+  explicitIdentityStage = false,
+  explicitStageSeam:
+    | "pending-question"
+    | "question-during-query"
+    | "abort-after-claim"
+    | "failed-predecessor-abort"
+    | null = null,
 ) {
   const [identityDecision, approvalKind, trace, mixed, explicitMode, remoteDifference] = scenario;
   const accountMode = explicitMode ?? "ordinary";
   let forcedAdmissionExpiry = false;
-  const { root, workspace, facade, runtimeSelection } = workflowFixture(t);
+  const { root, workspace, facade, facadeOptions, runtimeSelection } = workflowFixture(t);
   const id = "77777777-7777-4777-8777-777777777777";
   const basic = flowRow(id);
   const payload = {
@@ -393,6 +420,7 @@ export async function verifyPublicIdentityWorkflow(
   let authCalls = 0,
     preflightCalls = 0,
     failRead = true;
+  let currentAuthFailure = false;
   let finalizing = false;
   let referenceQueries = 0;
   let referenceResponse: "missing" | "duplicate" | "outdated" | "wrong_target" | "passed" =
@@ -400,6 +428,32 @@ export async function verifyPublicIdentityWorkflow(
   let writes = 0,
     exactReadback = approvalKind !== "current_rows";
   let childFailure: unknown;
+  const questionsDuringQuery: Array<ReturnType<typeof facade.resume>> = [];
+  const stageQuestionFile = path.join(root, "pending-identity-question.json");
+  const writeStageQuestion = () =>
+    fs.writeFileSync(
+      stageQuestionFile,
+      JSON.stringify({
+        schema: "tiangong-foundry.interaction-input.v1",
+        task_id: invocation.taskId,
+        actor_id: invocation.actorId,
+        expected_state_sha256: null,
+        events: [
+          {
+            kind: "question",
+            id: questionId,
+            dataset_type: "flow",
+            missing: "The intended identity remains undecided.",
+            impact: decisionImpact,
+            recommendation: "Review the unchanged Flow before choosing identity.",
+            ask: questionAsk,
+            choices: ["Review the evidence", "Request clarification"],
+            evidence_sha256: [digestFile(seed)],
+            supersedes: null,
+          },
+        ],
+      }),
+    );
   let getCalls = 0,
     restoreExactPayload = false;
   const remotePayloads = new Map<string, typeof payload>();
@@ -757,6 +811,15 @@ export async function verifyPublicIdentityWorkflow(
       let report: unknown;
       if (argv.includes("identity-receipt")) {
         authCalls++;
+        if (currentAuthFailure)
+          return {
+            status: 1,
+            signal: null,
+            stdout: JSON.stringify({ error: "fixture_auth_failed" }),
+            stderr: "",
+            pid: 1,
+            output: [],
+          };
         report = testAuthIdentityReceipt({
           projectRef: account.project_ref,
           userId: account.user_id,
@@ -764,6 +827,20 @@ export async function verifyPublicIdentityWorkflow(
         });
       } else {
         preflightCalls++;
+        if (
+          explicitStageSeam === "question-during-query" &&
+          !questionsDuringQuery.length &&
+          !failRead &&
+          preflightCalls > 1
+        ) {
+          writeStageQuestion();
+          questionsDuringQuery.push(
+            facade.resume({
+              ...invocation,
+              interactionInputFile: stageQuestionFile,
+            }),
+          );
+        }
         const requestFile = argv[argv.indexOf("--input") + 1],
           outDir = argv[argv.indexOf("--out-dir") + 1];
         const request = JSON.parse(fs.readFileSync(requestFile, "utf8")) as { target: unknown };
@@ -780,9 +857,22 @@ export async function verifyPublicIdentityWorkflow(
         assert.equal(environment.FOUNDRY_VERIFIED_USER_ID, account.user_id);
         report = {
           schema_version: 1,
-          status: "needs_review",
-          decision: "manual_review",
+          generated_at_utc: new Date().toISOString(),
+          kind: "flow",
+          status: failRead ? "failed" : "needs_review",
+          decision: failRead ? null : "manual_review",
+          target: {
+            id: datasetIdentity(request.target, 0, "flow").id,
+            version: datasetIdentity(request.target, 0, "flow").version,
+          },
+          input_path: requestFile,
+          out_dir: outDir,
+          files: { identity_decision: path.join(outDir, "outputs", "identity-decision.json") },
           candidates: [],
+          candidate_sources: [],
+          findings: [],
+          blockers: [],
+          next_action: "queue_manual_review",
           ok: true,
         };
         fs.mkdirSync(path.join(outDir, "outputs"), { recursive: true });
@@ -809,7 +899,7 @@ export async function verifyPublicIdentityWorkflow(
           };
       }
       return {
-        status: 0,
+        status: argv.includes("identity-preflight") ? 1 : 0,
         signal: null,
         stdout: JSON.stringify(report),
         stderr: "",
@@ -827,13 +917,288 @@ export async function verifyPublicIdentityWorkflow(
     t.mock.restoreAll();
     syncBuiltinESMExports();
   });
-  const failed = await facade.resume(invocation);
+  let originalFacts: Array<{ path: string; sha256: string }> = [];
+  if (legacyIdentityRecovery) {
+    failRead = false;
+    const legacy = await publishLegacyIdentityFailure({
+      root,
+      workspace,
+      taskId: invocation.taskId,
+      actorId: invocation.actorId,
+      seed,
+      runtimeSelection,
+      account,
+      retainAuthReceipt: !explicitIdentityStage && legacyRecoveryFailure !== "missing-auth",
+      unprovenArgv: legacyRecoveryFailure === "unproven",
+      incompleteAttempt:
+        legacyRecoveryFailure === "empty-results" ||
+        legacyRecoveryFailure === "missing-results" ||
+        legacyRecoveryFailure === "missing-decision" ||
+        legacyRecoveryFailure === "misleading-failure"
+          ? legacyRecoveryFailure
+          : undefined,
+      retainedNodeFailure:
+        legacyRecoveryFailure === "node" || legacyRecoveryFailure === "node-missing"
+          ? legacyRecoveryFailure
+          : undefined,
+    });
+    originalFacts = legacy.snapshot.index
+      .filter((item) => item.command === "dataset-workflow-identity")
+      .map((item) => ({
+        path: path.resolve(legacy.context.taskRoot!, item.path),
+        sha256: item.sha256,
+      }));
+  }
+  const failed = legacyIdentityRecovery
+    ? await facade.status(invocation)
+    : await facade.resume(invocation);
   if (childFailure) throw childFailure;
   assert.equal(failed.status, "needs_input", JSON.stringify(failed));
   assert.equal(failed.blockers[0]?.code, "identity_preflight_requires_input");
   assert.equal((await facade.status(invocation)).status, "needs_input");
   failRead = false;
-  const read = await facade.resume(invocation);
+  currentAuthFailure = legacyRecoveryFailure === "auth";
+  const read =
+    explicitStageSeam === "failed-predecessor-abort" ? failed : await facade.resume(invocation);
+  if (explicitIdentityStage) {
+    assert.equal(read.status, "needs_input", JSON.stringify(read));
+    assert.equal(
+      read.blockers[0]?.code,
+      explicitStageSeam === "failed-predecessor-abort"
+        ? "identity_preflight_requires_input"
+        : "identity_preflight_recovery_unproven",
+    );
+    assert.equal(
+      preflightCalls,
+      1,
+      "ordinary resume must preserve unavailable old proof without querying",
+    );
+    const rows = read.artifacts.findLast((item) => item.role === "foundry-rows.json");
+    const predecessor = read.artifacts.findLast((item) => item.role === "foundry-identity.json");
+    // The error result deliberately carries no guessed artifacts; use the read-only public status.
+    const status = await facade.status(invocation);
+    const rowFact = rows ?? status.artifacts.findLast((item) => item.role === "foundry-rows.json");
+    const priorFact =
+      predecessor ?? status.artifacts.findLast((item) => item.role === "foundry-identity.json");
+    assert.ok(rowFact?.kind === "file" && priorFact?.kind === "file");
+    const manifest = JSON.parse(fs.readFileSync(rowFact.path, "utf8")) as {
+      sets: Array<{ type: string; file: string }>;
+    };
+    const descriptor = path.join(root, "explicit-new-identity.json");
+    fs.writeFileSync(
+      descriptor,
+      JSON.stringify({
+        schema: "tiangong-foundry.identity-stage-input.v1",
+        intent_id: "explicit-bounded-readonly",
+        task_id: invocation.taskId,
+        actor_id: invocation.actorId,
+        rows_report_sha256: rowFact.sha256,
+        predecessor_identity_sha256: priorFact.sha256,
+        targets: manifest.sets
+          .filter((set) => set.type === "flow" || set.type === "process")
+          .flatMap((set) =>
+            readRows(set.file).map((row) => {
+              const identity = datasetIdentity(row, 0, set.type);
+              return {
+                dataset_type: set.type,
+                dataset_id: identity.id,
+                dataset_version: identity.version,
+                source_row_sha256: sha256Json(row),
+              };
+            }),
+          ),
+      }),
+    );
+    if (explicitStageSeam === "pending-question") {
+      writeStageQuestion();
+      const asked = await facade.resume({ ...invocation, interactionInputFile: stageQuestionFile });
+      assert.equal(asked.status, "needs_input", JSON.stringify(asked));
+      const refused = await facade.resume({ ...invocation, identityStageInputFile: descriptor });
+      assert.equal(refused.status, "needs_input", JSON.stringify(refused));
+      assert.equal(refused.blockers[0]?.code, "interaction_decision_pending");
+      assert.equal(preflightCalls, 1, "pending question cannot admit a new identity query");
+      return;
+    }
+    if (
+      explicitStageSeam === "abort-after-claim" ||
+      explicitStageSeam === "failed-predecessor-abort"
+    ) {
+      const controller = new AbortController();
+      const link = fs.linkSync;
+      const mock = t.mock.method(fs, "linkSync", (...args: Parameters<typeof fs.linkSync>) => {
+        const result = Reflect.apply(link, fs, args);
+        if (String(args[1]).endsWith("dispatch.json")) controller.abort();
+        return result;
+      });
+      const interrupted = createFoundryFacade({ ...facadeOptions, signal: controller.signal });
+      await interrupted.resume({ ...invocation, identityStageInputFile: descriptor });
+      mock.mock.restore();
+      assert.equal(controller.signal.aborted, true);
+      assert.equal(preflightCalls, 1, "claim persisted before a query can run");
+      for (const result of [await facade.status(invocation), await facade.resume(invocation)]) {
+        assert.equal(result.status, "needs_input", JSON.stringify(result));
+        assert.equal(result.blockers[0]?.code, "identity_stage_unproven");
+        const admission = result.artifacts.find(
+          (item) => item.role === "explicit_readonly_identity_stage",
+        );
+        assert.ok(admission?.kind === "inline");
+        assert.equal((admission.value as Record<string, unknown>).new_cli_execution, null);
+        assert.equal(
+          preflightCalls,
+          1,
+          "ordinary status/resume cannot repeat an interrupted explicit claim",
+        );
+      }
+      for (const item of originalFacts) assert.equal(digestFile(item.path), item.sha256);
+      return;
+    }
+    const explicit = await facade.resume({ ...invocation, identityStageInputFile: descriptor });
+    if (explicitStageSeam === "question-during-query") {
+      assert.equal(questionsDuringQuery.length, 1);
+      const asked = await questionsDuringQuery[0];
+      assert.equal(asked.status, "needs_input", JSON.stringify(asked));
+      assert.equal(explicit.status, "needs_input", JSON.stringify(explicit));
+      const status = await facade.status(invocation);
+      const questionState = status.artifacts.find(
+        (artifact) => artifact.role === "current_interaction_state",
+      );
+      assert.ok(questionState?.kind === "file");
+      fs.writeFileSync(
+        stageQuestionFile,
+        JSON.stringify({
+          schema: "tiangong-foundry.interaction-input.v1",
+          task_id: invocation.taskId,
+          actor_id: invocation.actorId,
+          expected_state_sha256: questionState.sha256,
+          events: [
+            {
+              kind: "answer",
+              question_id: questionId,
+              decision_id: decisionId,
+              supersedes_decision_id: null,
+              raw_answer: answer,
+              adopted_decision: adoptedDecision,
+              disposition: "decided",
+              evidence_sha256: [digestFile(seed)],
+            },
+          ],
+        }),
+      );
+      const answered = await facade.resume({
+        ...invocation,
+        interactionInputFile: stageQuestionFile,
+      });
+      assert.equal(answered.blockers[0]?.code, "identity_stage_unproven", JSON.stringify(answered));
+      const retained = await facade.resume({ ...invocation, identityStageInputFile: descriptor });
+      assert.equal(retained.status, "ready", JSON.stringify(retained));
+      assert.equal(
+        preflightCalls,
+        2,
+        "answering the question permits retained result adoption without a replacement query",
+      );
+      for (const item of originalFacts) assert.equal(digestFile(item.path), item.sha256);
+      return;
+    }
+    assert.equal(explicit.status, "ready", JSON.stringify(explicit.blockers));
+    assert.equal(
+      preflightCalls,
+      2,
+      "the explicit new read-only stage performs one new query for its one target",
+    );
+    for (const item of originalFacts) assert.equal(digestFile(item.path), item.sha256);
+    const prohibited = [
+      "foundry-finalize.json",
+      "foundry-authorization.json",
+      "owner-execution-request.json",
+      "consumed.json",
+    ];
+    assert.ok(explicit.artifacts.every((artifact) => !prohibited.includes(artifact.role)));
+    const duplicated = await facade.resume({ ...invocation, identityStageInputFile: descriptor });
+    assert.equal(duplicated.status, "ready", JSON.stringify(duplicated.blockers));
+    assert.equal(preflightCalls, 2, "duplicate intent cannot dispatch a second query");
+    const ordinary = await facade.resume(invocation);
+    assert.equal(ordinary.status, "needs_input", JSON.stringify(ordinary));
+    assert.equal(
+      preflightCalls,
+      2,
+      "ordinary follow-up refreshes assessment rather than requerying",
+    );
+    assert.ok(ordinary.artifacts.every((artifact) => !prohibited.includes(artifact.role)));
+    const currentAssessment = ordinary.artifacts.findLast(
+      (artifact) => artifact.role === "foundry-assessment.json",
+    );
+    assert.ok(currentAssessment?.kind === "file");
+    const assessed = JSON.parse(fs.readFileSync(currentAssessment.path, "utf8")) as {
+      sets: Array<{ decisions: Array<{ kind: string; status: string }> }>;
+    };
+    assert.ok(
+      assessed.sets.some((set) =>
+        set.decisions.some(
+          (decision) =>
+            decision.kind === "identity" && decision.status === "ready_for_ai_identity_decisions",
+        ),
+      ),
+    );
+    t.diagnostic(
+      JSON.stringify({
+        explicit_new_stage: true,
+        original_queries: 1,
+        new_queries: 1,
+        duplicate_new_queries: 0,
+        original_facts_unchanged: true,
+        semantic_work_ready: true,
+        no_write_stages: true,
+      }),
+    );
+    return;
+  }
+  if (legacyRecoveryFailure) {
+    assert.equal(
+      authCalls,
+      2,
+      "the current identity verification is separate from the original producer admission",
+    );
+    assert.equal(
+      read.status,
+      legacyRecoveryFailure !== "auth" ? "needs_input" : "needs_auth",
+      JSON.stringify(read),
+    );
+    assert.equal(read.task_id, invocation.taskId);
+    assert.equal(
+      preflightCalls,
+      1,
+      "unproven original evidence or real auth failure cannot replay the original query",
+    );
+    for (const item of originalFacts)
+      assert.equal(
+        digestFile(item.path),
+        item.sha256,
+        "original native producer remains unchanged",
+      );
+    if (legacyRecoveryFailure !== "auth") {
+      assert.equal(read.blockers[0]?.code, "identity_preflight_recovery_unproven");
+      assert.ok(
+        read.next_actions.some(
+          (action) =>
+            action.kind === "human" && action.code === "verify_original_identity_recovery",
+        ),
+      );
+      assert.ok(!read.next_actions.some((action) => action.kind === "command"));
+    }
+    t.diagnostic(
+      JSON.stringify({
+        public_recovery_negative: legacyRecoveryFailure,
+        task_id: read.task_id,
+        status: read.status,
+        blockers: read.blockers,
+        next_actions: read.next_actions,
+        auth_calls: authCalls,
+        original_query_calls: preflightCalls,
+        original_native_facts_unchanged: true,
+      }),
+    );
+    return;
+  }
   const evidence = read.artifacts.findLast((item) => item.role === "foundry-identity.json");
   assert.equal(
     read.status,
@@ -848,6 +1213,112 @@ export async function verifyPublicIdentityWorkflow(
     index: string;
   };
   assert.equal(report.status, "completed");
+  if (legacyIdentityRecovery) {
+    for (const item of originalFacts)
+      assert.equal(digestFile(item.path), item.sha256, "original producer facts are immutable");
+    assert.equal((report as Record<string, unknown>).new_cli_execution, false);
+    const recoveredRows = readRows(report.index) as Array<{
+      recovery_manifest_file: string;
+      recovery_cli_content_sha256: string;
+      request_file: string;
+      expected_report_file: string;
+      dataset_type: string;
+      dataset_id: string;
+      dataset_version: string;
+      target_sha256: string;
+    }>;
+    const proof = JSON.parse(fs.readFileSync(recoveredRows[0].recovery_manifest_file, "utf8"));
+    assert.equal(proof.new_cli_execution, false);
+    assert.equal(proof.original.status, "failed");
+    assert.equal(
+      proof.original.producer_auth.captured_at_utc,
+      JSON.parse(fs.readFileSync(proof.original.facts.auth_receipt.path, "utf8")).captured_at_utc,
+    );
+    assert.notEqual(
+      proof.current_owner_interpretation_auth.receipt_scope_sha256,
+      proof.original.producer_auth.receipt_scope_sha256,
+    );
+    assert.equal(
+      preflightCalls,
+      1,
+      "same-task recovery interprets the one original query without replay",
+    );
+    assert.equal(
+      proof.current_retained_runtime_observation.role,
+      "current_retained_runtime_observation",
+    );
+    assert.equal(
+      proof.current_retained_runtime_observation.observed_at_utc,
+      proof.recovered_at_utc,
+    );
+    assert.equal(
+      proof.current_retained_runtime_observation.original_executable.sha256,
+      proof.current_retained_runtime_observation.qualified_node_sha256,
+    );
+    const input = {
+      requestText: fs.readFileSync(recoveredRows[0].request_file, "utf8"),
+      reportText: fs.readFileSync(recoveredRows[0].expected_report_file, "utf8"),
+      datasetType: recoveredRows[0].dataset_type,
+      datasetId: recoveredRows[0].dataset_id,
+      datasetVersion: recoveredRows[0].dataset_version,
+      targetSha256: recoveredRows[0].target_sha256,
+      expectedProjectRef: account.project_ref,
+      expectedUserId: account.user_id,
+      expectedRetainedCliContentSha256: recoveredRows[0].recovery_cli_content_sha256,
+    };
+    assert.equal(validateIdentityPreflightRecoveryEvidence(proof, input).ok, true);
+    for (const change of [
+      (value: typeof proof) => {
+        value.new_cli_execution = true;
+      },
+      (value: typeof proof) => {
+        value.task_id = "foreign-task";
+      },
+      (value: typeof proof) => {
+        value.actor_id = "foreign-actor";
+      },
+      (value: typeof proof) => {
+        value.original.producer_base = root;
+      },
+      (value: typeof proof) => {
+        value.original.producer_auth.captured_at_utc = value.recovered_at_utc;
+      },
+      (value: typeof proof) => {
+        value.original.producer_auth.receipt_scope_sha256 = "0".repeat(64);
+      },
+      (value: typeof proof) => {
+        value.original.cli_exit_code = 2;
+      },
+      (value: typeof proof) => {
+        value.original.status = "completed";
+      },
+      (value: typeof proof) => {
+        value.original.query_generated_at_utc = value.recovered_at_utc;
+      },
+      (value: typeof proof) => {
+        value.current_owner_interpretation_auth.user_id = "foreign-user";
+      },
+      (value: typeof proof) => {
+        value.current_owner_interpretation_auth.captured_at_utc = "2000-01-01T00:00:00Z";
+      },
+      (value: typeof proof) => {
+        value.original.facts.run.sha256 = "0".repeat(64);
+      },
+      (value: typeof proof) => {
+        delete value.original.facts.producer_receipt;
+      },
+    ]) {
+      const forged = structuredClone(proof);
+      change(forged);
+      const { proof_sha256: _digest, ...scope } = forged;
+      forged.proof_sha256 = sha256Json(scope);
+      assert.equal(
+        validateIdentityPreflightRecoveryEvidence(forged, input).ok,
+        false,
+        "changed proof must fail even with a recomputed envelope digest",
+      );
+    }
+  }
   for (const artifact of read.artifacts.filter(
     (item) => item.kind === "file" && item.path.includes("/outputs/identity/"),
   )) {
@@ -879,7 +1350,7 @@ export async function verifyPublicIdentityWorkflow(
   };
   assert.equal(current.identity_report, evidence.path);
   assert.ok(current.sets[0].decisions.some((item) => item.kind === "identity"));
-  if (!mixed) assert.equal(preflightCalls, 2);
+  if (!mixed) assert.equal(preflightCalls, legacyIdentityRecovery ? 1 : 2);
   const initialPreflightCalls = preflightCalls;
   assert.equal(authCalls, 2);
   await facade.status(invocation);

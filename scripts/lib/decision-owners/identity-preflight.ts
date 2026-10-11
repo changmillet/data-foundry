@@ -274,6 +274,11 @@ export function createIdentityPreflightRunCommands({
     return timeoutMs + graceMs;
   }
 
+  function identityPreflightRunPath(value: unknown): string | null {
+    const resolved = resolveRepoPath(value);
+    return resolved ? path.resolve(resolved) : null;
+  }
+
   function identityPreflightRunReportFile(row: IdentityPreflightRow): string | null {
     const explicit =
       row.expected_report_file ||
@@ -281,22 +286,22 @@ export function createIdentityPreflightRunCommands({
       row.identityDecisionFile ||
       row.report_file ||
       row.reportFile;
-    if (explicit) return resolveRepoPath(explicit);
+    if (explicit) return identityPreflightRunPath(explicit);
     const outputDir = row.output_dir || row.outputDir;
     return outputDir
-      ? path.join(resolveRepoPath(outputDir)!, "outputs", "identity-decision.json")
+      ? path.join(identityPreflightRunPath(outputDir)!, "outputs", "identity-decision.json")
       : null;
   }
 
   function identityPreflightRunOutputDir(row: IdentityPreflightRow): string | null {
     const outputDir = row.output_dir || row.outputDir;
-    if (outputDir) return resolveRepoPath(outputDir);
+    if (outputDir) return identityPreflightRunPath(outputDir);
     const reportFile = identityPreflightRunReportFile(row);
     return reportFile ? path.dirname(path.dirname(reportFile)) : null;
   }
 
   function identityPreflightRunRequestFile(row: IdentityPreflightRow): string | null {
-    return resolveRepoPath(row.request_file || row.requestFile || row.input);
+    return identityPreflightRunPath(row.request_file || row.requestFile || row.input);
   }
 
   function identityPreflightRunRowKey(row: IdentityPreflightRow, index: number): string {
@@ -529,6 +534,8 @@ export function createIdentityPreflightRunCommands({
         maxAgeMs: positiveIntegerOption(options.authReceiptMaxAgeMs, 300_000) ?? 300_000,
         expectedProjectRef,
         expectedUserId,
+        sessionMode:
+          executionEnvironment.TIANGONG_LCA_AUTH_MODE === "access_token" ? "headless" : "oauth",
       });
     }
     const logDir = path.join(outDir, "logs");
@@ -863,6 +870,11 @@ export function createIdentityPreflightRunCommands({
               diskReportMtimeMs:
                 reportFile && fileExists(reportFile) ? fs.statSync(reportFile).mtimeMs : null,
               completedAtUtc: nowIso(),
+              requestFile: requestFile ?? undefined,
+              outputDir,
+              reportFile: reportFile ?? undefined,
+              stderrText: result.stderr || "",
+              signal: result.signal,
             });
         if (executionValidation?.ok) {
           writeJson(executionManifestFile, executionValidation.manifest);
@@ -1050,9 +1062,9 @@ export function createIdentityPreflightRunCommands({
       },
       policy: {
         fail_closed_execution:
-          "Every nonzero CLI exit, missing/malformed stdout or disk report, stale disk report, stdout/disk mismatch, ok:false, failed/error status, or execution-binding drift fails the selected row and batch.",
+          "Nonzero CLI exits fail except the qualified CLI 0.1.28 complete, bound, error-free needs_review/manual_review exit 1 diagnostic. Missing/malformed or stale reports, stdout/disk mismatch, ok:false, failed/error status, execution signals/stderr and binding drift remain failures.",
         valid_identity_findings:
-          "A blocked/needs_review report remains diagnostic evidence only when the CLI exits zero and stdout/disk bytes are bound by a valid execution manifest.",
+          "A blocked/needs_review report remains scientific diagnostic evidence only with a valid execution manifest; the pinned manual-review exit 1 contract does not resolve identity or grant a write.",
         curation_gate_usage:
           "Pass this same index to dataset-curation-gate with --identity-preflight-index so authoring packages include current and dependency identity-preflight context.",
       },

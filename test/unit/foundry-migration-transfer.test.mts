@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import test, { type TestContext } from "node:test";
 import { pathToFileURL } from "node:url";
 import {
@@ -14,6 +15,8 @@ import {
   stageFoundryMigration,
   auditFoundryMigration,
 } from "../../scripts/lib/foundry-migration-transfer.ts";
+import { transferFileFact } from "../../scripts/lib/foundry-migration-transfer-io.ts";
+import * as transferIo from "../../scripts/lib/foundry-migration-transfer-io.ts";
 
 function setup(t: TestContext) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "transfer-unit-"));
@@ -314,4 +317,266 @@ test("registered account intent is preserved while CLI account storage stays pri
     result.receipt.files.some((item) => item.source === fs.realpathSync(session)),
     false,
   );
+});
+
+function hashFixture(t: TestContext, content: Buffer) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "retained-file-hash-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const file = path.join(root, "payload");
+  fs.writeFileSync(file, content);
+  return { root, file, content };
+}
+
+test("retained inventory hashing stays within the payload scratch budget and hashes every byte", (t) => {
+  const chunkLimit = 1024 * 1024;
+  const payloads = [0, 1, 31, 4097, 65_539, chunkLimit + 17].map((size, index) =>
+    hashFixture(t, Buffer.alloc(size, index + 1)),
+  );
+  const allocations: number[] = [];
+  const allocate = Buffer.alloc.bind(Buffer);
+  const allocation = t.mock.method(
+    Buffer,
+    "alloc",
+    (size: number, fill?: string | number | Uint8Array, encoding?: BufferEncoding) => {
+      allocations.push(size);
+      return allocate(size, fill, encoding);
+    },
+  );
+  for (const { file, content } of payloads)
+    assert.deepEqual(transferFileFact(file), {
+      path: fs.realpathSync(file),
+      bytes: content.length,
+      sha256: createHash("sha256").update(content).digest("hex"),
+    });
+  allocation.mock.restore();
+  const budget = payloads.reduce((total, { content }) => total + Math.max(1, content.length), 0);
+  const allocated = allocations.reduce((total, size) => total + size, 0);
+  assert.ok(allocations.length >= payloads.length);
+  assert.ok(allocations.every((size) => size >= 1 && size <= chunkLimit));
+  assert.ok(allocated <= budget, `${allocated} scratch bytes exceed the ${budget} payload budget`);
+});
+
+test("retained file hashing accepts fragmented reads without hashing unused scratch bytes", (t) => {
+  const { file, content } = hashFixture(t, Buffer.from("qualified retained payload".repeat(3)));
+  const read = fs.readSync;
+  let reads = 0;
+  t.mock.method(
+    fs,
+    "readSync",
+    (fd: number, buffer: Buffer, offset: number, length: number, position: number | null) => {
+      reads += 1;
+      return read(fd, buffer, offset, Math.min(7, length), position);
+    },
+  );
+  assert.deepEqual(transferFileFact(file), {
+    path: fs.realpathSync(file),
+    bytes: content.length,
+    sha256: createHash("sha256").update(content).digest("hex"),
+  });
+  assert.ok(reads > 2, "The actual hash must span several short reads");
+});
+
+test("retained file hashing rejects a premature end of read instead of publishing a prefix hash", (t) => {
+  const { file } = hashFixture(t, Buffer.from("complete retained payload"));
+  const read = fs.readSync;
+  let first = true;
+  t.mock.method(
+    fs,
+    "readSync",
+    (fd: number, buffer: Buffer, offset: number, length: number, position: number | null) => {
+      if (!first) return 0;
+      first = false;
+      return read(fd, buffer, offset, Math.min(7, length), position);
+    },
+  );
+  assert.throws(() => transferFileFact(file), code("migration_source_changed"));
+});
+
+for (const drift of ["empty-file growth", "truncation", "same-byte replacement"] as const)
+  test(`retained file hashing rejects ${drift} during its read`, (t) => {
+    const { root, file, content } = hashFixture(
+      t,
+      drift === "empty-file growth" ? Buffer.alloc(0) : Buffer.from("immutable retained bytes"),
+    );
+    const read = fs.readSync;
+    let first = true;
+    t.mock.method(
+      fs,
+      "readSync",
+      (fd: number, buffer: Buffer, offset: number, length: number, position: number | null) => {
+        if (first) {
+          first = false;
+          if (drift === "empty-file growth") fs.appendFileSync(file, "changed");
+          else if (drift === "truncation") fs.truncateSync(file, content.length - 3);
+          else {
+            fs.renameSync(file, path.join(root, "original"));
+            fs.writeFileSync(file, content);
+          }
+        }
+        return read(fd, buffer, offset, length, position);
+      },
+    );
+    assert.throws(() => transferFileFact(file), code("migration_source_changed"));
+  });
+
+test("retained file hashing rejects the per-file size limit before allocating scratch", (t) => {
+  const { file } = hashFixture(t, Buffer.alloc(0));
+  fs.truncateSync(file, 64 * 1024 * 1024 + 1);
+  const allocation = t.mock.method(Buffer, "alloc");
+  assert.throws(() => transferFileFact(file), code("migration_file_invalid"));
+  assert.equal(allocation.mock.callCount(), 0);
+});
+
+test("fresh retained facts avoid interpreted ancestor traversal for canonical regular paths", (t) => {
+  const fixture = hashFixture(t, Buffer.from("fresh retained bytes"));
+  const root = fs.realpathSync.native(fixture.root);
+  const file = path.join(root, "payload");
+  const canonical = fs.realpathSync(file);
+  const generic = t.mock.method(fs, "realpathSync", fs.realpathSync);
+  for (const content of [fixture.content, Buffer.from("changed retained bytes")]) {
+    fs.writeFileSync(file, content);
+    assert.deepEqual(transferFileFact(file), {
+      path: canonical,
+      bytes: content.length,
+      sha256: createHash("sha256").update(content).digest("hex"),
+    });
+  }
+  assert.equal(
+    generic.mock.callCount(),
+    0,
+    "Canonical retained files must not repeat the interpreted absolute-ancestor walk",
+  );
+});
+
+test("retained facts preserve Unicode, spaces and selected path alias spelling", (t) => {
+  const fixture = hashFixture(t, Buffer.from("canonical path bytes"));
+  const directory = path.join(fixture.root, "Unicode 中文 space");
+  fs.mkdirSync(directory);
+  const file = path.join(directory, "目标 file.txt");
+  fs.writeFileSync(file, fixture.content);
+  const alias = `${directory}${path.sep}.${path.sep}目标 file.txt`;
+  assert.deepEqual(transferFileFact(alias), {
+    path: fs.realpathSync(alias),
+    bytes: fixture.content.length,
+    sha256: createHash("sha256").update(fixture.content).digest("hex"),
+  });
+});
+
+test("retained facts preserve the existing resolver when native path spelling differs", (t) => {
+  const { file, content } = hashFixture(t, Buffer.from("retained spelling bytes"));
+  const canonical = fs.realpathSync(file);
+  t.mock.method(fs.realpathSync, "native", () => `${canonical}.different-native-spelling`);
+  assert.deepEqual(transferFileFact(file), {
+    path: canonical,
+    bytes: content.length,
+    sha256: createHash("sha256").update(content).digest("hex"),
+  });
+});
+
+test("retained facts fall back after native resolution errors and still freshly hash changes", (t) => {
+  const { file, content } = hashFixture(t, Buffer.from("retained fallback bytes"));
+  const canonical = fs.realpathSync(file);
+  t.mock.method(fs.realpathSync, "native", () => {
+    throw Object.assign(new Error("synthetic native resolver unavailable"), { code: "ENOENT" });
+  });
+  for (const current of [content, Buffer.from("fresh fallback bytes")]) {
+    fs.writeFileSync(file, current);
+    assert.deepEqual(transferFileFact(file), {
+      path: canonical,
+      bytes: current.length,
+      sha256: createHash("sha256").update(current).digest("hex"),
+    });
+  }
+});
+
+test("retained content verification omits canonical output and freshly hashes each read", (t) => {
+  assert.equal(typeof transferIo.transferFileContentFact, "function");
+  const { file } = hashFixture(t, Buffer.from("retained content bytes"));
+  const native = t.mock.method(fs.realpathSync, "native", () => {
+    throw new Error("Canonical path output was not requested");
+  });
+  const generic = t.mock.method(fs, "realpathSync", () => {
+    throw new Error("Canonical path output was not requested");
+  });
+  for (const content of [Buffer.alloc(0), Buffer.from("first bytes"), Buffer.from("other bytes")]) {
+    fs.writeFileSync(file, content);
+    assert.deepEqual(transferIo.transferFileContentFact(file), {
+      bytes: content.length,
+      sha256: createHash("sha256").update(content).digest("hex"),
+    });
+  }
+  assert.equal(native.mock.callCount(), 0);
+  assert.equal(generic.mock.callCount(), 0);
+});
+
+test("retained content verification preserves complete read and file identity boundaries", (t) => {
+  assert.equal(typeof transferIo.transferFileContentFact, "function");
+  for (const mode of [
+    "fragmented",
+    "premature EOF",
+    "growth",
+    "truncation",
+    "replacement",
+    "size limit",
+    "directory",
+  ] as const) {
+    const { root, file, content } = hashFixture(
+      t,
+      mode === "growth" ? Buffer.alloc(0) : Buffer.from("immutable retained content".repeat(3)),
+    );
+    if (mode === "size limit") {
+      fs.truncateSync(file, 64 * 1024 * 1024 + 1);
+      const allocation = t.mock.method(Buffer, "alloc");
+      assert.throws(() => transferIo.transferFileContentFact(file), code("migration_file_invalid"));
+      assert.equal(allocation.mock.callCount(), 0);
+      allocation.mock.restore();
+      continue;
+    }
+    if (mode === "directory") {
+      fs.unlinkSync(file);
+      fs.mkdirSync(file);
+      assert.throws(() => transferIo.transferFileContentFact(file), code("migration_file_invalid"));
+      continue;
+    }
+    const read = fs.readSync;
+    let first = true;
+    const reads = t.mock.method(
+      fs,
+      "readSync",
+      (fd: number, buffer: Buffer, offset: number, length: number, position: number | null) => {
+        if (mode === "premature EOF" && !first) return 0;
+        if (first) {
+          first = false;
+          if (mode === "growth") fs.appendFileSync(file, "changed");
+          else if (mode === "truncation") fs.truncateSync(file, content.length - 3);
+          else if (mode === "replacement") {
+            fs.renameSync(file, path.join(root, "original"));
+            fs.writeFileSync(file, content);
+          }
+        }
+        return read(
+          fd,
+          buffer,
+          offset,
+          mode === "fragmented" || mode === "premature EOF" ? Math.min(7, length) : length,
+          position,
+        );
+      },
+    );
+    try {
+      if (mode === "fragmented") {
+        assert.deepEqual(transferIo.transferFileContentFact(file), {
+          bytes: content.length,
+          sha256: createHash("sha256").update(content).digest("hex"),
+        });
+        assert.ok(reads.mock.callCount() > 2);
+      } else
+        assert.throws(
+          () => transferIo.transferFileContentFact(file),
+          code("migration_source_changed"),
+        );
+    } finally {
+      reads.mock.restore();
+    }
+  }
 });

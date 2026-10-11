@@ -1,7 +1,12 @@
+import { readRows } from "./import-curation/internal/runtime-io.ts";
 import path from "node:path";
 import fs from "node:fs";
 import { sha256Text } from "./identity-preflight-proof.ts";
-import { FoundryContextError } from "./foundry-runtime-context.ts";
+import {
+  captureFoundryInput,
+  FoundryContextError,
+  type FoundryInputFact,
+} from "./foundry-runtime-context.ts";
 import { sha256Json } from "./identity-preflight-proof.ts";
 import { datasetIdentity } from "./import-curation/internal/dataset-payload.ts";
 function record(value: unknown): Json {
@@ -219,16 +224,42 @@ export function preparationValidationEvidence(row: Json, report: string, hash: u
 }
 
 export function readPreparationCliEvidence(
-  receipt: { report: string; exit: number },
+  receipt: { report: string; exit: number; input?: FoundryInputFact },
   rows: readonly unknown[],
   input: string,
 ) {
+  let validationRows = rows;
+  let validationInput = input;
+  if (receipt.input) {
+    const current = captureFoundryInput(receipt.input.path);
+    if (current.bytes > 8 * 1024 * 1024 || sha256Json(current) !== sha256Json(receipt.input))
+      fail();
+    validationRows = readRows(current.path);
+    if (
+      validationRows.length !== rows.length ||
+      validationRows.some((row, index) => {
+        const original = datasetIdentity(rows[index], index, "process");
+        const derived = datasetIdentity(row, index, "process");
+        const source = record(rows[index]),
+          wrapper = record(row);
+        return (
+          original.id !== derived.id ||
+          original.version !== derived.version ||
+          sha256Json(original.payload) !== sha256Json(derived.payload) ||
+          source.id !== wrapper.id ||
+          source.version !== wrapper.version
+        );
+      })
+    )
+      fail();
+    validationInput = current.path;
+  }
   const bytes = fs.readFileSync(receipt.report, "utf8");
   return {
     rows: parseFoundryPreparationCliReport({
       report: JSON.parse(bytes),
-      rows,
-      input,
+      rows: validationRows,
+      input: validationInput,
       outDir: path.dirname(path.dirname(receipt.report)),
       exit: receipt.exit,
     }),

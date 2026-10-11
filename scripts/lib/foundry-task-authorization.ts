@@ -7,6 +7,7 @@ import {
   resolveFoundryOutput,
   writeFoundryArtifact,
   assertFoundryWorkspaceActive,
+  FoundryContextError,
   type FoundryInputFact,
   type FoundryRuntimeContext,
 } from "./foundry-runtime-context.ts";
@@ -57,6 +58,31 @@ interface ApprovalRegistration {
   grant: { path: string; sha256: string };
   evidence: EvidenceRegistration[];
   identity: { project_ref: string; user_id: string };
+}
+
+/** Only the trusted host can refresh identity, after the locked current snapshot is verified. */
+function metadataIdentity(
+  context: FoundryRuntimeContext,
+  identity: VerifiedFoundryIdentity,
+  qualification: QualifiedFoundryRuntime | undefined,
+  refreshIdentity: (() => VerifiedFoundryIdentity) | undefined,
+): VerifiedFoundryIdentity {
+  try {
+    assertVerifiedFoundryIdentity(context, identity, qualification);
+    return identity;
+  } catch (error) {
+    if (
+      !refreshIdentity ||
+      !(error instanceof FoundryContextError) ||
+      error.code !== "identity_receipt_stale"
+    )
+      throw error;
+  }
+  const refreshed = refreshIdentity();
+  assertVerifiedFoundryIdentity(context, refreshed, qualification);
+  if (refreshed.mode !== identity.mode)
+    fail("identity_context_mismatch", "Identity refresh must retain the host authentication mode.");
+  return refreshed;
 }
 
 function inputFact(context: FoundryRuntimeContext, file: string): FoundryInputFact {
@@ -205,13 +231,14 @@ export async function registerFoundryTaskAuthorization(
     evidence: readonly TaskApprovalEvidence[];
     expectedPreviousSha256?: string | null;
     validateCurrent?: (task: LoadedTask, index: readonly ArtifactEntry[]) => void;
+    refreshIdentity?: () => VerifiedFoundryIdentity;
   },
   qualification?: QualifiedFoundryRuntime,
 ): Promise<{ authorization_sha256: string; pointer_sha256: string }> {
   assertFoundryWorkspaceActive(context);
   assertVerifiedFoundryIdentity(context, identity, qualification);
   return withFoundryTaskMetadata(context, (task, index) => {
-    assertVerifiedFoundryIdentity(context, identity, qualification);
+    identity = metadataIdentity(context, identity, qualification, options.refreshIdentity);
     options.validateCurrent?.(task, index);
     const input = inputFact(context, options.inputFile);
     const result = validateTaskAuthorization(options.grant, binding(context, task, input));
@@ -272,7 +299,9 @@ export async function registerFoundryTaskAuthorization(
         user_id: identity.receipt.identity.user_id,
       },
     };
-    assertVerifiedFoundryIdentity(context, identity, qualification);
+    const registrationBytes = writeRegistration(context, registration);
+    options.validateCurrent?.(task, index);
+    identity = metadataIdentity(context, identity, qualification, options.refreshIdentity);
     if (
       validateTaskAuthorization(options.grant, binding(context, task, input)).status !==
       "authorized"
@@ -281,8 +310,6 @@ export async function registerFoundryTaskAuthorization(
         "task_authorization_invalid",
         "Authorization expired or changed before it could be activated.",
       );
-    const registrationBytes = writeRegistration(context, registration);
-    options.validateCurrent?.(task, index);
     const pointer = bytes({
       schema: "tiangong-foundry.authorization-pointer.v1",
       authorization_sha256: authorization.authorization_sha256,
@@ -301,16 +328,16 @@ export async function loadFoundryTaskAuthorization(
   identity: VerifiedFoundryIdentity,
   inputFile: string,
   qualification?: QualifiedFoundryRuntime,
+  refreshIdentity?: () => VerifiedFoundryIdentity,
 ): Promise<ValidatedTaskAuthorization> {
   assertVerifiedFoundryIdentity(context, identity, qualification);
   const loaded = await withFoundryTaskMetadata(context, (task) => {
-    assertVerifiedFoundryIdentity(context, identity, qualification);
+    identity = metadataIdentity(context, identity, qualification, refreshIdentity);
     const input = inputFact(context, inputFile);
     if (!fs.existsSync(taskPath(context, "authorization.json")))
       fail("task_authorization_required", "This task has no active registered authorization.");
-    const pointer = object(
-      JSON.parse(readTaskBytes(context, "authorization.json").toString("utf8")),
-    );
+    const pointerBytes = readTaskBytes(context, "authorization.json");
+    const pointer = object(JSON.parse(pointerBytes.toString("utf8")));
     exact(pointer, ["schema", "authorization_sha256", "registration_sha256"]);
     if (
       pointer.schema !== "tiangong-foundry.authorization-pointer.v1" ||
@@ -423,7 +450,7 @@ export async function loadFoundryTaskAuthorization(
       )
         fail("authorization_evidence_invalid", "Grant and selected evidence no longer agree.");
     }
-    assertVerifiedFoundryIdentity(context, identity, qualification);
+    identity = metadataIdentity(context, identity, qualification, refreshIdentity);
     const refreshed = validateTaskAuthorization(
       JSON.parse(grantBytes.toString("utf8")),
       binding(context, task, input),
@@ -433,17 +460,22 @@ export async function loadFoundryTaskAuthorization(
         "task_authorization_invalid",
         "Task authorization expired during evidence verification.",
       );
+    if (!readTaskBytes(context, "authorization.json").equals(pointerBytes))
+      fail(
+        "authorization_update_conflict",
+        "Approval changed during locked identity and evidence verification.",
+      );
     return {
       authorization: refreshed.authorization,
       registeredInput: registeredInput.path,
-      pointerSha256: digest(readTaskBytes(context, "authorization.json")),
+      pointerSha256: digest(pointerBytes),
       inputPath: input.path,
     };
   });
   if (loaded.registeredInput !== loaded.inputPath) {
     await assertFoundryTaskInputLineage(context, loaded.registeredInput, loaded.inputPath);
     return withFoundryTaskMetadata(context, (task) => {
-      assertVerifiedFoundryIdentity(context, identity, qualification);
+      identity = metadataIdentity(context, identity, qualification, refreshIdentity);
       if (digest(readTaskBytes(context, "authorization.json")) !== loaded.pointerSha256)
         fail(
           "authorization_update_conflict",

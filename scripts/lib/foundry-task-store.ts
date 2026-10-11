@@ -65,7 +65,7 @@ export function readVerifiedTaskSnapshot(
   requiredTask(context);
   const task = loadTask(context, {});
   bindAccountIntent(context);
-  const index = readIndex(context);
+  const index = readFoundryTaskArtifactIndex(context);
   const extra = index
     .filter((entry) => options.verifyCommands?.includes(entry.command))
     .map((entry) => ({
@@ -209,7 +209,7 @@ export async function assertFoundryTaskInputLineage(
   });
 }
 
-function readIndex(context: FoundryRuntimeContext): ArtifactEntry[] {
+export function readFoundryTaskArtifactIndex(context: FoundryRuntimeContext): ArtifactEntry[] {
   const content = readTaskBytes(context, "artifact-index.jsonl", maxIndexBytes).toString("utf8");
   if (content && !content.endsWith("\n"))
     fail(
@@ -379,6 +379,24 @@ function verifyInputs(
   }
 }
 
+/** Reuse the producer/source verifier for every indexed artifact without selecting a new runtime. */
+export function verifyFoundryTaskArtifactLineage(
+  context: FoundryRuntimeContext,
+  task: LoadedTask,
+  index: ArtifactEntry[],
+): void {
+  verifyInputs(
+    context,
+    task,
+    index,
+    index.map((entry) => ({
+      path: taskPath(context, entry.path),
+      bytes: entry.bytes,
+      sha256: entry.sha256,
+    })),
+  );
+}
+
 function replaceIndex(
   context: FoundryRuntimeContext,
   entries: ArtifactEntry[],
@@ -418,6 +436,8 @@ export async function runFoundryTaskOperation(
       | "dataset-workflow-rows"
       | "dataset-workflow-assessment"
       | "dataset-workflow-identity"
+      | "dataset-workflow-identity-stage-prepare"
+      | "dataset-workflow-identity-stage-dispatch"
       | "dataset-workflow-finalize"
       | "dataset-workflow-authorization"
       | "dataset-workflow-native-contract"
@@ -456,7 +476,7 @@ export async function runFoundryTaskOperation(
         : createTask(context, input.task ?? {});
       bindAccountIntent(context);
       const indexBefore = readTaskBytes(context, "artifact-index.jsonl", maxIndexBytes);
-      const index = readIndex(context);
+      const index = readFoundryTaskArtifactIndex(context);
       verifyInputs(context, task, index);
       input.validateCurrent?.(
         Object.freeze(
@@ -581,6 +601,56 @@ export async function runFoundryTaskOperation(
                 sha256: digest(data),
               });
             },
+            registerExistingFiles(files) {
+              if (!active)
+                fail(
+                  "task_operation_closed",
+                  "Operation writers cannot escape the task transaction.",
+                );
+              if (!files.length) return;
+              const roster = [...files];
+              const verifyCurrent = () => {
+                assertFoundryWorkspaceWrite(context);
+                const current = loadTask(context, input.task ?? {});
+                if (current.jobSha256 !== task.jobSha256)
+                  fail(
+                    "task_operation_changed",
+                    "Task registration changed during output capture.",
+                  );
+                verifyInputs(context, task, index);
+              };
+              const capture = (file: string) => {
+                assertFoundryWorkspaceWrite(context);
+                const relativePath = relative(context, file);
+                if (!/^(?:outputs|evidence)\//u.test(relativePath))
+                  fail(
+                    "task_output_role_invalid",
+                    "Existing outputs cannot register task control records.",
+                  );
+                return { relativePath, fact: captureFoundryInput(taskPath(context, file)) };
+              };
+              // This read-only capture executes no owner command and writes no file bytes.
+              // Fresh writer/runtime/input bookends precede a second guarded read of every output.
+              verifyCurrent();
+              const captured = roster.map(capture);
+              verifyCurrent();
+              const rechecked = roster.map(capture);
+              for (const [position, current] of rechecked.entries()) {
+                const previous = captured[position];
+                if (
+                  current.relativePath !== previous.relativePath ||
+                  !sameFact(current.fact, previous.fact)
+                )
+                  fail("task_artifact_changed", "Existing output changed during capture.");
+              }
+              verifyCurrent();
+              for (const { relativePath, fact } of rechecked)
+                outputs.set(relativePath, {
+                  path: relativePath,
+                  bytes: fact.bytes,
+                  sha256: fact.sha256,
+                });
+            },
           });
           const resultRef = jsonObjects.get(digest(bytes(result)));
           if (!resultRef)
@@ -588,6 +658,10 @@ export async function runFoundryTaskOperation(
               "task_result_not_recorded",
               "Local operation must write its exact returned report as an artifact.",
             );
+          assertFoundryWorkspaceWrite(context);
+          const currentTask = loadTask(context, input.task ?? {});
+          if (currentTask.jobSha256 !== task.jobSha256)
+            fail("task_operation_changed", "Task registration changed before receipt publication.");
           verifyInputs(context, task, index);
           receipt = {
             schema: "tiangong-foundry.operation-receipt.v1",

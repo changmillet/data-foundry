@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tiangong-lca.local/foundry/foundry-managed-adoption.schema.json",
+  "title": "Foundry inventory-bound managed adoption carrier",
+  "$comment": "Structural shape only. The package-owned host verifies the independently trusted carrier, complete successor runtime equality, non-executable control component and same-package qualification brand.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "platform", "successor_manifest", "launches"],
+  "properties": {
+    "schema": { "const": "tiangong-foundry.managed-adoption.v1" },
+    "platform": { "enum": ["linux-x64", "linux-arm64", "darwin-arm64", "win32-x64"] },
+    "successor_manifest": {
+      "$ref": "https://tiangong-lca.local/foundry/foundry-managed-runtime.schema.json#/$defs/componentReference"
+    },
+    "launches": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "qualification"],
+        "properties": {
+          "id": {
+            "$ref": "https://tiangong-lca.local/foundry/foundry-managed-runtime.schema.json#/$defs/identifier"
+          },
+          "qualification": {
+            "anyOf": [
+              { "type": "null" },
+              {
+                "$ref": "https://tiangong-lca.local/foundry/foundry-managed-runtime.schema.json#/$defs/componentReference"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

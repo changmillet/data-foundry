@@ -21,6 +21,7 @@ export const foundryPackageStaticFiles = Object.freeze([
   "specs/schemas/foundry-interaction-input.schema.json",
   "specs/schemas/foundry-authorization-input.schema.json",
   "specs/schemas/foundry-reference-input.schema.json",
+  "specs/schemas/foundry-identity-stage-input.schema.json",
   "specs/schemas/foundry-workspace-migration-plan.schema.json",
   "specs/schemas/foundry-workspace-migration-transfer-plan.schema.json",
   "specs/schemas/foundry-migration-transfer-receipt.schema.json",
@@ -30,6 +31,7 @@ export const foundryPackageStaticFiles = Object.freeze([
   "specs/schemas/foundry-workspace-v2.schema.json",
   "specs/schemas/foundry-runtime-selection.schema.json",
   "specs/schemas/foundry-managed-runtime.schema.json",
+  "specs/schemas/foundry-managed-adoption.schema.json",
   "specs/schemas/runtime-qualification.schema.json",
   "specs/schemas/task-authorization.schema.json",
   "specs/schemas/tidas-runtime-expectation.schema.json",
@@ -60,7 +62,7 @@ const packageVersion = "0.1.17";
 const packageDescription =
   "Control plane for TianGong LCA external dataset import and TIDAS authoring work.";
 const cliPackageName = "@tiangong-lca/cli";
-const cliPackageVersion = "0.1.27";
+const cliPackageVersion = "0.1.28";
 const packageBin = "package-dist/scripts/package-entry.js";
 const packageApi = "package-dist/scripts/public-api.js";
 const packageTypes = "package-dist/scripts/public-api.d.ts";
@@ -77,6 +79,7 @@ const protocolSchemas = Object.freeze([
   "tiangong-foundry.interaction-input.v1",
   "tiangong-foundry.authorization-input.v1",
   "tiangong-foundry.reference-input.v1",
+  "tiangong-foundry.identity-stage-input.v1",
   "tiangong-foundry.facade-request-index.v1",
   "tiangong-foundry.workspace-migration-plan.v1",
   "tiangong-foundry.workspace-migration-transfer-plan.v2",
@@ -87,6 +90,7 @@ const protocolSchemas = Object.freeze([
   "tiangong-foundry.workspace.v2",
   "tiangong-foundry.workspace-runtime-selection.v1",
   "tiangong-foundry.managed-runtime.v1",
+  "tiangong-foundry.managed-adoption.v1",
   "tiangong-foundry.runtime-qualification.v1",
   "tiangong-foundry.tidas-runtime-expectation.v1",
   "tiangong-foundry.execution-context.v1",

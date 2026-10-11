@@ -17,6 +17,15 @@ function nestedValue(value: unknown, ...keys: string[]): unknown {
   return current;
 }
 
+/** Preserve individual language texts so query owners can filter and bound each value. */
+export function namePartText(
+  value: unknown,
+  asText: (value: unknown) => string,
+): string | string[] {
+  if (Array.isArray(value)) return value.flatMap((item) => namePartText(item, asText));
+  return asText(isJsonRecord(value) ? value["#text"] : value);
+}
+
 export function createBundleSourceContextUtils({ asText }: { asText: (value: unknown) => string }) {
   function isLikelyLocationCodeText(value: unknown): boolean {
     const text = asText(value).trim();
@@ -28,19 +37,11 @@ export function createBundleSourceContextUtils({ asText }: { asText: (value: unk
     const name = asJsonRecord(
       nestedValue(payload, "flowDataSet", "flowInformation", "dataSetInformation", "name"),
     );
-    const baseName = asJsonRecord(name.baseName);
-    const treatmentStandardsRoutes = asJsonRecord(name.treatmentStandardsRoutes);
-    const mixAndLocationTypes = asJsonRecord(name.mixAndLocationTypes);
-    const functionalUnitFlowProperties = asJsonRecord(name.functionalUnitFlowProperties);
     return {
-      base_name: asText(baseName["#text"] ?? name.baseName),
-      treatment_standards_routes: asText(
-        treatmentStandardsRoutes["#text"] ?? name.treatmentStandardsRoutes,
-      ),
-      mix_and_location_types: asText(mixAndLocationTypes["#text"] ?? name.mixAndLocationTypes),
-      functional_unit_flow_properties: asText(
-        functionalUnitFlowProperties["#text"] ?? name.functionalUnitFlowProperties,
-      ),
+      base_name: namePartText(name.baseName, asText),
+      treatment_standards_routes: namePartText(name.treatmentStandardsRoutes, asText),
+      mix_and_location_types: namePartText(name.mixAndLocationTypes, asText),
+      functional_unit_flow_properties: namePartText(name.flowProperties, asText),
     };
   }
 

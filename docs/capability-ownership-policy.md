@@ -93,9 +93,9 @@ checkPaths:
   - scripts/lib/import-curation/internal/mutation-manifest-workflow.ts
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-10-08
-lastReviewedCommit: d07ac492a3a5891502039a6cc83ef30b9fbba50b
-lastReviewedNote: "Reviewed Foundry #237 exact three-field 0.1.16 to 0.1.17 release projection from eligible PR236 Main d07ac492; CLI/native pins, lock closure, authorization and all business source remain unchanged. Official publication and final managed qualification remain pending."
+lastReviewedAt: 2026-10-11
+lastReviewedCommit: bf43cdf7ed694412bf6ddfc9a308b704600d1827
+lastReviewedNote: "Reviewed the bounded directory-batch repair on BF43 after its actual Native19/20 failure. One result captures only accepted original run and registered output roots; the owner report self-path binds its fixed original run file. TaskStore, fresh before/middle/after bookends, two output reads, final receipt/input/CAS checks, per-write checks, original assertions/deadlines and UNKNOWN/no-requery remain. Existing focused31/24/23 local results and independent foreign-locator RED-to-GREEN evidence are retained; new full Source/package/emitted/installed/Native qualification remains pending. No cross-operation proof cache, whole-parent capture, scientific approval, OriginalDATA replay/default/Toolkit034/release change."
 ---
 
 # Capability Ownership Policy
@@ -259,3 +259,7 @@ Every missing shared capability follow-up must include:
 The machine-readable rules live in `specs/capability-ownership-rules.json`.
 
 Canonical support reads and complete pagination belong to CLI `dataset support-cache export`. Foundry consumes its report/artifacts, validates provenance and public scope, and owns only cache summarization/mapping policy and atomic local replacement. It contains no password-grant or REST implementation for this path.
+
+Same-task compatibility and retained identity recovery are Foundry task/provenance capabilities. They preserve original registration, report, source and attempt ownership. Full package/CLI/Toolkit compatibility is independently qualified; CLI authentication/search, TIDAS conformance and Agent semantic identity decisions stay with their owners. Read-only dependency selection does not create dependency authoring/mutation targets. Incomplete historical authentication remains UNKNOWN rather than authorizing a replacement query or scientific approval.
+
+The managed adoption carrier and typed authentication projection belong to Foundry. CLI still owns generic manifest/inventory/IPC execution and explicit cli-auth filtering, private sessions, current-user verification and business transactions. Foundry uses those public primitives without copying the CLI scheduler, login/cache or database writer. A carrier qualifies compatibility only; it does not approve scientific identity or writes.

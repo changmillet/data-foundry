@@ -112,4 +112,5 @@ export interface FoundryTaskOperation {
   readonly nowIso: () => string;
   writeText(filePath: string, bytes: string | NodeJS.ArrayBufferView): void;
   writeJson(filePath: string, value: unknown): void;
+  registerExistingFiles(filePaths: readonly string[]): void;
 }

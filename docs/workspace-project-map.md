@@ -89,9 +89,9 @@ checkPaths:
   - scripts/lib/import-curation/internal/mutation-manifest-workflow.ts
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-10-08
-lastReviewedCommit: d07ac492a3a5891502039a6cc83ef30b9fbba50b
-lastReviewedNote: "Reviewed Foundry #237 exact three-field 0.1.16 to 0.1.17 release projection from eligible PR236 Main d07ac492; CLI/native pins, lock closure, authorization and all business source remain unchanged. Official publication and final managed qualification remain pending."
+lastReviewedAt: 2026-10-11
+lastReviewedCommit: bf43cdf7ed694412bf6ddfc9a308b704600d1827
+lastReviewedNote: "Reviewed the bounded directory-batch repair on BF43 after its actual Native19/20 failure. One result captures only accepted original run and registered output roots; the owner report self-path binds its fixed original run file. TaskStore, fresh before/middle/after bookends, two output reads, final receipt/input/CAS checks, per-write checks, original assertions/deadlines and UNKNOWN/no-requery remain. Existing focused31/24/23 local results and independent foreign-locator RED-to-GREEN evidence are retained; new full Source/package/emitted/installed/Native qualification remains pending. No cross-operation proof cache, whole-parent capture, scientific approval, OriginalDATA replay/default/Toolkit034/release change."
 ---
 
 # Workspace Project Map
@@ -140,3 +140,7 @@ The Wave 26 library, classification, authoring, process-scope and batch modules 
 | Foundry-local surface cleanup | `tiangong-lca-data-foundry` | remove old aliases, empty command categories, and orphaned draft docs only after metadata, tests, docs, and docpact show no remaining consumer |
 
 Before implementing a missing capability, classify it with `docs/capability-ownership-policy.md` and `specs/capability-ownership-rules.json`.
+
+Original-task compatibility belongs to the Foundry native receipt chain; candidate selection and human-facing questions remain Skills-owned. Its host qualification binds exact installed Foundry/CLI/Node/Toolkit bytes independently of version labels. Retained report recovery preserves indexed originals, while machine-gate and original-consumer validation remain separate. See [the public runtime contract](public-runtime-contract.md#same-task-compatibility-and-retained-identity-diagnostics).
+
+Foundry owns the original managed-entry carrier reader and existing typed authentication adapter. The generic CLI runtime manager/IPC and OAuth/headless owner remain CLI-owned and unchanged. Full S execution inventory equality and independent L admission preserve that boundary; no repository-specific writer, replacement Task or default-install change is part of this repair.

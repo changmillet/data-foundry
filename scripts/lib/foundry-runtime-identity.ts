@@ -164,7 +164,9 @@ export function assertVerifiedFoundryIdentity(
     identity.runtimeEntrySha256 !== context.runtime.entrySha256 ||
     (qualification !== undefined &&
       identity.runtimeQualificationSha256 !== qualification.qualification_sha256) ||
-    !context.accountIntent
+    !context.accountIntent ||
+    identity.receipt.project.project_ref !== context.accountIntent.projectRef ||
+    identity.receipt.identity.user_id !== context.accountIntent.userId
   )
     reject("identity_context_mismatch", "Identity proof is not bound to the current task context.");
   try {

@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import path from "node:path";
 
 import {
   parseAuthIdentityReceipt,
@@ -249,6 +250,74 @@ function isFailure(value: JsonRecord | ValidationFailure): value is ValidationFa
   return value.ok === false && typeof value.code === "string" && typeof value.message === "string";
 }
 
+function isSelectedDiagnosticPath(reported: unknown, expected: string): boolean {
+  return (
+    reported === expected || (path.isAbsolute(expected) && reported === path.resolve(expected))
+  );
+}
+
+/** Current and retained qualified CLI contracts return one for manual review and execution failures. */
+function isPinnedManualReviewDiagnostic(
+  input: Parameters<typeof validateIdentityPreflightExecution>[0],
+  report: JsonRecord,
+): boolean {
+  const binding = input.binding;
+  const argv = binding.command.semantic_argv;
+  if (
+    binding.cli.package_name !== "@tiangong-lca/cli" ||
+    !["0.1.22", "0.1.27", "0.1.28"].includes(binding.cli.package_version) ||
+    !/^sha256-[0-9a-f]{64}$/u.test(binding.cli.package_integrity ?? "") ||
+    binding.inputs.authReceipt?.cli.package_name !== binding.cli.package_name ||
+    binding.inputs.authReceipt.cli.package_version !== binding.cli.package_version ||
+    !["flow", "process"].includes(binding.dataset.type) ||
+    argv.length !== 5 ||
+    argv[0] !== binding.dataset.type ||
+    argv[1] !== "identity-preflight" ||
+    argv[2] !== "--json" ||
+    argv[3] !== "--timeout-ms" ||
+    !/^[1-9][0-9]*$/u.test(argv[4]) ||
+    report.schema_version !== 1 ||
+    report.kind !== binding.dataset.type ||
+    report.status !== "needs_review" ||
+    report.decision !== "manual_review" ||
+    report.next_action !== "queue_manual_review" ||
+    !isRecord(report.target) ||
+    report.target.id !== binding.dataset.id ||
+    report.target.version !== binding.dataset.version ||
+    typeof input.requestFile !== "string" ||
+    typeof input.outputDir !== "string" ||
+    typeof input.reportFile !== "string" ||
+    !isSelectedDiagnosticPath(report.input_path, input.requestFile) ||
+    !isSelectedDiagnosticPath(report.out_dir, input.outputDir) ||
+    !isRecord(report.files) ||
+    !isSelectedDiagnosticPath(report.files.identity_decision, input.reportFile) ||
+    input.stderrText !== "" ||
+    input.signal !== null ||
+    !Array.isArray(report.candidates) ||
+    !Array.isArray(report.candidate_sources) ||
+    !Array.isArray(report.findings) ||
+    !Array.isArray(report.blockers) ||
+    report.blockers.length !== 0 ||
+    Object.hasOwn(report, "error") ||
+    (Object.hasOwn(report, "errors") &&
+      (!Array.isArray(report.errors) || report.errors.length !== 0))
+  )
+    return false;
+  const generated = Date.parse(String(report.generated_at_utc ?? ""));
+  if (
+    !Number.isFinite(generated) ||
+    generated < input.startedAtMs ||
+    generated > Date.parse(input.completedAtUtc)
+  )
+    return false;
+  try {
+    const current = createIdentityPreflightBinding(binding.inputs);
+    return stableJson(bindingEvidence(current)) === stableJson(bindingEvidence(binding));
+  } catch {
+    return false;
+  }
+}
+
 export function validateIdentityPreflightExecution(input: {
   binding: IdentityPreflightBinding;
   exitCode: number;
@@ -257,8 +326,30 @@ export function validateIdentityPreflightExecution(input: {
   startedAtMs: number;
   diskReportMtimeMs: number | null;
   completedAtUtc: string;
+  requestFile?: string;
+  outputDir?: string;
+  reportFile?: string;
+  stderrText?: string;
+  signal?: string | null;
 }): ValidationFailure | ValidationSuccess {
-  if (input.exitCode !== 0) {
+  try {
+    const request = exactRecord(JSON.parse(input.binding.inputs.requestText), "Identity request");
+    if (
+      sha256Text(JSON.stringify(request.target)) !== input.binding.dataset.target_sha256 ||
+      stableJson(bindingEvidence(createIdentityPreflightBinding(input.binding.inputs))) !==
+        stableJson(bindingEvidence(input.binding))
+    )
+      return failure(
+        "identity_preflight_execution_binding_mismatch",
+        "Identity request or execution binding changed.",
+      );
+  } catch {
+    return failure(
+      "identity_preflight_execution_binding_mismatch",
+      "Identity request or execution binding is invalid.",
+    );
+  }
+  if (input.exitCode !== 0 && input.exitCode !== 1) {
     return failure("identity_preflight_cli_exit_nonzero", "Identity-preflight CLI exited nonzero.");
   }
   const stdoutReport = parseReport(
@@ -285,6 +376,12 @@ export function validateIdentityPreflightExecution(input: {
   }
   if (Object.hasOwn(diskReport, "ok") && diskReport.ok !== true) {
     return failure("identity_preflight_report_not_ok", "Identity-preflight report has ok != true.");
+  }
+  if (input.exitCode === 1 && !isPinnedManualReviewDiagnostic(input, diskReport)) {
+    return failure(
+      "identity_preflight_cli_exit_nonzero",
+      "Identity-preflight CLI exited nonzero without a bound manual-review diagnostic.",
+    );
   }
   const status = typeof diskReport.status === "string" ? diskReport.status : "";
   if (!ALLOWED_REPORT_STATUSES.has(status)) {
