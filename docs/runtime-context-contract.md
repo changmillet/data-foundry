@@ -40,14 +40,14 @@ checkPaths:
   - test/scenarios/runtime-workspace.test.mts
   - test/scenarios/foundry-execution-admission.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
-lastReviewedAt: 2026-10-11
-lastReviewedCommit: 2d5cbf38f4e44b4b4d30bba52abd38ef8947bed3
+lastReviewedAt: 2026-10-12
+lastReviewedCommit: d276629d07517d3a4ea2d77e88d37c03555ee3ee
 related:
   - docs/architecture.md
   - docs/task-authorization-contract.md
   - docs/public-runtime-contract.md
   - docs/package-distribution-contract.md
-lastReviewedNote: "Reviewed current-main integration of explicit preparation review, payload-bound context and diagnostic-only failures, plus native candidate generation and independently reviewed managed adoption; original Task eligibility and data acceptance remain separate."
+lastReviewedNote: "Reviewed restored JSON/JSONL source-trace parity, unchanged per-row target/version/hash and trace collector, safe malformed-source diagnostics and public continuation; original runtime/task/authorization and no-replay boundaries remain intact."
 ---
 
 # Runtime context
