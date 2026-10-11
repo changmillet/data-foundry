@@ -27,6 +27,8 @@ const packageFiles = [
   "specs/schemas/foundry-authorization-input.schema.json",
   "specs/schemas/foundry-reference-input.schema.json",
   "specs/schemas/foundry-identity-stage-input.schema.json",
+  "specs/schemas/foundry-quality-review-input.schema.json",
+  "specs/schemas/foundry-quality-review-draft.schema.json",
   "specs/schemas/foundry-workspace-migration-plan.schema.json",
   "specs/schemas/foundry-workspace-migration-transfer-plan.schema.json",
   "specs/schemas/foundry-migration-transfer-receipt.schema.json",
@@ -165,7 +167,14 @@ test("package descriptor rejects platform, path, order and digest drift", () => 
       "package-dist/scripts/public-api.d.ts",
     ].map((selectedPath) => ({ path: selectedPath, bytes: 1, sha256 })),
   );
-  for (const name of ["task-start", "semantic-input", "interaction-input", "authorization-input"]) {
+  for (const name of [
+    "task-start",
+    "semantic-input",
+    "interaction-input",
+    "authorization-input",
+    "reference-input",
+    "quality-review-input",
+  ]) {
     const schema = readJson(`specs/schemas/foundry-${name}.schema.json`);
     const properties = schema.properties as Record<string, { const?: unknown }>;
     const protocol = properties.schema.const;

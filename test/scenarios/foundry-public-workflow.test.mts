@@ -6,6 +6,7 @@ import path from "node:path";
 import test from "node:test";
 import { qualifyFoundryRuntime } from "../../scripts/lib/foundry-runtime-qualification.ts";
 import { createFoundryRuntime } from "../../scripts/foundry-runtime.ts";
+import { createFoundryFacade } from "../../scripts/foundry-facade.ts";
 import { assessFoundryWorkflowRows } from "../../scripts/lib/foundry-workflow-assessment.ts";
 import { currentWorkflowState } from "../../scripts/lib/foundry-workflow-state.ts";
 import { finalizeFoundryWorkflow } from "../../scripts/lib/foundry-workflow-finalize.ts";
@@ -239,7 +240,7 @@ for (const variant of [
   "blocker-edited",
 ] as const) {
   test(`a blocked queue rejects an unbound ${variant} report before indexing`, async (t) => {
-    const { root, workspace, facade } = workflowFixture(t);
+    const { root, workspace, facade, runtimeSelection } = workflowFixture(t);
     const seed = path.join(root, `${variant}-seed.json`);
     const specFile = path.join(root, `${variant}-task.json`);
     const missingFlowId = "91919191-9191-4919-8919-919191919191";
@@ -278,7 +279,7 @@ for (const variant of [
     );
     const before = fs.readFileSync(index);
     const delegated = childProcess.spawnSync;
-    let intercepted = false;
+    let intercepted = 0;
     t.mock.method(
       childProcess,
       "spawnSync",
@@ -287,7 +288,7 @@ for (const variant of [
         const argv = Array.isArray(args[1]) ? args[1] : [];
         if (argv[1] !== "dataset" || argv[2] !== "curation-queue" || argv[3] !== "build")
           return result;
-        intercepted = true;
+        intercepted++;
         assert.equal(result.status, 1);
         const report = JSON.parse(String(result.stdout));
         if (variant === "wrong-exit") return { ...result, status: 0 };
@@ -325,14 +326,68 @@ for (const variant of [
       syncBuiltinESMExports();
     });
     const refused = await facade.resume(invocation);
-    assert.equal(intercepted, true);
-    assert.equal(refused.status, "blocked", JSON.stringify(refused.blockers));
-    assert.equal(refused.blockers[0]?.code, "workflow_queue_invalid");
-    assert.deepEqual(fs.readFileSync(index), before, "invalid queue outputs cannot gain authority");
+    assert.equal(intercepted, 1);
+    assert.equal(refused.status, "failed", JSON.stringify(refused.blockers));
+    assert.equal(refused.blockers[0]?.code, "workflow_child_failed");
+    const after = fs.readFileSync(index);
+    assert.deepEqual(
+      after.subarray(0, before.length),
+      before,
+      "prior producer history is unchanged",
+    );
+    const appended = after
+      .subarray(before.length)
+      .toString("utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as { command: string; receipt: { path: string } });
+    assert.equal(appended.length, 1);
+    assert.equal(
+      appended[0].command,
+      "dataset-workflow-failure",
+      "only the failure gains an index entry",
+    );
+    const receipt = JSON.parse(
+      fs.readFileSync(path.join(path.dirname(index), appended[0].receipt.path), "utf8"),
+    );
+    assert.equal(
+      receipt.status,
+      "failed",
+      "invalid queue output cannot become a successful producer",
+    );
+    const diagnostic = refused.artifacts.find(
+      (item) => item.role === "workflow-child-failure.json",
+    );
+    assert.ok(diagnostic?.kind === "file");
+    const failure = JSON.parse(fs.readFileSync(diagnostic.path, "utf8"));
+    assert.equal(failure.failure.kind, "stage_rejected");
+    assert.equal(
+      failure.failure.rejection.code,
+      "workflow_queue_invalid",
+      "the original owner rejection remains available",
+    );
     assert.ok(
       refused.artifacts.every(
         (item) => !["curation-queue-manifest.json", "foundry-assessment.json"].includes(item.role),
       ),
+    );
+    const reloaded = createFoundryFacade({
+      moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+      workspace,
+      cacheBase: path.join(root, "cache"),
+      runtimeSelection,
+    });
+    for (const result of [await reloaded.status(invocation), await reloaded.resume(invocation)]) {
+      assert.equal(result.status, "blocked", JSON.stringify(result.blockers));
+      const retained = result.artifacts.find((item) => item.role === "workflow-child-failure.json");
+      assert.ok(retained?.kind === "file");
+      assert.equal(retained.sha256, diagnostic.sha256);
+    }
+    assert.equal(intercepted, 1, "status and resume cannot repeat the rejected queue call");
+    assert.deepEqual(
+      fs.readFileSync(index),
+      after,
+      "failure readback appends no producer or action",
     );
   });
 }

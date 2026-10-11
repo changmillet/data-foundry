@@ -29,10 +29,10 @@ test("post-authoring finalize help retains exact stage, type, and byte contract"
   );
   assert.equal(result.status, 0);
   assert.equal(result.stderr.length, 0);
-  assert.equal(result.stdout.length, 5606);
+  assert.equal(result.stdout.length, 5666);
   assert.equal(
     createHash("sha256").update(result.stdout).digest("hex"),
-    "6919541f20242fdaedce027a9dfb4e39a53fdcad5d99317b06d194707334a0bb",
+    "0147ef71f028d79fc44f0d1c88e93fd1e9354c5b30297b19f030a9c129d3c11e",
   );
   const help = JSON.parse(result.stdout.toString()) as Record<string, unknown>;
   assert.deepEqual(help.supported_types, [
@@ -44,6 +44,14 @@ test("post-authoring finalize help retains exact stage, type, and byte contract"
     "lifecyclemodel",
   ]);
   assert.equal(help.remote_write_mode, "read-only");
+  const cleanup = (help.stage_pipeline as Array<Record<string, unknown>>).find(
+    (stage) => stage.stage === "rewrite_and_cleanup",
+  );
+  assert.ok(cleanup);
+  assert.ok(
+    (cleanup.inputs as string[]).includes("selected read-only Process validation references"),
+  );
+  assert.deepEqual(cleanup.outputs, ["rewritten rows", "cleaned rows", "rewrite reports"]);
 });
 
 test("post-authoring finalize preserves rewrite, evidence, gate, manifest, and handoff order", () => {

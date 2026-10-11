@@ -1,0 +1,271 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Foundry Quality Review Draft v1",
+  "$comment": "Completed generated draft submission. Emitted templates deliberately have null disposition and empty rationale/evidence and are invalid until the reviewer makes actual choices. The owner captures evidence hashes and enforces quality-review-input.v1 scope and time bounds.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "binding",
+    "runtime_qualification_sha256",
+    "rows_manifest_sha256",
+    "assessment_sha256",
+    "context_sha256",
+    "qa_report_sha256",
+    "qa_findings_sha256",
+    "reference_inputs_sha256",
+    "interaction_context_sha256",
+    "expected_previous_sha256",
+    "issued_at_utc",
+    "expires_at_utc",
+    "reviews",
+    "evidence"
+  ],
+  "properties": {
+    "schema": {
+      "const": "tiangong-foundry.quality-review-draft.v1"
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workspace_id",
+        "actor_id",
+        "project_ref",
+        "user_id",
+        "profile_id",
+        "task_id",
+        "profile_sha256",
+        "input_scope_sha256"
+      ],
+      "properties": {
+        "workspace_id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,255}$"
+        },
+        "actor_id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,255}$"
+        },
+        "project_ref": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,255}$"
+        },
+        "user_id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,255}$"
+        },
+        "profile_id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,255}$"
+        },
+        "task_id": {
+          "type": "string",
+          "pattern": "^task-[0-9a-f]{64}-r[0-9]{4}$"
+        },
+        "profile_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "input_scope_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "runtime_qualification_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "rows_manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "assessment_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "context_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "qa_report_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "qa_findings_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "reference_inputs_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "expected_previous_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "issued_at_utc": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"
+    },
+    "expires_at_utc": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"
+    },
+    "reviews": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 128,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/review"
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/evidence"
+      },
+      "allOf": [
+        {
+          "contains": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "user-decision"
+              }
+            },
+            "required": ["kind"]
+          }
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "source-model"
+              }
+            },
+            "required": ["kind"]
+          }
+        }
+      ]
+    },
+    "interaction_context_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "row_index",
+        "id",
+        "version",
+        "payload_sha256",
+        "finding_sha256",
+        "code",
+        "evidence_ids",
+        "rationale",
+        "disposition"
+      ],
+      "properties": {
+        "row_index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]{2}\\.[0-9]{2}\\.[0-9]{3}$"
+        },
+        "payload_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "finding_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "code": {
+          "const": "process_material_balance_deviation"
+        },
+        "evidence_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,255}$"
+          }
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8192,
+          "pattern": "\\S"
+        },
+        "disposition": {
+          "const": "accept-interpretation"
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "file"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,255}$"
+        },
+        "kind": {
+          "enum": ["user-decision", "source-model"]
+        },
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^[^\\u0000\\r\\n]+$",
+          "allOf": [
+            {
+              "pattern": "\\S"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

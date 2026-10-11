@@ -100,6 +100,10 @@ USLCI's `preserve_referenced_review_sources` domain rule retains a source refere
 
 Worldsteel's naming rule classifies only the single trailing `Global` or `EU` plus data-year match, optionally followed by `v<number>`, in a process `baseName`. It applies only to the `latin-author-year` marker. Any additional author/year match, table/figure marker, other name field or other dataset type remains subject to the content policy. Adding another geography requires reviewed source evidence and tests. No whole content-policy rule is waived by a profile.
 
+## Preparation review and write authority
+
+The public preparation-quality input described in [the runtime contract](public-runtime-contract.md#preparation-quality-review) records a separately scoped disposition for a current Process mass observation before finalization. It requires applicable user-decision and source-model evidence, exact object/content/QA/context bindings and an unexpired receipt. It does not activate `authorization.json`, add `qa_waivers` or grant an action. Finalization and pre-dispatch admission independently recheck the receipt and its exact scientific payload; final ordinary write approval remains required. The existing authorization-based code waiver below is unchanged and must not be used to broaden an object-specific preparation review to an entire Process batch.
+
 ## QA exceptions
 
 The only v1 QA exception is `process_material_balance_deviation` for `process`. The task must provide both user approval and referenced, content-bound `source-model` evidence demonstrating why this exact source scope is an aggregation/formula observation. The source format name or presence of `LCI_RESULT` alone is insufficient. Other QA codes, schema errors, unit-scale errors, missing references and full-context requirements cannot be waived by this contract.

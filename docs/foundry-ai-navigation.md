@@ -181,6 +181,10 @@ For shared CLI primitives, start at `scripts/lib/identity-preflight-proof.ts` fo
 
 For package work, start at `docs/package-distribution-contract.md`. `scripts/package-entry.ts` is the public-only bin, `scripts/public-api.ts` is the typed host surface, `tsconfig.package.json` defines reachability, `build-foundry-package.ts` creates the sanitized stage and descriptor, and `verify-foundry-package.ts` compares that stage with the pack file set. `foundry-package-contract.ts` is the installed integrity owner; the unit package contract and `scenarios/foundry-package-consumer.test.mts` are the executable boundaries. Do not enter the 63-command graph from these files.
 
+For exact Process validation context, start at `foundry-validation-reference-context.ts`, the registered reference input and `foundry-workflow-assessment.ts`. The projection is validation-only: complete Flow documents and current report bindings travel through preparation and finalization while business reference closure starts at the actual dataset payload. `curation-cleanup.ts` preserves the captured context through its producer-bound proof; it does not infer extra write targets from envelope metadata. The finalization Flow-evidence scenarios cover native validation and both public save-draft dry-run owners with missing, wrong-version, wrong-type, conflicting and changed evidence. Existing strict datetime behavior stays with the prewrite cleanup owner.
+
+For generated review inputs, consume the public `quality_review_input_template` through the existing quality-review selector; do not reconstruct binding hashes or accepted decisions. For failed local CLI evidence, start at `foundry-workflow-child-failure.ts` and the original operation receipt/index. Status reads retain failures without re-dispatch; historical missing producer and mutation UNKNOWN recovery remain outside this path.
+
 ## Command paths
 
 User workspace/task operations follow:

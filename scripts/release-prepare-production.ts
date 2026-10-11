@@ -16,6 +16,7 @@ import { readFoundryReleaseArtifact } from "./lib/foundry-release-prepared.ts";
 import {
   projectFoundryProductionLock,
   type FoundryProductionLock,
+  projectFoundryCliCandidateLock,
 } from "./lib/foundry-release-production.ts";
 import { materializeFoundryProductionPackages } from "./lib/foundry-release-production-materialize.ts";
 import {
@@ -26,6 +27,13 @@ import {
 
 import { freezeFoundryReleaseValue } from "./lib/foundry-release-component-io.ts";
 import type { VerifiedNpmRelease } from "./lib/foundry-release-provenance.ts";
+import {
+  prepareFoundryCliCandidate,
+  assertPreparedFoundryCliCandidate,
+  type FoundryCliCandidateSelection,
+  type PreparedFoundryCliCandidate,
+  type FoundryCliCandidateEvidence,
+} from "./lib/foundry-release-cli-candidate.ts";
 
 export interface PreparedFoundryProductionInput {
   readonly output: string;
@@ -37,11 +45,12 @@ export interface PreparedFoundryProductionInput {
   readonly lock: FoundryProductionLock;
   readonly software: readonly FoundrySbomPackage[];
   readonly licenses: ReturnType<typeof collectFoundryNpmMetadata>["license_index"];
-  readonly cli: VerifiedNpmRelease;
+  readonly cli: VerifiedNpmRelease | FoundryCliCandidateEvidence;
   readonly cliContentSha256: string;
   readonly archive: Readonly<{ bytes: number; sha256: string }>;
 }
 const preparedProduction = new WeakSet<object>();
+const localCandidates = new WeakMap<object, PreparedFoundryCliCandidate>();
 export function assertPreparedFoundryProductionInput(
   value: unknown,
 ): asserts value is PreparedFoundryProductionInput {
@@ -49,6 +58,8 @@ export function assertPreparedFoundryProductionInput(
     throw new Error(
       "Runtime assembly requires freshly prepared production inputs, not serialized receipts.",
     );
+  const candidate = localCandidates.get(value);
+  if (candidate) assertPreparedFoundryCliCandidate(candidate);
 }
 
 const usage = "Usage: release-prepare-production --output <new-absolute-directory>";
@@ -56,6 +67,7 @@ const json = (value: unknown): Buffer => Buffer.from(`${JSON.stringify(value, nu
 
 export async function prepareFoundryProductionInput(
   selectedOutput: string,
+  cliCandidate?: FoundryCliCandidateSelection,
 ): Promise<PreparedFoundryProductionInput> {
   if (!path.isAbsolute(selectedOutput))
     throw new Error("Production input output must be absolute.");
@@ -118,26 +130,35 @@ export async function prepareFoundryProductionInput(
     manifest.dependencies[inputs.cli.package] !== inputs.cli.version
   )
     throw new Error("Production CLI input differs from the reviewed package dependency.");
-  const lock = projectFoundryProductionLock(
+  const owningLock = projectFoundryProductionLock(
     readFoundryReleaseArtifact(path.join(root, "pnpm-lock.yaml"), 16 * 1024 * 1024),
     manifest.dependencies,
   );
-  const cli = await verifyPublicNpmRelease(cliExpected);
+  const publication = cliCandidate ? null : await verifyPublicNpmRelease(cliExpected);
   if (
-    !lock.packages.some(
-      (pkg) => pkg.name === inputs.cli.package && pkg.integrity === cli.evidence.tarball.integrity,
+    publication &&
+    !owningLock.packages.some(
+      (pkg) =>
+        pkg.name === inputs.cli.package && pkg.integrity === publication.evidence.tarball.integrity,
     )
   )
     throw new Error("Production lock differs from the independently verified public CLI artifact.");
   fs.mkdirSync(output, { mode: 0o700 });
   const created = fs.lstatSync(output, { bigint: true });
   try {
+    const localCandidate = cliCandidate
+      ? prepareFoundryCliCandidate(cliCandidate, path.join(output, "cli-build"), inputs.cli.version)
+      : null;
+    const cli = localCandidate?.evidence ?? publication!.evidence;
+    const lock = localCandidate
+      ? projectFoundryCliCandidateLock(owningLock, localCandidate)
+      : owningLock;
     const tree = await materializeFoundryProductionPackages(
       lock,
       path.join(output, "payload"),
       (url, init) =>
-        url === cli.evidence.tarball.url
-          ? Promise.resolve(new Response(cli.tarballBytes))
+        url === cli.tarball.url
+          ? Promise.resolve(new Response(localCandidate?.tarballBytes ?? publication!.tarballBytes))
           : fetch(url, init),
     );
     const metadata = collectFoundryNpmMetadata(tree);
@@ -150,8 +171,15 @@ export async function prepareFoundryProductionInput(
     });
     const additions = [
       ...metadata.files,
-      { path: "metadata/cli-registry.json", bytes: cli.metadataBytes },
-      { path: "metadata/cli-attestations.json", bytes: cli.attestationBytes },
+      ...(localCandidate
+        ? [
+            { path: "metadata/cli-source-candidate.json", bytes: json(cli) },
+            { path: "metadata/cli-source-lock.yaml", bytes: localCandidate.lockBytes },
+          ]
+        : [
+            { path: "metadata/cli-registry.json", bytes: publication!.metadataBytes },
+            { path: "metadata/cli-attestations.json", bytes: publication!.attestationBytes },
+          ]),
       { path: "metadata/production-lock.json", bytes: json(lock) },
       { path: "metadata/licenses.json", bytes: json(metadata.license_index) },
       { path: "metadata/sbom.spdx.json", bytes: json(sbom) },
@@ -164,7 +192,7 @@ export async function prepareFoundryProductionInput(
           sourceTree,
           sourceDate,
           sourceLock: lock.source,
-          cli: cli.evidence,
+          cli,
           packages: tree.packages,
         }),
       },
@@ -257,7 +285,7 @@ export async function prepareFoundryProductionInput(
       archive: { file: "npm-production-input.tgz", ...archive },
       sbom: "metadata/sbom.spdx.json",
       licenses: metadata.files.map((file) => file.path),
-      cli: cli.evidence,
+      cli,
     };
     fs.writeFileSync(path.join(output, "production-input.json"), json(receipt), {
       flag: "wx",
@@ -269,7 +297,7 @@ export async function prepareFoundryProductionInput(
     });
     fs.writeFileSync(
       path.join(output, "README.md"),
-      `# Prepared Foundry npm production input\n\nSource: ${sourceCommit}\n\nThis contains the locked npm dependency payload, complete retained licenses, SPDX data and independently verified public CLI provenance. It is an input to complete runtime assembly; it is not a released Node/CLI/Foundry/TIDAS component or a product manifest.\n`,
+      `# Prepared Foundry npm production input\n\nSource: ${sourceCommit}\n\nThis contains the locked npm dependency payload, complete retained licenses, SPDX data and ${localCandidate ? "exact local CLI source candidate facts (no registry attestation)" : "independently verified public CLI provenance"}. It is an input to complete runtime assembly; it is not a released Node/CLI/Foundry/TIDAS component or a product manifest.\n`,
       { flag: "wx", mode: 0o600 },
     );
     const prepared = freezeFoundryReleaseValue({
@@ -282,10 +310,15 @@ export async function prepareFoundryProductionInput(
       lock,
       software: metadata.packages,
       licenses: metadata.license_index,
-      cli: cli.evidence,
+      cli,
       cliContentSha256: observed.content_sha256,
       archive,
     });
+    if (localCandidate) {
+      assertPreparedFoundryCliCandidate(localCandidate);
+      localCandidates.set(prepared, localCandidate);
+      fs.rmSync(path.join(output, "cli-build"), { recursive: true, force: true });
+    }
     preparedProduction.add(prepared);
     return prepared;
   } catch (error) {

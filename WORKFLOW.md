@@ -418,6 +418,8 @@ Credential-scoped operator commands must run through `pnpm account:run -- <profi
 
 ## Required Order
 
+A current Process mass-screening observation with an applicable reviewed source-model interpretation may use the [public preparation-quality input](docs/public-runtime-contract.md#preparation-quality-review) before finalization. Select the current scope artifact and genuine per-object authority/evidence, then reassess unchanged rows. Keep the raw QA observation and all unrelated authoring/validation blockers. This path produces local review evidence; the existing finalization and write-authorization order still applies.
+
 1. Create or reuse `.foundry/workspaces/<task-id>/`.
 2. Freeze the source package or source document manifest.
 3. Fetch SDK-backed contract context before AI repair or authoring:

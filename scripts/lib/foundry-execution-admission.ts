@@ -39,7 +39,8 @@ import {
 } from "./foundry-runtime-qualification.ts";
 import { foundryRuntimeCommandPolicy } from "./foundry-runtime-command-policy.ts";
 import { loadFoundryTaskAuthorization } from "./foundry-task-authorization.ts";
-import { assertFoundryTaskInputLineage } from "./foundry-task-store.ts";
+import { assertFoundryTaskInputLineage, readVerifiedTaskSnapshot } from "./foundry-task-store.ts";
+import { assertFoundryQualityReviewForExecution } from "./foundry-quality-review.ts";
 import {
   taskAuthorizationAllows,
   taskAuthorizationWaivesQa,
@@ -336,6 +337,12 @@ async function verifyAdmission(
     fail("execution_command_unadmitted", "Selected command is not a qualified task stage.");
   const approved = selected(context, capsule.approved_input.path);
   const finalRows = selected(context, capsule.final_rows.path);
+  assertFoundryQualityReviewForExecution(
+    context,
+    qualification,
+    readVerifiedTaskSnapshot(context).index,
+    finalRows.path,
+  );
   assertFoundryMigrationNoReplay(context, finalRows.path);
   if (!sameFact(approved, capsule.approved_input) || !sameFact(finalRows, capsule.final_rows))
     fail("execution_input_changed", "Capsule input facts differ from current host selection.");
@@ -393,6 +400,12 @@ export async function createFoundryExecutionCapsule(
   assertVerifiedFoundryIdentity(context, identity, qualification);
   const approved = selected(context, options.approvedInputFile);
   const finalRows = selected(context, options.finalRowsFile);
+  assertFoundryQualityReviewForExecution(
+    context,
+    qualification,
+    readVerifiedTaskSnapshot(context).index,
+    finalRows.path,
+  );
   assertFoundryMigrationNoReplay(context, finalRows.path);
   const authorization = await loadFoundryTaskAuthorization(
     context,

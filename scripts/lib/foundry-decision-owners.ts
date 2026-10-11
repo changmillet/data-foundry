@@ -16,7 +16,7 @@ import { createLocationDecisionCommands } from "./decision-owners/location.ts";
 import { createIdentityDecisionTaskCommands } from "./decision-owners/identity-task.ts";
 import { createIdentityDecisionCommands } from "./decision-owners/identity.ts";
 import { runWorkflowLocalCliResult } from "./foundry-workflow-io.ts";
-import type { FoundryRuntimeContext } from "./foundry-runtime-context.ts";
+import { FoundryContextError, type FoundryRuntimeContext } from "./foundry-runtime-context.ts";
 import type { QualifiedFoundryRuntime } from "./foundry-runtime-qualification.ts";
 
 interface FoundryDecisionOwners {
@@ -54,13 +54,23 @@ export function createFoundryDecisionOwners(
     profileFor,
     runTiangongJsonStage(stage: string, argv: string[]) {
       const result = runWorkflowLocalCliResult(context, qualified, temporary, argv);
-      return {
-        stage,
-        exit_code: result.exit,
-        report: result.report,
-        stderr: "",
-        status: result.report.status,
-      };
+      return result.validate(() => {
+        const ownerStage = {
+          stage,
+          exit_code: result.exit,
+          report: result.report,
+          stderr: "",
+          status: String(result.report.status),
+        };
+        const reportFile = runtime.reportFileFromCliStage(ownerStage, ["files.report"], null);
+        if (!reportFile)
+          throw new FoundryContextError(
+            "workflow_report_invalid",
+            "The local decision owner returned no existing report artifact.",
+          );
+        result.verifyReportFile(reportFile);
+        return ownerStage;
+      });
     },
   };
   const classification = createClassificationDecisionCommands(

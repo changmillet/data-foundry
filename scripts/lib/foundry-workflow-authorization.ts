@@ -44,6 +44,7 @@ import { foundryRepairSelection, readFoundryRepairPreparation } from "./foundry-
 import { createFoundryRepairHandoffPlan } from "./foundry-repair-handoff.ts";
 import { readTaskJson } from "./foundry-task-io.ts";
 import { assertFoundryInteractionWriteReady } from "./foundry-workflow-object-scope.ts";
+import { assertFoundryQualityReviewForExecution } from "./foundry-quality-review.ts";
 
 export async function authorizeFoundryWorkflow(
   context: FoundryRuntimeContext,
@@ -82,6 +83,8 @@ export async function authorizeFoundryWorkflow(
       "Approval input must match the exact current scope bytes.",
     );
   readFoundryInput(context, inputFile);
+  if (spec.input_kind === "final_rows")
+    assertFoundryQualityReviewForExecution(context, qualified, entries, inputFile);
   if (spec.input_kind === "final_rows" && scope.status !== "ready_for_remote_write")
     throw new FoundryContextError(
       "authorization_scope_not_ready",

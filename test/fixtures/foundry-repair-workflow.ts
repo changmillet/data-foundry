@@ -1,4 +1,5 @@
 import { collectDatasetReferences } from "../../scripts/lib/import-curation/internal/workflow-reference-closure.ts";
+import { unwrapDatasetPayload } from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
 import assert from "node:assert/strict";
 import childProcess from "node:child_process";
 import fs from "node:fs";
@@ -163,7 +164,7 @@ function servedPayload(fallback: Json, input: string | null): Json {
       .readFileSync(input, "utf8")
       .split("\n")
       .find((line) => line.trim());
-    return first ? (JSON.parse(first) as Json) : fallback;
+    return first ? (unwrapDatasetPayload(JSON.parse(first), "process") as Json) : fallback;
   } catch {
     return fallback;
   }

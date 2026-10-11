@@ -4,6 +4,7 @@ import { registeredAssessmentSetProducerBase } from "./foundry-assessment-produc
 import { createHash } from "node:crypto";
 import {
   FoundryContextError,
+  captureFoundryInput,
   readFoundryInput,
   resolveFoundryOutput,
   type FoundryRuntimeContext,
@@ -553,21 +554,41 @@ export async function applyFoundrySemanticInput(
             "--require-action-item-closure",
             "--json",
           ]);
-          if (
-            applied.exit !== 0 ||
-            applied.report.status !== "completed" ||
-            !Array.isArray(applied.report.blockers) ||
-            applied.report.blockers.length
-          ) {
-            blockers.push({ code: "semantic_apply_blocked", type, report: applied.report });
-            continue;
-          }
           const original = rows.value.sets.find(
             (set) => set.type === type && set.file === originalRows,
           );
-          if (!original || Number(applied.report.row_count) !== original.count)
-            fail("semantic_row_scope_changed", "Patch application changed the assessed row scope.");
-          updated.set(type, { ...original, file: repaired });
+          const completed = applied.validate(() => {
+            if (
+              !["completed", "blocked"].includes(String(applied.report.status)) ||
+              !Array.isArray(applied.report.blockers)
+            )
+              fail(
+                "semantic_apply_invalid",
+                "Patch application returned no completed or blocked owner report.",
+              );
+            const reportFile = workflowObject(applied.report.files).report;
+            if (typeof reportFile !== "string")
+              fail("semantic_apply_invalid", "Patch application returned no report locator.");
+            applied.verifyReportFile(reportFile);
+            if (
+              applied.exit !== 0 ||
+              applied.report.status !== "completed" ||
+              applied.report.blockers.length
+            )
+              return null;
+            if (!original || Number(applied.report.row_count) !== original.count)
+              fail(
+                "semantic_row_scope_changed",
+                "Patch application changed the assessed row scope.",
+              );
+            captureFoundryInput(repaired);
+            return original;
+          });
+          if (!completed) {
+            blockers.push({ code: "semantic_apply_blocked", type, report: applied.report });
+            continue;
+          }
+          updated.set(type, { ...completed, file: repaired });
           results.push({
             type,
             original_rows: originalRows,

@@ -12,6 +12,7 @@ import { readTaskBytes } from "./foundry-task-io.ts";
 import { sha256Json } from "./identity-preflight-proof.ts";
 import { applicableFoundryInteractionDigest } from "./foundry-interaction-projection.ts";
 import type { FoundryInteractionState } from "./foundry-interaction-types.ts";
+import { qualityReviewInteractionDigest } from "./foundry-quality-review-context.ts";
 import { readRows } from "./import-curation/internal/runtime-io.ts";
 import { projectFoundryValidationReferences } from "./foundry-validation-reference-context.ts";
 import { parseFoundryPreparationCliReport } from "./foundry-preparation-cli-validation.ts";
@@ -306,6 +307,49 @@ export function currentWorkflowState(
         )
         .digest("hex")
     : null;
+  const qualityEntry = entries.findLast(
+    (entry) =>
+      entry.command === "dataset-workflow-quality-review" &&
+      path.basename(entry.path) === "foundry-quality-review.json",
+  );
+  const qualityReview = qualityEntry ? readWorkflowArtifact(context, qualityEntry) : null;
+  let qualityReviewSha256: string | null = null;
+  if (qualityReview) {
+    const value = qualityReview.value;
+    if (
+      value.schema !== "tiangong-foundry.quality-review-receipt.v1" ||
+      value.status !== "accepted" ||
+      value.grants_permission !== false
+    )
+      throw new FoundryContextError(
+        "quality_review_invalid",
+        "Registered quality review is invalid.",
+      );
+    const input = workflowObject(value.input),
+      bound = workflowObject(input.binding);
+    const processRows = rows?.value.sets.find((set) => set.type === "process");
+    const now = Date.now();
+    if (
+      input.rows_manifest_sha256 === rows?.entry.sha256 &&
+      input.context_sha256 === contextShaByType.get("process") &&
+      input.reference_inputs_sha256 === referenceInputsSha256 &&
+      sha256Json(value.runtime) === sha256Json(context.runtime) &&
+      bound.workspace_id === context.workspaceId &&
+      bound.task_id === context.taskId &&
+      bound.actor_id === context.actorId &&
+      bound.project_ref === context.accountIntent?.projectRef &&
+      bound.user_id === context.accountIntent?.userId &&
+      processRows &&
+      input.interaction_context_sha256 ===
+        qualityReviewInteractionDigest(interaction, readRows(processRows.file)) &&
+      bound.input_scope_sha256 === captureFoundryInput(processRows.file).sha256 &&
+      typeof input.issued_at_utc === "string" &&
+      Date.parse(input.issued_at_utc) <= now &&
+      typeof input.expires_at_utc === "string" &&
+      Date.parse(input.expires_at_utc) > now
+    )
+      qualityReviewSha256 = qualityReview.entry.sha256;
+  }
   const queueScopeSha256 = rows ? workflowAssessmentQueueScopeSha256(rows.value.sets) : null;
   let assessment: WorkflowArtifact<WorkflowAssessment> | null = null;
   let retainedAssessment: WorkflowArtifact<WorkflowAssessment> | null = null;
@@ -434,6 +478,11 @@ export function currentWorkflowState(
         ? sets.filter((set) => {
             const row = rows.value.sets.find((candidate) => candidate.type === set.type);
             if (!row || row.file !== set.rows) return false;
+            if (
+              row.type === "process" &&
+              (set.quality_review_sha256 ?? null) !== qualityReviewSha256
+            )
+              return false;
             if (
               (set.interaction_digest ?? null) !==
               applicableFoundryInteractionDigest(interaction, row.type)
@@ -614,7 +663,8 @@ export function currentWorkflowState(
       if (
         found.value.rows_report === rows.file &&
         found.value.assessment_report === assessment.file &&
-        (found.value.reference_inputs_sha256 ?? null) === referenceInputsSha256
+        (found.value.reference_inputs_sha256 ?? null) === referenceInputsSha256 &&
+        (found.value.quality_review_sha256 ?? null) === qualityReviewSha256
       ) {
         finalization = found;
         break;
@@ -719,5 +769,7 @@ export function currentWorkflowState(
     preparedApproval,
     referenceInputs,
     referenceInputsSha256,
+    qualityReview,
+    qualityReviewSha256,
   };
 }

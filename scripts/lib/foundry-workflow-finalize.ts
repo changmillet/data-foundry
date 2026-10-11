@@ -21,6 +21,7 @@ import {
   createFoundryIsolatedChildEnvironment,
   copyFoundryIsolatedExecutable,
 } from "./foundry-runtime-environment.ts";
+import { WorkflowChildFailure } from "./foundry-workflow-child-failure.ts";
 import { createFoundryFinalizeOwners } from "./foundry-finalize-owners.ts";
 import {
   currentWorkflowState,
@@ -35,6 +36,7 @@ import { loadFoundryTaskAuthorization } from "./foundry-task-authorization.ts";
 import type { ValidatedTaskAuthorization } from "./task-authorization.ts";
 import { taskAuthorizationMatches } from "./task-authorization.ts";
 import { createHash } from "node:crypto";
+import { loadFoundryQualityReview } from "./foundry-quality-review.ts";
 
 export async function finalizeFoundryWorkflow(
   context: FoundryRuntimeContext,
@@ -61,6 +63,7 @@ export async function finalizeFoundryWorkflow(
     string,
     { qaReferenceRows?: string[]; referenceIntentFile?: string }
   >();
+  const qualityReview = loadFoundryQualityReview(context, qualified, entries);
   for (const set of rows.value.sets) {
     if (executionProgress?.scopes.has(set.type)) continue;
     const selection = state.referenceInputs.get(set.type);
@@ -276,6 +279,9 @@ export async function finalizeFoundryWorkflow(
             type: ["unitgroup", "flowproperty"].includes(set.type) ? "support" : set.type,
             rowsFile: set.file,
             ...referenceOptions.get(set.type),
+            ...(set.type === "process" && qualityReview
+              ? { qualityReview, qaReferenceRows: [...qualityReview.qaReferenceRows] }
+              : {}),
             outDir: path.join(output, set.type),
             profile,
             ...(approval?.datasetType === set.type && authorization
@@ -385,11 +391,22 @@ export async function finalizeFoundryWorkflow(
         options: {
           nonce,
           rows_report: rows.file,
+          ...(state.qualityReviewSha256
+            ? { quality_review_sha256: state.qualityReviewSha256 }
+            : {}),
           ...(state.referenceInputsSha256
             ? { reference_inputs_sha256: state.referenceInputsSha256 }
             : {}),
         },
         validateCurrent(index) {
+          if (
+            currentWorkflowState(context, index).qualityReviewSha256 !== state.qualityReviewSha256
+          )
+            throw new FoundryContextError(
+              "quality_review_changed",
+              "Quality review changed during finalization.",
+            );
+          qualityReview?.validate();
           const current = currentWorkflowState(context, index);
           if (current.rows?.entry.sha256 !== rows.entry.sha256)
             throw new FoundryContextError(
@@ -432,6 +449,9 @@ export async function finalizeFoundryWorkflow(
             ? { reference_inputs_sha256: state.referenceInputsSha256 }
             : {}),
           assessment_report: state.assessment!.file,
+          ...(state.qualityReviewSha256
+            ? { quality_review_sha256: state.qualityReviewSha256 }
+            : {}),
           owner_base: context.assetRoot,
           approval_source_sha256: approval?.sourceSha256 ?? null,
           approval_authorization_sha256: approval?.authorizationSha256 ?? null,
@@ -441,6 +461,30 @@ export async function finalizeFoundryWorkflow(
         };
         operation.writeJson(path.join(output, "foundry-finalize.json"), result);
         return result;
+      },
+    );
+  } catch (error) {
+    if (!(error instanceof WorkflowChildFailure)) throw error;
+    // The read/local call already occurred outside the replayable transaction. Register only
+    // its actual captured failure; the callback cannot dispatch or reconstruct an earlier call.
+    return await runFoundryTaskOperation(
+      context,
+      {
+        command: "dataset-workflow-finalize",
+        options: {
+          nonce,
+          rows_report: rows.file,
+          failure_execution_id: error.evidence.execution_id,
+          ...(state.qualityReviewSha256
+            ? { quality_review_sha256: state.qualityReviewSha256 }
+            : {}),
+          ...(state.referenceInputsSha256
+            ? { reference_inputs_sha256: state.referenceInputsSha256 }
+            : {}),
+        },
+      },
+      () => {
+        throw error;
       },
     );
   } finally {

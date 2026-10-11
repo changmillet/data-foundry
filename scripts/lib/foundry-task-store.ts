@@ -35,6 +35,13 @@ import {
   loadTask,
   bindAccountIntent,
 } from "./foundry-task-registration.ts";
+import {
+  WorkflowChildFailure,
+  workflowFailureCommand,
+  workflowFailureFile,
+  readWorkflowChildFailure,
+  serializeWorkflowFailureResult,
+} from "./foundry-workflow-child-failure.ts";
 import type {
   JsonRecord,
   FileReference,
@@ -443,6 +450,7 @@ export async function runFoundryTaskOperation(
       | "dataset-workflow-native-contract"
       | "dataset-workflow-repair-preflight"
       | "dataset-workflow-reference-input"
+      | "dataset-workflow-quality-review"
       | "dataset-workflow-execution-prepare"
       | "dataset-workflow-execution-result"
       | "dataset-workflow-execution-consume"
@@ -536,9 +544,28 @@ export async function runFoundryTaskOperation(
       const planRef = { path: planPath, sha256: digest(readTaskBytes(context, planPath)) };
       let receipt: OperationReceipt;
       let result: JsonRecord;
+      let childFailure: WorkflowChildFailure | undefined;
       if (fs.existsSync(taskPath(context, receiptPath))) {
         const old = readTaskJson(context, receiptPath);
         exact(old, ["schema", "mode", "status", "plan", "job_sha256", "outputs", "result"]);
+        if (old.status === "failed") {
+          const retained = readWorkflowChildFailure(
+            context,
+            index.filter((entry) => entry.operation_id === operationId),
+          );
+          if (!retained)
+            fail(
+              "workflow_failure_receipt_invalid",
+              "Failed local operation has no indexed original diagnostic receipt; do not rerun it.",
+            );
+          const failure = new WorkflowChildFailure(retained.failure);
+          failure.retainedArtifact = {
+            path: taskPath(context, retained.entry.path),
+            bytes: retained.entry.bytes,
+            sha256: retained.entry.sha256,
+          };
+          throw failure;
+        }
         if (
           old.schema !== "tiangong-foundry.operation-receipt.v1" ||
           old.mode !== "deterministic-local" ||
@@ -673,6 +700,38 @@ export async function runFoundryTaskOperation(
             result: resultRef,
           };
           writeFoundryArtifact(context, receiptPath, bytes(receipt));
+        } catch (error) {
+          if (!(error instanceof WorkflowChildFailure)) throw error;
+          // Retain diagnostic evidence only after the same fresh publication checks as success.
+          assertFoundryWorkspaceWrite(context);
+          const currentTask = loadTask(context, input.task ?? {});
+          if (currentTask.jobSha256 !== task.jobSha256)
+            fail("task_operation_changed", "Task registration changed before receipt publication.");
+          verifyInputs(context, task, index);
+          childFailure = error;
+          // Partial stage outputs are never indexed as completed business producers.
+          const failurePath = `evidence/failures/${operationId}/${workflowFailureFile}`;
+          result = {
+            schema: "tiangong-foundry.workflow-operation-failure.v1",
+            status: "failed",
+            task_id: context.taskId,
+            operation_id: operationId,
+            command: input.command,
+            input_scope_sha256: inputScopeSha256,
+            failure: error.evidence,
+          };
+          const content = serializeWorkflowFailureResult(result);
+          writeFoundryArtifact(context, failurePath, content);
+          receipt = {
+            schema: "tiangong-foundry.operation-receipt.v1",
+            mode: "deterministic-local",
+            status: "failed",
+            plan: planRef,
+            job_sha256: task.jobSha256,
+            outputs: [{ path: failurePath, bytes: content.length, sha256: digest(content) }],
+            result: { path: failurePath, sha256: digest(content) },
+          };
+          writeFoundryArtifact(context, receiptPath, bytes(receipt));
         } finally {
           active = false;
         }
@@ -694,7 +753,7 @@ export async function runFoundryTaskOperation(
           sequence: next.length + 1,
           previous_sha256: next.at(-1)?.record_sha256 ?? null,
           operation_id: operationId,
-          command: input.command,
+          command: receipt.status === "failed" ? workflowFailureCommand : input.command,
           input_scope_sha256: inputScopeSha256,
           receipt: receiptRef,
           ...fact,
@@ -702,6 +761,15 @@ export async function runFoundryTaskOperation(
         next.push({ ...entry, record_sha256: sha256Json(entry) });
       }
       if (next.length !== index.length) replaceIndex(context, next, indexBefore);
+      if (childFailure) {
+        const fact = receipt.outputs[0];
+        childFailure.retainedArtifact = {
+          path: taskPath(context, fact.path),
+          bytes: fact.bytes,
+          sha256: fact.sha256,
+        };
+        throw childFailure;
+      }
       return result;
     },
   );

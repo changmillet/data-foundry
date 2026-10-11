@@ -785,6 +785,77 @@
       "sensitivity": "non-sensitive runtime source; no credentials or task payloads",
       "tracked": true,
       "notes": "Parses explicit public reference input and records immutable indexed control snapshots."
+    },
+    {
+      "id": "foundry-quality-review-input",
+      "status": "active",
+      "classification": "public-input-selector",
+      "current_path": "scripts/lib/foundry-quality-review-input.ts",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": ["scripts/foundry-facade.ts", "docs/public-runtime-contract.md"],
+      "sensitivity": "non-sensitive source/contract; private task rows and review evidence stay outside Git",
+      "tracked": true,
+      "notes": "Strict immutable preparation-review descriptor and independently selected evidence; no write grant."
+    },
+    {
+      "id": "foundry-quality-review-schema",
+      "status": "active",
+      "classification": "machine-readable-public-facade-schema",
+      "current_path": "specs/schemas/foundry-quality-review-input.schema.json",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "docs/public-runtime-contract.md",
+        "scripts/lib/foundry-quality-review-input.ts"
+      ],
+      "sensitivity": "non-sensitive source/contract; private task rows and review evidence stay outside Git",
+      "tracked": true,
+      "notes": "Exact task/account/runtime/row/QA and evidence selectors for a narrow Process mass observation."
+    },
+    {
+      "id": "foundry-quality-review",
+      "status": "active",
+      "classification": "local-quality-review-owner",
+      "current_path": "scripts/lib/foundry-quality-review.ts",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "scripts/foundry-facade.ts",
+        "scripts/lib/foundry-workflow-assessment.ts",
+        "scripts/lib/foundry-workflow-finalize.ts",
+        "scripts/lib/foundry-execution-admission.ts"
+      ],
+      "sensitivity": "non-sensitive source/contract; private task rows and review evidence stay outside Git",
+      "tracked": true,
+      "notes": "Persisted task-indexed preparation decision, current evidence rehydration and exact finding matching; authority remains separate."
+    },
+    {
+      "id": "foundry-quality-review-lineage",
+      "status": "active",
+      "classification": "quality-review-lineage-verifier",
+      "current_path": "scripts/lib/foundry-quality-review-lineage.ts",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": ["scripts/lib/foundry-quality-review.ts"],
+      "sensitivity": "non-sensitive source/contract; private task rows and review evidence stay outside Git",
+      "tracked": true,
+      "notes": "Verifies unchanged full rows or the existing cleanup producer's exact selected Flow-context projection without changing payload or closure."
+    },
+    {
+      "id": "foundry-quality-review-context",
+      "status": "active",
+      "classification": "quality-review-context-binding",
+      "current_path": "scripts/lib/foundry-quality-review-context.ts",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "scripts/lib/foundry-quality-review.ts",
+        "scripts/lib/foundry-workflow-state.ts"
+      ],
+      "sensitivity": "non-sensitive source; task context remains outside Git",
+      "tracked": true,
+      "notes": "Binds applicable broad and object-scoped Process interaction context without accepting decisions for unrelated entity types."
     }
   ],
   "lastReviewedCommit": "bf43cdf7ed694412bf6ddfc9a308b704600d1827",

@@ -107,6 +107,45 @@ test("reference discovery preserves DFS order and excludes Foundry trace payload
   );
 });
 
+test("closure follows payload wrappers without filtering fields within the payload", () => {
+  const payload = processRow("process-a", {
+    referenceToFlowDataSet: flowReference("business-flow"),
+  }).process as JsonRecord;
+  // A field inside the write payload must still be traversed, regardless of its name.
+  payload.semantic_context = { referenceToDataSource: sourceReference("payload-source") };
+  for (const key of ["process", "json_ordered", "jsonOrdered", "json", "payload"]) {
+    const row = {
+      id: "process-a",
+      version: "00.00.001",
+      [key]: payload,
+      semantic_context: { referenceToFlowDataSet: flowReference("context-only-flow") },
+    };
+    const before = JSON.stringify(row);
+    const blockers = closureModule.buildReferenceClosureBlockers({
+      repoRoot: "/unused",
+      rows: [row],
+      datasetType: "process",
+      remoteVerifyArtifact: null,
+    });
+    assert.deepEqual(
+      blockers.map((blocker) => blocker.reference_id),
+      ["business-flow", "payload-source"],
+      key,
+    );
+    assert.equal(JSON.stringify(row), before);
+  }
+  const bareBlockers = closureModule.buildReferenceClosureBlockers({
+    repoRoot: "/unused",
+    rows: [payload],
+    datasetType: "process",
+    remoteVerifyArtifact: null,
+  });
+  assert.deepEqual(
+    bareBlockers.map((blocker) => blocker.reference_id),
+    ["business-flow", "payload-source"],
+  );
+});
+
 test("self, remote, proven, unresolved, and foreign reference partitions retain order", () => {
   const processA = "process-a";
   const processB = "process-b";
@@ -116,31 +155,29 @@ test("self, remote, proven, unresolved, and foreign reference partitions retain 
   const missingContact = "foreign-contact";
   const missingSource = "foreign-source";
   const rows = [
-    {
-      ...processRow(processA, {
-        referenceToProcessDataSet: {
-          "@type": "process data set",
-          "@refObjectId": processB,
-          "@version": "00.00.001",
-        },
-        referenceToFlowDataSet: flowReference(remoteFlow),
-        referenceToDataSource: sourceReference(provenSource),
-        unresolvedReference: flowReference(unresolvedFlow),
-        referenceToPersonOrEntityEnteringTheData: {
-          "@type": "contact data set",
-          "@refObjectId": missingContact,
-          "@version": "00.00.001",
-        },
-      }),
-      unknownReference: {
-        "@refObjectId": "unknown-reference",
+    processRow(processA, {
+      referenceToProcessDataSet: {
+        "@type": "process data set",
+        "@refObjectId": processB,
         "@version": "00.00.001",
       },
-    },
+      referenceToFlowDataSet: flowReference(remoteFlow),
+      referenceToDataSource: sourceReference(provenSource),
+      unresolvedReference: flowReference(unresolvedFlow),
+      referenceToPersonOrEntityEnteringTheData: {
+        "@type": "contact data set",
+        "@refObjectId": missingContact,
+        "@version": "00.00.001",
+      },
+    }),
     processRow(processB, {
       referenceToDataSource: sourceReference(missingSource),
     }),
   ];
+  (rows[0].process as JsonRecord).unknownReference = {
+    "@refObjectId": "unknown-reference",
+    "@version": "00.00.001",
+  };
   const remoteVerifyArtifact = {
     value: {
       checks: [

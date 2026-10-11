@@ -88,7 +88,10 @@ for (const datasetType of ["flow", "process"] as const)
         packageVersion: cli.packageVersion,
         packageIntegrity: `sha256-${sha256Text(fs.readFileSync(cli.binPath, "utf8"))}`,
       },
-      authReceipt: testAuthIdentityReceipt({ capturedAtUtc: new Date(startedAtMs).toISOString() }),
+      authReceipt: testAuthIdentityReceipt({
+        packageVersion: cli.packageVersion,
+        capturedAtUtc: new Date(startedAtMs).toISOString(),
+      }),
       relevantInputHashes: {},
     });
     const checked = validateIdentityPreflightExecution({

@@ -23,6 +23,7 @@ import {
 import {
   prepareFoundryProductionInput,
   assertPreparedFoundryProductionInput,
+  type PreparedFoundryProductionInput,
 } from "../release-prepare-production.ts";
 import {
   prepareFoundryNativeInput,
@@ -56,6 +57,8 @@ import {
   freezeFoundryReleaseValue,
 } from "./foundry-release-component-io.ts";
 
+import type { FoundryCliCandidateSelection } from "./foundry-release-cli-candidate.ts";
+
 export type FoundryRuntimeComponentSource = "source-candidate" | "published-release";
 export interface PreparedFoundryRuntimeComponents {
   readonly output: string;
@@ -73,9 +76,11 @@ export interface PreparedFoundryRuntimeComponents {
     inventory_sha256: string;
   }>;
   readonly components: readonly RuntimeComponent[];
+  readonly cli: PreparedFoundryProductionInput["cli"];
   readonly release_blockers: readonly string[];
 }
 interface RuntimePreparationAuthority {
+  production: PreparedFoundryProductionInput;
   manifest: TrustedRuntimeManifest;
   seeds: Readonly<Record<string, string>>;
   expected: Readonly<{
@@ -95,6 +100,7 @@ export function preparedFoundryRuntimeAuthority(
   const result = prepared.get(value);
   if (!result)
     throw new Error("Runtime qualification requires its in-process prepared component authority.");
+  assertPreparedFoundryProductionInput(result.production);
   if (JSON.stringify(sourceState()) !== JSON.stringify(value.source))
     throw new Error("Runtime qualification source changed after component preparation.");
   const manifestBytes = readFoundryReleaseArtifact(
@@ -124,12 +130,18 @@ function sourceState() {
 export async function prepareFoundryRuntimeComponents(
   selectedOutput: string,
   scope: FoundryRuntimeComponentSource,
+  cliCandidate?: FoundryCliCandidateSelection,
+  launchEnvironment: "isolated" | "cli-auth" = "isolated",
 ): Promise<PreparedFoundryRuntimeComponents> {
   if (
     !path.isAbsolute(selectedOutput) ||
     !["source-candidate", "published-release"].includes(scope)
   )
     throw new Error("Runtime assembly requires an absolute output and an explicit source mode.");
+  if (launchEnvironment === "cli-auth" && scope !== "source-candidate")
+    throw new Error("Adoption authentication channel is only available to source candidates.");
+  if (cliCandidate && scope !== "source-candidate")
+    throw new Error("Local CLI candidates are only supported in source-candidate mode.");
   const output = path.join(
     fs.realpathSync(path.dirname(selectedOutput)),
     path.basename(selectedOutput),
@@ -150,7 +162,10 @@ export async function prepareFoundryRuntimeComponents(
   try {
     const work = path.join(output, ".build");
     fs.mkdirSync(work);
-    const production = await prepareFoundryProductionInput(path.join(work, "npm-input"));
+    const production = await prepareFoundryProductionInput(
+      path.join(work, "npm-input"),
+      cliCandidate,
+    );
     const native = await prepareFoundryNativeInput(path.join(work, "native-input"));
     assertPreparedFoundryProductionInput(production);
     assertPreparedFoundryNativeInput(native);
@@ -166,10 +181,12 @@ export async function prepareFoundryRuntimeComponents(
       );
     const version = production.version,
       platform = production.platform;
-    const releaseBlockers =
-      native.licenseCoverage.tidas === "owner-inventory-verified"
+    const releaseBlockers = [
+      ...(native.licenseCoverage.tidas === "owner-inventory-verified"
         ? []
-        : ["tidas_third_party_notices_required"];
+        : ["tidas_third_party_notices_required"]),
+      ...(cliCandidate ? ["local_cli_candidate_not_registry_verified"] : []),
+    ];
     if (scope === "published-release" && releaseBlockers.length)
       throw new Error(
         "Published runtime assembly requires owner-qualified TIDAS third-party license evidence.",
@@ -366,7 +383,9 @@ export async function prepareFoundryRuntimeComponents(
         ].sort(),
         provenance: [
           "metadata/runtime-provenance.json",
-          "metadata/cli-attestations.json",
+          ...(cliCandidate
+            ? ["metadata/cli-source-candidate.json", "metadata/cli-source-lock.yaml"]
+            : ["metadata/cli-attestations.json"]),
           ...(publication ? ["metadata/foundry-attestations.json"] : []),
         ],
         protocols: [FOUNDRY_MANAGED_RUNTIME_SCHEMA],
@@ -389,7 +408,9 @@ export async function prepareFoundryRuntimeComponents(
             file.path.startsWith("metadata/licenses/") ||
             [
               "metadata/cli-registry.json",
-              "metadata/cli-attestations.json",
+              ...(cliCandidate
+                ? ["metadata/cli-source-candidate.json", "metadata/cli-source-lock.yaml"]
+                : ["metadata/cli-attestations.json"]),
               "metadata/licenses.json",
             ].includes(file.path),
         );
@@ -429,9 +450,12 @@ export async function prepareFoundryRuntimeComponents(
       const upstream =
         id === "node"
           ? {
-              repository: inputs.cli.repository,
-              commit: inputs.cli.source_commit,
-              date: inputs.cli.source_date,
+              repository: production.cli.source.repository,
+              commit: production.cli.source.gitCommit,
+              date:
+                production.cli.schema === "tiangong-foundry.local-cli-candidate.v1"
+                  ? production.cli.source.date
+                  : inputs.cli.source_date,
             }
           : native.sources[id];
       const bootstrapGraph = {
@@ -511,7 +535,12 @@ export async function prepareFoundryRuntimeComponents(
                 .sort(),
         provenance:
           id === "node"
-            ? ["metadata/runtime-provenance.json", "metadata/cli-attestations.json"]
+            ? [
+                "metadata/runtime-provenance.json",
+                ...(cliCandidate
+                  ? ["metadata/cli-source-candidate.json"]
+                  : ["metadata/cli-attestations.json"]),
+              ]
             : ["metadata/runtime-provenance.json"],
         protocols:
           id === "node"
@@ -605,7 +634,7 @@ export async function prepareFoundryRuntimeComponents(
         id,
         platform,
         executable: { component: "node", path: native.executables.node },
-        environment: "isolated",
+        environment: launchEnvironment,
         context_protocol: RUNTIME_HOST_CONTEXT_PROTOCOL,
         argv: [{ component: "foundry", path: `${packagePath}/${descriptor.package.bin}` }],
       })),
@@ -623,6 +652,7 @@ export async function prepareFoundryRuntimeComponents(
       manifest: { file: "runtime-manifest.json", sha256: manifestSha },
       package: packageFact,
       components,
+      cli: production.cli,
       release_blockers: releaseBlockers,
     });
     const status = inspectRuntimeComponents(trusted, { cacheDir: path.join(output, ".key-probe") });
@@ -632,6 +662,7 @@ export async function prepareFoundryRuntimeComponents(
     prepared.set(
       result,
       freezeFoundryReleaseValue({
+        production,
         manifest: trusted,
         seeds,
         expected: {

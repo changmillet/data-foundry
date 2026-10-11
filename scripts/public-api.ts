@@ -28,6 +28,11 @@ export {
   FOUNDRY_AUTHORIZATION_INPUT_SCHEMA,
   type FoundryAuthorizationInput,
 } from "./lib/foundry-authorization-input.ts";
+export {
+  FOUNDRY_QUALITY_REVIEW_INPUT_SCHEMA,
+  type FoundryQualityReviewInput,
+  type FoundryQualityReviewEvidence,
+} from "./lib/foundry-quality-review-input.ts";
 export type {
   FoundryAuthentication,
   FoundryPublicOAuthConfiguration,

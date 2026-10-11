@@ -15,6 +15,10 @@ import { createFoundryIsolatedChildEnvironment } from "./foundry-runtime-environ
 import { resolveInstalledTiangongLcaCliPackage } from "./foundry-runtime-utils.ts";
 import { runFoundryTaskOperation } from "./foundry-task-store.ts";
 import { supportedDatasetTypes } from "./import-curation/internal/dataset-types.ts";
+import {
+  bindWorkflowChildExecution,
+  workflowChildFailure,
+} from "./foundry-workflow-child-failure.ts";
 import { createWorkflowDirectory } from "./foundry-workflow-io.ts";
 import { readFoundryTaskRuntimeAdoption } from "./foundry-task-runtime-adoption.ts";
 
@@ -65,45 +69,52 @@ export async function prepareFoundryWorkflowContext(
         for (const type of types) {
           assertQualifiedFoundryRuntime(context, qualified);
           const destination = path.join(output, type);
-          const child = spawnSync(
-            process.execPath,
-            [
-              cli.binPath,
-              "dataset",
-              "context-pack",
-              "--type",
-              type,
-              "--profile",
-              "ai-import",
-              "--out-dir",
-              destination,
-              "--json",
-            ],
-            {
-              cwd: context.workspaceRoot,
-              env: environment,
-              encoding: "utf8",
-              shell: false,
-              maxBuffer: 8 * 1024 * 1024,
-              timeout: 120_000,
-            },
-          );
-          if (child.error || child.signal || child.status !== 0 || child.stderr)
-            throw new FoundryContextError(
-              "workflow_context_failed",
-              `CLI context preparation failed for ${type}.`,
-            );
-          const value: unknown = JSON.parse(child.stdout);
+          const argv = [
+            "dataset",
+            "context-pack",
+            "--type",
+            type,
+            "--profile",
+            "ai-import",
+            "--out-dir",
+            destination,
+            "--json",
+          ];
+          const execution = bindWorkflowChildExecution(context, qualified, cli.binPath, argv);
+          const child = spawnSync(process.execPath, [cli.binPath, ...argv], {
+            cwd: context.workspaceRoot,
+            env: environment,
+            encoding: "utf8",
+            shell: false,
+            maxBuffer: 8 * 1024 * 1024,
+            timeout: 120_000,
+          });
+          const kind = child.error
+            ? "spawn_error"
+            : child.signal
+              ? "signal"
+              : child.status !== 0
+                ? "exit_code"
+                : !child.stdout.trim()
+                  ? "empty_stdout"
+                  : child.stderr
+                    ? "stage_rejected"
+                    : null;
+          if (kind) throw workflowChildFailure(execution, child, kind);
+          let value: unknown;
+          try {
+            value = JSON.parse(child.stdout);
+          } catch {
+            throw workflowChildFailure(execution, child, "malformed_json");
+          }
           if (
             !value ||
             typeof value !== "object" ||
+            Array.isArray(value) ||
             !("status" in value) ||
             value.status !== "completed"
           )
-            throw new FoundryContextError(
-              "workflow_context_invalid",
-              "CLI returned no completed context pack.",
-            );
+            throw workflowChildFailure(execution, child, "invalid_report");
           reports.push({ type, report: path.join(destination, "outputs/contract-report.json") });
         }
         const files: string[] = [];
