@@ -693,7 +693,9 @@ export async function managedAdoptionFixture(t: TestContext, syntheticTransport 
     argv: readonly string[],
     entry = "foundry",
     env: NodeJS.ProcessEnv = {},
+    queuedCommands: 1 | 2 = 1,
   ) => {
+    const testDeadlineMs = 300_000 * queuedCommands;
     const args = [
       managerBin,
       "runtime",
@@ -738,13 +740,13 @@ export async function managedAdoptionFixture(t: TestContext, syntheticTransport 
       const deadline = setTimeout(() => {
         timedOut = true;
         error ??= new Error(
-          "Owned managed fixture subprocess exceeded its 300000 ms test deadline.",
+          `Owned managed fixture subprocess exceeded its ${testDeadlineMs} ms test deadline.`,
         );
         termSent = child.kill("SIGTERM");
         force = setTimeout(() => {
           forceKillSent = child.kill("SIGKILL");
         }, 10_000);
-      }, 300_000);
+      }, testDeadlineMs);
       child.stdout.on("data", (bytes: Buffer) => (stdout += bytes.toString()));
       child.stderr.on("data", (bytes: Buffer) => (stderr += bytes.toString()));
       child.on("error", (failure) => {
@@ -786,7 +788,7 @@ export async function managedAdoptionFixture(t: TestContext, syntheticTransport 
       stderr: result.stderr,
       stdout_bytes: Buffer.byteLength(result.stdout),
       stderr_bytes: Buffer.byteLength(result.stderr),
-      test_deadline_ms: 300_000,
+      test_deadline_ms: testDeadlineMs,
       timed_out: result.timedOut,
       owned_child: {
         pid: result.childPid,

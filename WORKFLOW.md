@@ -281,9 +281,9 @@ checkPaths:
   - test/unit/foundry-runtime-environment.test.mts
   - test/unit/lint-suppression-audit.test.mts
   - test/README.md
-lastReviewedAt: 2026-10-11
-lastReviewedCommit: 80475d0a0f97aebfee89d27624bddbe95cab55d2
-lastReviewedNote: "Reviewed PR244 JSON/JSONL source-trace reading on merged PR240 main 80475d0a. The format repair and semantic-lineage regressions are retained; CLI0.1.28, managed adoption, diagnostic admission, authentication and no-replay boundaries come from reviewed main. Historical consumer evidence remains separate; current combined qualification is pending."
+lastReviewedAt: 2026-10-12
+lastReviewedCommit: af6dd0ef51be6edcd48b84d27c61d57b56ceba9f
+lastReviewedNote: "Reviewed PR244 Windows test repair against af6dd0: six managed cases keep their assertions and separate scheduling; only the concurrent test pair gets a bounded combined deadline. CLI 0.1.28, ownership, package entry and original-task adoption remain unchanged; hosted qualification pending."
 tracker:
   kind: filesystem
   inbox: tasks/inbox
