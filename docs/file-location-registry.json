@@ -1,7 +1,7 @@
 {
   "$schema": "../specs/schemas/file-location-registry.schema.json",
   "schema_version": 1,
-  "updated_at_utc": "2026-10-07T14:26:42Z",
+  "updated_at_utc": "2026-10-10T23:53:47.112839+00:00",
   "policy_doc": "docs/file-organization.md",
   "entries": [
     {
@@ -214,6 +214,11 @@
         "scripts/lib/foundry-workflow-semantic.ts",
         "scripts/lib/foundry-workflow-state.ts",
         "scripts/lib/foundry-workflow-identity.ts",
+        "scripts/lib/foundry-workflow-identity-stage.ts",
+        "scripts/lib/foundry-identity-stage-input.ts",
+        "scripts/lib/foundry-identity-stage-state.ts",
+        "scripts/lib/foundry-task-runtime-adoption.ts",
+        "scripts/lib/foundry-task-runtime-adoption-write.ts",
         "scripts/lib/foundry-workflow-identity-apply.ts",
         "scripts/lib/foundry-workflow-finalize.ts",
         "scripts/lib/foundry-authorization-input.ts",
@@ -230,11 +235,17 @@
         "docs/public-runtime-contract.md",
         "scripts/lib/foundry-owner-execution-store.ts",
         "scripts/lib/foundry-workflow-reference-verify.ts",
-        "scripts/lib/foundry-owner-trace-acceptance.ts"
+        "scripts/lib/foundry-owner-trace-acceptance.ts",
+        "scripts/lib/foundry-managed-adoption.ts",
+        "scripts/lib/foundry-managed-authentication.ts",
+        "test/helpers/managed-adoption-fixture.mts",
+        "test/scenarios/foundry-managed-adoption.test.mts",
+        "scripts/lib/foundry-workflow-io.ts",
+        "test/scenarios/foundry-task-artifact-registration.test.mts"
       ],
       "sensitivity": "non-sensitive task ledger schema examples; contains no credentials and no private payloads",
       "tracked": true,
-      "notes": "Defines immutable source/input lineage, producer-backed operation receipts, current approval, and owner attempt/readback evidence. Task-local question, raw answer, interpreted decision, AI assumption and per-set assessment context artifacts use the same indexed lineage. The dedicated consume operation owns attempts/owner-v1/<scope>/consumed.json; execution requests, observations and results remain registered under task outputs. Canonical reference query/check/result artifacts bind current identity decisions and are verified before reference-only completion. Explicit ordinary/production-test intent is retained in account registration and migration templates; public traceHash acceptance retains original/fresh-read/accepted evidence under owner-readback outputs."
+      "notes": "Defines immutable source/input lineage, producer-backed operation receipts, current approval, and owner attempt/readback evidence. Task-local question, raw answer, interpreted decision, AI assumption and per-set assessment context artifacts use the same indexed lineage. The dedicated consume operation owns attempts/owner-v1/<scope>/consumed.json; execution requests, observations and results remain registered under task outputs. Canonical reference query/check/result artifacts bind current identity decisions and are verified before reference-only completion. Explicit ordinary/production-test intent is retained in account registration and migration templates; public traceHash acceptance retains original/fresh-read/accepted evidence under owner-readback outputs. Existing local stage outputs are captured by the same Task transaction with the original depth-first roster, fresh writer/runtime/input verification boundaries and two guarded output reads. Capture records facts without rewriting bytes; ordinary writers, completed-receipt replay and index/CAS publication remain with their existing owners. Runtime sampling occurs at capture boundaries and adds no cross-operation proof cache or business permission. Capture also verifies after the second file pass, and new completed-receipt publication reloads current Task/job/runtime/writer bindings so a report-before-capture callback cannot retain late drift by catching the refusal. Storage locations and public receipt/index schemas are unchanged. One explicit identity result captures only the original run and registered output directories of accepted targets in one ordered roster. Owner report self-paths must bind the fixed original run file; substituted paths remain UNKNOWN without requery and do not select foreign outputs."
     },
     {
       "id": "foundry-safety-policy",
@@ -776,6 +787,7 @@
       "notes": "Parses explicit public reference input and records immutable indexed control snapshots."
     }
   ],
-  "lastReviewedCommit": "0ab6b54513acccfe3253ea583b4f6b2e678c0485",
-  "lastReviewedNote": "Reviewed Foundry #230 CLI 0.1.27 adoption: ledger paths, task authorization and runtime data locations remain unchanged. Consumer qualification uses task-local selected input/report bytes and existing artifact paths."
+  "lastReviewedCommit": "bf43cdf7ed694412bf6ddfc9a308b704600d1827",
+  "lastReviewedNote": "Reviewed the bounded directory-batch repair on BF43 after its actual Native19/20 failure. One result captures only accepted original run and registered output roots; the owner report self-path binds its fixed original run file. TaskStore, fresh before/middle/after bookends, two output reads, final receipt/input/CAS checks, per-write checks, original assertions/deadlines and UNKNOWN/no-requery remain. Existing focused31/24/23 local results and independent foreign-locator RED-to-GREEN evidence are retained; new full Source/package/emitted/installed/Native qualification remains pending. No cross-operation proof cache, whole-parent capture, scientific approval, OriginalDATA replay/default/Toolkit034/release change.",
+  "lastReviewedAt": "2026-10-11"
 }

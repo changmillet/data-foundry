@@ -152,9 +152,9 @@ checkPaths:
   - test/unit/foundry-runtime-environment.test.mts
   - test/unit/lint-suppression-audit.test.mts
   - docs/incremental-change-set-contract.md
-lastReviewedAt: 2026-10-10
-lastReviewedCommit: 59e9ff6adb3f736a0f9c2c70e4942f2e82600004
-lastReviewedNote: "Reviewed main-based #228 JSON/JSONL source-trace repair and exact-payload/semantic-lineage tests; ownership, CLI0.1.27 pin, auth/write gates and release policy stay unchanged. Original DATA acceptance is separately bound to the preserved PR240-dependent composition."
+lastReviewedAt: 2026-10-11
+lastReviewedCommit: 80475d0a0f97aebfee89d27624bddbe95cab55d2
+lastReviewedNote: "Reviewed PR244 JSON/JSONL source-trace reading on merged PR240 main 80475d0a. The format repair and semantic-lineage regressions are retained; CLI0.1.28, managed adoption, diagnostic admission, authentication and no-replay boundaries come from reviewed main. Historical consumer evidence remains separate; current combined qualification is pending."
 ---
 
 # Architecture
@@ -456,3 +456,11 @@ The public traceHash adapter delegates normalization to `remote-verification-acc
 The prepared-approval adapter can bridge cleanup byte changes for an otherwise valid support scope by using the existing registered grant derivation, then re-running the finalize owner on the bound descendant. Eligibility is limited to the support-permission blocker with complete scoped write/mint actions. It preserves completed dependency generations and stops on unchanged blocked authorization state. No profile hash check or write admission guard is relaxed.
 
 Source CI execution is separate from the consumer runtime: complete isolated test partitions and exact version-only PR classification are owned by CI tooling. One verified package snapshot may be reused across native qualification and signing through independently supplied artifact digests and exact source/toolchain/run binding. Downloaded manifests and serialized receipts cannot issue snapshot authority. The final release always performs full four-platform qualification; consumer credentials, task state, authorization and no-replay behavior are unchanged.
+
+## Qualified original-task continuation
+
+Foundry owns the same-task compatibility receipt chain and retained report interpretation described in [the public runtime contract](public-runtime-contract.md#same-task-compatibility-and-retained-identity-diagnostics). It keeps historical producer locators separate from current context/assessment coverage. The narrow identity diagnostic validator admits supported manual review without making a semantic decision; CLI continues to own authentication and identity search.
+
+Read-only reference transport supplies the existing queue/QA/CLI-validation owners, using an unchanged-payload validation wrapper. Authorization freshness is refreshed only through the explicit same-CLI host callback after locked metadata validation. These changes do not create another data writer, task ledger or scientific validator.
+
+Managed qualification remains Foundry-owned: the existing generic CLI v1 IPC transports the independently reviewed carrier L. Foundry admits only L=S+K with identical complete executing runtime records and no executable control files; Q binds sealed complete S. Workspace/runtime identity S and launch carrier L are explicit verified roles, not interchangeable targets. No CLI protocol fork, alternate business caller or scientific writer is added.

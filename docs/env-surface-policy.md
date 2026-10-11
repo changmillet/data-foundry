@@ -34,9 +34,9 @@ checkPaths:
   - scripts/public-api.ts
   - test/scenarios/foundry-package-consumer.test.mts
   - test/unit/foundry-runtime-environment.test.mts
-lastReviewedAt: 2026-10-08
-lastReviewedCommit: d07ac492a3a5891502039a6cc83ef30b9fbba50b
-lastReviewedNote: "Reviewed Foundry #237 exact three-field 0.1.16 to 0.1.17 release projection from eligible PR236 Main d07ac492; CLI/native pins, lock closure, authorization and all business source remain unchanged. Official publication and final managed qualification remain pending."
+lastReviewedAt: 2026-10-11
+lastReviewedCommit: baaa384e1db47fb53eb29f7b3764e448510aeff1
+lastReviewedNote: "Reviewed final existing-output capture verification on the working delta based on baaa384e. Current writer/runtime/job/profile and source/input checks run before, between and after two fresh output reads; an independent P2 report-before-capture late-drift repro is fixed, including a caught error returning previously written JSON. New receipt publication reloads current writer/Task/runtime and preserves final input verification; ordinary bytewriters, cached replay, sorted depth-first roster, index CAS and authority/science remain unchanged. Focused59/59 and wholeadoption23/23 pass; latejob2RED->2GREEN and retainedCLI first/second/caught negatives are recorded. No cross-operation hash cache or filesystem-wide atomicity claim. baaa preparation remained unused,87bd Native19/20 failed history remains preserved; new full Source/emitted/installed/native qualification is pending. No originalDATA requery/default034/science/release change."
 ---
 
 # Environment Surface Policy
@@ -68,6 +68,8 @@ The `release:prepare-production` command binds its own clean physical Git root a
 `release:prepare-native` similarly takes only a fresh output and the current supported tuple. Its URLs/digests come from reviewed source data. Redirects remain on the fixed official HTTPS artifact hosts and carry no account authorization. Native inspection uses only platform settings and a fresh private child home, without inherited Node options, TIDAS overrides or user sessions. The downloaded Node/TIDAS artifacts and upstream license texts are inputs, not sources of runtime authority or business permissions.
 
 CI tooling additionally uses `FOUNDRY_CI_BASE_SHA` and `FOUNDRY_CI_SOURCE_SHA` for exact PR/caller-source selection. `FOUNDRY_CI_PACKAGE_DIR`, `FOUNDRY_CI_PACKAGE_MANIFEST_SHA256` and `FOUNDRY_CI_PACKAGE_SHA256` are a complete source-job-only artifact selection supplied from independent producing-job outputs. Partial or invalid selection fails; it never silently rebuilds or reads an operator credential. The package context includes only non-secret Git/toolchain/run facts. These variables are excluded from `.env.example`, ordinary task inputs and installed runtime configuration.
+
+`FOUNDRY_MANAGED_TEST_DIAGNOSTICS_ROOT` is a source-test-only output selector supplied by the validated CI shard runner. Its fresh diagnostics directory binds the selected source, platform, plan and shard; partial observations cannot qualify a test or runtime. The managed fixture exports only bounded, allowlisted completion and failure facts, preserving null unknown counts and observed negative exits. It omits raw output, free-form messages, paths, arguments, environment, account/auth objects, credentials, queries and task payloads. The selector is not forwarded to managed product children and is excluded from `.env.example`, task inputs, component manifests and installed runtime authority.
 
 ## Allowed Variables
 
@@ -141,6 +143,8 @@ Canonical-support refresh passes only public OAuth configuration, the CLI sessio
 
 The consumer identity runner uses a fresh private cwd and an explicit environment allowlist. OAuth uses CLI-owned defaults or complete public configuration and an optional private session reference. Headless mode forwards the caller-supplied actor token only in the one CLI process environment, disables the session cache, removes its temporary environment binding after verification, and never stores or serializes the token. Current CLI headless receipts have no token-expiry timestamp; Foundry enforces fresh server identity and does not invent token lifetime evidence.
 
+The explicit new read-only identity stage also uses a fresh private OS temporary cwd for each newly claimed query. Its absolute task inputs and outputs remain separate from that empty directory, which is removed in `finally`. The published CLI can load `cwd/.env` before parsing its command, so a user workspace is not a substitute for this isolated directory. Deep task/evidence digests are not added to the child cwd; the existing allowlist, fresh account receipt, single attempt and UNKNOWN/no-requery boundary remain unchanged.
+
 Constructing an internal `createFoundryApplication` does not call `loadRuntimeEnv`, discover a workspace or mutate process environment. The developer `main(argv)` explicitly performs its existing env loading before creating that application. This constructor guarantee does not qualify every legacy leaf command for consumer use; each leaf must receive the admitted runtime I/O and child-process environment before the facade exposes it.
 
 Migration inventory never opens recognized `.env`, OAuth/session, token/cookie or private-account storage, or the independently selected session reference under any filename; it records only path/size/classification and omits content hashes. Transfer plans project explicit account intent as project/user only and never carry a session reference, environment map or grant. No migration environment variable or alternate trust-anchor source is introduced.
@@ -160,3 +164,7 @@ The owning public-bootstrap workflow uses `BOOTSTRAP_WORK` and `BOOTSTRAP_PROOF`
 Public reference selection introduces no environment variable. It uses explicit descriptor/file digests and credential/session-path guards, retains task snapshots, and forwards the resulting paths through the existing credential-free QA and authenticated read-only verification child policies.
 
 Task interaction also adds no environment variable. The selected descriptor and bounded raw answer stay in ignored task artifacts, while credential/session paths are excluded and evidence hashes resolve only to registered source or task files. A question, decision or assumption cannot supply a runtime trust anchor, CLI session or write approval.
+
+Same-task adoption compatibility is a branded host input with an independently reviewed digest, not an environment flag or self-authorizing Task selection. Authorization's internal freshness callback reuses the explicit existing authentication context and qualified CLI; it adds no credential store or new environment input. Identity recovery records retained non-credential receipt evidence and separate current interpretation facts, never OAuth session/access-token contents.
+
+The managed carrier selects qualification only through its independently reviewed component inventory, never argv/env/task fields. An admitted carrier with explicit CLI `cli-auth` isolation policy may project only that existing whitelisted public configuration/mode/process-token channel into typed authentication. Legacy or `isolated` launches still ignore ambient auth. Session intent remains task-owned and token material stays process-only; parent receipt does not prove child account.

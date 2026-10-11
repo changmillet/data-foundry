@@ -29,9 +29,9 @@ checkPaths:
   - test/unit/task-authorization.test.mts
   - test/unit/task-profile-authority.test.mts
   - test/scenarios/foundry-execution-admission.test.mts
-lastReviewedAt: 2026-10-07
-lastReviewedCommit: caa95a4808eda51dc5c7c78f3c39e4e079bdb802
-lastReviewedNote: "Reviewed Foundry #223 preparation consuming complete owning CLI 0.1.27 validation, exact candidate/Flow bindings and published Toolkit 0.3.4 applicable coverage; authorization and no-replay boundaries remain unchanged. Foundry source version stays 0.1.16 pending a separate release."
+lastReviewedAt: 2026-10-11
+lastReviewedCommit: baaa384e1db47fb53eb29f7b3764e448510aeff1
+lastReviewedNote: "Reviewed final existing-output capture verification on the working delta based on baaa384e. Current writer/runtime/job/profile and source/input checks run before, between and after two fresh output reads; an independent P2 report-before-capture late-drift repro is fixed, including a caught error returning previously written JSON. New receipt publication reloads current writer/Task/runtime and preserves final input verification; ordinary bytewriters, cached replay, sorted depth-first roster, index CAS and authority/science remain unchanged. Focused59/59 and wholeadoption23/23 pass; latejob2RED->2GREEN and retainedCLI first/second/caught negatives are recorded. No cross-operation hash cache or filesystem-wide atomicity claim. baaa preparation remained unused,87bd Native19/20 failed history remains preserved; new full Source/emitted/installed/native qualification is pending. No originalDATA requery/default034/science/release change."
 related:
   - docs/architecture.md
   - docs/safety-policy.md
@@ -135,3 +135,11 @@ For public prepared FP/UG input, a captured finalization blocked solely by the s
 Explicit reference inputs and their review files are control evidence, not authorization or QA waivers. A new selection invalidates the finalization projection; prepared/consumed scopes cannot replace it. Admission requires the same independently selected intent, passing precommit report and review-file facts in both CommandSpecs, alongside final rows and any native contract. Readback rechecks this evidence even when the mutation response is unavailable.
 
 After local handoff preparation, the public workflow validates the earlier identity context and obtains a fresh identity from the same qualified CLI and explicit authentication context before capsule creation. Age expiry of the earlier receipt is tolerated at this boundary; context or runtime mismatches propagate. An unconsumed execution also obtains a fresh identity after initial rehydration and before its second complete pre-dispatch admission. Both full admission passes remain required, and the attempt is not consumed until they pass. Capsule/admission checks independently revalidate the active grant, task/account binding, lineage and evidence. New identity receipts do not extend grant lifetime or reset attempts; the 60-second freshness bound is unchanged.
+
+## Freshness after locked metadata verification
+
+The explicit public authorization workflow supplies an internal trusted `refreshIdentity` callback to registration/loading. The helpers first verify the current locked snapshot and original task/runtime/account/mode binding. They invoke the callback only for an aged bound proof, using the same qualified CLI and explicit authentication context. Other mismatches propagate. Direct callers without a callback remain strict.
+
+Current state, selected rows/evidence and active pointer are rechecked under the lock. Registration checks grant expiry after its final current-state check; loading verifies pointer equality again before returning. Fresh identity does not extend grant lifetime, alter the 60-second rule, clear attempts, change native insert-only contracts, or retain credentials in another store. Same-task runtime adoption supplies no authorization and preserves original owner-recovery barriers.
+
+The L=S+K carrier binds compatibility through independently reviewed component inventory and full executing-runtime equality. Its same-package Q brand supplies no account or write grant; all original source/profile/registration/CAS/stop/consumed/UNKNOWN checks remain. An explicit cli-auth policy projects process-only credentials into current identity verification while task account/session intent remains authoritative; a parent receipt cannot replace the fresh child receipt.

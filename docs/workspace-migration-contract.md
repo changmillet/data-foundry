@@ -35,9 +35,9 @@ checkPaths:
   - test/scenarios/workspace-migration-planning.test.mts
   - test/unit/foundry-migration-transfer.test.mts
   - test/scenarios/workspace-migration-transfer.test.mts
-lastReviewedAt: 2026-09-08
-lastReviewedCommit: 3da2201c023a02053fd7325422b5e53fe9c84826
-lastReviewedNote: "Reviewed for Foundry #118 explicit ordinary/production-test intent through fingerprints, immutable account records, migration templates and sealed execution; qualified traceHash-only acceptance binds original/fresh raw hashes and preserves all verification evidence. Production-test rejects differences. Full release/live acceptance remains open."
+lastReviewedAt: 2026-10-10
+lastReviewedCommit: baaa384e1db47fb53eb29f7b3764e448510aeff1
+lastReviewedNote: "Reviewed final existing-output capture verification on the working delta based on baaa384e. Current writer/runtime/job/profile and source/input checks run before, between and after two fresh output reads; an independent P2 report-before-capture late-drift repro is fixed, including a caught error returning previously written JSON. New receipt publication reloads current writer/Task/runtime and preserves final input verification; ordinary bytewriters, cached replay, sorted depth-first roster, index CAS and authority/science remain unchanged. Focused59/59 and wholeadoption23/23 pass; latejob2RED->2GREEN and retainedCLI first/second/caught negatives are recorded. No cross-operation hash cache or filesystem-wide atomicity claim. baaa preparation remained unused,87bd Native19/20 failed history remains preserved; new full Source/emitted/installed/native qualification is pending. No originalDATA requery/default034/science/release change."
 related:
   - docs/public-runtime-contract.md
   - docs/runtime-context-contract.md
@@ -72,6 +72,8 @@ The transfer inventory covers `.foundry`, root-level `tasks` and independently s
 Plans bind current runtime/package/entry/platform facts. Installed mode also binds the complete package inventory digest; source mode remains explicitly entry-only and is not a provenance claim. Serialized plans must be bounded plain JSON. A fresh reconstruction must match every field, even when a supplied digest has been recomputed. Source, input, runtime, actor or destination drift blocks the operation.
 
 A shared CLI-owned migration lock is keyed by canonical destination and independent of runtime version. Its complete cache path is checked before acquisition, including symlinked cache ancestors, and it cannot be placed in the preserved source. Copies are streamed, hashed and flushed before exclusive publication. Different existing files are preserved and rejected. A completed archive is audited rather than reconstructed after lost or corrupt evidence. Recognized temporary copy/metadata files are confined to owned scratch; unknown state remains a blocker.
+
+Retained file verification freshly reads and hashes every byte. Its zeroed scratch buffer is bounded by the observed file size and a 1 MiB ceiling, with a positive one-byte buffer for empty-file EOF and growth checks. The regular-file, no-follow, inode/device, size, timestamp, linked-path and growth checks remain required; smaller scratch allocation does not permit cached or partial hashes. Full path facts also produce a canonical locator: already-canonical retained paths use native resolution; different native spelling or a native resolution error falls back to the existing generic resolver. Retained package and CLI inventory loops consume byte/hash content facts without constructing a discarded canonical locator. They still validate every selected relative path and freshly execute all regular-file, no-follow, inode/device, size, timestamp, linked-path and growth checks; no prior file observation or hash is reused. Entry and descriptor path facts retain their resolver and fallback, including resolution errors before the file closes. Every task writer and transaction retains complete runtime revalidation.
 
 ## Historical task classes
 

@@ -113,7 +113,22 @@ export function transferWriteOnce(
   }
 }
 
-export function transferFileFact(file: string): FoundryInputFact {
+function transferCanonicalPath(file: string): string {
+  // Canonical retained paths can avoid the interpreted absolute-ancestor walk.
+  // Other spellings and native failures retain the existing resolver behavior.
+  try {
+    const resolved = fs.realpathSync.native(file);
+    if (resolved === path.resolve(file)) return resolved;
+  } catch {
+    // The generic resolver also supports filesystems without native resolution.
+  }
+  return fs.realpathSync(file);
+}
+
+function transferVerifiedFile<T>(
+  file: string,
+  capture: (bytes: number, hash: ReturnType<typeof createHash>) => T,
+): T {
   const before = fs.lstatSync(file, { bigint: true });
   if (!before.isFile() || before.isSymbolicLink() || before.size > 64n * 1024n * 1024n)
     transferFail("migration_file_invalid", "Transfer file must be bounded and regular.");
@@ -123,7 +138,7 @@ export function transferFileFact(file: string): FoundryInputFact {
     if (opened.ino !== before.ino || opened.dev !== before.dev)
       transferFail("migration_source_changed", "Transfer file identity changed.");
     const hash = createHash("sha256"),
-      buffer = Buffer.alloc(1024 * 1024);
+      buffer = Buffer.alloc(Math.max(1, Math.min(1024 * 1024, Number(before.size))));
     let bytes = 0;
     while (true) {
       const count = fs.readSync(fd, buffer, 0, buffer.length, null);
@@ -145,10 +160,23 @@ export function transferFileFact(file: string): FoundryInputFact {
       linked.dev !== before.dev
     )
       transferFail("migration_source_changed", "Transfer file changed during hashing.");
-    return { path: fs.realpathSync(file), bytes, sha256: hash.digest("hex") };
+    return capture(bytes, hash);
   } finally {
     fs.closeSync(fd);
   }
+}
+
+export function transferFileFact(file: string): FoundryInputFact {
+  return transferVerifiedFile(file, (bytes, hash) => ({
+    path: transferCanonicalPath(file),
+    bytes,
+    sha256: hash.digest("hex"),
+  }));
+}
+
+/** Verify retained inventory content without constructing an unused canonical locator. */
+export function transferFileContentFact(file: string): Pick<FoundryInputFact, "bytes" | "sha256"> {
+  return transferVerifiedFile(file, (bytes, hash) => ({ bytes, sha256: hash.digest("hex") }));
 }
 
 export function transferCopy(

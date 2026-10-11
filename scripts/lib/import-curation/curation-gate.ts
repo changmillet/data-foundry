@@ -112,7 +112,11 @@ interface CurationGateArgs {
   options?: CurationGateOptions;
   routeAction?: (action: JsonRecord, datasetType: string, payload: unknown) => JsonRecord;
   requireIdentityPreflight?: boolean;
-  cliValidation?: { report: string; exit: number };
+  cliValidation?: {
+    report: string;
+    exit: number;
+    input?: import("../foundry-runtime-context.ts").FoundryInputFact;
+  };
 }
 
 function asJsonRecord(value: unknown): JsonRecord {

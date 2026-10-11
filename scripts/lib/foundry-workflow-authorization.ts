@@ -87,7 +87,11 @@ export async function authorizeFoundryWorkflow(
       "authorization_scope_not_ready",
       "Final-row approval requires a ready owner scope.",
     );
-  const identity = verifyFoundryRuntimeIdentity(context, authentication, process.env, qualified);
+  let identity = verifyFoundryRuntimeIdentity(context, authentication, process.env, qualified);
+  const refreshIdentity = () => {
+    identity = verifyFoundryRuntimeIdentity(context, authentication, process.env, qualified);
+    return identity;
+  };
   if (selected.executionContract) {
     try {
       readNativeDraftHandoff({
@@ -131,10 +135,17 @@ export async function authorizeFoundryWorkflow(
       })),
       expectedPreviousSha256: spec.expected_previous_sha256,
       validateCurrent: (_, index) => current(index),
+      refreshIdentity,
     },
     qualified,
   );
-  const authorization = await loadFoundryTaskAuthorization(context, identity, inputFile, qualified);
+  const authorization = await loadFoundryTaskAuthorization(
+    context,
+    identity,
+    inputFile,
+    qualified,
+    refreshIdentity,
+  );
   return recordFoundryWorkflowAuthorization(
     context,
     qualified,
@@ -276,7 +287,11 @@ async function authorizeFoundryRepair(
         "Registered repair actions must equal the signed native contract actions.",
       );
   }
-  const identity = verifyFoundryRuntimeIdentity(context, authentication, process.env, qualified);
+  let identity = verifyFoundryRuntimeIdentity(context, authentication, process.env, qualified);
+  const refreshIdentity = () => {
+    identity = verifyFoundryRuntimeIdentity(context, authentication, process.env, qualified);
+    return identity;
+  };
   const grant = JSON.parse(readSelectedSemanticBytes(selected.grant).toString("utf8"));
   const current = (index: readonly ArtifactEntry[]) => {
     assertSelectedAuthorizationInput(selected);
@@ -304,6 +319,7 @@ async function authorizeFoundryRepair(
       })),
       expectedPreviousSha256: spec.expected_previous_sha256,
       validateCurrent: (_, index) => current(index),
+      refreshIdentity,
     },
     qualified,
   );
@@ -312,6 +328,7 @@ async function authorizeFoundryRepair(
     identity,
     candidateFile,
     qualified,
+    refreshIdentity,
   );
   return recordFoundryWorkflowAuthorization(
     context,

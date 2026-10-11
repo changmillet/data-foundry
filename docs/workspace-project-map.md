@@ -89,9 +89,9 @@ checkPaths:
   - scripts/lib/import-curation/internal/mutation-manifest-workflow.ts
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-10-10
-lastReviewedCommit: 59e9ff6adb3f736a0f9c2c70e4942f2e82600004
-lastReviewedNote: "Reviewed main-based #228 JSON/JSONL source-trace repair and exact-payload/semantic-lineage tests; ownership, CLI0.1.27 pin, auth/write gates and release policy stay unchanged. Original DATA acceptance is separately bound to the preserved PR240-dependent composition."
+lastReviewedAt: 2026-10-11
+lastReviewedCommit: 80475d0a0f97aebfee89d27624bddbe95cab55d2
+lastReviewedNote: "Reviewed PR244 JSON/JSONL source-trace reading on merged PR240 main 80475d0a. The format repair and semantic-lineage regressions are retained; CLI0.1.28, managed adoption, diagnostic admission, authentication and no-replay boundaries come from reviewed main. Historical consumer evidence remains separate; current combined qualification is pending."
 ---
 
 # Workspace Project Map
@@ -140,3 +140,7 @@ The Wave 26 library, classification, authoring, process-scope and batch modules 
 | Foundry-local surface cleanup | `tiangong-lca-data-foundry` | remove old aliases, empty command categories, and orphaned draft docs only after metadata, tests, docs, and docpact show no remaining consumer |
 
 Before implementing a missing capability, classify it with `docs/capability-ownership-policy.md` and `specs/capability-ownership-rules.json`.
+
+Original-task compatibility belongs to the Foundry native receipt chain; candidate selection and human-facing questions remain Skills-owned. Its host qualification binds exact installed Foundry/CLI/Node/Toolkit bytes independently of version labels. Retained report recovery preserves indexed originals, while machine-gate and original-consumer validation remain separate. See [the public runtime contract](public-runtime-contract.md#same-task-compatibility-and-retained-identity-diagnostics).
+
+Foundry owns the original managed-entry carrier reader and existing typed authentication adapter. The generic CLI runtime manager/IPC and OAuth/headless owner remain CLI-owned and unchanged. Full S execution inventory equality and independent L admission preserve that boundary; no repository-specific writer, replacement Task or default-install change is part of this repair.

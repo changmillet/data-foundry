@@ -281,9 +281,9 @@ checkPaths:
   - test/unit/foundry-runtime-environment.test.mts
   - test/unit/lint-suppression-audit.test.mts
   - test/README.md
-lastReviewedAt: 2026-10-10
-lastReviewedCommit: 59e9ff6adb3f736a0f9c2c70e4942f2e82600004
-lastReviewedNote: "Reviewed main-based #228 JSON/JSONL source-trace repair and exact-payload/semantic-lineage tests; ownership, CLI0.1.27 pin, auth/write gates and release policy stay unchanged. Original DATA acceptance is separately bound to the preserved PR240-dependent composition."
+lastReviewedAt: 2026-10-11
+lastReviewedCommit: 80475d0a0f97aebfee89d27624bddbe95cab55d2
+lastReviewedNote: "Reviewed PR244 JSON/JSONL source-trace reading on merged PR240 main 80475d0a. The format repair and semantic-lineage regressions are retained; CLI0.1.28, managed adoption, diagnostic admission, authentication and no-replay boundaries come from reviewed main. Historical consumer evidence remains separate; current combined qualification is pending."
 tracker:
   kind: filesystem
   inbox: tasks/inbox
@@ -408,7 +408,7 @@ All scenario suites are native `.test.mts`. Preserve every multi-command artifac
 
 Do not parse or execute rendered command strings. `tiangong-foundry.command-spec.v1` makes `executable` plus `argv` authoritative and keeps `display` reader-only. Its SHA-256 binds the authoritative command and exact artifact facts; commit and verify both bind the final rows path, bytes, and SHA-256, and runners reject same-path drift before `shell=false` spawn. Artifact-to-scope matching still normalizes platform separators. Durable writers fsync writable file descriptors, not read-only reopened handles.
 
-Use the exact installed project dependency as `pnpm exec tiangong-lca ...`. Foundry runtime adapters resolve that same `@tiangong-lca/cli@0.1.27` manifest and bin directly; only the external `skills@latest` source-evidence resolver remains intentionally floating, with the resolved ref recorded in task artifacts.
+Use the exact installed project dependency as `pnpm exec tiangong-lca ...`. Foundry runtime adapters resolve that same `@tiangong-lca/cli@0.1.28` manifest and bin directly; only the external `skills@latest` source-evidence resolver remains intentionally floating, with the resolved ref recorded in task artifacts.
 
 The npm candidate is built through `pnpm package:build` and checked through `pnpm package:check`; `pnpm package:pack` archives only the generated sanitized stage. The installed `tiangong-foundry` bin accepts the six public facade operations and never routes a flat developer command. Package installation performs no initialization, login, component download or hook setup. Treat the W06 tarball as a local candidate until W08 publishes the exact F1 release and product manifest.
 
@@ -586,3 +586,11 @@ Foundry tests are organized by behavior layer, not by historical incident number
 - `test/fixtures/` for shared Foundry row, report, command, and workflow-specific fixture helpers split by behavior surface.
 
 Use `pnpm test` for the full suite, `pnpm test:unit`, `pnpm test:commands`, and `pnpm test:scenarios` for targeted behavior, and `pnpm test:toolchain` for the pnpm/TS7 contract. New tests should be named after the behavior they protect rather than `full-context-gate-N`. Each typed migration slice starts with a failing characterization or real case, then passes the focused test, full suite, and clean arbitrary-worktree gate.
+
+## Original-task local continuation
+
+For a compatibility repair, retain the original Task/actor/registration, source rows, reports and attempts. Independently qualify exact installed old/new descriptors, CLI inventories, Node and the selected Toolkit; default Toolkit publication is not proof for a Task bound to another qualified executable. Use the public same-task plan/apply/audit host, stop the previous writer and bind each subsequent transition to the preceding immutable receipt. Current assessment is requalified separately from retained report interpretation.
+
+Valid bound manual review enters the Agent's existing semantic work and grants no save permission. Recovery performs no new query and requires the original registered raw authentication and producer proof; incomplete original evidence stays UNKNOWN with its inspection action. A newly authorized read-only stage would require a separate scope decision. Never replace the Task, rewrite history, manufacture an execution manifest or replay Source/owner writes. Full source tests and installed synthetic qualification still require the original data owner's real entry retest before delivery.
+
+Original managed-entry compatibility now uses the reviewed L=S+K carrier described by the public runtime contract. It preserves the exact complete S and every runtime/launch/workspace binding, brands Q within the package, and keeps L for later CLI-manager actions. Parent role auth and direct API fixtures are supporting evidence; actual child identity and original DATA continuation remain separate required checks.

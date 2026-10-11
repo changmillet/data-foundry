@@ -111,11 +111,11 @@ export async function verifyInstalledPreparationGroup(
     version: string;
     dependencies: Record<string, string>;
   };
-  assert.equal(manifest.dependencies["@tiangong-lca/cli"], "0.1.27");
+  assert.equal(manifest.dependencies["@tiangong-lca/cli"], "0.1.28");
   const cli = JSON.parse(
     fs.readFileSync(path.join(project, "node_modules/@tiangong-lca/cli/package.json"), "utf8"),
   );
-  assert.equal(cli.version, "0.1.27");
+  assert.equal(cli.version, "0.1.28");
   mode(installedPackage, false);
   await verifyManagedPackageHost(
     installedPackage,

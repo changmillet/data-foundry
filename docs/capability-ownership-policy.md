@@ -93,9 +93,9 @@ checkPaths:
   - scripts/lib/import-curation/internal/mutation-manifest-workflow.ts
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-10-10
-lastReviewedCommit: 59e9ff6adb3f736a0f9c2c70e4942f2e82600004
-lastReviewedNote: "Reviewed main-based #228 JSON/JSONL source-trace repair and exact-payload/semantic-lineage tests; ownership, CLI0.1.27 pin, auth/write gates and release policy stay unchanged. Original DATA acceptance is separately bound to the preserved PR240-dependent composition."
+lastReviewedAt: 2026-10-11
+lastReviewedCommit: 80475d0a0f97aebfee89d27624bddbe95cab55d2
+lastReviewedNote: "Reviewed PR244 JSON/JSONL source-trace reading on merged PR240 main 80475d0a. The format repair and semantic-lineage regressions are retained; CLI0.1.28, managed adoption, diagnostic admission, authentication and no-replay boundaries come from reviewed main. Historical consumer evidence remains separate; current combined qualification is pending."
 ---
 
 # Capability Ownership Policy
@@ -259,3 +259,7 @@ Every missing shared capability follow-up must include:
 The machine-readable rules live in `specs/capability-ownership-rules.json`.
 
 Canonical support reads and complete pagination belong to CLI `dataset support-cache export`. Foundry consumes its report/artifacts, validates provenance and public scope, and owns only cache summarization/mapping policy and atomic local replacement. It contains no password-grant or REST implementation for this path.
+
+Same-task compatibility and retained identity recovery are Foundry task/provenance capabilities. They preserve original registration, report, source and attempt ownership. Full package/CLI/Toolkit compatibility is independently qualified; CLI authentication/search, TIDAS conformance and Agent semantic identity decisions stay with their owners. Read-only dependency selection does not create dependency authoring/mutation targets. Incomplete historical authentication remains UNKNOWN rather than authorizing a replacement query or scientific approval.
+
+The managed adoption carrier and typed authentication projection belong to Foundry. CLI still owns generic manifest/inventory/IPC execution and explicit cli-auth filtering, private sessions, current-user verification and business transactions. Foundry uses those public primitives without copying the CLI scheduler, login/cache or database writer. A carrier qualifies compatibility only; it does not approve scientific identity or writes.
