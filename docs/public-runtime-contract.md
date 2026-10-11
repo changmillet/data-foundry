@@ -34,9 +34,9 @@ checkPaths:
   - test/scenarios/foundry-package-consumer.test.mts
   - test/scenarios/foundry-interaction-workflow.test.mts
   - docs/public-runtime-contract.md
-lastReviewedAt: 2026-10-11
-lastReviewedCommit: baaa384e1db47fb53eb29f7b3764e448510aeff1
-lastReviewedNote: "Reviewed final existing-output capture verification on the working delta based on baaa384e. Current writer/runtime/job/profile and source/input checks run before, between and after two fresh output reads; an independent P2 report-before-capture late-drift repro is fixed, including a caught error returning previously written JSON. New receipt publication reloads current writer/Task/runtime and preserves final input verification; ordinary bytewriters, cached replay, sorted depth-first roster, index CAS and authority/science remain unchanged. Focused59/59 and wholeadoption23/23 pass; latejob2RED->2GREEN and retainedCLI first/second/caught negatives are recorded. No cross-operation hash cache or filesystem-wide atomicity claim. baaa preparation remained unused,87bd Native19/20 failed history remains preserved; new full Source/emitted/installed/native qualification is pending. No originalDATA requery/default034/science/release change."
+lastReviewedAt: 2026-10-12
+lastReviewedCommit: af6dd0ef51be6edcd48b84d27c61d57b56ceba9f
+lastReviewedNote: "Reviewed PR244 Windows test repair against af6dd0: split unchanged managed cases and bound the concurrent two-command test budget; CLI 0.1.28, authority, production deadlines, packaging and original-owner adoption are unchanged. Exact-head hosted qualification is pending."
 related:
   - docs/runtime-context-contract.md
   - docs/task-authorization-contract.md
@@ -99,6 +99,8 @@ When a current blocker truly needs a person, the entry skill turns its evidence 
 After local semantic work is ready, a further resume performs process/flow identity preflight through the qualified CLI. The task spec must already identify the intended project and user; otherwise the result is `needs_auth`. The host may supply explicit OAuth public configuration or process-only headless authentication through `FoundryFacadeOptions.authentication`. Initialization and task start remain credential-free. The facade never inherits ambient tokens, CLI overrides, Node options or preflight result caches.
 
 Preflight reuses the existing request builder, query audit, receipt-bound runner and index merger. Requests target current unwrapped payloads and retain source trace context. Remote reads finish before a local transaction registers their immutable evidence; that transaction cannot replay a remote operation. Registration rechecks current rows under the task lock. Failed reads remain visible as `needs_input` and a later resume may retry the read-only stage. Status never performs a search. Successful preflight invalidates the earlier assessment, and the next resume re-runs curation against its exact identity index. Manual review becomes dedicated identity work even for the generic profile. This read evidence supplies decision context; submitting a bound identity decision remains separate from write authorization.
+
+Source-context files accept JSON objects/arrays and JSONL, including current multi-row JSONL emitted by semantic identity apply. Format selection preserves the existing trace collector and exact per-row target/version/hash bindings. Malformed source content returns `source_trace_invalid` without parser excerpts or source contents; retained evidence is unchanged and request preparation dispatches no identity query.
 
 An executable next action preserves `cwd=workspaceRoot`, the application arguments and purpose. An unmanaged source/emitted host retains its direct Node/package entry. A verified managed host instead selects its exact CLI `runtime exec` command with the original trusted manifest digest, component cache and launch id before the unchanged Foundry arguments. Its verified binding digest covers every executable field; workspace, task and actor are explicit argv values, while task lookup revalidates the immutable revision fingerprint and current runtime/input facts before work. It has no `display` authority. A final restricted data CommandSpec still requires the W04 execution-context/identity/authorization gate; Owner execution validates it immediately before the first dispatch.
 

@@ -281,9 +281,9 @@ checkPaths:
   - test/unit/foundry-runtime-environment.test.mts
   - test/unit/lint-suppression-audit.test.mts
   - test/README.md
-lastReviewedAt: 2026-10-11
-lastReviewedCommit: bf43cdf7ed694412bf6ddfc9a308b704600d1827
-lastReviewedNote: "Reviewed the bounded directory-batch repair on BF43 after its actual Native19/20 failure. One result captures only accepted original run and registered output roots; the owner report self-path binds its fixed original run file. TaskStore, fresh before/middle/after bookends, two output reads, final receipt/input/CAS checks, per-write checks, original assertions/deadlines and UNKNOWN/no-requery remain. Existing focused31/24/23 local results and independent foreign-locator RED-to-GREEN evidence are retained; new full Source/package/emitted/installed/Native qualification remains pending. No cross-operation proof cache, whole-parent capture, scientific approval, OriginalDATA replay/default/Toolkit034/release change."
+lastReviewedAt: 2026-10-12
+lastReviewedCommit: af6dd0ef51be6edcd48b84d27c61d57b56ceba9f
+lastReviewedNote: "Reviewed PR244 Windows test repair against af6dd0: six managed cases keep their assertions and separate scheduling; only the concurrent test pair gets a bounded combined deadline. CLI 0.1.28, ownership, package entry and original-task adoption remain unchanged; hosted qualification pending."
 tracker:
   kind: filesystem
   inbox: tasks/inbox
