@@ -40,14 +40,14 @@ checkPaths:
   - test/scenarios/runtime-workspace.test.mts
   - test/scenarios/foundry-execution-admission.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
-lastReviewedAt: 2026-10-12
-lastReviewedCommit: d276629d07517d3a4ea2d77e88d37c03555ee3ee
 related:
   - docs/architecture.md
   - docs/task-authorization-contract.md
   - docs/public-runtime-contract.md
   - docs/package-distribution-contract.md
-lastReviewedNote: "Reviewed restored JSON/JSONL source-trace parity, unchanged per-row target/version/hash and trace collector, safe malformed-source diagnostics and public continuation; original runtime/task/authorization and no-replay boundaries remain intact."
+lastReviewedAt: 2026-10-12
+lastReviewedCommit: c250d2599871d0456776bc34554a5107e1498cf9
+lastReviewedNote: "Reviewed c250 candidate integration with canonical a2f4e7cb: retained current preparation/adoption contracts and upstream JSONL and managed-test scheduling changes; runtime source equality and current validation are checked separately."
 ---
 
 # Runtime context

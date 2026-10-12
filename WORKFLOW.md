@@ -281,8 +281,6 @@ checkPaths:
   - test/unit/foundry-runtime-environment.test.mts
   - test/unit/lint-suppression-audit.test.mts
   - test/README.md
-lastReviewedAt: 2026-10-12
-lastReviewedCommit: d276629d07517d3a4ea2d77e88d37c03555ee3ee
 tracker:
   kind: filesystem
   inbox: tasks/inbox
@@ -304,7 +302,9 @@ policy:
   require_dry_run_before_remote_write: true
   required_multilang_english_before_write: true
   preserve_source_language_variants: true
-lastReviewedNote: "Reviewed restored JSON/JSONL source-trace parity, unchanged per-row target/version/hash and trace collector, safe malformed-source diagnostics and public continuation; original runtime/task/authorization and no-replay boundaries remain intact."
+lastReviewedAt: 2026-10-12
+lastReviewedCommit: c250d2599871d0456776bc34554a5107e1498cf9
+lastReviewedNote: "Reviewed c250 candidate integration with canonical a2f4e7cb: retained current preparation/adoption contracts and upstream JSONL and managed-test scheduling changes; runtime source equality and current validation are checked separately."
 ---
 
 You are working on a TianGong LCA data import task.

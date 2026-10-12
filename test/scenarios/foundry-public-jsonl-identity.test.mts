@@ -153,8 +153,10 @@ test("ordinary public resume refreshes identity after three accepted Flow rows b
       fs.writeFileSync(reportFile, JSON.stringify(report) + "\n");
       const tick = new Date(Date.now() + 1);
       fs.utimesSync(reportFile, tick, tick);
+      // Successful synthetic transport isolates the source-format/semantic contract.
+      // Diagnostic exit-1 admission is a separate facilities dependency (PR #240).
       return {
-        status: 1,
+        status: 0,
         signal: null,
         stdout: JSON.stringify(report),
         stderr: "",
