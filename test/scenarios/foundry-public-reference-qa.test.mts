@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import childProcess from "node:child_process";
 import { syncBuiltinESMExports } from "node:module";
-import test from "node:test";
+import test, { type TestContext } from "node:test";
 import { workflowFixture, digestFile } from "../fixtures/foundry-public-workflow.ts";
 import { processRowWithInvalidLocation, flowRow, sourceRow } from "../fixtures/row-builders.ts";
 import { createFoundryRuntime } from "../../scripts/foundry-runtime.ts";
@@ -53,7 +53,7 @@ function massReferences() {
   return { flow, property, group };
 }
 
-test("public Process references reach initial queue and QA without creating dependency tasks", async (t) => {
+async function registeredProcessReferences(t: TestContext, requestId: string) {
   const { root, workspace, facade, runtimeSelection } = workflowFixture(t);
   const seed = path.join(root, "seed.json"),
     specFile = path.join(root, "request.json");
@@ -100,7 +100,7 @@ test("public Process references reach initial queue and QA without creating depe
     specFile,
     JSON.stringify({
       schema: "tiangong-foundry.task-start.v1",
-      request_id: "process-reference-qa",
+      request_id: requestId,
       actor_id: "qa-actor",
       lane: "source-evidence-dataset-development",
       profile_id: "generic",
@@ -134,6 +134,36 @@ test("public Process references reach initial queue and QA without creating depe
     intent: null,
     review_files: [],
   };
+  const initialAssessment = assessed.artifacts.findLast(
+    (item) => item.role === "foundry-assessment.json",
+  );
+  assert.ok(initialAssessment?.kind === "file", JSON.stringify(assessed));
+  return {
+    root,
+    workspace,
+    facade,
+    runtimeSelection,
+    invocation,
+    references,
+    mass,
+    descriptorFile,
+    descriptor,
+    initialAssessment,
+  };
+}
+
+test("public Process references reach initial queue and QA without creating dependency tasks", async (t) => {
+  const {
+    root,
+    workspace,
+    facade,
+    runtimeSelection,
+    invocation,
+    references,
+    mass,
+    descriptorFile,
+    descriptor,
+  } = await registeredProcessReferences(t, "process-reference-qa");
   fs.writeFileSync(
     descriptorFile,
     JSON.stringify({ ...descriptor, rows_manifest_sha256: "0".repeat(64) }),
@@ -165,20 +195,30 @@ test("public Process references reach initial queue and QA without creating depe
   });
   const correctFlow = fs.readFileSync(references[0], "utf8");
   let lastAssessmentSha: string | undefined;
-  for (const version of ["00.00.001", "00.00.002", null]) {
+  for (const version of ["00.00.001", "00.00.002"]) {
     const wrong = JSON.parse(correctFlow);
-    if (version)
-      wrong.flowDataSet.administrativeInformation.publicationAndOwnership["common:dataSetVersion"] =
-        version;
-    else
-      delete wrong.flowDataSet.administrativeInformation.publicationAndOwnership[
-        "common:dataSetVersion"
-      ];
+    wrong.flowDataSet.administrativeInformation.publicationAndOwnership["common:dataSetVersion"] =
+      version;
     fs.writeFileSync(references[0], JSON.stringify(wrong));
     descriptor.qa_reference_rows = references.map((file) => ({ file, sha256: digestFile(file) }));
     fs.writeFileSync(descriptorFile, JSON.stringify(descriptor));
     await facade.resume({ ...invocation, referenceInputFile: descriptorFile });
     const unmatched = await facade.resume(invocation);
+    const failedArtifact = unmatched.artifacts.findLast(
+      (item) => item.role === "workflow-child-failure.json",
+    );
+    assert.ok(
+      !["failed", "blocked"].includes(unmatched.status),
+      JSON.stringify({
+        version,
+        status: unmatched.status,
+        blockers: unmatched.blockers,
+        failure:
+          failedArtifact?.kind === "file"
+            ? JSON.parse(fs.readFileSync(failedArtifact.path, "utf8"))
+            : null,
+      }),
+    );
     const report = queueReports.at(-1);
     assert.ok(report, JSON.stringify(unmatched.blockers));
     assert.equal(
@@ -194,33 +234,6 @@ test("public Process references reach initial queue and QA without creating depe
   secondVersion.flowDataSet.administrativeInformation.publicationAndOwnership[
     "common:dataSetVersion"
   ] = "00.00.002";
-  for (const completeVersion of ["00.00.001", null]) {
-    const document = structuredClone(secondVersion) as Record<string, unknown>;
-    const flow = document.flowDataSet as Record<string, unknown>;
-    const publication = (flow.administrativeInformation as Record<string, unknown>)
-      .publicationAndOwnership as Record<string, unknown>;
-    if (completeVersion) publication["common:dataSetVersion"] = completeVersion;
-    else delete publication["common:dataSetVersion"];
-    fs.writeFileSync(
-      references[0],
-      correctFlow +
-        JSON.stringify({
-          id: "77777777-7777-4777-8777-777777777777",
-          version: "00.00.002",
-          json: document,
-        }) +
-        "\n",
-    );
-    descriptor.qa_reference_rows = references.map((file) => ({ file, sha256: digestFile(file) }));
-    fs.writeFileSync(descriptorFile, JSON.stringify(descriptor));
-    await facade.resume({ ...invocation, referenceInputFile: descriptorFile });
-    const unmatched = await facade.resume(invocation);
-    assert.equal(
-      queueReports.at(-1)?.counts.external_flow_refs,
-      0,
-      `metadata cannot replace a ${completeVersion ? "wrong" : "missing"} complete payload version: ${JSON.stringify(unmatched.blockers)}`,
-    );
-  }
   fs.writeFileSync(references[0], correctFlow + JSON.stringify(secondVersion) + "\n");
   const wrongUnit = structuredClone(mass.group);
   wrongUnit.unitGroupDataSet.administrativeInformation.publicationAndOwnership[
@@ -390,6 +403,166 @@ test("public Process references reach initial queue and QA without creating depe
   const changed = await facade.status(invocation);
   assert.notEqual(changed.status, "completed");
   assert.ok(changed.blockers.length > 0, "changed dependency snapshots must fail closed");
+});
+
+test("malformed Process reference metadata keeps each isolated Task failed without redispatch", async (t) => {
+  const taskIds = new Set<string>();
+  for (const variant of [
+    { label: "wrong complete payload version", version: "00.00.001", wrapped: true },
+    { label: "missing complete payload version", version: null, wrapped: true },
+    { label: "unwrapped Flow missing payload version", version: null, wrapped: false },
+  ]) {
+    await t.test(variant.label, async (child) => {
+      const {
+        facade,
+        invocation,
+        references,
+        mass,
+        descriptorFile,
+        descriptor,
+        initialAssessment,
+      } = await registeredProcessReferences(
+        child,
+        `malformed-reference-${variant.label.replace(/\s+/gu, "-")}`,
+      );
+      assert.ok(!taskIds.has(invocation.taskId));
+      taskIds.add(invocation.taskId);
+      const document = structuredClone(mass.flow) as Record<string, unknown>;
+      const flow = document.flowDataSet as Record<string, unknown>;
+      const publication = (flow.administrativeInformation as Record<string, unknown>)
+        .publicationAndOwnership as Record<string, unknown>;
+      if (variant.version) publication["common:dataSetVersion"] = variant.version;
+      else delete publication["common:dataSetVersion"];
+      fs.writeFileSync(
+        references[0],
+        variant.wrapped
+          ? JSON.stringify(mass.flow) +
+              "\n" +
+              JSON.stringify({
+                id: "77777777-7777-4777-8777-777777777777",
+                version: "00.00.002",
+                json: document,
+              }) +
+              "\n"
+          : JSON.stringify(document) + "\n",
+      );
+      descriptor.qa_reference_rows = references.map((file) => ({
+        file,
+        sha256: digestFile(file),
+      }));
+      fs.writeFileSync(descriptorFile, JSON.stringify(descriptor));
+      const original = childProcess.spawnSync;
+      const localCalls: string[][] = [];
+      const queueReports: Array<{ counts: { external_flow_refs: number } }> = [];
+      child.mock.method(
+        childProcess,
+        "spawnSync",
+        (...args: Parameters<typeof childProcess.spawnSync>) => {
+          const argv = args[1];
+          const queue =
+            Array.isArray(argv) && argv.includes("curation-queue") && argv.includes("build");
+          if (Array.isArray(argv) && (queue || (argv[1] === "qa" && argv[2] === "process")))
+            localCalls.push([...argv]);
+          const result = Reflect.apply(original, childProcess, args);
+          if (queue) queueReports.push(JSON.parse(String(result.stdout)));
+          return result;
+        },
+      );
+      syncBuiltinESMExports();
+      child.after(() => {
+        child.mock.restoreAll();
+        syncBuiltinESMExports();
+      });
+      const selected = await facade.resume({ ...invocation, referenceInputFile: descriptorFile });
+      const selection = selected.artifacts.findLast(
+        (item) => item.role === "foundry-reference-input.json",
+      );
+      assert.ok(selection?.kind === "file", JSON.stringify(selected.blockers));
+      const failed = await facade.resume(invocation);
+      assert.equal(queueReports.length, 1);
+      assert.equal(
+        queueReports[0].counts.external_flow_refs,
+        0,
+        "metadata cannot replace the wrong or absent complete payload version",
+      );
+      assert.equal(failed.status, "failed", JSON.stringify(failed.blockers));
+      assert.equal(failed.blockers[0]?.code, "workflow_child_failed");
+      const artifact = failed.artifacts.findLast(
+        (item) => item.role === "workflow-child-failure.json",
+      );
+      assert.ok(artifact?.kind === "file", JSON.stringify(failed));
+      const receipt = JSON.parse(fs.readFileSync(artifact.path, "utf8")) as {
+        schema: string;
+        status: string;
+        task_id: string;
+        command: string;
+        failure: {
+          invocation: { argv: string[] };
+          child: { exit_code: number };
+          stdout: { bytes: number };
+          stderr: { preview: string };
+        };
+      };
+      assert.equal(receipt.schema, "tiangong-foundry.workflow-operation-failure.v1");
+      assert.equal(receipt.status, "failed");
+      assert.equal(receipt.task_id, invocation.taskId);
+      assert.equal(receipt.command, "dataset-workflow-assessment");
+      assert.deepEqual(receipt.failure.invocation.argv.slice(0, 2), ["qa", "process"]);
+      assert.equal(receipt.failure.child.exit_code, 2);
+      assert.equal(receipt.failure.stdout.bytes, 0);
+      assert.match(receipt.failure.stderr.preview, /PROCESS_QA_REFERENCE_INVALID/u);
+      assert.ok(
+        !failed.artifacts.some((item) => item.role === "foundry-assessment.json"),
+        "the immediate failure exposes its diagnostic, never a partial successful producer",
+      );
+      const callsAtFailure = localCalls.length;
+      const status = await facade.status(invocation);
+      const resumed = await facade.resume(invocation);
+      for (const result of [status, resumed]) {
+        assert.equal(result.status, "blocked");
+        assert.equal(result.blockers[0]?.code, "workflow_child_failed");
+        assert.equal(
+          result.artifacts.findLast((item) => item.role === "foundry-assessment.json")?.sha256,
+          initialAssessment.sha256,
+          "the original producer stays indexed and unchanged after failure",
+        );
+        assert.equal(
+          result.artifacts.findLast((item) => item.role === "workflow-child-failure.json")?.sha256,
+          artifact.sha256,
+        );
+      }
+      assert.equal(
+        localCalls.length,
+        callsAtFailure,
+        "status and resume never redispatch the failed call",
+      );
+      const exactSecond = structuredClone(mass.flow);
+      exactSecond.flowDataSet.administrativeInformation.publicationAndOwnership[
+        "common:dataSetVersion"
+      ] = "00.00.002";
+      fs.writeFileSync(
+        references[0],
+        JSON.stringify(mass.flow) + "\n" + JSON.stringify(exactSecond) + "\n",
+      );
+      descriptor.qa_reference_rows = references.map((file) => ({
+        file,
+        sha256: digestFile(file),
+      }));
+      fs.writeFileSync(descriptorFile, JSON.stringify(descriptor));
+      const corrected = await facade.resume({
+        ...invocation,
+        referenceInputFile: descriptorFile,
+      });
+      assert.equal(corrected.status, "blocked");
+      assert.equal(
+        corrected.artifacts.findLast((item) => item.role === "foundry-reference-input.json")
+          ?.sha256,
+        selection.sha256,
+        "changed reference inputs require a new Task after a native failure",
+      );
+      assert.equal(localCalls.length, callsAtFailure);
+    });
+  }
 });
 
 test("Source and Contact are not Process QA evidence or writable dependency tasks", async (t) => {

@@ -161,8 +161,8 @@ checkPaths:
   - test/unit/post-authoring-finalize-command-factory.test.mts
   - test/commands/*.test.mts
 lastReviewedAt: 2026-10-11
-lastReviewedCommit: baaa384e1db47fb53eb29f7b3764e448510aeff1
-lastReviewedNote: "Reviewed final existing-output capture verification on the working delta based on baaa384e. Current writer/runtime/job/profile and source/input checks run before, between and after two fresh output reads; an independent P2 report-before-capture late-drift repro is fixed, including a caught error returning previously written JSON. New receipt publication reloads current writer/Task/runtime and preserves final input verification; ordinary bytewriters, cached replay, sorted depth-first roster, index CAS and authority/science remain unchanged. Focused59/59 and wholeadoption23/23 pass; latejob2RED->2GREEN and retainedCLI first/second/caught negatives are recorded. No cross-operation hash cache or filesystem-wide atomicity claim. baaa preparation remained unused,87bd Native19/20 failed history remains preserved; new full Source/emitted/installed/native qualification is pending. No originalDATA requery/default034/science/release change."
+lastReviewedCommit: 2d5cbf38f4e44b4b4d30bba52abd38ef8947bed3
+lastReviewedNote: "Reviewed current-main integration of explicit preparation review, payload-bound context and diagnostic-only failures, plus native candidate generation and independently reviewed managed adoption; original Task eligibility and data acceptance remain separate."
 ---
 
 # Foundry AI Navigation
@@ -180,6 +180,10 @@ Foundry is a thin control plane. Start from commands and artifacts, then move to
 For shared CLI primitives, start at `scripts/lib/identity-preflight-proof.ts` for public receipt parsing, `scripts/lib/foundry-runtime-utils.ts` for exact installed package/bin resolution, and `scripts/lib/batch-orchestration/` for Foundry semantic adapters around `@tiangong-lca/cli/batch`. Test receipt bytes belong only to `test/fixtures/auth-identity-receipt.ts`; installed-package public export proof is `test/unit/public-cli-batch-runtime.test.mts`. A `dist/src/**` path is a contract violation, not a navigation shortcut.
 
 For package work, start at `docs/package-distribution-contract.md`. `scripts/package-entry.ts` is the public-only bin, `scripts/public-api.ts` is the typed host surface, `tsconfig.package.json` defines reachability, `build-foundry-package.ts` creates the sanitized stage and descriptor, and `verify-foundry-package.ts` compares that stage with the pack file set. `foundry-package-contract.ts` is the installed integrity owner; the unit package contract and `scenarios/foundry-package-consumer.test.mts` are the executable boundaries. Do not enter the 63-command graph from these files.
+
+For exact Process validation context, start at `foundry-validation-reference-context.ts`, the registered reference input and `foundry-workflow-assessment.ts`. The projection is validation-only: complete Flow documents and current report bindings travel through preparation and finalization while business reference closure starts at the actual dataset payload. `curation-cleanup.ts` preserves the captured context through its producer-bound proof; it does not infer extra write targets from envelope metadata. The finalization Flow-evidence scenarios cover native validation and both public save-draft dry-run owners with missing, wrong-version, wrong-type, conflicting and changed evidence. Existing strict datetime behavior stays with the prewrite cleanup owner.
+
+For generated review inputs, consume the public `quality_review_input_template` through the existing quality-review selector; do not reconstruct binding hashes or accepted decisions. For failed local CLI evidence, start at `foundry-workflow-child-failure.ts` and the original operation receipt/index. Status reads retain failures without re-dispatch; historical missing producer and mutation UNKNOWN recovery remain outside this path.
 
 ## Command paths
 

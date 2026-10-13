@@ -2,6 +2,7 @@ import path from "node:path";
 import { datasetTypeFromOptions, datasetTypePlural } from "./internal/dataset-types.ts";
 import { datasetIdentity } from "./internal/dataset-payload.ts";
 import { sha256Json } from "./internal/hash-utils.ts";
+import { projectFoundryValidationReferences } from "../foundry-validation-reference-context.ts";
 import {
   annualSupplyFieldPath,
   applyDeterministicSourceExchangeCompletenessProofs,
@@ -46,6 +47,10 @@ interface CurationCleanupOptions extends JsonRecord {
 interface CurationCleanupArgs {
   repoRoot?: string;
   options?: CurationCleanupOptions;
+  processValidationReferences?: {
+    rows: readonly unknown[];
+    files: readonly { path: string; bytes: number; sha256: string }[];
+  };
   io?: {
     nowIso?: () => string;
     fileExists: typeof fileExists;
@@ -70,6 +75,7 @@ function dateTimeBlockersFromError(error: unknown): JsonRecord[] | null {
 export function runDatasetCurationCleanup({
   repoRoot,
   options = {},
+  processValidationReferences,
   io,
 }: CurationCleanupArgs = {}): JsonRecord {
   const readInputRows = io?.readRows ?? readRows;
@@ -78,6 +84,8 @@ export function runDatasetCurationCleanup({
   const writeRows = io?.writeText ?? writeText;
   const capturedAt = io?.nowIso ?? nowIso;
   const datasetType = datasetTypeFromOptions(options);
+  if (processValidationReferences && datasetType !== "process")
+    throw new Error("Selected Flow validation evidence belongs only to Process cleanup.");
   if (options.help) {
     return {
       schema_version: 2,
@@ -117,6 +125,17 @@ export function runDatasetCurationCleanup({
 
   const rows = readInputRows(rowsFile);
   const cleanedRows = rows.map((row) => JSON.parse(JSON.stringify(row)));
+  // Supplemental validation evidence is not candidate metadata. In particular, a
+  // complete referenced Flow must retain its exact body across recursive cleanup.
+  const validationContexts = cleanedRows.map((value: unknown) => {
+    if (datasetType !== "process" || !value || typeof value !== "object" || Array.isArray(value))
+      return null;
+    const row = value as JsonRecord;
+    if (!Object.hasOwn(row, "semantic_context")) return null;
+    const context = { value: row.semantic_context };
+    delete row.semantic_context;
+    return context;
+  });
   let normalizedDateTimeValues = 0;
   const invalidDateTimeBlockers: JsonRecord[] = [];
   cleanedRows.forEach((cleaned, rowIndex) => {
@@ -243,6 +262,9 @@ export function runDatasetCurationCleanup({
     redactedFoundryTraceEvidenceLocators += sanitizeFoundryTraceEvidenceLocators(cleaned);
     addedFoundryTraceNamespaces += ensureFoundryTraceNamespaces(cleaned);
   });
+  validationContexts.forEach((context, index) => {
+    if (context) cleanedRows[index].semantic_context = context.value;
+  });
 
   // Bound only after every other cleanup transform has run, so the output hash describes the
   // exact unwrapped payload the caller will write, with no row metadata mixed in.
@@ -261,7 +283,12 @@ export function runDatasetCurationCleanup({
       output_payload_sha256: sha256Json(outputIdentity.payload),
     };
   });
-  writeRows(outFile, jsonLines(cleanedRows));
+  // Project only after cleanup, so selected reference bodies never enter its
+  // recursive candidate transforms. All later owners use this same final file.
+  const finalRows = processValidationReferences
+    ? projectFoundryValidationReferences(cleanedRows, processValidationReferences.rows)
+    : cleanedRows;
+  writeRows(outFile, jsonLines(finalRows));
 
   const report: JsonRecord = {
     schema_version: 2,
@@ -272,6 +299,25 @@ export function runDatasetCurationCleanup({
     remote_write_mode: "read-only",
     rows_file: repoRelativePath(root, rowsFile),
     cleaned_rows_file: repoRelativePath(root, outFile),
+    ...(processValidationReferences
+      ? {
+          process_validation_references: {
+            files: processValidationReferences.files,
+            rows: finalRows.map((row, rowIndex) => ({
+              row_index: rowIndex,
+              input_payload_sha256: sha256Json(
+                datasetIdentity(cleanedRows[rowIndex], rowIndex, datasetType).payload,
+              ),
+              output_payload_sha256: sha256Json(
+                datasetIdentity(row, rowIndex, datasetType).payload,
+              ),
+              flow_documents_sha256: sha256Json(
+                ((row as JsonRecord).semantic_context as JsonRecord).flow_documents,
+              ),
+            })),
+          },
+        }
+      : {}),
     counts: {
       rows: cleanedRows.length,
       blockers: 0,

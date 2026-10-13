@@ -29,13 +29,13 @@ checkPaths:
   - specs/import-profiles.json
   - tasks/**
 lastReviewedAt: 2026-10-11
-lastReviewedCommit: bf43cdf7ed694412bf6ddfc9a308b704600d1827
-lastReviewedNote: "Reviewed the bounded directory-batch repair on BF43 after its actual Native19/20 failure. One result captures only accepted original run and registered output roots; the owner report self-path binds its fixed original run file. TaskStore, fresh before/middle/after bookends, two output reads, final receipt/input/CAS checks, per-write checks, original assertions/deadlines and UNKNOWN/no-requery remain. Existing focused31/24/23 local results and independent foreign-locator RED-to-GREEN evidence are retained; new full Source/package/emitted/installed/Native qualification remains pending. No cross-operation proof cache, whole-parent capture, scientific approval, OriginalDATA replay/default/Toolkit034/release change."
+lastReviewedCommit: 2d5cbf38f4e44b4b4d30bba52abd38ef8947bed3
 related:
   - AGENTS.md
   - WORKFLOW.md
   - docs/runtime-skill-management.md
   - specs/import-profiles.json
+lastReviewedNote: "Reviewed current-main integration of explicit preparation review, payload-bound context and diagnostic-only failures, plus native candidate generation and independently reviewed managed adoption; original Task eligibility and data acceptance remain separate."
 ---
 
 # Foundry Task Contracts
@@ -177,3 +177,9 @@ The retained identity recovery contract is in [the public runtime contract](publ
 Explicit new read-only identity preparation and claims use `dataset-workflow-identity-stage-prepare` and `dataset-workflow-identity-stage-dispatch` through the existing native Task plan/receipt/index. Each target retains a version-bound directory and exact single-envelope owner snapshot while binding its original registered row group. Partial unindexed admission is retained as an orphan observation and never promoted into authenticated proof. The selected identity result remains `dataset-workflow-identity`; later ordinary assessment consumes its new index, while a blocked explicit stage cannot fall through into an ordinary random-nonce query. See the public explicit-stage contract.
 
 The original CLI-managed package entry admits runtime adoption through an independently reviewed L=S+K carrier. Full executing component/launch/workspace equality establishes S ownership before unchanged native manifest and Task admission checks. Q references remain inventory-bound and branded in the executing package. Original job, registration, source/profile/seed/science, stopped-writer witness and consumed/UNKNOWN state are unchanged; no alternate business caller can substitute for original managed-entry acceptance.
+
+The deterministic local `dataset-workflow-quality-review` stage uses the existing metadata lock, operation receipt and artifact index. It appends the selected descriptor/evidence, `foundry-quality-review.json`, a reviewed-finding ledger and reader report without changing row bytes or write policy. Assessment/finalization reuse binds the latest applicable review digest. Expiry or scope drift invalidates acceptance; authorization/attempt history freezes replacement. See [preparation quality review](public-runtime-contract.md#preparation-quality-review).
+
+The local CLI failure path appends a failed operation receipt and a single `dataset-workflow-failure` artifact to the same hash-chained index. Its plan retains the original command, job and input scope. Failed receipts are never valid completed producers or successful cache entries. Task status verifies the original plan/receipt/artifact bytes without rerunning the child; partial stage output is not indexed as success. This forward diagnostic path neither reconstructs historical missing producers nor permits a mutation or UNKNOWN replay.
+
+A retained failed diagnostic is not a complete original producer for runtime adoption. The current strict adoption lineage reader rejects that history; status/readback support does not clear it or infer a recovery capability.

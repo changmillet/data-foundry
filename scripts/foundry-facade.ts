@@ -75,6 +75,10 @@ import {
   readWorkflowArtifact,
   workflowObject,
 } from "./lib/foundry-workflow-state.ts";
+import {
+  WorkflowChildFailure,
+  readWorkflowChildFailure,
+} from "./lib/foundry-workflow-child-failure.ts";
 import { currentNativeValidationFailure } from "./lib/foundry-native-validation-failure.ts";
 import {
   completedOwnerScopes,
@@ -111,6 +115,12 @@ import { pendingFoundryIdentityStage } from "./lib/foundry-identity-stage-state.
 import { runExplicitFoundryIdentityStage } from "./lib/foundry-workflow-identity-stage.ts";
 import { selectFoundryIdentityStageInput } from "./lib/foundry-identity-stage-input.ts";
 import { finalizeFoundryWorkflow } from "./lib/foundry-workflow-finalize.ts";
+import { selectFoundryQualityReviewInput } from "./lib/foundry-quality-review-input.ts";
+import {
+  foundryQualityReviewScope,
+  createFoundryQualityReviewTemplate,
+  recordFoundryQualityReview,
+} from "./lib/foundry-quality-review.ts";
 import {
   prepareFoundryRepair,
   readFoundryRepairPreparation,
@@ -418,7 +428,10 @@ function failure(
     operation,
     status: needsAuth ? "needs_auth" : needsInput ? "needs_input" : blocked ? "blocked" : "failed",
     taskId,
-    artifacts: [],
+    artifacts:
+      error instanceof WorkflowChildFailure && error.retainedArtifact
+        ? [{ kind: "file", role: "workflow-child-failure.json", ...error.retainedArtifact }]
+        : [],
     blockers: [{ code, message, scope: taskId }],
     nextActions: recoveryUnproven
       ? [
@@ -434,7 +447,9 @@ function failure(
               "Inspect the indexed claim and retained outcome of the explicitly new read-only stage. Preserve UNKNOWN and do not dispatch another query through ordinary resume.",
             ),
           ]
-        : [],
+        : error instanceof WorkflowChildFailure
+          ? [human("repair_failed_local_operation", error.message)]
+          : [],
     runtimeIdentity: identity,
     permissions: noPermission(),
   });
@@ -876,6 +891,47 @@ function taskProjection(
   identity: unknown,
 ): FoundryOperationResult {
   const artifacts = taskArtifacts(context, inspected);
+  const childFailure = readWorkflowChildFailure(context, inspected.artifacts);
+  if (childFailure) {
+    const file = path.join(context.taskRoot!, childFailure.entry.path);
+    const message = `The original local CLI ${childFailure.failure.kind} failure is retained at ${file}. The operation remains failed. Repair the runtime or selected input and use an explicitly reviewed task revision; this task cannot rerun the failed call.`;
+    return createFoundryOperationResult({
+      operation,
+      status: "blocked",
+      taskId: record.task_id,
+      artifacts,
+      blockers: [
+        { code: "workflow_child_failed", message, scope: String(childFailure.result.command) },
+      ],
+      nextActions: [human("repair_failed_local_operation", message)],
+      runtimeIdentity: identity,
+      permissions: noPermission(),
+    });
+  }
+  let projectedWorkflow: ReturnType<typeof currentWorkflowState> | undefined;
+  let qualityScope: ReturnType<typeof foundryQualityReviewScope> = null;
+  const qualifiedIdentity = workflowObject(workflowObject(identity).qualification ?? {}).identity;
+  if (qualifiedIdentity && context.accountIntent) {
+    const digest = workflowObject(qualifiedIdentity).qualification_sha256;
+    if (typeof digest === "string") {
+      projectedWorkflow = currentWorkflowState(context, inspected.artifacts);
+      qualityScope = foundryQualityReviewScope(
+        context,
+        digest,
+        inspected.artifacts,
+        projectedWorkflow,
+      );
+      if (qualityScope) {
+        artifacts.push(inlineArtifact("quality_review_scope", qualityScope));
+        artifacts.push(
+          inlineArtifact(
+            "quality_review_input_template",
+            createFoundryQualityReviewTemplate(qualityScope),
+          ),
+        );
+      }
+    }
+  }
   const interaction = currentFoundryInteractionState(context, inspected.artifacts);
   const pendingQuestions = interaction ? currentFoundryQuestions(interaction.state) : [];
   const investigations = interaction ? currentFoundryInvestigations(interaction.state) : [];
@@ -1110,7 +1166,7 @@ function taskProjection(
         permissions: noPermission(),
       });
   }
-  const workflow = currentWorkflowState(context, inspected.artifacts);
+  const workflow = projectedWorkflow ?? currentWorkflowState(context, inspected.artifacts);
   const queueIssues = currentIndexedQueueBlockers(context, workflow, inspected.artifacts);
   const nativeFailure = currentNativeValidationFailure(
     context,
@@ -1575,6 +1631,14 @@ function taskProjection(
         nextActions: [
           ...queueIssues.actions,
           ...scoped.actions,
+          ...(qualityScope
+            ? [
+                human(
+                  "review_process_mass_observation",
+                  "Save the quality_review_input_template artifact, select only the Process observations actually reviewed, and fill an explicit accept-interpretation disposition, rationale and source-model evidence file references under applicable user authority. Submit the completed descriptor through --quality-review-input, then resume to reassess. The template accepts nothing by default; preserve quantities and raw QA. This input grants no write permission.",
+                ),
+              ]
+            : []),
           ...pending.flatMap((set) => [
             ...(!scoped.types.includes(set.type)
               ? [
@@ -2185,6 +2249,7 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
       authorizationInputFile?: string;
       referenceInputFile?: string;
       identityStageInputFile?: string;
+      qualityReviewInputFile?: string;
     }): Promise<FoundryOperationResult> {
       let current: ReturnType<typeof createFoundryRuntimeContext> | null = null;
       try {
@@ -2196,6 +2261,14 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
           throw new FoundryContextError(
             "identity_stage_input_invalid",
             "An explicit identity stage requires one nonempty file path.",
+          );
+        if (
+          input.qualityReviewInputFile !== undefined &&
+          (typeof input.qualityReviewInputFile !== "string" || !input.qualityReviewInputFile.trim())
+        )
+          throw new FoundryContextError(
+            "quality_review_input_invalid",
+            "Select one nonempty quality-review input path.",
           );
         if (
           input.referenceInputFile !== undefined &&
@@ -2220,6 +2293,7 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
             input.referenceInputFile,
             input.interactionInputFile,
             input.identityStageInputFile,
+            input.qualityReviewInputFile,
           ].filter((file) => file !== undefined).length > 1
         )
           throw new FoundryContextError(
@@ -2235,7 +2309,10 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
         const before = await runtime.inspectTask();
         if (
           record.spec.repair &&
-          (input.semanticInputFile || input.referenceInputFile || input.interactionInputFile)
+          (input.semanticInputFile ||
+            input.referenceInputFile ||
+            input.interactionInputFile ||
+            input.qualityReviewInputFile)
         )
           throw new FoundryContextError(
             "repair_revision_required",
@@ -2388,7 +2465,9 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
           });
         }
         if (
-          (input.referenceInputFile || input.interactionInputFile) &&
+          (input.referenceInputFile ||
+            input.interactionInputFile ||
+            input.qualityReviewInputFile) &&
           existing.status === "completed"
         )
           throw new FoundryContextError(
@@ -2402,7 +2481,8 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
             input.authorizationInputFile ||
             input.semanticInputFile ||
             input.referenceInputFile ||
-            input.interactionInputFile
+            input.interactionInputFile ||
+            input.qualityReviewInputFile
           )
             throw new FoundryContextError(
               "execution_recovery_required",
@@ -2505,6 +2585,40 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
             })),
           );
           await recordFoundryReferenceInput(selected, before.artifacts, submission);
+          return taskProjection(
+            "task.resume",
+            context,
+            record,
+            await runtime.inspectTask(),
+            runtimeIdentity(context, qualified),
+          );
+        }
+        if (input.qualityReviewInputFile) {
+          if (record.spec.preparation || record.spec.repair)
+            throw new FoundryContextError(
+              "quality_review_input_invalid",
+              "Quality review requires an ordinary assessed Process task.",
+            );
+          if (!qualified)
+            throw new FoundryContextError(
+              "runtime_unqualified",
+              "Quality review requires qualified runtime owners.",
+            );
+          const selected = taskContext(
+            options,
+            current,
+            record,
+            before.artifacts.map((entry) => ({
+              path: path.join(context.taskRoot!, entry.path),
+              bytes: entry.bytes,
+              sha256: entry.sha256,
+            })),
+          );
+          const submission = selectFoundryQualityReviewInput(
+            selected,
+            input.qualityReviewInputFile,
+          );
+          await recordFoundryQualityReview(selected, qualified, before.artifacts, submission);
           return taskProjection(
             "task.resume",
             context,
@@ -2889,6 +3003,7 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
               identityReport,
               {
                 scopeType: workflow.assessmentRemainingTypes[0],
+                qualityReviewSha256: workflow.qualityReviewSha256,
                 previousAssessment: workflow.assessment?.file,
                 interactionSha256:
                   currentFoundryInteractionState(context, before.artifacts)?.entry.sha256 ?? null,
@@ -2902,6 +3017,7 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
               {
                 interactionSha256:
                   currentFoundryInteractionState(context, before.artifacts)?.entry.sha256 ?? null,
+                qualityReviewSha256: workflow.qualityReviewSha256,
               },
             );
           assertNotInterrupted(options.signal);

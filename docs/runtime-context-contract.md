@@ -40,14 +40,14 @@ checkPaths:
   - test/scenarios/runtime-workspace.test.mts
   - test/scenarios/foundry-execution-admission.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
-lastReviewedAt: 2026-10-12
-lastReviewedCommit: af6dd0ef51be6edcd48b84d27c61d57b56ceba9f
-lastReviewedNote: "Reviewed PR244 Windows test repair against af6dd0: split unchanged managed cases and bound the concurrent two-command test budget; CLI 0.1.28, authority, production deadlines, packaging and original-owner adoption are unchanged. Exact-head hosted qualification is pending."
 related:
   - docs/architecture.md
   - docs/task-authorization-contract.md
   - docs/public-runtime-contract.md
   - docs/package-distribution-contract.md
+lastReviewedAt: 2026-10-12
+lastReviewedCommit: c250d2599871d0456776bc34554a5107e1498cf9
+lastReviewedNote: "Reviewed c250 candidate integration with canonical a2f4e7cb: retained current preparation/adoption contracts and upstream JSONL and managed-test scheduling changes; runtime source equality and current validation are checked separately."
 ---
 
 # Runtime context
@@ -158,3 +158,5 @@ Identity report interpretation supports the current CLI 0.1.28 and retained 0.1.
 Explicit Process reference selection reaches initial queue/QA and the current CLI validation wrapper. Native input and scientific Process bytes remain unchanged. Missing/wrong exact bodies and projection/report/reference drift remain blocking evidence.
 
 The managed adoption carrier explicitly proves L and S use the same complete execution components/cache keys and identical launch/workspace constraints before setting workspace access to S. The original L remains the launch authority for returned actions; `runtimeTarget` alone cannot establish executing-runtime ownership. Inventory-bound control files issue no credential or write permission. See the public runtime contract for the no-cycle construction and child authentication boundary.
+
+Quality-review descriptors bind the current qualified runtime, complete row artifact, canonical per-object payload, QA/context/reference facts and actual account intent. Their task-indexed snapshots expire and are rechecked by reassessment, finalization and write admission. A successor runtime requires a new review of its current observations; arbitrary serialized decisions and environment values never restore a review capability. See the [public preparation contract](public-runtime-contract.md#preparation-quality-review).

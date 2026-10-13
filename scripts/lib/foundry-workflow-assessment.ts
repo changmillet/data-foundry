@@ -23,6 +23,7 @@ import {
   nativeValidationFailureEvidence,
 } from "./foundry-native-validation-failure.ts";
 import { runDatasetCurationGate } from "./import-curation/curation-gate.ts";
+import { loadFoundryQualityReview, type FoundryQualityReview } from "./foundry-quality-review.ts";
 import { runDatasetAuthoringTaskBuild } from "./import-curation/authoring-packages.ts";
 import { readRows } from "./import-curation/internal/runtime-io.ts";
 import {
@@ -45,7 +46,6 @@ import {
   createWorkflowStageDirectory,
   createWorkflowDirectory,
   registerWorkflowStageFiles,
-  runWorkflowLocalCli,
   runWorkflowLocalCliResult,
 } from "./foundry-workflow-io.ts";
 
@@ -256,6 +256,7 @@ export interface FoundryAssessmentOptions {
   scopeType?: string;
   previousAssessment?: string;
   interactionSha256?: string | null;
+  qualityReviewSha256?: string | null;
 }
 
 export function assessFoundryWorkflowRows(
@@ -280,6 +281,7 @@ export function assessFoundryWorkflowRows(
     );
   let selectedState: ReturnType<typeof currentWorkflowState> | null = null;
   let selectedInteraction: ReturnType<typeof currentFoundryInteractionState> = null;
+  let qualityReview: FoundryQualityReview | null = null;
   return runFoundryTaskOperation(
     context,
     {
@@ -303,10 +305,19 @@ export function assessFoundryWorkflowRows(
             }
           : {}),
         ...(options.interactionSha256 ? { interaction_sha256: options.interactionSha256 } : {}),
+        ...(options.qualityReviewSha256
+          ? { quality_review_sha256: options.qualityReviewSha256 }
+          : {}),
       },
       validateCurrent(index) {
         const state = currentWorkflowState(context, index);
         selectedState = state;
+        if (state.qualityReviewSha256 !== (options.qualityReviewSha256 ?? null))
+          throw new FoundryContextError(
+            "quality_review_changed",
+            "Quality review changed before reassessment.",
+          );
+        qualityReview = loadFoundryQualityReview(context, qualified, index);
         selectedInteraction = currentFoundryInteractionState(context, index);
         if (state.rows?.file !== rowsReport)
           throw new FoundryContextError(
@@ -535,12 +546,10 @@ export function assessFoundryWorkflowRows(
             operation.writeJson(external.file, externalRows);
             args.push("--external-flow-ref", external.file);
           }
-          assertCurrentQueueBuild(
-            context,
-            queueDir,
-            runWorkflowLocalCliResult(context, qualified, temporary, args),
-            selectedSets,
-            external,
+          const currentQueueDir = queueDir;
+          const queue = runWorkflowLocalCliResult(context, qualified, temporary, args);
+          queue.validate(() =>
+            assertCurrentQueueBuild(context, currentQueueDir, queue, selectedSets, external),
           );
         }
         const assessed: Array<Record<string, unknown>> = previousSets.map(record);
@@ -626,11 +635,20 @@ export function assessFoundryWorkflowRows(
               }
               qaArgv.push(...qaReferenceFiles.flatMap((file) => ["--reference-rows-file", file]));
             }
-            const qa = runWorkflowLocalCli(context, qualified, temporary, qaArgv);
-            const file = record(qa.files).report;
-            if (typeof file !== "string")
-              throw new FoundryContextError("workflow_qa_failed", "QA returned no report file.");
-            qaReport = file;
+            const qa = runWorkflowLocalCliResult(context, qualified, temporary, qaArgv);
+            qaReport = qa.validate(() => {
+              if (![0, 2].includes(qa.exit))
+                throw new FoundryContextError(
+                  "workflow_qa_failed",
+                  "QA did not return an admitted report.",
+                );
+              const file = record(qa.report.files).report;
+              if (typeof file !== "string")
+                throw new FoundryContextError("workflow_qa_failed", "QA returned no report file.");
+              // This locator is supplied by the child; retain its rejection as that call's failure.
+              qa.verifyReportFile(file);
+              return file;
+            });
           } else {
             qaReport = path.join(qaDir, "qa-not-required.json");
             operation.writeJson(qaReport, {
@@ -678,22 +696,24 @@ export function assessFoundryWorkflowRows(
               validationDir,
               "--json",
             ]);
-            parseFoundryPreparationCliReport({
-              report: validation.report,
-              input: validationInput,
-              outDir: validationDir,
-              rows: validationRows,
-              exit: validation.exit,
-            });
             const reportFile = path.join(validationDir, "outputs", "validation-report.json");
-            if (
-              JSON.stringify(JSON.parse(fs.readFileSync(reportFile, "utf8"))) !==
-              JSON.stringify(validation.report)
-            )
-              throw new FoundryContextError(
-                "workflow_validation_invalid",
-                "CLI validation file differs from its returned report.",
-              );
+            validation.validate(() => {
+              parseFoundryPreparationCliReport({
+                report: validation.report,
+                input: validationInput,
+                outDir: validationDir,
+                rows: validationRows,
+                exit: validation.exit,
+              });
+              if (
+                JSON.stringify(JSON.parse(fs.readFileSync(reportFile, "utf8"))) !==
+                JSON.stringify(validation.report)
+              )
+                throw new FoundryContextError(
+                  "workflow_validation_invalid",
+                  "CLI validation file differs from its returned report.",
+                );
+            });
             cliValidation = {
               report: reportFile,
               exit: validation.exit,
@@ -713,6 +733,7 @@ export function assessFoundryWorkflowRows(
               rowsFile: set.file,
               schemaReport: schema.report_file,
               qaReport,
+              ...(set.type === "process" && qualityReview ? { qualityReview } : {}),
               outDir: gateDir,
               includeExecutionCommands: false,
               profile: operation.job.target_profile,
@@ -779,6 +800,12 @@ export function assessFoundryWorkflowRows(
               : {}),
             ...(validationProjection ?? {}),
             qa_report: qaReport,
+            ...(set.type === "process"
+              ? { runtime_qualification_sha256: qualified.qualification_sha256 }
+              : {}),
+            ...(set.type === "process" && qualityReview
+              ? { quality_review_sha256: qualityReview.receipt_sha256 }
+              : {}),
             curation_report: gateReport,
             curation_status: gate.status,
             curation_counts: gate.counts,

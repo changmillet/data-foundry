@@ -89,9 +89,9 @@ checkPaths:
   - scripts/lib/import-curation/internal/mutation-manifest-workflow.ts
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-10-11
-lastReviewedCommit: 80475d0a0f97aebfee89d27624bddbe95cab55d2
-lastReviewedNote: "Reviewed PR244 JSON/JSONL source-trace reading on merged PR240 main 80475d0a. The format repair and semantic-lineage regressions are retained; CLI0.1.28, managed adoption, diagnostic admission, authentication and no-replay boundaries come from reviewed main. Historical consumer evidence remains separate; current combined qualification is pending."
+lastReviewedAt: 2026-10-12
+lastReviewedCommit: c250d2599871d0456776bc34554a5107e1498cf9
+lastReviewedNote: "Reviewed c250 candidate integration with canonical a2f4e7cb: retained current preparation/adoption contracts and upstream JSONL and managed-test scheduling changes; runtime source equality and current validation are checked separately."
 ---
 
 # Workspace Project Map
@@ -131,6 +131,7 @@ The Wave 26 library, classification, authoring, process-scope and batch modules 
 | Same-id/version lost-success recovery | Foundry for strict structured-evidence eligibility and no-replay orchestration; `tiangong-lca-cli`, Edge Functions, and database for mutation outcome and readback truth | explicit `23505` plus exact conflict semantics → one commit dispatch → content-bound verify of owner/state/id/version/payload/root → closeout only on exact proof |
 | Remote commit, readback, and publish prep | `tiangong-lca-cli`, Edge Functions, database | `dataset-post-authoring-finalize` and source/contact support handoff artifacts, installed CLI commit commands, `pnpm exec tiangong-lca dataset verify-remote`, `publish run`, Edge verification; Foundry does not override foreign/RLS-hidden `missing_dataset` readback |
 | Credential-scoped identity proof and process guard | `tiangong-lca-cli` for live session/receipt; `tiangong-lca-data-foundry` for profile/thread intent and child isolation | `pnpm account:run -- <profile> -- <executable> [args...]` → installed CLI 0.1.27 `auth identity-receipt` |
+| Preparation quality review | `tiangong-lca-data-foundry` for exact task/object/evidence disposition; CLI for numerical QA | `task resume --quality-review-input` → indexed receipt → fresh curation/finalization and independent write admission; raw QA retained |
 | Foundry task routing and manifests | `tiangong-lca-data-foundry` | `scripts/foundry.ts route-task` |
 | Write/execution policy and blocked-scope ledgers/reports | `tiangong-lca-data-foundry` | `foundry-job.json`, library entity indexes, index-relative process-scope projections, deterministic transform evidence reconciliation, source-only-output exchange proof reconciliation, checkpoints, `blocked-scope-ledger.jsonl`, `blocked-scope-report.json`, mutation manifest aggregation, closeout reports |
 | Incremental release planning and conversion logs | `tiangong-lca-data-foundry` for offline composition; `tiangong-lca-cli` for execution/readback | `dataset-incremental-change-set-compose`, per-conversion JSONL, dependency closure, CLI candidate contract, then fresh reconciliation/capsule admission and published CLI execution |

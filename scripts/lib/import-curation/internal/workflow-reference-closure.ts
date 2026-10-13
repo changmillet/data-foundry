@@ -786,7 +786,10 @@ export function buildReferenceClosureBlockers({
   const blockers: JsonRecord[] = [];
   const seen = new Set();
   rows.forEach((row, rowIndex) => {
-    for (const ref of collectDatasetReferences(row)) {
+    // Supplemental validation documents stay bound to the row envelope, but
+    // business closure follows the same payload used by the write candidate.
+    const payload = datasetIdentity(row, rowIndex, datasetType).payload;
+    for (const ref of collectDatasetReferences(payload)) {
       if (!ref.table) {
         const key = `unsupported\u0000${rowIndex}\u0000${ref.id}\u0000${ref.path}`;
         if (seen.has(key)) continue;

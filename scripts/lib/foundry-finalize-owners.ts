@@ -1,4 +1,8 @@
 import { spawnSync } from "node:child_process";
+import {
+  bindWorkflowChildExecution,
+  workflowChildFailure,
+} from "./foundry-workflow-child-failure.ts";
 import { parseScalar } from "./foundry-args.ts";
 import {
   createFoundryRuntimeUtils,
@@ -32,9 +36,13 @@ import {
   unwrapDatasetPayload,
 } from "./import-curation/internal/dataset-payload.ts";
 import { workflowObject } from "./foundry-workflow-state.ts";
-import { runWorkflowLocalCliResult } from "./foundry-workflow-io.ts";
+import { assertWorkflowReportArtifact, runWorkflowLocalCliResult } from "./foundry-workflow-io.ts";
 import { createFoundryIsolatedChildEnvironment } from "./foundry-runtime-environment.ts";
-import { FoundryContextError, type FoundryRuntimeContext } from "./foundry-runtime-context.ts";
+import {
+  FoundryContextError,
+  readFoundryInput,
+  type FoundryRuntimeContext,
+} from "./foundry-runtime-context.ts";
 import {
   assertQualifiedFoundryRuntime,
   type QualifiedFoundryRuntime,
@@ -146,6 +154,10 @@ export function createFoundryFinalizeOwners(
     readRowsFile: (file: string) =>
       runtime.readRowsFile(file).map((row) => unwrapDatasetPayload(row, "")),
   });
+  const readOnlyReports = new WeakMap<
+    object,
+    { outputDirectory: string; failure: (rejection: unknown) => Error }
+  >();
   const runTiangongJsonStage = (stage: string, argv: string[]) => {
     assertQualifiedFoundryRuntime(context, qualified);
     const name = argv.slice(0, 2).join(" ");
@@ -164,21 +176,39 @@ export function createFoundryFinalizeOwners(
       );
     if (!dryRun && !remoteRead) {
       const result = runWorkflowLocalCliResult(context, qualified, temporary, argv);
-      return {
-        stage,
-        exit_code: result.exit,
-        report: result.report,
-        status: result.report.status,
-        command: cli.command,
-        args: [...cli.args, ...argv],
-        stderr: "",
-      };
+      return result.validate(() => {
+        const ownerStage = {
+          stage,
+          exit_code: result.exit,
+          report: result.report,
+          status: String(result.report.status),
+          command: cli.command,
+          args: [...cli.args, ...argv],
+          stderr: "",
+        };
+        const reportFile = runtime.reportFileFromCliStage(ownerStage, ["files.report"], null);
+        if (!reportFile)
+          throw new FoundryContextError(
+            "workflow_report_invalid",
+            "The local finalization owner returned no existing report artifact.",
+          );
+        result.verifyReportFile(reportFile);
+        return ownerStage;
+      });
     }
     if (!context.accountIntent)
       throw new FoundryContextError(
         "needs_auth",
         "Remote finalization checks require explicit task account intent.",
       );
+    const childExecution = bindWorkflowChildExecution(
+      context,
+      qualified,
+      cli.bin_path,
+      argv,
+      temporary,
+      cli.command,
+    );
     const result = spawnSync(cli.command, [...cli.args, ...argv], {
       cwd: temporary,
       env: execution.environment,
@@ -188,21 +218,37 @@ export function createFoundryFinalizeOwners(
       timeout: 120_000,
       maxBuffer: 16 * 1024 * 1024,
     });
-    if (result.error || result.signal)
-      throw new FoundryContextError(
-        "finalize_cli_failed",
-        "The qualified read-only finalization stage did not finish.",
-      );
-    let report: Record<string, unknown>;
+    const kind = result.error
+      ? "spawn_error"
+      : result.signal
+        ? "signal"
+        : ![0, 1, 2].includes(result.status ?? -1)
+          ? "exit_code"
+          : !result.stdout.trim()
+            ? "empty_stdout"
+            : null;
+    if (kind) throw workflowChildFailure(childExecution, result, kind);
+    let parsed: unknown;
     try {
-      report = workflowObject(JSON.parse(result.stdout));
+      parsed = JSON.parse(result.stdout);
     } catch {
-      throw new FoundryContextError(
-        "finalize_cli_failed",
-        "The qualified finalization stage returned no complete JSON report.",
-      );
+      throw workflowChildFailure(childExecution, result, "malformed_json");
     }
-    return {
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+      throw workflowChildFailure(childExecution, result, "invalid_report");
+    const report = workflowObject(parsed);
+    // Domain blocked/readback findings remain with the existing read-only owner contract.
+    if ("error" in report || typeof report.status !== "string" || !report.status.trim())
+      throw workflowChildFailure(
+        childExecution,
+        result,
+        "stage_rejected",
+        new FoundryContextError(
+          "finalize_cli_failed",
+          "The qualified read-only owner returned an error or no stage status.",
+        ),
+      );
+    const ownerStage = {
       stage,
       exit_code: result.status ?? 1,
       report,
@@ -211,6 +257,12 @@ export function createFoundryFinalizeOwners(
       args: [...cli.args, ...argv],
       stderr: result.stderr,
     };
+    readOnlyReports.set(ownerStage, {
+      outputDirectory: argv[argv.indexOf("--out-dir") + 1],
+      failure: (rejection) =>
+        workflowChildFailure(childExecution, result, "stage_rejected", rejection),
+    });
+    return ownerStage;
   };
   const finalize = bind(createPostAuthoringFinalizeCommands, {
     ...base,
@@ -222,6 +274,7 @@ export function createFoundryFinalizeOwners(
     ...finalizeUtils,
     ...handoff,
     profileFor,
+    readReferenceBytes: (file: string) => readFoundryInput(context, file),
     runDatasetCurationCleanup,
     runDatasetMutationManifest,
     runDatasetCurationGate: (request: Parameters<typeof runDatasetCurationGate>[0]) =>
@@ -236,6 +289,27 @@ export function createFoundryFinalizeOwners(
         environment: localEnvironment,
       }),
     runTiangongJsonStage,
+    reportFileFromCliStage(
+      stage: Parameters<typeof runtime.reportFileFromCliStage>[0],
+      selectors: string[],
+      fallbackPath: unknown,
+    ) {
+      const proof = readOnlyReports.get(stage);
+      if (!proof) return runtime.reportFileFromCliStage(stage, selectors, fallbackPath);
+      try {
+        // Preserve the owner selectors and fallback rules. Some read-only commands return
+        // a summary rather than the same full report, so do not invent stdout/file equality.
+        const file = runtime.reportFileFromCliStage(stage, selectors, fallbackPath);
+        if (!file)
+          throw new FoundryContextError(
+            "finalize_report_invalid",
+            "The read-only owner returned no existing selected or fallback report artifact.",
+          );
+        return assertWorkflowReportArtifact(context, file, proof.outputDirectory);
+      } catch (error) {
+        throw proof.failure(error);
+      }
+    },
     writeFinalizeImportLedger: undefined,
   });
   return {

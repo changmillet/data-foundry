@@ -14,6 +14,11 @@ import {
 } from "./foundry-runtime-qualification.ts";
 import { resolveInstalledTiangongLcaCliPackage } from "./foundry-runtime-utils.ts";
 import { createFoundryIsolatedChildEnvironment } from "./foundry-runtime-environment.ts";
+import {
+  bindWorkflowChildExecution,
+  workflowChildFailure,
+  WorkflowChildFailure,
+} from "./foundry-workflow-child-failure.ts";
 import type { FoundryTaskOperation } from "./foundry-task-types.ts";
 
 export function createWorkflowDirectory(context: FoundryRuntimeContext, prefix: string): string {
@@ -67,6 +72,34 @@ export function registerWorkflowStageFiles(
   return files;
 }
 
+/** Existing owner-selected report paths must belong to this actual call's output generation. */
+export function assertWorkflowReportArtifact(
+  context: FoundryRuntimeContext,
+  file: string,
+  selectedDir: string,
+): string {
+  const output = resolveFoundryOutput(context, selectedDir);
+  const current = resolveFoundryOutput(context, file);
+  const relative = path.relative(output, current);
+  if (
+    !relative ||
+    relative.startsWith(`..${path.sep}`) ||
+    relative === ".." ||
+    path.isAbsolute(relative)
+  )
+    throw new FoundryContextError(
+      "workflow_report_invalid",
+      "The child report locator is outside this call's output directory.",
+    );
+  const stat = fs.lstatSync(current);
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 8 * 1024 * 1024)
+    throw new FoundryContextError(
+      "workflow_report_invalid",
+      "The child report must be a bounded regular output artifact.",
+    );
+  return current;
+}
+
 export function runWorkflowLocalCli(
   context: FoundryRuntimeContext,
   qualified: QualifiedFoundryRuntime,
@@ -74,11 +107,7 @@ export function runWorkflowLocalCli(
   argv: readonly string[],
 ): Record<string, unknown> {
   const result = runWorkflowLocalCliResult(context, qualified, temporary, argv);
-  if (![0, 2].includes(result.exit) || "error" in result.report)
-    throw new FoundryContextError(
-      "workflow_cli_failed",
-      "Local CLI returned an invalid stage report.",
-    );
+  if (![0, 2].includes(result.exit) || "error" in result.report) throw result.failure();
   return result.report;
 }
 
@@ -87,7 +116,13 @@ export function runWorkflowLocalCliResult(
   qualified: QualifiedFoundryRuntime,
   temporary: string,
   argv: readonly string[],
-): { exit: number; report: Record<string, unknown> } {
+): {
+  exit: number;
+  report: Record<string, unknown>;
+  failure: (rejection?: unknown) => WorkflowChildFailure;
+  validate: <T>(check: () => T) => T;
+  verifyReportFile: (file: string) => void;
+} {
   const local =
     (argv[0] === "dataset" && argv[1] === "validate") ||
     (argv[0] === "qa" && ["flow", "process", "lifecyclemodel"].includes(argv[1])) ||
@@ -103,6 +138,7 @@ export function runWorkflowLocalCliResult(
     );
   assertQualifiedFoundryRuntime(context, qualified);
   const cli = resolveInstalledTiangongLcaCliPackage();
+  const execution = bindWorkflowChildExecution(context, qualified, cli.binPath, argv);
   const child = spawnSync(process.execPath, [cli.binPath, ...argv], {
     cwd: context.workspaceRoot,
     env: createFoundryIsolatedChildEnvironment({ tempRoot: temporary }),
@@ -111,22 +147,72 @@ export function runWorkflowLocalCliResult(
     timeout: 120_000,
     maxBuffer: 8 * 1024 * 1024,
   });
-  if (
-    child.error ||
-    child.signal ||
-    ![0, 1, 2].includes(child.status ?? -1) ||
-    !child.stdout.trim()
-  )
-    throw new FoundryContextError(
-      "workflow_cli_failed",
-      `Local CLI ${argv.slice(0, 2).join(" ")} did not return a stage report.`,
-    );
-  const report: unknown = JSON.parse(child.stdout);
+  const kind = child.error
+    ? "spawn_error"
+    : child.signal
+      ? "signal"
+      : ![0, 1, 2].includes(child.status ?? -1)
+        ? "exit_code"
+        : !child.stdout.trim()
+          ? "empty_stdout"
+          : null;
+  if (kind) throw workflowChildFailure(execution, child, kind);
+  let report: unknown;
+  try {
+    report = JSON.parse(child.stdout);
+  } catch {
+    throw workflowChildFailure(execution, child, "malformed_json");
+  }
   if (!report || typeof report !== "object" || Array.isArray(report))
-    throw new FoundryContextError(
-      "workflow_cli_failed",
-      "Local CLI returned an invalid stage report.",
+    throw workflowChildFailure(execution, child, "invalid_report");
+  if (
+    "error" in report ||
+    !("status" in report) ||
+    typeof report.status !== "string" ||
+    !report.status.trim()
+  )
+    throw workflowChildFailure(
+      execution,
+      child,
+      "stage_rejected",
+      new FoundryContextError(
+        "workflow_report_invalid",
+        "Local CLI returned an error or no stage status.",
+      ),
     );
   assertQualifiedFoundryRuntime(context, qualified);
-  return { exit: child.status!, report: report as Record<string, unknown> };
+  const failure = (rejection?: unknown) =>
+    workflowChildFailure(execution, child, "stage_rejected", rejection);
+  return {
+    exit: child.status!,
+    report,
+    failure,
+    verifyReportFile(file: string): void {
+      try {
+        const selectedDir = argv[argv.indexOf("--out-dir") + 1];
+        if (!argv.includes("--out-dir") || typeof selectedDir !== "string")
+          throw new FoundryContextError(
+            "workflow_report_invalid",
+            "The child report has no bound output directory.",
+          );
+        const current = assertWorkflowReportArtifact(context, file, selectedDir);
+        const recorded: unknown = JSON.parse(fs.readFileSync(current, "utf8"));
+        if (JSON.stringify(recorded) !== JSON.stringify(report))
+          throw new FoundryContextError(
+            "workflow_report_invalid",
+            "The child report file differs from its original returned report.",
+          );
+      } catch (error) {
+        throw failure(error);
+      }
+    },
+    validate<T>(check: () => T): T {
+      try {
+        return check();
+      } catch (error) {
+        if (error instanceof WorkflowChildFailure) throw error;
+        throw failure(error);
+      }
+    },
+  };
 }

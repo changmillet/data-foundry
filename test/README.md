@@ -280,11 +280,17 @@ checkPaths:
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
 lastReviewedAt: 2026-10-12
-lastReviewedCommit: af6dd0ef51be6edcd48b84d27c61d57b56ceba9f
-lastReviewedNote: "Reviewed PR244 Windows test repair against af6dd0: split unchanged managed cases and bound the concurrent two-command test budget; CLI 0.1.28, authority, production deadlines, packaging and original-owner adoption are unchanged. Exact-head hosted qualification is pending."
+lastReviewedCommit: c250d2599871d0456776bc34554a5107e1498cf9
+lastReviewedNote: "Reviewed c250 candidate integration with canonical a2f4e7cb: retained current preparation/adoption contracts and upstream JSONL and managed-test scheduling changes; runtime source equality and current validation are checked separately."
 ---
 
 # Test Layout
+
+Native phase-two scenarios cover generated quality-review drafts through the public facade, explicit disposition and evidence selection, stale/foreign scope rejection, retained evidence after reload, and failed local child/status readback without replay. Runtime candidate tests verify clean exact CLI source/version and file modes, frozen build/pack with lifecycle scripts disabled, immutable prepared bytes and non-serializable qualification authority. The local CLI source-candidate mode is separately exercised through actual component preparation and installed-entry qualification; fixture results alone do not establish that qualification or original production Task adoption.
+
+Quality-review coverage uses synthetic two-product attribution inventories with real offline CLI QA and an explicit native schema fixture. Public tests retain raw QA, accept only one bound observation, reject mismatched/expired scopes, survive facade reload and restore blocking after expiry without producing write authority. Descriptor tests check strict file/evidence selection. Lineage tests verify unchanged full rows or the exact existing cleanup producer's Flow-context proof, including conflicting/absent/extra/reordered projections and scientific-payload drift. These tests neither exercise the private original task nor replace its independent installed-runtime retest.
+
+Reference-closure regressions distinguish wrapped Process write payloads from supplemental validation documents. Mutation-manifest scenarios retain exact row/context bytes and a single Process candidate while rejecting missing or wrong-version business references. Public repair owner-readback scenarios exercise the existing payload-unwrapping boundary. Unit cases retain generic reference traversal, supported payload wrappers and in-payload fields even when named `semantic_context`.
 
 Golden harness tests retain a real non-HEAD comparison and exact output validation. Dependency installation may reuse content/tool caches for matching package-manager pins while retaining frozen locks, disabled scripts and explicit store integrity verification. The baseline/current command environments and Git-visible source isolation remain unchanged.
 

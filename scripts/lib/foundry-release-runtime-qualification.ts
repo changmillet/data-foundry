@@ -14,7 +14,24 @@ import {
   foundryComponentJson as json,
   writeFoundryComponentFile,
   freezeFoundryReleaseValue,
+  foundryComponentHash as hash,
 } from "./foundry-release-component-io.ts";
+
+import { readFoundryReleaseArtifact } from "./foundry-release-prepared.ts";
+import {
+  createFoundryRetainedConsumerCache,
+  assertFoundryRetainedConsumerCache,
+  discardFoundryRetainedConsumerCache,
+  type FoundryRetainedConsumerCache,
+} from "./foundry-release-consumer-cache.ts";
+
+const qualifiedConsumerCaches = new WeakMap<
+  object,
+  {
+    prepared: PreparedFoundryRuntimeComponents;
+    cache: FoundryRetainedConsumerCache;
+  }
+>();
 
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
@@ -23,10 +40,16 @@ function object(value: unknown): Record<string, unknown> {
 }
 
 /** Independent public-CLI consumer of the in-process prepared artifacts; no receipt grants authority. */
-export async function qualifyFoundryRuntimeComponents(prepared: PreparedFoundryRuntimeComponents) {
+export async function qualifyFoundryRuntimeComponents(
+  prepared: PreparedFoundryRuntimeComponents,
+  options: { readonly retainConsumerCache?: boolean } = {},
+) {
   const authority = preparedFoundryRuntimeAuthority(prepared);
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-runtime-qualification-"));
-  const cache = path.join(root, "component-cache");
+  const retainedCache = options.retainConsumerCache
+    ? createFoundryRetainedConsumerCache(prepared.output)
+    : null;
+  const cache = retainedCache?.path ?? path.join(root, "component-cache");
   const workspace = path.join(root, "项目 workspace");
   const home = path.join(root, "home"),
     temporary = path.join(root, "temp"),
@@ -277,6 +300,7 @@ export async function qualifyFoundryRuntimeComponents(prepared: PreparedFoundryR
     if (inspectRuntimeComponents(authority.manifest, { cacheDir: cache }).status !== "ready")
       throw new Error("Bootstrap base did not leave a verified warm cache.");
     preparedFoundryRuntimeAuthority(prepared);
+    if (retainedCache) assertFoundryRetainedConsumerCache(retainedCache);
     const report = freezeFoundryReleaseValue({
       schema: "tiangong-foundry.runtime-component-qualification.v1",
       status: "passed",
@@ -292,10 +316,15 @@ export async function qualifyFoundryRuntimeComponents(prepared: PreparedFoundryR
       checks,
       global_node_or_package_manager_required: false,
       release_blockers: prepared.release_blockers,
+      ...(retainedCache
+        ? { consumer_cache: { path: retainedCache.path, selection_only: true } }
+        : {}),
     });
     writeFoundryComponentFile(prepared.output, "runtime-qualification.json", json(report));
+    if (retainedCache) qualifiedConsumerCaches.set(report, { prepared, cache: retainedCache });
     return report;
   } catch (error) {
+    if (retainedCache) discardFoundryRetainedConsumerCache(retainedCache);
     const report = {
       schema: "tiangong-foundry.runtime-diagnostic.v1",
       status: "failed",
@@ -312,4 +341,111 @@ export async function qualifyFoundryRuntimeComponents(prepared: PreparedFoundryR
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
+}
+
+/** Produces a public CLI selection, never a replacement for public launch admission or task authorization. */
+export function createFoundryRuntimeCandidateEntry(
+  prepared: PreparedFoundryRuntimeComponents,
+  qualification: Awaited<ReturnType<typeof qualifyFoundryRuntimeComponents>>,
+) {
+  const selected = qualifiedConsumerCaches.get(qualification);
+  if (!selected || selected.prepared !== prepared)
+    throw new Error(
+      "Candidate entry requires its fresh in-process qualification with retained consumer cache.",
+    );
+  const authority = preparedFoundryRuntimeAuthority(prepared);
+  assertFoundryRetainedConsumerCache(selected.cache);
+  const inspected = inspectRuntimeComponents(authority.manifest, { cacheDir: selected.cache.path });
+  if (inspected.status !== "ready")
+    throw new Error("Candidate consumer cache no longer matches its verified component inventory.");
+  const manifestPath = path.join(prepared.output, prepared.manifest.file);
+  const manifestBytes = readFoundryReleaseArtifact(manifestPath, 32 * 1024 * 1024);
+  const reportPath = path.join(prepared.output, "runtime-qualification.json");
+  const reportBytes = readFoundryReleaseArtifact(reportPath, 32 * 1024 * 1024);
+  if (hash(manifestBytes) !== prepared.manifest.sha256 || !reportBytes.equals(json(qualification)))
+    throw new Error("Candidate manifest or qualification report changed before entry generation.");
+  const components = prepared.components.map((component) => {
+    const cached = inspected.components.find((item) => item.id === component.id);
+    const archivePath = cached ? authority.seeds[cached.key] : undefined;
+    if (!cached || !archivePath) throw new Error("Candidate local archive binding is incomplete.");
+    const archive = readFoundryReleaseArtifact(archivePath, 512 * 1024 * 1024);
+    if (archive.length !== component.archive.bytes || hash(archive) !== component.archive.sha256)
+      throw new Error("Candidate local archive changed from its manifest binding.");
+    return {
+      id: component.id,
+      key: cached.key,
+      version: component.version,
+      platform: component.platform,
+      archive: { path: archivePath, bytes: archive.length, sha256: hash(archive) },
+      content_sha256: component.content_sha256,
+      files: component.files,
+      cache_root: cached.root,
+    };
+  });
+  const node = inspected.components.find((component) => component.id === "node");
+  if (!node) throw new Error("Candidate entry lacks its verified Node/CLI bootstrap base.");
+  const executable = path.join(
+    node.root,
+    `bin/node${prepared.platform === "win32-x64" ? ".exe" : ""}`,
+  );
+  const cli = path.join(node.root, FOUNDRY_BOOTSTRAP_CLI);
+  const entry = freezeFoundryReleaseValue({
+    schema: "tiangong-foundry.runtime-candidate-entry.v1",
+    purpose: "explicit-local-public-cli-selection",
+    source: prepared.source,
+    platform: prepared.platform,
+    package_source: prepared.scope,
+    cli: prepared.cli,
+    manifest: { path: manifestPath, bytes: manifestBytes.length, sha256: prepared.manifest.sha256 },
+    qualification: {
+      path: reportPath,
+      bytes: reportBytes.length,
+      sha256: hash(reportBytes),
+      status: qualification.status,
+      diagnostic_only: true,
+    },
+    components,
+    consumer_cache: {
+      path: selected.cache.path,
+      component_keys: inspected.components.map((component) => component.key),
+      public_cli_revalidation_required: true,
+    },
+    command_prefix: {
+      executable,
+      argv: [
+        cli,
+        "runtime",
+        "exec",
+        "--manifest",
+        manifestPath,
+        "--manifest-sha256",
+        prepared.manifest.sha256,
+        "--cache-dir",
+        selected.cache.path,
+        "--entry",
+        "foundry",
+      ],
+      shell: false,
+      append: ["--cwd", "<consumer-cwd>", "--", "<public-operation-argv>"],
+    },
+    limits: [
+      "Selection material conveys no runtime, account, task, scientific or write authority.",
+      "The public CLI rechecks the independently selected manifest digest and complete component cache on every launch.",
+      "Original production tasks and runtimes are not adopted by this qualification.",
+      "Local qualification does not prove published download URLs or four-platform release acceptance.",
+    ],
+    release_blockers: prepared.release_blockers,
+  });
+  assertFoundryRetainedConsumerCache(selected.cache);
+  if (
+    inspectRuntimeComponents(authority.manifest, { cacheDir: selected.cache.path }).status !==
+    "ready"
+  )
+    throw new Error("Candidate cache changed during entry generation.");
+  const file = writeFoundryComponentFile(prepared.output, "candidate-entry.json", json(entry));
+  return freezeFoundryReleaseValue({
+    path: path.join(prepared.output, file.path),
+    bytes: file.bytes,
+    sha256: file.sha256,
+  });
 }

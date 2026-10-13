@@ -93,9 +93,9 @@ checkPaths:
   - scripts/lib/import-curation/internal/mutation-manifest-workflow.ts
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-10-11
-lastReviewedCommit: 80475d0a0f97aebfee89d27624bddbe95cab55d2
-lastReviewedNote: "Reviewed PR244 JSON/JSONL source-trace reading on merged PR240 main 80475d0a. The format repair and semantic-lineage regressions are retained; CLI0.1.28, managed adoption, diagnostic admission, authentication and no-replay boundaries come from reviewed main. Historical consumer evidence remains separate; current combined qualification is pending."
+lastReviewedAt: 2026-10-12
+lastReviewedCommit: c250d2599871d0456776bc34554a5107e1498cf9
+lastReviewedNote: "Reviewed c250 candidate integration with canonical a2f4e7cb: retained current preparation/adoption contracts and upstream JSONL and managed-test scheduling changes; runtime source equality and current validation are checked separately."
 ---
 
 # Capability Ownership Policy
@@ -263,3 +263,5 @@ Canonical support reads and complete pagination belong to CLI `dataset support-c
 Same-task compatibility and retained identity recovery are Foundry task/provenance capabilities. They preserve original registration, report, source and attempt ownership. Full package/CLI/Toolkit compatibility is independently qualified; CLI authentication/search, TIDAS conformance and Agent semantic identity decisions stay with their owners. Read-only dependency selection does not create dependency authoring/mutation targets. Incomplete historical authentication remains UNKNOWN rather than authorizing a replacement query or scientific approval.
 
 The managed adoption carrier and typed authentication projection belong to Foundry. CLI still owns generic manifest/inventory/IPC execution and explicit cli-auth filtering, private sessions, current-user verification and business transactions. Foundry uses those public primitives without copying the CLI scheduler, login/cache or database writer. A carrier qualifies compatibility only; it does not approve scientific identity or writes.
+
+Foundry owns the content-bound preparation quality disposition over a CLI-produced Process mass observation. It retains raw numerical QA, accepts only a specifically reviewed object/finding and checks current evidence on reassessment/finalization. CLI QA, canonical payload/reference closure and account/write owners keep their responsibilities. Review evidence is never a global profile waiver or write grant; the public contract is [preparation quality review](public-runtime-contract.md#preparation-quality-review).

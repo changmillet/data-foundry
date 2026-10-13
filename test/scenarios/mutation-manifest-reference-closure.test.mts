@@ -20,6 +20,252 @@ import {
 import { writeCompletedIdentityPreflightIndex } from "../fixtures/identity-fixtures.ts";
 import { processRowWithFlowRef } from "../fixtures/row-builders.ts";
 
+function createWrappedProcessClosureFixture(root: string) {
+  const processId = "cccccccc-dddd-4eee-8fff-000000000011";
+  const flowId = "dddddddd-eeee-4fff-8000-000000000012";
+  const payload = processRowWithFlowRef(processId, flowId);
+  const reference = (type: string, id: string) => ({
+    "@type": type,
+    "@refObjectId": id,
+    "@version": "00.00.001",
+  });
+  const flowDocument = {
+    id: flowId,
+    version: "00.00.001",
+    json: {
+      flowDataSet: {
+        flowInformation: {
+          dataSetInformation: {
+            "common:UUID": flowId,
+            name: { baseName: { "@xml:lang": "en", "#text": "Synthetic input flow" } },
+          },
+        },
+        flowProperties: {
+          flowProperty: [
+            {
+              "@dataSetInternalID": "0",
+              referenceToFlowPropertyDataSet: reference(
+                "flow property data set",
+                "11111111-1111-4111-8111-000000000013",
+              ),
+              meanValue: "1",
+            },
+          ],
+        },
+        quantitativeReference: {
+          referenceToReferenceFlowProperty: "0",
+          referenceToUnitGroupDataSet: reference(
+            "unit group data set",
+            "22222222-2222-4222-8222-000000000014",
+          ),
+        },
+        administrativeInformation: {
+          dataEntryBy: {
+            "common:referenceToDataSetFormat": reference(
+              "source data set",
+              "33333333-3333-4333-8333-000000000015",
+            ),
+          },
+          publicationAndOwnership: {
+            "common:dataSetVersion": "00.00.001",
+            "common:referenceToOwnershipOfDataSet": reference(
+              "contact data set",
+              "44444444-4444-4444-8444-000000000016",
+            ),
+          },
+        },
+      },
+    },
+  };
+  const row = {
+    id: processId,
+    version: "00.00.001",
+    json: payload,
+    semantic_context: { flow_documents: [flowDocument] },
+    qa_context: { flow_documents: [flowDocument, flowDocument] },
+  };
+  const rowsFile = path.join(root, "rows", "processes.jsonl");
+  writeJsonLines(rowsFile, [row]);
+  const rowsBytes = fs.readFileSync(rowsFile);
+  const schemaReport = path.join(root, "schema", "validation-report.json");
+  writeJson(schemaReport, {
+    input_path: rel(rowsFile),
+    status: "completed",
+    rows: [
+      {
+        index: 0,
+        id: processId,
+        version: "00.00.001",
+        type: "process",
+        status: "valid",
+        issues: [],
+      },
+    ],
+  });
+  const qaReport = path.join(root, "qa", "process-qa-report.json");
+  writeJson(qaReport, {
+    rows_file: rel(rowsFile),
+    status: "completed_local_process_qa",
+    blockers: [],
+    findings: [],
+  });
+  const curationGateReport = path.join(root, "curation", "dataset-curation-gate-report.json");
+  writeJson(curationGateReport, {
+    schema_version: 2,
+    status: "ready",
+    profile: "generic",
+    dataset_type: "process",
+    rows_file: rel(rowsFile),
+    schema_report: rel(schemaReport),
+    qa_report: rel(qaReport),
+    entities: [
+      {
+        dataset_type: "process",
+        entity_id: processId,
+        version: "00.00.001",
+        status: "ready",
+        action_item_count: 0,
+      },
+    ],
+  });
+  const cleanupReport = path.join(root, "cleanup", "dataset-curation-cleanup-report.json");
+  writeJson(cleanupReport, {
+    status: "completed",
+    rows_file: rel(rowsFile),
+    cleaned_rows_file: rel(rowsFile),
+  });
+  const progressJsonl = path.join(root, "dry-run", "progress.jsonl");
+  const failuresJsonl = path.join(root, "dry-run", "failures.jsonl");
+  writeJsonLines(progressJsonl, [
+    { id: processId, version: "00.00.001", status: "prepared", operation: "would_insert" },
+  ]);
+  writeJsonLines(failuresJsonl, []);
+  const dryRunReport = path.join(root, "dry-run", "summary.json");
+  writeJson(dryRunReport, {
+    status: "completed",
+    mode: "dry-run",
+    commit: false,
+    input_path: rel(rowsFile),
+    files: { progress_jsonl: rel(progressJsonl), failures_jsonl: rel(failuresJsonl) },
+  });
+  const runManifest = (name: string, provenVersion: string | null) => {
+    const remoteChecks = path.join(root, name, "checks.jsonl");
+    writeJsonLines(
+      remoteChecks,
+      provenVersion === null
+        ? []
+        : [
+            {
+              row_index: 0,
+              role: "reference",
+              table: "flows",
+              type: "flow data set",
+              id: flowId,
+              version: provenVersion,
+              path: "/processDataSet/exchanges/exchange/0/referenceToFlowDataSet",
+              status: "ok",
+              latest_version: provenVersion,
+            },
+          ],
+    );
+    const remoteVerifyReport = path.join(root, name, "remote-verification-report.json");
+    writeJson(remoteVerifyReport, {
+      schema_version: 1,
+      status: "passed_remote_verification",
+      root_policy: "candidate",
+      input_path: rel(rowsFile),
+      counts: { rows: 1, references: 1, checked: provenVersion === null ? 0 : 1, blockers: 0 },
+      blockers: [],
+      files: { checks: rel(remoteChecks) },
+    });
+    return runFoundry([
+      "dataset-mutation-manifest",
+      "--type",
+      "process",
+      "--profile",
+      "generic",
+      "--rows-file",
+      rel(rowsFile),
+      "--schema-report",
+      rel(schemaReport),
+      "--curation-gate-report",
+      rel(curationGateReport),
+      "--cleanup-report",
+      rel(cleanupReport),
+      "--dry-run-report",
+      rel(dryRunReport),
+      "--remote-verify-report",
+      rel(remoteVerifyReport),
+      "--target-user-id",
+      targetUserId,
+      "--out-dir",
+      rel(path.join(root, name, "manifest")),
+    ]);
+  };
+  return { processId, flowId, payload, row, rowsFile, rowsBytes, runManifest };
+}
+
+test("mutation manifest closure uses the Process payload while preserving duplicated validation context", () => {
+  const root = path.join(referenceClosureFixtureRoot, "wrapped-context");
+  fs.rmSync(root, { recursive: true, force: true });
+  try {
+    const fixture = createWrappedProcessClosureFixture(root);
+    const result = fixture.runManifest("proven-direct-flow", "00.00.001");
+    assert.equal(result.code, 0, JSON.stringify(result.json.evidence.scope_blockers));
+    assert.equal(result.json.status, "ready_for_remote_write");
+    assert.equal(result.json.counts.write_candidates, 1);
+    assert.equal(result.json.counts.blockers, 0);
+    assert.equal(result.json.items.length, 1);
+    assert.equal(result.json.items[0].dataset_type, "process");
+    assert.equal(result.json.items[0].entity_id, fixture.processId);
+    assert.equal(result.json.items[0].blockers.length, 0);
+    assert.equal(result.json.rows_file, rel(fixture.rowsFile));
+    assert.deepEqual(fs.readFileSync(fixture.rowsFile), fixture.rowsBytes);
+    const candidatesFile = path.join(repoRoot, result.json.files.write_candidates);
+    assert.deepEqual(fs.readFileSync(candidatesFile), fixture.rowsBytes);
+    const candidates = readJsonLines(candidatesFile);
+    assert.equal(candidates.length, 1);
+    assert.deepEqual(candidates[0], fixture.row);
+    assert.deepEqual(candidates[0].json, fixture.payload);
+    assert.deepEqual(readJsonLines(path.join(repoRoot, result.json.files.reference_reuse)), []);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("mutation manifest validation context cannot prove missing or wrong-version direct Process references", () => {
+  const root = path.join(referenceClosureFixtureRoot, "wrapped-context-negative");
+  fs.rmSync(root, { recursive: true, force: true });
+  try {
+    const fixture = createWrappedProcessClosureFixture(root);
+    for (const version of [null, "00.00.002"]) {
+      const result = fixture.runManifest(
+        version === null ? "missing-direct-flow" : "wrong-direct-version",
+        version,
+      );
+      assert.equal(result.code, 1);
+      assert.equal(result.json.status, "blocked");
+      assert.equal(result.json.counts.write_candidates, 0);
+      assert.equal(result.json.counts.blocked_write_candidates, 1);
+      assert.ok(
+        result.json.evidence.scope_blockers.some(
+          (blocker) =>
+            blocker.code === "reference_closure_unproven" &&
+            blocker.reference_id === fixture.flowId &&
+            blocker.reference_version === "00.00.001",
+        ),
+      );
+      assert.deepEqual(fs.readFileSync(fixture.rowsFile), fixture.rowsBytes);
+      assert.deepEqual(
+        readJsonLines(path.join(repoRoot, result.json.files.blocked_write_candidates)),
+        [fixture.row],
+      );
+    }
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("mutation manifest blocks process writes when referenced datasets are not proven", () => {
   fs.rmSync(referenceClosureFixtureRoot, { recursive: true, force: true });
   const processId = "cccccccc-dddd-4eee-8fff-000000000001";

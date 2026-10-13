@@ -32,8 +32,8 @@ checkPaths:
   - prettier.config.ts
   - tsconfig*.json
 lastReviewedAt: 2026-10-12
-lastReviewedCommit: af6dd0ef51be6edcd48b84d27c61d57b56ceba9f
-lastReviewedNote: "Reviewed PR244 Windows test repair against af6dd0: six managed cases keep their assertions and separate scheduling; only the concurrent test pair gets a bounded combined deadline. CLI 0.1.28, ownership, package entry and original-task adoption remain unchanged; hosted qualification pending."
+lastReviewedCommit: c250d2599871d0456776bc34554a5107e1498cf9
+lastReviewedNote: "Reviewed c250 candidate integration with canonical a2f4e7cb: retained current preparation/adoption contracts and upstream JSONL and managed-test scheduling changes; runtime source equality and current validation are checked separately."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry
@@ -72,6 +72,8 @@ Receive external LCA packages or source documents, choose the correct import lan
 - Never rewrite `missing_dataset` for a foreign or RLS-hidden `state_code=0` reference to passed, even when another account previously observed that row. Production-test account cases reject every accepted remote difference; ordinary runs may retain only the separately proven root-payload `importTraceSummary.traceHash` normalization.
 - The legacy developer runner may load its repository `.env` for existing commands. The consumer facade never does. Neither path lets environment values replace the task-local `source-manifest.json`, `profile-lock.json`, account/write guard evidence, checkpoints, request revision or artifact ledger.
 - Legacy repository credential-scoped commands use `pnpm account:run -- <profile> -- <executable> [args...]`. The consumer runtime uses `verifyFoundryRuntimeIdentity` plus registered task authorization and final execution guards. Both paths obtain a fresh, server-verified, intent-bound receipt from the exact installed CLI; project/user/workspace/task/actor checks and executable-plus-argv dispatch remain mandatory. Headless use follows only the CLI explicit-target, process-only token path; no authentication bypass or new credential store is allowed.
+
+Preparation quality review follows `docs/public-runtime-contract.md`: use the explicit content-bound descriptor for a supported current Process observation and preserve raw QA. A reviewed disposition does not replace final write authorization, tolerate arbitrary row/context drift or grant replay authority.
 
 ## Toolchain and module boundaries
 
@@ -154,3 +156,5 @@ Same-task compatibility and retained identity diagnostics follow `docs/public-ru
 An explicit new read-only identity stage is distinct from retained recovery and uses the existing public resume entry with `--identity-stage-input`. Stable intent and native per-target claims must precede dispatch; incomplete dispatched proof cannot be retried automatically. Preserve same Task/actor/frozen science and index prefix, retain new non-secret authentication durably, and return before write stages. Data-workspace engineering generations never enter Foundry native permission input.
 
 Actual original-task qualification must use CLI runtime exec → manifest-declared package entry → package-owned managed host. The L=S+K control carrier proves full executing runtime equality and preserves native S checks, the original read/write ceiling and L on reentry. Authentication uses only existing explicit CLI policy and fresh child receipts; a direct API host or parent role receipt cannot close this consumer gap.
+
+For an exact local successor through the original managed entry, use [native adoption preparation](docs/package-distribution-contract.md#native-preparation-for-managed-task-adoption). It generates complete runtime facts and consumes an independent technical review before sealing the carrier; the original writer separately owns Task eligibility and plan/apply/audit.

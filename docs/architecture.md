@@ -153,8 +153,8 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - docs/incremental-change-set-contract.md
 lastReviewedAt: 2026-10-12
-lastReviewedCommit: af6dd0ef51be6edcd48b84d27c61d57b56ceba9f
-lastReviewedNote: "Reviewed PR244 Windows test repair against af6dd0: six managed cases keep their assertions and separate scheduling; only the concurrent test pair gets a bounded combined deadline. CLI 0.1.28, ownership, package entry and original-task adoption remain unchanged; hosted qualification pending."
+lastReviewedCommit: c250d2599871d0456776bc34554a5107e1498cf9
+lastReviewedNote: "Reviewed c250 candidate integration with canonical a2f4e7cb: retained current preparation/adoption contracts and upstream JSONL and managed-test scheduling changes; runtime source equality and current validation are checked separately."
 ---
 
 # Architecture
@@ -190,6 +190,8 @@ Foundry selects a private session reference and exact project/user intent, then 
 `foundry-runtime-qualification.ts` binds current Foundry package identity to exact public CLI and independently selected native TIDAS bytes/protocols. `foundry-execution-admission.ts` then binds the current source lineage, derived final rows, active grant/actions/QA evidence and owner CLI CommandSpec. Rehydration in a new process reconstructs every process-local proof and checks the exact owner-draft argv shape before returning the spec. Mutation dispatch, attempt transitions and readback remain with the existing CLI/orchestration owners.
 
 ## Public facade composition
+
+Preparation quality review is a Foundry-owned local policy decision over retained CLI QA evidence. `foundry-quality-review-input.ts` selects strict descriptors; `foundry-quality-review.ts` registers and rehydrates task-indexed evidence; `foundry-quality-review-lineage.ts` verifies the existing cleanup producer's exact validation-context derivation. Assessment, curation, finalization and execution admission consume the same narrow receipt. The CLI continues to own numerical QA, existing reference owners continue to own closure, and ordinary task authorization continues to own write permission. No separate task/state store or dataset writer is introduced.
 
 `foundry-facade.ts` is the public orchestration boundary. `foundry-operation-result.ts` owns the strict single-result envelope and exits; `foundry-task-start-spec.ts` owns bounded user intent; `foundry-facade-store.ts` owns deterministic request/revision indexes and task pointers; `foundry-migration-inventory.ts` owns the read-only W10 input plan. The facade calls `createFoundryRuntime` for task creation, inspection, deterministic cleanup, qualified native conversion and CLI contract-context preparation. Each local stage uses the existing task transaction. It does not instantiate the legacy command graph for public requests.
 

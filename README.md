@@ -159,8 +159,8 @@ checkPaths:
   - test/unit/zero-javascript-ratchet.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
 lastReviewedAt: 2026-10-12
-lastReviewedCommit: af6dd0ef51be6edcd48b84d27c61d57b56ceba9f
-lastReviewedNote: "Reviewed PR244 Windows test repair against af6dd0: managed tests are separately scheduled, with a bounded combined deadline only for the concurrent pair. Bootstrap, CLI 0.1.28, public runtime and original-task adoption remain unchanged; hosted qualification pending."
+lastReviewedCommit: c250d2599871d0456776bc34554a5107e1498cf9
+lastReviewedNote: "Reviewed c250 candidate integration with canonical a2f4e7cb: retained current preparation/adoption contracts and upstream JSONL and managed-test scheduling changes; runtime source equality and current validation are checked separately."
 ---
 
 # TianGong LCA Data Foundry
@@ -536,3 +536,5 @@ Remote writes are never ungated. A task must pass schema, QA, curation, cleanup,
 Tasks may set `account_intent.account_mode` to `production-test` for strict payload verification. Ordinary tasks retain the narrowly proven import-trace `traceHash` normalization path. See [public verification policy](docs/public-runtime-contract.md#account-verification-mode).
 
 Same-task compatibility and retained identity diagnostics now have an explicit [public runtime contract](docs/public-runtime-contract.md#same-task-compatibility-and-retained-identity-diagnostics). Multilingual names preserve their valid language nodes; Process-only read-only dependencies reach initial queue/QA/CLI validation without changing scientific payloads or mutation targets. Supported manual-review diagnostics become semantic work, while incomplete historical provenance remains UNKNOWN. Local candidate qualification, original-consumer validation and release adoption are distinct facts.
+
+A reviewed Process mass-screening observation can be handled before finalization through the [preparation quality-review contract](docs/public-runtime-contract.md#preparation-quality-review). The explicit input preserves the raw observation and exact inventory while ordinary write authorization remains separate.

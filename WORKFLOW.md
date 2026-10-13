@@ -281,9 +281,6 @@ checkPaths:
   - test/unit/foundry-runtime-environment.test.mts
   - test/unit/lint-suppression-audit.test.mts
   - test/README.md
-lastReviewedAt: 2026-10-12
-lastReviewedCommit: af6dd0ef51be6edcd48b84d27c61d57b56ceba9f
-lastReviewedNote: "Reviewed PR244 Windows test repair against af6dd0: six managed cases keep their assertions and separate scheduling; only the concurrent test pair gets a bounded combined deadline. CLI 0.1.28, ownership, package entry and original-task adoption remain unchanged; hosted qualification pending."
 tracker:
   kind: filesystem
   inbox: tasks/inbox
@@ -305,6 +302,9 @@ policy:
   require_dry_run_before_remote_write: true
   required_multilang_english_before_write: true
   preserve_source_language_variants: true
+lastReviewedAt: 2026-10-12
+lastReviewedCommit: c250d2599871d0456776bc34554a5107e1498cf9
+lastReviewedNote: "Reviewed c250 candidate integration with canonical a2f4e7cb: retained current preparation/adoption contracts and upstream JSONL and managed-test scheduling changes; runtime source equality and current validation are checked separately."
 ---
 
 You are working on a TianGong LCA data import task.
@@ -417,6 +417,8 @@ Reusable scheduling/run-lock, receipt parsing and runtime identity come only fro
 Credential-scoped operator commands must run through `pnpm account:run -- <profile> -- <executable> [args...]`. The ignored profile must include `FOUNDRY_EXPECTED_PROJECT_REF` and `FOUNDRY_EXPECTED_USER_ID`. Before the requested argv is executed, the wrapper obtains a fresh `auth identity-receipt` from the installed CLI with both expectations, requires a fresh intent-bound server-verified OAuth receipt while the CLI owns session reuse and refresh, and uses a restricted child environment. Missing expectations, thread-guard drift, stale or partial receipts, and the retired `--no-auth-check` path all fail before the requested command starts.
 
 ## Required Order
+
+A current Process mass-screening observation with an applicable reviewed source-model interpretation may use the [public preparation-quality input](docs/public-runtime-contract.md#preparation-quality-review) before finalization. Select the current scope artifact and genuine per-object authority/evidence, then reassess unchanged rows. Keep the raw QA observation and all unrelated authoring/validation blockers. This path produces local review evidence; the existing finalization and write-authorization order still applies.
 
 1. Create or reuse `.foundry/workspaces/<task-id>/`.
 2. Freeze the source package or source document manifest.

@@ -1,8 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { taskAuthorizationAllows } from "../task-authorization.ts";
 import { readOnlyStageContract } from "../stage-contract.ts";
 import { selectFinalizeReferenceInputs } from "./finalize-reference-inputs.ts";
+import { readRows } from "../import-curation/internal/runtime-io.ts";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -213,6 +215,7 @@ interface FinalizeDependencies {
     fallback: string,
   ) => string | null;
   readRowsFile: (filePath: string) => DatasetRow[];
+  readReferenceBytes?: (filePath: string) => Buffer;
   repairTrueSourceClassification: (row: DatasetRow, context: JsonRecord) => void;
   repairTrueSourceDescription: (row: DatasetRow, context: JsonRecord) => void;
   repairTrueSourceIdentity: (row: DatasetRow, context: JsonRecord) => void;
@@ -267,6 +270,7 @@ const postAuthoringFinalizeStageContract = readOnlyStageContract([
       "Apply identity reference rewrites, unresolved exchange externalization, BAFU source/contact rewrites, canonical support rewrites, and deterministic curation cleanup.",
     inputs: [
       "input rows",
+      "selected read-only Process validation references",
       "identity/preflight indexes",
       "BAFU source/contact policy",
       "canonical support cache",
@@ -370,6 +374,7 @@ export function createPostAuthoringFinalizeCommands({
   repoRoot,
   reportFileFromCliStage,
   readRowsFile,
+  readReferenceBytes = (file: string) => fs.readFileSync(file),
   repairTrueSourceClassification,
   repairTrueSourceDescription,
   repairTrueSourceIdentity,
@@ -1196,9 +1201,33 @@ export function createPostAuthoringFinalizeCommands({
       }),
     );
 
+    const validationReferences = referenceInputs.qaFiles.map((file) => {
+      const content = readReferenceBytes(file);
+      // The reader uses this path only to select JSON/JSONL; parsing and hashing
+      // must share the captured bytes rather than reopen a mutable selection.
+      const rows = readRows(file.toLowerCase(), () => content.toString("utf8"));
+      if (!fs.readFileSync(file).equals(content))
+        throw new Error("Selected Process validation reference bytes changed during capture.");
+      return {
+        rows,
+        fact: {
+          path: repoRelativePath(file),
+          bytes: content.length,
+          sha256: createHash("sha256").update(content).digest("hex"),
+        },
+      };
+    });
     const cleanup = timeStage("curation_cleanup", () =>
       runDatasetCurationCleanup({
         repoRoot,
+        ...(validationReferences.length
+          ? {
+              processValidationReferences: {
+                rows: validationReferences.flatMap((reference) => reference.rows),
+                files: validationReferences.map((reference) => reference.fact),
+              },
+            }
+          : {}),
         options: {
           ...options,
           type: datasetType,

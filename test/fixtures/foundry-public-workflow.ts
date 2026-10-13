@@ -214,6 +214,7 @@ export async function verifyPublicIdentityWorkflow(
     | "abort-after-claim"
     | "failed-predecessor-abort"
     | null = null,
+  readOnlyFailure: boolean | "missing_locator" = false,
 ) {
   const [identityDecision, approvalKind, trace, mixed, explicitMode, remoteDifference] = scenario;
   const accountMode = explicitMode ?? "ordinary";
@@ -422,6 +423,10 @@ export async function verifyPublicIdentityWorkflow(
     failRead = true;
   let currentAuthFailure = false;
   let finalizing = false;
+  let readOnlyFailureCalls = 0;
+  let readOnlyFailureCwd: string | undefined;
+  let readOnlyFailureExecutable: string | undefined;
+  let readOnlyFailureArgv: string[] = [];
   let referenceQueries = 0;
   let referenceResponse: "missing" | "duplicate" | "outdated" | "wrong_target" | "passed" =
     "missing";
@@ -485,6 +490,21 @@ export async function verifyPublicIdentityWorkflow(
       ) {
         const committing = argv.includes("--commit");
         if (!argv.includes("verify-remote") && !committing) assert.ok(argv.includes("--dry-run"));
+        if (readOnlyFailure && !committing && argv.includes("--dry-run")) {
+          readOnlyFailureCalls++;
+          readOnlyFailureExecutable = String(args[0]);
+          readOnlyFailureArgv = argv.map(String);
+          readOnlyFailureCwd = options?.cwd === undefined ? undefined : String(options.cwd);
+          return {
+            pid: 61,
+            output: [],
+            status: 0,
+            signal: null,
+            stdout:
+              readOnlyFailure === "missing_locator" ? JSON.stringify({ status: "completed" }) : "",
+            stderr: "controlled read-only failure access_token=DO_NOT_RETAIN",
+          };
+        }
         const outDir = argv[argv.indexOf("--out-dir") + 1];
         fs.mkdirSync(outDir, { recursive: true });
         const file = path.join(outDir, "controlled-read-report.json");
@@ -1503,6 +1523,41 @@ export async function verifyPublicIdentityWorkflow(
   finalizing = true;
   let finalized = await facade.resume(invocation);
   if (childFailure) throw childFailure;
+  if (readOnlyFailure) {
+    assert.equal(finalized.status, "failed", JSON.stringify(finalized.blockers));
+    const artifact = finalized.artifacts.find(
+      (item) => item.role === "workflow-child-failure.json",
+    );
+    assert.ok(artifact?.kind === "file", "the original read-only failure must retain its receipt");
+    const detail = JSON.parse(fs.readFileSync(artifact.path, "utf8"));
+    assert.equal(
+      detail.failure.kind,
+      readOnlyFailure === "missing_locator" ? "stage_rejected" : "empty_stdout",
+    );
+    if (readOnlyFailure === "missing_locator")
+      assert.equal(detail.failure.rejection.code, "finalize_report_invalid");
+    assert.equal(detail.failure.child.pid, 61);
+    assert.equal(detail.failure.child.exit_code, 0);
+    assert.equal(detail.failure.invocation.cwd, readOnlyFailureCwd);
+    assert.equal(detail.failure.invocation.executable, readOnlyFailureExecutable);
+    assert.deepEqual(
+      [detail.failure.invocation.cli_path, ...detail.failure.invocation.argv],
+      readOnlyFailureArgv,
+    );
+    assert.ok(detail.failure.invocation.cwd.includes(`${path.sep}tmp${path.sep}`));
+    assert.ok(detail.failure.invocation.argv.includes("--dry-run"));
+    assert.equal(JSON.stringify(detail).includes("DO_NOT_RETAIN"), false);
+    const fresh = createFoundryFacade({
+      workspace,
+      cacheBase: path.join(root, "cache"),
+      runtimeSelection,
+    });
+    assert.equal((await fresh.status(invocation)).status, "blocked");
+    assert.equal((await fresh.resume(invocation)).status, "blocked");
+    assert.equal(readOnlyFailureCalls, 1);
+    assert.equal(writes, 0);
+    return;
+  }
   assert.equal(finalized.status, "needs_input", JSON.stringify(finalized.blockers));
   let finalizeArtifact = finalized.artifacts.findLast(
     (item) => item.role === "foundry-finalize.json",

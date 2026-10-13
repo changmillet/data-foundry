@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { reviewedFoundryQualityFindings } from "../foundry-quality-review.ts";
 import {
   readPreparationCliEvidence,
   preparationValidationActions,
@@ -190,6 +191,16 @@ export function runDatasetCurationGate({
   const schemaReport = readJson<JsonRecord>(schemaReportPath);
   const qaReport = readJson<JsonRecord>(qaReportPath);
   const qaFindings = readQaFindings(root, qaReport, qaReportPath, datasetType);
+  const qualityReviews =
+    options.qualityReview && datasetType === "process"
+      ? reviewedFoundryQualityFindings(
+          options.qualityReview,
+          rowsFile,
+          qaReport,
+          qaFindings,
+          options.cleanupReport,
+        )
+      : [];
   const profileContext = readContextFiles(
     root,
     profile.docs.map((filePath): [string, string | null | undefined] => [
@@ -376,8 +387,16 @@ export function runDatasetCurationGate({
     const waivedFindings = entityQaFindings.filter((finding) =>
       waivedQaCodes.has(qaFindingCode(finding)),
     );
+    const reviewedFindings = qualityReviews.filter(
+      (review) =>
+        review.row_index === index &&
+        review.id === identity.id &&
+        review.version === identity.version,
+    );
     const actionableQaFindings = entityQaFindings.filter(
-      (finding) => !waivedQaCodes.has(qaFindingCode(finding)),
+      (finding) =>
+        !waivedQaCodes.has(qaFindingCode(finding)) &&
+        !reviewedFindings.some((review) => review.finding === finding),
     );
     const schemaActionItems = schemaIssues.map((issue) => schemaIssueCurationAction(issue));
     const qaActionItems = actionableQaFindings.map((finding) =>
@@ -530,6 +549,7 @@ export function runDatasetCurationGate({
           }
         : {}),
       qa_findings: entityQaFindings,
+      ...(reviewedFindings.length ? { reviewed_findings: reviewedFindings } : {}),
       waived_findings: waivedFindings.map((finding) => ({
         ...finding,
         waiver_basis: profile.waiverReasons?.[qaFindingCode(finding)] ?? null,
@@ -624,6 +644,12 @@ export function runDatasetCurationGate({
       qa_finding_count: entityQaFindings.length,
       ...(datasetType === "process" ? { process_qa_finding_count: entityQaFindings.length } : {}),
       waived_finding_count: waivedFindings.length,
+      ...(reviewedFindings.length
+        ? {
+            reviewed_finding_count: reviewedFindings.length,
+            quality_review_receipt_sha256: reviewedFindings[0].receipt_sha256,
+          }
+        : {}),
       action_item_count: actionItems.length,
       identity_action_item_count: identityPreflightActionItems.length,
       identity_decision_apply_count: identityDecisionApplyRows.length,
@@ -684,6 +710,9 @@ export function runDatasetCurationGate({
         }
       : {}),
     qa_report: repoRelativePath(root, qaReportPath),
+    ...(qualityReviews.length
+      ? { quality_review_receipt_sha256: qualityReviews[0].receipt_sha256 }
+      : {}),
     policy: {
       cli_qa_role: "deterministic_qa_report_only",
       ...(cliValidation

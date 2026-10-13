@@ -86,7 +86,7 @@ export interface OperationPlan {
 export interface OperationReceipt {
   schema: "tiangong-foundry.operation-receipt.v1";
   mode: "deterministic-local";
-  status: "completed";
+  status: "completed" | "failed";
   plan: FileReference;
   job_sha256: string;
   outputs: ArtifactFact[];

@@ -1,5 +1,10 @@
 import { createHash } from "node:crypto";
 import { parseDocument } from "yaml";
+import {
+  assertPreparedFoundryCliCandidate,
+  type PreparedFoundryCliCandidate,
+  type FoundryCliCandidateEvidence,
+} from "./foundry-release-cli-candidate.ts";
 
 export interface FoundryProductionPackage {
   readonly id: string;
@@ -23,6 +28,7 @@ export interface FoundryProductionLock {
   };
   readonly root_dependencies: Readonly<Record<string, string>>;
   readonly packages: readonly FoundryProductionPackage[];
+  readonly local_cli_candidate?: FoundryCliCandidateEvidence;
 }
 
 const productionLocks = new WeakSet<object>();
@@ -72,6 +78,14 @@ export function projectFoundryProductionLock(
   input: Buffer,
   expectedDirect: Readonly<Record<string, string>>,
 ): FoundryProductionLock {
+  return projectLock(input, expectedDirect, false);
+}
+
+function projectLock(
+  input: Buffer,
+  expectedDirect: Readonly<Record<string, string>>,
+  sourceDependencies: boolean,
+): FoundryProductionLock {
   const bytes = Buffer.from(input);
   if (!bytes.length || bytes.length > 16 * 1024 * 1024)
     throw new Error("Production lock input exceeds its byte bound or is empty.");
@@ -113,7 +127,7 @@ export function projectFoundryProductionLock(
         if (
           !Object.hasOwn(expectedDirect, name) ||
           entry.get("specifier") !== expectedDirect[name] ||
-          entry.get("version") !== expectedDirect[name]
+          (!sourceDependencies && entry.get("version") !== expectedDirect[name])
         )
           throw new Error(
             "Production lock root dependency differs from the exact public package dependency.",
@@ -202,6 +216,43 @@ export function projectFoundryProductionLock(
     packages: Object.freeze(
       [...selected.values()].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)),
     ),
+  });
+  productionLocks.add(result);
+  return result;
+}
+
+/** Keeps the owning lock and the candidate source lock distinct; only freshly built source bytes can replace CLI. */
+export function projectFoundryCliCandidateLock(
+  owning: FoundryProductionLock,
+  candidate: PreparedFoundryCliCandidate,
+): FoundryProductionLock {
+  assertFoundryProductionLock(owning);
+  assertPreparedFoundryCliCandidate(candidate);
+  const evidence = candidate.evidence;
+  const selected = owning.packages.find((pkg) => pkg.name === evidence.package.name);
+  if (
+    !selected ||
+    selected.version !== evidence.package.version ||
+    Object.keys(owning.root_dependencies).length !== 1 ||
+    owning.root_dependencies[evidence.package.name] !== selected.id
+  )
+    throw new Error("CLI candidate requires the owning exact single CLI dependency.");
+  const cliDependencies = projectLock(candidate.lockBytes, candidate.dependencies, true);
+  const cliPackage: FoundryProductionPackage = Object.freeze({
+    ...selected,
+    integrity: evidence.tarball.integrity,
+    download_url: "NOASSERTION",
+    dependencies: cliDependencies.root_dependencies,
+    peer_dependencies: Object.freeze({}),
+  });
+  const result: FoundryProductionLock = Object.freeze({
+    ...owning,
+    packages: Object.freeze(
+      [...cliDependencies.packages, cliPackage].sort((a, b) =>
+        a.id < b.id ? -1 : a.id > b.id ? 1 : 0,
+      ),
+    ),
+    local_cli_candidate: evidence,
   });
   productionLocks.add(result);
   return result;

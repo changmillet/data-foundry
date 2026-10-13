@@ -30,12 +30,12 @@ checkPaths:
   - test/unit/task-profile-authority.test.mts
   - test/scenarios/foundry-execution-admission.test.mts
 lastReviewedAt: 2026-10-11
-lastReviewedCommit: baaa384e1db47fb53eb29f7b3764e448510aeff1
-lastReviewedNote: "Reviewed final existing-output capture verification on the working delta based on baaa384e. Current writer/runtime/job/profile and source/input checks run before, between and after two fresh output reads; an independent P2 report-before-capture late-drift repro is fixed, including a caught error returning previously written JSON. New receipt publication reloads current writer/Task/runtime and preserves final input verification; ordinary bytewriters, cached replay, sorted depth-first roster, index CAS and authority/science remain unchanged. Focused59/59 and wholeadoption23/23 pass; latejob2RED->2GREEN and retainedCLI first/second/caught negatives are recorded. No cross-operation hash cache or filesystem-wide atomicity claim. baaa preparation remained unused,87bd Native19/20 failed history remains preserved; new full Source/emitted/installed/native qualification is pending. No originalDATA requery/default034/science/release change."
+lastReviewedCommit: 2d5cbf38f4e44b4b4d30bba52abd38ef8947bed3
 related:
   - docs/architecture.md
   - docs/safety-policy.md
   - docs/foundry-task-contracts.md
+lastReviewedNote: "Reviewed current-main integration of explicit preparation review, payload-bound context and diagnostic-only failures, plus native candidate generation and independently reviewed managed adoption; original Task eligibility and data acceptance remain separate."
 ---
 
 # Task authorization
@@ -99,6 +99,10 @@ Both unit-scale blockers remain active during candidate preparation: `canonical_
 USLCI's `preserve_referenced_review_sources` domain rule retains a source referenced through `referenceToCompleteReviewReport` as preparation evidence. It does not relax true-source content checks or make that source commit-ready. Public canonical UG/source proofs are derived from the checked cache and source semantics regardless of whether the task can write new support rows.
 
 Worldsteel's naming rule classifies only the single trailing `Global` or `EU` plus data-year match, optionally followed by `v<number>`, in a process `baseName`. It applies only to the `latin-author-year` marker. Any additional author/year match, table/figure marker, other name field or other dataset type remains subject to the content policy. Adding another geography requires reviewed source evidence and tests. No whole content-policy rule is waived by a profile.
+
+## Preparation review and write authority
+
+The public preparation-quality input described in [the runtime contract](public-runtime-contract.md#preparation-quality-review) records a separately scoped disposition for a current Process mass observation before finalization. It requires applicable user-decision and source-model evidence, exact object/content/QA/context bindings and an unexpired receipt. It does not activate `authorization.json`, add `qa_waivers` or grant an action. Finalization and pre-dispatch admission independently recheck the receipt and its exact scientific payload; final ordinary write approval remains required. The existing authorization-based code waiver below is unchanged and must not be used to broaden an object-specific preparation review to an entire Process batch.
 
 ## QA exceptions
 

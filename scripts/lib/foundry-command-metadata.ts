@@ -420,8 +420,12 @@ export const commandMetadata: Record<string, FoundryCommandMetadata> = {
       "profile",
       "context files",
       "queue artifacts",
+      "optional task-indexed exact-object preparation quality review",
     ],
-    outputs: ["dataset-curation-gate-report.json", "ai-authoring-packages/*"],
+    outputs: [
+      "dataset-curation-gate-report.json (raw QA plus separately reviewed findings)",
+      "ai-authoring-packages/*",
+    ],
     keyTests: [
       goldenDiff,
       nodeTest(
@@ -1172,6 +1176,7 @@ export const commandMetadata: Record<string, FoundryCommandMetadata> = {
       "schema/context files",
       "decision/patch evidence",
       "optional explicit Process QA reference rows and verified reference intent",
+      "optional task-indexed preparation quality review, rechecked against final rows and QA",
     ],
     outputs: [
       "post-authoring-finalize report (always)",
