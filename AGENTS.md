@@ -31,9 +31,9 @@ checkPaths:
   - .oxlintrc.json
   - prettier.config.ts
   - tsconfig*.json
-lastReviewedAt: 2026-10-12
-lastReviewedCommit: c250d2599871d0456776bc34554a5107e1498cf9
-lastReviewedNote: "Reviewed c250 candidate integration with canonical a2f4e7cb: retained current preparation/adoption contracts and upstream JSONL and managed-test scheduling changes; runtime source equality and current validation are checked separately."
+lastReviewedAt: 2026-10-14
+lastReviewedCommit: 6924a48c1baccdf28bba28aadc64ef18876a80e9
+lastReviewedNote: "Reviewed #250 witness capacity; existing owner boundaries, complete history verification, toolchain gates and original Task recovery remain required."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry

@@ -29,13 +29,13 @@ checkPaths:
   - test/unit/task-authorization.test.mts
   - test/unit/task-profile-authority.test.mts
   - test/scenarios/foundry-execution-admission.test.mts
-lastReviewedAt: 2026-10-11
-lastReviewedCommit: 2d5cbf38f4e44b4b4d30bba52abd38ef8947bed3
+lastReviewedAt: 2026-10-14
+lastReviewedCommit: 6924a48c1baccdf28bba28aadc64ef18876a80e9
 related:
   - docs/architecture.md
   - docs/safety-policy.md
   - docs/foundry-task-contracts.md
-lastReviewedNote: "Reviewed current-main integration of explicit preparation review, payload-bound context and diagnostic-only failures, plus native candidate generation and independently reviewed managed adoption; original Task eligibility and data acceptance remain separate."
+lastReviewedNote: "Reviewed #250 bounded witness capacity: complete history facts, producer verification, ownership, authorization and recovery semantics remain unchanged; the public runtime contract documents the separate limits."
 ---
 
 # Task authorization

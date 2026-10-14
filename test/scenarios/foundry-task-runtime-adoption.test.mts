@@ -363,6 +363,247 @@ async function fixture(t: TestContext, sameSummary = false) {
   };
 }
 
+async function retainedAssessmentHistory(f: Awaited<ReturnType<typeof fixture>>, count: number) {
+  const originalContext = createFoundryRuntimeContext({
+    ...f.options,
+    ...f.invocation,
+    moduleUrl: pathToFileURL(f.oldEntry).href,
+    inputs: [captureFoundryInput(f.seed)],
+  });
+  // Synthetic assessment-sized outputs, registered by the real original-owner transaction.
+  // These exercise complete producer history, not scientific assessment acceptance.
+  const content = Buffer.from(JSON.stringify({ evidence: "x".repeat(2 * 1024 * 1024 - 15) }));
+  assert.equal(content.length, 2 * 1024 * 1024);
+  const files: string[] = [];
+  for (let generation = 0; generation < count / 4; generation++) {
+    const directory = `outputs/assessment-history/${generation}`;
+    await runFoundryTaskOperation(
+      originalContext,
+      { command: "dataset-workflow-assessment", options: { retained_generation: generation } },
+      (operation) => {
+        const batch = Array.from({ length: 4 }, (_, index) =>
+          path.join(f.taskRoot, directory, `evidence-${index}.json`),
+        );
+        fs.mkdirSync(path.dirname(batch[0]), { recursive: true });
+        for (const file of batch) fs.writeFileSync(file, content);
+        operation.registerExistingFiles(batch);
+        const report = { generation, status: "retained-synthetic-assessment" };
+        operation.writeJson(`${directory}/report.json`, report);
+        files.push(...batch);
+        return report;
+      },
+    );
+  }
+  return files.map((file) => captureFoundryInput(file));
+}
+
+test("same-task adoption preserves complete registered assessment history above 64 MiB", async (t) => {
+  const f = await fixture(t);
+  const retained = await retainedAssessmentHistory(f, 80);
+  const before = f.snapshot();
+  const plan = await f.plan();
+  assert.ok(plan && typeof plan === "object" && "witness" in plan);
+  const witness = plan.witness as { path: string; bytes: number; sha256: string }[];
+  assert.ok(witness.reduce((sum, fact) => sum + fact.bytes, 0) > 160 * 1024 * 1024);
+  assert.equal(new Set(witness.map((fact) => fact.path)).size, witness.length);
+  for (const fact of retained)
+    assert.deepEqual(
+      witness.find((item) => path.join(f.taskRoot, item.path) === fact.path),
+      { ...fact, path: path.relative(f.taskRoot, fact.path).split(path.sep).join("/") },
+    );
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const result = await f.successor().adoptTaskRuntime({ ...f.invocation, mode: "apply", plan });
+    assert.equal(result.status, "completed", JSON.stringify(result));
+  }
+  const audit = await f.successor().adoptTaskRuntime({ ...f.invocation, mode: "audit" });
+  assert.equal(audit.status, "completed", JSON.stringify(audit));
+  assert.deepEqual(f.snapshot(), before);
+  assert.deepEqual(
+    retained.map((fact) => captureFoundryInput(fact.path)),
+    retained,
+  );
+});
+
+function assertNoAdoption(f: Awaited<ReturnType<typeof fixture>>) {
+  assert.equal(fs.existsSync(path.join(f.taskRoot, "runtime-adoptions")), false);
+  assert.equal(
+    fs.existsSync(
+      path.join(f.context.stateRoot, "task-runtime-adoptions", `${f.invocation.taskId}.json`),
+    ),
+    false,
+  );
+}
+
+for (const mode of ["plan", "apply"] as const) {
+  test(`same-task adoption rejects more than 256 MiB of unique history during ${mode}`, async (t) => {
+    const f = await fixture(t);
+    const plan = mode === "apply" ? await f.plan() : null;
+    await retainedAssessmentHistory(f, 128);
+    const before = f.snapshot();
+    const result = await f.successor().adoptTaskRuntime({
+      ...f.invocation,
+      mode,
+      ...(mode === "plan" ? { selection: f.selection } : { plan }),
+    });
+    assert.equal(result.blockers[0]?.code, "runtime_adoption_limit", JSON.stringify(result));
+    assert.equal(result.blockers[0]?.message, "Task witness exceeds 256 MiB.");
+    assert.deepEqual(f.snapshot(), before);
+    assertNoAdoption(f);
+  });
+}
+
+for (const changed of ["artifact", "producer-receipt", "producer-plan", "missing", "oversized"]) {
+  test(`late retained history ${changed} is still verified above 64 MiB`, async (t) => {
+    const f = await fixture(t);
+    const retained = await retainedAssessmentHistory(f, 40);
+    const plan = await f.plan();
+    let target = retained.at(-1)!.path;
+    if (changed.startsWith("producer-")) {
+      const entries = fs
+        .readFileSync(path.join(f.taskRoot, "artifact-index.jsonl"), "utf8")
+        .trim()
+        .split("\n")
+        .map(
+          (line) =>
+            JSON.parse(line) as {
+              path: string;
+              receipt: { path: string };
+            },
+        );
+      const entry = entries.find((item) => path.join(f.taskRoot, item.path) === target)!;
+      target = path.join(f.taskRoot, entry.receipt.path);
+      if (changed === "producer-plan") {
+        const receipt = JSON.parse(fs.readFileSync(target, "utf8")) as { plan: { path: string } };
+        target = path.join(f.taskRoot, receipt.plan.path);
+      }
+    }
+    if (changed === "missing") fs.unlinkSync(target);
+    else if (changed === "oversized") fs.writeFileSync(target, Buffer.alloc(8 * 1024 * 1024 + 1));
+    else fs.appendFileSync(target, " ");
+    const before = f.snapshot();
+    for (const mode of ["apply", "plan"] as const) {
+      const result = await f.successor().adoptTaskRuntime({
+        ...f.invocation,
+        mode,
+        ...(mode === "plan" ? { selection: f.selection } : { plan }),
+      });
+      assert.equal(
+        result.blockers[0]?.code,
+        changed === "missing"
+          ? "runtime_operation_failed"
+          : changed === "oversized"
+            ? "task_document_invalid"
+            : "runtime_adoption_evidence_changed",
+        JSON.stringify(result),
+      );
+      assert.deepEqual(f.snapshot(), before);
+      assertNoAdoption(f);
+    }
+  });
+}
+
+test("large retained history rejects conflicting facts, unsafe paths and another actor", async (t) => {
+  const f = await fixture(t);
+  await retainedAssessmentHistory(f, 40);
+  const plan = await f.plan();
+  const indexFile = path.join(f.taskRoot, "artifact-index.jsonl");
+  const originalIndex = fs.readFileSync(indexFile, "utf8");
+  const last = JSON.parse(originalIndex.trim().split("\n").at(-1)!) as {
+    sequence: number;
+    record_sha256: string;
+    path: string;
+    sha256: string;
+  };
+  for (const unsafe of [false, true]) {
+    const { record_sha256: previous, ...entry } = last;
+    const unsigned = {
+      ...entry,
+      sequence: last.sequence + 1,
+      previous_sha256: previous,
+      ...(unsafe ? { path: "../outside.json" } : { sha256: "0".repeat(64) }),
+    };
+    fs.appendFileSync(
+      indexFile,
+      `${JSON.stringify({ ...unsigned, record_sha256: sha256Json(unsigned) })}\n`,
+    );
+    try {
+      const result = await f.successor().adoptTaskRuntime({ ...f.invocation, mode: "apply", plan });
+      assert.equal(
+        result.blockers[0]?.code,
+        unsafe ? "task_index_invalid" : "runtime_adoption_evidence_changed",
+        JSON.stringify(result),
+      );
+      assertNoAdoption(f);
+    } finally {
+      fs.writeFileSync(indexFile, originalIndex);
+    }
+  }
+  const wrongActor = await f.successor().adoptTaskRuntime({
+    ...f.invocation,
+    actorId: "unrelated-writer",
+    mode: "apply",
+    plan,
+  });
+  assert.equal(wrongActor.blockers[0]?.code, "task_actor_mismatch", JSON.stringify(wrongActor));
+  assertNoAdoption(f);
+});
+
+test("large retained history rejects a linked ancestor without publishing adoption", async (t) => {
+  const f = await fixture(t);
+  const retained = await retainedAssessmentHistory(f, 40);
+  const plan = await f.plan();
+  const directory = path.dirname(retained.at(-1)!.path);
+  const outside = path.join(f.root, "relocated-history");
+  fs.renameSync(directory, outside);
+  try {
+    fs.symlinkSync(outside, directory, process.platform === "win32" ? "junction" : "dir");
+  } catch (error) {
+    if (
+      process.platform === "win32" &&
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "EPERM"
+    ) {
+      t.skip("This Windows host does not permit a directory junction.");
+      return;
+    }
+    throw error;
+  }
+  const result = await f.successor().adoptTaskRuntime({ ...f.invocation, mode: "apply", plan });
+  assert.equal(result.blockers[0]?.code, "symlink_not_allowed", JSON.stringify(result));
+  assertNoAdoption(f);
+});
+
+test("large retained history rejects changed bytes returned during witness reading", async (t) => {
+  const f = await fixture(t);
+  const retained = await retainedAssessmentHistory(f, 40);
+  const plan = await f.plan();
+  const target = retained.at(-1)!.path;
+  const read = fs.readFileSync;
+  let observed = false;
+  t.mock.method(fs, "readFileSync", (...args: Parameters<typeof fs.readFileSync>) => {
+    const content = read(...args);
+    if (
+      typeof args[0] === "string" &&
+      path.resolve(args[0]) === target &&
+      Buffer.isBuffer(content)
+    ) {
+      observed = true;
+      content[0] ^= 1;
+    }
+    return content;
+  });
+  const result = await f.successor().adoptTaskRuntime({ ...f.invocation, mode: "apply", plan });
+  assert.equal(observed, true);
+  assert.equal(
+    result.blockers[0]?.code,
+    "runtime_adoption_evidence_changed",
+    JSON.stringify(result),
+  );
+  assertNoAdoption(f);
+});
+
 function nextRuntime(
   f: Awaited<ReturnType<typeof fixture>>,
   previous: ReturnType<typeof createFoundryRuntimeContext>,
@@ -1046,6 +1287,8 @@ test("qualified but unselected Toolkit is refused before adoption and during con
 
 test("installed public API host adopts without private context and returns the same-task continuation", async (t) => {
   const f = await fixture(t);
+  const retained = await retainedAssessmentHistory(f, 40);
+  const before = f.snapshot();
   const apiUrl = pathToFileURL(path.join(packageRoot, "package-dist/scripts/public-api.js")).href;
   const installed = (await import(apiUrl)) as typeof import("../../scripts/public-api.ts");
   const qualificationBytes = Buffer.from(JSON.stringify(f.q));
@@ -1078,6 +1321,15 @@ test("installed public API host adopts without private context and returns the s
     plan: artifact.kind === "inline" ? artifact.value : null,
   });
   assert.equal(applied.status, "completed", JSON.stringify(applied));
+  assert.equal(
+    (await facade.adoptTaskRuntime({ ...f.invocation, mode: "audit" })).status,
+    "completed",
+  );
+  assert.deepEqual(f.snapshot(), before);
+  assert.deepEqual(
+    retained.map((fact) => captureFoundryInput(fact.path)),
+    retained,
+  );
   const status = await facade.status(f.invocation);
   assert.equal(status.task_id, f.invocation.taskId);
   assert.ok(

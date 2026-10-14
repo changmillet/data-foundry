@@ -125,6 +125,8 @@ function witness(context: FoundryRuntimeContext) {
   if (index.length > 8192)
     fail("runtime_adoption_limit", "Task artifact witness exceeds its bound.");
   // Check registered hashes before accepting a current-byte witness: drift cannot become a fresh preimage.
+  // Bound unique historical content, not retained memory: each read keeps its separate 8 MiB limit.
+  const maxWitnessBytes = 256 * 1024 * 1024;
   let total = 0;
   const observed = new Map<string, { path: string; bytes: number; sha256: string }>();
   const observe = (relative: string, expected?: { bytes?: number; sha256: string }) => {
@@ -147,7 +149,7 @@ function witness(context: FoundryRuntimeContext) {
     )
       fail("runtime_adoption_evidence_changed", "Registered task artifact or producer changed.");
     total += content.length;
-    if (total > 64 * 1024 * 1024) fail("runtime_adoption_limit", "Task witness exceeds 64 MiB.");
+    if (total > maxWitnessBytes) fail("runtime_adoption_limit", "Task witness exceeds 256 MiB.");
     add(relative);
     observed.set(relative, fact);
   };

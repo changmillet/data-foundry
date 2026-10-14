@@ -1,7 +1,7 @@
 {
   "$schema": "../specs/schemas/file-location-registry.schema.json",
   "schema_version": 1,
-  "updated_at_utc": "2026-10-10T23:53:47.112839+00:00",
+  "updated_at_utc": "2026-10-14T06:23:37.933755+00:00",
   "policy_doc": "docs/file-organization.md",
   "entries": [
     {
