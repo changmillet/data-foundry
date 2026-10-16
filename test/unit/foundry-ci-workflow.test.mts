@@ -214,6 +214,7 @@ test("full CI runs all platforms with independent tests and native qualification
     native = object(jobs["quality-gate"]);
   assert.equal(object(tests.strategy).matrix, "${{ fromJSON(needs.plan.outputs.test_matrix) }}");
   assert.equal(tests["timeout-minutes"], 40);
+  assert.equal(object(tests.strategy)["max-parallel"], 16);
   const testMatrix = foundryCiTestMatrix(loadFoundryTestPlan(root)),
     nativeMatrix = object(object(native.strategy).matrix);
   assert.ok(Array.isArray(testMatrix.include) && Array.isArray(nativeMatrix.include));

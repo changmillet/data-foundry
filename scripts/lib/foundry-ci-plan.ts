@@ -2,11 +2,30 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import fs from "node:fs";
 
+export const foundryCiTestConcurrency = 2;
+
 export interface FoundryTestShard {
   readonly index: number;
   readonly total: number;
   readonly files: readonly string[];
   readonly estimatedSeconds: number;
+  readonly estimatedWallSeconds: number;
+}
+
+function estimatedWallSeconds(
+  files: readonly string[],
+  durations: Readonly<Record<string, number>>,
+): number {
+  const workers = Array.from({ length: foundryCiTestConcurrency }, () => 0);
+  // Node's test-file queue is lexical even when LPT supplies heavy-first argv.
+  for (const file of [...files].sort()) {
+    const worker = workers.reduce(
+      (first, next, index) => (next < workers[first] ? index : first),
+      0,
+    );
+    workers[worker] += durations[file] ?? 1;
+  }
+  return Math.max(...workers);
 }
 
 export interface FoundryTestPlan {
@@ -68,7 +87,13 @@ export function planFoundryTestShards(
     planSha256,
     unprofiledFiles: Object.freeze(files.filter((file) => durations[file] === undefined)),
     shards: Object.freeze(
-      shards.map((shard) => Object.freeze({ ...shard, files: Object.freeze(shard.files) })),
+      shards.map((shard) =>
+        Object.freeze({
+          ...shard,
+          estimatedWallSeconds: estimatedWallSeconds(shard.files, durations),
+          files: Object.freeze(shard.files),
+        }),
+      ),
     ),
   });
 }
@@ -163,8 +188,12 @@ export function foundryPlatformTestShards(
   return shards;
 }
 export function foundryCiTestMatrix(plan: FoundryTestPlan) {
+  // Admission preference does not reorder the platform registry or its hash inputs.
+  const hosts = Object.entries(foundryCiPlatformHosts).sort(
+    ([left], [right]) => Number(right === "win32-x64") - Number(left === "win32-x64"),
+  );
   return {
-    include: Object.entries(foundryCiPlatformHosts).flatMap(([platform, os]) =>
+    include: hosts.flatMap(([platform, os]) =>
       foundryPlatformTestShards(plan, platform).map(({ index: shard }) => ({
         os,
         platform,

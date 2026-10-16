@@ -2,7 +2,11 @@ import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { loadFoundryTestPlan, foundryPlatformTestShards } from "./lib/foundry-ci-plan.ts";
+import {
+  loadFoundryTestPlan,
+  foundryPlatformTestShards,
+  foundryCiTestConcurrency,
+} from "./lib/foundry-ci-plan.ts";
 import { foundryCiReporterUrl } from "./ci-test-reporter.ts";
 import { readFoundryReleaseGit as git } from "./lib/foundry-release-contract.ts";
 import { readFoundryReleaseArtifact } from "./lib/foundry-release-prepared.ts";
@@ -79,7 +83,7 @@ async function main(args: readonly string[]): Promise<void> {
       process.execPath,
       [
         "--test",
-        "--test-concurrency=2",
+        `--test-concurrency=${foundryCiTestConcurrency}`,
         "--test-reporter=spec",
         "--test-reporter-destination=stdout",
         `--test-reporter=${foundryCiReporterUrl}`,

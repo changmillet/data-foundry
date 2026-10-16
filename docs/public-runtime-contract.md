@@ -39,8 +39,8 @@ related:
   - docs/task-authorization-contract.md
   - docs/package-distribution-contract.md
 lastReviewedAt: 2026-10-16
-lastReviewedCommit: 6924a48c1baccdf28bba28aadc64ef18876a80e9
-lastReviewedNote: "Foundry #252: bounded npm/Actions discovery and immutable bot-author seal guards preserve full qualification, current CLI/native/toolchain pins, consumer/runtime and publication authority. Lock-only resolution avoids automatic ten-document review churn."
+lastReviewedCommit: 9e2971e591d894ba7b6b6c128a86f3aa749706e5
+lastReviewedNote: "Foundry #252: reviewed scheduling-only timing/profile, lexical two-worker wall estimates and Windows-first matrix admission against PR253 head 9e2971e. Product/runtime, source/attempt/artifact authority and full hosted qualification boundaries are unchanged."
 ---
 
 # Public runtime protocol
