@@ -31,9 +31,9 @@ checkPaths:
   - .oxlintrc.json
   - prettier.config.ts
   - tsconfig*.json
-lastReviewedAt: 2026-10-12
-lastReviewedCommit: c250d2599871d0456776bc34554a5107e1498cf9
-lastReviewedNote: "Reviewed c250 candidate integration with canonical a2f4e7cb: retained current preparation/adoption contracts and upstream JSONL and managed-test scheduling changes; runtime source equality and current validation are checked separately."
+lastReviewedAt: 2026-10-16
+lastReviewedCommit: 5c3e384576cf03948eec44f38108d065e44371c2
+lastReviewedNote: "Foundry #252: reviewed the profile-only correction against PR253 head 5c3e384: all 379 current successful Windows timings plus 35 unchanged-file prior observations, five unknown unit files and no qualification claim. Runtime, package, authorization, scheduler and full hosted gate contracts remain unchanged."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry
@@ -78,6 +78,7 @@ Preparation quality review follows `docs/public-runtime-contract.md`: use the ex
 ## Toolchain and module boundaries
 
 - Node.js 24, exact `pnpm@11.24.0`, and TypeScript `7.0.2` are the single toolchain. The root workspace and lockfile are the only dependency authorities. Oxlint owns linting, Prettier owns formatting, and TypeScript keeps `erasableSyntaxOnly`.
+- Dependency discovery and bot PR qualification follow `docs/dependency-maintenance.md`. The complete existing source qualification remains required; Dependabot PR authors cannot seal or reuse privileged qualification capsules, including after a human rerun.
 - Tracked first-party JavaScript and JSX/TSX are forbidden. Keep the zero-JavaScript ratchet, the no-explicit-`any` rule, the suppression audit, and the intentional TypeScript lint/typecheck graph. Builds clear only the guarded `dist` tree before `tsc` and emit no JavaScript on type errors.
 - The installed owner CLI is exactly `@tiangong-lca/cli@0.1.28`, invoked through `pnpm exec tiangong-lca`. Foundry imports only the published `command-spec`, `batch`, `auth-identity-receipt`, and `runtime` subpaths; private CLI internals are not a compatibility surface.
 - Executable handoffs use `tiangong-foundry.command-spec.v1`. The `executable` and `argv` array, exact input artifact facts, and SHA-256 are authoritative; `display` is derived and never executed. Ambiguous writes resolve through fresh readback and are never replayed blindly.

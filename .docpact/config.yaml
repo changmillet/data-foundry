@@ -1,8 +1,8 @@
 version: 1
 layout: repo
-lastReviewedAt: 2026-10-08
-lastReviewedCommit: d07ac492a3a5891502039a6cc83ef30b9fbba50b
-lastReviewedNote: "Reviewed Foundry #237 exact three-field 0.1.16 to 0.1.17 release projection from eligible PR236 Main d07ac492; CLI/native pins, lock closure, authorization and all business source remain unchanged. Official publication and final managed qualification remain pending."
+lastReviewedAt: "2026-10-16"
+lastReviewedCommit: "6924a48c1baccdf28bba28aadc64ef18876a80e9"
+lastReviewedNote: "Foundry #252: bounded npm/Actions discovery and immutable bot-author seal guards preserve full qualification, current CLI/native/toolchain pins, consumer/runtime and publication authority. Lock-only resolution avoids automatic ten-document review churn."
 
 catalog:
   repos:
@@ -26,6 +26,7 @@ catalog:
         - docs/incremental-change-set-contract.md
         - docs/topology-convergence-contract.md
         - docs/final-delivery-promotion-contract.md
+        - docs/dependency-maintenance.md
       workspaceIntegrationRequired: true
 
 ownership:
@@ -48,6 +49,7 @@ ownership:
           - .env.example
           - .gitattributes
           - .github/workflows/**
+          - .github/dependabot.yml
           - .husky/**
           - .nvmrc
           - .oxlintrc.json
@@ -99,6 +101,7 @@ coverage:
     - .docpact/config.yaml
     - .gitignore
     - .github/workflows/**
+    - .github/dependabot.yml
     - .husky/**
     - .nvmrc
     - .oxlintrc.json
@@ -187,6 +190,7 @@ docInventory:
     - WORKFLOW.md
     - .docpact/config.yaml
     - docs/architecture.md
+    - docs/dependency-maintenance.md
     - docs/orchestration-module-contract.md
     - docs/capability-ownership-policy.md
     - docs/runtime-skill-management.md
@@ -274,8 +278,6 @@ rules:
         kind: formatter-ignore-contract
       - path: package.json
         kind: command-surface
-      - path: pnpm-lock.yaml
-        kind: dependency-lock
       - path: pnpm-workspace.yaml
         kind: package-workspace-contract
       - path: prettier.config.ts
@@ -466,8 +468,6 @@ rules:
     triggers:
       - path: package.json
         kind: public-package-manifest
-      - path: pnpm-lock.yaml
-        kind: package-production-closure-lock
       - path: tsconfig.package.json
         kind: public-package-compiler
       - path: scripts/package-entry.ts
@@ -980,3 +980,36 @@ rules:
       - path: docs/execution-capsule-contract.md
         mode: review_or_update
     reason: The offline final-delivery seal must stay distinct from the execution-authorization capsule, and its artifact/workbook/algebra/redaction/reviewer bindings must remain synchronized with the authoritative contract.
+
+  - id: foundry-dependency-resolution
+    scope: repo
+    repo: data-foundry
+    triggers:
+      - path: pnpm-lock.yaml
+        kind: frozen-dependency-resolution
+    requiredDocs:
+      - path: WORKFLOW.md
+        mode: must_exist
+      - path: docs/package-distribution-contract.md
+        mode: must_exist
+      - path: docs/runtime-context-contract.md
+        mode: must_exist
+      - path: docs/public-runtime-contract.md
+        mode: must_exist
+      - path: docs/env-surface-policy.md
+        mode: must_exist
+      - path: test/README.md
+        mode: must_exist
+    reason: Lock-only resolution retains full qualification and runtime/package contracts without automatic ten-document review churn; semantic manifest/source/adoption rules remain separate.
+  - id: foundry-dependency-maintenance
+    scope: repo
+    repo: data-foundry
+    triggers:
+      - path: .github/dependabot.yml
+        kind: dependency-discovery
+      - path: docs/dependency-maintenance.md
+        kind: maintenance-guide
+    requiredDocs:
+      - path: docs/dependency-maintenance.md
+        mode: review_or_update
+    reason: Monitoring scope and traffic use a focused guide; source qualification, privilege and runtime changes retain their existing semantic governance.

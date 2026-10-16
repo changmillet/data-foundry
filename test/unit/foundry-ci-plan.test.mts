@@ -3,7 +3,9 @@ import path from "node:path";
 import fs from "node:fs";
 import os from "node:os";
 import test from "node:test";
+import { spawnSync } from "node:child_process";
 import {
+  foundryCiTestConcurrency,
   loadFoundryTestPlan,
   foundryPlatformTestShards,
   foundryCiTestMatrix,
@@ -17,6 +19,8 @@ const files = [
   "test/scenarios/c.test.mts",
   "test/scenarios/d.test.mts",
 ];
+// Planning allowances over measured durations; the actual hosted deadline stays 40 minutes.
+const fitsWindowsBudget = (seconds: number) => seconds * 1.2 + 90 < 40 * 60;
 
 test("CI partitions every test file once and balances measured heavy cases", () => {
   const plan = planFoundryTestShards(
@@ -37,6 +41,87 @@ test("CI partitions every test file once and balances measured heavy cases", () 
       [2, 2],
     ],
   );
+});
+
+test("wall estimates model the runner's lexical two-worker queue instead of serial work or work/2", () => {
+  const lexical = ["a", "b", "z"].map((name) => `test/unit/${name}.test.mts`);
+  const durations = { [lexical[0]]: 1, [lexical[1]]: 1, [lexical[2]]: 100 };
+  const plan = planFoundryTestShards([...lexical].reverse(), durations, 1);
+  assert.equal(foundryCiTestConcurrency, 2);
+  assert.equal(plan.shards[0].estimatedSeconds, 102);
+  assert.equal(plan.shards[0].estimatedWallSeconds, 101);
+  assert.deepEqual(plan, planFoundryTestShards(lexical, durations, 1));
+  const overlong = planFoundryTestShards(lexical, { ...durations, [lexical[2]]: 2401 }, 1);
+  assert.equal(overlong.shards[0].estimatedWallSeconds, 2402);
+  assert.equal(fitsWindowsBudget(overlong.shards[0].estimatedWallSeconds), false);
+  const singleOverlong = planFoundryTestShards([lexical[2]], { [lexical[2]]: 2401 }, 1);
+  assert.equal(fitsWindowsBudget(singleOverlong.shards[0].estimatedWallSeconds), false);
+  const parallel = planFoundryTestShards(
+    lexical.slice(0, 2),
+    {
+      [lexical[0]]: 1700,
+      [lexical[1]]: 1700,
+    },
+    1,
+  );
+  assert.equal(parallel.shards[0].estimatedSeconds, 3400);
+  assert.equal(fitsWindowsBudget(parallel.shards[0].estimatedWallSeconds), true);
+  for (const nearDeadline of [1925, 2000, 2399]) {
+    assert.ok(nearDeadline < 40 * 60);
+    assert.equal(
+      fitsWindowsBudget(nearDeadline),
+      false,
+      "raw wall fit must retain the planning reserve",
+    );
+  }
+});
+
+test("Node admits the lexical first two files despite heavy-first argument order", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-ci-lexical-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const events = path.join(root, "events.jsonl");
+  const selected = ["a", "b", "z"].map((name) => {
+    const file = path.join(root, `${name}.test.mts`);
+    fs.writeFileSync(
+      file,
+      `
+import fs from "node:fs";
+import test from "node:test";
+import { setTimeout as delay } from "node:timers/promises";
+test(${JSON.stringify(name)}, async () => {
+  const events = ${JSON.stringify(events)};
+  fs.appendFileSync(events, ${JSON.stringify(name + "\n")});
+  if (${JSON.stringify(name)} !== "z") {
+    const deadline = Date.now() + 10000;
+    while (!["a", "b"].every(name => fs.readFileSync(events, "utf8").split("\\n").includes(name))) {
+      if (Date.now() > deadline) throw new Error("Lexical workers did not both start.");
+      await delay(10);
+    }
+  }
+});
+`,
+    );
+    return file;
+  });
+  const environment = { ...process.env };
+  delete environment.NODE_TEST_CONTEXT;
+  delete environment.NODE_OPTIONS;
+  const result = spawnSync(
+    process.execPath,
+    ["--test", `--test-concurrency=${foundryCiTestConcurrency}`, ...selected.reverse()],
+    {
+      cwd: root,
+      env: environment,
+      encoding: "utf8",
+      timeout: 15000,
+      shell: false,
+    },
+  );
+  assert.ifError(result.error);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  const started = fs.readFileSync(events, "utf8").trim().split("\n");
+  assert.deepEqual(started.slice(0, 2).sort(), ["a", "b"]);
+  assert.equal(started[2], "z");
 });
 
 test("CI partition is independent of discovery and duration-map insertion order", () => {
@@ -101,13 +186,22 @@ test("hosted Windows timings keep heavy object, native and repair scenarios with
   ].map((name) => `test/scenarios/${name}.test.mts`);
   for (const file of heavy)
     assert.ok(!plan.unprofiledFiles.includes(file), `${file} needs hosted duration evidence`);
+  for (const name of [
+    "foundry-public-finalization-flow-evidence",
+    "foundry-quality-review-template",
+    "foundry-quality-review",
+    "foundry-public-approval-current-trace",
+    "foundry-package-preparation-targets",
+    "foundry-package-preparation-unresolved",
+  ])
+    assert.ok(!plan.unprofiledFiles.includes(`test/scenarios/${name}.test.mts`));
   assert.ok(
     windows.every((shard) => heavy.filter((file) => shard.files.includes(file)).length <= 3),
     "heavy Windows cases must not converge on one timed-out partition",
   );
   assert.ok(
-    windows.every((shard) => shard.estimatedSeconds < 40 * 60),
-    "every estimated shard must fit the unchanged 40-minute job budget",
+    windows.every((shard) => fitsWindowsBudget(shard.estimatedWallSeconds)),
+    "every lexical two-worker wall estimate plus 20% and 90 seconds must fit the unchanged 40-minute job budget",
   );
 });
 
@@ -193,6 +287,10 @@ test("host-specific shard matrix covers every file once with Windows8 and unchan
   const plan = loadFoundryTestPlan(path.resolve(import.meta.dirname, "../.."));
   const matrix = foundryCiTestMatrix(plan).include;
   assert.equal(matrix.length, 20);
+  assert.deepEqual(
+    matrix.slice(0, 8).map(({ platform }) => platform),
+    Array(8).fill("win32-x64"),
+  );
   const inventory = plan.shards.flatMap(({ files }) => files).sort();
   for (const platform of ["linux-x64", "linux-arm64", "darwin-arm64", "win32-x64"]) {
     const shards = foundryPlatformTestShards(plan, platform);

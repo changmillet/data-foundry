@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { runInNewContext } from "node:vm";
 import { parseDocument } from "yaml";
 import { loadFoundryTestPlan, foundryCiTestMatrix } from "../../scripts/lib/foundry-ci-plan.ts";
 import { foundryCiPlatforms } from "../../scripts/lib/foundry-ci-results.ts";
@@ -30,6 +31,95 @@ function steps(job: Record<string, unknown>): Record<string, unknown>[] {
   assert.ok(Array.isArray(job.steps));
   return job.steps.map(object);
 }
+
+test("Dependabot PR authors cannot seal qualification after reopen or human rerun", () => {
+  const jobs = object(workflow("quality-gate.yml").jobs);
+  const planner = steps(object(jobs.plan)).find((step) => step.id === "plan");
+  assert.ok(planner);
+  const expression = String(object(planner.env).FOUNDRY_CI_CAN_SEAL);
+  const github = {
+    repository: "tiangong-lca/foundry",
+    repository_id: "1260957221",
+    repository_owner_id: "327771381",
+    event_name: "pull_request",
+    actor: "dependabot[bot]",
+    triggering_actor: "dependabot[bot]",
+    event: {
+      action: "opened",
+      pull_request: {
+        user: { login: "dependabot[bot]" },
+        head: { repo: { full_name: "tiangong-lca/foundry" } },
+      },
+    },
+  };
+  // Evaluate the workflow's actual boolean expression with immutable PR facts;
+  // changing a rerun actor must never turn that bot-authored source into authority.
+  const canSeal = (context: Record<string, unknown>): unknown =>
+    runInNewContext(expression.slice(3, -2), { github: context }, { timeout: 100 });
+  const sealCondition = String(object(jobs["seal-qualification"]).if)
+    .slice(3, -2)
+    .replaceAll("needs.qualification-gate", 'needs["qualification-gate"]');
+  const canRunPrivilegedSeal = (context: Record<string, unknown>): unknown =>
+    runInNewContext(
+      sealCondition,
+      {
+        github: context,
+        cancelled: () => false,
+        // Even a planner output that requests sealing cannot grant it to bot source.
+        needs: {
+          plan: { outputs: { mode: "full", sealable: "true" } },
+          "qualification-gate": { result: "success" },
+        },
+      },
+      { timeout: 100 },
+    );
+  for (const actor of ["dependabot[bot]", "human-maintainer"]) {
+    for (const action of ["opened", "synchronize", "reopened"]) {
+      const context = {
+        ...github,
+        actor,
+        triggering_actor: actor,
+        event: { ...github.event, action },
+      };
+      assert.equal(canSeal(context), false, `Bot PR ${action} rerun by ${actor} cannot seal.`);
+      assert.equal(canRunPrivilegedSeal(context), false);
+    }
+  }
+  const human = {
+    ...github,
+    actor: "human-maintainer",
+    event: {
+      ...github.event,
+      pull_request: { ...github.event.pull_request, user: { login: "human-maintainer" } },
+    },
+  };
+  assert.equal(canSeal(human), true);
+  assert.equal(canRunPrivilegedSeal(human), true);
+  assert.equal(
+    canSeal({
+      ...human,
+      event: {
+        ...human.event,
+        pull_request: {
+          ...human.event.pull_request,
+          head: { repo: { full_name: "contributor/foundry" } },
+        },
+      },
+    }),
+    false,
+  );
+  for (const event_name of ["workflow_dispatch", "push", "workflow_call"]) {
+    assert.equal(canSeal({ ...human, event_name, event: {} }), true);
+    assert.equal(canRunPrivilegedSeal({ ...human, event_name, event: {} }), true);
+  }
+  assert.equal(canSeal({ ...human, repository_id: "foreign" }), false);
+  assert.equal(canSeal({ ...human, repository_owner_id: "foreign" }), false);
+  assert.deepEqual(object(workflow("quality-gate.yml").permissions), {
+    contents: "read",
+    actions: "read",
+    attestations: "read",
+  });
+});
 
 test("public bootstrap seals only its completed proof and keeps disposable directories outside the capsule", (t) => {
   const job = object(object(workflow("publish.yml").jobs)["qualify-bootstrap-public"]);
@@ -124,6 +214,7 @@ test("full CI runs all platforms with independent tests and native qualification
     native = object(jobs["quality-gate"]);
   assert.equal(object(tests.strategy).matrix, "${{ fromJSON(needs.plan.outputs.test_matrix) }}");
   assert.equal(tests["timeout-minutes"], 40);
+  assert.equal(object(tests.strategy)["max-parallel"], 16);
   const testMatrix = foundryCiTestMatrix(loadFoundryTestPlan(root)),
     nativeMatrix = object(object(native.strategy).matrix);
   assert.ok(Array.isArray(testMatrix.include) && Array.isArray(nativeMatrix.include));
@@ -262,6 +353,24 @@ test("real shell qualification guards reject each failed, cancelled or skipped f
     REUSE_VERIFIED: "false",
   };
   assert.equal(executeGuard(final, complete), 0);
+  assert.equal(
+    executeGuard(final, { ...complete, SEALABLE: "false", SEAL_RESULT: "skipped" }),
+    0,
+    "A bot PR retains complete validation without running a privileged seal.",
+  );
+  for (const key of ["PLAN_RESULT", "GATE_RESULT"]) {
+    for (const result of ["failure", "cancelled", "skipped", ""])
+      assert.notEqual(
+        executeGuard(final, {
+          ...complete,
+          SEALABLE: "false",
+          SEAL_RESULT: "skipped",
+          [key]: result,
+        }),
+        0,
+        `An unsealable PR cannot omit ${key}=${result}.`,
+      );
+  }
   assert.notEqual(executeGuard(final, { ...complete, SEAL_RESULT: "skipped" }), 0);
   assert.notEqual(executeGuard(final, { ...complete, MODE: "reused", SEAL_RESULT: "skipped" }), 0);
   assert.equal(

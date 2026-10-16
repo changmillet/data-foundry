@@ -45,9 +45,9 @@ related:
   - docs/task-authorization-contract.md
   - docs/public-runtime-contract.md
   - docs/package-distribution-contract.md
-lastReviewedAt: 2026-10-12
-lastReviewedCommit: c250d2599871d0456776bc34554a5107e1498cf9
-lastReviewedNote: "Reviewed c250 candidate integration with canonical a2f4e7cb: retained current preparation/adoption contracts and upstream JSONL and managed-test scheduling changes; runtime source equality and current validation are checked separately."
+lastReviewedAt: 2026-10-16
+lastReviewedCommit: 5c3e384576cf03948eec44f38108d065e44371c2
+lastReviewedNote: "Foundry #252: reviewed the profile-only correction against PR253 head 5c3e384: all 379 current successful Windows timings plus 35 unchanged-file prior observations, five unknown unit files and no qualification claim. Runtime, package, authorization, scheduler and full hosted gate contracts remain unchanged."
 ---
 
 # Runtime context
