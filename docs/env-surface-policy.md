@@ -34,9 +34,9 @@ checkPaths:
   - scripts/public-api.ts
   - test/scenarios/foundry-package-consumer.test.mts
   - test/unit/foundry-runtime-environment.test.mts
-lastReviewedAt: 2026-10-12
-lastReviewedCommit: c250d2599871d0456776bc34554a5107e1498cf9
-lastReviewedNote: "Reviewed c250 candidate integration with canonical a2f4e7cb: retained current preparation/adoption contracts and upstream JSONL and managed-test scheduling changes; runtime source equality and current validation are checked separately."
+lastReviewedAt: 2026-10-16
+lastReviewedCommit: 6924a48c1baccdf28bba28aadc64ef18876a80e9
+lastReviewedNote: "Foundry #252: bounded npm/Actions discovery and immutable bot-author seal guards preserve full qualification, current CLI/native/toolchain pins, consumer/runtime and publication authority. Lock-only resolution avoids automatic ten-document review churn."
 ---
 
 # Environment Surface Policy

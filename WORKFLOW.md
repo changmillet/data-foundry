@@ -302,9 +302,9 @@ policy:
   require_dry_run_before_remote_write: true
   required_multilang_english_before_write: true
   preserve_source_language_variants: true
-lastReviewedAt: 2026-10-12
-lastReviewedCommit: c250d2599871d0456776bc34554a5107e1498cf9
-lastReviewedNote: "Reviewed c250 candidate integration with canonical a2f4e7cb: retained current preparation/adoption contracts and upstream JSONL and managed-test scheduling changes; runtime source equality and current validation are checked separately."
+lastReviewedAt: 2026-10-16
+lastReviewedCommit: 6924a48c1baccdf28bba28aadc64ef18876a80e9
+lastReviewedNote: "Foundry #252: bounded npm/Actions discovery and immutable bot-author seal guards preserve full qualification, current CLI/native/toolchain pins, consumer/runtime and publication authority. Lock-only resolution avoids automatic ten-document review churn."
 ---
 
 You are working on a TianGong LCA data import task.
@@ -573,6 +573,8 @@ Use this lane when the candidate release merges, splits, adds, or retires flow i
 The complete contract is `docs/topology-convergence-contract.md`.
 
 ## Maintainer Validation
+
+Bounded npm/Actions discovery and bot-source qualification follow `docs/dependency-maintenance.md`. Dependabot-authored proposals run complete source validation through the existing non-sealable path; a human rerun does not grant sealing authority. Runtime adoption and publication retain their separate reviewed contracts.
 
 The pre-push hook runs the complete source qualification for code updates, branch creation, tags, mixed pushes and unproven input. Only a complete Git pre-push stream consisting entirely of valid existing branch deletions skips Node/toolchain loading and `pnpm prepush:gate`: it publishes no source. Missing or failed classification falls back to the original gate, and terminal input never waits for an EOF. This is not permission to delete a branch; the operator still verifies ownership, merge/integration completion and the exact remote head.
 
