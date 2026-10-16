@@ -48,7 +48,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2
+      - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024
         with:
           runtime: node@24.19.0
           install: false
@@ -80,7 +80,7 @@ jobs:
       - name: Refresh main ancestry
         run: git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
       - name: Set up pnpm and Node.js
-        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024
         with:
           runtime: node@24.19.0
           install: false
@@ -126,7 +126,7 @@ jobs:
       - name: Refresh main ancestry
         run: git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
       - name: Set up pnpm and Node.js
-        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024
         with:
           runtime: node@24.19.0
           install: false
@@ -162,7 +162,7 @@ jobs:
       - name: Refresh main ancestry
         run: git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
       - name: Set up pnpm and Node.js
-        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024
         with:
           runtime: node@24.19.0
           install: false
@@ -170,7 +170,7 @@ jobs:
       - name: Install frozen build and signature dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Download the package verified by source qualification
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: ${{ needs.release-qualification.outputs.qualification_artifact }}
           path: ${{ runner.temp }}/qualified-source
@@ -181,7 +181,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: pnpm release:prepare-package
       - name: Preserve the signed package and first-publication handoff
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: foundry-npm-${{ needs.release-context.outputs.version }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: package-artifacts/npm-release/
@@ -195,7 +195,7 @@ jobs:
         run: pnpm release:publish-package
       - name: Preserve the publication result and public verification
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: foundry-publication-${{ needs.release-context.outputs.version }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: package-artifacts/npm-publication/
@@ -234,7 +234,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Set up pnpm and Node.js
-        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024
         with:
           runtime: node@24.19.0
           install: false
@@ -242,7 +242,7 @@ jobs:
       - name: Install frozen release dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Download the package verified by source qualification
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: ${{ needs.release-qualification.outputs.qualification_artifact }}
           path: ${{ runner.temp }}/qualified-source
@@ -278,7 +278,7 @@ jobs:
         with:
           subject-path: ${{ runner.temp }}/foundry-published-runtime/receipt.json
       - name: Preserve verified stage and original proof
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: ${{ steps.restore.outputs.artifact_name }}
           path: ${{ runner.temp }}/foundry-published-runtime/
@@ -287,7 +287,7 @@ jobs:
           compression-level: 0
       - name: Preserve failed native diagnostics
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: foundry-native-diagnostic-${{ matrix.platform }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/foundry-published-runtime/runtime-diagnostic.json
@@ -321,7 +321,7 @@ jobs:
       - name: Refresh main ancestry
         run: git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
       - name: Set up pnpm and Node.js
-        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024
         with:
           runtime: node@24.19.0
           install: false
@@ -373,7 +373,7 @@ jobs:
         with:
           subject-path: ${{ github.workspace }}/package-artifacts/runtime-publication/receipt.json
       - name: Preserve verified stage and original proof
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: ${{ steps.seal.outputs.artifact_name }}
           path: ${{ github.workspace }}/package-artifacts/runtime-publication/
@@ -416,7 +416,7 @@ jobs:
       - name: Refresh main ancestry
         run: git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
       - name: Set up pnpm and Node.js
-        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024
         with:
           runtime: node@24.19.0
           install: false
@@ -475,7 +475,7 @@ jobs:
         with:
           subject-path: ${{ runner.temp }}/foundry-bootstrap-public-qualification/receipt.json
       - name: Preserve verified stage and original proof
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: ${{ steps.restore.outputs.artifact_name }}
           path: ${{ runner.temp }}/foundry-bootstrap-public-qualification/
@@ -506,7 +506,7 @@ jobs:
       - name: Refresh main ancestry
         run: git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
       - name: Set up pnpm and Node.js
-        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024
         with:
           runtime: node@24.19.0
           install: false
@@ -555,7 +555,7 @@ jobs:
         run: pnpm release:publish-runtime-manifest
       - name: Preserve final manifest publication evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: foundry-runtime-manifest-publication-${{ github.run_attempt }}
           path: package-artifacts/runtime-manifest-publication/
@@ -581,7 +581,7 @@ jobs:
       - name: Refresh main ancestry
         run: git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
       - name: Set up pnpm and Node.js
-        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024
         with:
           runtime: node@24.19.0
           install: false
@@ -637,7 +637,7 @@ jobs:
       - name: Refresh main ancestry
         run: git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
       - name: Set up pnpm and Node.js
-        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024
         with:
           runtime: node@24.19.0
           install: false
@@ -650,7 +650,7 @@ jobs:
         run: pnpm release:diagnose-platform
       - name: Preserve bounded redacted diagnostic evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: foundry-platform-diagnostic-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/foundry-platform-diagnostic/**/*.json
