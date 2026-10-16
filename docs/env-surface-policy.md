@@ -35,8 +35,8 @@ checkPaths:
   - test/scenarios/foundry-package-consumer.test.mts
   - test/unit/foundry-runtime-environment.test.mts
 lastReviewedAt: 2026-10-16
-lastReviewedCommit: 9e2971e591d894ba7b6b6c128a86f3aa749706e5
-lastReviewedNote: "Foundry #252: reviewed scheduling-only timing/profile, lexical two-worker wall estimates and Windows-first matrix admission against PR253 head 9e2971e. Product/runtime, source/attempt/artifact authority and full hosted qualification boundaries are unchanged."
+lastReviewedCommit: 5c3e384576cf03948eec44f38108d065e44371c2
+lastReviewedNote: "Foundry #252: reviewed the profile-only correction against PR253 head 5c3e384: all 379 current successful Windows timings plus 35 unchanged-file prior observations, five unknown unit files and no qualification claim. Runtime, package, authorization, scheduler and full hosted gate contracts remain unchanged."
 ---
 
 # Environment Surface Policy

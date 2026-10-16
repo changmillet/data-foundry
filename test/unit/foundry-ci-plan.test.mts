@@ -189,6 +189,7 @@ test("hosted Windows timings keep heavy object, native and repair scenarios with
   for (const name of [
     "foundry-public-finalization-flow-evidence",
     "foundry-quality-review-template",
+    "foundry-quality-review",
     "foundry-public-approval-current-trace",
     "foundry-package-preparation-targets",
     "foundry-package-preparation-unresolved",
