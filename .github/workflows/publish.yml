@@ -48,7 +48,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024
+      - uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4
         with:
           runtime: node@24.19.0
           install: false
@@ -80,7 +80,7 @@ jobs:
       - name: Refresh main ancestry
         run: git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
       - name: Set up pnpm and Node.js
-        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024
+        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4
         with:
           runtime: node@24.19.0
           install: false
@@ -126,7 +126,7 @@ jobs:
       - name: Refresh main ancestry
         run: git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
       - name: Set up pnpm and Node.js
-        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024
+        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4
         with:
           runtime: node@24.19.0
           install: false
@@ -162,7 +162,7 @@ jobs:
       - name: Refresh main ancestry
         run: git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
       - name: Set up pnpm and Node.js
-        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024
+        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4
         with:
           runtime: node@24.19.0
           install: false
@@ -234,7 +234,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Set up pnpm and Node.js
-        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024
+        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4
         with:
           runtime: node@24.19.0
           install: false
@@ -321,7 +321,7 @@ jobs:
       - name: Refresh main ancestry
         run: git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
       - name: Set up pnpm and Node.js
-        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024
+        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4
         with:
           runtime: node@24.19.0
           install: false
@@ -416,7 +416,7 @@ jobs:
       - name: Refresh main ancestry
         run: git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
       - name: Set up pnpm and Node.js
-        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024
+        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4
         with:
           runtime: node@24.19.0
           install: false
@@ -506,7 +506,7 @@ jobs:
       - name: Refresh main ancestry
         run: git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
       - name: Set up pnpm and Node.js
-        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024
+        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4
         with:
           runtime: node@24.19.0
           install: false
@@ -581,7 +581,7 @@ jobs:
       - name: Refresh main ancestry
         run: git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
       - name: Set up pnpm and Node.js
-        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024
+        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4
         with:
           runtime: node@24.19.0
           install: false
@@ -637,7 +637,7 @@ jobs:
       - name: Refresh main ancestry
         run: git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
       - name: Set up pnpm and Node.js
-        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024
+        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4
         with:
           runtime: node@24.19.0
           install: false
