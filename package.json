@@ -170,16 +170,16 @@
     "ajv": "8.20.0",
     "fflate": "0.8.3",
     "husky": "9.1.7",
-    "lint-staged": "17.3.0",
+    "lint-staged": "17.6.0",
     "npm-check-updates": "23.1.0",
-    "oxlint": "1.80.0",
-    "oxlint-tsgolint": "7.0.2001",
-    "prettier": "3.9.6",
+    "oxlint": "1.87.0",
+    "oxlint-tsgolint": "7.0.2003",
+    "prettier": "3.9.9",
     "saxes": "6.0.0",
     "sigstore": "5.0.0",
     "tar": "7.5.22",
     "typescript": "7.0.2",
-    "yaml": "2.9.0"
+    "yaml": "2.9.1"
   },
   "lint-staged": {
     "*.{ts,mts,cts,tsx}": [
