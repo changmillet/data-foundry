@@ -32,8 +32,8 @@ checkPaths:
   - prettier.config.ts
   - tsconfig*.json
 lastReviewedAt: 2026-10-17
-lastReviewedCommit: 9bb28e1001703a5da0bb85e47f0b810df9494a7a
-lastReviewedNote: "Foundry #260: reviewed the source-bound timing refresh and ten Windows shards at 9bb28e1; all 419 files and 22 same-attempt receipts remain required. Runtime, dependency, authorization, deadline, worker/LPT/reserve and release boundaries are unchanged; fresh hosted qualification is pending."
+lastReviewedCommit: 37827f98635bda8ba46927b27993dd2ce52cf55c
+lastReviewedNote: "Foundry #259: reviewed validation-tool and fast-uri 3.1.8 composition with #260 ten-Windows-shard timing/provenance at 37827f9; all 419 files and 22 fresh same-attempt receipts remain required. Node/pnpm/TypeScript and CLI pins, public runtime, authorization, workers/reserve/deadline and release boundaries remain unchanged. Fresh hosted qualification is pending."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry
