@@ -1,162 +1,39 @@
 ---
-title: Foundry Runtime Context and Filesystem Contract
-docType: contract
-scope: repo
-status: active
-authoritative: true
-owner: tiangong-lca-data-foundry
-language: en
-whenToUse:
-  - when resolving Foundry package assets or a user workspace
-  - when adapting an existing command owner to the consumer runtime
-whenToUpdate:
-  - when runtime layout, root ownership, input facts or workspace initialization changes
-checkPaths:
-  - package.json
-  - scripts/foundry-runtime.ts
-  - scripts/foundry-facade.ts
-  - scripts/runtime-entry.ts
-  - scripts/lib/foundry-runtime-context.ts
-  - scripts/lib/foundry-runtime-command-policy.ts
-  - scripts/lib/foundry-runtime-qualification.ts
-  - scripts/lib/foundry-execution-admission.ts
-  - scripts/lib/foundry-facade-store.ts
-  - scripts/lib/foundry-migration-inventory.ts
-  - scripts/lib/foundry-runtime-paths.ts
-  - scripts/lib/foundry-package-contract.ts
-  - scripts/package-entry.ts
-  - scripts/public-api.ts
-  - tsconfig.package.json
-  - specs/schemas/foundry-package-descriptor.schema.json
-  - scripts/lib/tidas-adapter.ts
-  - scripts/lib/import-curation/internal/runtime-io.ts
-  - scripts/lib/import-curation/curation-cleanup.ts
-  - test/unit/runtime-layout.test.mts
-  - test/unit/foundry-package-contract.test.mts
-  - test/unit/foundry-runtime-context.test.mts
-  - test/unit/foundry-runtime-command-policy.test.mts
-  - test/unit/foundry-runtime-qualification.test.mts
-  - test/unit/foundry-runtime-authority-schemas.test.mts
-  - test/scenarios/runtime-workspace.test.mts
-  - test/scenarios/foundry-execution-admission.test.mts
-  - test/scenarios/foundry-package-consumer.test.mts
-related:
-  - docs/architecture.md
-  - docs/task-authorization-contract.md
-  - docs/public-runtime-contract.md
-  - docs/package-distribution-contract.md
-lastReviewedAt: 2026-10-17
-lastReviewedCommit: 010825aecc0f70d7a0301994d33335dc058ebf0b
-lastReviewedNote: "Foundry #259: reviewed validation-tool maintenance and fast-uri 3.1.8 at 010825a; exact Node/pnpm/TypeScript and CLI pins, public package/runtime, authorization and release boundaries remain unchanged. Fresh hosted qualification remains required."
----
 
-# Runtime context
+title: Foundry Runtime Context and Filesystem Contract docType: contract scope: repo status: active authoritative: true owner: tiangong-lca-data-foundry language: en whenToUse:
 
-Local preparation enters the registered v2 task store in `foundry-task-store.ts`; it binds source/profile/actor/runtime metadata and revalidates indexed producer lineage before using derived input. Fresh CLI identity, exact runtime qualification, registered authorization, derived-input succession and child execution admission are exposed through the runtime API. Account intent remains separate from authentication. The API returns a reviewed CommandSpec to the existing no-replay owner; it does not execute or retry a mutation itself.
-
-The consumer runtime receives an explicit `FoundryRuntimeContext`. Construction reads package identity and an explicitly selected/discovered workspace marker, but never loads `.env`, creates state, changes CWD or performs authentication. A process-local brand prevents serialized context data from becoming an executable context. `accountIntent` is expected identity plus an optional `accountMode` verification policy (`ordinary` or `production-test`), not proof of login or permission; `actorId` is caller intent and must also be checked against durable task state before execution.
-
-The runtime entry now exposes the six W05 hierarchical operations described in `public-runtime-contract.md`, while retaining the old source developer commands. The facade delegates cleanup and native import to their existing owners, and contract context to the exact published CLI. Their local outputs are registered through the same task transaction. All 63 internal commands keep their explicit disposition in `foundry-runtime-command-policy.ts`; the six public operations are a separate orchestration surface over those owners. Repository maintenance remains excluded, and task/native families remain internal with declared asset/input/output roots, child-process ownership, qualification and authorization requirements.
-
-The public task facade delegates sealed owner execution to `foundry-workflow-execution.ts`, request/attempt state to `foundry-owner-execution-store.ts`, and independent owner verification to `foundry-owner-readback.ts`. The existing closeout factory lives under `lib/finalize-owners` with its developer-command re-export preserved. Local operation receipts capture evidence only; the CLI batch boundary owns one-shot mutation and readback recovery. `foundry-workflow-reference-verify.ts` separately binds current semantic canonical targets to qualified CLI reference checks, using an explicit authentication environment and fresh output generation. See [public execution and recovery](public-runtime-contract.md#owner-execution-and-recovery).
-
-## Runtime qualification and child admission
-
-The public workflow selects derived row/context facts from the current verified task index before assessment. `runFoundryTaskOperation` rechecks their producer ancestry and original sources. Native validation and the exact CLI's local QA/queue commands use the qualified runtime and isolated environment; curation and authoring write only to a fresh task-owned generation. Runtime assets and source-owner reference bases remain separate from user workspace paths.
-
-For queue build, the exact CLI's exit 1 can carry a valid `blocked` data report. Foundry verifies its schema/status pair, current selected row paths and SHA-256 values, and the complete regular-file queue output tree before indexing those artifacts. Process `dataset validate` likewise admits exit 0/1 only when the complete report matches the current row candidate, four validation layers, allocation/reference coverage, supplied exact Flow documents and output artifacts. The exact SDK 0.5.1 `core/validation/process-semantics` and native 0.3.4 `tidas-validation/src/process_semantics.rs` emit checks by applicability; `contracts.rs` accumulates those emitted checks. Undeclared/scalar-empty and targetless compatibility modes do not require explicit-target fraction/direction coverage. Missing profile evidence or unresolved coverage presented as passed is rejected without introducing scientific rules. Its data findings become existing bounded authoring action items; absence or inconsistency of evidence fails closed. Other CLI exits retain their existing fail-closed treatment. A blocked closure is a local evidence gap; it cannot grant authorization, finalization or a replay of any owner attempt.
-
-`qualifyFoundryRuntime` compares an independently selected CLI expectation with the exact installed `@tiangong-lca/cli@0.1.28` runtime descriptor. It also compares a strict TIDAS expectation with the selected platform, executable bytes, compatible 0.2.x or 0.3.x version, validation protocols, event schemas and asset fingerprint. The selected TIDAS executable is copied into a private temporary directory, rehashed there and invoked with the credential-free child environment; both handshake calls must be silent. Qualification uses a process-local brand. The portable identity described by `runtime-qualification.schema.json` is diagnostic evidence and cannot be deserialized into authority.
-
-The TIDAS expectation admits only `linux-x64`, `linux-arm64`, `darwin-arm64` and `win32-x64`; `darwin-x64` cannot enter the schema or runtime context. `tidas-runtime-expectation.schema.json` is the reviewed machine shape. Qualification creation performs the isolated version/protocol/assets handshake once. Every later assertion reopens and hashes the selected executable and rejects any byte drift before child admission; identical immutable bytes do not replay the handshake. This keeps the original observed behavior bound to exact content while avoiding repeated child-process creation inside one admission call.
-
-`execution-context.schema.json` describes the content-addressed child handoff stored under `evidence/executions/`. It is distinct from the older offline `foundry-execution-capsule-stage.v1` admission ledger: the older contract proves immutable staged evidence and attempt state, while `tiangong-foundry.execution-context.v1` binds a current task invocation. Rehydration requires a fresh process-local context, qualification and identity; exact workspace/task/actor, approved source ancestry, current final-row bytes, active authorization and QA waivers, installed owner CLI, owner-draft argv semantics, task-contained output root and CommandSpec digest are rechecked. The action list must match the CLI operation. A native draft selection admits exactly the final-row and execution-contract artifacts, with the contract independently selected from the current task index. The internal `dataset-workflow-native-contract` operation records the control snapshot without changing source-row ancestry. Native Flow/Process/Source admission revalidates every action's operation and before binding against the current owner, project, state 0 and ordered rows before invoking the public CLI `dataset save-draft --execution-contract`: insert requires an absent before state, save_draft requires the exact lowercase before hash, and arbitrary extra artifacts remain invalid. An explicit reference selection additionally binds exactly one intent, its passing precommit report and the complete review artifact set. Each must be independently selected by the current host and retain its indexed bytes; admission rechecks current consumer content, actor/project and evidence correspondence through the existing handoff adapter. This transport adds no eligibility policy or write authority. Serialized admissions, unrelated CLI commands and changed capsule/spec/input bytes fail closed.
-
-## Root ownership
-
-Public semantic input remains separate from frozen task source selection and runtime trust. The invocation checks task/actor/current-assessment/work-item bindings, captures explicit non-credential input files, and registers immutable snapshots. Existing indexed work provides the collector context; submitted files provide candidate data only. Repaired rows retain source ancestry, and the next assessment must match the newest row manifest. No semantic data or local apply result is authorization for a remote action.
-
-Public interaction input is another explicit, bounded, credential-free file selection. It checks task/actor/current interaction digest, rejects session/credential paths and changed bytes, and stores the raw question/answer and interpreted decision under the task's indexed output root. Only hashes of frozen sources or already indexed artifacts can be cited as evidence. Current applicable decisions are projected into the authoring context and semantic input binding, without changing `source-manifest.json`, runtime qualification, authorization or the CLI's independent scientific proof.
-
-| Root | Meaning and authority |
-| --- | --- |
-| `runtimeRoot` | Immutable executing package. No user outputs or state may be written here. |
-| `assetRoot` | Reviewed runtime schemas, profiles and semantic documents within the package. |
-| `workspaceRoot` | User-selected project, independent of the package and current CWD. |
-| `controlRoot` | `<workspace>/.foundry`; versioned workspace coordination. |
-| `stateRoot` | Workspace coordination records; not arbitrary task outputs. |
-| `taskRoot` | `<workspace>/.foundry/workspaces/<task-id>` for one explicit task. |
-| `tempRoot` | Recomputable scratch space within the selected task/control root. |
-| `cacheRoot` | Recomputable Foundry content under the OS user cache, isolated by runtime identity, platform, workspace and account intent. Managed executable components remain CLI-owned. |
-
-`--workspace` selects a project explicitly. Otherwise only an existing `.foundry/workspace.json` marker discovered upward from the caller's CWD establishes a workspace. Filesystem roots, the package directory, installed `.agents/skills` / `.codex/skills` paths and `_npx` directories are rejected as workspaces. No failed lookup falls back to the package root.
-
-Node must be at least 24.19 and below 25. The admitted platform matrix is macOS arm64, Linux x64/arm64 and Windows x64. Admission runs before workspace mutations or input capture. macOS Intel is unsupported.
-
-## Package layout
-
-`package.json.foundryRuntime` accepts the retained `tiangong-foundry.runtime-layout.v1` source/emitted shape and makes v2 authoritative for new builds. V2 adds `package_entry` and `package_descriptor` while preserving the developer `source_entry` and full-repository `emitted_entry`. All paths are relative, contained and regular where a file is required. The resolver chooses the declared tree that contains the active module; unknown schemas, ambiguous roots and path traversal are rejected. An installed package needs neither source `.ts`, full `dist`, Git nor a workspace, and a copied name-only manifest cannot hijack a nested build's root.
-
-The layout resolver proves local layout and reports package-manifest/entry digests. When only the package entry is present, it also verifies the strict package descriptor, exact payload set and sanitized public manifest before creating a context. This does not replace W08 release provenance or the CLI runtime manager's component verification. Source maps, maintenance tools and live-case drivers are absent from the W06 closure.
-
-## Workspace marker and initialization
-
-The default initialization marker is `tiangong-foundry.workspace.v1`, with `layout_version: 1`, a UUID `workspace_id` and a UTC creation time. Initialization installs a complete marker through an exclusive atomic hardlink from an owned temporary file. A concurrent winner is re-read and validated. Repetition preserves existing bytes and workspace identity, then verifies required control directories. An interrupted recognized v1 initialization may complete its directories; unknown marker versions are never overwritten.
-
-An unversioned nonempty `.foundry` requires explicit inventory/migration. Initialization does not label old state as new, clear old attempts or replay work. In particular, no real #95 workspace is migrated by this implementation.
-
-## Inputs and outputs
-
-User-selected external inputs are regular files captured as canonical path, byte size and SHA-256. Capture streams hashes and detects changes while reading. Data reads require a selected fact and matching current bytes; file descriptors are checked against the selected file before reading. Credential `.env*` files and an account's session reference cannot become dataset inputs. This selection boundary does not make a data file's instructions authoritative.
-
-Task artifacts are written only under the selected `taskRoot`; state and cache have distinct resolver areas. Existing path components and physical containment are checked, including after directories are created. Symlink/junction escapes and a changed workspace marker are rejected. A complete new artifact is installed exclusively from an owned temporary file. Existing identical bytes may be reused; different existing bytes require a new output revision. A failed operation never deletes a prior artifact.
-
-The Task store can capture already generated stage outputs without rewriting their bytes. Its private transaction capability verifies current writer/runtime/source/input bindings before, between and after the fresh output reads, then records the complete matching batch. Completed-receipt publication rechecks these bindings after the callback returns. Content writers retain their per-write checks. This adds no public entry, environment trust, business permission or cross-operation proof cache; the sampling boundary is documented in [the Task contract](foundry-task-contracts.md#local-operation-plans-and-receipts).
-
-The default in-memory data-read bound is 64 MiB; native/streaming stages must declare and enforce their own larger-input protocol instead of silently loading unbounded payloads. Cache contents and layout records are not write or replay authority.
-
-## Facade state and downstream integration
-
-W05 stores request indexes and task pointers under workspace state. Their deterministic revision identity binds normalized task spec plus ordered canonical input facts; task payloads and outputs remain in the W04 task store. Status and resume reconstruct the context from those records and recheck original bytes. The facade does not treat request state as permission or attempt authority.
-
-W06 builds only the required facade/runtime modules, schemas and assets and proves the same behavior from a source-free read-only installed candidate; `package-distribution-contract.md` owns that exact closure. W08 publishes F1 and binds the process-local runtime-selection interface to an immutable CLI-manager product manifest. Local preparation does not grant restricted writes; W03 task permissions and existing attempt/readback no-replay controls remain mandatory. Developer maintenance entrypoints, tests and private case drivers remain excluded from the consumer artifact.
-
-The shared `assertFoundryRuntimeHost` gate also protects inventory-only migration, which cannot construct a context from an unknown legacy marker. Transfer planning constructs the destination context before reading the source and requires disjoint canonical roots with no existing destination `.foundry`. It does not initialize either workspace. See [workspace migration](workspace-migration-contract.md) for transfer, explicit adoption/activation and rollback boundaries.
-
-A strict `workspace-migration-pending.v1` marker returns no active workspace id. `initializeFoundryWorkspace` and consumer doctor explicitly reject pending state. Migration staging/audit can inspect it to recover its exact claim and preserved archive; normal task creation remains unavailable until a separately audited activation.
-
-Facade revision lookup validates retained predecessor jobs/publications without requiring their original input bytes to match a new revision. It checks every earlier revision for attempt evidence and refuses descendant continuation when any is present. Missing/changed predecessor storage is preserved as a recovery condition. This read-only request-chain check does not change runtime qualification or replace W10's complete migrated-task history and activation requirements.
-
-Migrated `workspace.v2` state binds an activation receipt, required features and an extension object. Construction validates the anchored migration documents and requires an independently trusted host selection. Write access must qualify the executing Foundry version and every required feature; unknown write features fail closed. The internal pending-adoption scope supplies a future id only during the bounded local callback and cannot survive it or create authorization/execution admission. Read-only task inspection skips write locks and cannot repair missing records. Read-compatible inspection may verify retained older runtime/profile snapshots without treating them as current write rules.
-
-`state/runtime-selection.json` records an explicit component selection and read/write mode. Ordinary writes must match it. The dedicated selector requires an independently qualified current writer, verifies/pins both component versions through the public CLI manager, and records selection history without rewriting the workspace marker or business state. An explicit CLI session reference cannot be read as marker or protected migration metadata.
-
-An installed package may retain the component cache that contains it only when its current host manifest is still independently trusted, the public CLI inspection verifies the complete current component set, and the installed package verifier proves its identity inside one of those components. The context retains that host manifest privately; the persisted selection pointer and rollback target cannot substitute for it. Workspace and excluded migration roots remain disjoint from the cache in both directions, and the cache cannot sit inside the runtime root. Source and developer-emitted roots receive no package exception. Existing parent directories are canonicalized even for missing descendants, so filesystem aliases cannot bypass those boundaries.
-
-Managed facade construction passes the independently selected component-cache root through the internal context options. The context rejects workspace overlap before reading its marker and privately retains that root for subsequent assertions. Overridden migration destinations inherit the same exclusion. `foundry-runtime-cache.ts` owns this shared canonical-path boundary; it does not create a cache or grant installed-package ownership.
-
-The package-owned managed initializer receives the public CLI IPC context before public operations, verifies the installed entry and component metadata, and supplies the existing CLI/TIDAS qualification, workspace-access and runtime-target interfaces. It reads no `.env` or task-selected trust anchor. The metadata schema and exact admission sequence are defined by `package-distribution-contract.md`; native qualification and task/identity authorization retain their existing owners.
-
-Prepared-support finalization explicitly selects the approved input file for its dataset type. Other completed scope artifacts are retained through the existing verified-progress map; the original row manifest and approval origin remain lineage anchors. `approval_authorization_sha256` distinguishes a new derived-input finalization from an unchanged blocked result.
-
-Workflow generation and scratch directories use task-confined cryptographic names with exclusive `mkdir`, rather than `mkdtemp` under deep task paths. This preserves distinct immutable generations on Windows when a registered task plus operation digest exceeds the Windows `mkdtemp` path limit. Workspace write access and path confinement are checked before creation; existing directories are never adopted.
-
-The native validation adapter also allocates a cryptographically named exclusive staging directory beside its selected output. This keeps atomic same-filesystem replacement and cancellation cleanup available at deep Windows task paths. Failed or cancelled validation preserves the previous output; successful validation publishes the complete new report set.
-
-Managed command continuations retain the original verified launch id through the CLI manager, preserving its workspace access and runtime-target policy in the next process. The content-addressed public manifest snapshot is recomputable cache data outside runtime/workspace roots; its path grants no trust or task permission. The existing digest, inventory, qualification, current identity, authorization and no-replay checks run again before qualified owner execution.
-
-Public reference selection uses the internal `dataset-workflow-reference-input` task operation. It preserves selected source evidence, publishes indexed QA/review snapshots and a derived intent with only file locators changed. Current row and reference-selection digests fence finalization; snapshot files remain selected inputs for authorization, execution and readback. The selected package/CLI/TIDAS trust anchors and account authority are unchanged.
-
-The public execution owner verifies current identity separately for initial rehydration and the final complete pre-dispatch admission pass. Local work between them cannot reuse the earlier receipt as fresh authority. Both passes retain current runtime, account, grant, input and CommandSpec verification before the existing attempt-consumption boundary; no replay or additional grant is introduced.
-
-## Exact compatibility and diagnostic interpretation
-
-The public same-task adoption host is described in [the public runtime contract](public-runtime-contract.md#same-task-compatibility-and-retained-identity-diagnostics). Its immutable receipt chain qualifies complete old/new package and CLI inventories, retains identical Node/Toolkit bytes, and enforces the selected tip during current continuation. Native successor links use contained slash-separated relative locators on every platform; the immutable writer still rejects traversal, absolute paths and links. Four legacy identity fields or equal package versions cannot establish compatible code. Prior producer/context facts remain history and do not stand in for fresh current machine gates.
-
-Identity report interpretation supports the current CLI 0.1.28 and retained 0.1.27 manual-review exit-1 pair after complete bound validation. Retained 0.1.22 reports require their own original account/CLI/producer facts and an independently qualified predecessor inventory. A recovery proof is a new interpretation, not a historical CLI execution manifest, and cannot replace a missing original raw authenticated receipt. Present retained executable/inventory readback is explicitly current observation.
-
-Explicit Process reference selection reaches initial queue/QA and the current CLI validation wrapper. Native input and scientific Process bytes remain unchanged. Missing/wrong exact bodies and projection/report/reference drift remain blocking evidence.
-
-The managed adoption carrier explicitly proves L and S use the same complete execution components/cache keys and identical launch/workspace constraints before setting workspace access to S. The original L remains the launch authority for returned actions; `runtimeTarget` alone cannot establish executing-runtime ownership. Inventory-bound control files issue no credential or write permission. See the public runtime contract for the no-cycle construction and child authentication boundary.
-
-Quality-review descriptors bind the current qualified runtime, complete row artifact, canonical per-object payload, QA/context/reference facts and actual account intent. Their task-indexed snapshots expire and are rechecked by reassessment, finalization and write admission. A successor runtime requires a new review of its current observations; arbitrary serialized decisions and environment values never restore a review capability. See the [public preparation contract](public-runtime-contract.md#preparation-quality-review).
+- when resolving Foundry package assets or a user workspace
+- when adapting an existing command owner to the consumer runtime whenToUpdate:
+- when runtime layout, root ownership, input facts or workspace initialization changes checkPaths:
+- package.json
+- scripts/foundry-runtime.ts
+- scripts/foundry-facade.ts
+- scripts/runtime-entry.ts
+- scripts/lib/foundry-runtime-context.ts
+- scripts/lib/foundry-runtime-command-policy.ts
+- scripts/lib/foundry-runtime-qualification.ts
+- scripts/lib/foundry-execution-admission.ts
+- scripts/lib/foundry-facade-store.ts
+- scripts/lib/foundry-migration-inventory.ts
+- scripts/lib/foundry-runtime-paths.ts
+- scripts/lib/foundry-package-contract.ts
+- scripts/package-entry.ts
+- scripts/public-api.ts
+- tsconfig.package.json
+- specs/schemas/foundry-package-descriptor.schema.json
+- scripts/lib/tidas-adapter.ts
+- scripts/lib/import-curation/internal/runtime-io.ts
+- scripts/lib/import-curation/curation-cleanup.ts
+- test/unit/runtime-layout.test.mts
+- test/unit/foundry-package-contract.test.mts
+- test/unit/foundry-runtime-context.test.mts
+- test/unit/foundry-runtime-command-policy.test.mts
+- test/unit/foundry-runtime-qualification.test.mts
+- test/unit/foundry-runtime-authority-schemas.test.mts
+- test/scenarios/runtime-workspace.test.mts
+- test/scenarios/foundry-execution-admission.test.mts
+- test/scenarios/foundry-package-consumer.test.mts related:
+- docs/architecture.md
+- docs/task-authorization-contract.md
+- docs/public-runtime-contract.md
+- docs/package-distribution-contract.md lastReviewedAt: 2026-10-17 lastReviewedCommit: 010825aecc0f70d7a0301994d33335dc058ebf0b lastReviewedNote: "Foundry #259: reviewed validation-tool maintenance and fast-uri 3.1.8 at 010825a; exact Node/pnpm/TypeScript and CLI pins, public package/runtime, authorization and release boundaries remain unchanged. Fresh hosted qualification remains required."

@@ -76,6 +76,40 @@ test("wall estimates model the runner's lexical two-worker queue instead of seri
   }
 });
 
+test("measured deadline envelope rejects eight/nine shards and keeps all files within ten-shard reserve", () => {
+  const root = path.resolve(import.meta.dirname, "../..");
+  const profile = JSON.parse(
+    fs.readFileSync(path.join(root, "specs/ci/test-durations.json"), "utf8"),
+  ) as {
+    weights_seconds: Record<string, number>;
+    deadline_refresh: {
+      transferred_files: number;
+      retained_prior_weights: Array<{ file: string; seconds: number; reason: string }>;
+    };
+  };
+  const plan = loadFoundryTestPlan(root);
+  const inventory = plan.shards.flatMap((shard) => shard.files).sort();
+  for (const count of [8, 9]) {
+    const old = planFoundryTestShards(inventory, profile.weights_seconds, count);
+    assert.ok(old.shards.some((shard) => !fitsWindowsBudget(shard.estimatedWallSeconds)));
+    assert.deepEqual(old.shards.flatMap((shard) => shard.files).sort(), inventory);
+  }
+  const windows = foundryPlatformTestShards(plan, "win32-x64");
+  assert.equal(windows.length, 10);
+  assert.ok(windows.every((shard) => fitsWindowsBudget(shard.estimatedWallSeconds)));
+  assert.deepEqual(windows.flatMap((shard) => shard.files).sort(), inventory);
+  assert.equal(new Set(windows.flatMap((shard) => shard.files)).size, inventory.length);
+  assert.equal(
+    profile.deadline_refresh.transferred_files +
+      profile.deadline_refresh.retained_prior_weights.length,
+    Object.keys(profile.weights_seconds).length,
+  );
+  for (const retained of profile.deadline_refresh.retained_prior_weights) {
+    assert.equal(profile.weights_seconds[retained.file], retained.seconds);
+    assert.ok(retained.reason.length > 0);
+  }
+});
+
 test("Node admits the lexical first two files despite heavy-first argument order", (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-ci-lexical-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -283,18 +317,18 @@ test("version gate never admits dependency changes, mixed source or changed docu
   );
 });
 
-test("host-specific shard matrix covers every file once with Windows8 and unchanged other4", () => {
+test("host-specific shard matrix covers every file once with Windows10 and unchanged other4", () => {
   const plan = loadFoundryTestPlan(path.resolve(import.meta.dirname, "../.."));
   const matrix = foundryCiTestMatrix(plan).include;
-  assert.equal(matrix.length, 20);
+  assert.equal(matrix.length, 22);
   assert.deepEqual(
-    matrix.slice(0, 8).map(({ platform }) => platform),
-    Array(8).fill("win32-x64"),
+    matrix.slice(0, 10).map(({ platform }) => platform),
+    Array(10).fill("win32-x64"),
   );
   const inventory = plan.shards.flatMap(({ files }) => files).sort();
   for (const platform of ["linux-x64", "linux-arm64", "darwin-arm64", "win32-x64"]) {
     const shards = foundryPlatformTestShards(plan, platform);
-    assert.equal(shards.length, platform === "win32-x64" ? 8 : 4);
+    assert.equal(shards.length, platform === "win32-x64" ? 10 : 4);
     const selected = shards.flatMap(({ files }) => files);
     assert.equal(new Set(selected).size, inventory.length);
     assert.deepEqual(selected.sort(), inventory);
@@ -311,9 +345,9 @@ test("global CI digest binds all platform counts and rejects malformed mappings"
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, "test"));
   fs.mkdirSync(path.join(root, "specs/ci"), { recursive: true });
-  for (let index = 0; index < 8; index++)
+  for (let index = 0; index < 10; index++)
     fs.writeFileSync(path.join(root, `test/${index}.test.mts`), "");
-  const counts = { "linux-x64": 4, "linux-arm64": 4, "darwin-arm64": 4, "win32-x64": 8 };
+  const counts = { "linux-x64": 4, "linux-arm64": 4, "darwin-arm64": 4, "win32-x64": 10 };
   const write = (mapping: unknown) =>
     fs.writeFileSync(
       path.join(root, "specs/ci/test-durations.json"),
@@ -332,8 +366,9 @@ test("global CI digest binds all platform counts and rejects malformed mappings"
     [],
     { "linux-x64": 4 },
     { ...counts, "darwin-x64": 4 },
-    { ...counts, "win32-x64": "8" },
-    { ...counts, "win32-x64": 9 },
+    { ...counts, "win32-x64": "10" },
+    { ...counts, "win32-x64": 11 },
+    { ...counts, "linux-x64": 9 },
     { ...counts, "win32-x64": 0 },
     { ...counts, "win32-x64": 7.5 },
   ]) {
