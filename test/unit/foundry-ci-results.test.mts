@@ -65,7 +65,7 @@ test("CI aggregation rejects stale, skipped, foreign and mixed execution evidenc
   assert.throws(() => verifyFoundryTestShards(input, source, plan), /finish/);
 });
 
-test("CI aggregation requires all20 host-specific receipts and rejects cross-platform substitution", () => {
+test("CI aggregation requires all22 host-specific receipts and rejects cross-platform substitution", () => {
   const plan = loadFoundryTestPlan(path.resolve(import.meta.dirname, "../.."));
   const rows = foundryCiPlatforms.flatMap((platform) =>
     foundryPlatformTestShards(plan, platform).map((shard) => ({
@@ -89,7 +89,9 @@ test("CI aggregation requires all20 host-specific receipts and rejects cross-pla
       },
     })),
   );
-  assert.equal(rows.length, 20);
+  assert.equal(rows.length, 22);
+  assert.equal(rows.at(-1)?.platform, "win32-x64");
+  assert.equal(rows.at(-1)?.index, 10);
   verifyFoundryTestShards(rows, source, plan);
   assert.throws(() => verifyFoundryTestShards(rows.slice(0, -1), source, plan), /Incomplete/);
   const duplicate = structuredClone(rows);
@@ -97,7 +99,12 @@ test("CI aggregation requires all20 host-specific receipts and rejects cross-pla
   assert.throws(() => verifyFoundryTestShards(duplicate, source, plan), /Duplicate/);
   const foreign = structuredClone(rows);
   foreign[foreign.length - 1].platform = "linux-x64";
+  foreign[foreign.length - 1].index = 1;
+  foreign[foreign.length - 1].total = 4;
   assert.throws(() => verifyFoundryTestShards(foreign, source, plan), /differs/);
+  const undeclared = structuredClone(rows);
+  undeclared[0].index = 10;
+  assert.throws(() => verifyFoundryTestShards(undeclared, source, plan), /differs/);
   const stale = structuredClone(rows);
   stale[0].plan_sha256 = "f".repeat(64);
   assert.throws(() => verifyFoundryTestShards(stale, source, plan), /differs/);
