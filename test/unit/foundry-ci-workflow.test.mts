@@ -225,7 +225,7 @@ test("full CI runs all platforms with independent tests and native qualification
     [...foundryCiPlatforms].sort(),
   );
   assert.deepEqual(nativeHosts.map((host) => host.platform).sort(), [...foundryCiPlatforms].sort());
-  assert.equal(testHosts.length, 20);
+  assert.equal(testHosts.length, 22);
   assert.equal(native.if, "always()");
   assert.ok(Array.isArray(native.needs));
   for (const requirement of ["plan", "build-package", "version-pr"])

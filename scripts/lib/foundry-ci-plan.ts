@@ -152,7 +152,12 @@ export function loadFoundryTestPlan(root: string, count = 4): FoundryTestPlan {
   const configured = counts as Record<string, unknown>;
   const plans = Object.keys(foundryCiPlatformHosts).map((platform) => {
     const size = configured[platform];
-    if (typeof size !== "number" || !Number.isInteger(size) || size < 1 || size > 8)
+    if (
+      typeof size !== "number" ||
+      !Number.isInteger(size) ||
+      size < 1 ||
+      size > (platform === "win32-x64" ? 10 : 8)
+    )
       throw new Error("Invalid platform CI shard count.");
     return [platform, planFoundryTestShards(files, durations, size)] as const;
   });

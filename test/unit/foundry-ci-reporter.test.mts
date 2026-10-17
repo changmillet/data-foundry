@@ -396,3 +396,114 @@ test("second file awaits explicit release", async () => {
     assert.equal(read(eventsFile).includes(assertionMessage), false);
   },
 );
+
+test("actual shard runner admits index ten only for its declared platform and preserves source/plan guards", (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-ci-index-ten-"));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const sourceRoot = path.resolve(import.meta.dirname, "../..");
+  const fixtureRoot = path.join(directory, "source");
+  const scripts = path.join(fixtureRoot, "scripts");
+  fs.mkdirSync(scripts, { recursive: true });
+  fs.mkdirSync(path.join(fixtureRoot, "test/fixtures"), { recursive: true });
+  fs.mkdirSync(path.join(fixtureRoot, "specs/ci"), { recursive: true });
+  for (const file of ["ci-test-shard.ts", "ci-test-reporter.ts"])
+    fs.copyFileSync(path.join(sourceRoot, "scripts", file), path.join(scripts, file));
+  fs.copyFileSync(
+    path.join(sourceRoot, "test/fixtures/managed-adoption-diagnostics.mts"),
+    path.join(fixtureRoot, "test/fixtures/managed-adoption-diagnostics.mts"),
+  );
+  fs.symlinkSync(path.join(sourceRoot, "scripts/lib"), path.join(scripts, "lib"), "junction");
+  for (let index = 0; index < 10; index++)
+    fs.writeFileSync(
+      path.join(fixtureRoot, `test/${index}.test.mts`),
+      'import test from "node:test"; test("actual selected fixture", () => {});\n',
+    );
+  fs.writeFileSync(
+    path.join(fixtureRoot, "specs/ci/test-durations.json"),
+    JSON.stringify({
+      schema: "tiangong-foundry.ci-test-durations.v1",
+      weights_seconds: {},
+      shards_by_platform: { "linux-x64": 4, "linux-arm64": 4, "darwin-arm64": 4, "win32-x64": 10 },
+    }),
+  );
+  const source = "a".repeat(40);
+  const plan = loadFoundryTestPlan(fixtureRoot);
+  const environment = { ...process.env };
+  delete environment.NODE_OPTIONS;
+  delete environment.NODE_TEST_CONTEXT;
+  const run = (
+    platform: "win32" | "linux",
+    index: string,
+    output: string,
+    selectedSource = source,
+    digest = plan.planSha256,
+  ) => {
+    // Synthetic platform/Git admission only; the selected child runs real Node tests.
+    // This fixture never represents native hosted qualification.
+    const boundary = path.join(directory, `${platform}-boundary.mjs`);
+    fs.writeFileSync(
+      boundary,
+      `
+import childProcess from "node:child_process";
+import { syncBuiltinESMExports } from "node:module";
+Object.defineProperty(process, "platform", { value: ${JSON.stringify(platform)} });
+Object.defineProperty(process, "arch", { value: "x64" });
+const original = childProcess.spawnSync;
+childProcess.spawnSync = (command, args, options) => {
+  if (command !== "git") return original(command, args, options);
+  const output = args.includes("rev-parse") && args.includes("HEAD") ? ${JSON.stringify(source + "\n")} : args.includes("status") ? "" : undefined;
+  if (output === undefined) throw new Error("Unexpected synthetic Git operation.");
+  return { status: 0, signal: null, stdout: Buffer.from(output), stderr: Buffer.alloc(0) };
+};
+syncBuiltinESMExports();
+`,
+    );
+    return spawnSync(
+      process.execPath,
+      [
+        "--import",
+        pathToFileURL(boundary).href,
+        path.join(scripts, "ci-test-shard.ts"),
+        "--index",
+        index,
+        "--plan-sha256",
+        digest,
+        "--source-sha",
+        selectedSource,
+        "--output",
+        output,
+      ],
+      { env: environment, encoding: "utf8", timeout: 15000, shell: false },
+    );
+  };
+  const output = path.join(directory, "declared-ten");
+  const accepted = run("win32", "10", output);
+  assert.ifError(accepted.error);
+  assert.equal(accepted.status, 0, accepted.stderr);
+  const receipt = JSON.parse(fs.readFileSync(path.join(output, "test-shard.json"), "utf8")) as {
+    index: number;
+    total: number;
+    status: string;
+    files: string[];
+    counts: { tests: number; passed: number };
+  };
+  assert.equal(receipt.index, 10);
+  assert.equal(receipt.total, 10);
+  assert.equal(receipt.status, "passed");
+  assert.equal(receipt.files.length, 1);
+  assert.equal(receipt.counts.tests, 1);
+  assert.equal(receipt.counts.passed, 1);
+  const undeclared = path.join(directory, "undeclared-ten");
+  assert.match(run("linux", "10", undeclared).stderr, /shard must not be empty/u);
+  assert.equal(fs.existsSync(undeclared), false);
+  for (const index of ["0", "00", "01", "1.0", "11", "-1"])
+    assert.match(run("win32", index, path.join(directory, `invalid-${index}`)).stderr, /Usage:/u);
+  assert.match(
+    run("win32", "10", path.join(directory, "foreign-source"), "b".repeat(40)).stderr,
+    /exact clean source/u,
+  );
+  assert.match(
+    run("win32", "10", path.join(directory, "stale-plan"), source, "b".repeat(64)).stderr,
+    /independently selected digest/u,
+  );
+});

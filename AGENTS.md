@@ -31,9 +31,9 @@ checkPaths:
   - .oxlintrc.json
   - prettier.config.ts
   - tsconfig*.json
-lastReviewedAt: 2026-10-16
-lastReviewedCommit: 5c3e384576cf03948eec44f38108d065e44371c2
-lastReviewedNote: "Foundry #252: reviewed the profile-only correction against PR253 head 5c3e384: all 379 current successful Windows timings plus 35 unchanged-file prior observations, five unknown unit files and no qualification claim. Runtime, package, authorization, scheduler and full hosted gate contracts remain unchanged."
+lastReviewedAt: 2026-10-17
+lastReviewedCommit: 9bb28e1001703a5da0bb85e47f0b810df9494a7a
+lastReviewedNote: "Foundry #260: reviewed the source-bound timing refresh and ten Windows shards at 9bb28e1; all 419 files and 22 same-attempt receipts remain required. Runtime, dependency, authorization, deadline, worker/LPT/reserve and release boundaries are unchanged; fresh hosted qualification is pending."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry
