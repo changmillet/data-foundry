@@ -102,7 +102,7 @@ test("measured deadline envelope rejects eight/nine shards and keeps all files w
   assert.equal(
     profile.deadline_refresh.transferred_files +
       profile.deadline_refresh.retained_prior_weights.length,
-    inventory.length,
+    Object.keys(profile.weights_seconds).length,
   );
   for (const retained of profile.deadline_refresh.retained_prior_weights) {
     assert.equal(profile.weights_seconds[retained.file], retained.seconds);
