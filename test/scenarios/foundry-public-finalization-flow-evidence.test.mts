@@ -210,7 +210,12 @@ test("public finalization parses the same captured reference bytes whose hash it
   const readMock = t.mock.method(
     fs,
     "readFileSync",
-    (...args: Parameters<typeof fs.readFileSync>) => {
+    (
+      ...args: [
+        path: fs.PathOrFileDescriptor,
+        options?: fs.ReadFileSyncOptions | BufferEncoding | null,
+      ]
+    ) => {
       const value = Reflect.apply(originalRead, fs, args);
       if (
         typeof args[0] === "string" &&
