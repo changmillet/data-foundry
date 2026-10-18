@@ -40,8 +40,8 @@ related:
   - docs/task-authorization-contract.md
   - docs/safety-policy.md
 lastReviewedAt: 2026-10-18
-lastReviewedCommit: f51379219a589916abac62f0db4aa05f80cbeae6
-lastReviewedNote: "Foundry #262: reviewed the complete 52-reference Actions qualification delta against accepted Main 6df5c7d9; pnpm setup 3.1.1 and artifact 7.0.2/8.0.2 retain full source, test, native, aggregate and bootstrap contracts. Product/CLI/toolchain/security graph, permissions, artifact bindings and release authority remain unchanged; the Dependabot author cannot seal source capsules. Fresh local and hosted qualification remain pending."
+lastReviewedCommit: 5084642a112cbec69488652e457575f83d035792
+lastReviewedNote: "Foundry #263: reviewed Node24 declarations24.19.2 and Undici7.24.6 with the overload-complete readFileSync mock tuple at5084642a. Runtime24.19.0, pnpm11.24.0, TypeScript7.0.2, CLI/product versions, assertions, ownership, package and authorization boundaries remain unchanged. Focused race regression and typecheck pass; this review does not replace complete local or fresh hosted qualification."
 ---
 
 # Foundry package distribution

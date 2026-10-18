@@ -32,8 +32,8 @@ checkPaths:
   - prettier.config.ts
   - tsconfig*.json
 lastReviewedAt: 2026-10-18
-lastReviewedCommit: f51379219a589916abac62f0db4aa05f80cbeae6
-lastReviewedNote: "Foundry #262: reviewed the complete 52-reference Actions qualification delta against accepted Main 6df5c7d9; pnpm setup 3.1.1 and artifact 7.0.2/8.0.2 retain full source, test, native, aggregate and bootstrap contracts. Product/CLI/toolchain/security graph, permissions, artifact bindings and release authority remain unchanged; the Dependabot author cannot seal source capsules. Fresh local and hosted qualification remain pending."
+lastReviewedCommit: 5084642a112cbec69488652e457575f83d035792
+lastReviewedNote: "Foundry #263: reviewed latest Node24 declarations24.19.2, Undici7.24.6 and the faithful fs-read mock parameter tuple at5084642a. Node/pnpm/TypeScript and product/CLI versions, all assertions, package/runtime ownership and authorization contracts are preserved. Focused race regression and typecheck pass; full source and hosted qualification remain independent requirements."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry
