@@ -22,7 +22,9 @@ lastReviewedNote: "Foundry #252: bounded npm/Actions discovery reuses complete C
 
 # Dependency maintenance
 
-Dependabot monitors the single root pnpm graph through the npm ecosystem and the GitHub Actions references. Version proposals target `main` weekly on Wednesday at 06:30 and 06:45 Asia/Shanghai, with a seven-day cooldown and open-PR limits of two and one. Development-tool patch/minor updates share one group; the sole production dependency, the internal CLI, stays individually visible. Major package updates are not ignored or folded into the patch/minor group. Actions share one bounded review group. Security triage/settings are separate from these version-update traffic budgets.
+Dependabot monitors the single root pnpm graph through the npm ecosystem and the GitHub Actions references. Version proposals target `main` weekly on Wednesday at 06:30 and 06:45 Asia/Shanghai, with a seven-day cooldown and open-PR limits of two and one. Development-tool patch/minor updates share one group; the sole production dependency, the internal CLI, stays individually visible. Other package majors remain separately visible outside the patch/minor group. Actions share one bounded review group. Security triage/settings are separate from these version-update traffic budgets.
+
+Keep `@types/node` on Node 24 LTS: the npm entry ignores versions `>=25.0.0`, while all 24.x patch and minor updates remain eligible under the existing monitoring policy. Revisit this exclusion only after an explicitly approved runtime/toolchain major upgrade; a newer typings major alone is not adoption approval.
 
 Keep the current Node/pnpm/TypeScript pins, exact CLI dependency, pnpm `minimumReleaseAge`, exact release-age exceptions, build restrictions and overrides. CLI adoption, bootstrap/final locks and public runtime qualification follow their existing consumer/release contracts; a newer package or green updater job grants no adoption or rollout authority. Do not change runtime pins to accommodate the updater. The first hosted npm scan and real frozen-lock candidate remain necessary to establish updater/toolchain compatibility.
 
