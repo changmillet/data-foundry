@@ -158,9 +158,9 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - test/unit/zero-javascript-ratchet.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
-lastReviewedAt: 2026-10-18
-lastReviewedCommit: 5084642a112cbec69488652e457575f83d035792
-lastReviewedNote: "Foundry #263: reviewed Node24 declarations24.19.2 and Undici7.24.6 with the overload-complete readFileSync mock tuple at5084642a. Runtime24.19.0, pnpm11.24.0, TypeScript7.0.2, CLI/product versions, assertions, ownership, package and authorization boundaries remain unchanged. Focused race regression and typecheck pass; this review does not replace complete local or fresh hosted qualification."
+lastReviewedAt: 2026-10-28
+lastReviewedCommit: 3b76f9c0b8ced379c8d9b249996c73d942ce41e6
+lastReviewedNote: "Foundry #271: reviewed compatible fast-uri3.1.9 within Ajv8.20.0 declared^3.0.1, URI scheme/host/relative/suffix guards and installed schema consumers. Node/pnpm/TypeScript, CLI/SDK/product, package/runtime ownership and authorization/publication contracts remain unchanged; source full gate and hosted/native qualification remain required."
 ---
 
 # TianGong LCA Data Foundry

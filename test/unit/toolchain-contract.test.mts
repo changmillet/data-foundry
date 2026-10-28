@@ -70,7 +70,7 @@ test("Foundry declares one exact pnpm workspace and lockfile", () => {
   const workspace = readText("pnpm-workspace.yaml");
   assert.match(workspace, /^packages:\s*\[\]\s*$/mu);
   assert.match(workspace, /strictDepBuilds:\s*true/u);
-  assert.match(workspace, /fast-uri:\s*3\.1\.8/u);
+  assert.match(workspace, /fast-uri:\s*3\.1\.9/u);
 });
 
 test("Foundry has one direct and recursive TypeScript 7 compiler graph", () => {
@@ -340,7 +340,7 @@ test("Foundry pins the published CLI runtime and high-risk audit closure", () =>
   assert.equal(packageJson.dependencies?.ajv, undefined);
   assert.equal(packageJson.devDependencies?.ajv, "8.20.0");
   const workspace = readText("pnpm-workspace.yaml");
-  assert.match(workspace, /fast-uri:\s*3\.1\.8/u);
+  assert.match(workspace, /fast-uri:\s*3\.1\.9/u);
   assert.match(workspace, /minimumReleaseAge:\s*1440/u);
   assert.doesNotMatch(workspace, /^\s*-\s*["']?@oxlint\/binding-darwin-x64@/mu);
   assert.match(workspace, /-\s+["']?@tiangong-lca\/cli@0\.1\.28["']?/u);

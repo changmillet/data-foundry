@@ -31,9 +31,9 @@ checkPaths:
   - .oxlintrc.json
   - prettier.config.ts
   - tsconfig*.json
-lastReviewedAt: 2026-10-18
-lastReviewedCommit: 5084642a112cbec69488652e457575f83d035792
-lastReviewedNote: "Foundry #263: reviewed latest Node24 declarations24.19.2, Undici7.24.6 and the faithful fs-read mock parameter tuple at5084642a. Node/pnpm/TypeScript and product/CLI versions, all assertions, package/runtime ownership and authorization contracts are preserved. Focused race regression and typecheck pass; full source and hosted qualification remain independent requirements."
+lastReviewedAt: 2026-10-28
+lastReviewedCommit: 3b76f9c0b8ced379c8d9b249996c73d942ce41e6
+lastReviewedNote: "Foundry #271: reviewed compatible fast-uri3.1.9 within Ajv8.20.0 declared^3.0.1, URI scheme/host/relative/suffix guards and installed schema consumers. Node/pnpm/TypeScript, CLI/SDK/product, package/runtime ownership and authorization/publication contracts remain unchanged; source full gate and hosted/native qualification remain required."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry
