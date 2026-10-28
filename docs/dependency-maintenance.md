@@ -28,6 +28,8 @@ Keep `@types/node` on Node 24 LTS: the npm entry ignores versions `>=25.0.0`, wh
 
 Keep the current Node/pnpm/TypeScript pins, exact CLI dependency, pnpm `minimumReleaseAge`, exact release-age exceptions, build restrictions and overrides. CLI adoption, bootstrap/final locks and public runtime qualification follow their existing consumer/release contracts; a newer package or green updater job grants no adoption or rollout authority. Do not change runtime pins to accommodate the updater. The first hosted npm scan and real frozen-lock candidate remain necessary to establish updater/toolchain compatibility.
 
+The `fast-uri: 3.1.9` override repairs the URI parser used by development-only Ajv8.20.0 within its declared `^3.0.1` range. The parser must reject encoded schemes and ambiguous domain hosts, preserve relative-reference resolution, and keep suffix paths from acquiring a scheme. The installed-consumer regression resolves the parser through Ajv and also exercises local schema references and the actual public input schemas. These controls protect source/release tooling; they do not establish a public attacker path or grant remote operation authority. Ajv and fast-uri remain outside the public package's dependency/compiler closure.
+
 ## Existing PR qualification
 
 Use the existing complete `quality-gate` workflow. Dependency proposals retain the full test partitions, every native platform, aggregate runtime and copied bootstrap qualification. No additional job or local command is introduced. Exact version-only and independently verified reuse modes keep their existing contracts; a dependency/configuration change is not a version-only release.
