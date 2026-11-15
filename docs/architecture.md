@@ -153,8 +153,8 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - docs/incremental-change-set-contract.md
 lastReviewedAt: 2026-11-15
-lastReviewedCommit: c870f4fd2066c65a7e90d581e89bd18e4b5f22f0
-lastReviewedNote: "Foundry #275 version-coupling slice: reviewed deployment-owned installed entry selection, read-only discovery and existing managed task bindings; no scientific, data-schema, dependency-version or authorization changes."
+lastReviewedCommit: c30a1f516553282f7c82c82c5733689557078b5c
+lastReviewedNote: "Foundry #278: reviewed the 0.1.18 package, verifier and descriptor version projections over main containing the installed-entry change; runtime inputs, workflow, ownership and task contracts are unchanged."
 ---
 
 # Architecture

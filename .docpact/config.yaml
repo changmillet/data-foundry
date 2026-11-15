@@ -1,8 +1,8 @@
 version: 1
 layout: repo
-lastReviewedAt: "2026-10-16"
-lastReviewedCommit: "6924a48c1baccdf28bba28aadc64ef18876a80e9"
-lastReviewedNote: "Foundry #252: bounded npm/Actions discovery and immutable bot-author seal guards preserve full qualification, current CLI/native/toolchain pins, consumer/runtime and publication authority. Lock-only resolution avoids automatic ten-document review churn."
+lastReviewedAt: "2026-11-15"
+lastReviewedCommit: "c30a1f516553282f7c82c82c5733689557078b5c"
+lastReviewedNote: "Foundry #278: reviewed version-only 0.1.18 projections and unchanged native release, ownership and documentation requirements."
 
 catalog:
   repos:

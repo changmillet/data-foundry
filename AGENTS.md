@@ -32,8 +32,8 @@ checkPaths:
   - prettier.config.ts
   - tsconfig*.json
 lastReviewedAt: 2026-11-15
-lastReviewedCommit: c870f4fd2066c65a7e90d581e89bd18e4b5f22f0
-lastReviewedNote: "Foundry #275 version-coupling slice: reviewed deployment-owned installed entry selection, read-only discovery and existing managed task bindings; no scientific, data-schema, dependency-version or authorization changes."
+lastReviewedCommit: c30a1f516553282f7c82c82c5733689557078b5c
+lastReviewedNote: "Foundry #278: reviewed version-only 0.1.18 projections and unchanged native release, ownership and documentation requirements."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry
