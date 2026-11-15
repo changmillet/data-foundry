@@ -34,9 +34,9 @@ checkPaths:
   - scripts/public-api.ts
   - test/scenarios/foundry-package-consumer.test.mts
   - test/unit/foundry-runtime-environment.test.mts
-lastReviewedAt: 2026-10-18
-lastReviewedCommit: 5084642a112cbec69488652e457575f83d035792
-lastReviewedNote: "Foundry #263: reviewed Node24 declarations24.19.2 and Undici7.24.6 with the overload-complete readFileSync mock tuple at5084642a. Runtime24.19.0, pnpm11.24.0, TypeScript7.0.2, CLI/product versions, assertions, ownership, package and authorization boundaries remain unchanged. Focused race regression and typecheck pass; this review does not replace complete local or fresh hosted qualification."
+lastReviewedAt: 2026-11-15
+lastReviewedCommit: c870f4fd2066c65a7e90d581e89bd18e4b5f22f0
+lastReviewedNote: "Foundry #275 version-coupling slice: reviewed deployment-owned installed entry selection, read-only discovery and existing managed task bindings; no scientific, data-schema, dependency-version or authorization changes."
 ---
 
 # Environment Surface Policy
@@ -45,7 +45,7 @@ Foundry `.env.example` is a public runtime contract, not a mirror of every adjac
 
 Package build, descriptor verification and packing do not load `.env`. The public staging manifest has no lifecycle scripts. Clean-consumer tests pass only platform process variables, isolated HOME/package-cache paths and optional network proxy/CA settings to package tools; credential-shaped variables are rejected from that projection. Installed workspace/task operations retain the facade's explicit account-intent/session-reference contract and never search the package directory for credentials.
 
-The managed package bin consumes only the inherited CLI IPC context for runtime authority. `metadata/foundry-runtime.json` and any selected target manifest are read through independently verified component inventory facts; no environment variable or ordinary argument can replace them. The host adds no credential storage or login step. Returned managed command actions re-enter the same verified CLI manager launch; no environment variable supplies a replacement manifest, runtime or credential. The public manifest cache snapshot is bound by the independent IPC digest and cannot establish trust by itself. Its mutable per-workspace cache namespace sits outside component roots within the manager-owned cache, while the whole manager cache remains excluded from workspace roots. Failed or interrupted admission returns through the existing public result/signal adapter before workspace operations.
+After managed launch, the package bin consumes only the inherited CLI IPC context for runtime authority. Before that launch, the installed entry may select an independently trusted release using the installation-owned defaults below; it delegates admission to the existing CLI runtime manager. `metadata/foundry-runtime.json` and any selected target manifest are read through independently verified component inventory facts; no environment variable or ordinary argument can replace them. The host adds no credential storage or login step. Returned managed command actions re-enter the same verified CLI manager launch; no environment variable supplies a replacement manifest, runtime or credential. The public manifest cache snapshot is bound by the independent IPC digest and cannot establish trust by itself. Its mutable per-workspace cache namespace sits outside component roots within the manager-owned cache, while the whole manager cache remains excluded from workspace roots. Failed or interrupted admission returns through the existing public result/signal adapter before workspace operations.
 
 The source-only release-version preparer reads no `.env` and has no runtime or registry authority. Its CLI binds the executing repository root by native filesystem directory identity, clears inherited Git repository variables before clean-worktree checks, and writes only the three validated version projections after explicit `--apply`. Equivalent directory casing cannot redirect it to another physical repository.
 
@@ -170,3 +170,9 @@ Same-task adoption compatibility is a branded host input with an independently r
 The managed carrier selects qualification only through its independently reviewed component inventory, never argv/env/task fields. An admitted carrier with explicit CLI `cli-auth` isolation policy may project only that existing whitelisted public configuration/mode/process-token channel into typed authentication. Legacy or `isolated` launches still ignore ambient auth. Session intent remains task-owned and token material stays process-only; parent receipt does not prove child account.
 
 Preparation quality review is selected through the explicit public `--quality-review-input` descriptor and current task/account intent. It introduces no environment variable, credential lookup or authentication request. Its evidence selection excludes private/session files; later ordinary write authorization retains the existing independently verified account boundary.
+
+## Installation-owned default selection
+
+Before managed IPC, the public package entry may consume `TIANGONG_FOUNDRY_MANIFEST`, `TIANGONG_FOUNDRY_MANIFEST_SHA256`, `TIANGONG_FOUNDRY_CACHE_DIR` and `TIANGONG_FOUNDRY_ENTRY`. The manifest/digest pair selects a verified complete runtime through the existing CLI manager. The optional cache/entry values select installed resources. Configuration is supplied by deployment and never loaded from `.env`, task files or chat artifacts. Incomplete or invalid configuration fails before business dispatch.
+
+An IPC-managed process enters its original verified host directly, regardless of inherited default-selection variables. The CLI child-environment projection drops the installation selectors. This preserves the original runtime binding when deployment changes its default. The package-owned host continues to accept trust solely through verified IPC and inventory-bound metadata.

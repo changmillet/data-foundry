@@ -279,9 +279,9 @@ checkPaths:
   - AGENTS.md
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
-lastReviewedAt: 2026-10-18
-lastReviewedCommit: 5084642a112cbec69488652e457575f83d035792
-lastReviewedNote: "Foundry #263: reviewed Node24 declarations24.19.2 and Undici7.24.6 with the overload-complete readFileSync mock tuple at5084642a. Runtime24.19.0, pnpm11.24.0, TypeScript7.0.2, CLI/product versions, assertions, ownership, package and authorization boundaries remain unchanged. Focused race regression and typecheck pass; this review does not replace complete local or fresh hosted qualification."
+lastReviewedAt: 2026-11-15
+lastReviewedCommit: c870f4fd2066c65a7e90d581e89bd18e4b5f22f0
+lastReviewedNote: "Foundry #275 version-coupling slice: reviewed deployment-owned installed entry selection, read-only discovery and existing managed task bindings; no scientific, data-schema, dependency-version or authorization changes."
 ---
 
 # Test Layout
@@ -591,3 +591,5 @@ The six `scenarios/foundry-managed-*.test.mts` adoption scenarios enter the actu
 Managed fixture preparation copies at most four files at a time and creates each destination directory only when its first regular file is copied; empty directories remain omitted. Every file still receives its physical copy, mode projection, fresh source/destination digest comparison and link/identity checks. A failed copy stops scheduling new work and drains every started copy before rejecting. All graph-copy callers await completion before inspection, mutation or installation. The application, predecessor and native archives use separate input roots and target names; all three preparations settle before any manifest or installation begins. Their public archive writer and capture guards remain unchanged. A single fixture install samples its preliminary component keys once, only after the first matching seed. The snapshot is local to that install and grants no ready authority: component-lock verification and the final whole-graph inspection still run through `ensureRuntimeComponents`. Changes after preliminary inspection remain refusals. The original full six-case suite, assertions, deadlines, attempts and no-replay guards remain the qualification boundary.
 
 The six managed adoption cases are independently scheduled files, with unchanged case names and assertions. Measured successful Windows case durations and explicitly labelled forecasts are kept in `specs/ci/test-durations.json`; cancelled jobs or failed/incomplete cases never qualify a source. The concurrent readonly pair retains two actual managed subprocesses and the `[0, 4]` invocation assertion. Because its task lock serializes those operations, that pair has a bounded two-command test deadline (600 seconds); ordinary fixture calls and returned-action reentry keep 300 seconds. Owned-child termination/close diagnostics remain active. Production timeouts, authority, immutable-source, UNKNOWN/no-requery checks and the hosted 40-minute job limit are unchanged.
+
+`test/unit/foundry-installed-entry.test.mts` exercises the real package entry and CLI manager with two synthetic installed component releases. It covers offline discovery, missing configuration/assets, required-protocol refusal, digest mismatch, native argv/stdout/stderr/exit preservation, and original launch recovery after a default change. These tests use real Node/IPC with synthetic application metadata. Existing installed-package and managed task scenarios supply the task/recovery regression coverage.

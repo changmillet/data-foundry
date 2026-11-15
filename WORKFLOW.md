@@ -302,9 +302,9 @@ policy:
   require_dry_run_before_remote_write: true
   required_multilang_english_before_write: true
   preserve_source_language_variants: true
-lastReviewedAt: 2026-10-28
-lastReviewedCommit: 3b76f9c0b8ced379c8d9b249996c73d942ce41e6
-lastReviewedNote: "Foundry #271: reviewed compatible fast-uri3.1.9 within Ajv8.20.0 declared^3.0.1, URI scheme/host/relative/suffix guards and installed schema consumers. Node/pnpm/TypeScript, CLI/SDK/product, package/runtime ownership and authorization/publication contracts remain unchanged; source full gate and hosted/native qualification remain required."
+lastReviewedAt: 2026-11-15
+lastReviewedCommit: c870f4fd2066c65a7e90d581e89bd18e4b5f22f0
+lastReviewedNote: "Foundry #275 version-coupling slice: reviewed deployment-owned installed entry selection, read-only discovery and existing managed task bindings; no scientific, data-schema, dependency-version or authorization changes."
 ---
 
 You are working on a TianGong LCA data import task.
@@ -598,3 +598,5 @@ For a compatibility repair, retain the original Task/actor/registration, source 
 Valid bound manual review enters the Agent's existing semantic work and grants no save permission. Recovery performs no new query and requires the original registered raw authentication and producer proof; incomplete original evidence stays UNKNOWN with its inspection action. A newly authorized read-only stage would require a separate scope decision. Never replace the Task, rewrite history, manufacture an execution manifest or replay Source/owner writes. Full source tests and installed synthetic qualification still require the original data owner's real entry retest before delivery.
 
 Original managed-entry compatibility now uses the reviewed L=S+K carrier described by the public runtime contract. It preserves the exact complete S and every runtime/launch/workspace binding, brands Q within the package, and keeps L for later CLI-manager actions. Parent role auth and direct API fixtures are supporting evidence; actual child identity and original DATA continuation remain separate required checks.
+
+Before starting a new installed task, inspect the environment-selected Foundry entry with `runtime describe --json` and verify required protocols. Installation or component downloads are an explicit setup step. Continue existing tasks using their returned executable/argv/cwd, preserving exact runtime and attempt bindings.

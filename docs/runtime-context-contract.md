@@ -45,9 +45,9 @@ related:
   - docs/task-authorization-contract.md
   - docs/public-runtime-contract.md
   - docs/package-distribution-contract.md
-lastReviewedAt: 2026-10-18
-lastReviewedCommit: 5084642a112cbec69488652e457575f83d035792
-lastReviewedNote: "Foundry #263: reviewed Node24 declarations24.19.2 and Undici7.24.6 with the overload-complete readFileSync mock tuple at5084642a. Runtime24.19.0, pnpm11.24.0, TypeScript7.0.2, CLI/product versions, assertions, ownership, package and authorization boundaries remain unchanged. Focused race regression and typecheck pass; this review does not replace complete local or fresh hosted qualification."
+lastReviewedAt: 2026-11-15
+lastReviewedCommit: c870f4fd2066c65a7e90d581e89bd18e4b5f22f0
+lastReviewedNote: "Foundry #275 version-coupling slice: reviewed deployment-owned installed entry selection, read-only discovery and existing managed task bindings; no scientific, data-schema, dependency-version or authorization changes."
 ---
 
 # Runtime context
@@ -160,3 +160,5 @@ Explicit Process reference selection reaches initial queue/QA and the current CL
 The managed adoption carrier explicitly proves L and S use the same complete execution components/cache keys and identical launch/workspace constraints before setting workspace access to S. The original L remains the launch authority for returned actions; `runtimeTarget` alone cannot establish executing-runtime ownership. Inventory-bound control files issue no credential or write permission. See the public runtime contract for the no-cycle construction and child authentication boundary.
 
 Quality-review descriptors bind the current qualified runtime, complete row artifact, canonical per-object payload, QA/context/reference facts and actual account intent. Their task-indexed snapshots expire and are rechecked by reassessment, finalization and write admission. A successor runtime requires a new review of its current observations; arbitrary serialized decisions and environment values never restore a review capability. See the [public preparation contract](public-runtime-contract.md#preparation-quality-review).
+
+The installed entry may select a deployment-owned manifest/digest/cache before managed IPC admission. This chooses a new invocation, not a replacement runtime context. Existing returned actions enter the original managed launch directly and ignore installation defaults; exact qualification and task/attempt bindings remain unchanged. See the installation selection contract in `public-runtime-contract.md`.

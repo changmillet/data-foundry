@@ -152,9 +152,9 @@ checkPaths:
   - test/unit/foundry-runtime-environment.test.mts
   - test/unit/lint-suppression-audit.test.mts
   - docs/incremental-change-set-contract.md
-lastReviewedAt: 2026-10-28
-lastReviewedCommit: 3b76f9c0b8ced379c8d9b249996c73d942ce41e6
-lastReviewedNote: "Foundry #271: reviewed compatible fast-uri3.1.9 within Ajv8.20.0 declared^3.0.1, URI scheme/host/relative/suffix guards and installed schema consumers. Node/pnpm/TypeScript, CLI/SDK/product, package/runtime ownership and authorization/publication contracts remain unchanged; source full gate and hosted/native qualification remain required."
+lastReviewedAt: 2026-11-15
+lastReviewedCommit: c870f4fd2066c65a7e90d581e89bd18e4b5f22f0
+lastReviewedNote: "Foundry #275 version-coupling slice: reviewed deployment-owned installed entry selection, read-only discovery and existing managed task bindings; no scientific, data-schema, dependency-version or authorization changes."
 ---
 
 # Architecture
@@ -466,3 +466,5 @@ Foundry owns the same-task compatibility receipt chain and retained report inter
 Read-only reference transport supplies the existing queue/QA/CLI-validation owners, using an unchanged-payload validation wrapper. Authorization freshness is refreshed only through the explicit same-CLI host callback after locked metadata validation. These changes do not create another data writer, task ledger or scientific validator.
 
 Managed qualification remains Foundry-owned: the existing generic CLI v1 IPC transports the independently reviewed carrier L. Foundry admits only L=S+K with identical complete executing runtime records and no executable control files; Q binds sealed complete S. Workspace/runtime identity S and launch carrier L are explicit verified roles, not interchangeable targets. No CLI protocol fork, alternate business caller or scientific writer is added.
+
+The installed package entry selects a deployment-owned verified manifest before delegating to the public CLI runtime manager. Its read-only `runtime describe` reports selected identity, declared protocols and cache readiness. Once IPC admission begins, the managed host and exact task binding retain authority. Skills depend on the public interface rather than a release-specific bootstrap lock.

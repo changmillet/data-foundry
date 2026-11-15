@@ -15,9 +15,9 @@ checkPaths:
   - .github/dependabot.yml
   - .github/workflows/quality-gate.yml
   - docs/dependency-maintenance.md
-lastReviewedAt: 2026-10-16
-lastReviewedCommit: 6924a48c1baccdf28bba28aadc64ef18876a80e9
-lastReviewedNote: "Foundry #252: bounded npm/Actions discovery reuses complete CI, keeps bot qualification unsealable and preserves consumer-qualified runtime adoption."
+lastReviewedAt: 2026-11-15
+lastReviewedCommit: c870f4fd2066c65a7e90d581e89bd18e4b5f22f0
+lastReviewedNote: "Foundry #275 version-coupling slice: reviewed deployment-owned installed entry selection, read-only discovery and existing managed task bindings; no scientific, data-schema, dependency-version or authorization changes."
 ---
 
 # Dependency maintenance
@@ -43,3 +43,7 @@ A lockfile-only change keeps full validation and the required runtime/package co
 Automatic merging stays off. Before associating a proposal, verify both native merge state and the independent live merge-service policy, including queued work. A source guard is not deployment evidence. Leave proposals unadopted when that policy is unverified; accepted groups use one owning Issue and the existing workspace controller's preview/intake, review, merge, finish and exact integration. Neither this configuration nor source integration authorizes runtime publication or business operations.
 
 During the normal weekly queue review, inspect the actual updater job and exact candidate CI; absence of a PR does not prove scan success. Record failed scans, lock regeneration or toolchain incompatibility in the owning Issue with the run and next action. No new reminder or unrelated feature-development gate is needed.
+
+## Adoption through the installed entry
+
+Dependabot proposes CLI updates; the existing full CI validates each candidate. Foundry release maintainers own the reviewed source/provenance inputs, immutable runtime assembly and publication. Deployment maintainers own installation, required-protocol inspection and actual adoption through the environment-selected manifest/digest pair. Skills maintainers update workflow content only when public interface or workflow requirements change. A compatible new runtime requires no copied Skill lock update. Record candidate CI, published release and deployed selection separately, with the previous default retained for rollback.

@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import { runFoundryPublicCommand } from "./runtime-entry.ts";
-import { receiveFoundryManagedHost } from "./lib/foundry-managed-host.ts";
+import { runFoundryInstalledCommand } from "./lib/foundry-installed-entry.ts";
 
-void runFoundryPublicCommand(process.argv, {}, receiveFoundryManagedHost);
+void runFoundryInstalledCommand();
