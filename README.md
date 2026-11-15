@@ -158,16 +158,16 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - test/unit/zero-javascript-ratchet.test.mts
   - test/scenarios/foundry-package-consumer.test.mts
-lastReviewedAt: 2026-10-28
-lastReviewedCommit: 3b76f9c0b8ced379c8d9b249996c73d942ce41e6
-lastReviewedNote: "Foundry #271: reviewed compatible fast-uri3.1.9 within Ajv8.20.0 declared^3.0.1, URI scheme/host/relative/suffix guards and installed schema consumers. Node/pnpm/TypeScript, CLI/SDK/product, package/runtime ownership and authorization/publication contracts remain unchanged; source full gate and hosted/native qualification remain required."
+lastReviewedAt: 2026-11-15
+lastReviewedCommit: c870f4fd2066c65a7e90d581e89bd18e4b5f22f0
+lastReviewedNote: "Foundry #275 version-coupling slice: reviewed deployment-owned installed entry selection, read-only discovery and existing managed task bindings; no scientific, data-schema, dependency-version or authorization changes."
 ---
 
 # TianGong LCA Data Foundry
 
-The ordinary user entry is the independently installed [TianGong Foundry skill](https://github.com/tiangong-lca/agent-skills/tree/main/foundry-tidas-import). Its qualified release lock selects the managed runtime for a separate user workspace. The internal authoring role is maintained in the same Skills repository and loads for current semantic work items. This source checkout retains the developer commands and runtime owners described below; it carries no second maintained copy of either skill.
+The ordinary user entry is the independently installed [TianGong Foundry skill](https://github.com/tiangong-lca/agent-skills/tree/main/foundry-tidas-import). It uses the environment-selected managed runtime for a separate user workspace; deployment owns the verified release selection. The internal authoring role is maintained in the same Skills repository and loads for current semantic work items. This source checkout retains the developer commands and runtime owners described below; it carries no second maintained copy of either skill.
 
-The public task protocol can retain a short goal and scope, register evidence-bound questions and raw answers, and distinguish task-wide, dataset-type-wide and exact registered-object choices. An object choice carries a versioned identity and current row hash; independent Process work can continue while another Process awaits an answer. Semantic results record only applicable decision IDs and their indexed before/after row hashes, while a concise recap points back to full evidence. The entry skill explains human decisions in plain language and accepts natural answers; Foundry presents the question, impact and next step before the exact record locator while preserving full evidence in indexed artifacts. The CLI keeps scientific validation and write permission separate. A source checkout implementing this protocol does not itself update the independently qualified installed skill/runtime lock.
+The public task protocol can retain a short goal and scope, register evidence-bound questions and raw answers, and distinguish task-wide, dataset-type-wide and exact registered-object choices. An object choice carries a versioned identity and current row hash; independent Process work can continue while another Process awaits an answer. Semantic results record only applicable decision IDs and their indexed before/after row hashes, while a concise recap points back to full evidence. The entry skill explains human decisions in plain language and accepts natural answers; Foundry presents the question, impact and next step before the exact record locator while preserving full evidence in indexed artifacts. The CLI keeps scientific validation and write permission separate. A source checkout implementing this protocol does not itself update the independently qualified installed runtime selection.
 
 The package candidate now supports CLI-managed execution with verified runtime components and separate read/write workspace access. F1 publication and complete production qualification remain in progress; see `docs/package-distribution-contract.md` for the current release boundary.
 
@@ -538,3 +538,15 @@ Tasks may set `account_intent.account_mode` to `production-test` for strict payl
 Same-task compatibility and retained identity diagnostics now have an explicit [public runtime contract](docs/public-runtime-contract.md#same-task-compatibility-and-retained-identity-diagnostics). Multilingual names preserve their valid language nodes; Process-only read-only dependencies reach initial queue/QA/CLI validation without changing scientific payloads or mutation targets. Supported manual-review diagnostics become semantic work, while incomplete historical provenance remains UNKNOWN. Local candidate qualification, original-consumer validation and release adoption are distinct facts.
 
 A reviewed Process mass-screening observation can be handled before finalization through the [preparation quality-review contract](docs/public-runtime-contract.md#preparation-quality-review). The explicit input preserves the raw observation and exact inventory while ordinary write authorization remains separate.
+
+## Use an installed managed runtime
+
+Install the public Foundry package and retain a verified Foundry release manifest and its independently verified digest. Configure `TIANGONG_FOUNDRY_MANIFEST` and `TIANGONG_FOUNDRY_MANIFEST_SHA256` in the deployment environment. Optional `TIANGONG_FOUNDRY_CACHE_DIR` selects the absolute component cache. Install the release's components through the existing CLI `runtime ensure` command.
+
+```bash
+tiangong-foundry --help
+tiangong-foundry runtime describe --json \
+  --require-protocol tiangong-foundry.task-start.v1
+```
+
+Use normal public workspace/task arguments after configuration. For an upgrade, install and inspect the successor, then change the environment's manifest/digest pair together. Keep the preceding pair and components for rollback and task recovery. Existing tasks continue their exact returned commands. The same Skill can use compatible successor releases without editing its own release lock. See [the public runtime contract](docs/public-runtime-contract.md#environment-selected-installed-entry) for status and error behavior.

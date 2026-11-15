@@ -31,9 +31,9 @@ checkPaths:
   - .oxlintrc.json
   - prettier.config.ts
   - tsconfig*.json
-lastReviewedAt: 2026-10-28
-lastReviewedCommit: 3b76f9c0b8ced379c8d9b249996c73d942ce41e6
-lastReviewedNote: "Foundry #271: reviewed compatible fast-uri3.1.9 within Ajv8.20.0 declared^3.0.1, URI scheme/host/relative/suffix guards and installed schema consumers. Node/pnpm/TypeScript, CLI/SDK/product, package/runtime ownership and authorization/publication contracts remain unchanged; source full gate and hosted/native qualification remain required."
+lastReviewedAt: 2026-11-15
+lastReviewedCommit: c870f4fd2066c65a7e90d581e89bd18e4b5f22f0
+lastReviewedNote: "Foundry #275 version-coupling slice: reviewed deployment-owned installed entry selection, read-only discovery and existing managed task bindings; no scientific, data-schema, dependency-version or authorization changes."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry
@@ -159,3 +159,5 @@ An explicit new read-only identity stage is distinct from retained recovery and 
 Actual original-task qualification must use CLI runtime exec → manifest-declared package entry → package-owned managed host. The L=S+K control carrier proves full executing runtime equality and preserves native S checks, the original read/write ceiling and L on reentry. Authentication uses only existing explicit CLI policy and fresh child receipts; a direct API host or parent role receipt cannot close this consumer gap.
 
 For an exact local successor through the original managed entry, use [native adoption preparation](docs/package-distribution-contract.md#native-preparation-for-managed-task-adoption). It generates complete runtime facts and consumes an independent technical review before sealing the carrier; the original writer separately owns Task eligibility and plan/apply/audit.
+
+Ordinary installed entry selection is deployment-owned. Use `tiangong-foundry runtime describe --json` to inspect local readiness and protocol support; the skill must not select a fixed Foundry patch. Managed task reentry retains its verified launch and ignores installation defaults. See `docs/public-runtime-contract.md`.

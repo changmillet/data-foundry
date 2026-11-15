@@ -143,7 +143,12 @@ test("package compiler and public entries are explicit and source maps stay disa
   }
   const packageEntry = fs.readFileSync(path.join(repoRoot, "scripts/package-entry.ts"), "utf8");
   assert.match(packageEntry, /^#!\/usr\/bin\/env node\n/u);
-  assert.match(packageEntry, /runFoundryPublicCommand/u);
+  assert.match(packageEntry, /runFoundryInstalledCommand/u);
+  const installedEntry = fs.readFileSync(
+    path.join(repoRoot, "scripts/lib/foundry-installed-entry.ts"),
+    "utf8",
+  );
+  assert.match(installedEntry, /runFoundryPublicCommand/u);
   assert.doesNotMatch(packageEntry, /runFoundryCli|runFoundryRuntimeCommand/u);
   const api = fs.readFileSync(path.join(repoRoot, "scripts/public-api.ts"), "utf8");
   assert.doesNotMatch(api, /foundry-cli|commands\/|production-contact-draft/u);

@@ -38,9 +38,9 @@ related:
   - docs/runtime-context-contract.md
   - docs/task-authorization-contract.md
   - docs/package-distribution-contract.md
-lastReviewedAt: 2026-10-18
-lastReviewedCommit: 5084642a112cbec69488652e457575f83d035792
-lastReviewedNote: "Foundry #263: reviewed Node24 declarations24.19.2 and Undici7.24.6 with the overload-complete readFileSync mock tuple at5084642a. Runtime24.19.0, pnpm11.24.0, TypeScript7.0.2, CLI/product versions, assertions, ownership, package and authorization boundaries remain unchanged. Focused race regression and typecheck pass; this review does not replace complete local or fresh hosted qualification."
+lastReviewedAt: 2026-11-15
+lastReviewedCommit: c870f4fd2066c65a7e90d581e89bd18e4b5f22f0
+lastReviewedNote: "Foundry #275 version-coupling slice: reviewed deployment-owned installed entry selection, read-only discovery and existing managed task bindings; no scientific, data-schema, dependency-version or authorization changes."
 ---
 
 # Public runtime protocol
@@ -322,3 +322,13 @@ This separates launch authority from runtime identity without a digest cycle: S 
 A legacy or `isolated` managed launch keeps its existing OAuth/cache behavior and consumes no ambient authentication. An admitted carrier may explicitly use the existing CLI `cli-auth` launch channel. Only then does the package map the CLI-whitelisted explicit authentication mode/public configuration/process-only token into the existing typed host seam. It never replaces registered task account/session intent, copies credentials to metadata or treats authentication as compatibility/write authority. Headless mode requires an explicit public target and token and remains cache-disabled; every managed child must obtain its own fresh intent-bound CLI receipt. The parent role receipt is separate evidence.
 
 Source qualification now selects published compatible CLI 0.1.28, whose owner-token/access-token save-path correction is relevant to the eventual Process endpoint. The sixteen transitive production packages and selected Node/Toolkit remain separate exact inputs. A local CLI418 QA candidate at that version is selected and inventoried independently for combination testing; equal version labels do not make it the published package or the retained 0.1.27 candidate. Old candidate/manifest/task evidence remains immutable, and actual original DATA managed-entry acceptance still precedes PR delivery.
+
+## Environment-selected installed entry
+
+The public `tiangong-foundry` bin supports `--help` and `runtime describe --json [--require-protocol <schema>]` before workspace operations. Deployment configures an absolute `TIANGONG_FOUNDRY_MANIFEST` and independently verified `TIANGONG_FOUNDRY_MANIFEST_SHA256` together. Optional `TIANGONG_FOUNDRY_CACHE_DIR` selects an absolute component cache; `TIANGONG_FOUNDRY_ENTRY` selects a declared managed launch and defaults to `foundry`. These values are process configuration supplied by the installation owner.
+
+Description uses the public CLI manifest verification and component inspection APIs without authentication, downloads or workspace creation. The `tiangong-foundry.runtime-description.v1` result exposes selected product/version, bundled CLI version, manifest digest, platform, entry, component readiness and inventory-bound package protocol schemas. `ready` exits 0; missing/blocked installation or unsupported required protocols exit 4. Missing components retain `protocol_assessment=not_checked`. Protocol availability describes the published schemas; callers inspect the current schema/work item for optional field support. Errors include a code and recovery guidance; a descriptor/hash failure cannot produce readiness.
+
+Configured business commands retain their original argument array and use CLI `executeRuntimeLaunch`, which supplies genuine IPC and the selected installed Node/package entry. The launcher checks installed readiness before execution. Install missing components explicitly with the existing `tiangong-lca runtime ensure` interface. Native stdout, stderr and exit status are forwarded with one dispatch. Direct calls without configured selection retain the existing local facade.
+
+Managed IPC entry has precedence over environment default selection. It continues the original admission path and returned-action binding. Changing a deployment default affects subsequent new entry calls; existing task recovery uses its returned executable, argv and cwd. Deployment retains earlier manifests/components required by live tasks. Explicit native adoption remains the task-upgrade mechanism.

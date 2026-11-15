@@ -89,9 +89,9 @@ checkPaths:
   - scripts/lib/import-curation/internal/mutation-manifest-workflow.ts
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-10-28
-lastReviewedCommit: 3b76f9c0b8ced379c8d9b249996c73d942ce41e6
-lastReviewedNote: "Foundry #271: reviewed compatible fast-uri3.1.9 within Ajv8.20.0 declared^3.0.1, URI scheme/host/relative/suffix guards and installed schema consumers. Node/pnpm/TypeScript, CLI/SDK/product, package/runtime ownership and authorization/publication contracts remain unchanged; source full gate and hosted/native qualification remain required."
+lastReviewedAt: 2026-11-15
+lastReviewedCommit: c870f4fd2066c65a7e90d581e89bd18e4b5f22f0
+lastReviewedNote: "Foundry #275 version-coupling slice: reviewed deployment-owned installed entry selection, read-only discovery and existing managed task bindings; no scientific, data-schema, dependency-version or authorization changes."
 ---
 
 # Workspace Project Map
@@ -145,3 +145,5 @@ Before implementing a missing capability, classify it with `docs/capability-owne
 Original-task compatibility belongs to the Foundry native receipt chain; candidate selection and human-facing questions remain Skills-owned. Its host qualification binds exact installed Foundry/CLI/Node/Toolkit bytes independently of version labels. Retained report recovery preserves indexed originals, while machine-gate and original-consumer validation remain separate. See [the public runtime contract](public-runtime-contract.md#same-task-compatibility-and-retained-identity-diagnostics).
 
 Foundry owns the original managed-entry carrier reader and existing typed authentication adapter. The generic CLI runtime manager/IPC and OAuth/headless owner remain CLI-owned and unchanged. Full S execution inventory equality and independent L admission preserve that boundary; no repository-specific writer, replacement Task or default-install change is part of this repair.
+
+For installed entry upgrades, Foundry owns the public selection/description adapter, CLI owns trusted component admission and execution, deployment owns the default manifest/digest pair, and Skills own protocol requirements. None of these roles changes an existing task runtime or grants write/replay permission.

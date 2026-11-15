@@ -68,8 +68,9 @@ export function verifyFoundryPackage(): void {
   if (JSON.stringify(packed) !== JSON.stringify(expectedPack))
     throw new Error("Packed file set differs from the content-bound descriptor.");
   const cli = describeCliRuntime();
-  if (cli.package.name !== "@tiangong-lca/cli" || cli.package.version !== "0.1.28")
-    throw new Error("Package verification requires exact public CLI 0.1.28.");
+  const expectedCli = descriptor.package.cli_dependency;
+  if (cli.package.name !== expectedCli.name || cli.package.version !== expectedCli.version)
+    throw new Error(`Package verification requires ${expectedCli.name}@${expectedCli.version}.`);
   process.stdout.write(
     `${JSON.stringify({
       schema: "tiangong-foundry.package-verification.v1",

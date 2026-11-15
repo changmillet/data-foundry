@@ -39,9 +39,9 @@ related:
   - docs/runtime-context-contract.md
   - docs/task-authorization-contract.md
   - docs/safety-policy.md
-lastReviewedAt: 2026-10-18
-lastReviewedCommit: 5084642a112cbec69488652e457575f83d035792
-lastReviewedNote: "Foundry #263: reviewed Node24 declarations24.19.2 and Undici7.24.6 with the overload-complete readFileSync mock tuple at5084642a. Runtime24.19.0, pnpm11.24.0, TypeScript7.0.2, CLI/product versions, assertions, ownership, package and authorization boundaries remain unchanged. Focused race regression and typecheck pass; this review does not replace complete local or fresh hosted qualification."
+lastReviewedAt: 2026-11-15
+lastReviewedCommit: c870f4fd2066c65a7e90d581e89bd18e4b5f22f0
+lastReviewedNote: "Foundry #275 version-coupling slice: reviewed deployment-owned installed entry selection, read-only discovery and existing managed task bindings; no scientific, data-schema, dependency-version or authorization changes."
 ---
 
 # Foundry package distribution
@@ -56,7 +56,7 @@ The package depends exactly on public `@tiangong-lca/cli@0.1.28`. Ajv remains a 
 
 The development verification chain from Sigstore through minimatch 10.2.6 now locks brace-expansion 5.0.12, a compatible patch within its existing range. Bounded isolated regressions cover both stack-exhaustion advisories while retaining ordinary expansion behavior. The sixteen-package production closure is unchanged. The high-severity audit threshold, default 1,440-minute release age and all package/native input versions remain unchanged; no advisory ignore or new dependency override is added.
 
-Historically, the source adoption of CLI 0.1.27 kept Foundry's package version at 0.1.15. The existing public Foundry 0.1.15 and its final runtime manifest still contain CLI 0.1.24. A separately qualified version-only Foundry release and final four-platform publication must precede Skills lock adoption; this source change does not replace any immutable published package or runtime component.
+Historically, the source adoption of CLI 0.1.27 kept Foundry's package version at 0.1.15. The existing public Foundry 0.1.15 and its final runtime manifest still contain CLI 0.1.24. A separately qualified version-only Foundry release and final four-platform publication must precede deployment adoption; this source change does not replace any immutable published package or runtime component.
 
 ## Public surface
 
@@ -174,7 +174,7 @@ The released C1 bootstrap installs one complete base component containing both N
 
 `metadata/bootstrap-sha256.txt` lists every other base file in stable path order with its actual SHA256. The checksum file is itself included in the component inventory and independently bound by the adjacent lock. Missing, extra, aliased, unsafe or changed files fail. Bootstrap file_count excludes the checksum file, so archive entries equal file_count+1.
 
-Four-platform aggregation generates bootstrap-lock.json using the public manager's component keys, the exact complete manifest, reviewed C1 script digests and existing Node/CLI entry paths. The lock has the flat field layout expected by C1 and accepts only the source-bound candidate or final Foundry manifest URL. It adds no source-version, task, credential or arbitrary trust-anchor override. Component publication retains the candidate lock separately; final Skills data must select the qualified final manifest.
+Four-platform aggregation generates bootstrap-lock.json using the public manager's component keys, the exact complete manifest, reviewed C1 script digests and existing Node/CLI entry paths. The lock has the flat field layout expected by C1 and accepts only the source-bound candidate or final Foundry manifest URL. It adds no source-version, task, credential or arbitrary trust-anchor override. Component publication retains the candidate lock separately; any distributed standalone bootstrap data must select the qualified final manifest.
 
 The source script pins refer to C1's immutable Git source at the same verified public release commit. They are copied unchanged for bootstrap qualification; they are not imports of CLI private runtime modules. Public-download and copied-script native qualification remain separate required gates.
 
@@ -228,7 +228,7 @@ Benchmark targets are at most 18 minutes for full qualification and 5 minutes fo
 
 Published CLI versions through 0.1.14 retain `tiangong-lca/tiangong-cli` and `.github/workflows/publish.yml`; later versions bind `tiangong-lca/cli` at the exact `cli-v<version>` tag. The current Foundry verifier accepts only `.github/workflows/publish.yml` for every requested version. The previously used `.github/workflows/publish-foundry.yml` signer is intentionally retired by the owner decision on 2026-09-13, including for legacy package versions; it is not an accepted rollback or verification exception. Existing published files and signatures remain immutable, but historical artifacts signed by that workflow are outside this verifier's admission policy. Repository/owner identity remains independently version-bound; later Foundry versions use `tiangong-lca/foundry`. Normal publication originates from a main push, and recovery from `workflow_dispatch` on the exact `foundry-v<version>` tag. Every case requires its expected source digest and numeric repository/owner identity.
 
-`--output <new-absolute-directory>` preserves the verified tarball, raw registry metadata/attestations and the digest-bound verification report only after verification succeeds. It never replaces an existing directory. Reports are verification evidence, not independent trust anchors: component consumers still require the separately trusted product manifest/Skills lock. The tool cannot publish, tag, configure a publisher, read `.env` or supply a registry token. Sigstore uses an owned temporary trust cache that is removed after verification.
+`--output <new-absolute-directory>` preserves the verified tarball, raw registry metadata/attestations and the digest-bound verification report only after verification succeeds. It never replaces an existing directory. Reports are verification evidence, not independent trust anchors: component consumers still require the separately trusted product manifest and independent digest. The tool cannot publish, tag, configure a publisher, read `.env` or supply a registry token. Sigstore uses an owned temporary trust cache that is removed after verification.
 
 ## Workflow source qualification
 
@@ -361,3 +361,11 @@ Managed continuations retain the trusted manifest bytes in an exclusive content-
 Copied bootstrap qualification additionally starts a credential-free task and executes its exact returned action in a fresh process. That process must retain both the task id and ready runtime qualification. Source/recovery capsules and final public qualification require the `task-start` and `returned-action` phases on every supported platform, alongside the existing cold/warm, developer-command and tamper checks.
 
 The managed adoption extension ships `foundry-managed-adoption.schema.json` and its descriptor protocol alongside the unchanged managed-runtime v1 metadata. The control component belongs to the separately reviewed managed launch, not the npm payload or a task. It binds a sealed complete S and independently reviewed Q without inserting Q into S. Package qualification must exercise actual CLI `runtime exec` → direct package entry → managed host; a separately constructed public API host is supporting coverage only. Current source pins CLI 0.1.28; exact local CLI418 package and published/retained packages stay distinct frozen inputs.
+
+## Stable installed selection and upgrade ownership
+
+The existing public bin now also hosts installation-owned default selection and local `runtime describe`. `scripts/lib/foundry-installed-entry.ts` delegates manifest verification, component inspection and managed execution to the published CLI runtime API. Its input is the deployment-selected manifest/digest and optional cache/launch settings. Its compiler graph remains rooted at `scripts/package-entry.ts`. The selected runtime may have a different product version from the launcher package; each managed child validates its own package against its own complete manifest.
+
+Skill instructions depend on the installed entry and public protocols. Deployment can change the selected complete release without changing skill files. The exact package dependency graph, runtime assets and task/attempt records remain version-bound. Historical standalone bootstrap locks remain reproducible release assets and have no precedence over an explicit deployment selection.
+
+CLI candidate updates enter through the existing Dependabot proposals and complete source/native/package CI. Release owners update the reviewed CLI source/provenance facts and run the existing release preparation and publication chain. An accepted dependency change produces a new immutable combination. Deployment verifies it, checks required protocols with `runtime describe`, installs the selected components, and updates its manifest/digest pair together. Restoring the preceding pair restores the prior default for new calls; existing tasks retain original returned actions. A new public protocol requires caller compatibility work; an unchanged protocol permits reuse of the same skill.

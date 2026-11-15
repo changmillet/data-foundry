@@ -93,9 +93,9 @@ checkPaths:
   - scripts/lib/import-curation/internal/mutation-manifest-workflow.ts
   - scripts/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-10-28
-lastReviewedCommit: 3b76f9c0b8ced379c8d9b249996c73d942ce41e6
-lastReviewedNote: "Foundry #271: reviewed compatible fast-uri3.1.9 within Ajv8.20.0 declared^3.0.1, URI scheme/host/relative/suffix guards and installed schema consumers. Node/pnpm/TypeScript, CLI/SDK/product, package/runtime ownership and authorization/publication contracts remain unchanged; source full gate and hosted/native qualification remain required."
+lastReviewedAt: 2026-11-15
+lastReviewedCommit: c870f4fd2066c65a7e90d581e89bd18e4b5f22f0
+lastReviewedNote: "Foundry #275 version-coupling slice: reviewed deployment-owned installed entry selection, read-only discovery and existing managed task bindings; no scientific, data-schema, dependency-version or authorization changes."
 ---
 
 # Capability Ownership Policy
@@ -265,3 +265,5 @@ Same-task compatibility and retained identity recovery are Foundry task/provenan
 The managed adoption carrier and typed authentication projection belong to Foundry. CLI still owns generic manifest/inventory/IPC execution and explicit cli-auth filtering, private sessions, current-user verification and business transactions. Foundry uses those public primitives without copying the CLI scheduler, login/cache or database writer. A carrier qualifies compatibility only; it does not approve scientific identity or writes.
 
 Foundry owns the content-bound preparation quality disposition over a CLI-produced Process mass observation. It retains raw numerical QA, accepts only a specifically reviewed object/finding and checks current evidence on reassessment/finalization. CLI QA, canonical payload/reference closure and account/write owners keep their responsibilities. Review evidence is never a global profile waiver or write grant; the public contract is [preparation quality review](public-runtime-contract.md#preparation-quality-review).
+
+Installed-entry selection and read-only Foundry protocol discovery are Foundry-owned adapters over `@tiangong-lca/cli/runtime`. Manifest admission, component verification and execution remain CLI-owned. Deployment owns the default release; Skills own capability requirements and workflow instructions. Existing task bindings never inherit a changed default.
