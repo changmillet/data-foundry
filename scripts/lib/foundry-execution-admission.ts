@@ -386,13 +386,14 @@ async function verifyAdmission(
   if (isEdgeSupportPlan(parsed)) {
     if (
       qualification.cli.expectation.package_version !== "0.4.0" ||
-      !capsule.required_actions.includes("canonical_support_local_mint") ||
-      !capsule.required_actions.includes(`${parsed.dataset_type}_write`) ||
+      (parsed.dataset_type !== "process" &&
+        (!capsule.required_actions.includes("canonical_support_local_mint") ||
+          !capsule.required_actions.includes(`${parsed.dataset_type}_write`))) ||
       !context.accountIntent
     )
       fail(
         "execution_action_unauthorized",
-        "Edge support creation requires an exact current task mint grant.",
+        "Edge draft creation requires current task authorization for the exact scope.",
       );
     const evidence = parsed.reference_evidence && selected(context, parsed.reference_evidence.path);
     verifyEdgeSupportPlan(

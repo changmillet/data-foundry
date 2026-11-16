@@ -1,3 +1,5 @@
+import { createFoundryFacade } from "../../scripts/public-api.ts";
+import { collectDatasetReferences } from "../../scripts/lib/import-curation/internal/workflow-reference-closure.ts";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -6,6 +8,7 @@ import test, { type TestContext } from "node:test";
 import { workflowFixture } from "../fixtures/foundry-public-workflow.ts";
 import {
   finalizationProcessFixture,
+  typedFinalizationProcessFixture,
   finalizationProcessSeed,
   finalizationProcessAccount,
   runPublicFinalizationProcessWorkflow,
@@ -75,18 +78,7 @@ test("CLI 0.4 validates the exact allocated Process and Foundry keeps its mass b
   if (resolveInstalledTiangongLcaCliPackage().packageVersion !== "0.4.0")
     return t.skip("requires the exact CLI 0.4.0 candidate");
   const { root, workspace, facade, runtimeSelection } = workflowFixture(t);
-  const fixture = finalizationProcessFixture();
-  const flowRoot = object(fixture.flow.flowDataSet);
-  const name = object(object(object(flowRoot.flowInformation).dataSetInformation).name);
-  const englishName = (name.baseName as Json[]).find((value) => value["@xml:lang"] === "en")!;
-  name.baseName = englishName;
-  const descriptions = {
-    "@xml:lang": "en",
-    "#text": `${String(englishName["#text"])}; Synthetic fixture; Global synthetic flow`,
-  };
-  for (const exchange of object(object(fixture.process.processDataSet).exchanges)
-    .exchange as Json[])
-    object(exchange.referenceToFlowDataSet)["common:shortDescription"] = descriptions;
+  const fixture = typedFinalizationProcessFixture();
 
   const write = (name: string, value: unknown) => {
     const file = path.join(root, name);
@@ -407,4 +399,222 @@ test("public finalization rejects a capture that differs from its registered ref
   );
   assert.equal(sawRefusal, true);
   assert.deepEqual(fs.readFileSync(input.seed), input.originalSource);
+});
+
+test("CLI 0.4 managed Process creates once and resumes with only exact Edge readback", async (t) => {
+  if (resolveInstalledTiangongLcaCliPackage().packageVersion !== "0.4.0")
+    return t.skip("requires the exact CLI 0.4.0 candidate");
+  const { root, facadeOptions } = workflowFixture(t);
+  const origin = `https://${account.project_ref}.supabase.co`;
+  const facade = createFoundryFacade({
+    ...facadeOptions,
+    authentication: {
+      mode: "headless",
+      apiBaseUrl: origin,
+      accessToken: "process-test-token",
+      publishableKey: "process-test-key",
+    },
+  });
+  const fixture = typedFinalizationProcessFixture();
+  const processRoot = object(fixture.process.processDataSet);
+  object(object(processRoot.administrativeInformation).dataEntryBy)["common:timeStamp"] =
+    "1970-01-01T08:00:00.000+08:00";
+
+  const remote = new Map<string, unknown>();
+  const key = (table: string, id: string, version: string) => `${table}/${id}/${version}`;
+  for (const ref of collectDatasetReferences(fixture.process)) {
+    assert.ok(ref.table && ref.version);
+    remote.set(
+      key(ref.table, ref.id, ref.version),
+      ref.table === "flows" ? fixture.flow : { fixture_dependency: ref.id },
+    );
+  }
+  const readRef = (table: string, id: string, version: string) =>
+    remote.get(key(table, id, version));
+  let writes = 0,
+    identityQueries = 0,
+    afterReads = 0;
+  let disconnected = true;
+  let stored: Json | null = null;
+  const requests: Array<{ endpoint: string; body: Json }> = [];
+  t.mock.method(globalThis, "fetch", async (url: URL, options: RequestInit) => {
+    assert.equal(url.origin, origin);
+    assert.equal(new Headers(options.headers).get("authorization"), "Bearer process-test-token");
+    const endpoint = url.pathname.split("/").at(-1)!;
+    const body = object(JSON.parse(String(options.body)));
+    requests.push({ endpoint, body });
+    if (endpoint === "process_hybrid_search") {
+      identityQueries++;
+      return Response.json({ data: [] });
+    }
+    if (endpoint === "app_dataset_create") {
+      assert.equal(body.table, "processes");
+      assert.equal(++writes, 1);
+      stored = object(body.jsonOrdered);
+      throw new Error("connection lost after commit");
+    }
+    assert.equal(endpoint, "app_dataset_verify_remote");
+    if (body.rootPolicy === "existing") {
+      afterReads++;
+      if (disconnected) throw new Error("readback connection unavailable");
+    }
+    const checks = (body.references as Json[]).map((ref, index) => {
+      const isRoot = ref.role === "root";
+      const payload = isRoot
+        ? stored
+        : readRef(String(ref.table), String(ref.id), String(ref.version));
+      const hash = payload ? sha256Json(payload) : null;
+      return {
+        index,
+        table: ref.table,
+        id: ref.id,
+        version: ref.version,
+        role: ref.role,
+        status: !payload
+          ? "candidate_root"
+          : hash === ref.expectedJsonSha256
+            ? "ok"
+            : "payload_mismatch",
+        exact_version: payload ? ref.version : null,
+        latest_version: payload ? ref.version : null,
+        payload_present: !!payload,
+        user_id: payload ? account.user_id : null,
+        state_code: payload ? (isRoot ? 0 : 100) : null,
+        actual_json_sha256: hash,
+      };
+    });
+    return Response.json({
+      command: "dataset_verify_remote",
+      data: { root_policy: body.rootPolicy, checks },
+    });
+  });
+  const write = (name: string, value: unknown) => {
+    const file = path.join(root, name);
+    fs.writeFileSync(file, JSON.stringify(value));
+    return file;
+  };
+  const seed = write("process.json", finalizationProcessSeed(fixture));
+  const actorId = "process-edge-author";
+  const started = await facade.start({
+    specFile: write("task.json", {
+      schema: "tiangong-foundry.task-start.v1",
+      request_id: "process-edge-disconnect",
+      actor_id: actorId,
+      lane: "source-evidence-dataset-development",
+      profile_id: "generic",
+      target_entities: ["process"],
+      sources: [{ path: seed }],
+      seed: { path: seed },
+      account_intent: account,
+      preparation: null,
+    }),
+  });
+  assert.ok(started.task_id);
+  const invocation = { taskId: started.task_id, actorId };
+  const prepared = await runPublicFinalizationProcessWorkflow(t, {
+    root,
+    facade,
+    invocation,
+    seed,
+    fixture,
+    account,
+    edgeReadReference: readRef,
+  });
+  const selectArtifact = (result: typeof prepared.result, role: string) => {
+    const artifact = result.artifacts.findLast((entry) => entry.role === role);
+    assert.ok(
+      artifact?.kind === "file",
+      JSON.stringify({ status: result.status, blockers: result.blockers, role }),
+    );
+    return artifact;
+  };
+  const finalized = selectArtifact(prepared.result, "foundry-finalize.json");
+  const scope = (read(finalized.path).sets as Json[]).find((entry) => entry.type === "process")!;
+  const refresh = selectArtifact(prepared.result, "finalize-identity-refresh.json");
+  const refreshed = read(refresh.path);
+  assert.equal(refreshed.status, "completed_with_identity_findings");
+  assert.equal(object(refreshed.counts).skipped_existing_report, 0);
+  assert.equal(object(refreshed.counts).completed, 1);
+  assert.ok(refreshed.edge_report, "the cleaned timestamp binds a fresh audited query");
+  assert.ok(identityQueries > 0);
+  assert.equal(
+    scope.status,
+    "ready_for_remote_write",
+    JSON.stringify(read(String(scope.report)).blockers),
+  );
+  assert.equal(writes, 0);
+  const selected = (scope.authorization_inputs as Json[]).find(
+    (entry) => entry.input_kind === "final_rows",
+  )!;
+  const expected = unwrapDatasetPayload(readRows(String(scope.final_rows))[0], "process");
+  const evidence = path.join(root, "operator-approval.txt");
+  fs.writeFileSync(evidence, "Approve this exact synthetic Process draft.");
+  const evidenceSha = captureFoundryInput(evidence).sha256;
+  const grant = write("grant.json", {
+    schema: "tiangong-foundry.task-authorization.v1",
+    binding: selected.binding,
+    issued_at_utc: new Date(Date.now() - 1_000).toISOString(),
+    expires_at_utc: new Date(Date.now() + 3600_000).toISOString(),
+    remote_state_code: 0,
+    allowed_actions: [],
+    qa_waivers: [],
+    evidence: [
+      {
+        id: "approval",
+        kind: "user-decision",
+        reference: fs.realpathSync(evidence),
+        sha256: evidenceSha,
+      },
+    ],
+  });
+  const approval = write("approval.json", {
+    schema: "tiangong-foundry.authorization-input.v1",
+    task_id: invocation.taskId,
+    actor_id: actorId,
+    finalization_sha256: finalized.sha256,
+    dataset_type: "process",
+    input_kind: "final_rows",
+    input_sha256: selected.sha256,
+    expected_previous_sha256: null,
+    grant: { file: grant, sha256: captureFoundryInput(grant).sha256 },
+    evidence: [{ id: "approval", kind: "user-decision", file: evidence, sha256: evidenceSha }],
+  });
+  let current = await facade.resume({ ...invocation, authorizationInputFile: approval });
+  for (let step = 0; step < 6; step++) {
+    if (writes > 0) break;
+    current = await facade.resume(invocation);
+  }
+  assert.equal(writes, 1, JSON.stringify(current.blockers));
+  assert.notEqual(current.status, "completed");
+  assert.deepEqual(stored, expected);
+  const original = selectArtifact(current, "owner-execution-request.json");
+  const countAtDisconnect = requests.length;
+  const readsAtDisconnect = afterReads;
+  disconnected = false;
+  stored = { ...object(stored), unexpected_remote_content: true };
+  const stale = await facade.resume(invocation);
+  assert.notEqual(
+    stale.status,
+    "completed",
+    "same remote identifier with different bytes remains unresolved",
+  );
+  assert.equal(writes, 1);
+  assert.ok(afterReads > readsAtDisconnect);
+  stored = object(expected);
+  for (let step = 0; step < 5 && current.status !== "completed"; step++)
+    current = await facade.resume(invocation);
+  assert.equal(current.status, "completed", JSON.stringify(current.blockers));
+  assert.equal(writes, 1);
+  assert.ok(afterReads > readsAtDisconnect);
+  assert.deepEqual(
+    new Set(requests.slice(countAtDisconnect).map((entry) => entry.endpoint)),
+    new Set(["app_dataset_verify_remote"]),
+  );
+  assert.equal(selectArtifact(current, "owner-execution-request.json").sha256, original.sha256);
+  const proof = selectArtifact(current, "owner-readback.json");
+  assert.equal(read(proof.path).status, "verified");
+  assert.equal(
+    read(proof.path).edge_plan_sha256,
+    object(object(read(original.path).content).commit).sha256,
+  );
 });

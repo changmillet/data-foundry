@@ -3,7 +3,7 @@ import fs from "node:fs";
 import { parseAuthIdentityReceipt } from "@tiangong-lca/cli/auth-identity-receipt";
 import path from "node:path";
 import { bundleRowTypes, type BundleRowType } from "./bundle-row-types.ts";
-import { buildEdgeSupportPlan, type EdgeSupportType } from "./foundry-edge-support-plan.ts";
+import { buildEdgeSupportPlan, type EdgeDraftType } from "./foundry-edge-support-plan.ts";
 import {
   FoundryContextError,
   captureFoundryInput,
@@ -18,6 +18,7 @@ import {
   workflowChildFailure,
 } from "./foundry-workflow-child-failure.ts";
 import { workflowObject } from "./foundry-workflow-state.ts";
+import { datasetIdentity } from "./import-curation/internal/dataset-payload.ts";
 import { readRows } from "./import-curation/internal/runtime-io.ts";
 import { sha256Json } from "./identity-preflight-proof.ts";
 
@@ -25,7 +26,7 @@ export function planFoundryEdgeSupportStage(
   context: FoundryRuntimeContext,
   qualified: QualifiedFoundryRuntime,
   environment: NodeJS.ProcessEnv,
-  type: EdgeSupportType,
+  type: EdgeDraftType,
   stage: string,
   source: readonly string[],
   verifyDependencies: boolean,
@@ -39,6 +40,12 @@ export function planFoundryEdgeSupportStage(
       "needs_auth",
       "Edge support planning requires task account intent.",
     );
+  if (type === "process" && source.includes("--reference-intent-file"))
+    throw new FoundryContextError(
+      "edge_draft_reference_intent_required",
+      "Process creation requires the original exact reference-intent proof.",
+    );
+  const rows = readRows(input);
   const plan = buildEdgeSupportPlan(
     type,
     captureFoundryInput(input),
@@ -46,7 +53,7 @@ export function planFoundryEdgeSupportStage(
       project_ref: account.projectRef,
       user_id: account.userId,
     },
-    readRows(input),
+    rows,
   );
   const save = (name: string, value: unknown) => {
     const file = path.join(output, name);
@@ -89,6 +96,24 @@ export function planFoundryEdgeSupportStage(
       .flatMap((root) => root.references)
       .map((ref) => [`${ref.table}:${ref.id}@${ref.version}`, ref]),
   );
+  const assessedFlowHashes = new Map<string, string>();
+  if (type === "process") {
+    for (const row of rows) {
+      const documents = workflowObject(workflowObject(row).semantic_context ?? {}).flow_documents;
+      if (!Array.isArray(documents)) continue;
+      for (const document of documents) {
+        const flow = datasetIdentity(document, 0, "flow");
+        const key = `flows:${flow.id}@${flow.version}`;
+        const hash = sha256Json(flow.payload);
+        if (assessedFlowHashes.has(key) && assessedFlowHashes.get(key) !== hash)
+          throw new FoundryContextError(
+            "edge_draft_flow_conflict",
+            "Final rows carry competing exact Flow reference evidence.",
+          );
+        assessedFlowHashes.set(key, hash);
+      }
+    }
+  }
   const types = Object.keys(bundleRowTypes) as BundleRowType[];
   if (!receiptFile)
     throw new FoundryContextError(
@@ -181,13 +206,20 @@ export function planFoundryEdgeSupportStage(
       )
         throw new Error("Typed reference result does not prove the exact visible version.");
       const content = workflowObject(data.content);
+      const observedHash = sha256Json(content);
+      const expectedHash = assessedFlowHashes.get(key);
       checks.push({
         ...reference,
         role: "reference",
-        status: visible ? "ok" : "state_code_mismatch",
+        status:
+          expectedHash && expectedHash !== observedHash
+            ? "payload_mismatch"
+            : visible
+              ? "ok"
+              : "state_code_mismatch",
         remote_user_id: subject.owner,
         remote_state_code: subject.stateCode,
-        remote_payload_sha256: sha256Json(content),
+        remote_payload_sha256: observedHash,
       });
     } catch (error) {
       reject(error);

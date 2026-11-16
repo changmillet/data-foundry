@@ -1,3 +1,4 @@
+import { bundleRowTypes } from "./bundle-row-types.ts";
 import { isAbsolute } from "node:path";
 import { FoundryContextError, type FoundryInputFact } from "./foundry-runtime-context.ts";
 import { sha256Json } from "./identity-preflight-proof.ts";
@@ -23,7 +24,9 @@ const referenceTables = [
   "lciamethods",
 ];
 
-export type EdgeSupportType = "unitgroup" | "flowproperty";
+export type EdgeDraftType = "unitgroup" | "flowproperty" | "process";
+export const isFoundryEdgeDraftType = (value: unknown): value is EdgeDraftType =>
+  value === "unitgroup" || value === "flowproperty" || value === "process";
 export type EdgeSupportTarget = { project_ref: string; user_id: string };
 type ExactKey = { table: string; id: string; version: string };
 export type EdgeSupportRoot = ExactKey & {
@@ -39,7 +42,7 @@ export type EdgeSupportRoot = ExactKey & {
 
 export type EdgeSupportPlan = {
   schema: typeof schema;
-  dataset_type: EdgeSupportType;
+  dataset_type: EdgeDraftType;
   input: FoundryInputFact;
   project_ref: string;
   user_id: string;
@@ -72,10 +75,10 @@ function exactKey(table: unknown, id: unknown, version: unknown): ExactKey {
   return { table, id, version };
 }
 
-function rootsFor(type: EdgeSupportType, rows: unknown[]) {
-  if (!rows.length) return invalid("Edge draft plan requires at least one approved support row.");
+function rootsFor(type: EdgeDraftType, rows: unknown[]) {
+  if (!rows.length) return invalid("Edge draft plan requires at least one approved dataset row.");
   const seen = new Set<string>();
-  const table = type === "unitgroup" ? "unitgroups" : "flowproperties";
+  const table = bundleRowTypes[type].plural;
   return rows.map((row) => {
     const content = object(unwrapDatasetPayload(row, type));
     const root = datasetRoot(content, type);
@@ -91,9 +94,7 @@ function rootsFor(type: EdgeSupportType, rows: unknown[]) {
       (envelope.version !== undefined && envelope.version !== key.version) ||
       seen.has(key.id)
     )
-      return invalid(
-        "The approved support rows contain an ambiguous identity or multiple versions.",
-      );
+      return invalid("The approved rows contain an ambiguous identity or multiple versions.");
     seen.add(key.id);
     const refs = collectDatasetReferences(content);
     if (type === "flowproperty") {
@@ -118,7 +119,7 @@ function rootsFor(type: EdgeSupportType, rows: unknown[]) {
 type ReferenceEvidence = { fact: FoundryInputFact; report: unknown };
 
 export function buildEdgeSupportPlan(
-  type: EdgeSupportType,
+  type: EdgeDraftType,
   input: FoundryInputFact,
   target: EdgeSupportTarget,
   rows: unknown[],
@@ -173,7 +174,7 @@ export function buildEdgeSupportPlan(
             (check.remote_state_code === 0 && check.remote_user_id === target.user_id)
           )
         )
-          return invalid("A sealed support dependency lacks exact owner and content evidence.");
+          return invalid("A sealed draft dependency lacks exact owner and content evidence.");
         return {
           ...reference,
           payload_sha256: check.remote_payload_sha256,
@@ -201,8 +202,8 @@ export function verifyEdgeSupportPlan(
 ) {
   if (!evidence || !plan.reference_evidence)
     return invalid("Edge draft execution requires sealed exact dependency evidence.");
-  if (plan.dataset_type !== "unitgroup" && plan.dataset_type !== "flowproperty")
-    return invalid("Edge support creation accepts only UnitGroup and FlowProperty.");
+  if (!isFoundryEdgeDraftType(plan.dataset_type))
+    return invalid("Edge creation requires a supported dataset scope.");
   const current = buildEdgeSupportPlan(plan.dataset_type, approved, target, rows, evidence);
   if (sha256Json(current) !== sha256Json(plan))
     return invalid("The sealed Edge draft plan disagrees with the task approval or final rows.");

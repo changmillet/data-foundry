@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { runFoundryTypedDatasetQa } from "./foundry-typed-flow-qa.ts";
+import { isFoundryEdgeDraftType } from "./foundry-edge-support-plan.ts";
 import { planFoundryEdgeSupportStage } from "./foundry-edge-support-planning.ts";
 import { buildFoundryCurationQueue } from "./foundry-curation-queue.ts";
 import {
@@ -223,7 +224,7 @@ export function createFoundryFinalizeOwners(
     const supportType = execution.datasetType;
     if (
       qualified.cli.expectation.package_version === "0.4.0" &&
-      (supportType === "unitgroup" || supportType === "flowproperty") &&
+      isFoundryEdgeDraftType(supportType) &&
       (dryRun || remoteRead)
     ) {
       return planFoundryEdgeSupportStage(

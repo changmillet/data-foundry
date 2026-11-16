@@ -37,7 +37,7 @@ import { createFoundryExecutionCapsule } from "./foundry-execution-admission.ts"
 import { registerWorkflowStageFiles } from "./foundry-workflow-io.ts";
 import { createFoundryCommandSpec, createFileArtifactFact } from "./foundry-command-spec.ts";
 import { parseFoundryCommandSpec } from "@tiangong-lca/cli/command-spec";
-import { buildEdgeSupportPlan } from "./foundry-edge-support-plan.ts";
+import { buildEdgeSupportPlan, isFoundryEdgeDraftType } from "./foundry-edge-support-plan.ts";
 import { readRows } from "./import-curation/internal/runtime-io.ts";
 import type { ValidatedTaskAuthorization } from "./task-authorization.ts";
 import type { ArtifactEntry } from "./foundry-task-types.ts";
@@ -465,7 +465,7 @@ export async function recordFoundryWorkflowAuthorization(
         commands.commit &&
         qualified.cli.expectation.package_version === "0.4.0" &&
         !request.executionContract &&
-        (edgeType === "unitgroup" || edgeType === "flowproperty")
+        isFoundryEdgeDraftType(edgeType)
       ) {
         const finalizePath = resolveFoundryOutput(
           context,
@@ -474,6 +474,11 @@ export async function recordFoundryWorkflowAuthorization(
         const finalized = workflowObject(
           JSON.parse(readFoundryInput(context, finalizePath).toString("utf8")),
         );
+        if (edgeType === "process" && finalized.reference_intent_file)
+          throw new FoundryContextError(
+            "edge_draft_reference_intent_required",
+            "Process creation must preserve the selected reference-intent proof.",
+          );
         const verifyPath = resolveFoundryOutput(
           context,
           path.resolve(
@@ -499,7 +504,7 @@ export async function recordFoundryWorkflowAuthorization(
         handoff.account_write_guard = {
           ...workflowObject(handoff.account_write_guard),
           execution_precondition:
-            "Foundry must seal the exact Edge support create plan for the verified owner.",
+            "Foundry must seal the exact Edge create plan for the verified owner.",
         };
         handoff.policy = {
           ...workflowObject(handoff.policy),
