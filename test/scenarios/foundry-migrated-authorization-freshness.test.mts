@@ -20,7 +20,10 @@ import {
 } from "../../scripts/lib/foundry-task-authorization.ts";
 import { taskAuthorizationAllows } from "../../scripts/lib/task-authorization.ts";
 import { workspaceManifestFixture } from "../helpers/foundry-runtime-manifest.mts";
-import { testAuthIdentityReceipt } from "../fixtures/auth-identity-receipt.ts";
+import {
+  testAuthIdentityReceipt,
+  testAuthIdentityReceiptOutput,
+} from "../fixtures/auth-identity-receipt.ts";
 
 const accountIntent = {
   projectRef: "aaaaaaaaaaaaaaaaaaaa",
@@ -183,7 +186,7 @@ async function migratedFixture(t: TestContext) {
       status: 0,
       signal: null,
       stderr: "",
-      stdout: JSON.stringify(
+      stdout: testAuthIdentityReceiptOutput(
         testAuthIdentityReceipt({
           ...accountIntent,
           capturedAtUtc: new Date(Date.now()).toISOString(),

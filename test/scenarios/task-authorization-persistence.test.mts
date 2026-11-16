@@ -16,7 +16,10 @@ import {
 } from "../../scripts/lib/foundry-runtime-identity.ts";
 import { taskAuthorizationAllows } from "../../scripts/lib/task-authorization.ts";
 import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
-import { testAuthIdentityReceipt } from "../fixtures/auth-identity-receipt.ts";
+import {
+  testAuthIdentityReceipt,
+  testAuthIdentityReceiptOutput,
+} from "../fixtures/auth-identity-receipt.ts";
 import { runFoundryTaskOperation } from "../../scripts/lib/foundry-task-store.ts";
 
 const moduleUrl = new URL("../../scripts/runtime-entry.ts", import.meta.url).href;
@@ -69,7 +72,12 @@ test("persisted authorization requires fresh identity and independently bound ev
       assert.equal(options.env.GITHUB_TOKEN, undefined);
       assert.equal(options.env.NODE_OPTIONS, undefined);
       assert.ok(Array.isArray(argv) && argv.includes("identity-receipt"));
-      return { status: 0, signal: null, stdout: JSON.stringify(receipt), stderr: "" };
+      return {
+        status: 0,
+        signal: null,
+        stdout: testAuthIdentityReceiptOutput(receipt),
+        stderr: "",
+      };
     },
   );
   const identity = verifyFoundryRuntimeIdentity(
@@ -217,7 +225,12 @@ test("headless identity uses only the existing process token mode and never seri
         options.env.TIANGONG_LCA_AUTH_MODE === "access-token" ? "true" : "false",
       );
       childEnvironment = options.env;
-      return { status: 0, signal: null, stdout: JSON.stringify(receipt), stderr: "" };
+      return {
+        status: 0,
+        signal: null,
+        stdout: testAuthIdentityReceiptOutput(receipt),
+        stderr: "",
+      };
     },
   );
   const identity = verifyFoundryRuntimeIdentity(context, {
@@ -263,7 +276,7 @@ test("verified runtime identity expires after sixty seconds and requires a fresh
     return {
       status: 0,
       signal: null,
-      stdout: JSON.stringify(
+      stdout: testAuthIdentityReceiptOutput(
         testAuthIdentityReceipt({
           projectRef: accountIntent.projectRef,
           userId: accountIntent.userId,

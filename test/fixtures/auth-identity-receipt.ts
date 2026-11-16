@@ -103,3 +103,18 @@ export function testAuthIdentityReceipt({
   const scope = { ...baseScope, ...scopeOverrides } as AuthIdentityReceiptScope;
   return { ...scope, receipt_scope_sha256: testCanonicalJsonSha256(scope) };
 }
+
+export function testAuthIdentityReceiptOutput(receipt: AuthIdentityReceipt): string {
+  return JSON.stringify(
+    receipt.cli.package_version === "0.4.0"
+      ? {
+          schemaVersion: 1,
+          operation: "auth identity-receipt",
+          status: "completed",
+          outcome: "identity_verified",
+          error: null,
+          data: { receipt },
+        }
+      : receipt,
+  );
+}

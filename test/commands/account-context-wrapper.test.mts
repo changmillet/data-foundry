@@ -10,7 +10,10 @@ import {
   runWithLcaAccount,
   type WithLcaAccountDependencies,
 } from "../../scripts/with-lca-account.ts";
-import { testAuthIdentityReceipt } from "../fixtures/auth-identity-receipt.ts";
+import {
+  testAuthIdentityReceipt,
+  testAuthIdentityReceiptOutput,
+} from "../fixtures/auth-identity-receipt.ts";
 import { tiangongLcaCliPackageVersion } from "../../scripts/lib/foundry-runtime-utils.ts";
 
 const PROJECT_REF = "exampleprojectref";
@@ -32,23 +35,6 @@ function receipt(overrides: Record<string, unknown> = {}) {
     capturedAtUtc: "2026-08-25T01:59:45.000Z",
     scopeOverrides: overrides,
   });
-}
-
-function receiptOutput(value: ReturnType<typeof receipt>) {
-  return (
-    JSON.stringify(
-      value.cli.package_version === "0.4.0"
-        ? {
-            schemaVersion: 1,
-            operation: "auth identity-receipt",
-            status: "completed",
-            outcome: "identity_verified",
-            error: null,
-            data: { receipt: value },
-          }
-        : value,
-    ) + "\n"
-  );
 }
 
 function writeProfile(
@@ -109,7 +95,7 @@ function baseDeps(
         return {
           status: 0,
           signal: null,
-          stdout: receiptOutput(receiptValue),
+          stdout: testAuthIdentityReceiptOutput(receiptValue),
           stderr: "",
         };
       }
@@ -194,7 +180,7 @@ test("account wrapper maps requested child cancellation signals to stable shell 
         return {
           status: 0,
           signal: null,
-          stdout: receiptOutput(receipt()),
+          stdout: testAuthIdentityReceiptOutput(receipt()),
           stderr: "",
         };
       }
