@@ -15,6 +15,14 @@ import { readRows } from "../../scripts/lib/import-curation/internal/runtime-io.
 import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
 import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
 
+import { runFoundryTypedDatasetQa } from "../../scripts/lib/foundry-typed-flow-qa.ts";
+import {
+  captureFoundryInput,
+  createFoundryRuntimeContext,
+  writeFoundryArtifact,
+} from "../../scripts/lib/foundry-runtime-context.ts";
+import { qualifyFoundryRuntime } from "../../scripts/lib/foundry-runtime-qualification.ts";
+
 type Json = Record<string, unknown>;
 const object = (value: unknown) => value as Json;
 const read = (file: string) => object(JSON.parse(fs.readFileSync(file, "utf8")));
@@ -62,6 +70,86 @@ function beforeCandidateCleanup(input: Awaited<ReturnType<typeof registeredProce
       return fs.existsSync(processRoot) && !fs.existsSync(path.join(processRoot, "cleanup"));
     });
 }
+
+test("CLI 0.4 validates the exact allocated Process and Foundry keeps its mass balance evidence", async (t) => {
+  if (resolveInstalledTiangongLcaCliPackage().packageVersion !== "0.4.0")
+    return t.skip("requires the exact CLI 0.4.0 candidate");
+  const { root, workspace, facade, runtimeSelection } = workflowFixture(t);
+  const fixture = finalizationProcessFixture();
+  const flowRoot = object(fixture.flow.flowDataSet);
+  const name = object(object(object(flowRoot.flowInformation).dataSetInformation).name);
+  const englishName = (name.baseName as Json[]).find((value) => value["@xml:lang"] === "en")!;
+  name.baseName = englishName;
+  const descriptions = {
+    "@xml:lang": "en",
+    "#text": `${String(englishName["#text"])}; Synthetic fixture; Global synthetic flow`,
+  };
+  for (const exchange of object(object(fixture.process.processDataSet).exchanges)
+    .exchange as Json[])
+    object(exchange.referenceToFlowDataSet)["common:shortDescription"] = descriptions;
+
+  const write = (name: string, value: unknown) => {
+    const file = path.join(root, name);
+    fs.writeFileSync(file, JSON.stringify(value));
+    return file;
+  };
+  const seed = write("process.json", finalizationProcessSeed(fixture));
+  const refs = write("references.json", [fixture.flow, fixture.property, fixture.group]);
+  const wrongFlow = structuredClone(fixture.flow);
+  object(object(object(wrongFlow.flowDataSet).administrativeInformation).publicationAndOwnership)[
+    "common:dataSetVersion"
+  ] = "01.00.001";
+  const wrongRefs = write("wrong-version.json", [wrongFlow, fixture.property, fixture.group]);
+  const spec = write("task.json", {
+    schema: "tiangong-foundry.task-start.v1",
+    request_id: "typed-process-exact-reference",
+    actor_id: "validation-author",
+    lane: "source-evidence-dataset-development",
+    profile_id: "generic",
+    target_entities: ["process"],
+    sources: [seed, refs, wrongRefs].map((file) => ({ path: file })),
+    seed: { path: seed },
+    account_intent: null,
+    preparation: null,
+  });
+  const started = await facade.start({ specFile: spec });
+  assert.ok(started.task_id);
+  const context = createFoundryRuntimeContext({
+    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    workspace,
+    cacheBase: path.join(root, "cache"),
+    taskId: started.task_id,
+    actorId: "validation-author",
+    inputs: [seed, refs, wrongRefs].map(captureFoundryInput),
+  });
+  const qualified = qualifyFoundryRuntime(context, runtimeSelection);
+  const run = (file: string, output: string) =>
+    runFoundryTypedDatasetQa(
+      context,
+      qualified,
+      root,
+      (location, value) => writeFoundryArtifact(context, location, JSON.stringify(value) + "\n"),
+      "process",
+      seed,
+      output,
+      { referenceFiles: [file] },
+    );
+  const valid = run(refs, "outputs/candidate-process-qa-pass");
+  const validation = object((read(valid.validationReportFile).rows as Json[])[0]);
+  assert.equal(valid.exit, 0, JSON.stringify(validation));
+  assert.equal(validation.payload_sha256, sha256Json(fixture.process));
+  assert.equal(object(validation.allocation_semantics).status, "passed");
+  assert.equal(object(validation.flow_reference_names).status, "passed");
+  const balance = (read(valid.reportFile).mass_balance as Json[])[0];
+  assert.equal(balance.status, "applicable");
+  assert.equal(balance.delta, 0);
+  const invalid = run(wrongRefs, "outputs/candidate-process-qa-wrong-version");
+  assert.equal(invalid.exit, 1);
+  const invalidValidation = object((read(invalid.validationReportFile).rows as Json[])[0]);
+  assert.equal(invalidValidation.status, "incomplete");
+  assert.equal(object(invalidValidation.allocation_semantics).status, "unresolved");
+  assert.equal((read(invalid.reportFile).mass_balance as Json[])[0].status, "unresolved");
+});
 
 test("public selected Flow evidence survives identity apply, cleanup and real Process save-equivalent validation", async (t) => {
   const { root, facade, fixture, seed, originalSource, invocation } = await registeredProcess(

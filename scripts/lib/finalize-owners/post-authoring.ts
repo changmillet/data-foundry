@@ -112,6 +112,7 @@ interface FinalizeStage extends JsonRecord {
   stderr?: string;
   report?: FinalizeStage;
   report_file?: string | null;
+  cli_validation?: { report: string; exit: number };
   rust_report?: unknown;
   binary_version?: unknown;
   counts?: CountMap;
@@ -1605,6 +1606,7 @@ export function createPostAuthoringFinalizeCommands({
       requiresCurationGate
         ? runDatasetCurationGate({
             repoRoot,
+            cliValidation: qaStage.cli_validation,
             options: {
               ...options,
               type: datasetType,

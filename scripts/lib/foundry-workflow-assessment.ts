@@ -26,7 +26,7 @@ import { runDatasetCurationGate } from "./import-curation/curation-gate.ts";
 import { loadFoundryQualityReview, type FoundryQualityReview } from "./foundry-quality-review.ts";
 import { runDatasetAuthoringTaskBuild } from "./import-curation/authoring-packages.ts";
 import { readRows } from "./import-curation/internal/runtime-io.ts";
-import { runFoundryTypedFlowQa } from "./foundry-typed-flow-qa.ts";
+import { runFoundryTypedDatasetQa } from "./foundry-typed-flow-qa.ts";
 import { buildFoundryCurationQueue } from "./foundry-curation-queue.ts";
 import {
   projectFoundryValidationReferences,
@@ -647,27 +647,81 @@ export function assessFoundryWorkflowRows(
             registerWorkflowStageFiles(context, operation, output);
             return result;
           }
-          const qaDir = path.join(output, set.type, "qa");
+          let cliValidation:
+            | {
+                report: string;
+                exit: number;
+                input?: import("./foundry-runtime-context.ts").FoundryInputFact;
+              }
+            | undefined;
+          let validationProjection: Record<string, unknown> | undefined;
+          const typed = qualified.cli.expectation.package_version === "0.4.0";
+          const datasetType = set.type;
+          const qaDir = path.join(output, datasetType, "qa");
+          const processReferenceFiles =
+            datasetType === "process"
+              ? [
+                  ...selectedSets
+                    .filter((ref) =>
+                      ["flow", "flowproperty", "unitgroup"].includes(String(ref.type)),
+                    )
+                    .map((ref) => String(ref.file)),
+                  ...qaReferenceFiles,
+                ]
+              : [];
+          const validationDir = typed ? qaDir : path.join(output, datasetType, "cli-validation");
+          let validationInput = set.file;
+          let validationRows: unknown[] = [];
+          if (datasetType === "process") {
+            validationRows = readRows(set.file, (name) =>
+              readFoundryInput(context, name).toString("utf8"),
+            );
+            if (qaReferenceFiles.length) {
+              validationRows = projectFoundryValidationReferences(
+                validationRows,
+                qaReferenceFiles.flatMap((file) =>
+                  readRows(file, (name) => readFoundryInput(context, name).toString("utf8")),
+                ),
+              );
+              validationInput = path.join(validationDir, "validation-only.process.rows.json");
+              operation.writeJson(validationInput, validationRows);
+              validationProjection = {
+                cli_validation_input: captureFoundryInput(validationInput),
+                cli_validation_source_rows: captureFoundryInput(set.file),
+                cli_validation_reference_input_sha256: referenceInputSha256,
+                cli_validation_reference_files: reference!.value.qa_files,
+              };
+            }
+          }
           let qaReport: string;
-          if (set.type === "flow" && qualified.cli.expectation.package_version === "0.4.0") {
-            qaReport = runFoundryTypedFlowQa(
+          if (
+            typed &&
+            (datasetType === "flow" ||
+              datasetType === "process" ||
+              datasetType === "lifecyclemodel")
+          ) {
+            const result = runFoundryTypedDatasetQa(
               context,
               qualified,
               temporary,
               (file, value) => operation.writeJson(file, value),
+              datasetType,
               set.file,
               qaDir,
-            ).reportFile;
+              { referenceFiles: processReferenceFiles, validationInput },
+            );
+            qaReport = result.reportFile;
+            if (datasetType === "process")
+              cliValidation = {
+                report: result.validationReportFile,
+                exit: result.exit,
+                ...(validationProjection ? { input: captureFoundryInput(validationInput) } : {}),
+              };
           } else if (["flow", "process", "lifecyclemodel"].includes(set.type)) {
             const qaArgv = ["qa", set.type, "--rows-file", set.file, "--out-dir", qaDir, "--json"];
-            if (set.type === "process") {
-              for (const referenceSet of selectedSets) {
-                if (["flow", "flowproperty", "unitgroup"].includes(String(referenceSet.type))) {
-                  readFoundryInput(context, String(referenceSet.file));
-                  qaArgv.push("--reference-rows-file", String(referenceSet.file));
-                }
-              }
-              qaArgv.push(...qaReferenceFiles.flatMap((file) => ["--reference-rows-file", file]));
+            for (const file of processReferenceFiles) {
+              readFoundryInput(context, file);
+              qaArgv.push("--reference-rows-file", file);
             }
             const qa = runWorkflowLocalCliResult(context, qualified, temporary, qaArgv);
             qaReport = qa.validate(() => {
@@ -691,34 +745,7 @@ export function assessFoundryWorkflowRows(
             });
           }
           const gateDir = path.join(output, set.type, "curation");
-          let cliValidation:
-            | {
-                report: string;
-                exit: number;
-                input?: import("./foundry-runtime-context.ts").FoundryInputFact;
-              }
-            | undefined;
-          let validationProjection: Record<string, unknown> | undefined;
-          if (set.type === "process") {
-            const validationDir = path.join(output, set.type, "cli-validation");
-            let validationInput = String(set.file);
-            let validationRows = readRows(validationInput);
-            if (qaReferenceFiles.length) {
-              validationRows = projectFoundryValidationReferences(
-                validationRows,
-                qaReferenceFiles.flatMap((file) =>
-                  readRows(file, (name) => readFoundryInput(context, name).toString("utf8")),
-                ),
-              );
-              validationInput = path.join(validationDir, "validation-only.process.rows.json");
-              operation.writeJson(validationInput, validationRows);
-              validationProjection = {
-                cli_validation_input: captureFoundryInput(validationInput),
-                cli_validation_source_rows: captureFoundryInput(String(set.file)),
-                cli_validation_reference_input_sha256: referenceInputSha256,
-                cli_validation_reference_files: reference!.value.qa_files,
-              };
-            }
+          if (set.type === "process" && !typed) {
             const validation = runWorkflowLocalCliResult(context, qualified, temporary, [
               "dataset",
               "validate",

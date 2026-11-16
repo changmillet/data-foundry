@@ -56,11 +56,11 @@ test("Flow QA rejects a wrong exit, incorrect result path, or validation of anot
   const { report, bytes } = observed();
   assert.throws(
     () => projectFlowValidation(flow, output, 0, report, bytes),
-    /typed Flow validation/,
+    /typed dataset validation/,
   );
   assert.throws(
     () => projectFlowValidation(flow, "/another.json", 1, report, bytes),
-    /typed Flow validation/,
+    /typed dataset validation/,
   );
   assert.throws(
     () =>
@@ -71,6 +71,6 @@ test("Flow QA rejects a wrong exit, incorrect result path, or validation of anot
         report,
         bytes,
       ),
-    /typed Flow validation/,
+    /typed dataset validation/,
   );
 });

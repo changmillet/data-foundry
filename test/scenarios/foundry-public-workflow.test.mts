@@ -652,6 +652,22 @@ test("assessment records one row set at a time and cannot finalize partial cover
   assert.equal(queueSnapshots.length, 2, "each set owns a separate complete queue snapshot");
   assert.notEqual(queueSnapshots[0].operation_id, queueSnapshots[1].operation_id);
   assert.equal(completed.assessmentComplete, true);
+  if (
+    qualifyFoundryRuntime(secondContext, runtimeSelection).cli.expectation.package_version ===
+    "0.4.0"
+  ) {
+    const process = completed.assessment?.value.sets.find((set) => set.type === "process");
+    assert.ok(typeof process?.cli_validation_report === "string");
+    const validation = JSON.parse(fs.readFileSync(process.cli_validation_report, "utf8"));
+    assert.equal(validation.validation_operation, "dataset process validate");
+    assert.equal(validation.rows.length, 1);
+    assert.ok(validation.rows[0].validation_layers);
+    assert.ok(validation.rows[0].allocation_semantics);
+    assert.ok(validation.rows[0].flow_reference_names);
+    assert.ok(validation.rows[0].annual_volume);
+    assert.ok(validation.rows[0].findings.length);
+  }
+
   assert.deepEqual(completed.assessmentRemainingTypes, []);
   const originalSets = completed.assessment?.value.sets;
   assert.ok(originalSets);

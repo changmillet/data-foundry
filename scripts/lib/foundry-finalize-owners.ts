@@ -1,5 +1,7 @@
+import fs from "node:fs";
+import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { runFoundryTypedFlowQa } from "./foundry-typed-flow-qa.ts";
+import { runFoundryTypedDatasetQa } from "./foundry-typed-flow-qa.ts";
 import { planFoundryEdgeSupportStage } from "./foundry-edge-support-planning.ts";
 import { buildFoundryCurationQueue } from "./foundry-curation-queue.ts";
 import {
@@ -78,12 +80,30 @@ export function createFoundryFinalizeOwners(
     tidasExecutable: string;
     receiptFile?: string;
     datasetType?: string;
+    outputRoot?: string;
   },
 ): FoundryFinalizeOwners {
   assertQualifiedFoundryRuntime(context, qualified);
   const runtime = createFoundryRuntimeUtils({ parseScalar, repoRoot: context.assetRoot });
   const rows = createTidasRowUtils({ ...runtime, bundleRowTypes });
   const localEnvironment = createFoundryIsolatedChildEnvironment({ tempRoot: temporary });
+  const readStageRows = (file: string) => {
+    const selected = runtime.resolveRepoPath(file)!;
+    if (execution.outputRoot) {
+      const relative = path.relative(execution.outputRoot, selected);
+      if (
+        relative &&
+        relative !== ".." &&
+        !relative.startsWith(`..${path.sep}`) &&
+        !path.isAbsolute(relative)
+      )
+        return fs.readFileSync(
+          assertWorkflowReportArtifact(context, selected, execution.outputRoot),
+        );
+    }
+    return readFoundryInput(context, selected);
+  };
+
   const cli = resolveTiangongLcaCliRuntimeCommand({});
   const base = {
     ...runtime,
@@ -154,6 +174,7 @@ export function createFoundryFinalizeOwners(
                   .normalizedList(options.externalFlowRef)
                   .map((name) => runtime.resolveRepoPath(name)!),
                 outDir: file(options.outDir),
+                readInput: readStageRows,
               });
             },
           }
@@ -216,24 +237,38 @@ export function createFoundryFinalizeOwners(
         execution.receiptFile,
       );
     }
-    if (name === "qa flow" && qualified.cli.expectation.package_version === "0.4.0") {
+    const qaType = argv[0] === "qa" ? argv[1] : null;
+    if (
+      qualified.cli.expectation.package_version === "0.4.0" &&
+      (qaType === "flow" || qaType === "process" || qaType === "lifecyclemodel")
+    ) {
       const rowsFile = argv[argv.indexOf("--rows-file") + 1];
       const directory = argv[argv.indexOf("--out-dir") + 1];
-      const result = runFoundryTypedFlowQa(
+      const result = runFoundryTypedDatasetQa(
         context,
         qualified,
         temporary,
         (file, value) => writeFoundryArtifact(context, file, JSON.stringify(value, null, 2) + "\n"),
+        qaType,
         rowsFile,
         directory,
+        {
+          readRowsFile: (file) => readStageRows(file).toString("utf8"),
+          referenceFiles: argv.flatMap((value, index) =>
+            value === "--reference-rows-file" ? [argv[index + 1]] : [],
+          ),
+        },
       );
       return {
         stage,
-        exit_code: result.report.findings.length ? 2 : 0,
+        exit_code: result.exit || (qaType !== "process" && result.report.findings.length) ? 2 : 0,
         report: result.report,
+        ...(qaType === "process"
+          ? { cli_validation: { report: result.validationReportFile, exit: result.exit } }
+          : {}),
         status: result.report.status,
         command: cli.command,
-        args: [...cli.args, "dataset", "flow", "validate"],
+        args: [...cli.args, "dataset", qaType === "lifecyclemodel" ? "model" : qaType, "validate"],
         stderr: "",
       };
     }

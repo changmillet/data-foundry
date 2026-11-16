@@ -234,6 +234,7 @@ export async function finalizeFoundryWorkflow(
         tidasExecutable,
         receiptFile,
         datasetType: set.type,
+        outputRoot: path.join(output, set.type),
       });
       const contract = contracts.get(set.type);
       if (!contract)
