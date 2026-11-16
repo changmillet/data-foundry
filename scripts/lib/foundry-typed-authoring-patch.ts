@@ -2,9 +2,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { readFoundryInput, type FoundryRuntimeContext } from "./foundry-runtime-context.ts";
 import type { QualifiedFoundryRuntime } from "./foundry-runtime-qualification.ts";
-import { datasetIdentity } from "./import-curation/internal/dataset-payload.ts";
+import { datasetIdentity, detectDatasetType } from "./import-curation/internal/dataset-payload.ts";
 import { readRows } from "./import-curation/internal/runtime-io.ts";
 import {
+  operationHasEvidence,
   patchPayloadPatchSets,
   patchSetAuthoringPackage,
   patchSetDatasetId,
@@ -20,68 +21,133 @@ import { sha256Text } from "./identity-preflight-proof.ts";
 
 type RecordValue = Record<string, unknown>;
 
+type PatchDestinations = {
+  input: string;
+  patch: string;
+  output: string;
+  directory: string;
+  writeJson: (file: string, value: unknown) => void;
+  writeText: (file: string, value: string) => void;
+};
+
+type PatchExecution = {
+  readInput: (file: string) => Buffer;
+  readResult: (file: string) => Buffer;
+  workspace: string;
+  run: (argv: string[]) => {
+    exit: number;
+    report: RecordValue;
+    validate: <T>(check: () => T) => T;
+  };
+};
+
 export function applyFoundryTypedAuthoringPatch(
   context: FoundryRuntimeContext,
   qualified: QualifiedFoundryRuntime,
   temporary: string,
-  options: {
-    type: string;
-    input: string;
-    patch: string;
-    output: string;
-    directory: string;
-    packageDirectory: string;
-    writeJson: (file: string, value: unknown) => void;
-    writeText: (file: string, value: string) => void;
-  },
+  options: PatchDestinations & { type: string; packageDirectory: string },
 ) {
-  const rows = readRows(options.input, (file) => readFoundryInput(context, file).toString("utf8"));
+  return applyTypedAuthoringPatch(
+    { ...options, requirePackage: true, requireClosure: true },
+    {
+      readInput: (file) => readFoundryInput(context, file),
+      readResult: (file) =>
+        fs.readFileSync(assertWorkflowReportArtifact(context, file, options.directory)),
+      workspace: options.directory,
+      run: (argv) => runWorkflowLocalCliResult(context, qualified, temporary, argv),
+    },
+  );
+}
+
+export function applyTypedAuthoringPatch(
+  options: PatchDestinations & {
+    type?: string;
+    packageDirectory?: string;
+    requirePackage: boolean;
+    requireClosure: boolean;
+  },
+  execution: PatchExecution,
+) {
+  const rows = readRows(options.input, (file) => execution.readInput(file).toString("utf8"));
   const patches = patchPayloadPatchSets(JSON.parse(fs.readFileSync(options.patch, "utf8")));
   const candidates = [...rows];
   const blockers: RecordValue[] = [];
   const evidence: RecordValue[] = [];
   let operationCount = 0;
-  const operationName = `dataset ${options.type === "lifecyclemodel" ? "model" : options.type} patch`;
+  if (!patches.length)
+    blockers.push({
+      code: "patch_payload_invalid",
+      message: "At least one dataset patch set is required.",
+    });
   for (const [patchIndex, raw] of patches.entries()) {
     const patch = workflowObject(raw);
     const packageName = patchSetAuthoringPackage(patch);
-    const packageBytes = readFoundryInput(
-      context,
-      path.join(options.packageDirectory, path.basename(packageName)),
-    );
-    const authoring = workflowObject(JSON.parse(packageBytes.toString("utf8")));
-    const id = authoring.entity_id ?? authoring.process_id;
-    const version = authoring.version;
     const declaredId = patchSetDatasetId(patch);
     const declaredVersion = patch.dataset_version ?? patch.version;
     const declaredIndex = patch.row_index ?? patch.rowIndex;
+    if (
+      (!packageName || !options.packageDirectory) &&
+      (options.requirePackage || options.requireClosure)
+    ) {
+      blockers.push({ code: "authoring_package_required", patch_index: patchIndex });
+      continue;
+    }
+    const packageBytes =
+      packageName && options.packageDirectory
+        ? execution.readInput(path.join(options.packageDirectory, path.basename(packageName)))
+        : null;
+    const authoring = packageBytes
+      ? workflowObject(JSON.parse(packageBytes.toString("utf8")))
+      : null;
+    const packageId = authoring?.entity_id ?? authoring?.process_id;
+    const packageVersion = authoring?.version;
     const matches = rows.flatMap((row, index) => {
-      const identity = datasetIdentity(row, index, options.type);
-      return identity.id === id && identity.version === version ? [index] : [];
+      const type = options.type ?? detectDatasetType(row);
+      if (!type) return [];
+      const identity = datasetIdentity(row, index, type);
+      const expectedIndex =
+        authoring ||
+        declaredIndex === undefined ||
+        (/^\d+$/u.test(String(declaredIndex)) && Number(declaredIndex) === index);
+      const expectedId = !declaredId || identity.id === declaredId;
+      const expectedVersion = declaredVersion === undefined || identity.version === declaredVersion;
+      const expectedPackage =
+        !authoring || (identity.id === packageId && identity.version === packageVersion);
+      return expectedIndex && expectedId && expectedVersion && expectedPackage
+        ? [{ index, identity, type }]
+        : [];
     });
-    const rowIndex = matches[0];
+    const selected = matches[0];
     const reject = (code: string, message: string) =>
       blockers.push({
         code,
         message,
         patch_index: patchIndex,
-        row_index: rowIndex,
-        dataset_id: id,
-        dataset_version: version,
+        row_index: selected?.index,
+        dataset_id: selected?.identity.id ?? declaredId,
+        dataset_version: selected?.identity.version ?? declaredVersion,
       });
+    const contradictoryIndex =
+      authoring &&
+      declaredIndex !== undefined &&
+      (!/^\d+$/u.test(String(declaredIndex)) || Number(declaredIndex) !== selected?.index);
     if (
       matches.length !== 1 ||
-      (declaredId && declaredId !== id) ||
-      (declaredVersion !== undefined && declaredVersion !== version) ||
-      (declaredIndex !== undefined &&
-        (!/^\d+$/u.test(String(declaredIndex)) || Number(declaredIndex) !== rowIndex))
+      contradictoryIndex ||
+      (!authoring && !declaredId && declaredIndex === undefined)
     ) {
       reject(
         "authoring_patch_scope_mismatch",
-        "Selected patch does not match the indexed authoring package and exact dataset row.",
+        "Select one exact dataset row and its required authoring package.",
       );
       continue;
     }
+    const {
+      index: rowIndex,
+      identity: { id, version },
+      type,
+    } = selected;
+    const operationName = `dataset ${type === "lifecyclemodel" ? "model" : type} patch`;
     const rawOperations = patchSetOperations(patch);
     if (!rawOperations?.length) {
       reject("patch_operations_missing", "Authoring patch must contain an operation.");
@@ -90,7 +156,7 @@ export function applyFoundryTypedAuthoringPatch(
     operationCount += rawOperations.length;
     const required = taskActionItemKeys({
       ...authoring,
-      action_items: Array.isArray(authoring.action_items)
+      action_items: Array.isArray(authoring?.action_items)
         ? authoring.action_items.filter((value) => {
             const item = workflowObject(value);
             return (
@@ -113,8 +179,9 @@ export function applyFoundryTypedAuthoringPatch(
       return leftCode === rightCode && (!leftPath || !rightPath || leftPath === rightPath);
     };
     if (
-      closed.some((closure) => !required.some((item) => matchesClosure(closure, item))) ||
-      required.some((item) => !closed.some((closure) => matchesClosure(closure, item)))
+      options.requireClosure &&
+      (closed.some((closure) => !required.some((item) => matchesClosure(closure, item))) ||
+        required.some((item) => !closed.some((closure) => matchesClosure(closure, item))))
     ) {
       reject(
         "authoring_action_item_closure_invalid",
@@ -122,8 +189,12 @@ export function applyFoundryTypedAuthoringPatch(
       );
       continue;
     }
+    if (rawOperations.some((item) => item.op !== "test" && !operationHasEvidence(item))) {
+      reject("patch_evidence_required", "Each mutation needs its source evidence or basis.");
+      continue;
+    }
     const row = workflowObject(candidates[rowIndex]);
-    const original = datasetIdentity(row, rowIndex, options.type);
+    const original = datasetIdentity(row, rowIndex, type);
     const wrapper =
       original.payload === row
         ? null
@@ -153,14 +224,14 @@ export function applyFoundryTypedAuthoringPatch(
       );
       continue;
     }
-    const input = path.join(options.directory, `request-${patchIndex + 1}.json`);
-    const output = path.join(options.directory, `result-${patchIndex + 1}.json`);
+    const input = path.join(execution.workspace, `request-${patchIndex + 1}.json`);
+    const output = path.join(execution.workspace, `result-${patchIndex + 1}.json`);
     options.writeJson(input, {
       content: original.payload,
       expectedDigest: sha256Text(JSON.stringify(original.payload)),
       operations,
     });
-    const result = runWorkflowLocalCliResult(context, qualified, temporary, [
+    const result = execution.run([
       ...operationName.split(" "),
       "--input",
       input,
@@ -174,11 +245,9 @@ export function applyFoundryTypedAuthoringPatch(
       continue;
     }
     const content = result.validate(() => {
-      const bytes = fs.readFileSync(
-        assertWorkflowReportArtifact(context, output, options.directory),
-      );
+      const bytes = execution.readResult(output);
       const payload = workflowObject(JSON.parse(bytes.toString("utf8")));
-      const identity = datasetIdentity(payload, rowIndex, options.type);
+      const identity = datasetIdentity(payload, rowIndex, type);
       const artifact = Array.isArray(result.report.artifacts)
         ? workflowObject(result.report.artifacts[0])
         : {};
@@ -212,8 +281,8 @@ export function applyFoundryTypedAuthoringPatch(
         basis: item.basis ?? null,
         evidence: item.evidence ?? null,
         resolution: item.resolution ?? null,
-        authoring_package: packageName,
-        authoring_package_sha256: sha256Text(packageBytes.toString("utf8")),
+        authoring_package: packageName || null,
+        authoring_package_sha256: packageBytes ? sha256Text(packageBytes.toString("utf8")) : null,
         closes_action_items: operationClosureKeys(item).map((key) => {
           const [code, itemPath] = key.split("\u0000");
           return { code, path: itemPath || null };

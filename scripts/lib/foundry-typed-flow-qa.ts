@@ -141,24 +141,51 @@ export function projectFlowValidation(
   return projectValidation("flow", row, output, exit, receipt, bytes).findings;
 }
 
+type ValidationOptions = {
+  referenceFiles?: readonly string[];
+  validationInput?: string;
+  readRowsFile?: (file: string) => string;
+};
+
+type ValidationIo = {
+  writeJson: (file: string, value: unknown) => void;
+  readRowsFile: (file: string) => string;
+  readResult: (file: string) => Buffer;
+  run: (argv: string[]) => {
+    exit: number;
+    report: Record<string, unknown>;
+    validate: <T>(check: () => T) => T;
+  };
+};
+
 export function runFoundryTypedDatasetQa(
   context: FoundryRuntimeContext,
   qualified: QualifiedFoundryRuntime,
   temporary: string,
-  writeJson: (file: string, value: unknown) => void,
+  writeJson: ValidationIo["writeJson"],
   type: ValidationType,
   rowsFile: string,
   output: string,
-  options: {
-    referenceFiles?: readonly string[];
-    validationInput?: string;
-    readRowsFile?: (file: string) => string;
-  } = {},
+  options: ValidationOptions = {},
 ) {
-  const readRowsFile =
-    options.readRowsFile ?? ((file) => readFoundryInput(context, file).toString("utf8"));
-  const rows = readRows(rowsFile, readRowsFile);
   const directory = resolveFoundryOutput(context, output);
+  return runTypedDatasetQa(type, rowsFile, directory, options, {
+    writeJson,
+    readRowsFile:
+      options.readRowsFile ?? ((file) => readFoundryInput(context, file).toString("utf8")),
+    readResult: (file) => fs.readFileSync(assertWorkflowReportArtifact(context, file, directory)),
+    run: (argv) => runWorkflowLocalCliResult(context, qualified, temporary, argv),
+  });
+}
+
+export function runTypedDatasetQa(
+  type: ValidationType,
+  rowsFile: string,
+  directory: string,
+  options: ValidationOptions,
+  { writeJson, readRowsFile, readResult, run }: ValidationIo,
+) {
+  const rows = readRows(rowsFile, readRowsFile);
   fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
   const referenceEvidence = [...new Set(options.referenceFiles ?? [])].map((file) => {
     const fact = captureFoundryInput(file);
@@ -234,18 +261,17 @@ export function runFoundryTypedDatasetQa(
         argv.push("--reference-documents", referenceDocuments);
       }
     }
-    const validation = runWorkflowLocalCliResult(context, qualified, temporary, argv);
-    const result = validation.validate(() => {
-      const artifact = assertWorkflowReportArtifact(context, resultFile, directory);
-      return projectValidation(
+    const validation = run(argv);
+    const result = validation.validate(() =>
+      projectValidation(
         type,
         row,
-        artifact,
+        resultFile,
         validation.exit,
         validation.report,
-        fs.readFileSync(artifact),
-      );
-    });
+        readResult(resultFile),
+      ),
+    );
     return {
       id: row.id,
       version: row.version,

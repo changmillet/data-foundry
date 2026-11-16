@@ -17,6 +17,8 @@ type QueueOptions = {
   flows?: string | null;
   support?: readonly string[];
   external?: readonly string[];
+  excludeProcessIds?: readonly string[];
+  processLimit?: number;
   outDir: string;
   readInput?: (file: string) => Buffer;
 };
@@ -86,42 +88,49 @@ export function buildFoundryCurationQueue(options: QueueOptions) {
 
   const taskIds = new Set<string>();
   const workDirs = new Set<string>();
-  const entities = (file: string, type: Entity) =>
-    read(file).map((row, index) => {
+  const excluded = new Set(options.excludeProcessIds);
+  const entities = (file: string, type: Entity) => {
+    const selected = read(file).flatMap((row, index) => {
       const kind =
         type === "support" ? detectDatasetType(unwrapDatasetPayload(row, "support")) : type;
       if (!kind) return invalid("Support queue rows need a recognized dataset type.");
-      const { id, version, payload } = datasetIdentity(row, index, kind);
-      if (!id || !version || /^row-\d+$/u.test(id))
+      const identity = datasetIdentity(row, index, kind);
+      if (!identity.id || !identity.version || /^row-\d+$/u.test(identity.id))
         return invalid("Queue rows need a stable identity.");
-      const taskId = `${type}:${id}@${version}`;
-      const token = (value: string) => value.replace(/[^A-Za-z0-9._-]+/gu, "_");
-      const workDir = path.join(
-        outDir,
-        "entities",
-        layout[type].dir,
-        `${token(id)}__${token(version)}`,
-      );
-      if (taskIds.has(taskId) || workDirs.has(workDir))
-        return invalid("The queue has conflicting rows for one task or path.");
-      taskIds.add(taskId);
-      workDirs.add(workDir);
-      const task = {
-        schema_version: 1,
-        entity_type: type,
-        task_id: taskId,
-        entity_id: id,
-        version,
-        lock_key: taskId,
-        depends_on: [] as string[],
-        work_dir: workDir,
-        input_rows_file: path.join(workDir, "input.jsonl"),
-        checkpoint_file: path.join(workDir, "checkpoint.json"),
-        run_plan_file: path.join(workDir, "entity-run-plan.json"),
-        closure_file: path.join(workDir, "closure.json"),
-      };
-      return { task, row, payload, source: { file, index } };
+      return type === "process" && excluded.has(identity.id) ? [] : [{ row, index, identity }];
     });
+    return (type === "process" ? selected.slice(0, options.processLimit) : selected).map(
+      ({ row, index, identity: { id, version, payload } }) => {
+        const taskId = `${type}:${id}@${version}`;
+        const token = (value: string) => value.replace(/[^A-Za-z0-9._-]+/gu, "_");
+        const workDir = path.join(
+          outDir,
+          "entities",
+          layout[type].dir,
+          `${token(id)}__${token(version)}`,
+        );
+        if (taskIds.has(taskId) || workDirs.has(workDir))
+          return invalid("The queue has conflicting rows for one task or path.");
+        taskIds.add(taskId);
+        workDirs.add(workDir);
+        const task = {
+          schema_version: 1,
+          entity_type: type,
+          task_id: taskId,
+          entity_id: id,
+          version,
+          lock_key: taskId,
+          depends_on: [] as string[],
+          work_dir: workDir,
+          input_rows_file: path.join(workDir, "input.jsonl"),
+          checkpoint_file: path.join(workDir, "checkpoint.json"),
+          run_plan_file: path.join(workDir, "entity-run-plan.json"),
+          closure_file: path.join(workDir, "closure.json"),
+        };
+        return { task, row, payload, source: { file, index } };
+      },
+    );
+  };
   const support = files.support.flatMap((file) => entities(file, "support"));
   const flows = files.flows ? entities(files.flows, "flow") : [];
   const processes = entities(files.processes, "process");

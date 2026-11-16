@@ -850,7 +850,8 @@ export function createFoundryApplication({ repoRoot, utilities }: FoundryApplica
     runFinalizeIdentityPreflightStage,
     runTidasRowsValidation: (options: Record<string, unknown>) =>
       runTidasRowsValidation({ repoRoot, options }),
-    runTiangongJsonStage,
+    runTiangongJsonStage: (stage: string, args: string[]) =>
+      cliWrapperCommands.runDatasetQaStage(stage, args) ?? runTiangongJsonStage(stage, args),
     skippedPrewriteStage,
     sourceReferenceSemanticBlockers,
     sourceReferenceRewritesFileForRowsFile,
