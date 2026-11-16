@@ -13,6 +13,19 @@ import { runExplicitFoundryIdentityStage } from "../../scripts/lib/foundry-workf
 import { selectFoundryIdentityStageInput } from "../../scripts/lib/foundry-identity-stage-input.ts";
 import type { FoundryAuthentication } from "../../scripts/lib/foundry-runtime-identity.ts";
 import { explicitIdentityStageFixture } from "../fixtures/explicit-identity-stage.ts";
+import { runRetainedFoundryTests } from "../helpers/retained-foundry-runtime.mts";
+import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
+
+const typed = resolveInstalledTiangongLcaCliPackage().packageVersion === "0.4.0";
+const originalSuite = ["test/unit/foundry-explicit-identity-stage.test.mts"];
+
+function invocations(count: number) {
+  return {
+    cli_invocations: typed ? 0 : count,
+    ...(typed ? { edge_invocations: count } : {}),
+    underlying_retrievals: null,
+  };
+}
 
 const headless: FoundryAuthentication = {
   mode: "headless",
@@ -22,6 +35,12 @@ const headless: FoundryAuthentication = {
 };
 
 test("explicit identity CLI starts in a short private directory with deep absolute evidence paths", async (t) => {
+  if (typed)
+    return runRetainedFoundryTests(
+      t,
+      originalSuite,
+      "^explicit identity CLI starts in a short private directory with deep absolute evidence paths$",
+    );
   const scratch = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "identity-cwd-")));
   t.after(() => fs.rmSync(scratch, { recursive: true, force: true }));
   const parent = path.join(
@@ -123,13 +142,19 @@ test("explicit identity CLI starts in a short private directory with deep absolu
     headless,
   );
   assert.equal(duplicate.status, "completed");
-  assert.deepEqual(duplicate.this_invocation, { cli_invocations: 0, underlying_retrievals: null });
+  assert.deepEqual(duplicate.this_invocation, invocations(0));
   assert.equal(f.counts().queries, 1);
   assert.equal(observed.length, 1);
   f.assertPreserved();
 });
 
 test("an identity CLI startup error remains UNKNOWN without another dispatch", async (t) => {
+  if (typed)
+    return runRetainedFoundryTests(
+      t,
+      originalSuite,
+      "^an identity CLI startup error remains UNKNOWN without another dispatch$",
+    );
   const f = await explicitIdentityStageFixture(t);
   const fixtureSpawn = childProcess.spawnSync;
   let attempts = 0;
@@ -160,7 +185,7 @@ test("an identity CLI startup error remains UNKNOWN without another dispatch", a
     headless,
   );
   assert.equal(result.status, "blocked");
-  assert.equal(result.new_cli_execution, null);
+  assert.equal(result.new_cli_execution, typed ? false : null);
   assert.equal(f.counts().queries, 0);
   assert.ok(Array.isArray(result.blockers));
   assert.ok(
@@ -180,7 +205,7 @@ test("an identity CLI startup error remains UNKNOWN without another dispatch", a
     headless,
   );
   assert.equal(duplicate.status, "blocked");
-  assert.deepEqual(duplicate.this_invocation, { cli_invocations: 0, underlying_retrievals: null });
+  assert.deepEqual(duplicate.this_invocation, invocations(0));
   assert.equal(f.counts().queries, 0);
   assert.equal(attempts, 1);
   assert.ok(
@@ -228,7 +253,7 @@ test("headless stage retains its explicit mode and genuine disabled-cache receip
     headless,
   );
   assert.equal(duplicate.status, "completed");
-  assert.deepEqual(duplicate.this_invocation, { cli_invocations: 0, underlying_retrievals: null });
+  assert.deepEqual(duplicate.this_invocation, invocations(0));
   await assert.rejects(
     runExplicitFoundryIdentityStage(
       f.context,
@@ -354,12 +379,11 @@ test("explicit read-only stage durably binds receipt, request, roster and runtim
   const result = await runExplicitFoundryIdentityStage(f.context, f.qualified, f.prefix, selected);
   assert.equal(result.status, "completed", JSON.stringify(result));
   assert.equal(result.explicit_new_stage, true);
-  assert.equal(result.new_cli_execution, true);
+  assert.equal(result.new_cli_execution, !typed);
   assert.deepEqual(result.counts, {
     admitted_targets: 2,
     accepted_targets: 2,
-    cli_invocations: 2,
-    underlying_retrievals: null,
+    ...invocations(2),
   });
   assert.equal(f.counts().queries, 2);
   f.assertPreserved();
@@ -373,7 +397,7 @@ test("explicit read-only stage durably binds receipt, request, roster and runtim
     { ...again, this_invocation: undefined },
     { ...result, this_invocation: undefined },
   );
-  assert.deepEqual(again.this_invocation, { cli_invocations: 0, underlying_retrievals: null });
+  assert.deepEqual(again.this_invocation, invocations(0));
   assert.equal(f.counts().queries, 2);
 });
 
@@ -390,7 +414,12 @@ test("concurrent duplicate intent invokes each admitted target once", async (t) 
   );
   assert.deepEqual(
     results
-      .map((result) => (result.this_invocation as { cli_invocations: number }).cli_invocations)
+      .map(
+        (result) =>
+          (result.this_invocation as Record<string, unknown>)[
+            typed ? "edge_invocations" : "cli_invocations"
+          ],
+      )
       .sort(),
     [0, 1],
   );
@@ -411,8 +440,7 @@ test("exact Flow3/Process1 admission groups downstream sets and preserves Source
   assert.deepEqual(result.counts, {
     admitted_targets: 4,
     accepted_targets: 4,
-    cli_invocations: 4,
-    underlying_retrievals: null,
+    ...invocations(4),
   });
   const sets = result.sets as Array<{ type: string; index: string }>;
   assert.deepEqual(
@@ -464,7 +492,7 @@ test("a raw orphan claim is observed without promoting its receipt or dispatchin
     selected,
   );
   assert.equal(result.status, "blocked");
-  assert.equal(result.new_cli_execution, null);
+  assert.equal(result.new_cli_execution, typed ? false : null);
   assert.equal(f.counts().queries, 0);
   const index = readFoundryTaskArtifactIndex(f.context);
   assert.ok(index.some((entry) => entry.path.endsWith("orphaned-claim.json")));
@@ -489,7 +517,7 @@ test("interrupted claimed stage remains UNKNOWN and a different intent cannot re
   f.outcome("throw");
   const first = await runExplicitFoundryIdentityStage(f.context, f.qualified, f.prefix, selected);
   assert.equal(first.status, "blocked");
-  assert.equal(first.new_cli_execution, null);
+  assert.equal(first.new_cli_execution, typed ? false : null);
   assert.equal(
     (first.blockers as Array<{ disposition: string }>)[0].disposition,
     "UNKNOWN_DO_NOT_REPLAY",
@@ -505,7 +533,7 @@ test("interrupted claimed stage remains UNKNOWN and a different intent cannot re
     { ...again, this_invocation: undefined },
     { ...first, this_invocation: undefined },
   );
-  assert.deepEqual(again.this_invocation, { cli_invocations: 0, underlying_retrievals: null });
+  assert.deepEqual(again.this_invocation, invocations(0));
   assert.equal(f.counts().queries, 1);
   const other = f.selection({ ...f.input, intent_id: "different-intent" });
   await assert.rejects(
@@ -540,7 +568,7 @@ test("equivalent relocated/reformatted intent reuses admission and changed same-
   );
   assert.equal(again.status, "completed");
   assert.deepEqual(again.counts, first.counts);
-  assert.deepEqual(again.this_invocation, { cli_invocations: 0, underlying_retrievals: null });
+  assert.deepEqual(again.this_invocation, invocations(0));
   const changed = f.selection({
     ...f.input,
     targets: [{ ...f.input.targets[0], source_row_sha256: "4".repeat(64) }],
@@ -585,7 +613,7 @@ test("interruption after genuine owner completion adopts retained outputs withou
     selected,
   );
   assert.equal(recovered.status, "completed");
-  assert.deepEqual(recovered.this_invocation, { cli_invocations: 0, underlying_retrievals: null });
+  assert.deepEqual(recovered.this_invocation, invocations(0));
   assert.equal(f.counts().queries, 1);
   f.assertPreserved();
 });
@@ -599,20 +627,29 @@ test("a substituted owner run self-path stays unproven and cannot index another 
   const foreignBytes = "synthetic unaccepted output\n";
   fs.writeFileSync(foreignFile, foreignBytes);
   const originalWrite = fs.writeFileSync;
+  const originalLink = fs.linkSync;
   let substituted = 0;
   let runFile = "";
+  const runReportName = "dataset-identity-preflight-run-report.json";
+  const substitute = (file: string, text: string) => {
+    const value = JSON.parse(text) as { files: { report: string } };
+    runFile = file;
+    value.files.report = path.join(foreignDirectory, "not-the-original-run-report.json");
+    substituted++;
+    return JSON.stringify(value, null, 2) + "\n";
+  };
+  if (typed) {
+    t.mock.method(fs, "linkSync", (source: string, target: string) => {
+      if (path.basename(target) === runReportName)
+        originalWrite(source, substitute(target, fs.readFileSync(source, "utf8")));
+      return originalLink(source, target);
+    });
+  }
   t.mock.method(fs, "writeFileSync", (...args: Parameters<typeof fs.writeFileSync>) => {
-    if (
-      typeof args[0] === "string" &&
-      path.basename(args[0]) === "dataset-identity-preflight-run-report.json"
-    ) {
+    if (typeof args[0] === "string" && path.basename(args[0]) === runReportName) {
       const text =
         typeof args[1] === "string" ? args[1] : Buffer.from(args[1] as Uint8Array).toString("utf8");
-      const value = JSON.parse(text) as { files: { report: string } };
-      runFile = args[0];
-      value.files.report = path.join(foreignDirectory, "not-the-original-run-report.json");
-      substituted++;
-      return originalWrite(args[0], JSON.stringify(value, null, 2) + "\n", args[2]);
+      return originalWrite(args[0], substitute(args[0], text), args[2]);
     }
     return Reflect.apply(originalWrite, fs, args);
   });
@@ -625,14 +662,14 @@ test("a substituted owner run self-path stays unproven and cannot index another 
   );
   assert.equal(substituted, 1);
   assert.equal(blocked.status, "blocked");
-  assert.equal(blocked.new_cli_execution, null);
+  assert.equal(blocked.new_cli_execution, typed ? false : null);
   assert.equal(
     (blocked.blockers as Array<{ disposition: string; reason: string }>)[0].disposition,
     "UNKNOWN_DO_NOT_REPLAY",
   );
   assert.match(
     (blocked.blockers as Array<{ reason: string }>)[0].reason,
-    /retained-run-report-path/u,
+    typed ? /Edge identity evidence does not match/u : /retained-run-report-path/u,
   );
   assert.equal(f.counts().queries, 1);
   const index = readFoundryTaskArtifactIndex(f.context);
@@ -653,7 +690,7 @@ test("a substituted owner run self-path stays unproven and cannot index another 
     headless,
   );
   assert.equal(again.status, "blocked");
-  assert.equal(again.new_cli_execution, null);
+  assert.equal(again.new_cli_execution, typed ? false : null);
   assert.equal(f.counts().queries, 1);
   assert.equal(substituted, 1);
   assert.equal(fs.readFileSync(foreignFile, "utf8"), foreignBytes);
@@ -665,9 +702,20 @@ test("a temporarily unproven result later adopts the same genuine execution with
   const f = await explicitIdentityStageFixture(t);
   const selected = f.selection();
   const originalOpen = fs.openSync;
+  const originalRead = fs.readFileSync;
   let hideOnce = true;
+  if (typed) {
+    t.mock.method(fs, "readFileSync", (...args: Parameters<typeof fs.readFileSync>) => {
+      if (hideOnce && String(args[0]).endsWith("dataset-identity-preflight-run-report.json")) {
+        hideOnce = false;
+        throw Object.assign(new Error("retained run not yet readable"), { code: "ENOENT" });
+      }
+      return Reflect.apply(originalRead, fs, args);
+    });
+  }
   t.mock.method(fs, "openSync", (...args: Parameters<typeof fs.openSync>) => {
     if (
+      !typed &&
       hideOnce &&
       String(args[0]).endsWith("dataset-identity-preflight-run-report.json") &&
       typeof args[1] === "number" &&
@@ -690,7 +738,7 @@ test("a temporarily unproven result later adopts the same genuine execution with
   );
   assert.equal(completed.status, "completed");
   assert.equal(f.counts().queries, 1);
-  assert.deepEqual(completed.this_invocation, { cli_invocations: 0, underlying_retrievals: null });
+  assert.deepEqual(completed.this_invocation, invocations(0));
   f.assertPreserved();
 });
 
@@ -723,7 +771,7 @@ test("a claim interrupted before query stays unproven and cannot be dispatched b
     selected,
   );
   assert.equal(result.status, "blocked");
-  assert.equal(result.new_cli_execution, null);
+  assert.equal(result.new_cli_execution, typed ? false : null);
   assert.equal(f.counts().queries, 0);
   f.assertPreserved();
 });
@@ -731,6 +779,12 @@ test("a claim interrupted before query stays unproven and cannot be dispatched b
 for (const outcome of ["wrong-target-exit0", "stderr-exit0"] as const) {
   test(`new stage rejects a fully emitted exit-zero ${outcome} result`, async (t) => {
     const f = await explicitIdentityStageFixture(t);
+    if (typed)
+      return runRetainedFoundryTests(
+        t,
+        originalSuite,
+        `^new stage rejects a fully emitted exit-zero ${outcome} result$`,
+      );
     f.outcome(outcome);
     const result = await runExplicitFoundryIdentityStage(
       f.context,

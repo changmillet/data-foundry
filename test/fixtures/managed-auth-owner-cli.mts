@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { testAuthIdentityReceipt } from "./auth-identity-receipt.ts";
+import { testAuthIdentityReceipt, testAuthIdentityReceiptOutput } from "./auth-identity-receipt.ts";
 
 type ObjectValue = Record<string, unknown>;
 const object = (value: unknown): ObjectValue => {
@@ -44,7 +44,7 @@ export function runManagedAuthOwnerFixture(args: readonly string[]): boolean {
     }
     const userId = option(args, "--expected-user-id");
     process.stdout.write(
-      JSON.stringify(
+      testAuthIdentityReceiptOutput(
         testAuthIdentityReceipt({
           projectRef: option(args, "--expected-project-ref"),
           userId:

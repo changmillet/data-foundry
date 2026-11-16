@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import childProcess from "node:child_process";
 import fs from "node:fs";
+import { EventEmitter } from "node:events";
 import os from "node:os";
 import path from "node:path";
 import { syncBuiltinESMExports } from "node:module";
@@ -27,7 +28,7 @@ import {
   type FoundryIdentityStageInput,
   type SelectedFoundryIdentityStageInput,
 } from "../../scripts/lib/foundry-identity-stage-input.ts";
-import { testAuthIdentityReceipt } from "./auth-identity-receipt.ts";
+import { testAuthIdentityReceipt, testAuthIdentityReceiptOutput } from "./auth-identity-receipt.ts";
 import {
   currentFoundryInteractionState,
   selectFoundryInteractionInput,
@@ -324,6 +325,59 @@ export async function explicitIdentityStageFixture(
     authCalls = 0;
   let beforeSearch: (() => void) | null = null;
   let outcome: "manual" | "error" | "throw" | "wrong-target-exit0" | "stderr-exit0" = "manual";
+  const typed = cli.package.version === "0.4.0";
+  let callbackFailure: unknown;
+  if (typed) {
+    const origin = `https://${account.projectRef}.supabase.co`;
+    const oauthToken = "explicit-stage-test-browser-token";
+    const spawn = childProcess.spawn;
+    const fetch = globalThis.fetch;
+    t.mock.method(childProcess, "spawn", (...args: Parameters<typeof childProcess.spawn>) => {
+      const argv = args[1];
+      const authorization = Array.isArray(argv)
+        ? argv.find(
+            (arg) =>
+              typeof arg === "string" && arg.startsWith(`${origin}/auth/v1/oauth/authorize?`),
+          )
+        : undefined;
+      if (!authorization) return Reflect.apply(spawn, childProcess, args);
+      const params = new URL(authorization).searchParams;
+      const callback = new URL(params.get("redirect_uri")!);
+      assert.equal(callback.hostname, "127.0.0.1");
+      callback.searchParams.set("code", "explicit-stage-test-code");
+      callback.searchParams.set("state", params.get("state")!);
+      const child = Object.assign(new EventEmitter(), { unref() {} });
+      queueMicrotask(() => {
+        child.emit("spawn");
+        void fetch(callback)
+          .then((response) => assert.equal(response.status, 200))
+          .catch((error: unknown) => {
+            callbackFailure = error;
+          });
+      });
+      return child;
+    });
+    t.mock.method(globalThis, "fetch", (url: URL, request: RequestInit) => {
+      assert.equal(url.origin, origin);
+      assert.equal(request.redirect, "error");
+      if (url.pathname === "/auth/v1/oauth/token") {
+        const form = new URLSearchParams(String(request.body));
+        assert.equal(form.get("code"), "explicit-stage-test-code");
+        return Response.json({ access_token: oauthToken, token_type: "Bearer", expires_in: 3600 });
+      }
+      if (url.pathname === "/auth/v1/oauth/userinfo") {
+        assert.equal(new Headers(request.headers).get("Authorization"), `Bearer ${oauthToken}`);
+        return Response.json({ sub: account.userId });
+      }
+      assert.match(url.pathname, /^\/functions\/v1\/(?:flow|process)_hybrid_search$/u);
+      queries++;
+      beforeSearch?.();
+      if (outcome === "throw") throw new Error("transport interrupted");
+      if (outcome === "error") return Response.json({}, { status: 503 });
+      assert.equal(outcome, "manual");
+      return Response.json({ data: [] });
+    });
+  }
   t.mock.method(childProcess, "spawnSync", (...args: Parameters<typeof childProcess.spawnSync>) => {
     const argv = args[1];
     if (
@@ -337,7 +391,7 @@ export async function explicitIdentityStageFixture(
         status: 0,
         signal: null,
         stderr: "",
-        stdout: JSON.stringify(
+        stdout: testAuthIdentityReceiptOutput(
           testAuthIdentityReceipt({
             projectRef: account.projectRef,
             userId: account.userId,
@@ -474,6 +528,7 @@ export async function explicitIdentityStageFixture(
       outcome = next;
     },
     assertPreserved: () => {
+      if (callbackFailure) throw callbackFailure;
       assert.ok(fs.readFileSync(oldIdentity).equals(preserved));
       const current = readFoundryTaskArtifactIndex(context);
       assert.deepEqual(current.slice(0, prefix.length), prefix);
