@@ -1,8 +1,5 @@
 import test from "node:test";
-import {
-  publicIdentityCases,
-  verifyPublicIdentityWorkflow,
-} from "../fixtures/foundry-public-workflow.ts";
+import { runRetainedFoundryTests } from "../helpers/retained-foundry-runtime.mts";
 
-test("public native insert keeps canonical reuse outside the write contract", (t) =>
-  verifyPublicIdentityWorkflow(t, publicIdentityCases[4], true));
+test("CLI 0.1.28 native insert excludes canonical reuse from the original write contract", (t) =>
+  runRetainedFoundryTests(t, ["test/scenarios/foundry-public-native-reuse.test.mts"]));

@@ -1,25 +1,5 @@
 import test from "node:test";
-import {
-  publicIdentityCases,
-  verifyPublicIdentityWorkflow,
-} from "../fixtures/foundry-public-workflow.ts";
+import { runRetainedFoundryTests } from "../helpers/retained-foundry-runtime.mts";
 
-for (const failure of [true, "missing_locator"] as const)
-  test(`public finalization retains its original read-only ${failure === true ? "empty_stdout" : failure} failure without respawn or mutation`, async (t) => {
-    await verifyPublicIdentityWorkflow(
-      t,
-      publicIdentityCases[0],
-      false,
-      "normal",
-      false,
-      false,
-      "insert",
-      false,
-      false,
-      false,
-      null,
-      false,
-      null,
-      failure,
-    );
-  });
+test("CLI 0.1.28 legacy finalization process failures remain indexed across restarts", (t) =>
+  runRetainedFoundryTests(t, ["test/scenarios/foundry-workflow-readonly-failure.test.mts"]));

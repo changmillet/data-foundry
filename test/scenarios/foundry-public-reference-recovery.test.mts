@@ -1,8 +1,5 @@
 import test from "node:test";
-import {
-  publicIdentityCases,
-  verifyPublicIdentityWorkflow,
-} from "../fixtures/foundry-public-workflow.ts";
+import { runRetainedFoundryTests } from "../helpers/retained-foundry-runtime.mts";
 
-test("public reference input renews identity across local stages and preserves no-replay readback", (t) =>
-  verifyPublicIdentityWorkflow(t, publicIdentityCases[2], false, "normal", true, true));
+test("CLI 0.1.28 retains accepted reference input during original identity renewal and no-replay recovery", (t) =>
+  runRetainedFoundryTests(t, ["test/scenarios/foundry-public-reference-recovery.test.mts"]));
