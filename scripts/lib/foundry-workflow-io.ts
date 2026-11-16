@@ -13,7 +13,7 @@ import {
   type QualifiedFoundryRuntime,
 } from "./foundry-runtime-qualification.ts";
 import { resolveInstalledTiangongLcaCliPackage } from "./foundry-runtime-utils.ts";
-import { createFoundryIsolatedChildEnvironment } from "./foundry-runtime-environment.ts";
+import { withFoundryIsolatedLocalCliEnvironment } from "./foundry-runtime-environment.ts";
 import {
   bindWorkflowChildExecution,
   workflowChildFailure,
@@ -154,14 +154,16 @@ export function runWorkflowLocalCliResult(
   assertQualifiedFoundryRuntime(context, qualified);
   const cli = resolveInstalledTiangongLcaCliPackage();
   const execution = bindWorkflowChildExecution(context, qualified, cli.binPath, argv);
-  const child = spawnSync(process.execPath, [cli.binPath, ...argv], {
-    cwd: context.workspaceRoot,
-    env: createFoundryIsolatedChildEnvironment({ tempRoot: temporary }),
-    encoding: "utf8",
-    shell: false,
-    timeout: 120_000,
-    maxBuffer: 8 * 1024 * 1024,
-  });
+  const child = withFoundryIsolatedLocalCliEnvironment(temporary, (env) =>
+    spawnSync(process.execPath, [cli.binPath, ...argv], {
+      cwd: context.workspaceRoot,
+      env,
+      encoding: "utf8",
+      shell: false,
+      timeout: 120_000,
+      maxBuffer: 8 * 1024 * 1024,
+    }),
+  );
   const kind = child.error
     ? "spawn_error"
     : child.signal

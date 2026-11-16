@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 
@@ -102,4 +103,25 @@ export function createFoundryIsolatedChildEnvironment({
     }
   }
   return environment;
+}
+
+/** Node 24 uses a fixed PATH_MAX buffer for os.homedir() on Windows. */
+export function withFoundryIsolatedLocalCliEnvironment<T>(
+  tempRoot: string,
+  run: (environment: NodeJS.ProcessEnv) => T,
+): T {
+  const fitsWindowsHome = (root: string) => Buffer.byteLength(path.join(root, "home")) < 260;
+  if (process.platform !== "win32" || fitsWindowsHome(tempRoot))
+    return run(createFoundryIsolatedChildEnvironment({ tempRoot }));
+
+  const base = os.tmpdir();
+  const prefix = path.join(base, "foundry-cli-");
+  if (!fitsWindowsHome(`${prefix}XXXXXX`))
+    throw new Error("Windows temporary directory is too long for an isolated CLI user profile.");
+  const shortRoot = fs.mkdtempSync(prefix);
+  try {
+    return run(createFoundryIsolatedChildEnvironment({ tempRoot: shortRoot }));
+  } finally {
+    fs.rmSync(shortRoot, { recursive: true, force: true });
+  }
 }

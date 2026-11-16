@@ -156,11 +156,7 @@ export async function verifyManagedProcessPreparation(
         "--json",
       ]);
       assert.equal(result.task_id, taskId);
-      if (
-        result.status === "failed" &&
-        result.blockers.some((item) => item.code === "workflow_child_failed")
-      )
-        break;
+      if (result.blockers.some((item) => item.code === "workflow_child_failed")) break;
       const artifact = result.artifacts.findLast(
         (item) => item.kind === "file" && path.basename(item.path) === "foundry-assessment.json",
       );
@@ -183,8 +179,8 @@ export async function verifyManagedProcessPreparation(
       const value = object(JSON.parse(fs.readFileSync(failure.path, "utf8")));
       const child = object(value.failure);
       return {
-        argv: child.argv,
-        exit: child.exit_code,
+        invocation: child.invocation,
+        process: child.child,
         stderr: child.stderr,
         stdout: child.stdout,
       };
