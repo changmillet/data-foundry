@@ -65,7 +65,7 @@ test("CI aggregation rejects stale, skipped, foreign and mixed execution evidenc
   assert.throws(() => verifyFoundryTestShards(input, source, plan), /finish/);
 });
 
-test("CI aggregation requires all22 host-specific receipts and rejects cross-platform substitution", () => {
+test("CI aggregation requires all host-specific receipts and rejects cross-platform substitution", () => {
   const plan = loadFoundryTestPlan(path.resolve(import.meta.dirname, "../.."));
   const rows = foundryCiPlatforms.flatMap((platform) =>
     foundryPlatformTestShards(plan, platform).map((shard) => ({
@@ -89,7 +89,7 @@ test("CI aggregation requires all22 host-specific receipts and rejects cross-pla
       },
     })),
   );
-  assert.equal(rows.length, 22);
+  assert.equal(rows.length, 26);
   assert.equal(rows.at(-1)?.platform, "win32-x64");
   assert.equal(rows.at(-1)?.index, 10);
   verifyFoundryTestShards(rows, source, plan);
