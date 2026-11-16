@@ -19,7 +19,7 @@ import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
 import { publishLegacyIdentityFailure } from "./legacy-identity-producer.ts";
 import { validateIdentityPreflightRecoveryEvidence } from "../../scripts/lib/identity-preflight-recovery-proof.ts";
 import { readRows } from "../../scripts/lib/import-curation/internal/runtime-io.ts";
-import { installSupportEdgeFixture } from "./foundry-edge-support.ts";
+import { installEdgeDraftFixture } from "./foundry-edge-support.ts";
 import { unwrapDatasetPayload } from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
 import {
   supportUnitGroupRow,
@@ -2403,14 +2403,16 @@ export async function verifyDependentScopes(t: TestContext, support: boolean) {
     readbacks: string[] = [],
     remote = new Set<string>(support ? supportFixtureReferences.map((item) => item.id) : []);
   const edge =
-    support && resolveInstalledTiangongLcaCliPackage().packageVersion === "0.4.0"
-      ? await installSupportEdgeFixture(t, {
+    resolveInstalledTiangongLcaCliPackage().packageVersion === "0.4.0"
+      ? await installEdgeDraftFixture(t, {
           project: account.project_ref,
           user: account.user_id,
           writes,
           readbacks,
           firstId: contactId,
           secondId: sourceId,
+          firstType,
+          secondType,
         })
       : null;
   const facade = edge
@@ -2481,7 +2483,7 @@ export async function verifyDependentScopes(t: TestContext, support: boolean) {
       if (edge)
         assert.ok(
           !argv.includes("save-draft") && !argv.includes("verify-remote"),
-          "the CLI 0.4 support path never dispatches removed CLI operations",
+          "CLI 0.4 never dispatches removed CLI operations",
         );
       if (!argv.includes("save-draft") && !argv.includes("verify-remote"))
         return Reflect.apply(originalSpawn, childProcess, args);

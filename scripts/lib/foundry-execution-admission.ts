@@ -386,7 +386,7 @@ async function verifyAdmission(
   if (isEdgeSupportPlan(parsed)) {
     if (
       qualification.cli.expectation.package_version !== "0.4.0" ||
-      (parsed.dataset_type !== "process" &&
+      ((parsed.dataset_type === "unitgroup" || parsed.dataset_type === "flowproperty") &&
         (!capsule.required_actions.includes("canonical_support_local_mint") ||
           !capsule.required_actions.includes(`${parsed.dataset_type}_write`))) ||
       !context.accountIntent

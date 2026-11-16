@@ -6,6 +6,7 @@ import { createServer } from "node:net";
 import type { TestContext } from "node:test";
 import { datasetIdentity } from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
 import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
+import { bundleRowTypes } from "../../scripts/lib/bundle-row-types.ts";
 import { supportFixtureReferences } from "./support-row-builders.ts";
 
 type RemoteRow = {
@@ -24,7 +25,7 @@ type Identity = {
   expectedJsonSha256?: string;
 };
 
-export async function installSupportEdgeFixture(
+export async function installEdgeDraftFixture(
   t: TestContext,
   options: {
     project: string;
@@ -33,6 +34,8 @@ export async function installSupportEdgeFixture(
     readbacks: string[];
     firstId: string;
     secondId: string;
+    firstType: "unitgroup" | "contact";
+    secondType: "flowproperty" | "source";
   },
 ) {
   const socket = createServer();
@@ -45,17 +48,19 @@ export async function installSupportEdgeFixture(
   const token = "test-only-browser-operator";
   const code = "test-only-authorization-code";
   const references = new Map(
-    supportFixtureReferences.map(({ table, id, version }) => [
-      id,
-      {
-        table,
+    (options.firstType === "unitgroup" ? supportFixtureReferences : []).map(
+      ({ table, id, version }) => [
         id,
-        version,
-        state: 100,
-        owner: null,
-        content: { fixture: { table, id, version } },
-      } satisfies RemoteRow,
-    ]),
+        {
+          table,
+          id,
+          version,
+          state: 100,
+          owner: null,
+          content: { fixture: { table, id, version } },
+        } satisfies RemoteRow,
+      ],
+    ),
   );
   const created = new Map<string, RemoteRow>();
   const backingFetch = globalThis.fetch;
@@ -127,17 +132,20 @@ export async function installSupportEdgeFixture(
         id: string;
         jsonOrdered: unknown;
       };
-      const type = table === "unitgroups" ? "unitgroup" : "flowproperty";
-      assert.equal(id, type === "unitgroup" ? options.firstId : options.secondId);
+      const { firstType, secondType } = options;
+      const first = table === bundleRowTypes[firstType].plural;
+      const type = first ? firstType : secondType;
+      assert.equal(table, bundleRowTypes[type].plural);
+      assert.equal(id, first ? options.firstId : options.secondId);
       assert.ok(!created.has(id), "an already-dispatched Edge create cannot be replayed");
-      if (type === "flowproperty") {
-        assert.ok(options.readbacks.includes("unitgroup"));
+      if (!first) {
+        assert.ok(options.readbacks.includes(firstType));
         assert.ok(created.has(options.firstId));
       }
       const version = datasetIdentity(jsonOrdered, 0, type).version;
       created.set(id, { table, id, version, owner: options.user, state: 0, content: jsonOrdered });
       options.writes.push(type);
-      if (type === "unitgroup" && !disconnected) {
+      if (first && !disconnected) {
         disconnected = true;
         return Promise.reject(new TypeError("fixture network loss after commit"));
       }
@@ -190,7 +198,7 @@ export async function installSupportEdgeFixture(
     });
     const failed = checks.some(({ status }) => !["ok", "candidate_root"].includes(status));
     if (body.rootPolicy === "existing" && !failed)
-      options.readbacks.push(root.table === "unitgroups" ? "unitgroup" : "flowproperty");
+      options.readbacks.push(root.id === options.firstId ? options.firstType : options.secondType);
     return Promise.resolve(
       Response.json(
         {

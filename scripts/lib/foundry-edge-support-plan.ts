@@ -24,9 +24,10 @@ const referenceTables = [
   "lciamethods",
 ];
 
-export type EdgeDraftType = "unitgroup" | "flowproperty" | "process";
+const edgeDraftTypes = ["unitgroup", "flowproperty", "process", "contact", "source"] as const;
+export type EdgeDraftType = (typeof edgeDraftTypes)[number];
 export const isFoundryEdgeDraftType = (value: unknown): value is EdgeDraftType =>
-  value === "unitgroup" || value === "flowproperty" || value === "process";
+  edgeDraftTypes.some((type) => type === value);
 export type EdgeSupportTarget = { project_ref: string; user_id: string };
 type ExactKey = { table: string; id: string; version: string };
 export type EdgeSupportRoot = ExactKey & {
