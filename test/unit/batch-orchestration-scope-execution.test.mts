@@ -9,6 +9,7 @@ import { createBafuBatchImportRunCommands } from "../../scripts/commands/bafu-ba
 import { createBatchScopePreparationService } from "../../scripts/lib/batch-orchestration/scope-preparation.ts";
 import { createBafuScopeResumeContract } from "../../scripts/lib/batch-orchestration/scope-resume-contract.ts";
 import { createBafuScopeSourceContent } from "../../scripts/lib/batch-orchestration/scope-source-content.ts";
+import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
 import {
   readJson,
   readJsonLines,
@@ -475,7 +476,7 @@ test("verified resume keeps exact report and ledger bytes across the single-scop
         applyResolutionRewrites: false,
         familySignatures: false,
         mintUnmatchedFpUgSupport: false,
-        cliPackage: "@tiangong-lca/cli@0.1.28",
+        cliPackage: resolveInstalledTiangongLcaCliPackage().packageSpec,
         sourceContent: createBafuScopeSourceContent({
           scope,
           processBundlesDir,

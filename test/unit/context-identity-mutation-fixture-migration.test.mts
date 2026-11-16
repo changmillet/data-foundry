@@ -86,6 +86,7 @@ test("full-context fixture preserves artifact order, bytes, hashes, and isolated
 test("identity receipt bytes and native missing-file errors remain exact", () => {
   const receipt = identity.testAuthIdentityReceipt({
     capturedAtUtc: "2026-08-25T00:00:00.000Z",
+    packageVersion: "0.1.28",
   });
   assert.equal(receipt.cli.package_version, "0.1.28");
   const receiptText = JSON.stringify(receipt);
