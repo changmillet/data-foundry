@@ -986,7 +986,10 @@ export function createPostAuthoringFinalizeCommands({
     };
   }
 
-  function runDatasetPostAuthoringFinalize(options: FinalizeOptions): FinalizeStage {
+  function* finalizeStages(
+    options: FinalizeOptions,
+    asynchronousIdentity: boolean,
+  ): Generator<FinalizeIdentityRequest, FinalizeStage, FinalizeStage> {
     const finalizeStartedAtUtc = nowIso();
     const finalizeStartedAtMs = Date.now();
     const finalizeTimings: FinalizeTiming[] = [];
@@ -1473,16 +1476,28 @@ export function createPostAuthoringFinalizeCommands({
         finalizeSourceContactSupport,
       );
     }
-    const identityPreflightRunStage = timeStage("identity_preflight_run", () =>
-      runFinalizeIdentityPreflightStage({
-        rowsFile: cleanedRowsFile,
-        outDir,
-        options: {
-          ...options,
-          type: datasetType,
-        },
-      }),
-    );
+    const identityRequest = {
+      rowsFile: cleanedRowsFile,
+      outDir,
+      options: { ...options, type: datasetType },
+    };
+    let identityPreflightRunStage: FinalizeStage;
+    if (asynchronousIdentity && booleanOption(options.runIdentityPreflight)) {
+      const started_at_utc = nowIso();
+      const startedAt = Date.now();
+      identityPreflightRunStage = yield identityRequest;
+      finalizeTimings.push({
+        stage: "identity_preflight_run",
+        status: stageStatus(identityPreflightRunStage),
+        started_at_utc,
+        finished_at_utc: nowIso(),
+        duration_ms: Date.now() - startedAt,
+      });
+    } else {
+      identityPreflightRunStage = timeStage("identity_preflight_run", () =>
+        runFinalizeIdentityPreflightStage(identityRequest),
+      );
+    }
     const curationQueueStage = timeStage("curation_queue", () =>
       runFinalizeAutoCurationQueue({
         datasetType,
@@ -2332,5 +2347,13 @@ export function createPostAuthoringFinalizeCommands({
     };
   }
 
-  return { runDatasetPostAuthoringFinalize };
+  type FinalizeIdentityRequest = { rowsFile: string; outDir: string; options: FinalizeOptions };
+
+  function runDatasetPostAuthoringFinalize(options: FinalizeOptions): FinalizeStage {
+    const result = finalizeStages(options, false).next();
+    if (!result.done) throw new Error("Unexpected asynchronous identity stage.");
+    return result.value;
+  }
+
+  return { runDatasetPostAuthoringFinalize, finalizeStages };
 }

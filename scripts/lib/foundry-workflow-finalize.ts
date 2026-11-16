@@ -22,6 +22,8 @@ import {
   copyFoundryIsolatedExecutable,
 } from "./foundry-runtime-environment.ts";
 import { WorkflowChildFailure } from "./foundry-workflow-child-failure.ts";
+import { createFoundryIdentityOwners } from "./foundry-identity-owners.ts";
+import { refreshFoundryFinalizeIdentity } from "./foundry-finalize-edge-identity.ts";
 import { createFoundryFinalizeOwners } from "./foundry-finalize-owners.ts";
 import {
   currentWorkflowState,
@@ -244,7 +246,8 @@ export async function finalizeFoundryWorkflow(
         );
       const needsIdentity = ["flow", "process"].includes(set.type);
       let identityIndex = state.identity?.value.index;
-      if (needsIdentity && typeof identityIndex === "string") {
+      const typed = qualified.cli.expectation.package_version === "0.4.0";
+      if (!typed && needsIdentity && typeof identityIndex === "string") {
         const prepared = workflowObject(
           owners.preflight.runDatasetIdentityPreflightRequestsBuild({
             type: set.type,
@@ -274,59 +277,84 @@ export async function finalizeFoundryWorkflow(
           );
         identityIndex = path.resolve(context.assetRoot, mergedFile);
       }
-      const result = workflowObject(
-        owners.invoke(() =>
-          owners.finalize.runDatasetPostAuthoringFinalize({
-            type: ["unitgroup", "flowproperty"].includes(set.type) ? "support" : set.type,
-            rowsFile: set.file,
-            ...referenceOptions.get(set.type),
-            ...(set.type === "process" && qualityReview
-              ? { qualityReview, qaReferenceRows: [...qualityReview.qaReferenceRows] }
-              : {}),
-            outDir: path.join(output, set.type),
-            profile,
-            ...(approval?.datasetType === set.type && authorization
-              ? {
-                  taskAuthorization: authorization,
-                  taskAuthorizationBinding: authorization.binding,
-                  mintUnmatchedFpUgSupport:
-                    ["unitgroup", "flowproperty"].includes(set.type) &&
-                    authorization.allowed_actions.includes("canonical_support_local_mint"),
-                }
-              : {}),
-            schemaFile: contract.schema,
-            yamlFile: contract.methodology,
-            rulesetFile: contract.ruleset,
-            targetUserId: context.accountIntent?.userId,
-            expectedProjectRef: context.accountIntent?.projectRef,
-            expectedUserId: context.accountIntent?.userId,
-            requireIdentityPreflight: needsIdentity,
-            runIdentityPreflight: needsIdentity && Boolean(state.identity) && Boolean(receiptFile),
-            identityPreflightIndex: identityIndex,
-            identityPreflightAuthReceipt: receiptFile,
-            identityPreflightConcurrency: 1,
-            identityPreflightMaxAttempts: 1,
-            identityDecisionApplyReport: rows.value.identity_reports,
-            classificationDecisionApplyReport: reportFor(
-              "classification-decisions-apply-report.json",
-              set.type,
-            ),
-            locationDecisionApplyReport: reportFor(
-              "location-decisions-apply-report.json",
-              set.type,
-            ),
-            patchCollectReport: reportFor("authoring-patch-collect-report.json", set.type),
-            patchApplyReport: reportFor("dataset-patch-apply-report.json", set.type),
-            processes: rows.value.sets.find((item) => item.type === "process")?.file,
-            flows:
-              executionProgress?.scopes.get("flow")?.final_rows ??
-              rows.value.sets.find((item) => item.type === "flow")?.file,
-            verifyRemote: Boolean(context.accountIntent),
-            remoteStateCode: "0",
-            remoteRootPolicy: "candidate",
-          }),
+      const finalizeOptions = {
+        type: ["unitgroup", "flowproperty"].includes(set.type) ? "support" : set.type,
+        rowsFile: set.file,
+        ...referenceOptions.get(set.type),
+        ...(set.type === "process" && qualityReview
+          ? { qualityReview, qaReferenceRows: [...qualityReview.qaReferenceRows] }
+          : {}),
+        outDir: path.join(output, set.type),
+        profile,
+        ...(approval?.datasetType === set.type && authorization
+          ? {
+              taskAuthorization: authorization,
+              taskAuthorizationBinding: authorization.binding,
+              mintUnmatchedFpUgSupport:
+                ["unitgroup", "flowproperty"].includes(set.type) &&
+                authorization.allowed_actions.includes("canonical_support_local_mint"),
+            }
+          : {}),
+        schemaFile: contract.schema,
+        yamlFile: contract.methodology,
+        rulesetFile: contract.ruleset,
+        targetUserId: context.accountIntent?.userId,
+        expectedProjectRef: context.accountIntent?.projectRef,
+        expectedUserId: context.accountIntent?.userId,
+        requireIdentityPreflight: needsIdentity,
+        runIdentityPreflight: needsIdentity && Boolean(state.identity) && Boolean(receiptFile),
+        identityPreflightIndex: identityIndex,
+        identityPreflightAuthReceipt: receiptFile,
+        identityPreflightConcurrency: 1,
+        identityPreflightMaxAttempts: 1,
+        identityDecisionApplyReport: rows.value.identity_reports,
+        classificationDecisionApplyReport: reportFor(
+          "classification-decisions-apply-report.json",
+          set.type,
         ),
-      );
+        locationDecisionApplyReport: reportFor("location-decisions-apply-report.json", set.type),
+        patchCollectReport: reportFor("authoring-patch-collect-report.json", set.type),
+        patchApplyReport: reportFor("dataset-patch-apply-report.json", set.type),
+        processes: rows.value.sets.find((item) => item.type === "process")?.file,
+        flows:
+          executionProgress?.scopes.get("flow")?.final_rows ??
+          rows.value.sets.find((item) => item.type === "flow")?.file,
+        verifyRemote: Boolean(context.accountIntent),
+        remoteStateCode: "0",
+        remoteRootPolicy: "candidate",
+      };
+      const stages = owners.finalize.finalizeStages(finalizeOptions, typed);
+      let finished = owners.invoke(() => stages.next());
+      if (!finished.done) {
+        if ((set.type !== "flow" && set.type !== "process") || typeof identityIndex !== "string")
+          throw new FoundryContextError(
+            "finalize_identity_inputs_invalid",
+            "Finalization requires a selected Flow or Process identity index.",
+          );
+        const identityOwner = createFoundryIdentityOwners(context, qualified, set.type, {
+          environment,
+          cwd: temporary,
+        });
+        const refreshed = await refreshFoundryFinalizeIdentity(
+          context,
+          qualified,
+          authentication,
+          identityOwner,
+          {
+            type: set.type,
+            rowsFile: finished.value.rowsFile,
+            outDir: finished.value.outDir,
+            index: identityIndex,
+          },
+        );
+        finished = owners.invoke(() => stages.next(refreshed));
+      }
+      if (!finished.done)
+        throw new FoundryContextError(
+          "finalize_identity_inputs_invalid",
+          "Unexpected additional identity stage.",
+        );
+      const result = workflowObject(finished.value);
       const files = workflowObject(result.files);
       sets.push({
         type: set.type,
