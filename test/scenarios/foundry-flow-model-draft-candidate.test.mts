@@ -22,9 +22,14 @@ import { testAuthIdentityReceipt } from "../fixtures/auth-identity-receipt.ts";
 type Json = Record<string, unknown>;
 const object = (value: unknown) => value as Json;
 
-async function verifyDraftCreation(t: TestContext, type: "flow" | "lifecyclemodel") {
+async function verifyDraftCreation(
+  t: TestContext,
+  type: "flow" | "lifecyclemodel",
+  mode: "create" | "reuse" | "current-rows" = "create",
+) {
   if (resolveInstalledTiangongLcaCliPackage().packageVersion !== "0.4.0")
     return t.skip("requires the exact published CLI candidate");
+  const reuse = mode === "reuse";
   t.mock.timers.enable({ apis: ["Date"], now: Date.now() });
   const { root, workspace, facadeOptions } = workflowFixture(t);
   const origin = `https://${account.project_ref}.supabase.co`;
@@ -141,12 +146,15 @@ async function verifyDraftCreation(t: TestContext, type: "flow" | "lifecyclemode
     syncBuiltinESMExports();
   });
   const reads: string[] = [];
+  const referenceOutcomes = ["missing", "duplicate", "outdated", "wrong-target", "verified"];
   t.mock.method(globalThis, "fetch", async (url: URL, options: RequestInit) => {
     assert.equal(url.origin, origin);
     const request = object(JSON.parse(String(options.body)));
     if (url.pathname.endsWith("/flow_hybrid_search")) {
       assert.equal(type, "flow");
-      return Response.json({ data: [] });
+      return Response.json({
+        data: reuse ? [{ id: head.id, version: head.version, json: existingFlow }] : [],
+      });
     }
     if (url.pathname.endsWith("/app_dataset_create")) {
       assert.equal(type, "flow");
@@ -158,6 +166,51 @@ async function verifyDraftCreation(t: TestContext, type: "flow" | "lifecyclemode
     }
     assert.equal(url.pathname, "/functions/v1/app_dataset_verify_remote");
     reads.push(String(request.rootPolicy));
+    if (reuse) {
+      assert.equal(request.rootPolicy, "existing");
+      assert.deepEqual(request.references, [
+        {
+          table: "flows",
+          id: head.id,
+          version: head.version,
+          role: "reference",
+          requirePayload: true,
+        },
+      ]);
+      const outcome = referenceOutcomes.shift();
+      assert.ok(outcome);
+      const ok = outcome !== "missing" && outcome !== "outdated";
+      const check = {
+        index: 0,
+        table: "flows",
+        id: outcome === "wrong-target" ? "wrong-flow" : head.id,
+        version: head.version,
+        role: "reference",
+        status:
+          outcome === "missing"
+            ? "missing_dataset"
+            : outcome === "outdated"
+              ? "version_outdated"
+              : "ok",
+        exact_version: outcome === "missing" ? null : head.version,
+        latest_version: outcome === "outdated" ? nextVersion : head.version,
+        payload_present: outcome !== "missing",
+      };
+      return Response.json(
+        {
+          ok,
+          command: "dataset_verify_remote",
+          data: {
+            status: ok ? "passed_remote_verification" : "blocked_remote_verification",
+            root_policy: "existing",
+            counts: { references: 1, blockers: ok ? 0 : 1 },
+            blockers: ok ? [] : [{ code: check.status }],
+            checks: outcome === "duplicate" ? [check, check] : [check],
+          },
+        },
+        { status: ok ? 200 : 409 },
+      );
+    }
     if (writes && disconnected) throw new Error("read connection unavailable");
     const checks = (request.references as Json[]).map((reference, index) => {
       const root = reference.role === "root";
@@ -216,9 +269,18 @@ async function verifyDraftCreation(t: TestContext, type: "flow" | "lifecyclemode
     const template = String(object(read(String(work.task)).files).template);
     const decisions = readRows(path.resolve(String(assessment.owner_base), template)) as Json[];
     for (const row of decisions) {
-      row.identity_decision = "create_new";
-      row.canonical = null;
-      row.basis = "Approve the next exact Flow version with independently reviewed content.";
+      row.identity_decision = reuse ? "reuse_existing_reference" : "create_new";
+      row.canonical = reuse
+        ? {
+            table: "flows",
+            ref_object_id: head.id,
+            version: head.version,
+            short_description: [{ "@xml:lang": "en", "#text": "Reviewed existing product Flow" }],
+          }
+        : null;
+      row.basis = reuse
+        ? "Reuse the independently reviewed exact Flow version."
+        : "Approve the next exact Flow version with independently reviewed content.";
       row.used_context_kinds = ["schema", "methodology_yaml", "ruleset", "classification_schema"];
       row.evidence = { ...object(row.evidence), quote_or_trace: "Synthetic product Flow version." };
     }
@@ -243,6 +305,26 @@ async function verifyDraftCreation(t: TestContext, type: "flow" | "lifecyclemode
     });
     assert.equal(current.status, "ready", JSON.stringify(current.blockers));
     decided = true;
+  }
+  if (reuse) {
+    for (let step = 0; step < 12 && current.status !== "completed"; step++) {
+      const previousReads = reads.length;
+      current = await facade.resume(invocation);
+      if (reads.length > previousReads && referenceOutcomes.length)
+        assert.equal(current.status, "needs_input", JSON.stringify(current.blockers));
+      assert.equal(writes, 0);
+      assert.equal(current.permissions.state, "not_required");
+    }
+    assert.equal(current.status, "completed", JSON.stringify(current.blockers));
+    assert.equal(referenceOutcomes.length, 0);
+    const proof = find("foundry-reference-verification.json");
+    assert.ok(proof?.kind === "file");
+    assert.equal(read(proof.path).status, "verified");
+    assert.equal((await facade.resume(invocation)).status, "completed");
+    fs.appendFileSync(String(object(read(proof.path).checks).path), "{}\n");
+    assert.equal((await facade.resume(invocation)).status, "blocked");
+    assert.equal(reads.length, 5, "status and repeat retain the first verified exact reference");
+    return;
   }
   const finalize = find("foundry-finalize.json");
   const taskRoot = path.join(workspace, ".foundry", "workspaces", invocation.taskId);
@@ -277,9 +359,11 @@ async function verifyDraftCreation(t: TestContext, type: "flow" | "lifecyclemode
     "ready_for_remote_write",
     JSON.stringify(read(String(scope.report)).blockers),
   );
+  const approvalKind = mode === "current-rows" ? "current_rows" : "final_rows";
   const input = (scope.authorization_inputs as Json[]).find(
-    (entry) => entry.input_kind === "final_rows",
-  )!;
+    (entry) => entry.input_kind === approvalKind,
+  );
+  assert.ok(input);
   const evidence = path.join(root, "operator-approval.txt");
   fs.writeFileSync(evidence, "Approve exactly this synthetic dataset draft.");
   const sha256 = digestFile(evidence);
@@ -297,7 +381,7 @@ async function verifyDraftCreation(t: TestContext, type: "flow" | "lifecyclemode
   });
   const expected = unwrapDatasetPayload(readRows(String(scope.final_rows))[0], type);
   const contract =
-    type === "flow"
+    type === "flow" && mode === "create"
       ? write("contract.json", {
           schema_version: "dataset-save-draft-execution-contract.v1",
           execution_id: "explicit-flow-insert",
@@ -324,7 +408,7 @@ async function verifyDraftCreation(t: TestContext, type: "flow" | "lifecyclemode
     actor_id: actorId,
     finalization_sha256: finalize.sha256,
     dataset_type: type,
-    input_kind: "final_rows",
+    input_kind: approvalKind,
     input_sha256: input.sha256,
     expected_previous_sha256: null,
     ...(contract ? { execution_contract: { file: contract, sha256: digestFile(contract) } } : {}),
@@ -333,6 +417,10 @@ async function verifyDraftCreation(t: TestContext, type: "flow" | "lifecyclemode
   });
   current = await facade.resume({ ...invocation, authorizationInputFile: approval });
   assert.equal(current.permissions.state, "granted", JSON.stringify(current.blockers));
+  if (mode === "current-rows") {
+    assert.equal(current.blockers[0]?.code, "authorized_refinalization_pending");
+    assert.equal(writes, 0);
+  }
   for (let i = 0; i < 6; i++) {
     if (writes) break;
     current = await facade.resume(invocation);
@@ -359,3 +447,9 @@ test("CLI 0.4 managed Model keeps its original typed create attempt and reads ba
 
 test("CLI 0.4 managed Flow creates the approved next version and reads back without resending", (t) =>
   verifyDraftCreation(t, "flow"));
+
+test("CLI 0.4 reuses an independently verified Flow reference without requesting write authority", (t) =>
+  verifyDraftCreation(t, "flow", "reuse"));
+
+test("CLI 0.4 re-finalizes approved current Flow rows before any write", (t) =>
+  verifyDraftCreation(t, "flow", "current-rows"));
