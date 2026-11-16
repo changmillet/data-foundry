@@ -156,6 +156,11 @@ export async function verifyManagedProcessPreparation(
         "--json",
       ]);
       assert.equal(result.task_id, taskId);
+      if (
+        result.status === "failed" &&
+        result.blockers.some((item) => item.code === "workflow_child_failed")
+      )
+        break;
       const artifact = result.artifacts.findLast(
         (item) => item.kind === "file" && path.basename(item.path) === "foundry-assessment.json",
       );
@@ -170,7 +175,24 @@ export async function verifyManagedProcessPreparation(
         }
       }
     }
-    assert.ok(evidence, JSON.stringify(result.blockers));
+    const failure = result.artifacts.findLast(
+      (item) => item.role === "workflow-child-failure.json",
+    );
+    const readFailure = () => {
+      if (failure?.kind !== "file") return null;
+      const value = object(JSON.parse(fs.readFileSync(failure.path, "utf8")));
+      const child = object(value.failure);
+      return {
+        argv: child.argv,
+        exit: child.exit_code,
+        stderr: child.stderr,
+        stdout: child.stdout,
+      };
+    };
+    assert.ok(
+      evidence,
+      JSON.stringify({ blockers: result.blockers, child: evidence ? null : readFailure() }),
+    );
     const set = (evidence.value.sets as Json[]).find((item) => item.type === "process");
     assert.ok(set);
     const reportBytes = fs.readFileSync(String(set.cli_validation_report));
