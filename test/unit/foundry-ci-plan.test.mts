@@ -82,6 +82,7 @@ test("measured deadline envelope rejects eight/nine shards and keeps all files w
     fs.readFileSync(path.join(root, "specs/ci/test-durations.json"), "utf8"),
   ) as {
     weights_seconds: Record<string, number>;
+    estimated_weights: Record<string, number>;
     deadline_refresh: {
       transferred_files: number;
       retained_prior_weights: Array<{ file: string; seconds: number; reason: string }>;
@@ -95,6 +96,14 @@ test("measured deadline envelope rejects eight/nine shards and keeps all files w
     assert.deepEqual(old.shards.flatMap((shard) => shard.files).sort(), inventory);
   }
   const windows = foundryPlatformTestShards(plan, "win32-x64");
+  assert.deepEqual(
+    windows,
+    planFoundryTestShards(
+      inventory,
+      { ...profile.weights_seconds, ...profile.estimated_weights },
+      10,
+    ).shards,
+  );
   assert.equal(windows.length, 10);
   assert.ok(windows.every((shard) => fitsWindowsBudget(shard.estimatedWallSeconds)));
   assert.deepEqual(windows.flatMap((shard) => shard.files).sort(), inventory);

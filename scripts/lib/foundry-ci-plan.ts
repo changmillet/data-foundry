@@ -133,8 +133,11 @@ export function loadFoundryTestPlan(root: string, count = 4): FoundryTestPlan {
     Array.isArray(input.weights_seconds)
   )
     throw new Error("CI duration input has an unsupported schema.");
+  const estimates = input.estimated_weights ?? {};
+  if (typeof estimates !== "object" || Array.isArray(estimates))
+    throw new Error("CI duration estimates must be a file-to-seconds object.");
   const durations: Record<string, number> = {};
-  for (const [file, seconds] of Object.entries(input.weights_seconds)) {
+  for (const [file, seconds] of Object.entries({ ...input.weights_seconds, ...estimates })) {
     if (typeof seconds !== "number") throw new Error(`Invalid CI test duration: ${file}`);
     durations[file] = seconds;
   }
