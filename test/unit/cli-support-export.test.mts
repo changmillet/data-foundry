@@ -34,6 +34,7 @@ function materialize(out: string) {
   const identity = testAuthIdentityReceipt({
     projectRef: project,
     userId: user,
+    packageVersion: cli.package_version,
     capturedAtUtc: new Date(now).toISOString(),
   });
   fs.writeFileSync(path.join(out, "identity-receipt.json"), JSON.stringify(identity));
