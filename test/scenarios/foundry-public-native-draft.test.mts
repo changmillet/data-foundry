@@ -1,39 +1,5 @@
 import test from "node:test";
-import {
-  publicIdentityCases,
-  verifyPublicIdentityWorkflow,
-} from "../fixtures/foundry-public-workflow.ts";
+import { runRetainedFoundryTests } from "../helpers/retained-foundry-runtime.mts";
 
-test("public native draft repair accepts a bound save_draft contract without extra dispatch", (t) =>
-  verifyPublicIdentityWorkflow(
-    t,
-    publicIdentityCases[0],
-    true,
-    "normal",
-    false,
-    false,
-    "save_draft",
-  ));
-
-test("public native draft repair lost response recovers by readback without replay", (t) =>
-  verifyPublicIdentityWorkflow(
-    t,
-    publicIdentityCases[0],
-    true,
-    "lost",
-    false,
-    false,
-    "save_draft",
-  ));
-
-test("public native draft repair rejects an impossible operation/before binding before dispatch", (t) =>
-  verifyPublicIdentityWorkflow(
-    t,
-    publicIdentityCases[0],
-    true,
-    "normal",
-    false,
-    false,
-    "save_draft",
-    true,
-  ));
+test("CLI 0.1.28 original native save-draft binds its attempt and recovers only by readback", (t) =>
+  runRetainedFoundryTests(t, ["test/scenarios/foundry-public-native-draft.test.mts"]));
