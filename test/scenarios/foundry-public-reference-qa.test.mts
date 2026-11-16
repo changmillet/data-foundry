@@ -437,6 +437,7 @@ test("malformed Process reference metadata keeps each isolated Task failed witho
     await t.test(variant.label, async (child) => {
       const {
         facade,
+        runtimeSelection,
         invocation,
         references,
         mass,
@@ -483,7 +484,12 @@ test("malformed Process reference metadata keeps each isolated Task failed witho
           const argv = args[1];
           const queue =
             Array.isArray(argv) && argv.includes("curation-queue") && argv.includes("build");
-          if (Array.isArray(argv) && (queue || (argv[1] === "qa" && argv[2] === "process")))
+          if (
+            Array.isArray(argv) &&
+            (queue ||
+              (argv[1] === "qa" && argv[2] === "process") ||
+              argv.slice(1, 4).join(" ") === "dataset process validate")
+          )
             localCalls.push([...argv]);
           const result = Reflect.apply(original, childProcess, args);
           if (queue) queueReports.push(JSON.parse(String(result.stdout)));
@@ -501,6 +507,28 @@ test("malformed Process reference metadata keeps each isolated Task failed witho
       );
       assert.ok(selection?.kind === "file", JSON.stringify(selected.blockers));
       const failed = await facade.resume(invocation);
+      if (runtimeSelection.cliExpectation.package_version === "0.4.0") {
+        if (variant.wrapped) {
+          assert.equal(failed.status, "failed", JSON.stringify(failed.blockers));
+          assert.equal(failed.blockers[0]?.code, "workflow_qa_failed");
+        } else {
+          assert.equal(failed.status, "needs_input", JSON.stringify(failed.blockers));
+          assert.equal(failed.blockers[0]?.code, "curation_queue_blocked");
+          assert.match(failed.blockers[0].message, /2 unresolved Flow reference occurrences/u);
+        }
+        assert.equal(failed.permissions.state, "not_required");
+        assert.deepEqual(
+          localCalls.map((argv) => argv.slice(1, 4).join(" ")),
+          variant.wrapped ? [] : ["dataset process validate"],
+        );
+        const status = await facade.status(invocation);
+        assert.equal(
+          status.artifacts.findLast((item) => item.role === "foundry-reference-input.json")?.sha256,
+          selection.sha256,
+        );
+        assert.ok(!status.artifacts.some((item) => item.role === "owner-execution-request.json"));
+        return;
+      }
       assert.equal(queueReports.length, 1);
       assert.equal(
         queueReports[0].counts.external_flow_refs,

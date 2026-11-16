@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { flowRow } from "../fixtures/row-builders.ts";
 import os from "node:os";
 import path from "node:path";
 import test, { before, after, type TestContext } from "node:test";
@@ -229,7 +230,7 @@ async function fixture(t: TestContext, sameSummary = false) {
       {
         id: "22222222-2222-4222-8222-222222222222",
         version: "00.00.001",
-        json: { flowDataSet: {} },
+        json: flowRow("22222222-2222-4222-8222-222222222222"),
       },
     ],
   });
@@ -798,7 +799,16 @@ test("qualified exact CLI transition retains the same Task and preparation linea
     "task_runtime_changed",
   );
   // Build actual old-owner context/rows/assessment, then preserve their bytes across adoption.
-  for (let step = 0; step < 3; step++) await f.old.resume(f.invocation);
+  for (let step = 0; step < 3; step++) {
+    const prepared = await f.old.resume(f.invocation);
+    const failure = prepared.artifacts.find((item) => item.role === "workflow-child-failure.json");
+    assert.ok(
+      !["failed", "blocked"].includes(prepared.status),
+      failure?.kind === "file"
+        ? fs.readFileSync(failure.path, "utf8")
+        : JSON.stringify(prepared.blockers),
+    );
+  }
   const oldIndex = fs.readFileSync(path.join(f.taskRoot, "artifact-index.jsonl"), "utf8");
   const before = f.snapshot(),
     plan = await f.plan();
@@ -1092,7 +1102,13 @@ test("installed public API host adopts without private context and returns the s
 for (const changed of ["assessment", "rows", "producer-receipt", "producer-plan"]) {
   test(`indexed ${changed} body drift rejects apply before receipt or anchor`, async (t) => {
     const f = await fixture(t);
-    for (let step = 0; step < 3; step++) await f.old.resume(f.invocation);
+    for (let step = 0; step < 3; step++) {
+      const prepared = await f.old.resume(f.invocation);
+      assert.ok(
+        !["failed", "blocked"].includes(prepared.status),
+        JSON.stringify(prepared.blockers),
+      );
+    }
     const plan = await f.plan();
     const index = fs
       .readFileSync(path.join(f.taskRoot, "artifact-index.jsonl"), "utf8")

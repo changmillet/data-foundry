@@ -51,7 +51,11 @@ export function workflowFixture(
           marker,
           `${marker}
     const primary = path.join(output, "tidas", "processes", "sample.json");
-    fs.writeFileSync(primary, JSON.stringify({ processDataSet: { processInformation: { dataSetInformation: { "common:UUID": "33333333-3333-4333-8333-333333333333" } } } }));
+    const processDataSet = {
+      processInformation: { dataSetInformation: { "common:UUID": "33333333-3333-4333-8333-333333333333" } },
+      administrativeInformation: { publicationAndOwnership: { "common:dataSetVersion": "00.00.001" } },
+    };
+    fs.writeFileSync(primary, JSON.stringify({ processDataSet }));
     const bundled = path.join(output, "process-bundles", "sample", "tidas", "processes");
     fs.mkdirSync(bundled, { recursive: true });
     fs.copyFileSync(primary, path.join(bundled, "sample.json"));
