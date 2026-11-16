@@ -10,6 +10,7 @@ import {
   createFoundryCommandSpec,
 } from "../../scripts/lib/foundry-command-spec.ts";
 import { createProcessScopeResumeContract } from "../../scripts/lib/bafu-orchestration/process-scope-resume.ts";
+import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
 import {
   fs,
   path,
@@ -174,7 +175,7 @@ function seedExactFinalizeCheckpoint({
     },
     options,
     finalizeCommand,
-    cliPackage: "@tiangong-lca/cli@0.1.28",
+    cliPackage: resolveInstalledTiangongLcaCliPackage().packageSpec,
   });
   writeJsonLines(path.join(outDir, "bafu-process-scope-e2e-ledger.jsonl"), [
     {
