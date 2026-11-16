@@ -9,6 +9,11 @@ import {
   createFoundryRuntimeContext,
 } from "../../scripts/lib/foundry-runtime-context.ts";
 import { qualifyFoundryRuntime } from "../../scripts/lib/foundry-runtime-qualification.ts";
+import { runExplicitFoundryIdentityStage } from "../../scripts/lib/foundry-workflow-identity-stage.ts";
+import { selectFoundryIdentityStageInput } from "../../scripts/lib/foundry-identity-stage-input.ts";
+import { runFoundryTaskOperation } from "../../scripts/lib/foundry-task-store.ts";
+import { readRows } from "../../scripts/lib/import-curation/internal/runtime-io.ts";
+import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
 import { runFoundryWorkflowIdentity } from "../../scripts/lib/foundry-workflow-identity.ts";
 import { createFoundryRuntime } from "../../scripts/foundry-runtime.ts";
 import { readIdentityPreflightContext } from "../../scripts/lib/import-curation/internal/workflow-identity-preflight.ts";
@@ -21,16 +26,18 @@ test("a CLI 0.4 task binds its existing Edge identity observations to the Foundr
   if (resolveInstalledTiangongLcaCliPackage().packageVersion !== "0.4.0")
     return t.skip("requires the exact CLI 0.4.0 candidate");
   const { root, workspace, facade, runtimeSelection } = workflowFixture(t);
-  const auth = testAuthIdentityReceipt({
-    scopeOverrides: {
-      session: {
-        source: "access_token",
-        cache_mode: "disabled",
-        force_reauth: false,
-        expires_at_utc: null,
+  const makeAuth = () =>
+    testAuthIdentityReceipt({
+      scopeOverrides: {
+        session: {
+          source: "access_token",
+          cache_mode: "disabled",
+          force_reauth: false,
+          expires_at_utc: null,
+        },
       },
-    },
-  });
+    });
+  const auth = makeAuth();
   const authentication = {
     mode: "headless" as const,
     apiBaseUrl: auth.project.project_base_url,
@@ -153,7 +160,7 @@ test("a CLI 0.4 task binds its existing Edge identity observations to the Foundr
         status: "completed",
         outcome: "identity_verified",
         error: null,
-        data: { receipt: auth },
+        data: { receipt: makeAuth() },
       }),
       stderr: "",
       status: 0,
@@ -168,6 +175,7 @@ test("a CLI 0.4 task binds its existing Edge identity observations to the Foundr
   const candidateId = "88888888-8888-4888-8888-888888888888";
   const candidate = { id: candidateId, version: "00.00.001", json: flowRow(candidateId) };
   const requests: unknown[] = [];
+  let interruptReply: AbortController | undefined;
   t.mock.method(globalThis, "fetch", (url: URL, init: RequestInit) => {
     assert.equal(url.href, auth.project.project_base_url + "/functions/v1/flow_hybrid_search");
     assert.equal(init.redirect, "error");
@@ -176,6 +184,7 @@ test("a CLI 0.4 task binds its existing Edge identity observations to the Foundr
       `Bearer ${authentication.accessToken}`,
     );
     requests.push(JSON.parse(String(init.body)));
+    interruptReply?.abort();
     return Promise.resolve(Response.json({ data: [candidate] }));
   });
   const result = await runFoundryWorkflowIdentity(
@@ -201,4 +210,78 @@ test("a CLI 0.4 task binds its existing Edge identity observations to the Foundr
   assert.ok(Array.isArray(candidates));
   assert.equal(candidates.length, 1);
   assert.doesNotMatch(fs.readFileSync(result.index, "utf8"), /test-only-actor-token/);
+  // A failed predecessor exists in a retained task before the operator selects one explicit query.
+  const prior = await qualifyCurrent();
+  const predecessorFile = path.resolve(
+    context.taskRoot!,
+    "outputs/edge-fixture/foundry-identity.json",
+  );
+  await runFoundryTaskOperation(
+    prior.current,
+    { command: "dataset-workflow-identity", options: { fixture: "failed-predecessor" } },
+    (operation) => {
+      const blocked = { ...result, status: "blocked" };
+      operation.writeJson(predecessorFile, blocked);
+      return blocked;
+    },
+  );
+  const stageFile = path.join(root, "explicit-identity.json");
+  const rowFile = artifactFile("foundry-rows.json");
+  const currentRows = JSON.parse(fs.readFileSync(rowFile, "utf8"));
+  fs.writeFileSync(
+    stageFile,
+    JSON.stringify({
+      schema: "tiangong-foundry.identity-stage-input.v1",
+      intent_id: "request-fresh-edge-query",
+      task_id: started.task_id,
+      actor_id: "edge-actor",
+      rows_report_sha256: captureFoundryInput(rowFile).sha256,
+      predecessor_identity_sha256: captureFoundryInput(predecessorFile).sha256,
+      targets: [
+        {
+          dataset_type: "flow",
+          dataset_id: id,
+          dataset_version: "00.00.001",
+          source_row_sha256: sha256Json(readRows(currentRows.sets[0].file)[0]),
+        },
+      ],
+    }),
+  );
+  const initial = await qualifyCurrent();
+  interruptReply = new AbortController();
+  await assert.rejects(
+    runExplicitFoundryIdentityStage(
+      initial.current,
+      initial.qualified,
+      initial.artifacts,
+      selectFoundryIdentityStageInput(initial.current, stageFile),
+      authentication,
+      { signal: interruptReply.signal },
+    ),
+    { name: "AbortError" },
+  );
+  interruptReply = undefined;
+  assert.equal(requests.length, 2, "one Edge query is sent after the explicit claim");
+  const interrupted = await qualifyCurrent();
+  const adopted = await runExplicitFoundryIdentityStage(
+    interrupted.current,
+    interrupted.qualified,
+    interrupted.artifacts,
+    selectFoundryIdentityStageInput(interrupted.current, stageFile),
+    authentication,
+  );
+  assert.equal(adopted.status, "completed", JSON.stringify(adopted.blockers));
+  assert.equal(requests.length, 2, "adoption reads the original response without a new Edge call");
+  assert.deepEqual(adopted.this_invocation, {
+    cli_invocations: 0,
+    edge_invocations: 0,
+    underlying_retrievals: null,
+  });
+  assert.equal(adopted.execution_transport, "edge");
+  assert.ok(typeof adopted.index === "string");
+  assert.equal(
+    readIdentityPreflightContext(context.assetRoot, { identityPreflightIndex: adopted.index }, null)
+      ?.rows[0].result?.decision,
+    "manual_review",
+  );
 });

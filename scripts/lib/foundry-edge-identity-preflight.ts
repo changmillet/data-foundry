@@ -14,6 +14,9 @@ import {
   createIdentityPreflightExecutionManifest,
   sha256Json,
   sha256Text,
+  parseFreshIntentBoundAuthReceipt,
+  validateBoundExecutionManifest,
+  type IdentityPreflightBindingInput,
 } from "./identity-preflight-proof.ts";
 import {
   datasetIdentity,
@@ -105,6 +108,45 @@ export function edgeIdentityCandidates(type: "flow" | "process", result: unknown
   });
 }
 
+type Claim = {
+  dispatchSha256: string;
+  sourceSha256: string;
+  claimedAt: string;
+  receipt: NonNullable<IdentityPreflightBindingInput["authReceipt"]>;
+};
+
+function bindingForEdgeObservation(
+  type: "flow" | "process",
+  row: Record<string, unknown>,
+  requestText: string,
+  receipt: Claim["receipt"],
+  observation: unknown,
+  claim?: Claim,
+) {
+  const { endpoint, target } = validateEdgeIdentityQuery(type, row, requestText);
+  const cli = resolveInstalledTiangongLcaCliPackage();
+  return createIdentityPreflightBinding({
+    datasetType: type,
+    datasetId: target.id,
+    datasetVersion: target.version,
+    targetSha256: String(row.target_sha256),
+    requestText,
+    semanticArgv: ["edge", "POST", endpoint],
+    cli: {
+      packageName: cli.packageName,
+      packageVersion: cli.packageVersion,
+      packageIntegrity: null,
+    },
+    authReceipt: receipt,
+    relevantInputHashes: {
+      edge_observation: sha256Json(observation),
+      ...(claim
+        ? { explicit_dispatch: claim.dispatchSha256, source_file: claim.sourceSha256 }
+        : {}),
+    },
+  });
+}
+
 /** Run the already-audited bounded query and hand the decision to Foundry's existing review lane. */
 export async function runFoundryEdgeIdentityPreflight(
   context: FoundryRuntimeContext,
@@ -113,14 +155,14 @@ export async function runFoundryEdgeIdentityPreflight(
   type: "flow" | "process",
   indexFile: string,
   outDir: string,
+  claim?: Claim,
 ) {
   const index = fs.readFileSync(resolveFoundryOutput(context, indexFile), "utf8");
   const rows = index
     .split("\n")
     .filter((line) => line.trim())
     .map((line) => object(JSON.parse(line)));
-  if (!rows.length) return invalid();
-  const cli = resolveInstalledTiangongLcaCliPackage();
+  if (!rows.length || (claim && rows.length !== 1)) return invalid();
   const results: Record<string, unknown>[] = [];
   for (const row of rows) {
     const file = (value: unknown) => {
@@ -147,24 +189,18 @@ export async function runFoundryEdgeIdentityPreflight(
       project_ref: receipt.project.project_ref,
       user_id: receipt.identity.user_id,
       query: body,
+      ...(claim ? { verified_actor_receipt: receipt } : {}),
       result,
     };
     writeFoundryArtifact(context, candidateFile, JSON.stringify(observation, null, 2) + "\n");
-    const binding = createIdentityPreflightBinding({
-      datasetType: type,
-      datasetId: target.id,
-      datasetVersion: target.version,
-      targetSha256: String(row.target_sha256),
+    const binding = bindingForEdgeObservation(
+      type,
+      row,
       requestText,
-      semanticArgv: ["edge", "POST", endpoint],
-      cli: {
-        packageName: cli.packageName,
-        packageVersion: cli.packageVersion,
-        packageIntegrity: null,
-      },
-      authReceipt: receipt,
-      relevantInputHashes: { edge_observation: sha256Json(observation) },
-    });
+      claim?.receipt ?? receipt,
+      observation,
+      claim,
+    );
     const report = {
       schema: "tiangong-foundry.edge-identity-decision.v1",
       producer: "foundry",
@@ -223,4 +259,106 @@ export async function runFoundryEdgeIdentityPreflight(
   };
   writeFoundryArtifact(context, reportFile, JSON.stringify(report, null, 2) + "\n");
   return report;
+}
+
+/** Adopt one original Edge observation only when the persisted dispatch and all response evidence agree. */
+export function readRetainedFoundryEdgeIdentity(
+  context: FoundryRuntimeContext,
+  type: "flow" | "process",
+  row: Record<string, unknown>,
+  runDir: string,
+  mode: FoundryAuthentication["mode"],
+  claim: Claim,
+) {
+  const file = (value: unknown) => {
+    if (typeof value !== "string") return invalid();
+    return resolveFoundryOutput(context, path.resolve(context.assetRoot, value));
+  };
+  const read = (name: string) => {
+    const stat = fs.lstatSync(name);
+    if (!stat.isFile() || stat.size > 8 * 1024 * 1024) return invalid();
+    return fs.readFileSync(name, "utf8");
+  };
+  const runFile = file(path.join(runDir, "dataset-identity-preflight-run-report.json"));
+  const index = file(path.join(runDir, "identity-preflight-requests.jsonl"));
+  const run = object(JSON.parse(read(runFile)));
+  const completedRows = read(index).trimEnd().split("\n");
+  if (
+    run.schema !== "tiangong-foundry.edge-identity-preflight.v1" ||
+    run.producer !== "foundry" ||
+    run.status !== "completed_with_identity_findings" ||
+    run.index !== index ||
+    object(run.files).report !== runFile ||
+    completedRows.length !== 1
+  )
+    return invalid();
+
+  const requestText = read(file(row.request_file));
+  const { endpoint, body, target } = validateEdgeIdentityQuery(type, row, requestText);
+  const reportFile = file(row.expected_report_file);
+  const directory = path.dirname(reportFile);
+  const candidateFile = file(path.join(directory, "edge-search-observation.json"));
+  const manifestFile = file(path.join(directory, "foundry-identity-preflight-execution.json"));
+  const observation = object(JSON.parse(read(candidateFile)));
+  const reportText = read(reportFile);
+  const report = object(JSON.parse(reportText));
+  const manifest = object(JSON.parse(read(manifestFile)));
+  const checkedAt = Date.parse(String(manifest.completed_at_utc));
+  const claimedAt = Date.parse(claim.claimedAt);
+  const actor = parseFreshIntentBoundAuthReceipt(observation.verified_actor_receipt, {
+    nowMs: checkedAt,
+    maxAgeMs: 60_000,
+    expectedProjectRef: claim.receipt.project.project_ref,
+    expectedUserId: claim.receipt.identity.user_id,
+    sessionMode: mode,
+  });
+  const { command_spec: _legacyCommand, ...rest } = row;
+  const completed = object(JSON.parse(completedRows[0]));
+  const expected = {
+    ...rest,
+    command: `POST ${endpoint}`,
+    execution_manifest_file: manifestFile,
+    expected_project_ref: actor.project.project_ref,
+    expected_user_id: actor.identity.user_id,
+  };
+  const candidates = edgeIdentityCandidates(type, observation.result, Number(body.match_count));
+  const source =
+    Array.isArray(report.candidate_sources) && report.candidate_sources.length === 1
+      ? object(report.candidate_sources[0])
+      : invalid();
+  const binding = bindingForEdgeObservation(
+    type,
+    row,
+    requestText,
+    claim.receipt,
+    observation,
+    claim,
+  );
+  if (
+    observation.schema !== "tiangong-foundry.edge-identity-observation.v1" ||
+    observation.endpoint !== endpoint ||
+    observation.project_ref !== actor.project.project_ref ||
+    observation.user_id !== actor.identity.user_id ||
+    sha256Json(actor.cli) !== sha256Json(claim.receipt.cli) ||
+    actor.project.project_base_url !== claim.receipt.project.project_base_url ||
+    sha256Json(observation.query) !== sha256Json(body) ||
+    !Number.isFinite(claimedAt) ||
+    checkedAt < claimedAt ||
+    Date.parse(actor.captured_at_utc) < claimedAt - 5_000 ||
+    sha256Json(completed) !== sha256Json(expected) ||
+    report.schema !== "tiangong-foundry.edge-identity-decision.v1" ||
+    report.producer !== "foundry" ||
+    report.decision !== "manual_review" ||
+    report.status !== "needs_review" ||
+    object(report.target).id !== target.id ||
+    object(report.target).version !== target.version ||
+    sha256Json(report.candidates) !== sha256Json(candidates) ||
+    source.endpoint !== endpoint ||
+    source.path !== candidateFile ||
+    source.row_count !== candidates.length ||
+    source.bounded !== true ||
+    !validateBoundExecutionManifest(manifest, binding, reportText).ok
+  )
+    return invalid();
+  return { run, row: completed };
 }
