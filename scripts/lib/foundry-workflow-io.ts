@@ -129,8 +129,16 @@ export function runWorkflowLocalCliResult(
     ["flow", "process", "model"].includes(argv[1]) &&
     argv[argv.indexOf("--checks") + 1] === "schema,business" &&
     argv[2] === "validate";
+  const typedPatch =
+    qualified.cli.expectation.package_version === "0.4.0" &&
+    argv[0] === "dataset" &&
+    ["flow", "process", "model", "contact", "source", "unitgroup", "flowproperty"].includes(
+      argv[1],
+    ) &&
+    argv[2] === "patch";
   const local =
     typedDatasetValidation ||
+    typedPatch ||
     (argv[0] === "dataset" && argv[1] === "validate") ||
     (argv[0] === "qa" && ["flow", "process", "lifecyclemodel"].includes(argv[1])) ||
     (argv[0] === "dataset" && argv[1] === "curation-queue" && argv[2] === "build") ||
@@ -172,8 +180,19 @@ export function runWorkflowLocalCliResult(
   }
   if (!report || typeof report !== "object" || Array.isArray(report))
     throw workflowChildFailure(execution, child, "invalid_report");
+  const envelope = report as Record<string, unknown>;
+  const patchError =
+    typedPatch &&
+    envelope.status === "failed" &&
+    envelope.outcome === "invalid_input" &&
+    typeof envelope.error === "object" &&
+    envelope.error !== null &&
+    Object.hasOwn(envelope.error, "code") &&
+    Object.hasOwn(envelope.error, "message");
   if (
-    ("error" in report && (!typedDatasetValidation || report.error !== null)) ||
+    ("error" in report &&
+      !((typedDatasetValidation || typedPatch) && report.error === null) &&
+      !patchError) ||
     !("status" in report) ||
     typeof report.status !== "string" ||
     !report.status.trim()

@@ -845,11 +845,26 @@ test("public semantic submission rejects stale evidence and re-assesses only suc
   const { root, facade } = workflowFixture(t, false, "missing-name");
   const id = "44444444-4444-4444-8444-444444444444";
   const good = flowRow(id);
+  if (resolveInstalledTiangongLcaCliPackage().packageVersion === "0.4.0") {
+    const { finalizationProcessFixture } = await import("../fixtures/finalization-process.ts");
+    const complete = finalizationProcessFixture().flow as unknown as typeof good;
+    complete.flowDataSet.flowInformation.dataSetInformation["common:UUID"] = id;
+    complete.flowDataSet.administrativeInformation.publicationAndOwnership[
+      "common:dataSetVersion"
+    ] = "00.00.001";
+    good.flowDataSet = complete.flowDataSet;
+  }
   const bad = {
     ...good,
     flowDataSet: {
       ...good.flowDataSet,
-      flowInformation: { dataSetInformation: { "common:UUID": id } },
+      flowInformation: {
+        ...good.flowDataSet.flowInformation,
+        dataSetInformation: {
+          ...good.flowDataSet.flowInformation.dataSetInformation,
+          name: undefined,
+        },
+      },
     },
   };
   const seed = path.join(root, "seed.json");
