@@ -5,8 +5,10 @@ import {
   type FoundryAuthentication,
   verifyFoundryRuntimeIdentity,
 } from "./foundry-runtime-identity.ts";
+import { resolveFoundryEdgeOAuth } from "./foundry-edge-oauth.ts";
 
 type IdentityEndpoint = "flow_hybrid_search" | "process_hybrid_search";
+type EdgeEndpoint = IdentityEndpoint | "app_dataset_create" | "app_dataset_verify_remote";
 
 export function foundryEdgeProjectOrigin(value: string): string {
   const url = new URL(value);
@@ -22,6 +24,83 @@ export function foundryEdgeProjectOrigin(value: string): string {
   return url.origin;
 }
 
+export async function createFoundryEdgeActor(
+  context: FoundryRuntimeContext,
+  qualified: QualifiedFoundryRuntime,
+  authentication: FoundryAuthentication,
+) {
+  const credentials =
+    authentication.mode === "headless"
+      ? { ...authentication }
+      : {
+          ...authentication,
+          configuration: { ...authentication.configuration },
+        };
+  const identity = verifyFoundryRuntimeIdentity(context, credentials, process.env, qualified);
+  const verifiedOrigin = foundryEdgeProjectOrigin(identity.receipt.project.project_base_url);
+  const configured =
+    credentials.mode === "headless" ? credentials.apiBaseUrl : credentials.configuration.apiBaseUrl;
+  const origin = configured ? foundryEdgeProjectOrigin(configured) : verifiedOrigin;
+  if (origin !== verifiedOrigin)
+    throw new FoundryContextError(
+      "edge_project_mismatch",
+      "Edge target must match the verified operator project.",
+    );
+  const token =
+    credentials.mode === "headless"
+      ? credentials.accessToken
+      : await resolveFoundryEdgeOAuth(
+          origin,
+          identity.receipt.identity.user_id,
+          credentials.configuration,
+        );
+  const publishableKey =
+    credentials.mode === "headless"
+      ? credentials.publishableKey
+      : credentials.configuration.publishableKey;
+  // Browser authorization can take longer than the CLI receipt window.
+  const current =
+    credentials.mode === "headless"
+      ? identity
+      : verifyFoundryRuntimeIdentity(context, credentials, process.env, qualified);
+  if (foundryEdgeProjectOrigin(current.receipt.project.project_base_url) !== origin)
+    throw new FoundryContextError(
+      "edge_project_mismatch",
+      "The OAuth project changed during authentication.",
+    );
+  return {
+    receipt: current.receipt,
+    async post(endpoint: EdgeEndpoint, body: Record<string, unknown>): Promise<unknown> {
+      assertVerifiedFoundryIdentity(context, current, qualified);
+      const url = new URL(`/functions/v1/${endpoint}`, origin);
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(publishableKey ? { apikey: publishableKey } : {}),
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        redirect: "error",
+        signal: AbortSignal.timeout(30_000),
+        body: JSON.stringify(body),
+      });
+      if (!response.ok && !(endpoint === "app_dataset_verify_remote" && response.status === 409))
+        throw new FoundryContextError(
+          "edge_request_failed",
+          "The selected Edge request was rejected.",
+        );
+      const text = await response.text();
+      if (Buffer.byteLength(text) > 8 * 1024 * 1024)
+        throw new FoundryContextError(
+          "edge_response_invalid",
+          "The Edge response exceeds the evidence limit.",
+        );
+      return JSON.parse(text) as unknown;
+    },
+  };
+}
+
 export async function queryFoundryEdgeIdentity(
   context: FoundryRuntimeContext,
   qualified: QualifiedFoundryRuntime,
@@ -29,43 +108,6 @@ export async function queryFoundryEdgeIdentity(
   endpoint: IdentityEndpoint,
   body: Record<string, unknown>,
 ) {
-  if (authentication.mode !== "headless")
-    throw new FoundryContextError(
-      "edge_actor_session_required",
-      "This Edge call requires an explicit process-only operator session.",
-    );
-  const credentials = { ...authentication };
-  const identity = verifyFoundryRuntimeIdentity(context, credentials, process.env, qualified);
-  assertVerifiedFoundryIdentity(context, identity, qualified);
-  const origin = foundryEdgeProjectOrigin(credentials.apiBaseUrl);
-  if (origin !== foundryEdgeProjectOrigin(identity.receipt.project.project_base_url))
-    throw new FoundryContextError(
-      "edge_project_mismatch",
-      "Edge target must match the verified operator project.",
-    );
-  const url = new URL(`/functions/v1/${endpoint}`, origin);
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${credentials.accessToken}`,
-      apikey: credentials.publishableKey,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    redirect: "error",
-    signal: AbortSignal.timeout(30_000),
-    body: JSON.stringify(body),
-  });
-  if (!response.ok)
-    throw new FoundryContextError(
-      "edge_identity_query_failed",
-      "Edge identity query was rejected.",
-    );
-  const text = await response.text();
-  if (Buffer.byteLength(text) > 8 * 1024 * 1024)
-    throw new FoundryContextError(
-      "edge_identity_query_invalid",
-      "Edge identity response exceeds the evidence limit.",
-    );
-  return { receipt: identity.receipt, result: JSON.parse(text) as unknown };
+  const actor = await createFoundryEdgeActor(context, qualified, authentication);
+  return { receipt: actor.receipt, result: await actor.post(endpoint, body) };
 }

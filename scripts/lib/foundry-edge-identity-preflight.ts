@@ -114,13 +114,6 @@ export async function runFoundryEdgeIdentityPreflight(
   indexFile: string,
   outDir: string,
 ) {
-  if (authentication.mode !== "headless")
-    throw new FoundryContextError(
-      "edge_actor_session_required",
-      "An explicit process-only operator session is required for the CLI 0.4 Edge candidate.",
-    );
-
-  const credentials = { ...authentication };
   const index = fs.readFileSync(resolveFoundryOutput(context, indexFile), "utf8");
   const rows = index
     .split("\n")
@@ -141,7 +134,7 @@ export async function runFoundryEdgeIdentityPreflight(
     const { receipt, result } = await queryFoundryEdgeIdentity(
       context,
       qualified,
-      credentials,
+      authentication,
       endpoint,
       body,
     );

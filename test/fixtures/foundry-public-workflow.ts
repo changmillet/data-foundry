@@ -19,6 +19,7 @@ import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
 import { publishLegacyIdentityFailure } from "./legacy-identity-producer.ts";
 import { validateIdentityPreflightRecoveryEvidence } from "../../scripts/lib/identity-preflight-recovery-proof.ts";
 import { readRows } from "../../scripts/lib/import-curation/internal/runtime-io.ts";
+import { installSupportEdgeFixture } from "./foundry-edge-support.ts";
 import { unwrapDatasetPayload } from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
 import {
   supportUnitGroupRow,
@@ -2341,7 +2342,7 @@ export async function verifyDependentScopes(t: TestContext, support: boolean) {
   t.mock.timers.enable({ apis: ["Date"], now: Date.now() });
   const firstType = support ? "unitgroup" : "contact",
     secondType = support ? "flowproperty" : "source";
-  const { root, workspace, facade } = workflowFixture(t);
+  const { root, workspace, facade: baselineFacade, facadeOptions } = workflowFixture(t);
   const contactId = "66666666-6666-4666-8666-666666666666",
     sourceId = "55555555-5555-4555-8555-555555555555";
   const account = {
@@ -2401,26 +2402,87 @@ export async function verifyDependentScopes(t: TestContext, support: boolean) {
   const writes: string[] = [],
     readbacks: string[] = [],
     remote = new Set<string>(support ? supportFixtureReferences.map((item) => item.id) : []);
+  const edge =
+    support && resolveInstalledTiangongLcaCliPackage().packageVersion === "0.4.0"
+      ? await installSupportEdgeFixture(t, {
+          project: account.project_ref,
+          user: account.user_id,
+          writes,
+          readbacks,
+          firstId: contactId,
+          secondId: sourceId,
+        })
+      : null;
+  const facade = edge
+    ? createFoundryFacade({
+        ...facadeOptions,
+        authentication: { mode: "oauth", configuration: { oauthRedirectUri: edge.callback } },
+      })
+    : baselineFacade;
   const originalSpawn = childProcess.spawnSync;
   let childFailure: unknown;
   t.mock.method(childProcess, "spawnSync", (...args: Parameters<typeof childProcess.spawnSync>) => {
     try {
       const argv = args[1];
       if (!Array.isArray(argv)) return Reflect.apply(originalSpawn, childProcess, args);
-      if (argv.includes("identity-receipt"))
+      if (argv.includes("identity-receipt")) {
+        const receipt = testAuthIdentityReceipt({
+          projectRef: account.project_ref,
+          userId: account.user_id,
+        });
         return {
           status: 0,
           signal: null,
-          stdout: JSON.stringify(
-            testAuthIdentityReceipt({
-              projectRef: account.project_ref,
-              userId: account.user_id,
-            }),
-          ),
-          stderr: "",
           pid: 1,
           output: [],
+          stderr: "",
+          stdout: JSON.stringify(
+            edge
+              ? {
+                  schemaVersion: 1,
+                  operation: "auth identity-receipt",
+                  status: "completed",
+                  outcome: "identity_verified",
+                  error: null,
+                  data: { receipt },
+                }
+              : receipt,
+          ),
         };
+      }
+      if (edge && argv[1] === "dataset" && argv[3] === "get") {
+        const type = argv[2];
+        const id = argv[argv.indexOf("--id") + 1];
+        const version = argv[argv.indexOf("--version") + 1];
+        const row = edge.rowFor(id);
+        const found = row?.version === version;
+        return {
+          status: found ? 0 : 1,
+          signal: null,
+          pid: 1,
+          output: [],
+          stderr: "",
+          stdout: JSON.stringify({
+            schemaVersion: 1,
+            operation: `dataset ${type} get`,
+            status: found ? "completed" : "failed",
+            outcome: found ? "dataset_read" : "not_found_or_not_visible",
+            error: found ? null : { code: "DATASET_NOT_FOUND" },
+            context: { environment: edge.origin, effectiveInput: { id, version } },
+            data: found
+              ? {
+                  subject: { type, id, version, stateCode: row!.state, owner: row!.owner },
+                  content: row!.content,
+                }
+              : {},
+          }),
+        };
+      }
+      if (edge)
+        assert.ok(
+          !argv.includes("save-draft") && !argv.includes("verify-remote"),
+          "the CLI 0.4 support path never dispatches removed CLI operations",
+        );
       if (!argv.includes("save-draft") && !argv.includes("verify-remote"))
         return Reflect.apply(originalSpawn, childProcess, args);
       assert.equal(args[0], process.execPath);
@@ -2754,6 +2816,33 @@ export async function verifyDependentScopes(t: TestContext, support: boolean) {
   current = await approve(firstType);
   assert.deepEqual(writes, [firstType], JSON.stringify(current));
   assert.notEqual(current.status, "completed");
+  if (edge) {
+    const resultFor = (result: typeof current) => {
+      const selected = result.artifacts.findLast(
+        (item) => item.role === "owner-execution-result.json",
+      );
+      assert.ok(selected?.kind === "file", JSON.stringify(result));
+      return JSON.parse(fs.readFileSync(selected.path, "utf8")) as {
+        status: string;
+        attempt_consumed: boolean;
+        request_sha256: string;
+      };
+    };
+    const interrupted = resultFor(current);
+    assert.equal(interrupted.status, "unresolved");
+    assert.equal(interrupted.attempt_consumed, true);
+    assert.deepEqual(readbacks, []);
+    current = await facade.resume(invocation);
+    const recovered = resultFor(current);
+    assert.equal(recovered.status, "recovered");
+    assert.equal(recovered.request_sha256, interrupted.request_sha256);
+    assert.deepEqual(
+      writes,
+      [firstType],
+      "recovery reads without redispatching the consumed write",
+    );
+    assert.deepEqual(readbacks, [firstType]);
+  }
   current = await facade.resume(invocation);
   finalized = loadFinalize(current);
   assert.equal(
@@ -2788,4 +2877,5 @@ export async function verifyDependentScopes(t: TestContext, support: boolean) {
   assert.equal(current.status, "completed", JSON.stringify(current));
   assert.equal((await facade.resume(invocation)).status, "completed");
   assert.deepEqual(writes, [firstType, secondType]);
+  edge?.assertRecovered();
 }

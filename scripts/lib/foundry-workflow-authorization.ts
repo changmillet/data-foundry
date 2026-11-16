@@ -37,6 +37,8 @@ import { createFoundryExecutionCapsule } from "./foundry-execution-admission.ts"
 import { registerWorkflowStageFiles } from "./foundry-workflow-io.ts";
 import { createFoundryCommandSpec, createFileArtifactFact } from "./foundry-command-spec.ts";
 import { parseFoundryCommandSpec } from "@tiangong-lca/cli/command-spec";
+import { buildEdgeSupportPlan } from "./foundry-edge-support-plan.ts";
+import { readRows } from "./import-curation/internal/runtime-io.ts";
 import type { ValidatedTaskAuthorization } from "./task-authorization.ts";
 import type { ArtifactEntry } from "./foundry-task-types.ts";
 import { readNativeDraftHandoff } from "./finalize-owners/native-draft-handoff.ts";
@@ -457,11 +459,59 @@ export async function recordFoundryWorkflowAuthorization(
         }),
       );
       handoff = bindHandoffCommands(context, handoff, inputFile);
+      const commands = workflowObject(handoff.commands);
+      const edgeType = request.datasetType;
+      if (
+        commands.commit &&
+        qualified.cli.expectation.package_version === "0.4.0" &&
+        !request.executionContract &&
+        (edgeType === "unitgroup" || edgeType === "flowproperty")
+      ) {
+        const finalizePath = resolveFoundryOutput(
+          context,
+          path.resolve(context.assetRoot, String(scope.report)),
+        );
+        const finalized = workflowObject(
+          JSON.parse(readFoundryInput(context, finalizePath).toString("utf8")),
+        );
+        const verifyPath = resolveFoundryOutput(
+          context,
+          path.resolve(
+            context.assetRoot,
+            String(workflowObject(finalized.files).remote_verify_report),
+          ),
+        );
+        const referenceEvidence = {
+          fact: captureFoundryInput(verifyPath),
+          report: JSON.parse(readFoundryInput(context, verifyPath).toString("utf8")) as unknown,
+        };
+        commands.commit = buildEdgeSupportPlan(
+          edgeType,
+          captureFoundryInput(inputFile),
+          {
+            project_ref: context.accountIntent!.projectRef,
+            user_id: context.accountIntent!.userId,
+          },
+          readRows(inputFile, (file) => readFoundryInput(context, file).toString("utf8")),
+          referenceEvidence,
+        );
+        commands.post_write_verify = null;
+        handoff.account_write_guard = {
+          ...workflowObject(handoff.account_write_guard),
+          execution_precondition:
+            "Foundry must seal the exact Edge support create plan for the verified owner.",
+        };
+        handoff.policy = {
+          ...workflowObject(handoff.policy),
+          commit_boundary:
+            "The owner submits the sealed Edge create plan and verifies the exact draft and dependencies.",
+        };
+      }
       fs.writeFileSync(
         path.join(output, "handoff", "dataset-commit-handoff-plan.json"),
         JSON.stringify(handoff, null, 2) + "\n",
       );
-      const command = workflowObject(handoff.commands).commit;
+      const command = commands.commit;
       if (command) {
         const requiredActions = authorization.allowed_actions.filter((action) =>
           request.datasetType === "flow"

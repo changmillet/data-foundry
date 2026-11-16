@@ -50,11 +50,23 @@ import {
 import { bytes, digest } from "./foundry-task-io.ts";
 import { resolveInstalledTiangongLcaCliPackage } from "./foundry-runtime-utils.ts";
 import { assertFoundryMigrationNoReplay } from "./foundry-migration-replay.ts";
+import {
+  isEdgeSupportPlan,
+  verifyEdgeSupportPlan,
+  type EdgeSupportPlan,
+} from "./foundry-edge-support-plan.ts";
+import { readRows } from "./import-curation/internal/runtime-io.ts";
+
+type OwnerDispatchSpec = FoundryCommandSpec | EdgeSupportPlan;
+
+function parseOwnerDispatchSpec(value: unknown): OwnerDispatchSpec {
+  return isEdgeSupportPlan(value) ? value : parseFoundryCommandSpec(value);
+}
 
 export interface FoundryExecutionAdmission {
   readonly capsule: Readonly<ExecutionCapsule>;
   readonly capsule_file: string;
-  readonly command_spec: Readonly<FoundryCommandSpec>;
+  readonly command_spec: Readonly<OwnerDispatchSpec>;
   readonly authorization: ValidatedTaskAuthorization;
 }
 
@@ -369,7 +381,34 @@ async function verifyAdmission(
         "Current final rows require a QA waiver not present in current authorization.",
       );
   }
-  const spec = commandSpec(context, specValue, finalRows, capsule.required_actions);
+  const parsed = parseOwnerDispatchSpec(specValue);
+  let spec: OwnerDispatchSpec;
+  if (isEdgeSupportPlan(parsed)) {
+    if (
+      qualification.cli.expectation.package_version !== "0.4.0" ||
+      !capsule.required_actions.includes("canonical_support_local_mint") ||
+      !capsule.required_actions.includes(`${parsed.dataset_type}_write`) ||
+      !context.accountIntent
+    )
+      fail(
+        "execution_action_unauthorized",
+        "Edge support creation requires an exact current task mint grant.",
+      );
+    const evidence = parsed.reference_evidence && selected(context, parsed.reference_evidence.path);
+    verifyEdgeSupportPlan(
+      parsed,
+      finalRows,
+      { project_ref: context.accountIntent.projectRef, user_id: context.accountIntent.userId },
+      readRows(finalRows.path, (file) => readFoundryInput(context, file).toString("utf8")),
+      evidence && {
+        fact: evidence,
+        report: JSON.parse(readFoundryInput(context, evidence.path).toString("utf8")) as unknown,
+      },
+    );
+    spec = parsed;
+  } else {
+    spec = commandSpec(context, specValue, finalRows, capsule.required_actions);
+  }
   if (spec.sha256 !== capsule.command_spec_sha256)
     fail("execution_command_changed", "CommandSpec differs from the reviewed execution capsule.");
   assertQualifiedFoundryRuntime(context, qualification);
@@ -413,7 +452,7 @@ export async function createFoundryExecutionCapsule(
     finalRows.path,
     qualification,
   );
-  const spec = parseFoundryCommandSpec(options.commandSpec);
+  const spec = parseOwnerDispatchSpec(options.commandSpec);
   const capsule = parseCapsule({
     schema: FOUNDRY_EXECUTION_CAPSULE_SCHEMA,
     workspace_id: context.workspaceId,
@@ -503,7 +542,7 @@ export async function assertFoundryExecutionAdmission(
   qualification: QualifiedFoundryRuntime,
   identity: VerifiedFoundryIdentity,
   admission: FoundryExecutionAdmission,
-): Promise<FoundryCommandSpec> {
+): Promise<OwnerDispatchSpec> {
   if (!admission || !admissions.has(admission))
     fail(
       "execution_admission_unverified",

@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { runFoundryTypedFlowQa } from "./foundry-typed-flow-qa.ts";
+import { planFoundryEdgeSupportStage } from "./foundry-edge-support-planning.ts";
 import {
   bindWorkflowChildExecution,
   workflowChildFailure,
@@ -176,6 +177,23 @@ export function createFoundryFinalizeOwners(
         "finalize_write_forbidden",
         "Finalization cannot dispatch a remote mutation.",
       );
+    const supportType = execution.datasetType;
+    if (
+      qualified.cli.expectation.package_version === "0.4.0" &&
+      (supportType === "unitgroup" || supportType === "flowproperty") &&
+      (dryRun || remoteRead)
+    ) {
+      return planFoundryEdgeSupportStage(
+        context,
+        qualified,
+        execution.environment,
+        supportType,
+        stage,
+        argv,
+        remoteRead,
+        execution.receiptFile,
+      );
+    }
     if (name === "qa flow" && qualified.cli.expectation.package_version === "0.4.0") {
       const rowsFile = argv[argv.indexOf("--rows-file") + 1];
       const directory = argv[argv.indexOf("--out-dir") + 1];
