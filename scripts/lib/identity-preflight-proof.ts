@@ -397,10 +397,32 @@ export function validateIdentityPreflightExecution(input: {
       "Identity-preflight execution requires account receipt evidence.",
     );
   }
+  return {
+    ok: true,
+    report: diskReport,
+    manifest: createIdentityPreflightExecutionManifest(
+      input.binding,
+      input.diskReportText!,
+      input.completedAtUtc,
+    ),
+  };
+}
+
+export function createIdentityPreflightExecutionManifest(
+  binding: IdentityPreflightBinding,
+  reportText: string,
+  completedAtUtc: string,
+): ExecutionManifest {
+  const report = exactRecord(JSON.parse(reportText), "Identity-preflight report");
+  const authReceipt = binding.inputs.authReceipt;
+  if (!authReceipt || !binding.account || !ALLOWED_REPORT_STATUSES.has(String(report.status)))
+    throw new Error(
+      "Identity-preflight report needs current account evidence and an accepted status.",
+    );
   const manifestScope = {
     schema: "tiangong-foundry.identity-preflight-execution.v1" as const,
-    binding_sha256: input.binding.binding_sha256,
-    binding: bindingEvidence(input.binding),
+    binding_sha256: binding.binding_sha256,
+    binding: bindingEvidence(binding),
     producer_auth: {
       project_ref: authReceipt.project.project_ref,
       user_id: authReceipt.identity.user_id,
@@ -408,18 +430,14 @@ export function validateIdentityPreflightExecution(input: {
       captured_at_utc: authReceipt.captured_at_utc,
     },
     report: {
-      bytes_sha256: sha256Text(input.diskReportText ?? ""),
-      canonical_sha256: sha256Json(diskReport),
-      status,
-      decision: typeof diskReport.decision === "string" ? diskReport.decision : null,
+      bytes_sha256: sha256Text(reportText),
+      canonical_sha256: sha256Json(report),
+      status: String(report.status),
+      decision: typeof report.decision === "string" ? report.decision : null,
     },
-    completed_at_utc: input.completedAtUtc,
+    completed_at_utc: completedAtUtc,
   };
-  return {
-    ok: true,
-    report: diskReport,
-    manifest: { ...manifestScope, manifest_sha256: sha256Json(manifestScope) },
-  };
+  return { ...manifestScope, manifest_sha256: sha256Json(manifestScope) };
 }
 
 export function validateBoundExecutionManifest(
