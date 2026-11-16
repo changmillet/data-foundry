@@ -193,7 +193,7 @@ function validateContext(context: Row) {
     !["linux-x64", "linux-arm64", "darwin-arm64", "win32-x64"].includes(context.platform) ||
     !Number.isInteger(context.shard) ||
     Number(context.shard) < 1 ||
-    Number(context.shard) > 8
+    Number(context.shard) > (context.platform === "win32-x64" ? 10 : 8)
   )
     throw new Error("Invalid managed diagnostic context.");
 }
