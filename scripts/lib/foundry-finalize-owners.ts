@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { runFoundryTypedFlowQa } from "./foundry-typed-flow-qa.ts";
 import {
   bindWorkflowChildExecution,
   workflowChildFailure,
@@ -41,6 +42,7 @@ import { createFoundryIsolatedChildEnvironment } from "./foundry-runtime-environ
 import {
   FoundryContextError,
   readFoundryInput,
+  writeFoundryArtifact,
   type FoundryRuntimeContext,
 } from "./foundry-runtime-context.ts";
 import {
@@ -174,6 +176,27 @@ export function createFoundryFinalizeOwners(
         "finalize_write_forbidden",
         "Finalization cannot dispatch a remote mutation.",
       );
+    if (name === "qa flow" && qualified.cli.expectation.package_version === "0.4.0") {
+      const rowsFile = argv[argv.indexOf("--rows-file") + 1];
+      const directory = argv[argv.indexOf("--out-dir") + 1];
+      const result = runFoundryTypedFlowQa(
+        context,
+        qualified,
+        temporary,
+        (file, value) => writeFoundryArtifact(context, file, JSON.stringify(value, null, 2) + "\n"),
+        rowsFile,
+        directory,
+      );
+      return {
+        stage,
+        exit_code: result.report.findings.length ? 2 : 0,
+        report: result.report,
+        status: result.report.status,
+        command: cli.command,
+        args: [...cli.args, "dataset", "flow", "validate"],
+        stderr: "",
+      };
+    }
     if (!dryRun && !remoteRead) {
       const result = runWorkflowLocalCliResult(context, qualified, temporary, argv);
       return result.validate(() => {

@@ -92,11 +92,22 @@ test("qualified context owner accepts the registered Unicode task path directly"
     path.resolve(context.taskRoot!, contract.path),
   ]);
   assert.equal(assessed.status, "completed");
-  assert.ok(
-    (await runtime.inspectTask()).artifacts.some((item) =>
-      item.path.endsWith("/foundry-assessment.json"),
-    ),
-  );
+  const assessmentArtifacts = (await runtime.inspectTask()).artifacts;
+  assert.ok(assessmentArtifacts.some((item) => item.path.endsWith("/foundry-assessment.json")));
+  if (qualified.cli.expectation.package_version === "0.4.0") {
+    const projected = assessmentArtifacts.find((item) =>
+      item.path.endsWith("/flow-qa-report.json"),
+    );
+    const raw = assessmentArtifacts.find((item) => item.path.endsWith("/qa/validation-1.json"));
+    assert.ok(projected && raw && context.taskRoot);
+    const result = JSON.parse(fs.readFileSync(path.join(context.taskRoot, raw.path), "utf8"));
+    const report = JSON.parse(fs.readFileSync(path.join(context.taskRoot, projected.path), "utf8"));
+    assert.equal(report.schema, "tiangong-foundry.typed-flow-qa.v1");
+    assert.equal(report.findings.length, result.issue_count);
+    assert.ok(
+      report.findings.some((finding: { code: string }) => finding.code === "missing_flow_property"),
+    );
+  }
 });
 
 test("native validation I/O failure stays indexed and understandable after restart", async (t) => {

@@ -26,6 +26,7 @@ import { runDatasetCurationGate } from "./import-curation/curation-gate.ts";
 import { loadFoundryQualityReview, type FoundryQualityReview } from "./foundry-quality-review.ts";
 import { runDatasetAuthoringTaskBuild } from "./import-curation/authoring-packages.ts";
 import { readRows } from "./import-curation/internal/runtime-io.ts";
+import { runFoundryTypedFlowQa } from "./foundry-typed-flow-qa.ts";
 import {
   projectFoundryValidationReferences,
   selectedFoundryExternalFlowReferences,
@@ -624,7 +625,16 @@ export function assessFoundryWorkflowRows(
           }
           const qaDir = path.join(output, set.type, "qa");
           let qaReport: string;
-          if (["flow", "process", "lifecyclemodel"].includes(set.type)) {
+          if (set.type === "flow" && qualified.cli.expectation.package_version === "0.4.0") {
+            qaReport = runFoundryTypedFlowQa(
+              context,
+              qualified,
+              temporary,
+              (file, value) => operation.writeJson(file, value),
+              set.file,
+              qaDir,
+            ).reportFile;
+          } else if (["flow", "process", "lifecyclemodel"].includes(set.type)) {
             const qaArgv = ["qa", set.type, "--rows-file", set.file, "--out-dir", qaDir, "--json"];
             if (set.type === "process") {
               for (const referenceSet of selectedSets) {

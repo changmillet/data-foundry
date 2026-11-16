@@ -123,7 +123,13 @@ export function runWorkflowLocalCliResult(
   validate: <T>(check: () => T) => T;
   verifyReportFile: (file: string) => void;
 } {
+  const typedFlowValidation =
+    qualified.cli.expectation.package_version === "0.4.0" &&
+    argv[0] === "dataset" &&
+    argv[1] === "flow" &&
+    argv[2] === "validate";
   const local =
+    typedFlowValidation ||
     (argv[0] === "dataset" && argv[1] === "validate") ||
     (argv[0] === "qa" && ["flow", "process", "lifecyclemodel"].includes(argv[1])) ||
     (argv[0] === "dataset" && argv[1] === "curation-queue" && argv[2] === "build") ||
@@ -166,7 +172,7 @@ export function runWorkflowLocalCliResult(
   if (!report || typeof report !== "object" || Array.isArray(report))
     throw workflowChildFailure(execution, child, "invalid_report");
   if (
-    "error" in report ||
+    ("error" in report && (!typedFlowValidation || report.error !== null)) ||
     !("status" in report) ||
     typeof report.status !== "string" ||
     !report.status.trim()
