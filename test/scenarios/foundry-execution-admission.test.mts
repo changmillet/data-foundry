@@ -25,7 +25,10 @@ import {
   rehydrateFoundryExecutionAdmission,
 } from "../../scripts/lib/foundry-execution-admission.ts";
 import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
-import { testAuthIdentityReceipt } from "../fixtures/auth-identity-receipt.ts";
+import {
+  testAuthIdentityReceipt,
+  testAuthIdentityReceiptOutput,
+} from "../fixtures/auth-identity-receipt.ts";
 
 const moduleUrl = new URL("../../scripts/runtime-entry.ts", import.meta.url).href;
 const accountIntent = {
@@ -124,7 +127,7 @@ test("serialized child context rehydrates only through fresh runtime, identity, 
       return {
         status: 0,
         signal: null,
-        stdout: JSON.stringify(
+        stdout: testAuthIdentityReceiptOutput(
           testAuthIdentityReceipt({
             capturedAtUtc: new Date().toISOString(),
             projectRef: accountIntent.projectRef,

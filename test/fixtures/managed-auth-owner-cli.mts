@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { testAuthIdentityReceipt } from "./auth-identity-receipt.ts";
+import { testAuthIdentityReceipt, testAuthIdentityReceiptOutput } from "./auth-identity-receipt.ts";
 
 type ObjectValue = Record<string, unknown>;
 const object = (value: unknown): ObjectValue => {
@@ -33,7 +33,7 @@ export function runManagedAuthOwnerFixture(args: readonly string[]): boolean {
   if (args[0] === "auth" && args[1] === "identity-receipt") {
     append("auth");
     if (
-      process.env.TIANGONG_LCA_AUTH_MODE !== "access_token" ||
+      process.env.TIANGONG_LCA_AUTH_MODE !== "access-token" ||
       !process.env.TIANGONG_LCA_ACCESS_TOKEN ||
       process.env.TIANGONG_LCA_DISABLE_SESSION_CACHE !== "true" ||
       control.auth === "error"
@@ -44,7 +44,7 @@ export function runManagedAuthOwnerFixture(args: readonly string[]): boolean {
     }
     const userId = option(args, "--expected-user-id");
     process.stdout.write(
-      JSON.stringify(
+      testAuthIdentityReceiptOutput(
         testAuthIdentityReceipt({
           projectRef: option(args, "--expected-project-ref"),
           userId:

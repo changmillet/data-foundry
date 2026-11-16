@@ -19,6 +19,7 @@ import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
 import { publishLegacyIdentityFailure } from "./legacy-identity-producer.ts";
 import { validateIdentityPreflightRecoveryEvidence } from "../../scripts/lib/identity-preflight-recovery-proof.ts";
 import { readRows } from "../../scripts/lib/import-curation/internal/runtime-io.ts";
+import { installEdgeDraftFixture } from "./foundry-edge-support.ts";
 import { unwrapDatasetPayload } from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
 import {
   supportUnitGroupRow,
@@ -50,7 +51,11 @@ export function workflowFixture(
           marker,
           `${marker}
     const primary = path.join(output, "tidas", "processes", "sample.json");
-    fs.writeFileSync(primary, JSON.stringify({ processDataSet: { processInformation: { dataSetInformation: { "common:UUID": "33333333-3333-4333-8333-333333333333" } } } }));
+    const processDataSet = {
+      processInformation: { dataSetInformation: { "common:UUID": "33333333-3333-4333-8333-333333333333" } },
+      administrativeInformation: { publicationAndOwnership: { "common:dataSetVersion": "00.00.001" } },
+    };
+    fs.writeFileSync(primary, JSON.stringify({ processDataSet }));
     const bundled = path.join(output, "process-bundles", "sample", "tidas", "processes");
     fs.mkdirSync(bundled, { recursive: true });
     fs.copyFileSync(primary, path.join(bundled, "sample.json"));
@@ -432,6 +437,9 @@ export async function verifyPublicIdentityWorkflow(
     "missing";
   let writes = 0,
     exactReadback = approvalKind !== "current_rows";
+  let recoveryConnected = false;
+  let recoveryReads = 0;
+  let originalReceipt: { path: string; sha256: string } | undefined;
   let childFailure: unknown;
   const questionsDuringQuery: Array<ReturnType<typeof facade.resume>> = [];
   const stageQuestionFile = path.join(root, "pending-identity-question.json");
@@ -490,6 +498,20 @@ export async function verifyPublicIdentityWorkflow(
       ) {
         const committing = argv.includes("--commit");
         if (!argv.includes("verify-remote") && !committing) assert.ok(argv.includes("--dry-run"));
+        if (nativeResponse === "lost" && writes > 0 && !committing) {
+          assert.ok(argv.includes("verify-remote") && argv.includes("--compare-root-payload"));
+          assert.equal(argv[0], resolveInstalledTiangongLcaCliPackage().binPath);
+          recoveryReads++;
+          if (!recoveryConnected)
+            return {
+              status: null,
+              signal: "SIGTERM",
+              stdout: "",
+              stderr: "connection unavailable",
+              pid: 1,
+              output: [],
+            };
+        }
         if (readOnlyFailure && !committing && argv.includes("--dry-run")) {
           readOnlyFailureCalls++;
           readOnlyFailureExecutable = String(args[0]);
@@ -763,6 +785,8 @@ export async function verifyPublicIdentityWorkflow(
             report.files = { summary_json: summary };
             if (nativeResponse === "unknown") report.status = "completed_with_unknowns";
             fs.writeFileSync(summary, JSON.stringify(report));
+            if (nativeResponse === "lost")
+              originalReceipt = { path: summary, sha256: digestFile(summary) };
           }
           return {
             status: null,
@@ -2230,6 +2254,39 @@ process.stdout.write(JSON.stringify([await facade.status(invocation), await faca
       assert.ok(authCalls >= authBeforeDispatch + 2, JSON.stringify(executed.blockers));
     }
     assert.equal(writes, 1, JSON.stringify(executed.blockers));
+    if (nativeResponse === "lost") {
+      assert.equal(executed.status, "needs_input", JSON.stringify(executed.blockers));
+      assert.equal(executed.blockers[0]?.code, "mutation_readback_required");
+      assert.ok(recoveryReads > 0);
+      assert.ok(originalReceipt);
+      const request = preparedExecution.artifacts.findLast(
+        (item) => item.role === "owner-execution-request.json",
+      );
+      assert.ok(request?.kind === "file");
+      const attempt = executed.artifacts.findLast((item) => item.role === "consumed.json");
+      assert.ok(attempt?.kind === "file");
+      const consumed = JSON.parse(fs.readFileSync(attempt.path, "utf8"));
+      assert.equal(consumed.attempts, 1);
+      assert.deepEqual(consumed.request, { path: request.path, sha256: request.sha256 });
+      const readsBeforeReconnect = recoveryReads;
+      recoveryConnected = true;
+      executed = await createFoundryFacade(facadeOptions).resume(invocation);
+      assert.equal(executed.task_id, preparedExecution.task_id);
+      assert.deepEqual(executed.runtime_identity, preparedExecution.runtime_identity);
+      assert.equal(recoveryReads, readsBeforeReconnect + 1);
+      assert.equal(writes, 1);
+      assert.equal(digestFile(attempt.path), attempt.sha256);
+      assert.equal(digestFile(request.path), request.sha256);
+      assert.equal(digestFile(originalReceipt.path), originalReceipt.sha256);
+      const result = executed.artifacts.findLast(
+        (item) => item.role === "owner-execution-result.json",
+      );
+      assert.ok(result?.kind === "file");
+      const recovered = JSON.parse(fs.readFileSync(result.path, "utf8"));
+      assert.equal(recovered.status, "recovered");
+      assert.equal(recovered.request_sha256, request.sha256);
+      assert.equal(recovered.readback.commit_report.sha256, originalReceipt.sha256);
+    }
     if (nativeResponse === "missing" || nativeResponse === "unknown") {
       for (let retry = 0; retry < 2; retry++) {
         assert.equal(executed.status, "needs_input", JSON.stringify(executed.blockers));
@@ -2341,7 +2398,7 @@ export async function verifyDependentScopes(t: TestContext, support: boolean) {
   t.mock.timers.enable({ apis: ["Date"], now: Date.now() });
   const firstType = support ? "unitgroup" : "contact",
     secondType = support ? "flowproperty" : "source";
-  const { root, workspace, facade } = workflowFixture(t);
+  const { root, workspace, facade: baselineFacade, facadeOptions } = workflowFixture(t);
   const contactId = "66666666-6666-4666-8666-666666666666",
     sourceId = "55555555-5555-4555-8555-555555555555";
   const account = {
@@ -2401,26 +2458,89 @@ export async function verifyDependentScopes(t: TestContext, support: boolean) {
   const writes: string[] = [],
     readbacks: string[] = [],
     remote = new Set<string>(support ? supportFixtureReferences.map((item) => item.id) : []);
+  const edge =
+    resolveInstalledTiangongLcaCliPackage().packageVersion === "0.4.0"
+      ? await installEdgeDraftFixture(t, {
+          project: account.project_ref,
+          user: account.user_id,
+          writes,
+          readbacks,
+          firstId: contactId,
+          secondId: sourceId,
+          firstType,
+          secondType,
+        })
+      : null;
+  const facade = edge
+    ? createFoundryFacade({
+        ...facadeOptions,
+        authentication: { mode: "oauth", configuration: { oauthRedirectUri: edge.callback } },
+      })
+    : baselineFacade;
   const originalSpawn = childProcess.spawnSync;
   let childFailure: unknown;
   t.mock.method(childProcess, "spawnSync", (...args: Parameters<typeof childProcess.spawnSync>) => {
     try {
       const argv = args[1];
       if (!Array.isArray(argv)) return Reflect.apply(originalSpawn, childProcess, args);
-      if (argv.includes("identity-receipt"))
+      if (argv.includes("identity-receipt")) {
+        const receipt = testAuthIdentityReceipt({
+          projectRef: account.project_ref,
+          userId: account.user_id,
+        });
         return {
           status: 0,
           signal: null,
-          stdout: JSON.stringify(
-            testAuthIdentityReceipt({
-              projectRef: account.project_ref,
-              userId: account.user_id,
-            }),
-          ),
-          stderr: "",
           pid: 1,
           output: [],
+          stderr: "",
+          stdout: JSON.stringify(
+            edge
+              ? {
+                  schemaVersion: 1,
+                  operation: "auth identity-receipt",
+                  status: "completed",
+                  outcome: "identity_verified",
+                  error: null,
+                  data: { receipt },
+                }
+              : receipt,
+          ),
         };
+      }
+      if (edge && argv[1] === "dataset" && argv[3] === "get") {
+        const type = argv[2];
+        const id = argv[argv.indexOf("--id") + 1];
+        const version = argv[argv.indexOf("--version") + 1];
+        const row = edge.rowFor(id);
+        const found = row?.version === version;
+        return {
+          status: found ? 0 : 1,
+          signal: null,
+          pid: 1,
+          output: [],
+          stderr: "",
+          stdout: JSON.stringify({
+            schemaVersion: 1,
+            operation: `dataset ${type} get`,
+            status: found ? "completed" : "failed",
+            outcome: found ? "dataset_read" : "not_found_or_not_visible",
+            error: found ? null : { code: "DATASET_NOT_FOUND" },
+            context: { environment: edge.origin, effectiveInput: { id, version } },
+            data: found
+              ? {
+                  subject: { type, id, version, stateCode: row!.state, owner: row!.owner },
+                  content: row!.content,
+                }
+              : {},
+          }),
+        };
+      }
+      if (edge)
+        assert.ok(
+          !argv.includes("save-draft") && !argv.includes("verify-remote"),
+          "CLI 0.4 never dispatches removed CLI operations",
+        );
       if (!argv.includes("save-draft") && !argv.includes("verify-remote"))
         return Reflect.apply(originalSpawn, childProcess, args);
       assert.equal(args[0], process.execPath);
@@ -2754,6 +2874,33 @@ export async function verifyDependentScopes(t: TestContext, support: boolean) {
   current = await approve(firstType);
   assert.deepEqual(writes, [firstType], JSON.stringify(current));
   assert.notEqual(current.status, "completed");
+  if (edge) {
+    const resultFor = (result: typeof current) => {
+      const selected = result.artifacts.findLast(
+        (item) => item.role === "owner-execution-result.json",
+      );
+      assert.ok(selected?.kind === "file", JSON.stringify(result));
+      return JSON.parse(fs.readFileSync(selected.path, "utf8")) as {
+        status: string;
+        attempt_consumed: boolean;
+        request_sha256: string;
+      };
+    };
+    const interrupted = resultFor(current);
+    assert.equal(interrupted.status, "unresolved");
+    assert.equal(interrupted.attempt_consumed, true);
+    assert.deepEqual(readbacks, []);
+    current = await facade.resume(invocation);
+    const recovered = resultFor(current);
+    assert.equal(recovered.status, "recovered");
+    assert.equal(recovered.request_sha256, interrupted.request_sha256);
+    assert.deepEqual(
+      writes,
+      [firstType],
+      "recovery reads without redispatching the consumed write",
+    );
+    assert.deepEqual(readbacks, [firstType]);
+  }
   current = await facade.resume(invocation);
   finalized = loadFinalize(current);
   assert.equal(
@@ -2788,4 +2935,5 @@ export async function verifyDependentScopes(t: TestContext, support: boolean) {
   assert.equal(current.status, "completed", JSON.stringify(current));
   assert.equal((await facade.resume(invocation)).status, "completed");
   assert.deepEqual(writes, [firstType, secondType]);
+  edge?.assertRecovered();
 }

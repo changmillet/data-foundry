@@ -191,7 +191,7 @@
     ]
   },
   "dependencies": {
-    "@tiangong-lca/cli": "0.1.28"
+    "@tiangong-lca/cli": "0.4.0"
   },
   "foundryRuntime": {
     "schema": "tiangong-foundry.runtime-layout.v2",

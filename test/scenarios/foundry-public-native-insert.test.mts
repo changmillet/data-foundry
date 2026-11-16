@@ -1,8 +1,5 @@
 import test from "node:test";
-import {
-  publicIdentityCases,
-  verifyPublicIdentityWorkflow,
-} from "../fixtures/foundry-public-workflow.ts";
+import { runRetainedFoundryTests } from "../helpers/retained-foundry-runtime.mts";
 
-test("public native insert retains the selected contract snapshot through admission and no-replay recovery", (t) =>
-  verifyPublicIdentityWorkflow(t, publicIdentityCases[0], true));
+test("CLI 0.1.28 native insert retains its original committed snapshot and no-replay recovery", (t) =>
+  runRetainedFoundryTests(t, ["test/scenarios/foundry-public-native-insert.test.mts"]));

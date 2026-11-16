@@ -13,7 +13,7 @@ import {
   type QualifiedFoundryRuntime,
 } from "./foundry-runtime-qualification.ts";
 import { resolveInstalledTiangongLcaCliPackage } from "./foundry-runtime-utils.ts";
-import { createFoundryIsolatedChildEnvironment } from "./foundry-runtime-environment.ts";
+import { withFoundryIsolatedLocalCliEnvironment } from "./foundry-runtime-environment.ts";
 import {
   bindWorkflowChildExecution,
   workflowChildFailure,
@@ -123,7 +123,22 @@ export function runWorkflowLocalCliResult(
   validate: <T>(check: () => T) => T;
   verifyReportFile: (file: string) => void;
 } {
+  const typedDatasetValidation =
+    qualified.cli.expectation.package_version === "0.4.0" &&
+    argv[0] === "dataset" &&
+    ["flow", "process", "model"].includes(argv[1]) &&
+    argv[argv.indexOf("--checks") + 1] === "schema,business" &&
+    argv[2] === "validate";
+  const typedPatch =
+    qualified.cli.expectation.package_version === "0.4.0" &&
+    argv[0] === "dataset" &&
+    ["flow", "process", "model", "contact", "source", "unitgroup", "flowproperty"].includes(
+      argv[1],
+    ) &&
+    argv[2] === "patch";
   const local =
+    typedDatasetValidation ||
+    typedPatch ||
     (argv[0] === "dataset" && argv[1] === "validate") ||
     (argv[0] === "qa" && ["flow", "process", "lifecyclemodel"].includes(argv[1])) ||
     (argv[0] === "dataset" && argv[1] === "curation-queue" && argv[2] === "build") ||
@@ -139,14 +154,16 @@ export function runWorkflowLocalCliResult(
   assertQualifiedFoundryRuntime(context, qualified);
   const cli = resolveInstalledTiangongLcaCliPackage();
   const execution = bindWorkflowChildExecution(context, qualified, cli.binPath, argv);
-  const child = spawnSync(process.execPath, [cli.binPath, ...argv], {
-    cwd: context.workspaceRoot,
-    env: createFoundryIsolatedChildEnvironment({ tempRoot: temporary }),
-    encoding: "utf8",
-    shell: false,
-    timeout: 120_000,
-    maxBuffer: 8 * 1024 * 1024,
-  });
+  const child = withFoundryIsolatedLocalCliEnvironment(temporary, (env) =>
+    spawnSync(process.execPath, [cli.binPath, ...argv], {
+      cwd: context.workspaceRoot,
+      env,
+      encoding: "utf8",
+      shell: false,
+      timeout: 120_000,
+      maxBuffer: 8 * 1024 * 1024,
+    }),
+  );
   const kind = child.error
     ? "spawn_error"
     : child.signal
@@ -165,8 +182,19 @@ export function runWorkflowLocalCliResult(
   }
   if (!report || typeof report !== "object" || Array.isArray(report))
     throw workflowChildFailure(execution, child, "invalid_report");
+  const envelope = report as Record<string, unknown>;
+  const patchError =
+    typedPatch &&
+    envelope.status === "failed" &&
+    envelope.outcome === "invalid_input" &&
+    typeof envelope.error === "object" &&
+    envelope.error !== null &&
+    Object.hasOwn(envelope.error, "code") &&
+    Object.hasOwn(envelope.error, "message");
   if (
-    "error" in report ||
+    ("error" in report &&
+      !((typedDatasetValidation || typedPatch) && report.error === null) &&
+      !patchError) ||
     !("status" in report) ||
     typeof report.status !== "string" ||
     !report.status.trim()

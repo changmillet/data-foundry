@@ -13,6 +13,10 @@ import { qualifyFoundryRuntime } from "../../scripts/lib/foundry-runtime-qualifi
 import { createFoundryFacade } from "../../scripts/public-api.ts";
 import { flowRow, processRowWithFlowRef } from "../fixtures/row-builders.ts";
 import { workflowFixture } from "../fixtures/foundry-public-workflow.ts";
+import { runRetainedFoundryTests } from "../helpers/retained-foundry-runtime.mts";
+import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
+
+const typed = resolveInstalledTiangongLcaCliPackage().packageVersion === "0.4.0";
 
 for (const kind of [
   "spawn_error",
@@ -71,7 +75,10 @@ for (const kind of [
       "spawnSync",
       (...args: Parameters<typeof childProcess.spawnSync>) => {
         const argv = args[1];
-        if (Array.isArray(argv) && argv[1] === "qa") {
+        if (
+          Array.isArray(argv) &&
+          (typed ? argv.slice(1, 4).join(" ") === "dataset flow validate" : argv[1] === "qa")
+        ) {
           calls++;
           if (kind === "identity_disappeared") vanishedCli = String(argv[0]);
           if (
@@ -94,7 +101,8 @@ for (const kind of [
                       "previous-qa-call",
                       "report.json",
                     );
-              report.files.report = file;
+              if (typed) report.artifacts[0].path = file;
+              else report.files.report = file;
               fs.mkdirSync(path.dirname(file), { recursive: true });
               fs.writeFileSync(file, JSON.stringify(report));
             }
@@ -178,13 +186,17 @@ for (const kind of [
           : kind,
     );
     assert.equal(detail.failure.child.pid, 17);
-    assert.equal(detail.failure.invocation.argv[0], "qa");
+    const command = typed ? ["dataset", "flow", "validate"] : ["qa"];
+    assert.deepEqual(detail.failure.invocation.argv.slice(0, command.length), command);
     assert.ok(detail.operation_id);
     assert.ok(detail.failure.invocation.cli_sha256);
     if (["empty_qa_contract", "qa_stdout_file_mismatch", "qa_stale_locator"].includes(kind))
-      assert.equal(detail.failure.rejection.code, "workflow_report_invalid");
+      assert.equal(
+        detail.failure.rejection.code,
+        typed && kind !== "empty_qa_contract" ? "workflow_qa_failed" : "workflow_report_invalid",
+      );
     if (kind === "invalid_qa_locator")
-      assert.equal(detail.failure.rejection.code, "workflow_qa_failed");
+      assert.equal(detail.failure.rejection.code, typed ? "ENOENT" : "workflow_qa_failed");
     assert.equal(JSON.stringify(detail).includes("SECRET"), false);
     assert.equal(JSON.stringify(detail).includes("secret-value"), false);
     assert.match(detail.failure.stderr.preview, /useful bounded diagnostic/u);
@@ -243,7 +255,11 @@ test("failed context receipts cannot become cached success or completed producer
   let calls = 0;
   t.mock.method(childProcess, "spawnSync", (...args: Parameters<typeof childProcess.spawnSync>) => {
     const argv = args[1];
-    if (Array.isArray(argv) && argv[1] === "dataset" && argv[2] === "context-pack") {
+    if (
+      Array.isArray(argv) &&
+      argv[1] === "dataset" &&
+      (typed ? argv[2] === "flow" && argv[3] === "contract" : argv[2] === "context-pack")
+    ) {
       calls++;
       return {
         pid: 23,
@@ -316,6 +332,12 @@ test("failed context receipts cannot become cached success or completed producer
 
 for (const kind of ["structured_error", "invalid_queue_contract"] as const) {
   test(`public Process queue retains ${kind} original call without replay`, async (t) => {
+    if (typed)
+      return runRetainedFoundryTests(
+        t,
+        ["test/scenarios/foundry-workflow-child-failure.test.mts"],
+        `^public Process queue retains ${kind} original call without replay$`,
+      );
     const { root, workspace, facade, runtimeSelection } = workflowFixture(t);
     const seed = path.join(root, "queue-seed.json"),
       specFile = path.join(root, "queue-request.json");

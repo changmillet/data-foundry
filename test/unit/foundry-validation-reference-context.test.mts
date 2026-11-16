@@ -128,7 +128,7 @@ test("queue references require every selected exact Flow version in complete pay
     );
 });
 
-test("published CLI 0.1.28 keeps real SDK allocation outcomes for projected exact evidence", async (t) => {
+test("the selected CLI keeps real SDK allocation outcomes for projected exact evidence", async (t) => {
   const fs = await import("node:fs");
   const os = await import("node:os");
   const path = await import("node:path");
@@ -137,7 +137,7 @@ test("published CLI 0.1.28 keeps real SDK allocation outcomes for projected exac
   const { captureFoundryInput } = await import("../../scripts/lib/foundry-runtime-context.ts");
   const { readPreparationCliEvidence } =
     await import("../../scripts/lib/foundry-preparation-cli-validation.ts");
-  assert.equal(describeCliRuntime().package.version, "0.1.28");
+  const packageVersion = describeCliRuntime().package.version;
   const fixture = JSON.parse(
     fs.readFileSync(new URL("../fixtures/managed-allocation-input.json", import.meta.url), "utf8"),
   );
@@ -151,6 +151,15 @@ test("published CLI 0.1.28 keeps real SDK allocation outcomes for projected exac
     import.meta.dirname,
     "../../node_modules/@tiangong-lca/cli/bin/tiangong-lca.js",
   );
+  if (packageVersion === "0.4.0") {
+    const { verifyManagedAllocationConsumer } =
+      await import("../helpers/managed-allocation-consumer.mts");
+    await verifyManagedAllocationConsumer(root, packageVersion, (argv) =>
+      Promise.resolve(spawnSync(process.execPath, [cli, ...argv], { encoding: "utf8" })),
+    );
+    return;
+  }
+  assert.equal(packageVersion, "0.1.28");
   const original = JSON.stringify(base);
   for (const kind of ["complete", "missing", "wrong-version", "wrong-type"] as const) {
     await t.test(kind, () => {

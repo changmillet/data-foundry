@@ -57,6 +57,46 @@ export function parseFoundryPreparationCliReport(options: {
   exit: number;
 }): Json[] {
   const report = object(options.report);
+  if (report.schema === "tiangong-foundry.typed-process-qa.v1") {
+    if (
+      report.status !== "completed_typed_process_validation" ||
+      report.validation_input !== options.input ||
+      report.validation_operation !== "dataset process validate" ||
+      object(report.files).report !==
+        path.join(options.outDir, "outputs", "validation-report.json") ||
+      !Array.isArray(report.rows) ||
+      !Array.isArray(report.validations) ||
+      report.rows.length !== options.rows.length ||
+      report.validations.length !== options.rows.length
+    )
+      return fail();
+    const validations = report.validations;
+    const rows = report.rows.map((raw, index): Json => {
+      const { findings: rawFindings, ...complete } = object(raw);
+      const checked = object(validations[index]);
+      const identity = datasetIdentity(options.rows[index], index, "process");
+      if (
+        complete.type !== "process" ||
+        complete.index !== 0 ||
+        complete.id !== identity.id ||
+        complete.version !== identity.version ||
+        complete.payload_sha256 !== sha256Json(identity.payload) ||
+        !["passed", "failed", "incomplete"].includes(String(complete.status)) ||
+        checked.id !== identity.id ||
+        checked.version !== identity.version ||
+        checked.result !== path.join(options.outDir, `validation-${index + 1}.json`) ||
+        checked.complete_sha256 !== sha256Json(complete) ||
+        !Array.isArray(complete.issues) ||
+        complete.issue_count !== complete.issues.length ||
+        !Array.isArray(rawFindings) ||
+        (complete.status === "passed") !== (rawFindings.length === 0)
+      )
+        return fail();
+      return { ...complete, typed_findings: rawFindings.map(object) };
+    });
+    if (options.exit !== (rows.some((row) => row.status !== "passed") ? 1 : 0)) fail();
+    return rows;
+  }
   if (
     report.input_path !== options.input ||
     report.requested_type !== "process" ||
@@ -190,6 +230,44 @@ export function preparationValidationActions(row: Json, receipt?: Json): Json[] 
     ...layerNames.map((name) => ({ name, value: object(layers[name]) })),
     { name: "allocation_semantics", value: semantics },
   ];
+  if (Array.isArray(row.typed_findings)) {
+    const typedGroups = [
+      ...groups,
+      { name: "flow_reference_names", value: record(row.flow_reference_names) },
+      { name: "annual_volume", value: record(row.annual_volume) },
+    ];
+    return row.typed_findings.map((item) => {
+      const issue = object(item);
+      const group = typedGroups.find(
+        ({ value }) =>
+          Array.isArray(value.issues) &&
+          value.issues.some((entry) => {
+            const ownerIssue = object(entry);
+            return ownerIssue.code === issue.code && ownerIssue.path === issue.path;
+          }),
+      );
+      return {
+        source: "cli_validation",
+        validation_layer: group?.name ?? "typed_process_business",
+        code: issue.code,
+        path: issue.path,
+        message: issue.message,
+        action_kind: "ai_authoring",
+        required_owner: "foundry_ai_authoring",
+        ai_required: true,
+        instruction:
+          "Review the complete owner validation and exact Process references before applying a source-backed authoring patch.",
+        evidence: {
+          ...receipt,
+          candidate_sha256: row.payload_sha256,
+          validation_layers: row.validation_layers,
+          allocation_semantics: row.allocation_semantics,
+          flow_reference_names: row.flow_reference_names,
+          annual_volume: row.annual_volume,
+        },
+      };
+    });
+  }
   return groups.flatMap(({ name, value }) =>
     (value.issues as Json[]).map((issue) => ({
       source: "cli_validation",

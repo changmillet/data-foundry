@@ -16,6 +16,12 @@ after(cleanManagedAdoptionPackage);
 
 test("real manager + synthetic owned auth/search transport performs exact Flow3/Process1 readonly stage and preserves Source2", async (t) => {
   const f = await managedAdoptionFixture(t, true);
+  const typed = f.cli.package.version === "0.4.0";
+  const invocations = (count: number) => ({
+    cli_invocations: typed ? 0 : count,
+    ...(typed ? { edge_invocations: count } : {}),
+    underlying_retrievals: null,
+  });
   const history = await seedManagedIdentityHistory(f);
   await adoptManagedFixture(f);
   const ordinary = (await f.run(f.launch, f.taskArgs("resume"), "foundry", f.authEnvironment))
@@ -33,33 +39,25 @@ test("real manager + synthetic owned auth/search transport performs exact Flow3/
       "completed",
       JSON.stringify(result.operation),
     );
+  const first = results.map((result) => managedExplicitStage(result.operation).this_invocation);
   assert.deepEqual(
-    results
-      .map(
-        (result) =>
-          (managedExplicitStage(result.operation).this_invocation as { cli_invocations: number })
-            .cli_invocations,
-      )
-      .sort(),
-    [0, 4],
+    first.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
+    [invocations(0), invocations(4)],
   );
   const stage = managedExplicitStage(results[0].operation);
   assert.deepEqual(stage.counts, {
     admitted_targets: 4,
     accepted_targets: 4,
-    cli_invocations: 4,
-    underlying_retrievals: null,
+    ...invocations(4),
   });
   const duplicate = (await f.run(f.launch, explicitArgs, "foundry", f.authEnvironment)).operation;
-  assert.deepEqual(managedExplicitStage(duplicate).this_invocation, {
-    cli_invocations: 0,
-    underlying_retrievals: null,
-  });
+  assert.deepEqual(managedExplicitStage(duplicate).this_invocation, invocations(0));
   assert.equal(f.counts().filter((item) => item.kind === "flow").length, 3);
   assert.equal(f.counts().filter((item) => item.kind === "process").length, 1);
   assert.equal(f.counts().filter((item) => item.kind === "forbidden-write").length, 0);
   for (const call of f.counts()) {
     assert.equal(call.token_present, true);
+    if (call.transport === "edge") continue;
     assert.equal(call.cache_disabled, true);
     assert.equal(call.ambient_secret_present, false);
     assert.equal(call.node_options_present, false);

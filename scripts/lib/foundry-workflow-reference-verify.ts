@@ -35,6 +35,7 @@ import {
 } from "./import-curation/internal/dataset-payload.ts";
 import { bundleRowTypes, type BundleRowType } from "./bundle-row-types.ts";
 import type { ArtifactEntry } from "./foundry-task-types.ts";
+import { createFoundryEdgeActor } from "./foundry-edge-session.ts";
 
 function invalid(message: string): never {
   throw new FoundryContextError("reference_evidence_invalid", message);
@@ -184,7 +185,9 @@ export async function verifyFoundryReferences(
   if (current.verified) return current.result!.value;
   const scope = current.scope;
   if (!scope) invalid("No current canonical reference partition exists.");
-  verifyFoundryRuntimeIdentity(context, authentication, process.env, qualified);
+  const typed = qualified.cli.expectation.package_version === "0.4.0";
+  const actor = typed ? await createFoundryEdgeActor(context, qualified, authentication) : null;
+  if (!actor) verifyFoundryRuntimeIdentity(context, authentication, process.env, qualified);
   for (const fact of scope.sources) readFoundryInput(context, fact.path);
   const output = resolveFoundryOutput(context, `outputs/reference-verification/${randomUUID()}`);
   fs.mkdirSync(output, { recursive: true, mode: 0o700 });
@@ -198,8 +201,119 @@ export async function verifyFoundryReferences(
       .join("\n") + "\n",
     { mode: 0o600 },
   );
-  const inputFact = captureFoundryInput(input),
-    cli = resolveInstalledTiangongLcaCliPackage();
+  const inputFact = captureFoundryInput(input);
+  const publish = (
+    command: unknown,
+    blockers: Record<string, unknown>[],
+    reportFact: ReturnType<typeof captureFoundryInput> | null,
+    checksFact: ReturnType<typeof captureFoundryInput> | null,
+  ) => {
+    if (captureFoundryInput(input).sha256 !== inputFact.sha256)
+      invalid("Reference query changed during verification.");
+    for (const fact of scope.sources) readFoundryInput(context, fact.path);
+    return runFoundryTaskOperation(
+      context,
+      {
+        command: "dataset-workflow-reference-verify",
+        options: { scope: scope.sha256, nonce: path.basename(output) },
+        validateCurrent(index) {
+          if (foundryReferenceScope(context, index)?.sha256 !== scope.sha256)
+            invalid("Reference scope changed during verification.");
+        },
+      },
+      (operation) => {
+        registerWorkflowStageFiles(context, operation, output);
+        const result = {
+          schema: "tiangong-foundry.reference-verification.v1",
+          status: blockers.length ? "unresolved" : "verified",
+          scope_sha256: scope.sha256,
+          targets: scope.targets,
+          input: inputFact,
+          report: reportFact,
+          checks: checksFact,
+          command,
+          blockers,
+        };
+        operation.writeJson(path.join(output, "foundry-reference-verification.json"), result);
+        return result;
+      },
+    );
+  };
+  if (actor) {
+    const endpoint = "app_dataset_verify_remote";
+    const requests: unknown[] = [];
+    const checks: Record<string, unknown>[] = [];
+    const blockers: Record<string, unknown>[] = [];
+    for (let offset = 0; offset < scope.targets.length; offset += 200) {
+      const targets = scope.targets.slice(offset, offset + 200);
+      const request = {
+        rootPolicy: "existing",
+        references: targets.map((target) => ({
+          ...target,
+          role: "reference",
+          requirePayload: true,
+        })),
+      };
+      try {
+        const response = workflowObject(await actor.post(endpoint, request));
+        requests.push({ request, response });
+        const report = workflowObject(response.data);
+        const counts = workflowObject(report.counts);
+        const rows = Array.isArray(report.checks) ? report.checks.map(workflowObject) : [];
+        if (
+          response.command !== "dataset_verify_remote" ||
+          response.ok !== true ||
+          report.status !== "passed_remote_verification" ||
+          report.root_policy !== request.rootPolicy ||
+          !Array.isArray(report.blockers) ||
+          report.blockers.length ||
+          counts.blockers !== 0 ||
+          counts.references !== targets.length ||
+          rows.length !== targets.length
+        )
+          blockers.push({ code: "reference_verification_incomplete", offset });
+        targets.forEach((target, index) => {
+          const check = rows[index];
+          if (
+            !check ||
+            check.index !== index ||
+            check.role !== "reference" ||
+            check.id !== target.id ||
+            check.table !== target.table ||
+            check.version !== target.version ||
+            check.status !== "ok" ||
+            check.exact_version !== target.version ||
+            check.latest_version !== target.version ||
+            check.payload_present !== true
+          )
+            blockers.push({ code: "canonical_reference_not_verified", target });
+        });
+        checks.push(...rows);
+      } catch (error) {
+        blockers.push({
+          code: error instanceof FoundryContextError ? error.code : "reference_edge_failed",
+          offset,
+        });
+        break;
+      }
+    }
+    const report = path.join(output, "edge-reference-verification.json");
+    const checksFile = path.join(output, "checks.jsonl");
+    fs.writeFileSync(report, JSON.stringify({ identity: actor.receipt, requests }) + "\n", {
+      mode: 0o600,
+    });
+    fs.writeFileSync(checksFile, checks.map((check) => JSON.stringify(check) + "\n").join(""), {
+      mode: 0o600,
+    });
+    return publish(
+      { transport: "edge", endpoint },
+      blockers,
+      captureFoundryInput(report),
+      captureFoundryInput(checksFile),
+    );
+  }
+
+  const cli = resolveInstalledTiangongLcaCliPackage();
   const command = createFoundryCommandSpec({
     executable: process.execPath,
     argv: [
@@ -299,36 +413,7 @@ export async function verifyFoundryReferences(
     }
     if (run.error || run.signal || run.status !== 0)
       blockers.push({ code: "reference_cli_failed", exit_code: run.status });
-    if (captureFoundryInput(input).sha256 !== inputFact.sha256)
-      invalid("Reference query changed during verification.");
-    for (const fact of scope.sources) readFoundryInput(context, fact.path);
-    return runFoundryTaskOperation(
-      context,
-      {
-        command: "dataset-workflow-reference-verify",
-        options: { scope: scope.sha256, nonce: path.basename(output) },
-        validateCurrent(index) {
-          if (foundryReferenceScope(context, index)?.sha256 !== scope.sha256)
-            invalid("Reference scope changed during verification.");
-        },
-      },
-      (operation) => {
-        registerWorkflowStageFiles(context, operation, output);
-        const result = {
-          schema: "tiangong-foundry.reference-verification.v1",
-          status: blockers.length ? "unresolved" : "verified",
-          scope_sha256: scope.sha256,
-          targets: scope.targets,
-          input: inputFact,
-          report: reportFact,
-          checks: checksFact,
-          command,
-          blockers,
-        };
-        operation.writeJson(path.join(output, "foundry-reference-verification.json"), result);
-        return result;
-      },
-    );
+    return publish(command, blockers, reportFact, checksFact);
   } finally {
     delete environment.TIANGONG_LCA_ACCESS_TOKEN;
   }

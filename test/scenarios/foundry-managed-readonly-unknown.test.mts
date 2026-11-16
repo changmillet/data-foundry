@@ -19,7 +19,10 @@ test("real managed subprocess preserves UNKNOWN after interrupted synthetic read
   const args = f.taskArgs("resume", ["--identity-stage-input", history.descriptor]);
   const first = (await f.run(f.launch, args, "foundry", f.authEnvironment)).operation;
   assert.equal(first.status, "needs_input", JSON.stringify(first));
-  assert.equal(managedExplicitStage(first).new_cli_execution, null);
+  const firstStage = managedExplicitStage(first);
+  const typed = f.cli.package.version === "0.4.0";
+  assert.equal(firstStage.new_cli_execution, typed ? false : null);
+  if (typed) assert.equal(firstStage.execution_transport, "edge");
   f.setControl({ query: "manual" });
   const repeated = (await f.run(f.launch, args, "foundry", f.authEnvironment)).operation;
   assert.equal(repeated.status, "needs_input");

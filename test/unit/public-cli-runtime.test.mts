@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import {
   CLI_RUNTIME_EXPECTATION_SCHEMA,
   RUNTIME_PLATFORMS,
@@ -15,11 +20,13 @@ import {
   parseRuntimeManifest,
   pruneRuntimeComponents,
 } from "@tiangong-lca/cli/runtime";
+import { createFoundryIsolatedChildEnvironment } from "../../scripts/lib/foundry-runtime-environment.ts";
+import { tiangongLcaCliPackageVersion } from "../../scripts/lib/foundry-runtime-utils.ts";
 
 test("Foundry consumes the exact published CLI C1 runtime boundary", async () => {
   const descriptor = describeCliRuntime();
   assert.equal(descriptor.package.name, "@tiangong-lca/cli");
-  assert.equal(descriptor.package.version, "0.1.28");
+  assert.equal(descriptor.package.version, tiangongLcaCliPackageVersion);
   assert.equal(RUNTIME_HOST_CONTEXT_PROTOCOL, "tiangong-lca.runtime-host.v1");
   await assert.rejects(receiveRuntimeHostContext(), /inherited manager IPC channel/u);
   assert.deepEqual(
@@ -52,4 +59,59 @@ test("Foundry consumes the exact published CLI C1 runtime boundary", async () =>
   ]) {
     assert.equal(typeof value, "function");
   }
+});
+
+test("the installed CLI advertises the dataset contracts used by managed Foundry workflows", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-cli-command-contract-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const env = createFoundryIsolatedChildEnvironment({ tempRoot: root });
+  const bin = fileURLToPath(import.meta.resolve("@tiangong-lca/cli/bin/tiangong-lca.js"));
+  const typed = describeCliRuntime().package.version === "0.4.0";
+  const calls = typed
+    ? [
+        {
+          route: ["auth", "identity-receipt"],
+          options: ["--expected-project-ref", "--expected-user-id"],
+        },
+        ...["flow", "process", "source", "contact", "model", "flowproperty", "unitgroup"].map(
+          (type) => ({ route: ["dataset", type, "contract"], options: ["--include", "--output"] }),
+        ),
+        ...["flow", "process", "model"].map((type) => ({
+          route: ["dataset", type, "validate"],
+          options: ["--checks", "--output"],
+        })),
+        { route: ["dataset", "process", "validate"], options: ["--reference-documents"] },
+        { route: ["dataset", "flow", "get"], options: ["--id", "--version"] },
+        { route: ["dataset", "model", "create"], options: ["--input", "--dry-run"] },
+      ]
+    : [
+        { route: ["dataset", "context-pack"], options: ["--profile", "--out-dir"] },
+        { route: ["flow", "identity-preflight"], options: ["--input", "--out-dir"] },
+        { route: ["process", "identity-preflight"], options: ["--input", "--out-dir"] },
+        {
+          route: ["dataset", "save-draft"],
+          options: ["--execution-contract", "--allow-account-local-support"],
+        },
+        { route: ["dataset", "verify-remote"], options: ["--root-policy", "--out-dir"] },
+      ];
+  const incompatible: string[] = [];
+  for (const { route, options } of calls) {
+    const result = spawnSync(process.execPath, [bin, ...route, "--help"], {
+      cwd: root,
+      env,
+      encoding: "utf8",
+      shell: false,
+      timeout: 15_000,
+    });
+    assert.ifError(result.error);
+    const name = route.join(" ");
+    if (result.status !== 0 || !result.stdout.includes(`tiangong-lca ${name} `)) {
+      incompatible.push(name);
+    } else {
+      for (const option of options) {
+        if (!result.stdout.includes(option)) incompatible.push(`${name} ${option}`);
+      }
+    }
+  }
+  assert.deepEqual(incompatible, [], "Update the Foundry caller contracts when adopting a CLI");
 });

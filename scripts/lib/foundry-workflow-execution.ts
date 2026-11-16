@@ -41,6 +41,11 @@ import { canonicalPayloadSha256 } from "./post-write-root-proof.ts";
 import { summarizeSameIdentityCommitFailures } from "./same-identity-commit-recovery.ts";
 import { readRows } from "./import-curation/internal/runtime-io.ts";
 import type { ArtifactEntry } from "./foundry-task-types.ts";
+import { verifySelectedEdgeDraftPlan } from "./foundry-edge-draft-admission.ts";
+import { isEdgeSupportPlan } from "./foundry-edge-support-plan.ts";
+import { createFoundryEdgeActor } from "./foundry-edge-session.ts";
+import { dispatchFoundryEdgeSupport, verifyFoundryEdgeSupport } from "./foundry-edge-support.ts";
+import { createFoundryTypedModelDraft } from "./foundry-typed-model-write.ts";
 
 type RequestArtifact = ReturnType<typeof readOwnerExecutionRequests>[number];
 type Readback = Awaited<ReturnType<typeof readbackFoundryOwner>>;
@@ -52,6 +57,7 @@ export async function executeFoundryOwnerScope(
   authentication: FoundryAuthentication = { mode: "oauth" },
 ) {
   const request = requested.request;
+  const edgePlan = isEdgeSupportPlan(request.content.commit) ? request.content.commit : null;
   if (
     !entries.some(
       (entry) => entry.path === requested.entry.path && entry.sha256 === requested.entry.sha256,
@@ -104,6 +110,11 @@ export async function executeFoundryOwnerScope(
         );
       let identity: ReturnType<typeof verifyFoundryRuntimeIdentity> | null = null;
       let admission: Awaited<ReturnType<typeof rehydrateFoundryExecutionAdmission>> | null = null;
+      let edgeDispatch: {
+        actor: Awaited<ReturnType<typeof createFoundryEdgeActor>>;
+        rows: ReturnType<typeof verifySelectedEdgeDraftPlan>;
+        before: Awaited<ReturnType<typeof verifyFoundryEdgeSupport>>;
+      } | null = null;
       if (!consumed) {
         identity = verifyFoundryRuntimeIdentity(context, authentication, process.env, qualified);
         admission = await rehydrateFoundryExecutionAdmission(context, qualified, identity, {
@@ -119,13 +130,32 @@ export async function executeFoundryOwnerScope(
             "execution_observation_invalid",
             "Existing dispatch evidence cannot be treated as unattempted.",
           );
-        const out = commandSpecOptionValue(request.content.commit, "--out-dir")!;
-        resolveFoundryOutput(context, out);
-        if (fs.existsSync(out) && fs.readdirSync(out).length)
-          throw new FoundryContextError(
-            "execution_output_not_empty",
-            "An unattempted command cannot adopt existing output artifacts.",
+        if (edgePlan) {
+          const rows = verifySelectedEdgeDraftPlan(
+            context,
+            edgePlan,
+            captureFoundryInput(request.content.input.path),
+            request.policy,
           );
+          const actor = await createFoundryEdgeActor(context, qualified, authentication);
+          const before = await verifyFoundryEdgeSupport(actor, edgePlan, "before");
+          if (before.blockers.length)
+            throw new FoundryContextError(
+              "edge_support_before_conflict",
+              "The Edge draft identity is already in use or a required dependency cannot be verified.",
+            );
+          identity = verifyFoundryRuntimeIdentity(context, authentication, process.env, qualified);
+          await assertFoundryExecutionAdmission(context, qualified, identity, admission);
+          edgeDispatch = { actor, rows, before };
+        } else {
+          const out = commandSpecOptionValue(request.content.commit, "--out-dir")!;
+          resolveFoundryOutput(context, out);
+          if (fs.existsSync(out) && fs.readdirSync(out).length)
+            throw new FoundryContextError(
+              "execution_output_not_empty",
+              "An unattempted command cannot adopt existing output artifacts.",
+            );
+        }
       }
       const attemptStore = ownerAttemptStore(context, request.scope_id, {
         path: requested.file,
@@ -178,6 +208,56 @@ export async function executeFoundryOwnerScope(
               "Mutation requires fresh process-local admission.",
             );
           const command = request.content.commit;
+          if (isEdgeSupportPlan(command)) {
+            if (!edgeDispatch)
+              throw new FoundryContextError(
+                "execution_admission_required",
+                "Edge creation requires fresh verified draft admission.",
+              );
+            writeFoundryArtifact(
+              context,
+              path.join(observationDir, "edge-before.json"),
+              JSON.stringify(edgeDispatch.before, null, 2) + "\n",
+            );
+            let acknowledgements: unknown[] | null = null;
+            const { actor, rows } = edgeDispatch;
+            try {
+              acknowledgements = await dispatchFoundryEdgeSupport(
+                actor,
+                command,
+                rows,
+                (root, content) =>
+                  createFoundryTypedModelDraft(
+                    context,
+                    qualified,
+                    authentication,
+                    actor.receipt,
+                    requested.entry.sha256,
+                    root,
+                    content,
+                  ),
+              );
+            } catch {
+              // The durable owner attempt was consumed before the first request. A lost
+              // response can only be settled by independent exact readback.
+            }
+            observation = {
+              schema: "tiangong-foundry.dispatch-observation.v1",
+              request_sha256: requested.entry.sha256,
+              disposition: acknowledgements ? "confirmed" : "unknown",
+              edge_plan_sha256: command.sha256,
+              acknowledgements,
+            };
+            writeFoundryArtifact(
+              context,
+              observationFile,
+              JSON.stringify(observation, null, 2) + "\n",
+            );
+            if (!acknowledgements) throw new Error("Edge dispatch requires exact readback.");
+            const verified = await readback();
+            if (!verified) throw new Error("Edge drafts are not independently verified.");
+            return verified.proof;
+          }
           const environment = createFoundryAuthenticationEnvironment(
             authentication,
             context.accountIntent?.sessionReference,
@@ -321,7 +401,9 @@ export async function executeFoundryOwnerScope(
           if (!observationRegistered) {
             if (fs.existsSync(observationDir))
               registerWorkflowStageFiles(context, operation, observationDir);
-            const commitDir = commandSpecOptionValue(request.content.commit, "--out-dir");
+            const commitDir = edgePlan
+              ? null
+              : commandSpecOptionValue(request.content.commit, "--out-dir");
             if (commitDir && fs.existsSync(commitDir))
               registerWorkflowStageFiles(context, operation, commitDir);
           }

@@ -41,6 +41,21 @@ export function finalizationProcessFixture() {
   return { process, flow, property, group };
 }
 
+export function typedFinalizationProcessFixture() {
+  const fixture = finalizationProcessFixture();
+  const flow = object(fixture.flow.flowDataSet);
+  const name = object(object(object(flow.flowInformation).dataSetInformation).name);
+  const english = (name.baseName as Json[]).find((value) => value["@xml:lang"] === "en")!;
+  name.baseName = english;
+  for (const exchange of object(object(fixture.process.processDataSet).exchanges)
+    .exchange as Json[])
+    object(exchange.referenceToFlowDataSet)["common:shortDescription"] = {
+      "@xml:lang": "en",
+      "#text": `${String(english["#text"])}; Synthetic fixture; Global synthetic flow`,
+    };
+  return fixture;
+}
+
 export type FinalizationProcessFixture = ReturnType<typeof finalizationProcessFixture>;
 export type FinalizationProcessFileArtifact = Extract<FoundryOperationArtifact, { kind: "file" }>;
 export const finalizationProcessAccount = {
@@ -61,6 +76,8 @@ export interface PublicFinalizationProcessDriverOptions {
   seed: string;
   fixture: FinalizationProcessFixture;
   account?: { project_ref: string; user_id: string };
+  edgeReadReference?: (table: string, id: string, version: string) => unknown;
+  edgeReadLatestReference?: (table: string, id: string) => { version: string; content: unknown };
 }
 
 /**
@@ -72,7 +89,7 @@ export async function runPublicFinalizationProcessWorkflow(
   t: TestContext,
   input: PublicFinalizationProcessDriverOptions,
 ) {
-  const { root, facade, invocation, seed, fixture } = input;
+  const { root, facade, invocation, seed, fixture, edgeReadReference } = input;
   const account = input.account ?? finalizationProcessAccount;
   const originalSource = fs.readFileSync(seed);
   const read = (file: string) => object(JSON.parse(fs.readFileSync(file, "utf8")));
@@ -91,11 +108,74 @@ export async function runPublicFinalizationProcessWorkflow(
       let report: unknown;
       if (argv.includes("identity-receipt")) {
         counters.auth++;
-        report = testAuthIdentityReceipt({
+        const receipt = testAuthIdentityReceipt({
           projectRef: account.project_ref,
           userId: account.user_id,
+          ...(edgeReadReference
+            ? {
+                scopeOverrides: {
+                  session: {
+                    source: "access_token",
+                    cache_mode: "disabled",
+                    force_reauth: false,
+                    expires_at_utc: null,
+                  },
+                },
+              }
+            : {}),
         });
+        report = edgeReadReference
+          ? {
+              schemaVersion: 1,
+              operation: "auth identity-receipt",
+              status: "completed",
+              outcome: "identity_verified",
+              error: null,
+              data: { receipt },
+            }
+          : receipt;
+      } else if (edgeReadReference && argv[1] === "dataset" && argv[3] === "get") {
+        counters.remoteVerifications++;
+        const type = argv[2];
+        const id = argv[argv.indexOf("--id") + 1];
+        const version = argv[argv.indexOf("--version") + 1];
+        const tables: Record<string, string> = {
+          model: "lifecyclemodels",
+          process: "processes",
+          flow: "flows",
+          source: "sources",
+          contact: "contacts",
+          flowproperty: "flowproperties",
+          unitgroup: "unitgroups",
+          lciamethod: "lciamethods",
+        };
+        const latest =
+          version === "latest" ? input.edgeReadLatestReference?.(tables[type], id) : undefined;
+        const content = latest?.content ?? edgeReadReference(tables[type], id, version);
+        assert.ok(content, `unexpected remote reference ${type} ${id}@${version}`);
+        report = {
+          schemaVersion: 1,
+          operation: `dataset ${type} get`,
+          status: "completed",
+          outcome: "dataset_read",
+          error: null,
+          context: {
+            environment: `https://${account.project_ref}.supabase.co`,
+            effectiveInput: { id, version },
+          },
+          data: {
+            subject: {
+              type,
+              id,
+              version: latest?.version ?? version,
+              stateCode: 100,
+              owner: account.user_id,
+            },
+            content,
+          },
+        };
       } else if (argv.includes("identity-preflight")) {
+        assert.ok(!edgeReadReference, "the typed candidate may only preflight through Edge");
         counters.preflights++;
         const input = argv[argv.indexOf("--input") + 1];
         const out = argv[argv.indexOf("--out-dir") + 1];
@@ -123,6 +203,7 @@ export async function runPublicFinalizationProcessWorkflow(
         const tick = new Date(Date.now() + 1);
         fs.utimesSync(file, tick, tick);
       } else if (argv.includes("verify-remote")) {
+        assert.ok(!edgeReadReference, "the typed candidate may only read exact references");
         counters.remoteVerifications++;
         const input = argv[argv.indexOf("--input") + 1];
         const out = argv[argv.indexOf("--out-dir") + 1];
@@ -273,8 +354,14 @@ export async function runPublicFinalizationProcessWorkflow(
     appliedIdentity,
     `the driver must apply a real public identity semantic submission: ${JSON.stringify({ status: result.status, blockers: result.blockers, counters, identityBlockers })}`,
   );
-  for (let i = 0; i < 7 && !saveReports.length; i++) result = await facade.resume(invocation);
-  assert.ok(saveReports.length, "public finalization must reach the genuine CLI dry-run");
+  const hasFinalization = () =>
+    result.artifacts.some((item) => item.role === "foundry-finalize.json");
+  for (let i = 0; i < 7 && !(edgeReadReference ? hasFinalization() : saveReports.length); i++)
+    result = await facade.resume(invocation);
+  assert.ok(
+    edgeReadReference ? hasFinalization() : saveReports.length,
+    JSON.stringify({ status: result.status, blockers: result.blockers, counters }),
+  );
   const snapshots = result.artifacts.filter(
     (artifact): artifact is FinalizationProcessFileArtifact =>
       artifact.kind === "file" && artifact.role === "qa-0.json",

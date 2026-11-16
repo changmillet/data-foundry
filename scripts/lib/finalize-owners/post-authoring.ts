@@ -112,6 +112,7 @@ interface FinalizeStage extends JsonRecord {
   stderr?: string;
   report?: FinalizeStage;
   report_file?: string | null;
+  cli_validation?: { report: string; exit: number };
   rust_report?: unknown;
   binary_version?: unknown;
   counts?: CountMap;
@@ -985,7 +986,10 @@ export function createPostAuthoringFinalizeCommands({
     };
   }
 
-  function runDatasetPostAuthoringFinalize(options: FinalizeOptions): FinalizeStage {
+  function* finalizeStages(
+    options: FinalizeOptions,
+    asynchronousIdentity: boolean,
+  ): Generator<FinalizeIdentityRequest, FinalizeStage, FinalizeStage> {
     const finalizeStartedAtUtc = nowIso();
     const finalizeStartedAtMs = Date.now();
     const finalizeTimings: FinalizeTiming[] = [];
@@ -1472,16 +1476,28 @@ export function createPostAuthoringFinalizeCommands({
         finalizeSourceContactSupport,
       );
     }
-    const identityPreflightRunStage = timeStage("identity_preflight_run", () =>
-      runFinalizeIdentityPreflightStage({
-        rowsFile: cleanedRowsFile,
-        outDir,
-        options: {
-          ...options,
-          type: datasetType,
-        },
-      }),
-    );
+    const identityRequest = {
+      rowsFile: cleanedRowsFile,
+      outDir,
+      options: { ...options, type: datasetType },
+    };
+    let identityPreflightRunStage: FinalizeStage;
+    if (asynchronousIdentity && booleanOption(options.runIdentityPreflight)) {
+      const started_at_utc = nowIso();
+      const startedAt = Date.now();
+      identityPreflightRunStage = yield identityRequest;
+      finalizeTimings.push({
+        stage: "identity_preflight_run",
+        status: stageStatus(identityPreflightRunStage),
+        started_at_utc,
+        finished_at_utc: nowIso(),
+        duration_ms: Date.now() - startedAt,
+      });
+    } else {
+      identityPreflightRunStage = timeStage("identity_preflight_run", () =>
+        runFinalizeIdentityPreflightStage(identityRequest),
+      );
+    }
     const curationQueueStage = timeStage("curation_queue", () =>
       runFinalizeAutoCurationQueue({
         datasetType,
@@ -1605,6 +1621,7 @@ export function createPostAuthoringFinalizeCommands({
       requiresCurationGate
         ? runDatasetCurationGate({
             repoRoot,
+            cliValidation: qaStage.cli_validation,
             options: {
               ...options,
               type: datasetType,
@@ -1805,6 +1822,18 @@ export function createPostAuthoringFinalizeCommands({
             path.join(remoteOutDir, "outputs", "remote-verification-report.json"),
           );
           remoteVerifyReportFile = stage.report_file;
+          if (
+            stage.report?.schema === "tiangong-foundry.edge-support-precommit.v1" &&
+            stage.status !== "passed_remote_verification"
+          ) {
+            prewriteGateBlockers.push({
+              code: "edge_precommit_verification_blocked",
+              stage: "remote_verify_precommit",
+              message:
+                "Resolve the exact remote identity and dependency checks before requesting write approval.",
+              report: repoRelativeMaybe(remoteVerifyReportFile),
+            });
+          }
         }
         return stage;
       });
@@ -2330,5 +2359,13 @@ export function createPostAuthoringFinalizeCommands({
     };
   }
 
-  return { runDatasetPostAuthoringFinalize };
+  type FinalizeIdentityRequest = { rowsFile: string; outDir: string; options: FinalizeOptions };
+
+  function runDatasetPostAuthoringFinalize(options: FinalizeOptions): FinalizeStage {
+    const result = finalizeStages(options, false).next();
+    if (!result.done) throw new Error("Unexpected asynchronous identity stage.");
+    return result.value;
+  }
+
+  return { runDatasetPostAuthoringFinalize, finalizeStages };
 }

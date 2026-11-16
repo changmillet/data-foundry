@@ -459,7 +459,14 @@ test("a pending human question leaves independent local preparation runnable", a
     for (let step = 0; step < 8; step += 1) {
       if (!current.next_actions.some((action) => action.kind === "command")) break;
       current = await facade.resume(invocation);
-      assert.equal(current.status, "needs_input", scenario.name);
+      const failure = current.artifacts.find((item) => item.role === "workflow-child-failure.json");
+      assert.equal(
+        current.status,
+        "needs_input",
+        failure?.kind === "file"
+          ? fs.readFileSync(failure.path, "utf8")
+          : JSON.stringify(current.blockers),
+      );
       assert.equal(current.permissions.state, "not_required", scenario.name);
       if (
         current.blockers.some((item) => item.code === "curation_queue_blocked") &&

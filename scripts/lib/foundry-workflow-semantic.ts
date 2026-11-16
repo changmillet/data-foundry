@@ -32,6 +32,7 @@ import {
   registerWorkflowStageFiles,
   runWorkflowLocalCliResult,
 } from "./foundry-workflow-io.ts";
+import { applyFoundryTypedAuthoringPatch } from "./foundry-typed-authoring-patch.ts";
 import { runDatasetAuthoringPatchCollect } from "./import-curation/patch-collect.ts";
 import { readJsonOrJsonl, ensureArray, readRows } from "./import-curation/internal/runtime-io.ts";
 import { createFoundryDecisionOwners } from "./foundry-decision-owners.ts";
@@ -536,28 +537,46 @@ export async function applyFoundrySemanticInput(
               "Selected work must share its registered package snapshot directory.",
             );
           const repaired = path.join(output, type, "repaired.rows.jsonl");
-          const applied = runWorkflowLocalCliResult(context, qualified, temporary, [
-            "dataset",
-            "patch",
-            "apply",
-            "--input",
-            originalRows,
-            "--patch",
-            path.join(output, type, "collected-patches.json"),
-            "--out",
-            repaired,
-            "--out-dir",
-            path.join(output, type, "apply"),
-            "--authoring-package-dir",
-            [...packageDirectories][0],
-            "--require-authoring-package",
-            "--require-action-item-closure",
-            "--json",
-          ]);
+          const patch = path.join(output, type, "collected-patches.json");
+          const directory = path.join(output, type, "apply");
+          const typed = qualified.cli.expectation.package_version === "0.4.0";
+          const typedResult = typed
+            ? applyFoundryTypedAuthoringPatch(context, qualified, temporary, {
+                type,
+                input: originalRows,
+                patch,
+                directory,
+                output: repaired,
+                packageDirectory: [...packageDirectories][0],
+                writeJson: (file, value) => operation.writeJson(file, value),
+                writeText: (file, value) => operation.writeText(file, value),
+              })
+            : null;
+          const legacyResult = typed
+            ? null
+            : runWorkflowLocalCliResult(context, qualified, temporary, [
+                "dataset",
+                "patch",
+                "apply",
+                "--input",
+                originalRows,
+                "--patch",
+                patch,
+                "--out",
+                repaired,
+                "--out-dir",
+                directory,
+                "--authoring-package-dir",
+                [...packageDirectories][0],
+                "--require-authoring-package",
+                "--require-action-item-closure",
+                "--json",
+              ]);
+          const applied = typedResult ?? legacyResult!;
           const original = rows.value.sets.find(
             (set) => set.type === type && set.file === originalRows,
           );
-          const completed = applied.validate(() => {
+          const check = () => {
             if (
               !["completed", "blocked"].includes(String(applied.report.status)) ||
               !Array.isArray(applied.report.blockers)
@@ -569,7 +588,7 @@ export async function applyFoundrySemanticInput(
             const reportFile = workflowObject(applied.report.files).report;
             if (typeof reportFile !== "string")
               fail("semantic_apply_invalid", "Patch application returned no report locator.");
-            applied.verifyReportFile(reportFile);
+            legacyResult?.verifyReportFile(reportFile);
             if (
               applied.exit !== 0 ||
               applied.report.status !== "completed" ||
@@ -583,7 +602,8 @@ export async function applyFoundrySemanticInput(
               );
             captureFoundryInput(repaired);
             return original;
-          });
+          };
+          const completed = legacyResult ? legacyResult.validate(check) : check();
           if (!completed) {
             blockers.push({ code: "semantic_apply_blocked", type, report: applied.report });
             continue;

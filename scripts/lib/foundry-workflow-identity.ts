@@ -25,6 +25,7 @@ import { readRows } from "./import-curation/internal/runtime-io.ts";
 import type { ArtifactEntry } from "./foundry-task-types.ts";
 import { recoverFoundryWorkflowIdentity } from "./foundry-workflow-identity-recovery.ts";
 import { assertNoPendingFoundryIdentityStage } from "./foundry-identity-stage-state.ts";
+import { runFoundryEdgeIdentityPreflight } from "./foundry-edge-identity-preflight.ts";
 
 /** Run the existing read-only owner first; the local transaction only records its captured evidence. */
 export async function runFoundryWorkflowIdentity(
@@ -139,25 +140,39 @@ export async function runFoundryWorkflowIdentity(
         });
         continue;
       }
-      const result = workflowObject(
-        owner.invoke(() =>
-          owner.preflight.runDatasetIdentityPreflightRun({
-            index,
-            outDir: path.join(outDir, "run"),
-            authReceipt: receipt,
-            expectedProjectRef: context.accountIntent!.projectRef,
-            expectedUserId: context.accountIntent!.userId,
-            maxAttempts: 1,
-            timeoutMs: 60_000,
-          }),
-        ),
-      );
+      const runDir = path.join(outDir, "run");
+      const edgeResult =
+        qualified.cli.expectation.package_version === "0.4.0"
+          ? await runFoundryEdgeIdentityPreflight(
+              context,
+              qualified,
+              authentication,
+              set.type,
+              index,
+              runDir,
+            )
+          : null;
+      const result =
+        edgeResult ??
+        workflowObject(
+          owner.invoke(() =>
+            owner.preflight.runDatasetIdentityPreflightRun({
+              index,
+              outDir: runDir,
+              authReceipt: receipt,
+              expectedProjectRef: context.accountIntent!.projectRef,
+              expectedUserId: context.accountIntent!.userId,
+              maxAttempts: 1,
+              timeoutMs: 60_000,
+            }),
+          ),
+        );
       if (!["completed", "completed_with_identity_findings"].includes(String(result.status)))
         blockers.push({ code: "identity_preflight_failed", type: set.type, report: result });
       sets.push({
         type: set.type,
         rows: set.file,
-        index,
+        index: edgeResult?.index ?? index,
         status: result.status,
         report: workflowObject(result.files).report,
       });

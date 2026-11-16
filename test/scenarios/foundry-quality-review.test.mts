@@ -10,6 +10,7 @@ import { runFoundryPublicCommand } from "../../scripts/runtime-entry.ts";
 import {
   captureFoundryInput,
   createFoundryRuntimeContext,
+  writeFoundryArtifact,
 } from "../../scripts/lib/foundry-runtime-context.ts";
 import { readVerifiedTaskSnapshot } from "../../scripts/lib/foundry-task-store.ts";
 import { qualifyFoundryRuntime } from "../../scripts/lib/foundry-runtime-qualification.ts";
@@ -22,6 +23,7 @@ import { currentWorkflowState } from "../../scripts/lib/foundry-workflow-state.t
 import { readQaFindings } from "../../scripts/lib/import-curation/internal/artifact-inputs.ts";
 import { runWorkflowLocalCli } from "../../scripts/lib/foundry-workflow-io.ts";
 import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
+import { runFoundryTypedDatasetQa } from "../../scripts/lib/foundry-typed-flow-qa.ts";
 
 test("non-Process quality projection reuses its verified workflow snapshot without reading artifacts again", async (t) => {
   const f = workflowFixture(t);
@@ -338,7 +340,7 @@ test("one exact preparation review survives reload and reassessment without acce
     evidence: Array<{ path: string }>;
   };
   for (const file of [
-    (qa.files as Record<string, string>).rule_findings,
+    (qa.files as Record<string, string>).rule_findings ?? f.scope.qa.path,
     contextFiles.methodology,
     receipt.evidence[0].path,
   ]) {
@@ -534,16 +536,29 @@ test("reviewed finalization repeats the exact QA reference scope of a mixed loca
   assert.ok(review);
   const temporary = path.join(f.root, "final-qa-runtime");
   fs.mkdirSync(temporary);
-  const qa = runWorkflowLocalCli(context, qualified, temporary, [
-    "qa",
-    "process",
-    "--rows-file",
-    f.scope.input.path,
-    "--out-dir",
-    path.join(f.root, "final-qa"),
-    "--json",
-    ...review.qaReferenceRows.flatMap((file) => ["--reference-rows-file", file]),
-  ]);
+  let qa: Record<string, unknown>;
+  if (qualified.cli.expectation.package_version === "0.4.0") {
+    qa = runFoundryTypedDatasetQa(
+      context,
+      qualified,
+      temporary,
+      (file, value) => writeFoundryArtifact(context, file, JSON.stringify(value)),
+      "process",
+      f.scope.input.path,
+      "outputs/quality-review-final-qa",
+      { referenceFiles: review.qaReferenceRows },
+    ).report;
+  } else
+    qa = runWorkflowLocalCli(context, qualified, temporary, [
+      "qa",
+      "process",
+      "--rows-file",
+      f.scope.input.path,
+      "--out-dir",
+      path.join(f.root, "final-qa"),
+      "--json",
+      ...review.qaReferenceRows.flatMap((file) => ["--reference-rows-file", file]),
+    ]);
   const reportFile = (qa.files as Record<string, string>).report;
   const findings = readQaFindings(context.assetRoot, qa, reportFile, "process");
   assert.equal(reviewedFoundryQualityFindings(review, f.scope.input.path, qa, findings).length, 1);

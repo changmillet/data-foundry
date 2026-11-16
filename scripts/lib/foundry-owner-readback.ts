@@ -41,6 +41,10 @@ import { bundleRowTypes, type BundleRowType } from "./bundle-row-types.ts";
 import { workflowObject } from "./foundry-workflow-state.ts";
 import type { OwnerExecutionRequest } from "./foundry-owner-execution-store.ts";
 import { acceptFoundryOwnerTraceDifference } from "./foundry-owner-trace-acceptance.ts";
+import { verifySelectedEdgeDraftPlan } from "./foundry-edge-draft-admission.ts";
+import { isEdgeSupportPlan } from "./foundry-edge-support-plan.ts";
+import { createFoundryEdgeActor } from "./foundry-edge-session.ts";
+import { verifyFoundryEdgeSupport } from "./foundry-edge-support.ts";
 
 export async function readbackFoundryOwner(
   context: FoundryRuntimeContext,
@@ -62,6 +66,53 @@ export async function readbackFoundryOwner(
       "execution_account_mismatch",
       "Readback account differs from the recorded owner intent.",
     );
+  if (isEdgeSupportPlan(request.content.commit)) {
+    const plan = request.content.commit;
+    verifySelectedEdgeDraftPlan(
+      context,
+      plan,
+      captureFoundryInput(request.content.input.path),
+      request.policy,
+    );
+    const actor = await createFoundryEdgeActor(context, qualified, authentication);
+    const verification = await verifyFoundryEdgeSupport(actor, plan, "after");
+    const output = resolveFoundryOutput(context, `outputs/owner-readback/${randomUUID()}`);
+    fs.mkdirSync(output, { recursive: true, mode: 0o700 });
+    const report = path.join(output, "edge-verification.json");
+    const checks = path.join(output, "edge-checks.json");
+    fs.writeFileSync(report, JSON.stringify(verification.responses, null, 2) + "\n", {
+      mode: 0o600,
+    });
+    fs.writeFileSync(checks, JSON.stringify(verification.blockers, null, 2) + "\n", {
+      mode: 0o600,
+    });
+    readFoundryInput(context, request.content.input.path);
+    const proof = {
+      schema: "tiangong-foundry.owner-readback.v1",
+      status: verification.blockers.length ? "unresolved" : "verified",
+      request_scope: request.scope_id,
+      input: request.content.input,
+      edge_plan_sha256: plan.sha256,
+      ...(plan.reference_intent && plan.reference_evidence
+        ? { reference_evidence: [plan.reference_evidence, ...plan.reference_intent] }
+        : {}),
+      ...(repair && plan.update
+        ? {
+            repair_preparation: captureFoundryInput(repair.preparation.file),
+            publication_ready: false,
+          }
+        : {}),
+      report: captureFoundryInput(report),
+      checks: captureFoundryInput(checks),
+      blockers: verification.blockers,
+    };
+    fs.writeFileSync(
+      path.join(output, "owner-readback.json"),
+      JSON.stringify(proof, null, 2) + "\n",
+      { mode: 0o600 },
+    );
+    return { output, proof };
+  }
   const source = parseFoundryCommandSpec(request.content.verify),
     cli = resolveInstalledTiangongLcaCliPackage();
   if (

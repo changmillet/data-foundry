@@ -82,6 +82,7 @@ test("measured deadline envelope rejects eight/nine shards and keeps all files w
     fs.readFileSync(path.join(root, "specs/ci/test-durations.json"), "utf8"),
   ) as {
     weights_seconds: Record<string, number>;
+    estimated_weights: Record<string, number>;
     deadline_refresh: {
       transferred_files: number;
       retained_prior_weights: Array<{ file: string; seconds: number; reason: string }>;
@@ -95,6 +96,14 @@ test("measured deadline envelope rejects eight/nine shards and keeps all files w
     assert.deepEqual(old.shards.flatMap((shard) => shard.files).sort(), inventory);
   }
   const windows = foundryPlatformTestShards(plan, "win32-x64");
+  assert.deepEqual(
+    windows,
+    planFoundryTestShards(
+      inventory,
+      { ...profile.weights_seconds, ...profile.estimated_weights },
+      10,
+    ).shards,
+  );
   assert.equal(windows.length, 10);
   assert.ok(windows.every((shard) => fitsWindowsBudget(shard.estimatedWallSeconds)));
   assert.deepEqual(windows.flatMap((shard) => shard.files).sort(), inventory);
@@ -317,18 +326,19 @@ test("version gate never admits dependency changes, mixed source or changed docu
   );
 });
 
-test("host-specific shard matrix covers every file once with Windows10 and unchanged other4", () => {
+test("host-specific shard matrix covers every file once on each supported platform", () => {
   const plan = loadFoundryTestPlan(path.resolve(import.meta.dirname, "../.."));
   const matrix = foundryCiTestMatrix(plan).include;
-  assert.equal(matrix.length, 22);
+  const counts = { "linux-x64": 4, "linux-arm64": 4, "darwin-arm64": 8, "win32-x64": 10 };
+  assert.equal(matrix.length, 26);
   assert.deepEqual(
     matrix.slice(0, 10).map(({ platform }) => platform),
     Array(10).fill("win32-x64"),
   );
   const inventory = plan.shards.flatMap(({ files }) => files).sort();
-  for (const platform of ["linux-x64", "linux-arm64", "darwin-arm64", "win32-x64"]) {
+  for (const [platform, count] of Object.entries(counts)) {
     const shards = foundryPlatformTestShards(plan, platform);
-    assert.equal(shards.length, platform === "win32-x64" ? 10 : 4);
+    assert.equal(shards.length, count);
     const selected = shards.flatMap(({ files }) => files);
     assert.equal(new Set(selected).size, inventory.length);
     assert.deepEqual(selected.sort(), inventory);

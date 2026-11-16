@@ -164,6 +164,7 @@ test("public Process references reach initial queue and QA without creating depe
     descriptorFile,
     descriptor,
   } = await registeredProcessReferences(t, "process-reference-qa");
+  const typed = runtimeSelection.cliExpectation.package_version === "0.4.0";
   fs.writeFileSync(
     descriptorFile,
     JSON.stringify({ ...descriptor, rows_manifest_sha256: "0".repeat(64) }),
@@ -183,6 +184,10 @@ test("public Process references reach initial queue and QA without creating depe
     if (Array.isArray(argv) && argv[1] === "qa" && argv[2] === "process") qaCalls.push([...argv]);
     if (Array.isArray(argv) && argv[1] === "dataset" && argv[2] === "validate")
       validationCalls.push([...argv]);
+    if (Array.isArray(argv) && argv.slice(1, 4).join(" ") === "dataset process validate") {
+      qaCalls.push([...argv]);
+      validationCalls.push([...argv]);
+    }
     const result = Reflect.apply(original, childProcess, args);
     if (Array.isArray(argv) && argv.includes("curation-queue") && argv.includes("build"))
       queueReports.push(JSON.parse(String(result.stdout)));
@@ -219,14 +224,15 @@ test("public Process references reach initial queue and QA without creating depe
             : null,
       }),
     );
-    const report = queueReports.at(-1);
-    assert.ok(report, JSON.stringify(unmatched.blockers));
-    assert.equal(
-      report.counts.external_flow_refs,
-      0,
-      "one matching version cannot close a UUID whose two versions are referenced",
-    );
-    assert.ok(report.blockers.some((item) => item.code === "process_flow_reference_unresolved"));
+    if (typed) {
+      assert.equal(unmatched.blockers[0]?.code, "curation_queue_blocked");
+      assert.match(unmatched.blockers[0].message, /2 unresolved Flow reference occurrences/u);
+    } else {
+      const report = queueReports.at(-1);
+      assert.ok(report, JSON.stringify(unmatched.blockers));
+      assert.equal(report.counts.external_flow_refs, 0);
+      assert.ok(report.blockers.some((item) => item.code === "process_flow_reference_unresolved"));
+    }
     const latest = unmatched.artifacts.findLast((item) => item.role === "foundry-assessment.json");
     lastAssessmentSha = latest?.kind === "file" ? latest.sha256 : undefined;
   }
@@ -250,7 +256,11 @@ test("public Process references reach initial queue and QA without creating depe
   assert.ok(unitAssessment?.kind === "file", JSON.stringify(missingUnit));
   const unitStage = JSON.parse(fs.readFileSync(unitAssessment.path, "utf8"));
   const unitQa = JSON.parse(fs.readFileSync(unitStage.sets[0].qa_report, "utf8"));
-  assert.equal(queueReports.at(-1)?.counts.external_flow_refs, 2);
+  const unitQueue = missingUnit.artifacts.findLast(
+    (item) => item.role === "curation-queue-manifest.json",
+  );
+  assert.ok(unitQueue?.kind === "file");
+  assert.equal(JSON.parse(fs.readFileSync(unitQueue.path, "utf8")).counts.external_flow_refs, 2);
   assert.equal(unitQa.mass_balance[0].status, "unresolved");
   assert.equal(unitQa.mass_balance[0].exchanges[0].mass_kg, null);
   assert.match(unitQa.mass_balance[0].exchanges[0].error, /exact reference payload is missing/u);
@@ -314,14 +324,16 @@ test("public Process references reach initial queue and QA without creating depe
   const validationFile = newAssessment.sets[0].cli_validation_report;
   assert.equal(digestFile(validationFile), newAssessment.sets[0].cli_validation_report_sha256);
   const validation = JSON.parse(fs.readFileSync(validationFile, "utf8"));
-  assert.equal(validation.input_path, newAssessment.sets[0].cli_validation_input.path);
-  assert.notEqual(validation.input_path, newAssessment.sets[0].rows);
+  const validationInput = typed ? validation.validation_input : validation.input_path;
+  assert.equal(validationInput, newAssessment.sets[0].cli_validation_input.path);
+  assert.notEqual(validationInput, newAssessment.sets[0].rows);
   assert.equal(newAssessment.sets[0].cli_validation_reference_input_sha256, artifact.sha256);
   const primaryRows = JSON.parse(fs.readFileSync(newAssessment.sets[0].rows, "utf8"));
-  const projectedRows = JSON.parse(fs.readFileSync(validation.input_path, "utf8"));
+  const projectedRows = JSON.parse(fs.readFileSync(validationInput, "utf8"));
   assert.deepEqual(projectedRows[0].json, primaryRows[0].json ?? primaryRows[0]);
   assert.equal(projectedRows[0].semantic_context.flow_documents.length, 2);
-  assert.equal(validation.requested_type, "process");
+  if (typed) assert.equal(validation.validation_operation, "dataset process validate");
+  else assert.equal(validation.requested_type, "process");
   assert.equal(validation.rows.length, 1);
   assert.equal(
     validation.rows[0].allocation_semantics.profile,
@@ -351,12 +363,27 @@ test("public Process references reach initial queue and QA without creating depe
     ["flow", "flowproperty", "unitgroup"],
   );
   assert.equal(qaCalls.length, 1);
-  assert.deepEqual(
-    qaCalls[0].flatMap((arg, index, argv) =>
-      arg === "--reference-rows-file" ? [argv[index + 1]] : [],
-    ),
-    selection.qa_files.map((item) => item.path),
-  );
+  function assertSelectedReferenceTransport() {
+    if (typed) {
+      const argv = qaCalls[0];
+      assert.ok(argv.includes("--reference-documents"));
+      const file = argv[argv.indexOf("--reference-documents") + 1];
+      assert.deepEqual(JSON.parse(fs.readFileSync(file, "utf8")).documents, [
+        mass.flow,
+        secondVersion,
+        mass.property,
+        mass.group,
+      ]);
+    } else {
+      assert.deepEqual(
+        qaCalls[0].flatMap((arg, index, argv) =>
+          arg === "--reference-rows-file" ? [argv[index + 1]] : [],
+        ),
+        selection.qa_files.map((item) => item.path),
+      );
+    }
+  }
+  assertSelectedReferenceTransport();
   qaCalls.length = 0;
   const updated = await runtime.inspectTask();
   const reassessedContext = createFoundryRuntimeContext({
@@ -371,12 +398,7 @@ test("public Process references reach initial queue and QA without creating depe
     updated.artifacts,
   );
   assert.equal(qaCalls.length, 1);
-  assert.deepEqual(
-    qaCalls[0].flatMap((arg, index, argv) =>
-      arg === "--reference-rows-file" ? [argv[index + 1]] : [],
-    ),
-    selection.qa_files.map((item) => item.path),
-  );
+  assertSelectedReferenceTransport();
   const after = await runtime.inspectTask();
   assert.ok(after.artifacts.some((entry) => entry.path.endsWith("foundry-finalize.json")));
   assert.ok(
@@ -392,13 +414,13 @@ test("public Process references reach initial queue and QA without creating depe
     "new CLI evidence drift must fail closed",
   );
   fs.writeFileSync(validationFile, validationBytes);
-  const projectedBytes = fs.readFileSync(validation.input_path);
-  fs.appendFileSync(validation.input_path, " ");
+  const projectedBytes = fs.readFileSync(validationInput);
+  fs.appendFileSync(validationInput, " ");
   assert.ok(
     (await facade.status(invocation)).blockers.length,
     "derived validation input drift fails closed",
   );
-  fs.writeFileSync(validation.input_path, projectedBytes);
+  fs.writeFileSync(validationInput, projectedBytes);
   fs.appendFileSync(selection.qa_files[0].path, " ");
   const changed = await facade.status(invocation);
   assert.notEqual(changed.status, "completed");
@@ -415,6 +437,7 @@ test("malformed Process reference metadata keeps each isolated Task failed witho
     await t.test(variant.label, async (child) => {
       const {
         facade,
+        runtimeSelection,
         invocation,
         references,
         mass,
@@ -461,7 +484,12 @@ test("malformed Process reference metadata keeps each isolated Task failed witho
           const argv = args[1];
           const queue =
             Array.isArray(argv) && argv.includes("curation-queue") && argv.includes("build");
-          if (Array.isArray(argv) && (queue || (argv[1] === "qa" && argv[2] === "process")))
+          if (
+            Array.isArray(argv) &&
+            (queue ||
+              (argv[1] === "qa" && argv[2] === "process") ||
+              argv.slice(1, 4).join(" ") === "dataset process validate")
+          )
             localCalls.push([...argv]);
           const result = Reflect.apply(original, childProcess, args);
           if (queue) queueReports.push(JSON.parse(String(result.stdout)));
@@ -479,6 +507,28 @@ test("malformed Process reference metadata keeps each isolated Task failed witho
       );
       assert.ok(selection?.kind === "file", JSON.stringify(selected.blockers));
       const failed = await facade.resume(invocation);
+      if (runtimeSelection.cliExpectation.package_version === "0.4.0") {
+        if (variant.wrapped) {
+          assert.equal(failed.status, "failed", JSON.stringify(failed.blockers));
+          assert.equal(failed.blockers[0]?.code, "workflow_qa_failed");
+        } else {
+          assert.equal(failed.status, "needs_input", JSON.stringify(failed.blockers));
+          assert.equal(failed.blockers[0]?.code, "curation_queue_blocked");
+          assert.match(failed.blockers[0].message, /2 unresolved Flow reference occurrences/u);
+        }
+        assert.equal(failed.permissions.state, "not_required");
+        assert.deepEqual(
+          localCalls.map((argv) => argv.slice(1, 4).join(" ")),
+          variant.wrapped ? [] : ["dataset process validate"],
+        );
+        const status = await facade.status(invocation);
+        assert.equal(
+          status.artifacts.findLast((item) => item.role === "foundry-reference-input.json")?.sha256,
+          selection.sha256,
+        );
+        assert.ok(!status.artifacts.some((item) => item.role === "owner-execution-request.json"));
+        return;
+      }
       assert.equal(queueReports.length, 1);
       assert.equal(
         queueReports[0].counts.external_flow_refs,
@@ -568,7 +618,7 @@ test("malformed Process reference metadata keeps each isolated Task failed witho
 test("Source and Contact are not Process QA evidence or writable dependency tasks", async (t) => {
   for (const kind of ["source", "contact"] as const) {
     await t.test(kind, async (child) => {
-      const { root, facade } = workflowFixture(child);
+      const { root, facade, runtimeSelection } = workflowFixture(child);
       const seed = path.join(root, "seed.json"),
         spec = path.join(root, "request.json"),
         refs = path.join(root, "refs.json"),
@@ -642,12 +692,14 @@ test("Source and Contact are not Process QA evidence or writable dependency task
         rows.sets.map((set: { type: string }) => set.type),
         ["process"],
       );
-      // The published CLI owns supported reference kinds. No local success or writable
-      // Source/Contact scope is manufactured to hide its rejection.
-      assert.match(
-        JSON.stringify(rejected.blockers),
-        /PROCESS_QA_REFERENCE_INVALID|QA references|CLI/u,
-      );
+      if (runtimeSelection.cliExpectation.package_version === "0.4.0") {
+        assert.equal(rejected.blockers[0]?.code, "workflow_qa_failed");
+      } else {
+        assert.match(
+          JSON.stringify(rejected.blockers),
+          /PROCESS_QA_REFERENCE_INVALID|QA references|CLI/u,
+        );
+      }
     });
   }
 });

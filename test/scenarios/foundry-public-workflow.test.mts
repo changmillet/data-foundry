@@ -23,6 +23,7 @@ import {
 } from "../fixtures/row-builders.ts";
 import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
 import { digestFile, workflowFixture } from "../fixtures/foundry-public-workflow.ts";
+import { runRetainedFoundryTests } from "../helpers/retained-foundry-runtime.mts";
 
 test("qualified context owner accepts the registered Unicode task path directly", async (t) => {
   const { root, workspace, facade, runtimeSelection } = workflowFixture(t);
@@ -92,11 +93,22 @@ test("qualified context owner accepts the registered Unicode task path directly"
     path.resolve(context.taskRoot!, contract.path),
   ]);
   assert.equal(assessed.status, "completed");
-  assert.ok(
-    (await runtime.inspectTask()).artifacts.some((item) =>
-      item.path.endsWith("/foundry-assessment.json"),
-    ),
-  );
+  const assessmentArtifacts = (await runtime.inspectTask()).artifacts;
+  assert.ok(assessmentArtifacts.some((item) => item.path.endsWith("/foundry-assessment.json")));
+  if (qualified.cli.expectation.package_version === "0.4.0") {
+    const projected = assessmentArtifacts.find((item) =>
+      item.path.endsWith("/flow-qa-report.json"),
+    );
+    const raw = assessmentArtifacts.find((item) => item.path.endsWith("/qa/validation-1.json"));
+    assert.ok(projected && raw && context.taskRoot);
+    const result = JSON.parse(fs.readFileSync(path.join(context.taskRoot, raw.path), "utf8"));
+    const report = JSON.parse(fs.readFileSync(path.join(context.taskRoot, projected.path), "utf8"));
+    assert.equal(report.schema, "tiangong-foundry.typed-flow-qa.v1");
+    assert.equal(report.findings.length, result.issue_count);
+    assert.ok(
+      report.findings.some((finding: { code: string }) => finding.code === "missing_flow_property"),
+    );
+  }
 });
 
 test("native validation I/O failure stays indexed and understandable after restart", async (t) => {
@@ -229,7 +241,7 @@ test("native validation I/O failure stays indexed and understandable after resta
   );
 });
 
-for (const variant of [
+const legacyQueueVariants = [
   "wrong-exit",
   "wrong-status",
   "wrong-input",
@@ -238,7 +250,17 @@ for (const variant of [
   "relative-output",
   "manifest-edited",
   "blocker-edited",
-] as const) {
+] as const;
+const localQueue = resolveInstalledTiangongLcaCliPackage().packageVersion === "0.4.0";
+if (localQueue)
+  test("the original CLI rejects all unbound child queue reports before indexing", (t) =>
+    runRetainedFoundryTests(
+      t,
+      ["test/scenarios/foundry-public-workflow.test.mts"],
+      "^a blocked queue rejects an unbound",
+    ));
+
+for (const variant of localQueue ? [] : legacyQueueVariants) {
   test(`a blocked queue rejects an unbound ${variant} report before indexing`, async (t) => {
     const { root, workspace, facade, runtimeSelection } = workflowFixture(t);
     const seed = path.join(root, `${variant}-seed.json`);
@@ -600,6 +622,17 @@ test("assessment records one row set at a time and cannot finalize partial cover
     entry.path.endsWith("/queue/outputs/curation-queue-manifest.json"),
   );
   assert.equal(firstQueue.length, 1, "the first assessed set owns its queue snapshot");
+  if (
+    qualifyFoundryRuntime(firstContext, runtimeSelection).cli.expectation.package_version ===
+    "0.4.0"
+  ) {
+    const manifest = JSON.parse(
+      fs.readFileSync(path.resolve(context.taskRoot!, firstQueue[0].path), "utf8"),
+    );
+    assert.equal(manifest.producer, "foundry");
+    assert.equal(manifest.counts.process_rows, 1);
+  }
+
   await assert.rejects(
     finalizeFoundryWorkflow(
       context,
@@ -630,6 +663,22 @@ test("assessment records one row set at a time and cannot finalize partial cover
   assert.equal(queueSnapshots.length, 2, "each set owns a separate complete queue snapshot");
   assert.notEqual(queueSnapshots[0].operation_id, queueSnapshots[1].operation_id);
   assert.equal(completed.assessmentComplete, true);
+  if (
+    qualifyFoundryRuntime(secondContext, runtimeSelection).cli.expectation.package_version ===
+    "0.4.0"
+  ) {
+    const process = completed.assessment?.value.sets.find((set) => set.type === "process");
+    assert.ok(typeof process?.cli_validation_report === "string");
+    const validation = JSON.parse(fs.readFileSync(process.cli_validation_report, "utf8"));
+    assert.equal(validation.validation_operation, "dataset process validate");
+    assert.equal(validation.rows.length, 1);
+    assert.ok(validation.rows[0].validation_layers);
+    assert.ok(validation.rows[0].allocation_semantics);
+    assert.ok(validation.rows[0].flow_reference_names);
+    assert.ok(validation.rows[0].annual_volume);
+    assert.ok(validation.rows[0].findings.length);
+  }
+
   assert.deepEqual(completed.assessmentRemainingTypes, []);
   const originalSets = completed.assessment?.value.sets;
   assert.ok(originalSets);
@@ -807,11 +856,26 @@ test("public semantic submission rejects stale evidence and re-assesses only suc
   const { root, facade } = workflowFixture(t, false, "missing-name");
   const id = "44444444-4444-4444-8444-444444444444";
   const good = flowRow(id);
+  if (resolveInstalledTiangongLcaCliPackage().packageVersion === "0.4.0") {
+    const { finalizationProcessFixture } = await import("../fixtures/finalization-process.ts");
+    const complete = finalizationProcessFixture().flow as unknown as typeof good;
+    complete.flowDataSet.flowInformation.dataSetInformation["common:UUID"] = id;
+    complete.flowDataSet.administrativeInformation.publicationAndOwnership[
+      "common:dataSetVersion"
+    ] = "00.00.001";
+    good.flowDataSet = complete.flowDataSet;
+  }
   const bad = {
     ...good,
     flowDataSet: {
       ...good.flowDataSet,
-      flowInformation: { dataSetInformation: { "common:UUID": id } },
+      flowInformation: {
+        ...good.flowDataSet.flowInformation,
+        dataSetInformation: {
+          ...good.flowDataSet.flowInformation.dataSetInformation,
+          name: undefined,
+        },
+      },
     },
   };
   const seed = path.join(root, "seed.json");
@@ -1291,9 +1355,11 @@ test("source-evidence resume prepares an indexed SDK context before semantic wor
   };
   assert.equal(report.status, "completed");
   assert.equal(report.type, "flow");
-  for (const key of ["schema", "methodology", "ruleset", "ai_context_json"]) {
+  const typed = resolveInstalledTiangongLcaCliPackage().packageVersion === "0.4.0";
+  const contextFiles = typed ? ["manifest", "result"] : ["ai_context_json"];
+  for (const key of ["schema", "methodology", "ruleset", ...contextFiles]) {
     const file = report.files[key];
-    assert.ok(file);
+    assert.ok(file, key);
     assert.ok(
       resumed.artifacts.some((artifact) => artifact.kind === "file" && artifact.path === file),
       key,
@@ -1309,10 +1375,10 @@ test("source-evidence resume prepares an indexed SDK context before semantic wor
     { id: sourceRow.id, version: sourceRow.version, json: sourceRow.flow },
   ]);
   const assessed = await facade.resume({ taskId: started.task_id, actorId: "source-actor" });
+  const validationName = typed ? "flow-qa-report.json" : "validation-report.json";
   assert.ok(
     assessed.artifacts.some(
-      (artifact) =>
-        artifact.kind === "file" && path.basename(artifact.path) === "validation-report.json",
+      (artifact) => artifact.kind === "file" && path.basename(artifact.path) === validationName,
     ),
     JSON.stringify(assessed),
   );

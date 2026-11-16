@@ -1,5 +1,7 @@
 import type { FoundryRepairExpectation } from "./foundry-repair-preflight.ts";
 import path from "node:path";
+import { isEdgeSupportPlan } from "./foundry-edge-support-plan.ts";
+import { sha256Json } from "./identity-preflight-proof.ts";
 import { commandSpecOptionValue } from "@tiangong-lca/cli/command-spec";
 import {
   captureFoundryInput,
@@ -47,10 +49,21 @@ export function assertFoundryRepairExecution(
   const approval = readWorkflowArtifact(context, approvalEntry).value;
   const selection = foundryRepairSelection(context);
   const candidate = captureFoundryInput(resolveFoundryInputPath(context, selection.candidate));
-  const contractFile = commandSpecOptionValue(request.content.commit, "--execution-contract");
+  const edge = isEdgeSupportPlan(request.content.commit) ? request.content.commit : null;
+  const contractFile = edge
+    ? edge.update?.contract.path
+    : commandSpecOptionValue(request.content.commit, "--execution-contract");
   if (!contractFile) return fail();
   const contract = captureFoundryInput(contractFile);
-  const expectedContract = workflowObject(workflowObject(preparation.value.inputs).contract);
+  const inputs = workflowObject(preparation.value.inputs);
+  const expectedContract = workflowObject(inputs.contract);
+  if (
+    edge &&
+    (!edge.update ||
+      sha256Json(edge.update.preparation) !== sha256Json(captureFoundryInput(preparation.file)) ||
+      sha256Json(edge.update.before) !== sha256Json(inputs.before))
+  )
+    return fail();
   if (
     job.target_profile !== "generic" ||
     handoff.repair_scope !== true ||

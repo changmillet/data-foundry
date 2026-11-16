@@ -61,7 +61,7 @@ export function createFoundryAuthenticationEnvironment(
         "headless_target_required",
         "Headless mode requires the existing CLI explicit target and process-only actor token.",
       );
-    environment.TIANGONG_LCA_AUTH_MODE = "access_token";
+    environment.TIANGONG_LCA_AUTH_MODE = "access-token";
     environment.TIANGONG_LCA_ACCESS_TOKEN = authentication.accessToken;
     environment.TIANGONG_LCA_API_BASE_URL = authentication.apiBaseUrl;
     environment.TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY = authentication.publishableKey;

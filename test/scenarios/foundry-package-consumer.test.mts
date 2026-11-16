@@ -21,8 +21,10 @@ const stageRoot = path.join(repoRoot, "package-stage");
 const sourceManifest = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8")) as {
   version: string;
   packageManager: string;
+  dependencies: Record<string, string>;
 };
 const sourcePackageVersion = sourceManifest.version;
+const expectedCliVersion = sourceManifest.dependencies["@tiangong-lca/cli"];
 function packageFiles(root: string): Array<{ path: string; bytes: number; sha256: string }> {
   const files: Array<{ path: string; bytes: number; sha256: string }> = [];
   const walk = (directory: string, relativeDirectory: string): void => {
@@ -277,7 +279,7 @@ test("packed Foundry installs twice and runs only the public facade from a read-
     resolveInstalledTiangongLcaCliPackage: () => { packageVersion: string; binPath: string };
   };
   const installedCli = installedResolver.resolveInstalledTiangongLcaCliPackage();
-  assert.equal(installedCli.packageVersion, "0.1.28");
+  assert.equal(installedCli.packageVersion, expectedCliVersion);
   assert.ok(fs.statSync(installedCli.binPath).isFile());
   timing.checkpoint("managed-cache");
   await verifyManagedPackageCache(firstPackage, root);
@@ -338,7 +340,7 @@ test("packed Foundry installs twice and runs only the public facade from a read-
     "parseFoundryTaskStartSpec",
     "runFoundryPublicCommand",
   ]);
-  assert.deepEqual(importedResult.cli, { name: "@tiangong-lca/cli", version: "0.1.28" });
+  assert.deepEqual(importedResult.cli, { name: "@tiangong-lca/cli", version: expectedCliVersion });
   assert.equal(importedResult.doctor, "ready");
 
   timing.checkpoint("declarations");

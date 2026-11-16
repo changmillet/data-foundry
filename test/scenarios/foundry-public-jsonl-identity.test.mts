@@ -5,12 +5,13 @@ import fs from "node:fs";
 import { syncBuiltinESMExports } from "node:module";
 import path from "node:path";
 import test from "node:test";
-import { datasetIdentity } from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
+import { createFoundryFacade } from "../../scripts/public-api.ts";
 import { readRows } from "../../scripts/lib/import-curation/internal/runtime-io.ts";
 import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
 import { testAuthIdentityReceipt } from "../fixtures/auth-identity-receipt.ts";
 import { digestFile, workflowFixture } from "../fixtures/foundry-public-workflow.ts";
-import { flowRow } from "../fixtures/row-builders.ts";
+import { runRetainedFoundryTests } from "../helpers/retained-foundry-runtime.mts";
+import { typedFinalizationProcessFixture } from "../fixtures/finalization-process.ts";
 
 type Assessment = {
   owner_base: string;
@@ -21,60 +22,55 @@ type Assessment = {
 };
 
 test("ordinary public resume refreshes identity after three accepted Flow rows become current JSONL", async (t) => {
-  const { root, facade } = workflowFixture(t);
+  const { root, facadeOptions, runtimeSelection } = workflowFixture(t);
+  if (runtimeSelection.cliExpectation.package_version === "0.1.28")
+    return runRetainedFoundryTests(t, ["test/scenarios/foundry-public-jsonl-identity.test.mts"]);
+  const account = {
+    project_ref: "qgzvkongdjqiiamzbbts",
+    user_id: "c536ee37-64ab-427b-b7e3-4e2bb4fdffb7",
+    session_reference: null,
+  };
+  const origin = `https://${account.project_ref}.supabase.co`;
+  const facade = createFoundryFacade({
+    ...facadeOptions,
+    authentication: {
+      mode: "headless",
+      apiBaseUrl: origin,
+      accessToken: "synthetic-jsonl-token",
+      publishableKey: "synthetic-jsonl-key",
+    },
+  });
   const ids = [
     "71717171-7171-4171-8171-717171717171",
     "72727272-7272-4272-8272-727272727272",
     "73737373-7373-4373-8373-737373737373",
   ];
   const seedRows = ids.map((id, index) => {
-    const base = flowRow(id);
-    const payload = {
-      flowDataSet: {
-        ...base.flowDataSet,
-        flowInformation: {
-          dataSetInformation: {
-            ...base.flowDataSet.flowInformation.dataSetInformation,
-            name: {
-              ...base.flowDataSet.flowInformation.dataSetInformation.name,
-              mixAndLocationTypes: { "@xml:lang": "en", "#text": "Swiss market" },
-            },
-            classificationInformation: {
-              "common:classification": {
-                "common:class": [
-                  { "@level": "0", "@classId": "06", "#text": "Crude petroleum and natural gas" },
-                ],
-              },
-            },
-            "common:other": {
-              "@xmlns:tidasimport": "https://example.invalid/tidas-import",
-              "tidasimport:sourceTrace": {
-                payload: {
-                  attributes: [
-                    { name: "name", value: `Synthetic source trace ${index + 1}` },
-                    { name: "location", value: "CH" },
-                  ],
-                },
-              },
-            },
-          },
-        },
-        modellingAndValidation: { LCIMethod: { typeOfDataSet: "Product flow" } },
-        flowProperties: {
-          flowProperty: [
-            {
-              "@dataSetInternalID": "0",
-              referenceToFlowPropertyDataSet: {
-                "@refObjectId": "93a60a56-a3c8-11da-a746-0800200b9a66",
-                "@version": "03.00.003",
-                "common:shortDescription": { "@xml:lang": "en", "#text": "Mass" },
-              },
-              meanValue: "1",
-            },
+    const payload = typedFinalizationProcessFixture().flow;
+    const flow = payload.flowDataSet as Record<string, Record<string, Record<string, unknown>>>;
+    const information = flow.flowInformation.dataSetInformation;
+    information["common:UUID"] = id;
+    information.classificationInformation = {
+      "common:classification": {
+        "common:class": [
+          { "@level": "0", "@classId": "0", "#text": "Agriculture, forestry and fishery products" },
+        ],
+      },
+    };
+    const name = information.name as Record<string, unknown>;
+    name.baseName = { "@xml:lang": "en", "#text": `Natural gas fixture ${index + 1}` };
+    information["common:other"] = {
+      "@xmlns:tidasimport": "https://example.invalid/tidas-import",
+      "tidasimport:sourceTrace": {
+        payload: {
+          attributes: [
+            { name: "name", value: `Synthetic source trace ${index + 1}` },
+            { name: "location", value: "CH" },
           ],
         },
       },
     };
+    flow.administrativeInformation.publicationAndOwnership["common:dataSetVersion"] = "00.00.001";
     return { id, version: "00.00.001", json: payload };
   });
   const payloadById = new Map(seedRows.map((row) => [row.id, row.json]));
@@ -92,11 +88,7 @@ test("ordinary public resume refreshes identity after three accepted Flow rows b
       target_entities: ["flow"],
       sources: [{ path: seed }],
       seed: { path: seed },
-      account_intent: {
-        project_ref: "qgzvkongdjqiiamzbbts",
-        user_id: "c536ee37-64ab-427b-b7e3-4e2bb4fdffb7",
-        session_reference: null,
-      },
+      account_intent: account,
       preparation: null,
     }),
   );
@@ -104,69 +96,51 @@ test("ordinary public resume refreshes identity after three accepted Flow rows b
   assert.ok(started.task_id);
   const invocation = { taskId: started.task_id, actorId: "three-flow-actor" };
   const originalSpawn = childProcess.spawnSync;
-  const queriedTargets: unknown[] = [];
-  let childFailure: unknown;
+  const queries: string[] = [];
   t.mock.method(childProcess, "spawnSync", (...args: Parameters<typeof childProcess.spawnSync>) => {
-    try {
-      const argv = Array.isArray(args[1]) ? args[1] : [];
-      if (!argv.includes("identity-receipt") && !argv.includes("identity-preflight")) {
-        assert.ok(!argv.includes("--commit"), "the regression cannot enter a write stage");
-        return Reflect.apply(originalSpawn, childProcess, args);
-      }
-      assert.equal(args[0], process.execPath);
-      assert.equal(argv[0], resolveInstalledTiangongLcaCliPackage().binPath);
-      assert.notEqual(args[2]?.shell, true);
-      if (argv.includes("identity-receipt"))
-        return {
-          status: 0,
-          signal: null,
-          stdout: JSON.stringify(testAuthIdentityReceipt()),
-          stderr: "",
-          pid: 1,
-          output: [],
-        };
-      const input = argv[argv.indexOf("--input") + 1];
-      const outDir = argv[argv.indexOf("--out-dir") + 1];
-      const request = JSON.parse(fs.readFileSync(input, "utf8")) as { target: unknown };
-      const identity = datasetIdentity(request.target, 0, "flow");
-      assert.deepEqual(request.target, payloadById.get(identity.id));
-      queriedTargets.push(request.target);
-      const reportFile = path.join(outDir, "outputs", "identity-decision.json");
-      const report = {
-        schema_version: 1,
-        generated_at_utc: new Date().toISOString(),
-        kind: "flow",
-        status: "needs_review",
-        decision: "manual_review",
-        target: { id: identity.id, version: identity.version },
-        input_path: input,
-        out_dir: outDir,
-        files: { identity_decision: reportFile },
-        candidates: [],
-        candidate_sources: [],
-        findings: [],
-        blockers: [],
-        next_action: "queue_manual_review",
-        ok: true,
-      };
-      fs.mkdirSync(path.dirname(reportFile), { recursive: true });
-      fs.writeFileSync(reportFile, JSON.stringify(report) + "\n");
-      const tick = new Date(Date.now() + 1);
-      fs.utimesSync(reportFile, tick, tick);
-      // Successful synthetic transport isolates the source-format/semantic contract.
-      // Diagnostic exit-1 admission is a separate facilities dependency (PR #240).
-      return {
-        status: 0,
-        signal: null,
-        stdout: JSON.stringify(report),
-        stderr: "",
-        pid: 1,
-        output: [],
-      };
-    } catch (error) {
-      childFailure = error;
-      throw error;
+    const argv = Array.isArray(args[1]) ? args[1] : [];
+    if (!argv.includes("identity-receipt")) {
+      assert.ok(!argv.includes("--commit") && !argv.includes("identity-preflight"));
+      return Reflect.apply(originalSpawn, childProcess, args);
     }
+    assert.equal(args[0], process.execPath);
+    assert.equal(argv[0], resolveInstalledTiangongLcaCliPackage().binPath);
+    assert.notEqual(args[2]?.shell, true);
+    return {
+      status: 0,
+      signal: null,
+      stdout: JSON.stringify({
+        schemaVersion: 1,
+        operation: "auth identity-receipt",
+        status: "completed",
+        outcome: "identity_verified",
+        error: null,
+        data: {
+          receipt: testAuthIdentityReceipt({
+            projectRef: account.project_ref,
+            userId: account.user_id,
+            scopeOverrides: {
+              session: {
+                source: "access_token",
+                cache_mode: "disabled",
+                force_reauth: false,
+                expires_at_utc: null,
+              },
+            },
+          }),
+        },
+      }),
+      stderr: "",
+      pid: 1,
+      output: [],
+    };
+  });
+  t.mock.method(globalThis, "fetch", async (url: URL, options: RequestInit) => {
+    assert.equal(url.origin, origin);
+    assert.equal(url.pathname, "/functions/v1/flow_hybrid_search");
+    const request = JSON.parse(String(options.body)) as { query: string };
+    queries.push(request.query);
+    return Response.json({ data: [] });
   });
   syncBuiltinESMExports();
   t.after(() => {
@@ -175,11 +149,23 @@ test("ordinary public resume refreshes identity after three accepted Flow rows b
   });
   for (let step = 0; step < 3; step++) await facade.resume(invocation);
   const identified = await facade.resume(invocation);
-  if (childFailure) throw childFailure;
-  assert.equal(identified.status, "ready", JSON.stringify(identified));
-  assert.equal(queriedTargets.length, 3);
+  assert.equal(
+    identified.status,
+    "ready",
+    JSON.stringify({
+      blockers: identified.blockers,
+      queries,
+      reports: identified.artifacts.flatMap((a) =>
+        a.kind === "file" && /identity.*report|foundry-identity/u.test(a.role)
+          ? [[a.role, JSON.parse(fs.readFileSync(a.path, "utf8")).blockers]]
+          : [],
+      ),
+    }),
+  );
+  assert.equal(queries.length, 3);
+  assert.match(queries[0], /Natural gas fixture 1/iu);
   const reviewed = await facade.resume(invocation);
-  assert.equal(reviewed.status, "needs_input", JSON.stringify(reviewed));
+  assert.equal(reviewed.status, "needs_input", JSON.stringify(reviewed.blockers));
   const assessmentFile = reviewed.artifacts.findLast(
     (item) => item.role === "foundry-assessment.json",
   );
@@ -231,7 +217,7 @@ test("ordinary public resume refreshes identity after three accepted Flow rows b
   );
   const retained = reviewed.artifacts.filter((item) => item.kind === "file");
   const applied = await facade.resume({ ...invocation, semanticInputFile: submission });
-  assert.equal(applied.status, "ready", JSON.stringify(applied));
+  assert.equal(applied.status, "ready", JSON.stringify(applied.blockers));
   const currentRowsFile = applied.artifacts.findLast((item) => item.role === "foundry-rows.json");
   assert.ok(currentRowsFile?.kind === "file");
   const currentRows = JSON.parse(fs.readFileSync(currentRowsFile.path, "utf8")) as {
@@ -274,8 +260,8 @@ test("ordinary public resume refreshes identity after three accepted Flow rows b
     "duplicate accepted semantic submission cannot mutate or reapply the rows",
   );
   const reassessed = await facade.resume(invocation);
-  assert.equal(reassessed.status, "ready", JSON.stringify(reassessed));
-  assert.equal(queriedTargets.length, 3, "reassessment does not dispatch identity reads");
+  assert.equal(reassessed.status, "ready", JSON.stringify(reassessed.blockers));
+  assert.equal(queries.length, 3, "reassessment does not dispatch identity reads");
   t.diagnostic(
     JSON.stringify({
       accepted_create_new: 3,
@@ -284,17 +270,9 @@ test("ordinary public resume refreshes identity after three accepted Flow rows b
     }),
   );
   const refreshed = await facade.resume(invocation);
-  if (childFailure) throw childFailure;
-  assert.equal(refreshed.status, "ready", JSON.stringify(refreshed));
-  assert.equal(
-    queriedTargets.length,
-    6,
-    "the refreshed lineage performs one read per current Flow",
-  );
-  assert.deepEqual(
-    queriedTargets.slice(3),
-    seedRows.map((row) => row.json),
-  );
+  assert.equal(refreshed.status, "ready", JSON.stringify(refreshed.blockers));
+  assert.equal(queries.length, 6, "the refreshed lineage performs one read per current Flow");
+  assert.deepEqual(queries.slice(3), queries.slice(0, 3));
   for (const item of retained) {
     assert.ok(item.kind === "file");
     assert.equal(digestFile(item.path), item.sha256, "predecessor evidence remains immutable");
@@ -353,7 +331,7 @@ test("ordinary public resume refreshes identity after three accepted Flow rows b
   assert.deepEqual(readRows(jsonl), seedRows);
   assert.equal(digestFile(acceptedOwnerReport), acceptedOwnerSha);
   assert.equal(digestFile(semanticFile.path), acceptedSha);
-  assert.equal(queriedTargets.length, 6);
+  assert.equal(queries.length, 6);
   assert.ok(
     pending.artifacts.every(
       (item) =>

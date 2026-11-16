@@ -11,7 +11,7 @@ import {
   assertQualifiedFoundryRuntime,
   type QualifiedFoundryRuntime,
 } from "./foundry-runtime-qualification.ts";
-import { createFoundryIsolatedChildEnvironment } from "./foundry-runtime-environment.ts";
+import { withFoundryIsolatedLocalCliEnvironment } from "./foundry-runtime-environment.ts";
 import { resolveInstalledTiangongLcaCliPackage } from "./foundry-runtime-utils.ts";
 import { runFoundryTaskOperation } from "./foundry-task-store.ts";
 import { supportedDatasetTypes } from "./import-curation/internal/dataset-types.ts";
@@ -21,6 +21,7 @@ import {
 } from "./foundry-workflow-child-failure.ts";
 import { createWorkflowDirectory } from "./foundry-workflow-io.ts";
 import { readFoundryTaskRuntimeAdoption } from "./foundry-task-runtime-adoption.ts";
+import { createTypedContextCommand, projectTypedContext } from "./foundry-typed-context.ts";
 
 export async function prepareFoundryWorkflowContext(
   context: FoundryRuntimeContext,
@@ -40,6 +41,7 @@ export async function prepareFoundryWorkflowContext(
       ),
     ),
   ].sort();
+  const typed = qualified.cli.expectation.package_version === "0.4.0";
   const adoption = readFoundryTaskRuntimeAdoption(context);
   return runFoundryTaskOperation(
     context,
@@ -47,7 +49,7 @@ export async function prepareFoundryWorkflowContext(
       command: "dataset-context-pack",
       options: {
         types,
-        profile: "ai-import",
+        profile: typed ? "default" : "ai-import",
         ...(adoption ? { runtime_adoption_plan_sha256: adoption.plan_sha256 } : {}),
       },
     },
@@ -64,31 +66,38 @@ export async function prepareFoundryWorkflowContext(
       const temporary = createWorkflowDirectory(context, path.join(context.tempRoot, "context-"));
       try {
         const cli = resolveInstalledTiangongLcaCliPackage();
-        const environment = createFoundryIsolatedChildEnvironment({ tempRoot: temporary });
         const reports: Array<{ type: string; report: string }> = [];
         for (const type of types) {
           assertQualifiedFoundryRuntime(context, qualified);
           const destination = path.join(output, type);
-          const argv = [
-            "dataset",
-            "context-pack",
-            "--type",
-            type,
-            "--profile",
-            "ai-import",
-            "--out-dir",
-            destination,
-            "--json",
-          ];
+          const outputDirectory = path.join(destination, "outputs");
+          const reportPath = path.join(outputDirectory, "contract-report.json");
+          const resultPath = path.join(outputDirectory, "contract-result.json");
+          if (typed) fs.mkdirSync(outputDirectory, { recursive: true, mode: 0o700 });
+          const argv = typed
+            ? createTypedContextCommand(type, resultPath)
+            : [
+                "dataset",
+                "context-pack",
+                "--type",
+                type,
+                "--profile",
+                "ai-import",
+                "--out-dir",
+                destination,
+                "--json",
+              ];
           const execution = bindWorkflowChildExecution(context, qualified, cli.binPath, argv);
-          const child = spawnSync(process.execPath, [cli.binPath, ...argv], {
-            cwd: context.workspaceRoot,
-            env: environment,
-            encoding: "utf8",
-            shell: false,
-            maxBuffer: 8 * 1024 * 1024,
-            timeout: 120_000,
-          });
+          const child = withFoundryIsolatedLocalCliEnvironment(temporary, (env) =>
+            spawnSync(process.execPath, [cli.binPath, ...argv], {
+              cwd: context.workspaceRoot,
+              env,
+              encoding: "utf8",
+              shell: false,
+              maxBuffer: 8 * 1024 * 1024,
+              timeout: 120_000,
+            }),
+          );
           const kind = child.error
             ? "spawn_error"
             : child.signal
@@ -115,7 +124,43 @@ export async function prepareFoundryWorkflowContext(
             value.status !== "completed"
           )
             throw workflowChildFailure(execution, child, "invalid_report");
-          reports.push({ type, report: path.join(destination, "outputs/contract-report.json") });
+          if (typed) {
+            let projected: ReturnType<typeof projectTypedContext>;
+            try {
+              projected = projectTypedContext(type, resultPath, value, fs.readFileSync(resultPath));
+            } catch (error) {
+              throw workflowChildFailure(execution, child, "invalid_report", error);
+            }
+            const manifestPath = path.join(outputDirectory, "contract-manifest.json");
+            const files: Record<string, string> = {
+              manifest: manifestPath,
+              result: resultPath,
+              report: reportPath,
+            };
+            for (const { key, name, text } of projected.files) {
+              const file = path.join(outputDirectory, name);
+              fs.writeFileSync(file, text, { flag: "wx", mode: 0o600 });
+              files[key] = file;
+            }
+            fs.writeFileSync(manifestPath, JSON.stringify(projected.manifest, null, 2), {
+              flag: "wx",
+              mode: 0o600,
+            });
+            fs.writeFileSync(
+              reportPath,
+              JSON.stringify({
+                schema_version: 1,
+                status: "completed",
+                type,
+                profile: projected.profile,
+                source: projected.source,
+                manifest: projected.manifest,
+                files,
+              }),
+              { flag: "wx", mode: 0o600 },
+            );
+          }
+          reports.push({ type, report: reportPath });
         }
         const files: string[] = [];
         const register = (directory: string) => {

@@ -27,6 +27,26 @@ function fixture(t: { after: (fn: () => void) => void }) {
   return { root, output, diagnosticRoot };
 }
 
+test("managed feedback covers the last Windows test shards", (t) => {
+  const { root } = fixture(t);
+  for (const shard of [9, 10]) {
+    const output = path.join(root, String(shard));
+    fs.mkdirSync(output);
+    const context = {
+      source: "a".repeat(40),
+      platform: "win32-x64",
+      plan_sha256: "b".repeat(64),
+      shard,
+    };
+    assert.throws(
+      () => prepareManagedDiagnostics(output, { ...context, platform: "linux-x64" }),
+      /Invalid managed diagnostic context/u,
+    );
+    const diagnosticRoot = prepareManagedDiagnostics(output, context);
+    assert.ok(createManagedDiagnostics(diagnosticRoot, "source-free fixture"));
+  }
+});
+
 test("feedback preserves negative exits, null counts and unknown returned-action observations", () => {
   const projected = projectManagedSubprocess({
     role: "actual-managed-returned-action",

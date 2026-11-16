@@ -26,6 +26,7 @@ import { runFoundryTaskOperation } from "./foundry-task-store.ts";
 import { sha256Json } from "./identity-preflight-proof.ts";
 import type { ArtifactEntry } from "./foundry-task-types.ts";
 import { assertFoundryInteractionWriteReady } from "./foundry-workflow-object-scope.ts";
+import { isEdgeSupportPlan } from "./foundry-edge-support-plan.ts";
 
 function assertOwnerInteractionReady(
   context: FoundryRuntimeContext,
@@ -89,9 +90,13 @@ function buildRequest(
       "Select a sealed current owner scope.",
     );
   readFoundryInput(context, input.path);
-  const commands = workflowObject(handoff.commands),
-    commit = parseFoundryCommandSpec(commands.commit),
-    verify = parseFoundryCommandSpec(commands.post_write_verify);
+  const commands = workflowObject(handoff.commands);
+  const commit = isEdgeSupportPlan(commands.commit)
+    ? commands.commit
+    : parseFoundryCommandSpec(commands.commit);
+  const verify = isEdgeSupportPlan(commit)
+    ? null
+    : parseFoundryCommandSpec(commands.post_write_verify);
   const capsuleFile = resolveFoundryOutput(context, String(capsule.capsule_file));
   const capsuleFact = captureFoundryInput(capsuleFile);
   if (capsuleFact.sha256 !== capsule.capsule_sha256)
@@ -204,8 +209,22 @@ export function readOwnerExecutionRequests(
           "Execution request does not belong to this task.",
         );
       parseBatchItemContract(request.item_contract);
-      parseFoundryCommandSpec(request.content.commit);
-      parseFoundryCommandSpec(request.content.verify);
+      if (isEdgeSupportPlan(request.content.commit)) {
+        if (
+          request.content.verify !== null ||
+          request.content.commit.dataset_type !== request.policy.dataset_type ||
+          request.content.commit.user_id !== request.policy.user_id ||
+          request.content.commit.project_ref !== request.policy.project_ref ||
+          sha256Json(request.content.commit.input) !== sha256Json(request.content.input)
+        )
+          throw new FoundryContextError(
+            "execution_request_invalid",
+            "The Edge draft request differs from the sealed scope.",
+          );
+      } else {
+        parseFoundryCommandSpec(request.content.commit);
+        parseFoundryCommandSpec(request.content.verify);
+      }
       const content = JSON.parse(JSON.stringify(request.content)) as BatchJsonValue;
       if (
         request.scope_id !==
@@ -477,15 +496,29 @@ export function inspectOwnerExecutions(
           "execution_result_invalid",
           "Execution result has no verified readback.",
         );
+      const edge = isEdgeSupportPlan(item.request.content.commit)
+        ? item.request.content.commit
+        : null;
+      if (edge && proof.edge_plan_sha256 !== edge.sha256)
+        throw new FoundryContextError(
+          "execution_result_invalid",
+          "Readback must bind the original Edge draft plan.",
+        );
       const native =
+        !edge &&
         commandSpecOptionValue(item.request.content.commit, "--execution-contract") !== null;
-      const referenceSpec = parseFoundryCommandSpec(item.request.content.verify);
+      const referenceSpec = edge ? null : parseFoundryCommandSpec(item.request.content.verify);
       const referenceSelected =
-        commandSpecOptionValue(referenceSpec, "--reference-intent-file") !== null;
+        Boolean(edge?.reference_intent) ||
+        (referenceSpec !== null &&
+          commandSpecOptionValue(referenceSpec, "--reference-intent-file") !== null);
       const referenceFacts = referenceSelected ? proof.reference_evidence : [];
-      const expectedReferenceFacts = referenceSpec.binding.artifacts.filter((fact) =>
-        ["reference_intent", "reference_precommit", "reference_review"].includes(fact.role),
-      );
+      const expectedReferenceFacts =
+        edge?.reference_intent && edge.reference_evidence
+          ? [edge.reference_evidence, ...edge.reference_intent]
+          : (referenceSpec?.binding.artifacts.filter((fact) =>
+              ["reference_intent", "reference_precommit", "reference_review"].includes(fact.role),
+            ) ?? []);
       if (
         !Array.isArray(referenceFacts) ||
         (referenceSelected &&

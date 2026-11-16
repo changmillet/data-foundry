@@ -10,7 +10,11 @@ import {
   runWithLcaAccount,
   type WithLcaAccountDependencies,
 } from "../../scripts/with-lca-account.ts";
-import { testAuthIdentityReceipt } from "../fixtures/auth-identity-receipt.ts";
+import {
+  testAuthIdentityReceipt,
+  testAuthIdentityReceiptOutput,
+} from "../fixtures/auth-identity-receipt.ts";
+import { tiangongLcaCliPackageVersion } from "../../scripts/lib/foundry-runtime-utils.ts";
 
 const PROJECT_REF = "exampleprojectref";
 const USER_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
@@ -82,7 +86,7 @@ function baseDeps(
     },
     resolveInstalledCli: () => ({
       packageName: "@tiangong-lca/cli",
-      packageVersion: "0.1.28",
+      packageVersion: tiangongLcaCliPackageVersion,
       binPath: path.join(root, "trusted", "tiangong-lca.js"),
     }),
     spawnSyncImpl: (executable: string, argv: readonly string[], options: SpawnCall["options"]) => {
@@ -91,7 +95,7 @@ function baseDeps(
         return {
           status: 0,
           signal: null,
-          stdout: `${JSON.stringify(receiptValue)}\n`,
+          stdout: testAuthIdentityReceiptOutput(receiptValue),
           stderr: "",
         };
       }
@@ -176,7 +180,7 @@ test("account wrapper maps requested child cancellation signals to stable shell 
         return {
           status: 0,
           signal: null,
-          stdout: `${JSON.stringify(receipt())}\n`,
+          stdout: testAuthIdentityReceiptOutput(receipt()),
           stderr: "",
         };
       }
@@ -235,7 +239,11 @@ test("account wrapper executes when invoked through a symlinked entrypoint", (co
       encoding: "utf8",
     });
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /fresh, intent-bound CLI 0\.1\.28 identity receipt/u);
+    assert.ok(
+      result.stdout.includes(
+        `fresh, intent-bound CLI ${tiangongLcaCliPackageVersion} identity receipt`,
+      ),
+    );
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

@@ -1,19 +1,5 @@
 import test from "node:test";
-import {
-  publicIdentityCases,
-  verifyPublicIdentityWorkflow,
-} from "../fixtures/foundry-public-workflow.ts";
+import { runRetainedFoundryTests } from "../helpers/retained-foundry-runtime.mts";
 
-test("public same-task recovery retains the failed original query and creates bound semantic work", (t) =>
-  verifyPublicIdentityWorkflow(
-    t,
-    publicIdentityCases[0],
-    false,
-    "normal",
-    false,
-    false,
-    "insert",
-    false,
-    false,
-    true,
-  ));
+test("CLI 0.1.28 the original failure can recover from its retained query evidence", (t) =>
+  runRetainedFoundryTests(t, ["test/scenarios/foundry-public-identity-recovery.test.mts"]));

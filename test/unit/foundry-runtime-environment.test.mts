@@ -7,6 +7,7 @@ import test from "node:test";
 import {
   copyFoundryIsolatedExecutable,
   createFoundryIsolatedChildEnvironment,
+  withFoundryIsolatedLocalCliEnvironment,
 } from "../../scripts/lib/foundry-runtime-environment.ts";
 
 function withTempRoot(body: (root: string) => void): void {
@@ -173,5 +174,36 @@ test("isolated executable copies retain exact bytes and POSIX execution mode", (
       assert.equal(direct.status, 0, direct.error?.message || direct.stderr);
       assert.equal(direct.stdout, "isolated-ok");
     }
+  });
+});
+
+test("local CLI resolves its isolated home from a task path beyond the Windows home buffer", () => {
+  withTempRoot((root) => {
+    const taskScratch = path.join(root, "a".repeat(100), "b".repeat(100), "c".repeat(100));
+    fs.mkdirSync(taskScratch, { recursive: true });
+    const sentinel = path.join(taskScratch, "task-input.txt");
+    fs.writeFileSync(sentinel, "registered task input");
+    let home = "";
+    withFoundryIsolatedLocalCliEnvironment(taskScratch, (env) => {
+      assert.equal(env.HOME, env.USERPROFILE);
+      home = env.HOME!;
+      const child = spawnSync(process.execPath, ["-p", "require('node:os').homedir()"], {
+        cwd: root,
+        env,
+        encoding: "utf8",
+        shell: false,
+      });
+      assert.equal(child.status, 0, child.stderr);
+      assert.equal(child.stdout.trim(), home);
+      assert.equal(fs.statSync(home).isDirectory(), true);
+      if (process.platform === "win32") {
+        assert.notEqual(path.dirname(home), taskScratch);
+        assert.ok(Buffer.byteLength(home) < 260);
+      } else {
+        assert.equal(path.dirname(home), taskScratch);
+      }
+    });
+    if (process.platform === "win32") assert.equal(fs.existsSync(path.dirname(home)), false);
+    assert.equal(fs.readFileSync(sentinel, "utf8"), "registered task input");
   });
 });

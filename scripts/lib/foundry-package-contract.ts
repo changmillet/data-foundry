@@ -64,7 +64,7 @@ const packageVersion = "0.1.18";
 const packageDescription =
   "Control plane for TianGong LCA external dataset import and TIDAS authoring work.";
 const cliPackageName = "@tiangong-lca/cli";
-const cliPackageVersion = "0.1.28";
+const cliPackageVersion = "0.4.0";
 const packageBin = "package-dist/scripts/package-entry.js";
 const packageApi = "package-dist/scripts/public-api.js";
 const packageTypes = "package-dist/scripts/public-api.d.ts";

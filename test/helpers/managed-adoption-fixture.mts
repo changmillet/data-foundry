@@ -406,6 +406,37 @@ export async function managedAdoptionFixture(t: TestContext, syntheticTransport 
       '#!/usr/bin/env node\nimport {runManagedAuthOwnerFixture} from "./managed-auth-owner-cli.js";\nif (!runManagedAuthOwnerFixture(process.argv.slice(2))) { const {runFromBin} = await import("./managed-real-cli.js"); process.exitCode = await runFromBin(); }\n',
     );
     fs.chmodSync(path.join(bin, "tiangong-lca.js"), 0o755);
+    if (cliVersion === "0.4.0") {
+      const foundry = path.join(app, "node_modules/@tiangong-lca/foundry");
+      const entry = path.join(foundry, "package-dist/scripts/package-entry.js");
+      const descriptor = path.join(foundry, "package-dist/assets/foundry-package-descriptor.json");
+      const origin = `https://${managedFixtureAccount.projectRef}.supabase.co`;
+      const source = fs.readFileSync(entry, "utf8");
+      const edgeTransport = `
+import * as transportFs from "node:fs";
+globalThis.fetch = async (url, request) => {
+  const endpoint = /^\\/functions\\/v1\\/(flow|process)_hybrid_search$/u.exec(url.pathname);
+  if (url.origin !== ${JSON.stringify(origin)} || !endpoint || request.method !== "POST" || request.redirect !== "error")
+    throw new Error("Unexpected managed Edge fixture request.");
+  const authenticated = new Headers(request.headers).get("authorization") === ${JSON.stringify(`Bearer ${managedFixtureToken}`)};
+  if (!authenticated) throw new Error("Expected the managed request actor token.");
+  transportFs.appendFileSync(${JSON.stringify(calls)}, JSON.stringify({ kind: endpoint[1], transport: "edge", token_present: authenticated }) + "\\n");
+  const selected = JSON.parse(transportFs.readFileSync(${JSON.stringify(control)}, "utf8"));
+  if (selected.query === "interrupted") throw new Error("Synthetic Edge search transport interrupted.");
+  return Response.json({ data: [] });
+};
+`;
+      fs.writeFileSync(entry, source.replace("\n", `\n${edgeTransport}`));
+      const files = (
+        JSON.parse(fs.readFileSync(descriptor, "utf8")) as { files: Array<{ path: string }> }
+      ).files;
+      json(
+        descriptor,
+        createFoundryPackageDescriptor(
+          files.map(({ path: file }) => captureFoundryPackageFile(foundry, file)),
+        ),
+      );
+    }
   }
   // Copy each package separately into the retained flat physical graph.
   for (const entry of fs.readdirSync(path.join(app, "node_modules"), { withFileTypes: true })) {
@@ -1086,6 +1117,7 @@ export async function managedAdoptionFixture(t: TestContext, syntheticTransport 
           (line) =>
             JSON.parse(line) as {
               kind: string;
+              transport?: "edge";
               token_present: boolean;
               cache_disabled: boolean;
               ambient_secret_present: boolean;

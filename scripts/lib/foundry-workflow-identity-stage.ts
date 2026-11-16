@@ -21,6 +21,10 @@ import {
   type VerifiedFoundryIdentity,
 } from "./foundry-runtime-identity.ts";
 import { createFoundryAuthenticationEnvironment } from "./foundry-authentication-environment.ts";
+import {
+  readRetainedFoundryEdgeIdentity,
+  runFoundryEdgeIdentityPreflight,
+} from "./foundry-edge-identity-preflight.ts";
 import { createFoundryIdentityOwners } from "./foundry-identity-owners.ts";
 import { inspectOwnerExecutions } from "./foundry-owner-execution-store.ts";
 import {
@@ -286,7 +290,14 @@ async function runLocked(
     )
       reject("current-predecessor-changed");
   };
-  await withFoundryTaskMetadata(context, (_, index) => validateCurrent(index));
+  const retainedStageFile = (file: string, command: string) =>
+    withFoundryTaskMetadata(context, (_, index) => {
+      validateCurrent(index);
+      const entry = index.findLast(
+        (item) => item.command === command && path.resolve(context.taskRoot!, item.path) === file,
+      );
+      return entry ? readWorkflowArtifact(context, entry).value : null;
+    });
   const environment = createFoundryAuthenticationEnvironment(
     authentication,
     context.accountIntent!.sessionReference,
@@ -296,144 +307,159 @@ async function runLocked(
   environment.FOUNDRY_VERIFIED_USER_ID = context.accountIntent!.userId;
   fs.mkdirSync(output, { recursive: true, mode: 0o700 });
   try {
-    const prepare = await runFoundryTaskOperation(
-      context,
-      {
-        command: prepareCommand,
-        options: {
-          stage_id: stageId,
-          intent_sha256: intentSha256,
-          rows_report_sha256: intent.rows_report_sha256,
-          predecessor_identity_sha256: intent.predecessor_identity_sha256,
+    const prepare =
+      (await retainedStageFile(prepareFile, prepareCommand)) ??
+      (await runFoundryTaskOperation(
+        context,
+        {
+          command: prepareCommand,
+          options: {
+            stage_id: stageId,
+            intent_sha256: intentSha256,
+            rows_report_sha256: intent.rows_report_sha256,
+            predecessor_identity_sha256: intent.predecessor_identity_sha256,
+          },
+          validateCurrent,
         },
-        validateCurrent,
-      },
-      (operation) => {
-        const identity = verifyFoundryRuntimeIdentity(
-          context,
-          authentication,
-          process.env,
-          qualified,
-        );
-        const cli = assertCliRuntimeMatches(qualified.cli.expectation);
-        const installed = resolveInstalledTiangongLcaCliPackage();
-        const root = path.dirname(prepareFile);
-        operation.writeText(path.join(root, "selected-intent.json"), selectedBytes(selected));
-        operation.writeJson(path.join(root, "identity-receipt.json"), identity.receipt);
-        operation.writeJson(path.join(root, "roster.json"), targets);
-        operation.writeJson(path.join(root, "runtime-cli-inventory.json"), {
-          qualification: qualified,
-          cli: {
-            root: installed.packageRoot,
-            bin: captureFoundryInput(installed.binPath),
-            files: cli.files,
-          },
-          executable: captureFoundryInput(process.execPath),
-        });
-        const preparedTargets: PreparedTarget[] = [];
-        for (const target of targets) {
-          const type = target.dataset_type;
-          // The published owner names outputs by ID. A separate version-bound parent prevents collisions.
-          const outDir = path.join(root, "targets", sha256Json(target));
-          const sourceIndex = path.join(outDir, "source-context.jsonl");
-          const rowFile = path.join(outDir, "selected-row.jsonl");
-          const row = readRows(target.source_file).find(
-            (value) => sha256Json(value) === target.source_row_sha256,
-          );
-          if (!row) reject("prepared-source-row");
-          operation.writeText(rowFile, JSON.stringify(row) + "\n");
-          operation.writeText(
-            sourceIndex,
-            JSON.stringify({ ...target, source_file: rowFile }) + "\n",
-          );
-          const owner = createFoundryIdentityOwners(context, qualified, type, {
-            environment,
-            cwd: root,
-          });
-          const built = workflowObject(
-            owner.invoke(() =>
-              owner.preflight.runDatasetIdentityPreflightRequestsBuild({
-                type,
-                rowsFile: rowFile,
-                sourceIndex,
-                outDir,
-              }),
-            ),
-          );
-          const indexFile = resolveFoundryOutput(
+        (operation) => {
+          const identity = verifyFoundryRuntimeIdentity(
             context,
-            path.resolve(
-              context.assetRoot,
-              String(workflowObject(built.files).identity_preflight_requests),
-            ),
+            authentication,
+            process.env,
+            qualified,
           );
-          const audited = workflowObject(
-            owner.invoke(() =>
-              owner.preflight.runDatasetIdentityPreflightQueryAudit({
-                index: indexFile,
-                outDir: path.join(outDir, "query-audit"),
-              }),
-            ),
-          );
-          if (built.status !== "ready" || audited.status !== "passed")
-            reject(
-              `request-query-audit:${JSON.stringify({ prepare: built.blockers, audit: audited.blockers })}`,
-            );
-          const indexRows = jsonLines(indexFile);
-          if (
-            indexRows.length !== 1 ||
-            key(indexRows[0] as unknown as FoundryIdentityStageTarget) !== key(target)
-          )
-            reject("prepared-roster-count");
-          const admittedRow = {
-            ...indexRows[0],
-            relevant_input_hashes: {
-              registered_rows: captureFoundryInput(target.source_file).sha256,
-              source_row: target.source_row_sha256,
+          const cli = assertCliRuntimeMatches(qualified.cli.expectation);
+          const installed = resolveInstalledTiangongLcaCliPackage();
+          const root = path.dirname(prepareFile);
+          operation.writeText(path.join(root, "selected-intent.json"), selectedBytes(selected));
+          operation.writeJson(path.join(root, "identity-receipt.json"), identity.receipt);
+          operation.writeJson(path.join(root, "roster.json"), targets);
+          operation.writeJson(path.join(root, "runtime-cli-inventory.json"), {
+            qualification: qualified,
+            cli: {
+              root: installed.packageRoot,
+              bin: captureFoundryInput(installed.binPath),
+              files: cli.files,
             },
-          };
-          const admittedIndex = path.join(outDir, "admitted-identity-preflight-requests.jsonl");
-          operation.writeText(admittedIndex, JSON.stringify(admittedRow) + "\n");
-          preparedTargets.push({
-            ...target,
-            owner_source_file: rowFile,
-            index: admittedIndex,
-            row: admittedRow,
+            executable: captureFoundryInput(process.execPath),
           });
-        }
-        registerWorkflowStageFiles(context, operation, root);
-        const report = {
-          schema: "tiangong-foundry.identity-stage-preparation.v1",
-          stage_id: stageId,
-          intent_id: intent.intent_id,
-          descriptor_sha256: selected.descriptor.sha256,
-          intent_sha256: intentSha256,
-          task_id: context.taskId,
-          actor_id: context.actorId,
-          rows_report: rowsFile,
-          rows_report_sha256: intent.rows_report_sha256,
-          predecessor_identity: {
-            path: predecessorFile,
-            sha256: intent.predecessor_identity_sha256,
-          },
-          predecessor_identity_sha256: intent.predecessor_identity_sha256,
-          qualification_sha256: qualified.qualification_sha256,
-          authentication_mode: identity.mode,
-          targets: preparedTargets,
-          account: {
-            project_ref: context.accountIntent!.projectRef,
-            user_id: context.accountIntent!.userId,
-          },
-          prepared_at_utc: operation.nowIso(),
-        };
-        operation.writeJson(prepareFile, report);
-        return report;
-      },
-    );
+          const preparedTargets: PreparedTarget[] = [];
+          for (const target of targets) {
+            const type = target.dataset_type;
+            // The published owner names outputs by ID. A separate version-bound parent prevents collisions.
+            const outDir = path.join(root, "targets", sha256Json(target));
+            const sourceIndex = path.join(outDir, "source-context.jsonl");
+            const rowFile = path.join(outDir, "selected-row.jsonl");
+            const row = readRows(target.source_file).find(
+              (value) => sha256Json(value) === target.source_row_sha256,
+            );
+            if (!row) reject("prepared-source-row");
+            operation.writeText(rowFile, JSON.stringify(row) + "\n");
+            operation.writeText(
+              sourceIndex,
+              JSON.stringify({ ...target, source_file: rowFile }) + "\n",
+            );
+            const owner = createFoundryIdentityOwners(context, qualified, type, {
+              environment,
+              cwd: root,
+            });
+            const built = workflowObject(
+              owner.invoke(() =>
+                owner.preflight.runDatasetIdentityPreflightRequestsBuild({
+                  type,
+                  rowsFile: rowFile,
+                  sourceIndex,
+                  outDir,
+                }),
+              ),
+            );
+            const indexFile = resolveFoundryOutput(
+              context,
+              path.resolve(
+                context.assetRoot,
+                String(workflowObject(built.files).identity_preflight_requests),
+              ),
+            );
+            const audited = workflowObject(
+              owner.invoke(() =>
+                owner.preflight.runDatasetIdentityPreflightQueryAudit({
+                  index: indexFile,
+                  outDir: path.join(outDir, "query-audit"),
+                }),
+              ),
+            );
+            if (built.status !== "ready" || audited.status !== "passed")
+              reject(
+                `request-query-audit:${JSON.stringify({ prepare: built.blockers, audit: audited.blockers })}`,
+              );
+            const indexRows = jsonLines(indexFile);
+            if (
+              indexRows.length !== 1 ||
+              key(indexRows[0] as unknown as FoundryIdentityStageTarget) !== key(target)
+            )
+              reject("prepared-roster-count");
+            const admittedRow = {
+              ...indexRows[0],
+              relevant_input_hashes: {
+                registered_rows: captureFoundryInput(target.source_file).sha256,
+                source_row: target.source_row_sha256,
+              },
+            };
+            const admittedIndex = path.join(outDir, "admitted-identity-preflight-requests.jsonl");
+            operation.writeText(admittedIndex, JSON.stringify(admittedRow) + "\n");
+            preparedTargets.push({
+              ...target,
+              owner_source_file: rowFile,
+              index: admittedIndex,
+              row: admittedRow,
+            });
+          }
+          registerWorkflowStageFiles(context, operation, root);
+          const report = {
+            schema: "tiangong-foundry.identity-stage-preparation.v1",
+            stage_id: stageId,
+            intent_id: intent.intent_id,
+            descriptor_sha256: selected.descriptor.sha256,
+            intent_sha256: intentSha256,
+            task_id: context.taskId,
+            actor_id: context.actorId,
+            rows_report: rowsFile,
+            rows_report_sha256: intent.rows_report_sha256,
+            predecessor_identity: {
+              path: predecessorFile,
+              sha256: intent.predecessor_identity_sha256,
+            },
+            predecessor_identity_sha256: intent.predecessor_identity_sha256,
+            qualification_sha256: qualified.qualification_sha256,
+            authentication_mode: identity.mode,
+            targets: preparedTargets,
+            account: {
+              project_ref: context.accountIntent!.projectRef,
+              user_id: context.accountIntent!.userId,
+            },
+            prepared_at_utc: operation.nowIso(),
+          };
+          operation.writeJson(prepareFile, report);
+          return report;
+        },
+      ));
     const preparedTargets = prepare.targets as PreparedTarget[];
-    if (!Array.isArray(preparedTargets) || preparedTargets.length !== targets.length)
+    if (
+      prepare.schema !== "tiangong-foundry.identity-stage-preparation.v1" ||
+      prepare.stage_id !== stageId ||
+      prepare.intent_sha256 !== intentSha256 ||
+      prepare.qualification_sha256 !== qualified.qualification_sha256 ||
+      !Array.isArray(preparedTargets) ||
+      preparedTargets.length !== targets.length
+    )
       reject("retained-preparation");
-    const accepted: Array<{ target: PreparedTarget; run: JsonRecord; runDir: string }> = [];
+    const usesEdge = qualified.cli.expectation.package_version === "0.4.0";
+    const accepted: Array<{
+      target: PreparedTarget;
+      run: JsonRecord;
+      runDir: string;
+      row: JsonRecord;
+    }> = [];
     const blockers: JsonRecord[] = [];
     let invocations: number | null = 0;
     let thisInvocation: number | null = 0;
@@ -446,62 +472,65 @@ async function runLocked(
         runDir = path.join(targetRoot, "run");
       let newlyClaimed = false;
       let identity: VerifiedFoundryIdentity | null = null;
-      const claim = await runFoundryTaskOperation(
-        context,
-        {
-          command: dispatchCommand,
-          options: { stage_id: stageId, target_id: targetId, intent_sha256: intentSha256 },
-          validateCurrent(index) {
-            validateCurrent(index);
-            // Verify after expensive locked metadata; serialized receipts never extend permission.
-            if (!fs.existsSync(claimFile))
-              identity = verifyFoundryRuntimeIdentity(
-                context,
-                authentication,
-                process.env,
-                qualified,
-              );
+      const claim =
+        (await retainedStageFile(claimFile, dispatchCommand)) ??
+        (await runFoundryTaskOperation(
+          context,
+          {
+            command: dispatchCommand,
+            options: { stage_id: stageId, target_id: targetId, intent_sha256: intentSha256 },
+            validateCurrent(index) {
+              validateCurrent(index);
+              // Verify after expensive locked metadata; serialized receipts never extend permission.
+              if (!fs.existsSync(claimFile))
+                identity = verifyFoundryRuntimeIdentity(
+                  context,
+                  authentication,
+                  process.env,
+                  qualified,
+                );
+            },
           },
-        },
-        (operation) => {
-          if (fs.existsSync(claimFile)) {
-            // An orphan file without its completed native receipt cannot prove dispatch admission.
-            const orphaned = {
-              schema: "tiangong-foundry.identity-stage-orphan-observation.v1",
+          (operation) => {
+            if (fs.existsSync(claimFile)) {
+              // An orphan file without its completed native receipt cannot prove dispatch admission.
+              const orphaned = {
+                schema: "tiangong-foundry.identity-stage-orphan-observation.v1",
+                stage_id: stageId,
+                target_id: targetId,
+                target,
+                claim: captureFoundryInput(claimFile),
+                admission_status: "ORPHANED_CLAIM_UNPROVEN",
+              };
+              operation.writeJson(path.join(targetRoot, "orphaned-claim.json"), orphaned);
+              return orphaned;
+            }
+            if (!identity) reject("fresh-dispatch-identity");
+            assertVerifiedFoundryIdentity(context, identity, qualified);
+            operation.writeJson(authFile, identity.receipt);
+            const value = {
+              schema: "tiangong-foundry.identity-stage-dispatch.v1",
               stage_id: stageId,
               target_id: targetId,
+              intent_id: intent.intent_id,
               target,
-              claim: captureFoundryInput(claimFile),
-              admission_status: "ORPHANED_CLAIM_UNPROVEN",
+              auth_receipt: captureFoundryInput(authFile),
+              qualification_sha256: qualified.qualification_sha256,
+              authentication_mode: identity.mode,
+              max_attempts: 1,
+              dispatch_state: "CLAIMED_OUTCOME_UNPROVEN",
+              claimed_at_utc: new Date().toISOString(),
             };
-            operation.writeJson(path.join(targetRoot, "orphaned-claim.json"), orphaned);
-            return orphaned;
-          }
-          if (!identity) reject("fresh-dispatch-identity");
-          assertVerifiedFoundryIdentity(context, identity, qualified);
-          operation.writeJson(authFile, identity.receipt);
-          const value = {
-            schema: "tiangong-foundry.identity-stage-dispatch.v1",
-            stage_id: stageId,
-            target_id: targetId,
-            intent_id: intent.intent_id,
-            target,
-            auth_receipt: captureFoundryInput(authFile),
-            qualification_sha256: qualified.qualification_sha256,
-            authentication_mode: identity.mode,
-            max_attempts: 1,
-            dispatch_state: "CLAIMED_OUTCOME_UNPROVEN",
-            claimed_at_utc: new Date().toISOString(),
-          };
-          operation.writeJson(claimFile, value);
-          newlyClaimed = true;
-          return value;
-        },
-      );
+            operation.writeJson(claimFile, value);
+            newlyClaimed = true;
+            return value;
+          },
+        ));
       if (newlyClaimed) {
         signal?.throwIfAborted();
-        if (!identity) reject("fresh-dispatch-identity");
-        assertVerifiedFoundryIdentity(context, identity, qualified);
+        const fresh = identity as VerifiedFoundryIdentity | null;
+        if (!fresh) reject("fresh-dispatch-identity");
+        assertVerifiedFoundryIdentity(context, fresh, qualified);
         // Keep CLI startup independent of digest paths and the workspace's .env.
         const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-identity-stage-"));
         try {
@@ -512,18 +541,34 @@ async function runLocked(
           });
           try {
             if (thisInvocation !== null) thisInvocation += 1;
-            owner.invoke(() =>
-              owner.preflight.runDatasetIdentityPreflightRun({
-                index: target.index,
-                outDir: runDir,
-                authReceipt: authFile,
-                expectedProjectRef: context.accountIntent!.projectRef,
-                expectedUserId: context.accountIntent!.userId,
-                maxAttempts: 1,
-                timeoutMs: 60_000,
-                authReceiptMaxAgeMs: 60_000,
-              }),
-            );
+            if (usesEdge)
+              await runFoundryEdgeIdentityPreflight(
+                context,
+                qualified,
+                authentication,
+                target.dataset_type,
+                target.index,
+                runDir,
+                {
+                  dispatchSha256: sha256Json(claim),
+                  sourceSha256: captureFoundryInput(target.owner_source_file).sha256,
+                  claimedAt: String(claim.claimed_at_utc),
+                  receipt: fresh.receipt,
+                },
+              );
+            else
+              owner.invoke(() =>
+                owner.preflight.runDatasetIdentityPreflightRun({
+                  index: target.index,
+                  outDir: runDir,
+                  authReceipt: authFile,
+                  expectedProjectRef: context.accountIntent!.projectRef,
+                  expectedUserId: context.accountIntent!.userId,
+                  maxAttempts: 1,
+                  timeoutMs: 60_000,
+                  authReceiptMaxAgeMs: 60_000,
+                }),
+              );
           } catch {
             // Retained logs may prove the original result; no new invocation follows this claim.
           }
@@ -543,7 +588,7 @@ async function runLocked(
           runDir,
           authentication.mode,
         );
-        accepted.push({ target, run, runDir });
+        accepted.push({ target, ...run, runDir });
         if (invocations !== null) invocations += 1;
       } catch (error) {
         invocations = null;
@@ -591,8 +636,7 @@ async function runLocked(
         const combined = path.join(resultRoot, "identity-preflight-requests.jsonl");
         operation.writeText(
           combined,
-          accepted.map(({ target }) => JSON.stringify(target.row)).join("\n") +
-            (accepted.length ? "\n" : ""),
+          accepted.map(({ row }) => JSON.stringify(row)).join("\n") + (accepted.length ? "\n" : ""),
         );
         const sets: JsonRecord[] = [];
         const grouped = new Map<string, typeof accepted>();
@@ -603,10 +647,7 @@ async function runLocked(
         for (const [groupKey, items] of grouped) {
           const groupRoot = path.join(resultRoot, "sets", sha256Text(groupKey));
           const index = path.join(groupRoot, "identity-preflight-requests.jsonl");
-          operation.writeText(
-            index,
-            items.map(({ target }) => JSON.stringify(target.row)).join("\n") + "\n",
-          );
+          operation.writeText(index, items.map(({ row }) => JSON.stringify(row)).join("\n") + "\n");
           const summary = {
             schema: "tiangong-foundry.identity-stage-set.v1",
             remote_write_mode: "read-only",
@@ -635,7 +676,14 @@ async function runLocked(
           status: blockers.length ? "blocked" : "completed",
           mode: "explicit-new-read-only-stage",
           explicit_new_stage: true,
-          new_cli_execution: accepted.length ? true : invocations === null ? null : false,
+          new_cli_execution: usesEdge
+            ? false
+            : accepted.length
+              ? true
+              : invocations === null
+                ? null
+                : false,
+          ...(usesEdge ? { execution_transport: "edge" } : {}),
           stage_id: stageId,
           intent_id: intent.intent_id,
           task_id: context.taskId,
@@ -651,7 +699,8 @@ async function runLocked(
           counts: {
             admitted_targets: preparedTargets.length,
             accepted_targets: accepted.length,
-            cli_invocations: invocations,
+            cli_invocations: usesEdge ? 0 : invocations,
+            ...(usesEdge ? { edge_invocations: invocations } : {}),
             underlying_retrievals: null,
           },
           sets,
@@ -663,7 +712,11 @@ async function runLocked(
     );
     return {
       ...report,
-      this_invocation: { cli_invocations: thisInvocation, underlying_retrievals: null },
+      this_invocation: {
+        cli_invocations: usesEdge ? 0 : thisInvocation,
+        ...(usesEdge ? { edge_invocations: thisInvocation } : {}),
+        underlying_retrievals: null,
+      },
     };
   } finally {
     delete environment.TIANGONG_LCA_ACCESS_TOKEN;
@@ -678,7 +731,7 @@ function acceptRetainedTarget(
   authFile: string,
   runDir: string,
   authenticationMode: FoundryAuthentication["mode"],
-): JsonRecord {
+): { run: JsonRecord; row: JsonRecord } {
   assertQualifiedFoundryRuntime(context, qualified);
   if (claim.admission_status === "ORPHANED_CLAIM_UNPROVEN") reject("orphaned-claim-unproven");
   const originalMode = claim.authentication_mode;
@@ -703,6 +756,21 @@ function acceptRetainedTarget(
     expectedUserId: context.accountIntent!.userId,
     sessionMode: originalMode,
   });
+  if (qualified.cli.expectation.package_version === "0.4.0") {
+    return readRetainedFoundryEdgeIdentity(
+      context,
+      target.dataset_type,
+      target.row,
+      runDir,
+      originalMode,
+      {
+        dispatchSha256: sha256Json(claim),
+        sourceSha256: captureFoundryInput(target.owner_source_file).sha256,
+        claimedAt: String(claim.claimed_at_utc),
+        receipt,
+      },
+    );
+  }
   const runFile = path.join(runDir, "dataset-identity-preflight-run-report.json"),
     run = readJson(runFile);
   const resolve = (value: unknown): string => {
@@ -865,5 +933,5 @@ function acceptRetainedTarget(
     stableJson(manifest) !== stableJson(checked.manifest)
   )
     reject("retained-execution-manifest");
-  return run;
+  return { run, row: target.row };
 }

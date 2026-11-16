@@ -1,6 +1,12 @@
 import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import process from "node:process";
+import { buildFoundryCurationQueue } from "../foundry-curation-queue.ts";
+import { applyTypedAuthoringPatch } from "../foundry-typed-authoring-patch.ts";
+import { runTypedDatasetQa } from "../foundry-typed-flow-qa.ts";
+import { createFoundryIsolatedChildEnvironment } from "../foundry-runtime-environment.ts";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -8,7 +14,8 @@ type CliResolution = {
   command: string;
   args: string[];
   display: string;
-  package: JsonRecord | null;
+  package: string | JsonRecord | null;
+  package_version?: string | null;
 };
 
 type JsonCliResult = {
@@ -71,7 +78,7 @@ export function createCliWrapperCommands({
   resolveTiangongLcaCliCommand,
   resolveTiangongLcaCliBin,
 }: CliWrapperFactoryDependencies) {
-  function runJsonCli(cliArgs: string[], errorMessage: string): JsonCliResult {
+  function runJsonCli(cliArgs: string[], errorMessage: string, temporary?: string): JsonCliResult {
     const cli = resolveTiangongLcaCliCommand
       ? resolveTiangongLcaCliCommand()
       : {
@@ -82,8 +89,10 @@ export function createCliWrapperCommands({
         };
     const spawnArgs = [...cli.args, ...cliArgs];
     const result = spawnSync(cli.command, spawnArgs, {
-      cwd: executionCwd ?? repoRoot,
-      env: executionEnvironment,
+      cwd: temporary ?? executionCwd ?? repoRoot,
+      env: temporary
+        ? createFoundryIsolatedChildEnvironment({ tempRoot: temporary })
+        : executionEnvironment,
       encoding: "utf8",
       // Mega-scope stages emit large JSON payloads on stdout; the 1MB spawnSync
       // default overflows with ENOBUFS. Cap below V8's max string length.
@@ -115,6 +124,68 @@ export function createCliWrapperCommands({
       report,
       stderr: result.stderr || "",
     };
+  }
+
+  const localPath = (name: unknown) => path.resolve(executionCwd ?? repoRoot, String(name));
+  function writeLocalText(file: string, value: string) {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, value, { mode: 0o600 });
+  }
+  const localStage = (temporary: string) => ({
+    workspace: temporary,
+    readInput: fs.readFileSync,
+    readRowsFile: (file: string) => fs.readFileSync(file, "utf8"),
+    readResult(file: string) {
+      if (!fs.lstatSync(file).isFile())
+        throw new Error("Expected a regular typed CLI result file.");
+      return fs.readFileSync(file);
+    },
+    writeJson: (file: string, value: unknown) =>
+      writeLocalText(file, JSON.stringify(value, null, 2) + "\n"),
+    run(args: string[]) {
+      const { exitCode, report } = runJsonCli(
+        args,
+        "Typed CLI stage did not emit JSON.",
+        temporary,
+      );
+      return { exit: exitCode, report, validate: <T>(check: () => T) => check() };
+    },
+  });
+  function runDatasetQaStage(stage: string, argv: string[]) {
+    const qaType = argv[0] === "qa" ? argv[1] : null;
+    if (qaType !== "flow" && qaType !== "process" && qaType !== "lifecyclemodel") return null;
+    const cli = resolveTiangongLcaCliCommand?.();
+    if (cli?.package_version !== "0.4.0") return null;
+    const rowsFile = localPath(argv[argv.indexOf("--rows-file") + 1]);
+    const directory = localPath(argv[argv.indexOf("--out-dir") + 1]);
+    const referenceFiles = argv.flatMap((value, index) =>
+      value === "--reference-rows-file" ? [localPath(argv[index + 1])] : [],
+    );
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-local-qa-"));
+    try {
+      const result = runTypedDatasetQa(
+        qaType,
+        rowsFile,
+        directory,
+        { referenceFiles },
+        localStage(temporary),
+      );
+      return {
+        stage,
+        exit_code: result.exit || (qaType !== "process" && result.report.findings.length) ? 2 : 0,
+        report: result.report,
+        report_file: result.reportFile,
+        ...(qaType === "process"
+          ? { cli_validation: { report: result.validationReportFile, exit: result.exit } }
+          : {}),
+        status: result.report.status,
+        command: cli.command,
+        args: [...cli.args, "dataset", qaType === "lifecyclemodel" ? "model" : qaType, "validate"],
+        stderr: "",
+      };
+    } finally {
+      fs.rmSync(temporary, { recursive: true, force: true });
+    }
   }
 
   function runDatasetCurationQueueBuild(options: CliWrapperOptions): JsonRecord {
@@ -156,6 +227,34 @@ export function createCliWrapperCommands({
     );
     appendOption(cliArgs, "--process-limit", options.processLimit);
     appendOption(cliArgs, "--out-dir", outDir);
+
+    const cliVersion = resolveTiangongLcaCliCommand?.().package_version;
+    if (cliVersion === "0.4.0") {
+      const cwd = executionCwd ?? repoRoot;
+      const file = (name: string) => path.resolve(cwd, name);
+      const repeated = (flag: string) =>
+        cliArgs.flatMap((name, index) => (name === flag ? [cliArgs[index + 1]] : []));
+      const processLimit = repeated("--process-limit")[0];
+      const limit = processLimit === undefined ? undefined : Number.parseInt(processLimit, 10);
+      if (limit !== undefined && (!Number.isInteger(limit) || limit < 1))
+        throw new Error("--process-limit must be a positive integer.");
+      const [processesFile] = repeated("--processes");
+      if (!processesFile) throw new Error("--processes requires a Process rows file.");
+      const [flowsFile] = repeated("--flows");
+      const report = buildFoundryCurationQueue({
+        processes: file(processesFile),
+        flows: flowsFile ? file(flowsFile) : null,
+        support: repeated("--support").map(file),
+        external: repeated("--external-flow-ref").map(file),
+        excludeProcessIds: repeated("--exclude-process-id"),
+        processLimit: limit,
+        outDir: file(String(outDir)),
+      });
+      return {
+        ...report,
+        foundry_wrapper: { exit_code: report.blockers.length ? 1 : 0, owner: "foundry" },
+      };
+    }
 
     const { cliBin, cli, spawnArgs, exitCode, report, stderr } = runJsonCli(
       cliArgs,
@@ -199,6 +298,43 @@ export function createCliWrapperCommands({
     const patch = options.patch || options.patchFile || options.patches || options.suggestions;
     const outDir = (options.outDir || ".foundry/workspaces/dataset-patch-apply") as string;
     const out = options.out || options.outFile || path.join(outDir, "patched-rows.jsonl");
+    if (resolveTiangongLcaCliCommand?.().package_version === "0.4.0") {
+      if (!input || !patch) throw new Error("Dataset patch apply requires --input and --patch.");
+      const packageDir = options.authoringPackageDir || options.authoringPackagesDir;
+      const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-local-patch-"));
+      const io = localStage(temporary);
+      try {
+        const result = applyTypedAuthoringPatch(
+          {
+            input: localPath(input),
+            patch: localPath(patch),
+            output: localPath(out),
+            directory: localPath(outDir),
+            packageDirectory: packageDir ? localPath(packageDir) : undefined,
+            requirePackage:
+              options.requireAuthoringPackage === true ||
+              options.requireAuthoringPackage === "true",
+            requireClosure:
+              options.requireActionItemClosure === true ||
+              options.requireActionItemClosure === "true",
+            writeText: writeLocalText,
+            writeJson: io.writeJson,
+          },
+          io,
+        );
+        return {
+          ...result.report,
+          foundry_wrapper: {
+            exit_code: result.exit,
+            owner: "tiangong-lca-cli",
+            remote_write_mode: "read-only",
+          },
+        };
+      } finally {
+        fs.rmSync(temporary, { recursive: true, force: true });
+      }
+    }
+
     const cliArgs = ["dataset", "patch", "apply", "--json"];
     appendOption(cliArgs, "--input", input);
     appendOption(cliArgs, "--patch", patch);
@@ -240,5 +376,6 @@ export function createCliWrapperCommands({
   return {
     runDatasetCurationQueueBuild,
     runDatasetPatchApply,
+    runDatasetQaStage,
   };
 }

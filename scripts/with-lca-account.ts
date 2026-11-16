@@ -11,7 +11,11 @@ import {
   parseFreshIntentBoundAuthReceipt,
   type AuthIdentityReceipt,
 } from "./lib/identity-preflight-proof.ts";
-import { resolveInstalledTiangongLcaCliPackage } from "./lib/foundry-runtime-utils.ts";
+import {
+  resolveInstalledTiangongLcaCliPackage,
+  tiangongLcaCliPackageVersion as EXPECTED_CLI_VERSION,
+} from "./lib/foundry-runtime-utils.ts";
+import { readFoundryCliIdentityResult } from "./lib/foundry-runtime-identity.ts";
 import { requirePrivateOAuthSessionFile } from "./lib/oauth-session-reference.ts";
 import { accountModeForVerifiedIdentity } from "./lib/production-case-policy.ts";
 
@@ -20,7 +24,6 @@ const RECEIPT_PROCESS_TIMEOUT_MS = 20_000;
 const RECEIPT_MAX_AGE_MS = 60_000;
 const MAX_RECEIPT_OUTPUT_BYTES = 256 * 1024;
 const EXPECTED_CLI_PACKAGE = "@tiangong-lca/cli";
-const EXPECTED_CLI_VERSION = "0.1.28";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const PROJECT_REF_PATTERN = /^[a-z0-9]+$/u;
 const SAFE_FILE_STEM_PATTERN = /^[A-Za-z0-9._-]+$/u;
@@ -311,7 +314,7 @@ function buildRestrictedEnvironment(input: {
   return env;
 }
 
-function parseSingleReceipt(stdout: unknown): unknown {
+function parseSingleReceipt(stdout: unknown, packageVersion: string): unknown {
   if (typeof stdout !== "string" || Buffer.byteLength(stdout, "utf8") > MAX_RECEIPT_OUTPUT_BYTES) {
     throw new AccountWrapperError(
       "CLI did not return a valid fresh intent-bound identity receipt.",
@@ -325,7 +328,7 @@ function parseSingleReceipt(stdout: unknown): unknown {
     );
   }
   try {
-    return JSON.parse(lines[0]);
+    return readFoundryCliIdentityResult(lines[0], packageVersion);
   } catch {
     throw new AccountWrapperError(
       "CLI did not return a valid fresh intent-bound identity receipt.",
@@ -433,12 +436,15 @@ export function runWithLcaAccount(
   }
   let receipt: AuthIdentityReceipt;
   try {
-    receipt = parseFreshIntentBoundAuthReceipt(parseSingleReceipt(identityResult.stdout), {
-      nowMs: (dependencies.nowMs ?? Date.now)(),
-      maxAgeMs: RECEIPT_MAX_AGE_MS,
-      expectedProjectRef: profile.expectedProjectRef,
-      expectedUserId: profile.expectedUserId,
-    });
+    receipt = parseFreshIntentBoundAuthReceipt(
+      parseSingleReceipt(identityResult.stdout, installedCli.packageVersion),
+      {
+        nowMs: (dependencies.nowMs ?? Date.now)(),
+        maxAgeMs: RECEIPT_MAX_AGE_MS,
+        expectedProjectRef: profile.expectedProjectRef,
+        expectedUserId: profile.expectedUserId,
+      },
+    );
   } catch {
     throw new AccountWrapperError(
       "CLI did not return a valid fresh intent-bound identity receipt.",
