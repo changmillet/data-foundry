@@ -39,7 +39,7 @@ test("authentication environment retains only explicit credentials and required 
   );
   assert.equal(headless.TIANGONG_LCA_ACCESS_TOKEN, "explicit-test-token");
   assert.equal(headless.TIANGONG_LCA_DISABLE_SESSION_CACHE, "true");
-  assert.equal(headless.TIANGONG_LCA_AUTH_MODE, "access_token");
+  assert.equal(headless.TIANGONG_LCA_AUTH_MODE, "access-token");
   assert.equal(inherited.TIANGONG_LCA_ACCESS_TOKEN, "ambient-secret");
   assert.throws(() =>
     createFoundryAuthenticationEnvironment(

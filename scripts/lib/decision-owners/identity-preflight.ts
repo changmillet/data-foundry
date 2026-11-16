@@ -534,8 +534,11 @@ export function createIdentityPreflightRunCommands({
         maxAgeMs: positiveIntegerOption(options.authReceiptMaxAgeMs, 300_000) ?? 300_000,
         expectedProjectRef,
         expectedUserId,
-        sessionMode:
-          executionEnvironment.TIANGONG_LCA_AUTH_MODE === "access_token" ? "headless" : "oauth",
+        sessionMode: ["access-token", "access_token"].includes(
+          executionEnvironment.TIANGONG_LCA_AUTH_MODE ?? "",
+        )
+          ? "headless"
+          : "oauth",
       });
     }
     const logDir = path.join(outDir, "logs");

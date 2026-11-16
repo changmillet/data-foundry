@@ -146,7 +146,19 @@ test("a CLI 0.4 task binds its existing Edge identity observations to the Foundr
     if (!Array.isArray(args[1]) || !args[1].includes("identity-receipt"))
       return Reflect.apply(originalSpawn, childProcess, args);
     assert.equal(args[2]?.env?.TIANGONG_LCA_ACCESS_TOKEN, authentication.accessToken);
-    return { stdout: JSON.stringify(auth), stderr: "", status: 0, signal: null };
+    return {
+      stdout: JSON.stringify({
+        schemaVersion: 1,
+        operation: "auth identity-receipt",
+        status: "completed",
+        outcome: "identity_verified",
+        error: null,
+        data: { receipt: auth },
+      }),
+      stderr: "",
+      status: 0,
+      signal: null,
+    };
   });
   syncBuiltinESMExports();
   t.after(() => {

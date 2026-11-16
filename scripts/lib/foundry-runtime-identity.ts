@@ -26,6 +26,27 @@ export type {
   FoundryAuthentication,
 } from "./foundry-authentication-environment.ts";
 
+function resultRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new Error("CLI identity result must be an object.");
+  return value as Record<string, unknown>;
+}
+
+export function readFoundryCliIdentityResult(stdout: string, packageVersion: string): unknown {
+  const value: unknown = JSON.parse(stdout);
+  if (packageVersion !== "0.4.0") return value;
+  const envelope = resultRecord(value);
+  if (
+    envelope.schemaVersion !== 1 ||
+    envelope.operation !== "auth identity-receipt" ||
+    envelope.status !== "completed" ||
+    envelope.outcome !== "identity_verified" ||
+    envelope.error !== null
+  )
+    throw new Error("Expected a completed CLI identity receipt.");
+  return resultRecord(envelope.data).receipt;
+}
+
 export interface VerifiedFoundryIdentity {
   readonly receipt: AuthIdentityReceipt;
   readonly workspaceId: string;
@@ -107,13 +128,16 @@ export function verifyFoundryRuntimeIdentity(
       reject("needs_auth", "The owner CLI could not verify the intended task account.");
     let receipt: AuthIdentityReceipt;
     try {
-      receipt = parseFreshIntentBoundAuthReceipt(JSON.parse(result.stdout), {
-        nowMs: Date.now(),
-        maxAgeMs,
-        expectedProjectRef: account.projectRef,
-        expectedUserId: account.userId,
-        sessionMode: authentication.mode,
-      });
+      receipt = parseFreshIntentBoundAuthReceipt(
+        readFoundryCliIdentityResult(result.stdout, cli.packageVersion),
+        {
+          nowMs: Date.now(),
+          maxAgeMs,
+          expectedProjectRef: account.projectRef,
+          expectedUserId: account.userId,
+          sessionMode: authentication.mode,
+        },
+      );
     } catch {
       reject(
         "identity_receipt_invalid",

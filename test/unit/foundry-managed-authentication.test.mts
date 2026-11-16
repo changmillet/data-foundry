@@ -35,7 +35,7 @@ test("reviewed cli-auth carrier projects only explicit process headless credenti
   });
   assert.ok(Object.isFrozen(auth));
   const child = createFoundryAuthenticationEnvironment(auth, null, {});
-  assert.equal(child.TIANGONG_LCA_AUTH_MODE, "access_token");
+  assert.equal(child.TIANGONG_LCA_AUTH_MODE, "access-token");
   assert.equal(child.TIANGONG_LCA_DISABLE_SESSION_CACHE, "true");
   assert.equal(child.TIANGONG_LCA_SESSION_FILE, undefined);
   assert.equal(child.NODE_OPTIONS, undefined);

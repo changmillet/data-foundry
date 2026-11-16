@@ -13,7 +13,7 @@ export function createManagedFoundryAuthentication(
 ): FoundryAuthentication | undefined {
   if (!carrierAdmitted || environment !== "cli-auth") return undefined;
   const mode = source.TIANGONG_LCA_AUTH_MODE || "oauth";
-  if (mode === "access_token") {
+  if (mode === "access_token" || mode === "access-token") {
     const accessToken = source.TIANGONG_LCA_ACCESS_TOKEN;
     const apiBaseUrl = source.TIANGONG_LCA_API_BASE_URL;
     const publishableKey = source.TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY;

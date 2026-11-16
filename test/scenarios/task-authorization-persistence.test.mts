@@ -208,13 +208,13 @@ test("headless identity uses only the existing process token mode and never seri
     "spawnSync",
     (_executable: unknown, argv: string[], options: { env: NodeJS.ProcessEnv }) => {
       assert.equal(argv.includes(token), false);
-      if (options.env.TIANGONG_LCA_AUTH_MODE === "access_token")
+      if (options.env.TIANGONG_LCA_AUTH_MODE === "access-token")
         assert.equal(options.env.TIANGONG_LCA_ACCESS_TOKEN, token);
       else assert.equal(options.env.TIANGONG_LCA_ACCESS_TOKEN, undefined);
       assert.equal(options.env.TIANGONG_LCA_SESSION_FILE, undefined);
       assert.equal(
         options.env.TIANGONG_LCA_DISABLE_SESSION_CACHE,
-        options.env.TIANGONG_LCA_AUTH_MODE === "access_token" ? "true" : "false",
+        options.env.TIANGONG_LCA_AUTH_MODE === "access-token" ? "true" : "false",
       );
       childEnvironment = options.env;
       return { status: 0, signal: null, stdout: JSON.stringify(receipt), stderr: "" };

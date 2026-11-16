@@ -342,7 +342,7 @@ export async function explicitIdentityStageFixture(
             projectRef: account.projectRef,
             userId: account.userId,
             capturedAtUtc: new Date(Date.now()).toISOString(),
-            ...(args[2]?.env?.TIANGONG_LCA_AUTH_MODE === "access_token"
+            ...(args[2]?.env?.TIANGONG_LCA_AUTH_MODE === "access-token"
               ? {
                   scopeOverrides: {
                     session: {

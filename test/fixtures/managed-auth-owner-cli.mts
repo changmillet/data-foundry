@@ -33,7 +33,7 @@ export function runManagedAuthOwnerFixture(args: readonly string[]): boolean {
   if (args[0] === "auth" && args[1] === "identity-receipt") {
     append("auth");
     if (
-      process.env.TIANGONG_LCA_AUTH_MODE !== "access_token" ||
+      process.env.TIANGONG_LCA_AUTH_MODE !== "access-token" ||
       !process.env.TIANGONG_LCA_ACCESS_TOKEN ||
       process.env.TIANGONG_LCA_DISABLE_SESSION_CACHE !== "true" ||
       control.auth === "error"
