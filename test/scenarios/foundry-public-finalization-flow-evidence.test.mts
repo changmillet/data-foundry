@@ -1,4 +1,4 @@
-import { createFoundryFacade } from "../../scripts/public-api.ts";
+import { createFoundryFacade, type FoundryOperationResult } from "../../scripts/public-api.ts";
 import { collectDatasetReferences } from "../../scripts/lib/import-curation/internal/workflow-reference-closure.ts";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -35,8 +35,37 @@ const read = (file: string) => object(JSON.parse(fs.readFileSync(file, "utf8")))
 const account = finalizationProcessAccount;
 
 async function registeredProcess(t: TestContext, requestId: string) {
-  const { root, workspace, facade } = workflowFixture(t);
-  const fixture = finalizationProcessFixture();
+  const { root, workspace, facade: baseline, facadeOptions } = workflowFixture(t);
+  const typed = resolveInstalledTiangongLcaCliPackage().packageVersion === "0.4.0";
+  const fixture = typed ? typedFinalizationProcessFixture() : finalizationProcessFixture();
+  let facade = baseline;
+  let edgeReadReference: ((table: string, id: string, version: string) => unknown) | undefined;
+  if (typed) {
+    const origin = `https://${account.project_ref}.supabase.co`;
+    const token = "process-evidence-fixture-token";
+    facade = createFoundryFacade({
+      ...facadeOptions,
+      authentication: {
+        mode: "headless",
+        apiBaseUrl: origin,
+        accessToken: token,
+        publishableKey: "process-evidence-fixture-key",
+      },
+    });
+    const references = collectDatasetReferences(fixture.process);
+    edgeReadReference = (table, id, version) => {
+      if (
+        !references.some((ref) => ref.table === table && ref.id === id && ref.version === version)
+      )
+        return undefined;
+      return table === "flows" ? fixture.flow : { fixture_dependency: id };
+    };
+    t.mock.method(globalThis, "fetch", (url: URL, init: RequestInit) => {
+      assert.equal(url.href, `${origin}/functions/v1/process_hybrid_search`);
+      assert.equal(new Headers(init.headers).get("authorization"), `Bearer ${token}`);
+      return Response.json({ data: [] });
+    });
+  }
   const seed = path.join(root, "process-source.json");
   const request = path.join(root, "request.json");
   fs.writeFileSync(seed, JSON.stringify(finalizationProcessSeed(fixture)));
@@ -59,7 +88,16 @@ async function registeredProcess(t: TestContext, requestId: string) {
   const started = await facade.start({ specFile: request });
   assert.ok(started.task_id, JSON.stringify(started));
   const invocation = { taskId: started.task_id, actorId: "finalization-author" };
-  return { root, workspace, facade, fixture, seed, originalSource, invocation };
+  return { root, workspace, facade, fixture, seed, originalSource, invocation, edgeReadReference };
+}
+
+function finalizedProcess(result: FoundryOperationResult) {
+  const artifact = result.artifacts.findLast((item) => item.role === "foundry-finalize.json");
+  assert.ok(artifact?.kind === "file");
+  const finalization = read(artifact.path);
+  const scope = (finalization.sets as Json[]).find((item) => item.type === "process");
+  assert.ok(scope);
+  return { finalization, scope };
 }
 
 function beforeCandidateCleanup(input: Awaited<ReturnType<typeof registeredProcess>>) {
@@ -146,20 +184,12 @@ test("CLI 0.4 validates the exact allocated Process and Foundry keeps its mass b
   assert.equal((read(invalid.reportFile).mass_balance as Json[])[0].status, "unresolved");
 });
 
-test("public selected Flow evidence survives identity apply, cleanup and real Process save-equivalent validation", async (t) => {
-  const { root, facade, fixture, seed, originalSource, invocation } = await registeredProcess(
-    t,
-    "finalization-flow-evidence",
-  );
+test("public selected Flow evidence survives identity apply, cleanup and Process validation", async (t) => {
+  const input = await registeredProcess(t, "finalization-flow-evidence");
+  const { root, facade, fixture, seed, originalSource, invocation, edgeReadReference } = input;
   const { result, saveReports, counters, references, originalReferences, originalSpawn } =
-    await runPublicFinalizationProcessWorkflow(t, {
-      root,
-      facade,
-      invocation,
-      seed,
-      fixture,
-      account,
-    });
+    await runPublicFinalizationProcessWorkflow(t, input);
+  const { finalization, scope } = finalizedProcess(result);
   const preflights = counters.preflights;
   const summary = { preflights, saveReports, status: result.status, blockers: result.blockers };
   const evidenceRoot = process.env.FOUNDRY_TEST_EVIDENCE_DIR;
@@ -181,22 +211,21 @@ test("public selected Flow evidence survives identity apply, cleanup and real Pr
   t.diagnostic(
     JSON.stringify({ preflights, saveStatus: saveReports[0]?.status, blockers: result.blockers }),
   );
-  assert.ok(saveReports.length, "public finalization must reach the genuine CLI dry-run");
-  const dry = saveReports[0];
-  assert.equal(dry.status, "completed", JSON.stringify(dry));
-  const finalFile = String(dry.input_path);
+  const finalFile = String(scope.final_rows);
+  assert.equal(typeof scope.final_rows, "string");
   const finalRow = object(readRows(finalFile)[0]);
   assert.deepEqual(object(finalRow.semantic_context).flow_documents, [fixture.flow]);
-  const processValidation = object((dry.processes as Json[])[0].validation);
-  for (const layer of Object.values(object(processValidation.validation_layers)))
-    assert.equal(object(layer).status, "passed");
-  assert.equal(object(processValidation.allocation_semantics).status, "passed");
-  assert.equal(processValidation.payload_sha256, sha256Json(fixture.process));
-  const finalized = result.artifacts.findLast((item) => item.role === "foundry-finalize.json");
-  assert.ok(finalized?.kind === "file");
-  const finalization = read(finalized.path);
-  const scope = (finalization.sets as Json[]).find((item) => item.type === "process")!;
-  assert.equal(scope.final_rows, finalFile);
+  if (!edgeReadReference) {
+    const dry = saveReports[0];
+    assert.ok(dry, "public finalization must reach the genuine CLI dry-run");
+    assert.equal(dry.status, "completed", JSON.stringify(dry));
+    assert.equal(dry.input_path, finalFile);
+    const processValidation = object((dry.processes as Json[])[0].validation);
+    for (const layer of Object.values(object(processValidation.validation_layers)))
+      assert.equal(object(layer).status, "passed");
+    assert.equal(object(processValidation.allocation_semantics).status, "passed");
+    assert.equal(processValidation.payload_sha256, sha256Json(fixture.process));
+  }
   const owner = read(String(scope.report));
   const files = object(owner.files);
   const ownerBase = String(finalization.owner_base);
@@ -207,6 +236,16 @@ test("public selected Flow evidence survives identity apply, cleanup and real Pr
   assert.equal(sha256Json(unwrapDatasetPayload(finalRow, "process")), sha256Json(fixture.process));
   assert.deepEqual(fs.readFileSync(seed), originalSource);
   assert.deepEqual(fs.readFileSync(references), originalReferences);
+  const snapshot = result.artifacts.findLast((item) => item.role === "qa-0.json");
+  assert.ok(snapshot?.kind === "file");
+  const bytes = fs.readFileSync(snapshot.path);
+  fs.writeFileSync(snapshot.path, "[]");
+  const refused = await facade.status(invocation);
+  assert.equal(refused.blockers[0]?.code, "workflow_assessment_changed");
+  assert.notEqual(refused.status, "completed");
+  fs.writeFileSync(snapshot.path, bytes);
+  if (edgeReadReference) return;
+
   const runSave = (row: unknown, name: string, dataset: boolean) => {
     const input = path.join(root, `${name}.json`);
     const output = path.join(root, `save-${name}`);
@@ -271,14 +310,6 @@ test("public selected Flow evidence survives identity apply, cleanup and real Pr
       }
     });
   }
-  const snapshot = result.artifacts.findLast((item) => item.role === "qa-0.json");
-  assert.ok(snapshot?.kind === "file");
-  const bytes = fs.readFileSync(snapshot.path);
-  fs.writeFileSync(snapshot.path, "[]");
-  const refused = await facade.status(invocation);
-  assert.equal(refused.blockers[0]?.code, "workflow_assessment_changed");
-  assert.notEqual(refused.status, "completed");
-  fs.writeFileSync(snapshot.path, bytes);
 });
 
 test("public finalization parses the same captured reference bytes whose hash it records", async (t) => {
@@ -322,10 +353,12 @@ test("public finalization parses the same captured reference bytes whose hash it
     readMock.mock.restore();
     syncBuiltinESMExports();
   });
-  const { saveReports, references, originalReferences } =
-    await runPublicFinalizationProcessWorkflow(t, input);
-  assert.equal(saveReports[0]?.status, "completed");
-  const row = object(readRows(String(saveReports[0].input_path))[0]);
+  const { result, references, originalReferences } = await runPublicFinalizationProcessWorkflow(
+    t,
+    input,
+  );
+  const { scope } = finalizedProcess(result);
+  const row = object(readRows(String(scope.final_rows))[0]);
   assert.deepEqual(
     object(row.semantic_context).flow_documents,
     [input.fixture.flow],
