@@ -202,6 +202,8 @@ export async function verifyRegisteredProcessPreparation(
     "unchanged blocked preparation must not replay validation",
   );
   if (name === "nonannual") {
+    const typed = report.schema === "tiangong-foundry.typed-process-qa.v1";
+    const annualValues = ["200000 kg/year", typed ? "200000 kg/年" : "200000 千克/年"];
     const manifest = object(
       JSON.parse(fs.readFileSync(String(process.authoring_manifest), "utf8")),
     );
@@ -218,7 +220,7 @@ export async function verifyRegisteredProcessPreparation(
     const patchFile = path.join(root, "annual-text-repair.json");
     const submissionFile = path.join(root, "annual-text-submission.json");
     const annualActions = actions
-      .filter((item) => item.code === expected)
+      .filter((item) => item.code === expected || item.code === "annual_volume_basis_missing")
       .map((item) => ({ code: item.code, path: item.path }));
     fs.writeFileSync(
       patchFile,
@@ -230,7 +232,7 @@ export async function verifyRegisteredProcessPreparation(
             dataset_id: object(task.entity).entity_id,
             version: object(task.entity).version,
             authoring_package: path.basename(String(files.authoring_package)),
-            operations: ["200000 kg/year", "200000 千克/年"].map((value, index) => ({
+            operations: annualValues.map((value, index) => ({
               op: "replace",
               path: `${annualPath}/${index}/#text`,
               value,
@@ -301,8 +303,7 @@ export async function verifyRegisteredProcessPreparation(
       object(object(expectedPayload.processDataSet).modellingAndValidation)
         .dataSourcesTreatmentAndRepresentativeness,
     ).annualSupplyOrProductionVolume as Json[];
-    expectedAnnual[0]["#text"] = "200000 kg/year";
-    expectedAnnual[1]["#text"] = "200000 千克/年";
+    for (const [index, value] of annualValues.entries()) expectedAnnual[index]["#text"] = value;
     assert.deepEqual(repaired, expectedPayload, "only the two evidence-backed text fields change");
     for (let i = 0; i < 8; i += 1) {
       await facade.resume(invocation);
@@ -333,10 +334,10 @@ export async function verifyRegisteredProcessPreparation(
     const refreshedReport = object(
       JSON.parse(fs.readFileSync(String(refreshedProcess.cli_validation_report), "utf8")),
     );
-    const refreshedLayer = object(
-      object((refreshedReport.rows as Json[])[0].validation_layers).authoring_evidence,
-    );
+    const refreshedRow = (refreshedReport.rows as Json[])[0];
+    const refreshedLayer = object(object(refreshedRow.validation_layers).authoring_evidence);
     assert.deepEqual(refreshedLayer.issues, []);
+    if (typed) assert.equal(object(refreshedRow.annual_volume).status, "passed");
     const repairedBytes = fs.readFileSync(String(newProcess.file));
     const duplicate = await facade.resume({ ...invocation, semanticInputFile: submissionFile });
     assert.notEqual(duplicate.status, "completed");

@@ -220,6 +220,8 @@ export async function verifyManagedProcessPreparation(
         ),
       );
     if (name === "annual-invalid") {
+      const typed = report.schema === "tiangong-foundry.typed-process-qa.v1";
+      const annualValues = ["200000 kg/year", typed ? "200000 kg/年" : "200000 千克/年"];
       const manifest = object(JSON.parse(fs.readFileSync(String(set.authoring_manifest), "utf8")));
       const task = object((manifest.tasks as Json[])[0]);
       const files = object(task.files);
@@ -236,8 +238,9 @@ export async function verifyManagedProcessPreparation(
       const annualActions = actions
         .filter(
           (item) =>
-            item.validation_layer === "authoring_evidence" &&
-            String(item.code).startsWith("annual_supply_or_production_volume"),
+            (item.validation_layer === "authoring_evidence" &&
+              String(item.code).startsWith("annual_supply_or_production_volume")) ||
+            item.code === "annual_volume_basis_missing",
         )
         .map((item) => ({ code: item.code, path: item.path }));
       fs.writeFileSync(
@@ -250,7 +253,7 @@ export async function verifyManagedProcessPreparation(
               dataset_id: object(task.entity).entity_id,
               version: object(task.entity).version,
               authoring_package: path.basename(String(files.authoring_package)),
-              operations: ["200000 kg/year", "200000 千克/年"].map((value, index) => ({
+              operations: annualValues.map((value, index) => ({
                 op: "replace",
                 path: `${annualPath}/${index}/#text`,
                 value,
@@ -320,12 +323,10 @@ export async function verifyManagedProcessPreparation(
       assert.ok(repairedSet);
       const repairedRows = rowsAt(String(repairedSet.file));
       const expected = structuredClone(selected.payload);
-      expected.processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume[0][
-        "#text"
-      ] = "200000 kg/year";
-      expected.processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume[1][
-        "#text"
-      ] = "200000 千克/年";
+      for (const [index, value] of annualValues.entries())
+        expected.processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume[
+          index
+        ]["#text"] = value;
       assert.deepEqual(repairedRows[0][payloadKey], expected);
       assert.deepEqual(repairedRows[0].semantic_context, selected.context);
       let fixedRow: Json | undefined;
@@ -357,6 +358,7 @@ export async function verifyManagedProcessPreparation(
       }
       assert.ok(fixedRow);
       assert.deepEqual(object(object(fixedRow.validation_layers).authoring_evidence).issues, []);
+      if (typed) assert.equal(object(fixedRow.annual_volume).status, "passed");
       const fixedBytes = fs.readFileSync(String(repairedSet.file));
       await run([
         "task",
