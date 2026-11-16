@@ -224,12 +224,31 @@ export function parseFoundryPreparationCliReport(options: {
 
 /** Project owner findings into the existing evidence-backed field patch workflow, without repairs. */
 export function preparationValidationActions(row: Json, receipt?: Json): Json[] {
+  const layers = object(row.validation_layers);
+  const semantics = object(row.allocation_semantics);
+  const groups = [
+    ...layerNames.map((name) => ({ name, value: object(layers[name]) })),
+    { name: "allocation_semantics", value: semantics },
+  ];
   if (Array.isArray(row.typed_findings)) {
+    const typedGroups = [
+      ...groups,
+      { name: "flow_reference_names", value: record(row.flow_reference_names) },
+      { name: "annual_volume", value: record(row.annual_volume) },
+    ];
     return row.typed_findings.map((item) => {
       const issue = object(item);
+      const group = typedGroups.find(
+        ({ value }) =>
+          Array.isArray(value.issues) &&
+          value.issues.some((entry) => {
+            const ownerIssue = object(entry);
+            return ownerIssue.code === issue.code && ownerIssue.path === issue.path;
+          }),
+      );
       return {
         source: "cli_validation",
-        validation_layer: "typed_process_business",
+        validation_layer: group?.name ?? "typed_process_business",
         code: issue.code,
         path: issue.path,
         message: issue.message,
@@ -249,12 +268,6 @@ export function preparationValidationActions(row: Json, receipt?: Json): Json[] 
       };
     });
   }
-  const layers = object(row.validation_layers);
-  const semantics = object(row.allocation_semantics);
-  const groups = [
-    ...layerNames.map((name) => ({ name, value: object(layers[name]) })),
-    { name: "allocation_semantics", value: semantics },
-  ];
   return groups.flatMap(({ name, value }) =>
     (value.issues as Json[]).map((issue) => ({
       source: "cli_validation",

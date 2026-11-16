@@ -56,14 +56,14 @@ test("post-authoring finalize help retains exact stage, type, and byte contract"
 
 test("post-authoring finalize preserves rewrite, evidence, gate, manifest, and handoff order", () => {
   const source = implementationSource();
-  const runnerSource = source.slice(source.indexOf("function runDatasetPostAuthoringFinalize"));
+  const runnerSource = source.slice(source.indexOf("function* finalizeStages"));
   const orderedStages = [
     "applyIdentityReferenceRewrites({",
     "externalizeUnresolvedProcessFlowExchanges({",
     "applySourceContactRewrites({",
     "applyCanonicalSupportRewrites({",
     "runDatasetCurationCleanup({",
-    "runFinalizeIdentityPreflightStage({",
+    "runFinalizeIdentityPreflightStage(identityRequest)",
     "runFinalizeAutoCurationQueue({",
     "runTidasRowsValidation({",
     "runTiangongJsonStage(`${datasetType}_qa`",
@@ -102,7 +102,7 @@ test("post-authoring finalize preserves rewrite, evidence, gate, manifest, and h
 
 test("source/contact support finalize waits for parent cleanup and owns its output path", () => {
   const source = implementationSource();
-  const runnerSource = source.slice(source.indexOf("function runDatasetPostAuthoringFinalize"));
+  const runnerSource = source.slice(source.indexOf("function* finalizeStages"));
   assert.ok(
     runnerSource.indexOf('timeStage("curation_cleanup"') <
       runnerSource.indexOf("sourceContactSupportFinalize = timeStage("),

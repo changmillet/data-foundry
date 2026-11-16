@@ -269,7 +269,7 @@ export async function verifyManagedPackageHost(
     );
     return;
   }
-  const processEvidence = await verifyManagedAllocationConsumer(root, (argv) =>
+  const processEvidence = await verifyManagedAllocationConsumer(root, cli.package.version, (argv) =>
     executeRuntimeLaunch(manifest, {
       ...manager,
       entry: "allocation-validation",

@@ -6,8 +6,7 @@ import {
   type FoundryInputFact,
   type FoundryRuntimeContext,
 } from "./foundry-runtime-context.ts";
-import type { EdgeDraftType, EdgeSupportTarget } from "./foundry-edge-support-plan.ts";
-import { bundleRowTypes } from "./bundle-row-types.ts";
+import { bundleRowTypes, type BundleRowType } from "./bundle-row-types.ts";
 import { datasetIdentity } from "./import-curation/internal/dataset-payload.ts";
 import { collectDatasetReferences } from "./import-curation/internal/workflow-reference-closure.ts";
 import { sha256Json } from "./identity-preflight-proof.ts";
@@ -80,8 +79,8 @@ export function readEdgeReferenceSnapshot(value: unknown, actor: string): EdgeRe
 export function readEdgeReferenceIntent(
   context: FoundryRuntimeContext,
   input: string,
-  type: EdgeDraftType,
-  target: EdgeSupportTarget,
+  type: BundleRowType,
+  target: { project_ref: string; user_id: string },
   rows: unknown[],
 ) {
   const read = (inputPath: string) => {

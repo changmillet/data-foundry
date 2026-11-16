@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { projectFoundryValidationReferences } from "../../scripts/lib/foundry-validation-reference-context.ts";
+import { typedFinalizationProcessFixture } from "../fixtures/finalization-process.ts";
 
 type Json = Record<string, unknown>;
 type Result = { status: number | null; stdout: string; stderr: string };
@@ -22,8 +24,10 @@ const contentHash = (value: unknown) => hash(JSON.stringify(canonical(value)));
 /** Actual installed CLI in the same verified cache as the genuine Foundry IPC host. */
 export async function verifyManagedAllocationConsumer(
   root: string,
+  packageVersion: string,
   run: (argv: string[]) => Promise<Result>,
 ) {
+  const typed = packageVersion === "0.4.0";
   const original = JSON.parse(
     fs.readFileSync(new URL("../fixtures/managed-allocation-input.json", import.meta.url), "utf8"),
   ) as { payload: Json; context: { flow_documents: Json[] } };
@@ -36,7 +40,10 @@ export async function verifyManagedAllocationConsumer(
     ["elementary", "Input", "Elementary flow", "failed"],
     ["missing-context", "Input", "Product flow", "unresolved"],
   ] as const) {
-    const fixture = structuredClone(original);
+    const typedFixture = typed ? typedFinalizationProcessFixture() : null;
+    const fixture = typedFixture
+      ? { payload: typedFixture.process, context: { flow_documents: [typedFixture.flow] } }
+      : structuredClone(original);
     const exchanges = object(object(fixture.payload.processDataSet).exchanges).exchange as Json[];
     exchanges[1].exchangeDirection = direction;
     const flow = fixture.context.flow_documents[0];
@@ -51,25 +58,66 @@ export async function verifyManagedAllocationConsumer(
       }),
     );
     const before = hash(fs.readFileSync(input));
-    const result = await run([
-      "dataset",
-      "validate",
-      "--input",
-      input,
-      "--type",
-      "process",
-      "--out-dir",
-      out,
-      "--json",
-    ]);
+    const typedInput = path.join(root, `allocation-${name}-content.json`);
+    const typedReport = path.join(root, `allocation-${name}-validation.json`);
+    const referenceDocuments = path.join(root, `allocation-${name}-references.json`);
+    if (typedFixture) {
+      const references =
+        name === "missing-context" ? [] : [flow, typedFixture.property, typedFixture.group];
+      const [projected] = projectFoundryValidationReferences(
+        [{ json: fixture.payload }],
+        references,
+      );
+      fs.writeFileSync(
+        typedInput,
+        JSON.stringify({
+          ...fixture.payload,
+          json: fixture.payload,
+          semantic_context: object(projected).semantic_context,
+        }),
+      );
+      fs.writeFileSync(
+        referenceDocuments,
+        JSON.stringify({
+          documents: references,
+        }),
+      );
+    }
+    const result = await run(
+      typed
+        ? [
+            "dataset",
+            "process",
+            "validate",
+            "--input",
+            typedInput,
+            "--checks",
+            "schema,business",
+            "--output",
+            typedReport,
+            ...(name === "missing-context" ? [] : ["--reference-documents", referenceDocuments]),
+            "--json",
+          ]
+        : [
+            "dataset",
+            "validate",
+            "--input",
+            input,
+            "--type",
+            "process",
+            "--out-dir",
+            out,
+            "--json",
+          ],
+    );
     assert.equal(result.stderr, "", result.stdout);
     assert.equal(result.status, expected === "passed" ? 0 : 1, result.stdout);
     const envelope = object(JSON.parse(result.stdout));
-    const files = object(envelope.files);
-    assert.equal(typeof files.report, "string");
-    if (name === "input-waste") processEvidence = { input, report: files.report as string };
-    const report = object(JSON.parse(fs.readFileSync(files.report as string, "utf8")));
-    const row = object((report.rows as unknown[])[0]);
+    const reportFile = typed ? typedReport : object(envelope.files).report;
+    assert.equal(typeof reportFile, "string");
+    if (name === "input-waste") processEvidence = { input, report: reportFile as string };
+    const report = object(JSON.parse(fs.readFileSync(reportFile as string, "utf8")));
+    const row = typed ? report : object((report.rows as unknown[])[0]);
     assert.ok(row.allocation_semantics, "Installed managed CLI must expose allocation semantics.");
     const semantics = object(row.allocation_semantics);
     assert.equal(semantics.profile, "tidas.process-allocation-reference.v1");

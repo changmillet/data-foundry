@@ -175,7 +175,13 @@ export async function verifyRegisteredProcessPreparation(
       ),
     );
   }
-  assert.deepEqual(object(authoringPackage.cli_validation).row, row);
+  const { findings, ...ownerRow } = row;
+  assert.deepEqual(
+    object(authoringPackage.cli_validation).row,
+    report.schema === "tiangong-foundry.typed-process-qa.v1"
+      ? { ...ownerRow, typed_findings: findings }
+      : row,
+  );
 
   assert.equal(
     actions.some((item) => String(item.code).startsWith("annual_supply_or_production_volume")),

@@ -198,7 +198,13 @@ export async function verifyManagedProcessPreparation(
         ),
       ),
     );
-    assert.deepEqual(object(authoring.cli_validation).row, row);
+    const { findings, ...ownerRow } = row;
+    assert.deepEqual(
+      object(authoring.cli_validation).row,
+      report.schema === "tiangong-foundry.typed-process-qa.v1"
+        ? { ...ownerRow, typed_findings: findings }
+        : row,
+    );
     assert.equal(object(authoring.cli_validation).report_sha256, hash(reportBytes));
     const actions = authoring.action_items as Json[];
     if (name.startsWith("annual-"))
