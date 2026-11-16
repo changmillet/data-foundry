@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { runFoundryTypedFlowQa } from "./foundry-typed-flow-qa.ts";
 import { planFoundryEdgeSupportStage } from "./foundry-edge-support-planning.ts";
+import { buildFoundryCurationQueue } from "./foundry-curation-queue.ts";
 import {
   bindWorkflowChildExecution,
   workflowChildFailure,
@@ -43,6 +44,7 @@ import { createFoundryIsolatedChildEnvironment } from "./foundry-runtime-environ
 import {
   FoundryContextError,
   readFoundryInput,
+  resolveFoundryOutput,
   writeFoundryArtifact,
   type FoundryRuntimeContext,
 } from "./foundry-runtime-context.ts";
@@ -135,7 +137,27 @@ export function createFoundryFinalizeOwners(
   const finalizeUtils = bind(createPostAuthoringFinalizeUtils, {
     ...base,
     ...references,
-    cliWrapperCommands: cliWrappers,
+    cliWrapperCommands:
+      qualified.cli.expectation.package_version === "0.4.0"
+        ? {
+            ...cliWrappers,
+            runDatasetCurationQueueBuild: (options: Record<string, unknown>) => {
+              const file = (value: unknown) => resolveFoundryOutput(context, String(value));
+              const processes = file(options.processes);
+              return buildFoundryCurationQueue({
+                processes,
+                flows: options.flows ? runtime.resolveRepoPath(options.flows) : null,
+                support: runtime
+                  .normalizedList(options.support)
+                  .map((name) => runtime.resolveRepoPath(name)!),
+                external: runtime
+                  .normalizedList(options.externalFlowRef)
+                  .map((name) => runtime.resolveRepoPath(name)!),
+                outDir: file(options.outDir),
+              });
+            },
+          }
+        : cliWrappers,
     identityPreflightCommands: identityCommands,
     executionEnvironment: execution.environment,
     readRowsFile: (file: string) =>

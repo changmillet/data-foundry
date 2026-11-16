@@ -611,6 +611,17 @@ test("assessment records one row set at a time and cannot finalize partial cover
     entry.path.endsWith("/queue/outputs/curation-queue-manifest.json"),
   );
   assert.equal(firstQueue.length, 1, "the first assessed set owns its queue snapshot");
+  if (
+    qualifyFoundryRuntime(firstContext, runtimeSelection).cli.expectation.package_version ===
+    "0.4.0"
+  ) {
+    const manifest = JSON.parse(
+      fs.readFileSync(path.resolve(context.taskRoot!, firstQueue[0].path), "utf8"),
+    );
+    assert.equal(manifest.producer, "foundry");
+    assert.equal(manifest.counts.process_rows, 1);
+  }
+
   await assert.rejects(
     finalizeFoundryWorkflow(
       context,

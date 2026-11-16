@@ -27,6 +27,7 @@ import { loadFoundryQualityReview, type FoundryQualityReview } from "./foundry-q
 import { runDatasetAuthoringTaskBuild } from "./import-curation/authoring-packages.ts";
 import { readRows } from "./import-curation/internal/runtime-io.ts";
 import { runFoundryTypedFlowQa } from "./foundry-typed-flow-qa.ts";
+import { buildFoundryCurationQueue } from "./foundry-curation-queue.ts";
 import {
   projectFoundryValidationReferences,
   selectedFoundryExternalFlowReferences,
@@ -548,10 +549,33 @@ export function assessFoundryWorkflowRows(
             args.push("--external-flow-ref", external.file);
           }
           const currentQueueDir = queueDir;
-          const queue = runWorkflowLocalCliResult(context, qualified, temporary, args);
-          queue.validate(() =>
-            assertCurrentQueueBuild(context, currentQueueDir, queue, selectedSets, external),
-          );
+          if (qualified.cli.expectation.package_version === "0.4.0") {
+            const report = buildFoundryCurationQueue({
+              processes: processes.file,
+              flows: selectedSets.find((set) => set.type === "flow")?.file as string | undefined,
+              support: selectedSets
+                .filter((set) =>
+                  ["contact", "source", "unitgroup", "flowproperty"].includes(String(set.type)),
+                )
+                .map((set) => String(set.file)),
+              external: external ? [external.file] : [],
+              outDir: currentQueueDir,
+              readInput: (file) =>
+                file === external?.file ? fs.readFileSync(file) : readFoundryInput(context, file),
+            });
+            assertCurrentQueueBuild(
+              context,
+              currentQueueDir,
+              { report, exit: report.status === "ready" ? 0 : 1 },
+              selectedSets,
+              external,
+            );
+          } else {
+            const queue = runWorkflowLocalCliResult(context, qualified, temporary, args);
+            queue.validate(() =>
+              assertCurrentQueueBuild(context, currentQueueDir, queue, selectedSets, external),
+            );
+          }
         }
         const assessed: Array<Record<string, unknown>> = previousSets.map(record);
         const toAssess = options.scopeType
