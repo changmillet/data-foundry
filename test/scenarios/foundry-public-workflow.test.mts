@@ -1344,9 +1344,11 @@ test("source-evidence resume prepares an indexed SDK context before semantic wor
   };
   assert.equal(report.status, "completed");
   assert.equal(report.type, "flow");
-  for (const key of ["schema", "methodology", "ruleset", "ai_context_json"]) {
+  const typed = resolveInstalledTiangongLcaCliPackage().packageVersion === "0.4.0";
+  const contextFiles = typed ? ["manifest", "result"] : ["ai_context_json"];
+  for (const key of ["schema", "methodology", "ruleset", ...contextFiles]) {
     const file = report.files[key];
-    assert.ok(file);
+    assert.ok(file, key);
     assert.ok(
       resumed.artifacts.some((artifact) => artifact.kind === "file" && artifact.path === file),
       key,
@@ -1362,10 +1364,10 @@ test("source-evidence resume prepares an indexed SDK context before semantic wor
     { id: sourceRow.id, version: sourceRow.version, json: sourceRow.flow },
   ]);
   const assessed = await facade.resume({ taskId: started.task_id, actorId: "source-actor" });
+  const validationName = typed ? "flow-qa-report.json" : "validation-report.json";
   assert.ok(
     assessed.artifacts.some(
-      (artifact) =>
-        artifact.kind === "file" && path.basename(artifact.path) === "validation-report.json",
+      (artifact) => artifact.kind === "file" && path.basename(artifact.path) === validationName,
     ),
     JSON.stringify(assessed),
   );
