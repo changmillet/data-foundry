@@ -23,6 +23,7 @@ import {
 } from "../fixtures/row-builders.ts";
 import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
 import { digestFile, workflowFixture } from "../fixtures/foundry-public-workflow.ts";
+import { runRetainedFoundryTests } from "../helpers/retained-foundry-runtime.mts";
 
 test("qualified context owner accepts the registered Unicode task path directly", async (t) => {
   const { root, workspace, facade, runtimeSelection } = workflowFixture(t);
@@ -240,7 +241,7 @@ test("native validation I/O failure stays indexed and understandable after resta
   );
 });
 
-for (const variant of [
+const legacyQueueVariants = [
   "wrong-exit",
   "wrong-status",
   "wrong-input",
@@ -249,7 +250,17 @@ for (const variant of [
   "relative-output",
   "manifest-edited",
   "blocker-edited",
-] as const) {
+] as const;
+const localQueue = resolveInstalledTiangongLcaCliPackage().packageVersion === "0.4.0";
+if (localQueue)
+  test("the original CLI rejects all unbound child queue reports before indexing", (t) =>
+    runRetainedFoundryTests(
+      t,
+      ["test/scenarios/foundry-public-workflow.test.mts"],
+      "^a blocked queue rejects an unbound",
+    ));
+
+for (const variant of localQueue ? [] : legacyQueueVariants) {
   test(`a blocked queue rejects an unbound ${variant} report before indexing`, async (t) => {
     const { root, workspace, facade, runtimeSelection } = workflowFixture(t);
     const seed = path.join(root, `${variant}-seed.json`);
