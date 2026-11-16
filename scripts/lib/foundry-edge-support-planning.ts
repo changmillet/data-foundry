@@ -3,7 +3,11 @@ import fs from "node:fs";
 import { parseAuthIdentityReceipt } from "@tiangong-lca/cli/auth-identity-receipt";
 import path from "node:path";
 import { bundleRowTypes, type BundleRowType } from "./bundle-row-types.ts";
-import { buildEdgeSupportPlan, type EdgeDraftType } from "./foundry-edge-support-plan.ts";
+import {
+  buildEdgeSupportPlan,
+  isNextFlowVersion,
+  type EdgeDraftType,
+} from "./foundry-edge-support-plan.ts";
 import {
   FoundryContextError,
   captureFoundryInput,
@@ -36,8 +40,8 @@ export function planFoundryEdgeSupportStage(
   receiptFile: string | undefined,
   selectedInput?: FoundryInputFact,
 ) {
-  const input =
-    selectedInput?.path ?? resolveFoundryOutput(context, source[source.indexOf("--input") + 1]);
+  const inputOption = source.indexOf(source.includes("--input-file") ? "--input-file" : "--input");
+  const input = selectedInput?.path ?? resolveFoundryOutput(context, source[inputOption + 1]);
   const output = resolveFoundryOutput(context, source[source.indexOf("--out-dir") + 1]);
   const account = context.accountIntent;
   if (!account)
@@ -64,10 +68,18 @@ export function planFoundryEdgeSupportStage(
   if (!verifyDependencies) {
     const reportFile = path.join(output, "edge-support-dry-run.json");
     const progress = path.join(output, "edge-support-progress.jsonl");
-    const builds = plan.roots.map(({ id, version }) =>
-      JSON.stringify({ id, version, status: "prepared", operation: "would_insert" }),
+    const builds = plan.roots.map(({ id, version }) => ({
+      id,
+      version,
+      status: "prepared",
+      operation: "would_insert",
+    }));
+    writeFoundryArtifact(
+      context,
+      progress,
+      builds.map((row) => JSON.stringify(row)).join("\n") + "\n",
     );
-    writeFoundryArtifact(context, progress, builds.join("\n") + "\n");
+    const successFile = type === "flow" ? save("edge-flow-dry-run-rows.json", builds) : null;
     const report = {
       schema: "tiangong-foundry.edge-support-dry-run.v1",
       status: "completed_dataset_save_draft",
@@ -76,7 +88,11 @@ export function planFoundryEdgeSupportStage(
       commit: false,
       input_path: input,
       counts: { selected: plan.roots.length, executed: 0, failed: 0 },
-      files: { summary_json: reportFile, progress_jsonl: progress },
+      files: {
+        summary_json: reportFile,
+        progress_jsonl: progress,
+        ...(successFile ? { report: reportFile, success_list: successFile } : {}),
+      },
     };
     save("edge-support-dry-run.json", report);
     return {
@@ -132,6 +148,7 @@ export function planFoundryEdgeSupportStage(
   const observe = (
     reference: (typeof plan.roots)[number]["references"][number],
     requestedVersion: string,
+    observeHead = false,
   ) => {
     const key = edgeReferenceKey(reference);
     const dataset = types.find((kind) => bundleRowTypes[kind].plural === reference.table);
@@ -220,12 +237,13 @@ export function planFoundryEdgeSupportStage(
         status:
           expectedHash && expectedHash !== observedHash
             ? "payload_mismatch"
-            : visible && subject.version === reference.version
+            : visible && (observeHead || subject.version === reference.version)
               ? "ok"
               : "state_code_mismatch",
         remote_user_id: subject.owner,
         remote_state_code: subject.stateCode,
         remote_payload_sha256: observedHash,
+        observed_version: subject.version,
       };
     } catch (error) {
       return reject(error);
@@ -261,6 +279,35 @@ export function planFoundryEdgeSupportStage(
   const blockers = checks
     .filter((check) => check.status !== "ok")
     .map((check) => ({ ...check, code: check.status }));
+  const flowHeads =
+    type === "flow"
+      ? plan.roots.map((root) => {
+          const observed = observe(root, "latest", true);
+          if (observed.status === "missing_dataset") return { id: root.id, head: null };
+          if (
+            observed.status === "ok" &&
+            "observed_version" in observed &&
+            isNextFlowVersion(observed.observed_version, root.version) &&
+            typeof observed.remote_user_id === "string" &&
+            (observed.remote_state_code === 100 ||
+              (observed.remote_state_code === 0 && observed.remote_user_id === account.userId))
+          ) {
+            return {
+              id: root.id,
+              head: {
+                table: root.table,
+                id: root.id,
+                version: observed.observed_version,
+                user_id: observed.remote_user_id,
+                state_code: observed.remote_state_code,
+                payload_sha256: observed.remote_payload_sha256,
+              },
+            };
+          }
+          blockers.push({ ...observed, code: "flow_target_not_next_version" });
+          return { id: root.id, head: null };
+        })
+      : null;
   const reportFile = path.join(output, "edge-support-precommit.json");
   const report = {
     schema: "tiangong-foundry.edge-support-precommit.v1",
@@ -271,6 +318,7 @@ export function planFoundryEdgeSupportStage(
     blockers,
     counts: { rows: rows.length, blockers: blockers.length },
     ...(intent ? { reference_intent: intent.binding } : {}),
+    ...(flowHeads ? { flow_heads: flowHeads } : {}),
     files: { report: reportFile },
   };
   save("edge-support-precommit.json", report);

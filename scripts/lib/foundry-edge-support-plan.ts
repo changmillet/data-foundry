@@ -29,7 +29,15 @@ const referenceTables = [
   "lciamethods",
 ];
 
-const edgeDraftTypes = ["unitgroup", "flowproperty", "process", "contact", "source"] as const;
+const edgeDraftTypes = [
+  "unitgroup",
+  "flowproperty",
+  "process",
+  "contact",
+  "source",
+  "flow",
+  "lifecyclemodel",
+] as const;
 export type EdgeDraftType = (typeof edgeDraftTypes)[number];
 export const isFoundryEdgeDraftType = (value: unknown): value is EdgeDraftType =>
   edgeDraftTypes.some((type) => type === value);
@@ -38,6 +46,7 @@ type ExactKey = { table: string; id: string; version: string };
 export type EdgeSupportRoot = ExactKey & {
   payload_sha256: string;
   before_sha256?: string;
+  flow_head?: EdgeReferenceSnapshot | null;
   references: Array<
     ExactKey & {
       payload_sha256?: string;
@@ -67,6 +76,7 @@ export type EdgeSupportPlan = {
   roots: EdgeSupportRoot[];
   reference_evidence?: FoundryInputFact;
   reference_intent?: FoundryInputFact[];
+  insert_contract?: FoundryInputFact;
   update?: EdgeUpdateBinding;
   sha256: string;
 };
@@ -144,6 +154,7 @@ export function buildEdgeSupportPlan(
   rows: unknown[],
   evidence?: ReferenceEvidence,
   update?: EdgeUpdateInput,
+  insertContract?: FoundryInputFact,
 ): EdgeSupportPlan {
   if (
     !isAbsolute(input.path) ||
@@ -175,6 +186,24 @@ export function buildEdgeSupportPlan(
     )
       return invalid("Reference evidence must verify all dependencies for these final rows.");
     const checks = report.checks.map(object);
+    if (type === "flow") {
+      const heads = report.flow_heads;
+      if (!Array.isArray(heads) || heads.length !== payload.roots.length)
+        return invalid("Flow planning requires one observed head for every approved identity.");
+      payload.roots.forEach((root, index) => {
+        const observed = object(heads[index]);
+        if (observed.id !== root.id) invalid("The observed Flow head belongs to another identity.");
+        root.flow_head =
+          observed.head === null ? null : readEdgeReferenceSnapshot(observed.head, target.user_id);
+        if (
+          root.flow_head &&
+          (root.flow_head.table !== root.table ||
+            root.flow_head.id !== root.id ||
+            !isNextFlowVersion(root.flow_head.version, root.version))
+        )
+          invalid("A new Flow version must immediately follow its verified current head.");
+      });
+    }
     const reviewed = new Map<
       string,
       { selected: EdgeReferenceSnapshot; latest: EdgeReferenceSnapshot }
@@ -264,7 +293,18 @@ export function buildEdgeSupportPlan(
       return invalid("An unchanged draft does not require a guarded update.");
     payload.update = update.binding;
   }
+  if (insertContract) {
+    if (update || !["flow", "process", "source"].includes(type))
+      return invalid("An explicit insert contract must select eligible final rows.");
+    payload.insert_contract = insertContract;
+  }
   return { ...payload, sha256: sha256Json(payload) };
+}
+
+export function isNextFlowVersion(current: string, desired: string): boolean {
+  if (!versionPattern.test(current) || !versionPattern.test(desired)) return false;
+  const sequence = (value: string) => Number(value.replaceAll(".", ""));
+  return sequence(desired) === sequence(current) + 1;
 }
 
 function beforeFor(documents: ReturnType<typeof rootsFor>, rows: unknown[]) {
@@ -299,12 +339,21 @@ export function verifyEdgeSupportPlan(
   rows: unknown[],
   evidence?: ReferenceEvidence,
   update?: EdgeUpdateInput,
+  insertContract?: FoundryInputFact,
 ) {
   if (!evidence || !plan.reference_evidence)
     return invalid("Edge draft execution requires sealed exact dependency evidence.");
   if (!isFoundryEdgeDraftType(plan.dataset_type))
     return invalid("Edge creation requires a supported dataset scope.");
-  const current = buildEdgeSupportPlan(plan.dataset_type, approved, target, rows, evidence, update);
+  const current = buildEdgeSupportPlan(
+    plan.dataset_type,
+    approved,
+    target,
+    rows,
+    evidence,
+    update,
+    insertContract,
+  );
   if (sha256Json(current) !== sha256Json(plan))
     return invalid("The sealed Edge draft plan disagrees with the task approval or final rows.");
   const documents = rootsFor(plan.dataset_type, rows);

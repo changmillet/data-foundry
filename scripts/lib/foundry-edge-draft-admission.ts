@@ -43,6 +43,27 @@ export function verifySelectedEdgeDraftPlan(
       );
   }
   const update = plan.update;
+  const insert = plan.insert_contract;
+  if (insert) {
+    read(insert.path);
+    const native = readNativeDraftHandoff({
+      contractFile: insert.path,
+      rowsFile: approved.path,
+      datasetType: plan.dataset_type,
+      verifiedProjectRef: target.project_ref,
+      targetUserId: target.user_id,
+      stateCode: "0",
+      relativePath: (file) => file,
+    });
+    if (
+      native.metadata.operation !== "insert" ||
+      sha256Json(captureFoundryInput(insert.path)) !== sha256Json(insert)
+    )
+      throw new FoundryContextError(
+        "edge_draft_contract_mismatch",
+        "Explicit Edge insertion requires the original exact insert-only contract.",
+      );
+  }
   if (update) {
     const invalid = (detail: string) =>
       new FoundryContextError("repair_edge_scope_changed", detail);
@@ -116,5 +137,6 @@ export function verifySelectedEdgeDraftPlan(
     rows,
     evidence,
     update && { binding: update, rows: readRows(update.before.path, read) },
+    insert,
   );
 }

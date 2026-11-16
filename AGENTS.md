@@ -46,7 +46,7 @@ The installable package boundary is defined by `docs/package-distribution-contra
 
 Import profiles distribute source rules only. Historical BAFU/USLCI/Worldsteel account overrides, QA waivers and the Worldsteel full-context relaxation grant no permission to a new task. `docs/task-authorization-contract.md` owns the separate workspace/task/actor/account/profile/input binding and exact action evidence. Local candidate preparation and checked public-reference proofs remain available; current final-row hashes, task permissions and all content/closure/no-replay gates are required before a restricted write handoff.
 
-Explicit native draft selection — insert or a bounded save_draft repair of the same identity and stable version — for final Flow, Process or Source rows follows `docs/public-runtime-contract.md`. Bind both the indexed contract snapshot and exact final rows; a lost response requires the matching CLI execution receipt plus independent root readback. Never close native consumption from root equality alone or replay a consumed command to manufacture evidence. CLI retains transaction and native attempt ownership.
+Draft execution follows `docs/public-runtime-contract.md`. Bind the indexed contract snapshot, final rows, operation, account and exact references before dispatch. A retained CLI-native attempt requires its original CLI receipt and independent root readback. For the CLI 0.4 candidate, Foundry records and consumes its own attempt before calling the existing write interface. Recovery verifies that original attempt through exact readback and never replays it.
 
 This repository is the local control plane for external LCA data import and TIDAS authoring work.
 

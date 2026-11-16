@@ -464,7 +464,6 @@ export async function recordFoundryWorkflowAuthorization(
       if (
         commands.commit &&
         qualified.cli.expectation.package_version === "0.4.0" &&
-        !request.executionContract &&
         isFoundryEdgeDraftType(edgeType)
       ) {
         const finalizePath = resolveFoundryOutput(
@@ -494,6 +493,8 @@ export async function recordFoundryWorkflowAuthorization(
           },
           readRows(inputFile, (file) => readFoundryInput(context, file).toString("utf8")),
           referenceEvidence,
+          undefined,
+          request.executionContract && captureFoundryInput(request.executionContract.path),
         );
         commands.post_write_verify = null;
         handoff.account_write_guard = {

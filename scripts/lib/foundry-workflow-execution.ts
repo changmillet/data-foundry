@@ -45,6 +45,7 @@ import { verifySelectedEdgeDraftPlan } from "./foundry-edge-draft-admission.ts";
 import { isEdgeSupportPlan } from "./foundry-edge-support-plan.ts";
 import { createFoundryEdgeActor } from "./foundry-edge-session.ts";
 import { dispatchFoundryEdgeSupport, verifyFoundryEdgeSupport } from "./foundry-edge-support.ts";
+import { createFoundryTypedModelDraft } from "./foundry-typed-model-write.ts";
 
 type RequestArtifact = ReturnType<typeof readOwnerExecutionRequests>[number];
 type Readback = Awaited<ReturnType<typeof readbackFoundryOwner>>;
@@ -219,11 +220,22 @@ export async function executeFoundryOwnerScope(
               JSON.stringify(edgeDispatch.before, null, 2) + "\n",
             );
             let acknowledgements: unknown[] | null = null;
+            const { actor, rows } = edgeDispatch;
             try {
               acknowledgements = await dispatchFoundryEdgeSupport(
-                edgeDispatch.actor,
+                actor,
                 command,
-                edgeDispatch.rows,
+                rows,
+                (root, content) =>
+                  createFoundryTypedModelDraft(
+                    context,
+                    qualified,
+                    authentication,
+                    actor.receipt,
+                    requested.entry.sha256,
+                    root,
+                    content,
+                  ),
               );
             } catch {
               // The durable owner attempt was consumed before the first request. A lost

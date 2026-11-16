@@ -74,6 +74,22 @@ export async function verifyFoundryEdgeSupport(
             },
           ];
     });
+    if (candidate && root.flow_head) {
+      const head = root.flow_head;
+      dependencies.push({
+        request: {
+          table: head.table,
+          id: head.id,
+          version: head.version,
+          role: "reference",
+          requirePayload: true,
+          expectedJsonSha256: head.payload_sha256,
+          expectedStateCodes: [head.state_code],
+        },
+        owner: head.user_id,
+        latest: head.version,
+      });
+    }
     const references = [
       {
         table: root.table,
@@ -132,7 +148,7 @@ export async function verifyFoundryEdgeSupport(
           ? candidate
             ? check.status === "candidate_root" &&
               check.exact_version === null &&
-              check.latest_version === null
+              check.latest_version === (root.flow_head?.version ?? null)
             : exact &&
               check.state_code === 0 &&
               check.user_id === plan.user_id &&
@@ -158,6 +174,7 @@ export async function dispatchFoundryEdgeSupport(
   actor: Actor,
   plan: EdgeSupportPlan,
   rows: RootContent[],
+  createModel?: (root: EdgeSupportRoot, content: Record<string, unknown>) => unknown,
 ) {
   assertActor(actor, plan);
   if (
@@ -183,6 +200,15 @@ export async function dispatchFoundryEdgeSupport(
   const operation = plan.update ? "dataset_save_draft" : "dataset_create";
   for (const { root, content, beforeContent } of rows) {
     if (beforeContent && sha256Json(beforeContent) === sha256Json(content)) continue;
+    if (plan.dataset_type === "lifecyclemodel") {
+      if (!createModel)
+        throw new FoundryContextError(
+          "model_draft_write_unavailable",
+          "Model drafts require the installed typed Model transaction.",
+        );
+      acknowledgements.push(await createModel(root, content));
+      continue;
+    }
     const response = await actor.post(
       plan.update ? "app_dataset_save_draft" : "app_dataset_create",
       {

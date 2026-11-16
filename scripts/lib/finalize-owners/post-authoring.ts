@@ -1822,6 +1822,18 @@ export function createPostAuthoringFinalizeCommands({
             path.join(remoteOutDir, "outputs", "remote-verification-report.json"),
           );
           remoteVerifyReportFile = stage.report_file;
+          if (
+            stage.report?.schema === "tiangong-foundry.edge-support-precommit.v1" &&
+            stage.status !== "passed_remote_verification"
+          ) {
+            prewriteGateBlockers.push({
+              code: "edge_precommit_verification_blocked",
+              stage: "remote_verify_precommit",
+              message:
+                "Resolve the exact remote identity and dependency checks before requesting write approval.",
+              report: repoRelativeMaybe(remoteVerifyReportFile),
+            });
+          }
         }
         return stage;
       });
