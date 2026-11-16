@@ -1,9 +1,5 @@
 import test from "node:test";
-import {
-  publicIdentityCases,
-  publicIdentityTitle,
-  verifyPublicIdentityWorkflow,
-} from "../fixtures/foundry-public-workflow.ts";
+import { runRetainedFoundryTests } from "../helpers/retained-foundry-runtime.mts";
 
-const scenario = publicIdentityCases[5];
-test(publicIdentityTitle(scenario), (t) => verifyPublicIdentityWorkflow(t, scenario));
+test("CLI 0.1.28 ordinary recovery preserves original trace normalization evidence", (t) =>
+  runRetainedFoundryTests(t, ["test/scenarios/foundry-public-trace-acceptance.test.mts"]));

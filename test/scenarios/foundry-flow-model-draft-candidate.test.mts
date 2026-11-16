@@ -25,7 +25,8 @@ const object = (value: unknown) => value as Json;
 async function verifyDraftCreation(
   t: TestContext,
   type: "flow" | "lifecyclemodel",
-  mode: "create" | "reuse" | "current-rows" = "create",
+  mode: "create" | "reuse" | "current-rows" | "mixed" = "create",
+  mismatch?: "trace" | "other-content",
 ) {
   if (resolveInstalledTiangongLcaCliPackage().packageVersion !== "0.4.0")
     return t.skip("requires the exact published CLI candidate");
@@ -33,15 +34,16 @@ async function verifyDraftCreation(
   t.mock.timers.enable({ apis: ["Date"], now: Date.now() });
   const { root, workspace, facadeOptions } = workflowFixture(t);
   const origin = `https://${account.project_ref}.supabase.co`;
-  const facade = createFoundryFacade({
+  const options = {
     ...facadeOptions,
     authentication: {
-      mode: "headless",
+      mode: "headless" as const,
       apiBaseUrl: origin,
       accessToken: "synthetic-model-test-token",
       publishableKey: "synthetic-model-test-key",
     },
-  });
+  };
+  const facade = createFoundryFacade(options);
   const read = (file: string | URL) => object(JSON.parse(fs.readFileSync(file, "utf8")));
   const write = (name: string, value: unknown) => {
     const file = path.join(root, name);
@@ -64,16 +66,40 @@ async function verifyDraftCreation(
     object(flowRoot.administrativeInformation).publicationAndOwnership,
   );
   const nextVersion = "01.00.001";
+  const reusable = structuredClone(nextFlow);
+  const reuseRoot = object(reusable.flowDataSet);
+  const reuseInformation = object(object(reuseRoot.flowInformation).dataSetInformation);
+  const reuseId = "47474747-4747-4747-8474-474747474747";
+  const reuseVersion = head.version;
+  reuseInformation["common:UUID"] = reuseId;
+  object(reuseInformation.name).baseName = {
+    "@xml:lang": "en",
+    "#text": "Reviewed reusable product",
+  };
+  if (mismatch) {
+    flowInfo["common:other"] = {
+      "@xmlns:tidasimport": "https://example.invalid/tidas-import",
+      "tidasimport:sourceTrace": {
+        payload: { attributes: [{ name: "name", value: "Reviewed product design" }] },
+      },
+    };
+  }
   flowPublication["common:dataSetVersion"] = nextVersion;
   const document =
     type === "flow" ? nextFlow : read(new URL("../fixtures/managed-model.json", import.meta.url));
-  const seed = write("source.json", { rows: [document] });
+  const seed = write("source.json", { rows: mode === "mixed" ? [document, reusable] : [document] });
   const actorId = "draft-author";
   let stored: unknown = null;
   let writes = 0;
   let disconnected = true;
+  let showMismatch = Boolean(mismatch);
+  let canonicalReads = 0;
   const remote = (id: unknown, version: unknown) =>
-    type === "flow" && id === head.id ? existingFlow : { fixture_dependency: id, version };
+    type === "flow" && id === head.id
+      ? existingFlow
+      : mode === "mixed" && id === reuseId
+        ? reusable
+        : { fixture_dependency: id, version };
 
   const original = childProcess.spawnSync;
   t.mock.method(childProcess, "spawnSync", (...args: Parameters<typeof childProcess.spawnSync>) => {
@@ -153,7 +179,11 @@ async function verifyDraftCreation(
     if (url.pathname.endsWith("/flow_hybrid_search")) {
       assert.equal(type, "flow");
       return Response.json({
-        data: reuse ? [{ id: head.id, version: head.version, json: existingFlow }] : [],
+        data: reuse
+          ? [{ id: head.id, version: head.version, json: existingFlow }]
+          : mode === "mixed" && String(request.query).includes("Reviewed reusable product")
+            ? [{ id: reuseId, version: reuseVersion, json: reusable }]
+            : [],
       });
     }
     if (url.pathname.endsWith("/app_dataset_create")) {
@@ -166,25 +196,31 @@ async function verifyDraftCreation(
     }
     assert.equal(url.pathname, "/functions/v1/app_dataset_verify_remote");
     reads.push(String(request.rootPolicy));
-    if (reuse) {
+    const canonicalOnly = (request.references as Json[]).every(
+      (reference) => reference.role === "reference",
+    );
+    if (canonicalOnly) {
+      canonicalReads++;
       assert.equal(request.rootPolicy, "existing");
+      const canonicalId = mode === "mixed" ? reuseId : head.id;
+      const canonicalVersion = mode === "mixed" ? reuseVersion : head.version;
       assert.deepEqual(request.references, [
         {
           table: "flows",
-          id: head.id,
-          version: head.version,
+          id: canonicalId,
+          version: canonicalVersion,
           role: "reference",
           requirePayload: true,
         },
       ]);
-      const outcome = referenceOutcomes.shift();
+      const outcome = mode === "mixed" ? "verified" : referenceOutcomes.shift();
       assert.ok(outcome);
       const ok = outcome !== "missing" && outcome !== "outdated";
       const check = {
         index: 0,
         table: "flows",
-        id: outcome === "wrong-target" ? "wrong-flow" : head.id,
-        version: head.version,
+        id: outcome === "wrong-target" ? "wrong-flow" : canonicalId,
+        version: canonicalVersion,
         role: "reference",
         status:
           outcome === "missing"
@@ -192,8 +228,8 @@ async function verifyDraftCreation(
             : outcome === "outdated"
               ? "version_outdated"
               : "ok",
-        exact_version: outcome === "missing" ? null : head.version,
-        latest_version: outcome === "outdated" ? nextVersion : head.version,
+        exact_version: outcome === "missing" ? null : canonicalVersion,
+        latest_version: outcome === "outdated" ? nextVersion : canonicalVersion,
         payload_present: outcome !== "missing",
       };
       return Response.json(
@@ -214,7 +250,20 @@ async function verifyDraftCreation(
     if (writes && disconnected) throw new Error("read connection unavailable");
     const checks = (request.references as Json[]).map((reference, index) => {
       const root = reference.role === "root";
-      const payload = root ? stored : remote(reference.id, reference.version);
+      const payload = root ? structuredClone(stored) : remote(reference.id, reference.version);
+      if (root && payload && showMismatch) {
+        const rootContent = object(object(payload).flowDataSet);
+        const information = object(object(rootContent.flowInformation).dataSetInformation);
+        if (mismatch === "trace")
+          object(object(information["common:other"])["tidasimport:sourceTrace"]).payload = {
+            replacement: "differs",
+          };
+        else
+          object(information.name).baseName = {
+            "@xml:lang": "en",
+            "#text": "Unexpected product change",
+          };
+      }
       const hash = payload ? sha256Json(payload) : null;
       return {
         ...reference,
@@ -269,16 +318,17 @@ async function verifyDraftCreation(
     const template = String(object(read(String(work.task)).files).template);
     const decisions = readRows(path.resolve(String(assessment.owner_base), template)) as Json[];
     for (const row of decisions) {
-      row.identity_decision = reuse ? "reuse_existing_reference" : "create_new";
-      row.canonical = reuse
+      const useReference = reuse || (mode === "mixed" && row.dataset_id === reuseId);
+      row.identity_decision = useReference ? "reuse_existing_reference" : "create_new";
+      row.canonical = useReference
         ? {
             table: "flows",
-            ref_object_id: head.id,
-            version: head.version,
+            ref_object_id: mode === "mixed" ? reuseId : head.id,
+            version: mode === "mixed" ? reuseVersion : head.version,
             short_description: [{ "@xml:lang": "en", "#text": "Reviewed existing product Flow" }],
           }
         : null;
-      row.basis = reuse
+      row.basis = useReference
         ? "Reuse the independently reviewed exact Flow version."
         : "Approve the next exact Flow version with independently reviewed content.";
       row.used_context_kinds = ["schema", "methodology_yaml", "ruleset", "classification_schema"];
@@ -320,7 +370,7 @@ async function verifyDraftCreation(
     const proof = find("foundry-reference-verification.json");
     assert.ok(proof?.kind === "file");
     assert.equal(read(proof.path).status, "verified");
-    assert.equal((await facade.resume(invocation)).status, "completed");
+    assert.equal((await createFoundryFacade(options).resume(invocation)).status, "completed");
     fs.appendFileSync(String(object(read(proof.path).checks).path), "{}\n");
     assert.equal((await facade.resume(invocation)).status, "blocked");
     assert.equal(reads.length, 5, "status and repeat retain the first verified exact reference");
@@ -357,8 +407,19 @@ async function verifyDraftCreation(
   assert.equal(
     scope.status,
     "ready_for_remote_write",
-    JSON.stringify(read(String(scope.report)).blockers),
+    JSON.stringify({
+      blockers: read(String(scope.report)).blockers,
+      stages: (read(String(scope.report)).stages as Json[]).filter(
+        (stage) => stage.stage === "remote_verify_precommit",
+      ),
+    }),
   );
+  if (mode === "mixed") {
+    current = await facade.resume(invocation);
+    assert.equal(writes, 0);
+    assert.equal(canonicalReads, 1, JSON.stringify(current.blockers));
+    assert.ok(find("foundry-reference-verification.json"));
+  }
   const approvalKind = mode === "current-rows" ? "current_rows" : "final_rows";
   const input = (scope.authorization_inputs as Json[]).find(
     (entry) => entry.input_kind === approvalKind,
@@ -432,11 +493,27 @@ async function verifyDraftCreation(
   assert.deepEqual(stored, expected);
   disconnected = false;
   const before = reads.length;
+  if (mismatch) {
+    current = await createFoundryFacade(options).resume(invocation);
+    assert.equal(current.status, "needs_input", JSON.stringify(current.blockers));
+    assert.equal(current.blockers[0]?.code, "mutation_readback_required");
+    assert.equal(writes, 1);
+    showMismatch = false;
+  }
   for (let i = 0; i < 5 && current.status !== "completed"; i++)
     current = await facade.resume(invocation);
   assert.equal(current.status, "completed", JSON.stringify(current.blockers));
   assert.equal(writes, 1);
   assert.deepEqual(new Set(reads.slice(before)), new Set(["existing"]));
+  if (mode === "mixed") {
+    assert.equal(canonicalReads, 1);
+    const artifact = find("foundry-reference-verification.json");
+    assert.ok(artifact?.kind === "file");
+    assert.deepEqual(read(artifact.path).targets, [
+      { table: "flows", id: reuseId, version: reuseVersion },
+    ]);
+    assert.equal(readRows(String(scope.final_rows)).length, 1);
+  }
   const originalAttempt = find("owner-execution-request.json");
   assert.ok(originalAttempt?.kind === "file");
   assert.equal(originalAttempt.sha256, attempt.sha256);
@@ -453,3 +530,10 @@ test("CLI 0.4 reuses an independently verified Flow reference without requesting
 
 test("CLI 0.4 re-finalizes approved current Flow rows before any write", (t) =>
   verifyDraftCreation(t, "flow", "current-rows"));
+
+test("CLI 0.4 verifies reused references in a mixed scope and only dispatches its approved draft", (t) =>
+  verifyDraftCreation(t, "flow", "mixed"));
+
+for (const difference of ["trace", "other-content"] as const)
+  test(`CLI 0.4 keeps an approved current Flow attempt consumed while ${difference} differs`, (t) =>
+    verifyDraftCreation(t, "flow", "current-rows", difference));

@@ -1,3 +1,4 @@
+import { runRetainedFoundryTests } from "../helpers/retained-foundry-runtime.mts";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import os from "node:os";
@@ -220,51 +221,14 @@ test("production case source contracts bind dependency bytes and durable private
 });
 
 test(
-  "production contact case default pinned runtime completes offline gates before env access",
+  "production contact case on its original pinned runtime completes offline gates before env access",
   { skip: process.platform === "win32" },
-  async () => {
-    const root = testTmpRoot("production-contact-offline-runtime");
-    fs.rmSync(root, { recursive: true, force: true });
-    fs.mkdirSync(root, { recursive: true });
-    const outDir = path.join(root, "missing-parent", "case-output");
-    try {
-      await assert.rejects(
-        runProductionContactDraftCase(
-          {
-            envFile: path.join(root, "missing.env"),
-            expectedProjectRef: PROJECT_REF,
-            expectedUserId: USER_ID,
-            outDir,
-          },
-          {
-            now: () => new Date("2026-08-25T12:36:00.000Z"),
-            randomUUID: () => CONTACT_ID,
-          },
-        ),
-        /env file is not readable/u,
-      );
-      const failure = readJson(path.join(outDir, "case-failure.json"));
-      assert.equal(failure.stage, "load-production-env");
-      assert.equal(failure.error_code, "CASE_ENV_INVALID");
-      assert.equal(failure.mutation_dispatch_count, 0);
-      assert.ok(
-        fs.existsSync(path.join(outDir, "offline-validate", "outputs", "validation-report.json")),
-      );
-      assert.ok(
-        fs.existsSync(
-          path.join(
-            outDir,
-            "offline-save-draft-dry-run",
-            "outputs",
-            "dataset-save-draft",
-            "summary.json",
-          ),
-        ),
-      );
-    } finally {
-      fs.rmSync(root, { recursive: true, force: true });
-    }
-  },
+  (t) =>
+    runRetainedFoundryTests(
+      t,
+      ["test/scenarios/production-contact-draft-case.test.mts"],
+      "production contact case default pinned runtime completes offline gates before env access",
+    ),
 );
 
 test(

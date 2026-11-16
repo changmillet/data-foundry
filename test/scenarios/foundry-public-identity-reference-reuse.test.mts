@@ -1,12 +1,5 @@
 import test from "node:test";
-import {
-  publicIdentityCases,
-  publicIdentityTitle,
-  verifyPublicIdentityWorkflow,
-} from "../fixtures/foundry-public-workflow.ts";
+import { runRetainedFoundryTests } from "../helpers/retained-foundry-runtime.mts";
 
-const scenario = publicIdentityCases[1];
-test(publicIdentityTitle(scenario), (t) => verifyPublicIdentityWorkflow(t, scenario));
-
-test("verified reference reuse completes the human decision recap across fresh processes", (t) =>
-  verifyPublicIdentityWorkflow(t, scenario, false, "normal", false, false, "insert", false, true));
+test("CLI 0.1.28 reference-only results and human recap preserve legacy evidence across restarts", (t) =>
+  runRetainedFoundryTests(t, ["test/scenarios/foundry-public-identity-reference-reuse.test.mts"]));
