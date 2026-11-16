@@ -11,7 +11,7 @@ import {
   assertQualifiedFoundryRuntime,
   type QualifiedFoundryRuntime,
 } from "./foundry-runtime-qualification.ts";
-import { createFoundryIsolatedChildEnvironment } from "./foundry-runtime-environment.ts";
+import { withFoundryIsolatedLocalCliEnvironment } from "./foundry-runtime-environment.ts";
 import { resolveInstalledTiangongLcaCliPackage } from "./foundry-runtime-utils.ts";
 import { runFoundryTaskOperation } from "./foundry-task-store.ts";
 import { supportedDatasetTypes } from "./import-curation/internal/dataset-types.ts";
@@ -66,7 +66,6 @@ export async function prepareFoundryWorkflowContext(
       const temporary = createWorkflowDirectory(context, path.join(context.tempRoot, "context-"));
       try {
         const cli = resolveInstalledTiangongLcaCliPackage();
-        const environment = createFoundryIsolatedChildEnvironment({ tempRoot: temporary });
         const reports: Array<{ type: string; report: string }> = [];
         for (const type of types) {
           assertQualifiedFoundryRuntime(context, qualified);
@@ -89,14 +88,16 @@ export async function prepareFoundryWorkflowContext(
                 "--json",
               ];
           const execution = bindWorkflowChildExecution(context, qualified, cli.binPath, argv);
-          const child = spawnSync(process.execPath, [cli.binPath, ...argv], {
-            cwd: context.workspaceRoot,
-            env: environment,
-            encoding: "utf8",
-            shell: false,
-            maxBuffer: 8 * 1024 * 1024,
-            timeout: 120_000,
-          });
+          const child = withFoundryIsolatedLocalCliEnvironment(temporary, (env) =>
+            spawnSync(process.execPath, [cli.binPath, ...argv], {
+              cwd: context.workspaceRoot,
+              env,
+              encoding: "utf8",
+              shell: false,
+              maxBuffer: 8 * 1024 * 1024,
+              timeout: 120_000,
+            }),
+          );
           const kind = child.error
             ? "spawn_error"
             : child.signal
