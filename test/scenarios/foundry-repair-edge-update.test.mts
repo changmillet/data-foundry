@@ -20,7 +20,11 @@ import { testAuthIdentityReceipt } from "../fixtures/auth-identity-receipt.ts";
 type Json = Record<string, unknown>;
 const object = (value: unknown) => value as Json;
 
-async function verifyGuardedUpdate(t: TestContext, annualVolumeKnown: boolean) {
+async function verifyGuardedUpdate(
+  t: TestContext,
+  annualVolumeKnown: boolean,
+  mode: "update" | "no-change" | "preflight-refusals" | "approval-refusals" = "update",
+) {
   if (resolveInstalledTiangongLcaCliPackage().packageVersion !== "0.4.0")
     return t.skip("requires the exact published CLI 0.4 candidate");
   const { root, workspace, facadeOptions } = workflowFixture(t);
@@ -53,7 +57,7 @@ async function verifyGuardedUpdate(t: TestContext, annualVolumeKnown: boolean) {
   )["#text"] = "Original owner name";
   object(
     object(ownership(desired)["common:referenceToOwnershipOfDataSet"])["common:shortDescription"],
-  )["#text"] = "Corrected owner name";
+  )["#text"] = mode === "no-change" ? "Original owner name" : "Corrected owner name";
   const { id, version } = datasetIdentity(desired, 0, "process");
   const dependencies = new Map<string, unknown>();
   let staleDependency = false;
@@ -133,6 +137,7 @@ async function verifyGuardedUpdate(t: TestContext, annualVolumeKnown: boolean) {
   let remote = before;
   let offline = true;
   let writes = 0;
+  let faultyRoot: "owner" | "state" | "version" | "hash" | "missing" | "duplicate" | null = null;
   const endpoints: string[] = [];
   t.mock.method(globalThis, "fetch", async (url: URL, request: RequestInit) => {
     assert.equal(url.origin, origin);
@@ -158,7 +163,7 @@ async function verifyGuardedUpdate(t: TestContext, annualVolumeKnown: boolean) {
     assert.equal(endpoint, "app_dataset_verify_remote");
     assert.equal(body.rootPolicy, "existing");
     if (writes && offline) throw new Error("read connection still unavailable");
-    const checks = (body.references as Json[]).map((reference, index) => {
+    const checks = (body.references as Json[]).flatMap((reference, index) => {
       const root = reference.role === "root";
       const retained = !root && reference.table === "contacts";
       const payload = root
@@ -166,7 +171,8 @@ async function verifyGuardedUpdate(t: TestContext, annualVolumeKnown: boolean) {
         : dependencies.get(key(reference.table, reference.id, reference.version));
       assert.ok(payload);
       const hash = sha256Json(payload);
-      return {
+      if (root && faultyRoot === "missing") return [];
+      const row = {
         index,
         table: reference.table,
         id: reference.id,
@@ -177,13 +183,20 @@ async function verifyGuardedUpdate(t: TestContext, annualVolumeKnown: boolean) {
           : hash === reference.expectedJsonSha256
             ? "ok"
             : "payload_hash_mismatch",
-        exact_version: reference.version,
+        exact_version: root && faultyRoot === "version" ? "25.00.001" : reference.version,
         latest_version: retained ? "99.00.001" : reference.version,
         payload_present: true,
-        actual_json_sha256: hash,
-        user_id: account.user_id,
-        state_code: root || (retained && staleDependency) ? 0 : 100,
+        actual_json_sha256: root && faultyRoot === "hash" ? "0".repeat(64) : hash,
+        user_id: root && faultyRoot === "owner" ? "different-draft-owner" : account.user_id,
+        state_code: root
+          ? faultyRoot === "state"
+            ? 100
+            : 0
+          : retained && staleDependency
+            ? 0
+            : 100,
       };
+      return root && faultyRoot === "duplicate" ? [row, row] : [row];
     });
     return Response.json({
       command: "dataset_verify_remote",
@@ -240,6 +253,24 @@ async function verifyGuardedUpdate(t: TestContext, annualVolumeKnown: boolean) {
   });
   assert.ok(started.task_id, JSON.stringify(started.blockers));
   const invocation = { taskId: started.task_id, actorId };
+  assert.equal(endpoints.length, 0, "registration stays offline");
+  assert.equal((await facade.status(invocation)).status, "ready");
+  assert.equal(endpoints.length, 0, "status before preparation stays offline");
+  if (mode === "preflight-refusals") {
+    for (const fault of ["owner", "state", "version", "hash", "missing", "duplicate"] as const) {
+      faultyRoot = fault;
+      const rejected = await facade.resume(invocation);
+      assert.notEqual(rejected.status, "completed", fault);
+      assert.equal(
+        rejected.blockers[0]?.code,
+        "repair_preflight_blocked",
+        JSON.stringify(rejected.blockers),
+      );
+      assert.equal(writes, 0);
+      assert.ok(!rejected.artifacts.some((item) => item.role === "owner-execution-request.json"));
+    }
+    return;
+  }
   let current = await facade.resume(invocation);
   const find = (role: string) => {
     const artifact = current.artifacts.findLast((item) => item.role === role);
@@ -251,6 +282,21 @@ async function verifyGuardedUpdate(t: TestContext, annualVolumeKnown: boolean) {
   };
   const preparation = find("foundry-repair-preflight.json");
   const prepared = object(JSON.parse(fs.readFileSync(preparation.path, "utf8")));
+  if (mode === "no-change") {
+    assert.equal(prepared.status, "no_change_verified", JSON.stringify(prepared.blockers));
+    assert.equal(current.status, "completed", JSON.stringify(current.blockers));
+    assert.equal(current.permissions.state, "not_required");
+    assert.equal(writes, 0);
+    const reads = endpoints.length;
+    assert.ok(reads > 0);
+    assert.equal((await facade.resume(invocation)).status, "completed");
+    assert.equal(endpoints.length, reads, "repeat resume reuses the exact proof");
+    fs.appendFileSync(preparation.path, "\n");
+    const tampered = await facade.status(invocation);
+    assert.equal(tampered.status, "blocked", JSON.stringify(tampered.blockers));
+    assert.equal(endpoints.length, reads);
+    return;
+  }
   assert.equal(prepared.status, "prepared", JSON.stringify(prepared.blockers));
   assert.equal(writes, 0);
   const evidence = path.join(root, "approval.txt");
@@ -286,7 +332,7 @@ async function verifyGuardedUpdate(t: TestContext, annualVolumeKnown: boolean) {
       },
     ],
   });
-  const approval = write("approval.json", {
+  const approvalInput = {
     schema: "tiangong-foundry.authorization-input.v1",
     task_id: invocation.taskId,
     actor_id: actorId,
@@ -301,7 +347,34 @@ async function verifyGuardedUpdate(t: TestContext, annualVolumeKnown: boolean) {
     evidence: [
       { id: "approval", kind: "user-decision", file: evidence, sha256: digestFile(evidence) },
     ],
-  });
+  };
+  if (mode === "approval-refusals") {
+    const expired = write("expired-grant.json", {
+      ...read(grant),
+      issued_at_utc: new Date(Date.now() - 60_000).toISOString(),
+      expires_at_utc: new Date(Date.now() - 30_000).toISOString(),
+    });
+    for (const [name, selected] of [
+      ["wrong-candidate", { ...approvalInput, input_sha256: "0".repeat(64) }],
+      ["wrong-preparation", { ...approvalInput, finalization_sha256: "0".repeat(64) }],
+      ["missing-contract", { ...approvalInput, execution_contract: undefined }],
+      ["expired", { ...approvalInput, grant: { file: expired, sha256: digestFile(expired) } }],
+    ] as const) {
+      const rejected = await facade.resume({
+        ...invocation,
+        authorizationInputFile: write(`${name}.json`, selected),
+      });
+      assert.notEqual(
+        rejected.permissions.state,
+        "granted",
+        `${name}: ${JSON.stringify(rejected.blockers)}`,
+      );
+      assert.ok(rejected.blockers.length, name);
+      assert.equal(writes, 0);
+    }
+    return;
+  }
+  const approval = write("approval.json", approvalInput);
   current = await facade.resume({ ...invocation, authorizationInputFile: approval });
   assert.equal(current.permissions.state, "granted", JSON.stringify(current.blockers));
   for (let step = 0; step < 6; step++) {
@@ -344,3 +417,12 @@ test("CLI 0.4 guarded Process update recovers the original attempt without resen
 
 test("CLI 0.4 guarded Process update retains the admitted unknown annual-volume gap", (t) =>
   verifyGuardedUpdate(t, false));
+
+test("CLI 0.4 no-op repair closes only on exact readback and reuses the existing proof", (t) =>
+  verifyGuardedUpdate(t, true, "no-change"));
+
+test("CLI 0.4 metadata repair refuses invalid before readback", (t) =>
+  verifyGuardedUpdate(t, true, "preflight-refusals"));
+
+test("CLI 0.4 metadata repair refuses authorization outside the sealed scope", (t) =>
+  verifyGuardedUpdate(t, true, "approval-refusals"));
