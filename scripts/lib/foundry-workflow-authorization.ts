@@ -474,11 +474,6 @@ export async function recordFoundryWorkflowAuthorization(
         const finalized = workflowObject(
           JSON.parse(readFoundryInput(context, finalizePath).toString("utf8")),
         );
-        if (edgeType === "process" && finalized.reference_intent_file)
-          throw new FoundryContextError(
-            "edge_draft_reference_intent_required",
-            "Process creation must preserve the selected reference-intent proof.",
-          );
         const verifyPath = resolveFoundryOutput(
           context,
           path.resolve(
@@ -566,6 +561,84 @@ export async function recordFoundryWorkflowAuthorization(
         }),
         inputFile,
       );
+      if (qualified.cli.expectation.package_version === "0.4.0") {
+        const contract = captureFoundryInput(request.executionContract!.path);
+        const preparation = captureFoundryInput(request.repairPreparation!.path);
+        readFoundryInput(context, preparation.path);
+        const before = captureFoundryInput(
+          resolveFoundryInputPath(context, foundryRepairSelection(context).before),
+        );
+        const read = (file: string) => readFoundryInput(context, file).toString("utf8");
+        const preparedEvidence = workflowObject(
+          workflowObject(JSON.parse(read(preparation.path))).evidence,
+        );
+        const preflight = Array.isArray(preparedEvidence.detail)
+          ? preparedEvidence.detail
+              .map(workflowObject)
+              .find((item) => item.role === "edge_preflight")
+          : undefined;
+        const ruleVerification = workflowObject(
+          workflowObject(preflight?.report ?? {}).rule_verification ?? {},
+        );
+        const dependencyFact = Array.isArray(preparedEvidence.files)
+          ? preparedEvidence.files
+              .map(workflowObject)
+              .find(
+                (file) => file.role === "edge-repair:out/references/edge-support-precommit.json",
+              )
+          : undefined;
+        if (typeof dependencyFact?.path !== "string")
+          throw new FoundryContextError(
+            "repair_edge_scope_changed",
+            "Guarded update requires the exact dependency report registered during preparation.",
+          );
+        const dependencies = resolveFoundryOutput(context, dependencyFact.path);
+        const dependencyFile = captureFoundryInput(dependencies);
+        if (
+          dependencyFile.sha256 !== dependencyFact.sha256 ||
+          dependencyFile.bytes !== dependencyFact.bytes
+        )
+          throw new FoundryContextError(
+            "repair_edge_scope_changed",
+            "The registered dependency report changed after preparation.",
+          );
+        const commands = workflowObject(handoff.commands);
+        commands.commit = buildEdgeSupportPlan(
+          "process",
+          captureFoundryInput(inputFile),
+          {
+            project_ref: context.accountIntent!.projectRef,
+            user_id: context.accountIntent!.userId,
+          },
+          readRows(inputFile, read),
+          {
+            fact: dependencyFile,
+            report: JSON.parse(read(dependencies)),
+          },
+          {
+            binding: {
+              before,
+              contract,
+              preparation,
+              rule_verification: ruleVerification as Record<string, boolean>,
+            },
+            rows: readRows(before.path, read),
+          },
+        );
+        commands.post_write_verify = null;
+        handoff.account_write_guard = {
+          target_user_id: context.accountIntent!.userId,
+          commit_account_binding: "sealed_guarded_edge_update",
+          execution_precondition:
+            "Compare the exact reviewed before document inside the Edge save-draft transaction.",
+        };
+        handoff.policy = {
+          commit_boundary:
+            "The sealed owner attempt sends one guarded update and recovers exclusively through exact readback.",
+          post_write_verify_required: true,
+          compare_root_payload_required: true,
+        };
+      }
       fs.writeFileSync(
         path.join(handoffDir, "dataset-commit-handoff-plan.json"),
         JSON.stringify(handoff, null, 2) + "\n",

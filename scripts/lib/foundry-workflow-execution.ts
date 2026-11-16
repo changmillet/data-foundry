@@ -41,7 +41,8 @@ import { canonicalPayloadSha256 } from "./post-write-root-proof.ts";
 import { summarizeSameIdentityCommitFailures } from "./same-identity-commit-recovery.ts";
 import { readRows } from "./import-curation/internal/runtime-io.ts";
 import type { ArtifactEntry } from "./foundry-task-types.ts";
-import { isEdgeSupportPlan, verifyEdgeSupportPlan } from "./foundry-edge-support-plan.ts";
+import { verifySelectedEdgeDraftPlan } from "./foundry-edge-draft-admission.ts";
+import { isEdgeSupportPlan } from "./foundry-edge-support-plan.ts";
 import { createFoundryEdgeActor } from "./foundry-edge-session.ts";
 import { dispatchFoundryEdgeSupport, verifyFoundryEdgeSupport } from "./foundry-edge-support.ts";
 
@@ -110,7 +111,7 @@ export async function executeFoundryOwnerScope(
       let admission: Awaited<ReturnType<typeof rehydrateFoundryExecutionAdmission>> | null = null;
       let edgeDispatch: {
         actor: Awaited<ReturnType<typeof createFoundryEdgeActor>>;
-        rows: ReturnType<typeof verifyEdgeSupportPlan>;
+        rows: ReturnType<typeof verifySelectedEdgeDraftPlan>;
         before: Awaited<ReturnType<typeof verifyFoundryEdgeSupport>>;
       } | null = null;
       if (!consumed) {
@@ -129,19 +130,11 @@ export async function executeFoundryOwnerScope(
             "Existing dispatch evidence cannot be treated as unattempted.",
           );
         if (edgePlan) {
-          const rows = verifyEdgeSupportPlan(
+          const rows = verifySelectedEdgeDraftPlan(
+            context,
             edgePlan,
             captureFoundryInput(request.content.input.path),
             request.policy,
-            readRows(request.content.input.path, (file) =>
-              readFoundryInput(context, file).toString("utf8"),
-            ),
-            edgePlan.reference_evidence && {
-              fact: captureFoundryInput(edgePlan.reference_evidence.path),
-              report: JSON.parse(
-                readFoundryInput(context, edgePlan.reference_evidence.path).toString("utf8"),
-              ) as unknown,
-            },
           );
           const actor = await createFoundryEdgeActor(context, qualified, authentication);
           const before = await verifyFoundryEdgeSupport(actor, edgePlan, "before");

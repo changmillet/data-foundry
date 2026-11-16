@@ -509,13 +509,16 @@ export function inspectOwnerExecutions(
         commandSpecOptionValue(item.request.content.commit, "--execution-contract") !== null;
       const referenceSpec = edge ? null : parseFoundryCommandSpec(item.request.content.verify);
       const referenceSelected =
-        referenceSpec !== null &&
-        commandSpecOptionValue(referenceSpec, "--reference-intent-file") !== null;
+        Boolean(edge?.reference_intent) ||
+        (referenceSpec !== null &&
+          commandSpecOptionValue(referenceSpec, "--reference-intent-file") !== null);
       const referenceFacts = referenceSelected ? proof.reference_evidence : [];
       const expectedReferenceFacts =
-        referenceSpec?.binding.artifacts.filter((fact) =>
-          ["reference_intent", "reference_precommit", "reference_review"].includes(fact.role),
-        ) ?? [];
+        edge?.reference_intent && edge.reference_evidence
+          ? [edge.reference_evidence, ...edge.reference_intent]
+          : (referenceSpec?.binding.artifacts.filter((fact) =>
+              ["reference_intent", "reference_precommit", "reference_review"].includes(fact.role),
+            ) ?? []);
       if (
         !Array.isArray(referenceFacts) ||
         (referenceSelected &&

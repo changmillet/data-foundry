@@ -1,3 +1,7 @@
+import {
+  prepareEdgeProcessRepair,
+  readEdgeRepairValidation,
+} from "./foundry-edge-repair-preparation.ts";
 import { proveFoundryRepairRemoteIntegrity } from "./foundry-repair-reference-binding.ts";
 import { readRows } from "./import-curation/internal/runtime-io.ts";
 import childProcess from "node:child_process";
@@ -24,7 +28,7 @@ import {
 import { resolveInstalledTiangongLcaCliPackage } from "./foundry-runtime-utils.ts";
 import { runFoundryTaskOperation, withFoundryTaskMetadata } from "./foundry-task-store.ts";
 import { createWorkflowDirectory, createWorkflowStageDirectory } from "./foundry-workflow-io.ts";
-import { readWorkflowArtifact } from "./foundry-workflow-state.ts";
+import { readWorkflowArtifact, workflowObject } from "./foundry-workflow-state.ts";
 import { readFoundryRepairScope, type FoundryRepairScope } from "./foundry-repair-scope.ts";
 import {
   FOUNDRY_REPAIR_PREPARATION_SCHEMA,
@@ -387,6 +391,54 @@ export function readFoundryRepairPreparation(
         content: role,
       });
     };
+    if (value.status !== "blocked" && verified.has("edge-repair:out/owner-report.json")) {
+      const report = ownerReport("edge-repair", currentScope.candidateFile);
+      const artifact = (role: string) => {
+        const entry = verified.get(`edge-repair:out/${role}`);
+        if (!entry)
+          fail("repair_report_invalid", "Guarded Edge repair requires complete indexed evidence.");
+        return JSON.parse(fs.readFileSync(resolveFoundryOutput(context, entry.path), "utf8"));
+      };
+      const typed = artifact("validation/outputs/validation-report.json");
+      const reference = artifact("references/edge-support-precommit.json");
+      const before = artifact("edge-before.json");
+      const rules = readEdgeRepairValidation(typed, expected);
+      const beforeValidation = Object.values(rules).includes(false)
+        ? artifact("before-validation/outputs/validation-report.json")
+        : null;
+      const detail = Array.isArray(evidence.detail)
+        ? evidence.detail.map(workflowObject).find((item) => item.role === "edge_preflight")
+        : null;
+      const referenceEntry = verified.get(
+        "edge-repair:out/references/edge-support-precommit.json",
+      )!;
+      const referenceFact = record(
+        report.reference_evidence,
+        "repair_report_invalid",
+        "Dependency report fact",
+      );
+      if (
+        report.schema !== "tiangong-foundry.edge-repair-preflight.v1" ||
+        report.contract_sha256 !== expected.contract_sha256 ||
+        !sameFact(report.before, inputs.before, "repair_report_invalid", "Edge before rows") ||
+        report.validation_sha256 !== sha256Json(typed) ||
+        report.before_validation_sha256 !==
+          (beforeValidation ? sha256Json(beforeValidation) : null) ||
+        sha256Json(report.rule_verification) !== sha256Json(rules) ||
+        !detail ||
+        sha256Json(detail.report) !== sha256Json(report) ||
+        report.remote_before_sha256 !== sha256Json(before) ||
+        referenceFact.sha256 !== referenceEntry.sha256 ||
+        referenceFact.bytes !== referenceEntry.bytes ||
+        reference.status !== "passed_remote_verification" ||
+        (value.status === "prepared") !== (currentScope.scope.status === "dispatchable")
+      )
+        fail(
+          "repair_report_invalid",
+          "Guarded Edge repair proof differs from the registered scope.",
+        );
+      return Object.freeze({ entry, file: resolveFoundryOutput(context, entry.path), value });
+    }
     if (value.status === "prepared") {
       if (currentScope.scope.status !== "dispatchable")
         fail("repair_report_invalid", "A no-op is not a write preparation.");
@@ -446,7 +498,25 @@ export async function prepareFoundryRepair(
       verifyCommands: [FOUNDRY_REPAIR_PREFLIGHT_COMMAND],
     });
     try {
-      if (scope.status === "dispatchable") {
+      if (qualified.cli.expectation.package_version === "0.4.0") {
+        const root = path.join(temporary, "edge-repair");
+        fs.mkdirSync(root, { mode: 0o700 });
+        stagedTrees.push({ name: "edge-repair", directory: root });
+        const report = await prepareEdgeProcessRepair(
+          context,
+          qualified,
+          authentication,
+          expectation,
+          {
+            before: beforeFile,
+            candidate: candidateFile,
+            temporary,
+            directory: path.join(root, "out"),
+          },
+        );
+        evidenceDetails.push({ role: "edge_preflight", report });
+        status = scope.status === "dispatchable" ? "prepared" : "no_change_verified";
+      } else if (scope.status === "dispatchable") {
         const outDir = path.join(temporary, "dry-run", "out");
         fs.mkdirSync(outDir, { recursive: true, mode: 0o700 });
         stagedTrees.push({ name: "dry-run", directory: path.join(temporary, "dry-run") });

@@ -41,7 +41,8 @@ import { bundleRowTypes, type BundleRowType } from "./bundle-row-types.ts";
 import { workflowObject } from "./foundry-workflow-state.ts";
 import type { OwnerExecutionRequest } from "./foundry-owner-execution-store.ts";
 import { acceptFoundryOwnerTraceDifference } from "./foundry-owner-trace-acceptance.ts";
-import { isEdgeSupportPlan, verifyEdgeSupportPlan } from "./foundry-edge-support-plan.ts";
+import { verifySelectedEdgeDraftPlan } from "./foundry-edge-draft-admission.ts";
+import { isEdgeSupportPlan } from "./foundry-edge-support-plan.ts";
 import { createFoundryEdgeActor } from "./foundry-edge-session.ts";
 import { verifyFoundryEdgeSupport } from "./foundry-edge-support.ts";
 
@@ -67,19 +68,11 @@ export async function readbackFoundryOwner(
     );
   if (isEdgeSupportPlan(request.content.commit)) {
     const plan = request.content.commit;
-    verifyEdgeSupportPlan(
+    verifySelectedEdgeDraftPlan(
+      context,
       plan,
       captureFoundryInput(request.content.input.path),
       request.policy,
-      readRows(request.content.input.path, (file) =>
-        readFoundryInput(context, file).toString("utf8"),
-      ),
-      plan.reference_evidence && {
-        fact: captureFoundryInput(plan.reference_evidence.path),
-        report: JSON.parse(
-          readFoundryInput(context, plan.reference_evidence.path).toString("utf8"),
-        ) as unknown,
-      },
     );
     const actor = await createFoundryEdgeActor(context, qualified, authentication);
     const verification = await verifyFoundryEdgeSupport(actor, plan, "after");
@@ -100,6 +93,15 @@ export async function readbackFoundryOwner(
       request_scope: request.scope_id,
       input: request.content.input,
       edge_plan_sha256: plan.sha256,
+      ...(plan.reference_intent && plan.reference_evidence
+        ? { reference_evidence: [plan.reference_evidence, ...plan.reference_intent] }
+        : {}),
+      ...(repair && plan.update
+        ? {
+            repair_preparation: captureFoundryInput(repair.preparation.file),
+            publication_ready: false,
+          }
+        : {}),
       report: captureFoundryInput(report),
       checks: captureFoundryInput(checks),
       blockers: verification.blockers,

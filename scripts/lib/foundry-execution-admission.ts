@@ -50,12 +50,8 @@ import {
 import { bytes, digest } from "./foundry-task-io.ts";
 import { resolveInstalledTiangongLcaCliPackage } from "./foundry-runtime-utils.ts";
 import { assertFoundryMigrationNoReplay } from "./foundry-migration-replay.ts";
-import {
-  isEdgeSupportPlan,
-  verifyEdgeSupportPlan,
-  type EdgeSupportPlan,
-} from "./foundry-edge-support-plan.ts";
-import { readRows } from "./import-curation/internal/runtime-io.ts";
+import { isEdgeSupportPlan, type EdgeSupportPlan } from "./foundry-edge-support-plan.ts";
+import { verifySelectedEdgeDraftPlan } from "./foundry-edge-draft-admission.ts";
 
 type OwnerDispatchSpec = FoundryCommandSpec | EdgeSupportPlan;
 
@@ -395,17 +391,10 @@ async function verifyAdmission(
         "execution_action_unauthorized",
         "Edge draft creation requires current task authorization for the exact scope.",
       );
-    const evidence = parsed.reference_evidence && selected(context, parsed.reference_evidence.path);
-    verifyEdgeSupportPlan(
-      parsed,
-      finalRows,
-      { project_ref: context.accountIntent.projectRef, user_id: context.accountIntent.userId },
-      readRows(finalRows.path, (file) => readFoundryInput(context, file).toString("utf8")),
-      evidence && {
-        fact: evidence,
-        report: JSON.parse(readFoundryInput(context, evidence.path).toString("utf8")) as unknown,
-      },
-    );
+    verifySelectedEdgeDraftPlan(context, parsed, finalRows, {
+      project_ref: context.accountIntent.projectRef,
+      user_id: context.accountIntent.userId,
+    });
     spec = parsed;
   } else {
     spec = commandSpec(context, specValue, finalRows, capsule.required_actions);

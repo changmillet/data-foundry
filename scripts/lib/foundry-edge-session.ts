@@ -8,7 +8,8 @@ import {
 import { resolveFoundryEdgeOAuth } from "./foundry-edge-oauth.ts";
 
 type IdentityEndpoint = "flow_hybrid_search" | "process_hybrid_search";
-type EdgeEndpoint = IdentityEndpoint | "app_dataset_create" | "app_dataset_verify_remote";
+type EdgeEndpoint =
+  IdentityEndpoint | "app_dataset_create" | "app_dataset_save_draft" | "app_dataset_verify_remote";
 
 export function foundryEdgeProjectOrigin(value: string): string {
   const url = new URL(value);

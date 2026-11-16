@@ -7,6 +7,8 @@ import { buildEdgeSupportPlan, type EdgeDraftType } from "./foundry-edge-support
 import {
   FoundryContextError,
   captureFoundryInput,
+  readFoundryInput,
+  type FoundryInputFact,
   resolveFoundryOutput,
   writeFoundryArtifact,
   type FoundryRuntimeContext,
@@ -21,6 +23,7 @@ import { workflowObject } from "./foundry-workflow-state.ts";
 import { datasetIdentity } from "./import-curation/internal/dataset-payload.ts";
 import { readRows } from "./import-curation/internal/runtime-io.ts";
 import { sha256Json } from "./identity-preflight-proof.ts";
+import { edgeReferenceKey, readEdgeReferenceIntent } from "./foundry-edge-reference-intent.ts";
 
 export function planFoundryEdgeSupportStage(
   context: FoundryRuntimeContext,
@@ -31,8 +34,10 @@ export function planFoundryEdgeSupportStage(
   source: readonly string[],
   verifyDependencies: boolean,
   receiptFile: string | undefined,
+  selectedInput?: FoundryInputFact,
 ) {
-  const input = resolveFoundryOutput(context, source[source.indexOf("--input") + 1]);
+  const input =
+    selectedInput?.path ?? resolveFoundryOutput(context, source[source.indexOf("--input") + 1]);
   const output = resolveFoundryOutput(context, source[source.indexOf("--out-dir") + 1]);
   const account = context.accountIntent;
   if (!account)
@@ -40,21 +45,16 @@ export function planFoundryEdgeSupportStage(
       "needs_auth",
       "Edge support planning requires task account intent.",
     );
-  if (type === "process" && source.includes("--reference-intent-file"))
-    throw new FoundryContextError(
-      "edge_draft_reference_intent_required",
-      "Process creation requires the original exact reference-intent proof.",
-    );
-  const rows = readRows(input);
-  const plan = buildEdgeSupportPlan(
-    type,
-    captureFoundryInput(input),
-    {
-      project_ref: account.projectRef,
-      user_id: account.userId,
-    },
-    rows,
-  );
+  const rows = selectedInput
+    ? readRows(input, (file) => readFoundryInput(context, file).toString("utf8"))
+    : readRows(input);
+  const target = { project_ref: account.projectRef, user_id: account.userId };
+  const plan = buildEdgeSupportPlan(type, captureFoundryInput(input), target, rows);
+  const intentOption = source.indexOf("--reference-intent-file");
+  const intent =
+    intentOption < 0
+      ? null
+      : readEdgeReferenceIntent(context, source[intentOption + 1], type, target, rows);
   const save = (name: string, value: unknown) => {
     const file = path.join(output, name);
     writeFoundryArtifact(context, file, JSON.stringify(value, null, 2) + "\n");
@@ -92,9 +92,7 @@ export function planFoundryEdgeSupportStage(
 
   const cli = resolveInstalledTiangongLcaCliPackage();
   const references = new Map(
-    plan.roots
-      .flatMap((root) => root.references)
-      .map((ref) => [`${ref.table}:${ref.id}@${ref.version}`, ref]),
+    plan.roots.flatMap((root) => root.references).map((ref) => [edgeReferenceKey(ref), ref]),
   );
   const assessedFlowHashes = new Map<string, string>();
   if (type === "process") {
@@ -130,8 +128,12 @@ export function planFoundryEdgeSupportStage(
       "The selected dependency receipt belongs to a different account.",
     );
   const expectedOrigin = new URL(receipt.project.project_base_url).origin;
-  const checks = [];
-  for (const [key, reference] of references) {
+  const referenceDocuments: unknown[] = [];
+  const observe = (
+    reference: (typeof plan.roots)[number]["references"][number],
+    requestedVersion: string,
+  ) => {
+    const key = edgeReferenceKey(reference);
     const dataset = types.find((kind) => bundleRowTypes[kind].plural === reference.table);
     const cliType =
       dataset === "lifecyclemodel"
@@ -149,7 +151,7 @@ export function planFoundryEdgeSupportStage(
       "--id",
       reference.id,
       "--version",
-      reference.version,
+      requestedVersion,
       "--json",
     ];
     const execution = bindWorkflowChildExecution(context, qualified, cli.binPath, argv);
@@ -176,17 +178,16 @@ export function planFoundryEdgeSupportStage(
         typeof observed.environment !== "string" ||
         new URL(observed.environment).origin !== expectedOrigin ||
         selected.id !== reference.id ||
-        selected.version !== reference.version
+        selected.version !== requestedVersion
       )
         throw new Error("Typed reference result has a different project, UUID or version.");
-      save(`reference-${sha256Json(key)}.json`, envelope);
+      save(`reference-${sha256Json([key, requestedVersion])}.json`, envelope);
       if (
         envelope.status === "failed" &&
         envelope.outcome === "not_found_or_not_visible" &&
         workflowObject(envelope.error).code === "DATASET_NOT_FOUND"
       ) {
-        checks.push({ ...reference, role: "reference", status: "missing_dataset" });
-        continue;
+        return { ...reference, role: "reference", status: "missing_dataset" };
       }
       const data = workflowObject(envelope.data);
       const subject = workflowObject(data.subject);
@@ -202,29 +203,61 @@ export function planFoundryEdgeSupportStage(
         envelope.outcome !== "dataset_read" ||
         subject.type !== cliType ||
         subject.id !== reference.id ||
-        subject.version !== reference.version
+        typeof subject.version !== "string"
       )
         throw new Error("Typed reference result does not prove the exact visible version.");
       const content = workflowObject(data.content);
       const observedHash = sha256Json(content);
-      const expectedHash = assessedFlowHashes.get(key);
-      checks.push({
+      if (
+        requestedVersion !== "latest" &&
+        (dataset === "flow" || dataset === "flowproperty" || dataset === "unitgroup")
+      )
+        referenceDocuments.push(content);
+      const expectedHash = requestedVersion === "latest" ? undefined : assessedFlowHashes.get(key);
+      return {
         ...reference,
         role: "reference",
         status:
           expectedHash && expectedHash !== observedHash
             ? "payload_mismatch"
-            : visible
+            : visible && subject.version === reference.version
               ? "ok"
               : "state_code_mismatch",
         remote_user_id: subject.owner,
         remote_state_code: subject.stateCode,
         remote_payload_sha256: observedHash,
-      });
+      };
     } catch (error) {
-      reject(error);
+      return reject(error);
     }
-  }
+  };
+  const matchesReview = (
+    observed: ReturnType<typeof observe>,
+    expected: {
+      payload_sha256: string;
+      user_id: string;
+      state_code: number;
+    },
+  ) =>
+    observed.status === "ok" &&
+    "remote_payload_sha256" in observed &&
+    observed.remote_payload_sha256 === expected.payload_sha256 &&
+    observed.remote_user_id === expected.user_id &&
+    observed.remote_state_code === expected.state_code;
+  const checks = [...references].map(([key, reference]) => {
+    const observed = observe(reference, reference.version);
+    const review = intent?.reviewed.get(key);
+    if (!review) return observed;
+    const latest = observe(review.latest, "latest");
+    return {
+      ...observed,
+      status:
+        matchesReview(observed, review.selected) && matchesReview(latest, review.latest)
+          ? "ok"
+          : "reference_intent_drift",
+      reviewed_latest: review.latest,
+    };
+  });
   const blockers = checks
     .filter((check) => check.status !== "ok")
     .map((check) => ({ ...check, code: check.status }));
@@ -236,7 +269,8 @@ export function planFoundryEdgeSupportStage(
     edge_plan_sha256: plan.sha256,
     checks,
     blockers,
-    counts: { blockers: blockers.length },
+    counts: { rows: rows.length, blockers: blockers.length },
+    ...(intent ? { reference_intent: intent.binding } : {}),
     files: { report: reportFile },
   };
   save("edge-support-precommit.json", report);
@@ -245,6 +279,7 @@ export function planFoundryEdgeSupportStage(
     status: report.status,
     report,
     exit_code: blockers.length ? 1 : 0,
+    referenceDocuments,
     command: "foundry-edge-support-dependency-read",
     args: [],
     stderr: "",

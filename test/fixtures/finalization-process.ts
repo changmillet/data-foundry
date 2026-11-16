@@ -77,6 +77,7 @@ export interface PublicFinalizationProcessDriverOptions {
   fixture: FinalizationProcessFixture;
   account?: { project_ref: string; user_id: string };
   edgeReadReference?: (table: string, id: string, version: string) => unknown;
+  edgeReadLatestReference?: (table: string, id: string) => { version: string; content: unknown };
 }
 
 /**
@@ -148,7 +149,9 @@ export async function runPublicFinalizationProcessWorkflow(
           unitgroup: "unitgroups",
           lciamethod: "lciamethods",
         };
-        const content = edgeReadReference(tables[type], id, version);
+        const latest =
+          version === "latest" ? input.edgeReadLatestReference?.(tables[type], id) : undefined;
+        const content = latest?.content ?? edgeReadReference(tables[type], id, version);
         assert.ok(content, `unexpected remote reference ${type} ${id}@${version}`);
         report = {
           schemaVersion: 1,
@@ -160,7 +163,16 @@ export async function runPublicFinalizationProcessWorkflow(
             environment: `https://${account.project_ref}.supabase.co`,
             effectiveInput: { id, version },
           },
-          data: { subject: { type, id, version, stateCode: 100, owner: account.user_id }, content },
+          data: {
+            subject: {
+              type,
+              id,
+              version: latest?.version ?? version,
+              stateCode: 100,
+              owner: account.user_id,
+            },
+            content,
+          },
         };
       } else if (argv.includes("identity-preflight")) {
         assert.ok(!edgeReadReference, "the typed candidate may only preflight through Edge");

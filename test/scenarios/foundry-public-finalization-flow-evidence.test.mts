@@ -13,7 +13,10 @@ import {
   finalizationProcessAccount,
   runPublicFinalizationProcessWorkflow,
 } from "../fixtures/finalization-process.ts";
-import { unwrapDatasetPayload } from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
+import {
+  datasetIdentity,
+  unwrapDatasetPayload,
+} from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
 import { readRows } from "../../scripts/lib/import-curation/internal/runtime-io.ts";
 import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
 import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
@@ -401,7 +404,7 @@ test("public finalization rejects a capture that differs from its registered ref
   assert.deepEqual(fs.readFileSync(input.seed), input.originalSource);
 });
 
-test("CLI 0.4 managed Process creates once and resumes with only exact Edge readback", async (t) => {
+test("CLI 0.4 Process preserves reviewed exact references and resumes with only readback", async (t) => {
   if (resolveInstalledTiangongLcaCliPackage().packageVersion !== "0.4.0")
     return t.skip("requires the exact CLI 0.4.0 candidate");
   const { root, facadeOptions } = workflowFixture(t);
@@ -431,6 +434,14 @@ test("CLI 0.4 managed Process creates once and resumes with only exact Edge read
   }
   const readRef = (table: string, id: string, version: string) =>
     remote.get(key(table, id, version));
+  const selectedFlow = datasetIdentity(fixture.flow, 0, "flow");
+  const latest = structuredClone(fixture.flow);
+  const reviewedLatestVersion = "99.00.001";
+  object(object(object(latest.flowDataSet).administrativeInformation).publicationAndOwnership)[
+    "common:dataSetVersion"
+  ] = reviewedLatestVersion;
+  remote.set(key("flows", selectedFlow.id, reviewedLatestVersion), latest);
+  let latestVersion = reviewedLatestVersion;
   let writes = 0,
     identityQueries = 0,
     afterReads = 0;
@@ -464,6 +475,7 @@ test("CLI 0.4 managed Process creates once and resumes with only exact Edge read
         ? stored
         : readRef(String(ref.table), String(ref.id), String(ref.version));
       const hash = payload ? sha256Json(payload) : null;
+      const latestVisible = !isRoot && ref.id === selectedFlow.id ? latestVersion : ref.version;
       return {
         index,
         table: ref.table,
@@ -472,11 +484,13 @@ test("CLI 0.4 managed Process creates once and resumes with only exact Edge read
         role: ref.role,
         status: !payload
           ? "candidate_root"
-          : hash === ref.expectedJsonSha256
-            ? "ok"
-            : "payload_mismatch",
+          : String(latestVisible) > String(ref.version)
+            ? "version_outdated"
+            : hash === ref.expectedJsonSha256
+              ? "ok"
+              : "payload_mismatch",
         exact_version: payload ? ref.version : null,
-        latest_version: payload ? ref.version : null,
+        latest_version: payload ? latestVisible : null,
         payload_present: !!payload,
         user_id: payload ? account.user_id : null,
         state_code: payload ? (isRoot ? 0 : 100) : null,
@@ -519,6 +533,10 @@ test("CLI 0.4 managed Process creates once and resumes with only exact Edge read
     fixture,
     account,
     edgeReadReference: readRef,
+    edgeReadLatestReference: (table, id) => ({
+      version: latestVersion,
+      content: readRef(table, id, latestVersion),
+    }),
   });
   const selectArtifact = (result: typeof prepared.result, role: string) => {
     const artifact = result.artifacts.findLast((entry) => entry.role === role);
@@ -528,8 +546,73 @@ test("CLI 0.4 managed Process creates once and resumes with only exact Edge read
     );
     return artifact;
   };
-  const finalized = selectArtifact(prepared.result, "foundry-finalize.json");
-  const scope = (read(finalized.path).sets as Json[]).find((entry) => entry.type === "process")!;
+  const finalization = (result: typeof prepared.result) => {
+    const artifact = selectArtifact(result, "foundry-finalize.json");
+    return {
+      artifact,
+      scope: (read(artifact.path).sets as Json[]).find((entry) => entry.type === "process")!,
+    };
+  };
+  const initial = finalization(prepared.result);
+  const expected = unwrapDatasetPayload(readRows(String(initial.scope.final_rows))[0], "process");
+  const processIdentity = datasetIdentity(expected, 0, "process");
+  const snapshot = (version: string, payload: unknown) => ({
+    table: "flows",
+    id: selectedFlow.id,
+    version,
+    payload_sha256: sha256Json(payload),
+    user_id: account.user_id,
+    state_code: 100,
+  });
+  const selectedSnapshot = snapshot(selectedFlow.version, fixture.flow);
+  const review = write("flow-review.json", {
+    schema_version: "dataset-exact-reference-review.v1",
+    decision: "use_selected_exact",
+    reason: "Preserve the Flow version independently reviewed for these exchanges.",
+    selected: selectedSnapshot,
+    latest: snapshot(reviewedLatestVersion, latest),
+  });
+  const fileSelection = (file: string) => ({ file, sha256: captureFoundryInput(file).sha256 });
+  const referencePaths = collectDatasetReferences(expected).filter(
+    (ref) => ref.id === selectedFlow.id,
+  );
+  assert.ok(referencePaths.length);
+  const intent = write("reference-intent.json", {
+    schema_version: "dataset-exact-reference-intent.v1",
+    project_ref: account.project_ref,
+    actor_user_id: account.user_id,
+    consumers: [
+      {
+        row_index: 0,
+        table: "processes",
+        id: processIdentity.id,
+        version: processIdentity.version,
+        payload_sha256: sha256Json(expected),
+      },
+    ],
+    references: referencePaths.map(({ path }) => ({
+      row_index: 0,
+      path,
+      selected: selectedSnapshot,
+      review: fileSelection(review),
+    })),
+  });
+  const descriptor = write("reviewed-reference-input.json", {
+    ...read(prepared.referenceInput),
+    intent: fileSelection(intent),
+    review_files: [fileSelection(review)],
+  });
+  let result = await facade.resume({ ...invocation, referenceInputFile: descriptor });
+  assert.ok(
+    result.artifacts.some((artifact) => artifact.role === "intent.json"),
+    JSON.stringify(result.blockers),
+  );
+  for (let step = 0; step < 7; step++) {
+    if (finalization(result).artifact.sha256 !== initial.artifact.sha256) break;
+    result = await facade.resume(invocation);
+  }
+  const { artifact: finalized, scope } = finalization(result);
+  assert.notEqual(finalized.sha256, initial.artifact.sha256, JSON.stringify(result.blockers));
   const refresh = selectArtifact(prepared.result, "finalize-identity-refresh.json");
   const refreshed = read(refresh.path);
   assert.equal(refreshed.status, "completed_with_identity_findings");
@@ -546,7 +629,6 @@ test("CLI 0.4 managed Process creates once and resumes with only exact Edge read
   const selected = (scope.authorization_inputs as Json[]).find(
     (entry) => entry.input_kind === "final_rows",
   )!;
-  const expected = unwrapDatasetPayload(readRows(String(scope.final_rows))[0], "process");
   const evidence = path.join(root, "operator-approval.txt");
   fs.writeFileSync(evidence, "Approve this exact synthetic Process draft.");
   const evidenceSha = captureFoundryInput(evidence).sha256;
@@ -601,6 +683,15 @@ test("CLI 0.4 managed Process creates once and resumes with only exact Edge read
   assert.equal(writes, 1);
   assert.ok(afterReads > readsAtDisconnect);
   stored = object(expected);
+  latestVersion = "99.00.002";
+  const changedLatest = await facade.resume(invocation);
+  assert.notEqual(
+    changedLatest.status,
+    "completed",
+    "the reviewed latest version changed after dispatch",
+  );
+  assert.equal(writes, 1);
+  latestVersion = reviewedLatestVersion;
   for (let step = 0; step < 5 && current.status !== "completed"; step++)
     current = await facade.resume(invocation);
   assert.equal(current.status, "completed", JSON.stringify(current.blockers));
@@ -613,6 +704,7 @@ test("CLI 0.4 managed Process creates once and resumes with only exact Edge read
   assert.equal(selectArtifact(current, "owner-execution-request.json").sha256, original.sha256);
   const proof = selectArtifact(current, "owner-readback.json");
   assert.equal(read(proof.path).status, "verified");
+  assert.equal((read(proof.path).reference_evidence as unknown[]).length, 3);
   assert.equal(
     read(proof.path).edge_plan_sha256,
     object(object(read(original.path).content).commit).sha256,
