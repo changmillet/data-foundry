@@ -11,6 +11,7 @@ import {
   type WithLcaAccountDependencies,
 } from "../../scripts/with-lca-account.ts";
 import { testAuthIdentityReceipt } from "../fixtures/auth-identity-receipt.ts";
+import { tiangongLcaCliPackageVersion } from "../../scripts/lib/foundry-runtime-utils.ts";
 
 const PROJECT_REF = "exampleprojectref";
 const USER_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
@@ -31,6 +32,23 @@ function receipt(overrides: Record<string, unknown> = {}) {
     capturedAtUtc: "2026-08-25T01:59:45.000Z",
     scopeOverrides: overrides,
   });
+}
+
+function receiptOutput(value: ReturnType<typeof receipt>) {
+  return (
+    JSON.stringify(
+      value.cli.package_version === "0.4.0"
+        ? {
+            schemaVersion: 1,
+            operation: "auth identity-receipt",
+            status: "completed",
+            outcome: "identity_verified",
+            error: null,
+            data: { receipt: value },
+          }
+        : value,
+    ) + "\n"
+  );
 }
 
 function writeProfile(
@@ -82,7 +100,7 @@ function baseDeps(
     },
     resolveInstalledCli: () => ({
       packageName: "@tiangong-lca/cli",
-      packageVersion: "0.1.28",
+      packageVersion: tiangongLcaCliPackageVersion,
       binPath: path.join(root, "trusted", "tiangong-lca.js"),
     }),
     spawnSyncImpl: (executable: string, argv: readonly string[], options: SpawnCall["options"]) => {
@@ -91,7 +109,7 @@ function baseDeps(
         return {
           status: 0,
           signal: null,
-          stdout: `${JSON.stringify(receiptValue)}\n`,
+          stdout: receiptOutput(receiptValue),
           stderr: "",
         };
       }
@@ -176,7 +194,7 @@ test("account wrapper maps requested child cancellation signals to stable shell 
         return {
           status: 0,
           signal: null,
-          stdout: `${JSON.stringify(receipt())}\n`,
+          stdout: receiptOutput(receipt()),
           stderr: "",
         };
       }
@@ -235,7 +253,11 @@ test("account wrapper executes when invoked through a symlinked entrypoint", (co
       encoding: "utf8",
     });
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /fresh, intent-bound CLI 0\.1\.28 identity receipt/u);
+    assert.ok(
+      result.stdout.includes(
+        `fresh, intent-bound CLI ${tiangongLcaCliPackageVersion} identity receipt`,
+      ),
+    );
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
