@@ -11,6 +11,7 @@ import {
 } from "../../scripts/lib/foundry-command-spec.ts";
 import { createBafuScopeResumeContract } from "../../scripts/lib/batch-orchestration/scope-resume-contract.ts";
 import { createBafuScopeSourceContent } from "../../scripts/lib/batch-orchestration/scope-source-content.ts";
+import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
 import {
   fs,
   path,
@@ -184,7 +185,7 @@ function exactBafuResumeContract(
     applyResolutionRewrites: false,
     familySignatures: true,
     mintUnmatchedFpUgSupport: false,
-    cliPackage: "@tiangong-lca/cli@0.1.28",
+    cliPackage: resolveInstalledTiangongLcaCliPackage().packageSpec,
     sourceContent: createBafuScopeSourceContent({
       scope,
       processBundlesDir: bundlesDir,
