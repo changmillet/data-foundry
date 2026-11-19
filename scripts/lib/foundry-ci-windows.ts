@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import type { FoundryTestShard } from "./foundry-ci-plan.ts";
 
 export interface FoundryWindowsExecutionInput {
   readonly exclusiveFiles: readonly Readonly<{ file: string; index: number }>[];
@@ -192,7 +191,7 @@ export function planFoundryWindowsShards(
   count: number,
   execution: FoundryWindowsExecutionInput,
   concurrency: number,
-): readonly FoundryTestShard[] {
+) {
   const files = weighted.map((x) => x.file),
     observed = execution.observedSeconds;
   if (count !== 10 || concurrency !== 2 || !/^[a-f0-9]{64}$/u.test(execution.observationsSha256))
