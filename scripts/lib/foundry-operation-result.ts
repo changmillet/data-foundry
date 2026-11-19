@@ -22,6 +22,7 @@ export const foundryPublicOperations = Object.freeze([
   "doctor",
   "task.start",
   "task.status",
+  "task.prepare-input",
   "task.resume",
   "task.adopt-runtime",
   "workspace.migrate",

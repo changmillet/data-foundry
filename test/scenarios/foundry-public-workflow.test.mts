@@ -991,6 +991,28 @@ test("public semantic submission rejects stale evidence and re-assesses only suc
   const oldRows = fs.readFileSync(assessment.sets[0].rows);
   fs.writeFileSync(patchFile, JSON.stringify(patch));
   writeSubmission();
+  const semanticDraft = path.join(root, "semantic-draft.json");
+  fs.writeFileSync(
+    semanticDraft,
+    JSON.stringify({
+      schema: "tiangong-foundry.semantic-draft.v1",
+      submissions: [{ kind: "patch", authoring_task: taskFile, file: patchFile }],
+    }),
+  );
+  const inputPrepared = await facade.prepareInput({
+    ...invocation,
+    kind: "semantic",
+    draftFile: semanticDraft,
+  });
+  assert.equal(inputPrepared.status, "ready", JSON.stringify(inputPrepared));
+  const preparedDescriptor = inputPrepared.artifacts.find(
+    (item) => item.role === "prepared_task_input",
+  );
+  assert.ok(preparedDescriptor?.kind === "inline");
+  const expectedPrepared = JSON.parse(fs.readFileSync(submissionFile, "utf8"));
+  expectedPrepared.submissions[0].file = fs.realpathSync(patchFile);
+  assert.deepEqual(preparedDescriptor.value, expectedPrepared);
+  fs.writeFileSync(submissionFile, JSON.stringify(preparedDescriptor.value));
   const alternatePatch = structuredClone(patch);
   alternatePatch.patch_sets[0].operations[0].basis =
     "Concurrent equivalent repair with a distinct submission.";

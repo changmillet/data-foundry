@@ -190,7 +190,7 @@ export function selectFoundrySemanticInput(
     if (fact.sha256 !== part.sha256)
       throw new FoundryContextError(
         "semantic_input_changed",
-        "Patch bytes do not match the submitted digest.",
+        "Patch raw file-byte SHA-256 differs from submissions[].sha256. Hash the exact file bytes; canonical payload digests are a separate binding.",
       );
     readSelectedSemanticBytes(fact);
     return fact;

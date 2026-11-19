@@ -23,6 +23,8 @@ const packageFiles = [
   "specs/schemas/foundry-package-descriptor.schema.json",
   "specs/schemas/foundry-task-start.schema.json",
   "specs/schemas/foundry-semantic-input.schema.json",
+  "specs/schemas/foundry-semantic-draft.schema.json",
+  "specs/schemas/foundry-interaction-draft.schema.json",
   "specs/schemas/foundry-interaction-input.schema.json",
   "specs/schemas/foundry-authorization-input.schema.json",
   "specs/schemas/foundry-reference-input.schema.json",

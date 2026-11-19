@@ -113,10 +113,13 @@ export function readNativeDraftHandoff(input: {
       token(action.id) !== id ||
       token(action.version) !== version ||
       identity.id !== id ||
-      identity.version !== version ||
-      action.desired_sha256 !== sha256Json(identity.payload)
+      identity.version !== version
     )
-      fail("Contract action does not bind the exact final payload, identity and draft operation.");
+      fail("Contract action does not bind the exact identity and draft operation.");
+    if (action.desired_sha256 !== sha256Json(identity.payload))
+      fail(
+        "Action desired_sha256 must match the canonical digest of the parsed dataset payload. File selection uses the SHA-256 of raw file bytes.",
+      );
     if (!Array.isArray(action.dependency_action_ids)) fail("Action dependencies must be explicit.");
     const dependencies = action.dependency_action_ids.map(token);
     if (
