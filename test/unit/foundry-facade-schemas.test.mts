@@ -73,6 +73,24 @@ test("facade task, result, request and migration schemas compile and reject unsa
     false,
   );
 
+  const validateRepair = ajv.getSchema(
+    "https://tiangong-lca.local/foundry/task-start.schema.json#/$defs/repairSelection",
+  );
+  assert.ok(validateRepair);
+  const files = {
+    contract: "contract",
+    before: "before",
+    candidate: "candidate",
+    predecessor: null,
+  };
+  const metadata = { ...files, kind: "existing-owner-draft-metadata" };
+  const science = { ...files, kind: "existing-owner-draft-scientific" };
+  assert.equal(validateRepair(metadata), true);
+  assert.equal(validateRepair({ ...metadata, scientific: "evidence.json" }), false);
+  assert.equal(validateRepair(science), false);
+  assert.equal(validateRepair({ ...science, scientific: "" }), false);
+  assert.equal(validateRepair({ ...science, scientific: "evidence.json" }), true);
+
   const validateResult = ajv.compile(read("foundry-operation-result.schema.json"));
   const result = createFoundryOperationResult({
     operation: "task.start",

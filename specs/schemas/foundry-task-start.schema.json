@@ -378,8 +378,8 @@
       "allOf": [
         {
           "if": { "properties": { "kind": { "const": "existing-owner-draft-scientific" } } },
-          "then": { "required": ["scientific"] },
-          "else": { "not": { "required": ["scientific"] } }
+          "then": { "properties": { "scientific": true }, "required": ["scientific"] },
+          "else": { "properties": { "scientific": false } }
         }
       ]
     }
