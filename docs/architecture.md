@@ -153,7 +153,7 @@ checkPaths:
   - test/unit/lint-suppression-audit.test.mts
   - docs/incremental-change-set-contract.md
 lastReviewedAt: 2026-11-20
-lastReviewedCommit: 24029b8a5c04887cfa346d229ae84489d4f91a97
+lastReviewedCommit: 53d1c063d793b617ea678b06b043e53f0a3358a4
 lastReviewedNote: "Foundry #287: reviewed the four eligible development-tool updates and complete unchanged lock graph during formatting; native/source qualification, compiler and public-runtime closure, cache inputs, credential and publishing authority remain unchanged. Foundry #296: reviewed ordinary GitHub Windows shard host observations, source/plan/partition/run binding, null omissions and failed/cancelled/signalled evidence after the original elapsed snapshot. Test qualification, public runtime, task/skill ownership, credentials and publisher authority remain unchanged."
 ---
 
