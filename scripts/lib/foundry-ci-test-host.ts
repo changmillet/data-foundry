@@ -27,7 +27,19 @@ export interface FoundryCiTestHostContext {
   source: string;
   plan_sha256: string;
   index: number;
-  outcome: "passed" | "failed" | "cancelled";
+  outcome: "passed" | "failed" | "cancelled" | "signalled";
+  signal: NodeJS.Signals | null;
+}
+
+export function foundryCiObservedTestOutcome(
+  status: string,
+  counts: Record<string, unknown> | null,
+  signal: NodeJS.Signals | null,
+): FoundryCiTestHostContext["outcome"] {
+  if (typeof counts?.failed === "number" && counts.failed > 0) return "failed";
+  if (signal !== null) return "signalled";
+  if (typeof counts?.cancelled === "number" && counts.cancelled > 0) return "cancelled";
+  return status === "passed" ? "passed" : "failed";
 }
 
 function hostReader(root: string): (field: Field) => unknown {
@@ -63,9 +75,10 @@ function hostReader(root: string): (field: Field) => unknown {
         return execFileSync(manager().executable, manager().argv, {
           cwd: root,
           encoding: "utf8",
-          timeout: 30000,
+          timeout: 5000,
           maxBuffer: 1024,
           shell: false,
+          stdio: ["ignore", "pipe", "pipe"],
         }).trim();
       case "pnpm_sha256":
         return hash(manager().executable);
@@ -152,6 +165,7 @@ export function captureFoundryCiTestHost(
     run_id: run,
     attempt: attempt === null ? null : Number(attempt),
     outcome: context.outcome,
+    signal: context.signal,
     host,
     status: omissions.length ? "partial" : "complete",
     omissions,

@@ -113,6 +113,7 @@ test("CI aggregation requires all host-specific receipts and rejects cross-platf
 
 import {
   captureFoundryCiTestHost,
+  foundryCiObservedTestOutcome,
   type FoundryCiTestHostContext,
 } from "../../scripts/lib/foundry-ci-test-host.ts";
 
@@ -138,6 +139,7 @@ const hostContext: FoundryCiTestHostContext = {
   plan_sha256: plan.planSha256,
   index: 1,
   outcome: "passed",
+  signal: null,
 };
 const observeHost = (facts = hostFacts, context = hostContext) =>
   captureFoundryCiTestHost("/not-an-output-path", context, (field) => facts[field]);
@@ -187,7 +189,7 @@ test("missing or disallowed host facts are unknown without leaking paths or arbi
 });
 
 test("host observations retain failure and cancellation and never qualify shard outcomes", () => {
-  for (const outcome of ["passed", "failed", "cancelled"] as const) {
+  for (const outcome of ["passed", "failed", "cancelled", "signalled"] as const) {
     const observed = observeHost(hostFacts, { ...hostContext, outcome });
     assert.equal(observed.outcome, outcome);
     const input = receipts();
@@ -201,10 +203,31 @@ test("host observations retain failure and cancellation and never qualify shard 
   }
 });
 
+test("signals and Node cancellation counts do not relabel an observed test failure", () => {
+  assert.equal(foundryCiObservedTestOutcome("passed", { failed: 0, cancelled: 0 }, null), "passed");
+  assert.equal(foundryCiObservedTestOutcome("failed", { failed: 1, cancelled: 1 }, null), "failed");
+  assert.equal(
+    foundryCiObservedTestOutcome("failed", { failed: 1, cancelled: 1 }, "SIGABRT"),
+    "failed",
+  );
+  assert.equal(
+    foundryCiObservedTestOutcome("failed", { failed: 0, cancelled: 1 }, null),
+    "cancelled",
+  );
+  for (const signal of ["SIGSEGV", "SIGABRT", "SIGKILL", "SIGTERM"] as const) {
+    assert.equal(foundryCiObservedTestOutcome("failed", null, signal), "signalled");
+    const observed = observeHost(hostFacts, { ...hostContext, outcome: "signalled", signal });
+    assert.equal(observed.signal, signal);
+  }
+  assert.equal(foundryCiObservedTestOutcome("failed", null, null), "failed");
+});
+
 test("host collection follows the original elapsed snapshot and is Windows-only in the ordinary entry", () => {
   const root = path.resolve(import.meta.dirname, "../..");
   const entry = fs.readFileSync(path.join(root, "scripts/ci-test-shard.ts"), "utf8");
-  assert.ok(entry.includes('process.platform === "win32"'));
+  assert.ok(
+    entry.includes('process.platform === "win32" && process.env.GITHUB_ACTIONS === "true"'),
+  );
   assert.ok(
     entry.indexOf("elapsed_ms: performance.now() - started") <
       entry.indexOf("receipt.host_observation = captureFoundryCiTestHost"),
