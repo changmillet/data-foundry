@@ -1,7 +1,7 @@
 {
   "$schema": "../specs/schemas/file-location-registry.schema.json",
   "schema_version": 1,
-  "updated_at_utc": "2026-11-19T02:18:52.473335+00:00",
+  "updated_at_utc": "2026-11-19T22:54:04.241713+00:00",
   "policy_doc": "docs/file-organization.md",
   "entries": [
     {
@@ -760,7 +760,7 @@
       ],
       "sensitivity": "non-sensitive consumer orchestration source; contains no credentials or task payloads",
       "tracked": true,
-      "notes": "Validates the consumer binding of selected CLI owner-draft contracts \u2014 insert or bounded save_draft repair \u2014 to exact final rows, identity and operation/before state; builds no native transaction or attempt implementation."
+      "notes": "Validates the consumer binding of selected CLI owner-draft contracts — insert or bounded save_draft repair — to exact final rows, identity and operation/before state; builds no native transaction or attempt implementation."
     },
     {
       "id": "native-draft-closeout",
@@ -895,6 +895,23 @@
       "sensitivity": "non-sensitive source; task context remains outside Git",
       "tracked": true,
       "notes": "Binds applicable broad and object-scoped Process interaction context without accepting decisions for unrelated entity types."
+    },
+    {
+      "id": "windows-ci-test-observations",
+      "status": "active",
+      "classification": "source-ci-measurement-evidence",
+      "current_path": "specs/ci/windows-test-observations.json",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "task_id": "298",
+      "referenced_by": [
+        "specs/ci/test-durations.json",
+        "scripts/lib/foundry-ci-windows.ts",
+        "docs/package-distribution-contract.md"
+      ],
+      "sensitivity": "Reviewed CI timing and source digests only; no credentials, raw test payloads, machine identifiers or private paths.",
+      "tracked": true,
+      "notes": "Ten complete ordinary Windows artifacts and source-bound file classes supply a historical planning scenario. They do not qualify the candidate or establish future runtime bounds."
     }
   ],
   "lastReviewedCommit": "bf43cdf7ed694412bf6ddfc9a308b704600d1827",
