@@ -31,9 +31,9 @@ checkPaths:
   - .oxlintrc.json
   - prettier.config.ts
   - tsconfig*.json
-lastReviewedAt: 2026-11-15
-lastReviewedCommit: c30a1f516553282f7c82c82c5733689557078b5c
-lastReviewedNote: "Foundry #278: reviewed version-only 0.1.18 projections and unchanged native release, ownership and documentation requirements."
+lastReviewedAt: 2026-11-19
+lastReviewedCommit: 0306fdd8bf452a6139021884178da27f6a6fcb40
+lastReviewedNote: "Foundry #287: scoped review of eligible development tools, full lock graph and unchanged compiler/runtime/publishing boundaries. Existing CLI-version prose drift is separately reported; executable CLI inputs and all qualification protections remain unchanged."
 ---
 
 # AGENTS.md - TianGong LCA Data Foundry
