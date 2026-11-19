@@ -455,6 +455,21 @@ test("explicit native insert handoff binds each supported payload and contract w
         fs.readFileSync(path.join(root, "native-handoff/dataset-commit-handoff-plan.json")),
         recorded,
       );
+      const rawPayloadContract = structuredClone(contractValue);
+      rawPayloadContract.actions[0].desired_sha256 = sha256(JSON.stringify(payload, null, 2));
+      const wrongDigestFile = path.join(root, "raw-payload-digest.json");
+      writeJson(wrongDigestFile, rawPayloadContract);
+      assert.throws(
+        () =>
+          commands.runDatasetCommitHandoffPlan({
+            finalizeReport: fixture.finalize,
+            type,
+            executionContractFile: wrongDigestFile,
+            outDir: "raw-digest-output",
+          }),
+        /desired_sha256.*canonical.*payload.*raw file bytes/u,
+      );
+      assert.equal(fs.existsSync(path.join(root, "raw-digest-output")), false);
       const invalid: Array<(value: typeof contractValue) => void> = [
         (value) => {
           value.schema_version = "unknown";

@@ -73,6 +73,10 @@ CI tooling additionally uses `FOUNDRY_CI_BASE_SHA` and `FOUNDRY_CI_SOURCE_SHA` f
 
 ## Allowed Variables
 
+Scientific Process repair additionally reads a deployment-owned `tiangong-foundry/provider-impact-runtime.json` beneath the existing absolute `XDG_CONFIG_HOME`, falling back to `.config` under the host home directory. The existing CLI runtime manager preserves these system directory selectors through managed launch. The strict file contains `schema: tiangong-foundry.provider-impact-runtime.v1`, an absolute `executable` and its independently trusted raw-byte `sha256`. Configuration and executable real paths must remain outside task sources, workspace and cache roots. Deployment owners must protect the installation and its relative native dependencies from task writes. Task specifications and ordinary application arguments cannot supply this executable or trust digest.
+
+Foundry binds the configuration and executable facts during scientific task registration, checks them on reentry, executes the original deployed program with an isolated credential-free environment, and rechecks both bindings after diagnosis. The complete native report must name the same executing binary hash and equal the independently reviewed raw report bytes. Native dependencies retain their deployed relative layout. This host configuration grants local diagnostic execution only. Foundry runtime qualification, account intent, scientific evidence, explicit write approval and original-attempt recovery retain their own admission checks.
+
 Only document variables that meet at least one of these conditions:
 
 - foundry reads the variable directly;

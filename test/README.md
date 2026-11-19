@@ -593,3 +593,27 @@ Managed fixture preparation copies at most four files at a time and creates each
 The six managed adoption cases are independently scheduled files, with unchanged case names and assertions. Measured successful Windows case durations and explicitly labelled forecasts are kept in `specs/ci/test-durations.json`; cancelled jobs or failed/incomplete cases never qualify a source. The concurrent readonly pair retains two actual managed subprocesses and the `[0, 4]` invocation assertion. Because its task lock serializes those operations, that pair has a bounded two-command test deadline (600 seconds); ordinary fixture calls and returned-action reentry keep 300 seconds. Owned-child termination/close diagnostics remain active. Production timeouts, authority, immutable-source, UNKNOWN/no-requery checks and the hosted 40-minute job limit are unchanged.
 
 `test/unit/foundry-installed-entry.test.mts` exercises the real package entry and CLI manager with two synthetic installed component releases. It covers offline discovery, missing configuration/assets, required-protocol refusal, digest mismatch, native argv/stdout/stderr/exit preservation, and original launch recovery after a default change. These tests use real Node/IPC with synthetic application metadata. Existing installed-package and managed task scenarios supply the task/recovery regression coverage.
+
+## Native scientific repair qualification
+
+`unit/foundry-scientific-repair-runtime.test.mts` exercises the synthetic Worker producer contract, exact reviewed bytes and refusal paths in ordinary CI. `commands/scientific-repair-fixture.test.mts` runs the installed public CLI schema/business checks and the exact-unit mass QA on the synthetic candidate, and confirms that an unbalanced quantity revision still raises its normal finding. `scenarios/foundry-scientific-repair-native.test.mts` runs the complete registered repair with deployed native Worker and TIDAS executables when `TIANGONG_FOUNDRY_SCIENTIFIC_REPAIR_QA_CONFIG` selects an absolute configuration file. The native case reuses the guarded Process driver and published CLI, including proposal application, schema, numerical QA, curation, exact authorization, consumed-attempt handling and lost-response recovery. Authentication and remote dataset observations use synthetic transports. Every actual mutation request remains inside that transport.
+
+The QA configuration binds independently reviewed native executable facts and an explicitly retained evidence directory.
+
+```json
+{
+  "schema": "tiangong-foundry.scientific-repair-qa.v1",
+  "host_config_root": "/absolute/host-config",
+  "tidas_executable": "/absolute/tidas/bin/tidas",
+  "tidas_sha256": "<reviewed executable SHA-256>",
+  "tidas_version": "0.3.4",
+  "tidas_asset_fingerprint": "<reviewed validation asset fingerprint>",
+  "evidence_directory": "/absolute/scientific-repair-qa-evidence"
+}
+```
+
+`host_config_root/tiangong-foundry/provider-impact-runtime.json` supplies the existing deployment-owned Worker executable and SHA-256 contract. Keep that configuration and executable outside the selected workspace, cache and task sources. The test reads the selected binary through the public scientific repair owner and retains each preparation report, the successful task tree and a final machine receipt under `evidence_directory`.
+
+```bash
+TIANGONG_FOUNDRY_SCIENTIFIC_REPAIR_QA_CONFIG=/absolute/scientific-repair-qa.json node --test test/scenarios/foundry-scientific-repair-native.test.mts
+```

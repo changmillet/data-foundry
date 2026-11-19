@@ -32,6 +32,7 @@ test("public operation results have one exact immutable envelope and exit table"
     "doctor",
     "task.start",
     "task.status",
+    "task.prepare-input",
     "task.resume",
     "task.adopt-runtime",
     "workspace.migrate",

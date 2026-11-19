@@ -4,11 +4,16 @@ import { sha256Json, sha256Text } from "./identity-preflight-proof.ts";
 import { datasetIdentity } from "./import-curation/internal/dataset-payload.ts";
 import { readRows } from "./import-curation/internal/runtime-io.ts";
 import { readNativeDraftHandoff } from "./finalize-owners/native-draft-handoff.ts";
+import {
+  readScientificRepairEvidence,
+  type ScientificRepairEvidence,
+} from "./foundry-scientific-repair.ts";
 
 type JsonRecord = Record<string, unknown>;
 
 /** Phase 1 admits only Process, and only the two reviewed administrative display-text regions. */
 export const FOUNDRY_REPAIR_SELECTION_KIND = "existing-owner-draft-metadata" as const;
+export const FOUNDRY_SCIENTIFIC_REPAIR_SELECTION_KIND = "existing-owner-draft-scientific" as const;
 export const FOUNDRY_REPAIR_ALLOWED_DATASET_TYPE = "process" as const;
 
 export const FOUNDRY_REPAIR_EDIT_PATHS = Object.freeze([
@@ -37,12 +42,29 @@ export const FOUNDRY_REPAIR_SHARED_SCIENCE_PREFIXES = Object.freeze([
   "unitGroupDataSet",
 ] as const);
 
+const scientificEditPrefixes = [
+  "processDataSet.exchanges",
+  "processDataSet.processInformation.quantitativeReference",
+  "processDataSet.processInformation.mathematicalRelations",
+  "processDataSet.processInformation.time",
+  "processDataSet.processInformation.geography",
+  "processDataSet.processInformation.technology",
+  "processDataSet.processInformation.dataSetInformation.name",
+  "processDataSet.processInformation.dataSetInformation.common:synonyms",
+  "processDataSet.processInformation.dataSetInformation.common:generalComment",
+  "processDataSet.processInformation.dataSetInformation.classificationInformation",
+  "processDataSet.modellingAndValidation.LCIMethod",
+  "processDataSet.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness",
+] as const;
+
 export interface FoundryRepairSelection {
-  readonly kind: typeof FOUNDRY_REPAIR_SELECTION_KIND;
+  readonly kind:
+    typeof FOUNDRY_REPAIR_SELECTION_KIND | typeof FOUNDRY_SCIENTIFIC_REPAIR_SELECTION_KIND;
   readonly contract: string;
   readonly before: string;
   readonly candidate: string;
   readonly predecessor: Readonly<{ task_id: string; receipt_sha256: string }> | null;
+  readonly scientific?: string;
 }
 
 export interface FoundryRepairDiffBlocker {
@@ -51,7 +73,9 @@ export interface FoundryRepairDiffBlocker {
 }
 
 export interface FoundryRepairScope {
-  readonly kind: typeof FOUNDRY_REPAIR_SELECTION_KIND;
+  readonly kind:
+    typeof FOUNDRY_REPAIR_SELECTION_KIND | typeof FOUNDRY_SCIENTIFIC_REPAIR_SELECTION_KIND;
+  readonly scientific?: ScientificRepairEvidence;
   readonly status: "dispatchable" | "satisfied";
   readonly contract_sha256: string;
   readonly rows_sha256: string;
@@ -125,11 +149,16 @@ export function parseFoundryRepairSelection(
   const item = record(value, "task_spec_repair_invalid", "Repair selection");
   exact(
     item,
-    ["kind", "contract", "before", "candidate", "predecessor"],
+    item.kind === FOUNDRY_SCIENTIFIC_REPAIR_SELECTION_KIND
+      ? ["kind", "contract", "before", "candidate", "predecessor", "scientific"]
+      : ["kind", "contract", "before", "candidate", "predecessor"],
     "task_spec_repair_invalid",
     "Repair selection",
   );
-  if (item.kind !== FOUNDRY_REPAIR_SELECTION_KIND)
+  if (
+    item.kind !== FOUNDRY_REPAIR_SELECTION_KIND &&
+    item.kind !== FOUNDRY_SCIENTIFIC_REPAIR_SELECTION_KIND
+  )
     fail("task_spec_repair_invalid", "Repair selection kind is unsupported.");
   const contract = resolveSelection(
     selectionPath(item.contract, "task_spec_repair_invalid", "Repair contract"),
@@ -140,9 +169,15 @@ export function parseFoundryRepairSelection(
   const candidate = resolveSelection(
     selectionPath(item.candidate, "task_spec_repair_invalid", "Repair candidate rows"),
   );
+  const scientific =
+    item.kind === FOUNDRY_SCIENTIFIC_REPAIR_SELECTION_KIND
+      ? resolveSelection(
+          selectionPath(item.scientific, "task_spec_repair_invalid", "Scientific repair evidence"),
+        )
+      : undefined;
   if (new Set([contract, before, candidate]).size !== 3)
     fail("task_spec_repair_invalid", "Repair selections must name three distinct files.");
-  for (const selected of [contract, before, candidate])
+  for (const selected of [contract, before, candidate, ...(scientific ? [scientific] : [])])
     if (!sources.some((source) => source.path === selected))
       fail(
         "task_spec_repair_invalid",
@@ -163,11 +198,12 @@ export function parseFoundryRepairSelection(
     predecessor = Object.freeze({ task_id: taskId, receipt_sha256: receipt });
   }
   return Object.freeze({
-    kind: FOUNDRY_REPAIR_SELECTION_KIND,
+    kind: item.kind,
     contract,
     before,
     candidate,
     predecessor,
+    ...(scientific ? { scientific } : {}),
   });
 }
 
@@ -278,6 +314,26 @@ export function classifyRepairMetadataDiff(
     : { allowed: false, blockers: [{ path: "<unclassified>", reason: "structure_change" }] };
 }
 
+/** Scientific review cannot widen administrative ownership, permissions or technical-header scope. */
+export function assertScientificRepairPaths(before: JsonRecord, candidate: JsonRecord): void {
+  const changes = collectRepairChangedPaths(
+    blankRepairEditableText(before),
+    blankRepairEditableText(candidate),
+  );
+  const blocked = changes.filter(
+    (changed) =>
+      changed.split(".").includes("common:other") ||
+      !scientificEditPrefixes.some(
+        (prefix) => changed === prefix || changed.startsWith(`${prefix}.`),
+      ),
+  );
+  if (blocked.length)
+    fail(
+      "repair_scientific_scope_unsupported",
+      `Scientific repair changes protected identity, administrative or technical fields. Changed paths ${blocked.slice(0, 8).join(", ")}.`,
+    );
+}
+
 /**
  * Validate one repair task: the CLI execution contract, the CLI-fresh before rows and the candidate rows
  * must agree on the exact same Process identities, every action must be a save_draft against an existing
@@ -292,6 +348,13 @@ export function readFoundryRepairScope(input: {
   verifiedProjectRef: string;
   stateCode: string;
   relativePath: (file: string) => string;
+  scientific?: {
+    descriptorFile: string;
+    actorId: string;
+    selectedFiles: readonly string[];
+    excludedRuntimeRoots: readonly string[];
+    read: (file: string) => Buffer;
+  };
 }): Readonly<FoundryRepairScope> {
   if (input.datasetType !== FOUNDRY_REPAIR_ALLOWED_DATASET_TYPE)
     fail(
@@ -343,6 +406,17 @@ export function readFoundryRepairScope(input: {
       "repair_scope_identity_mismatch",
       "Repair candidate rows must cover exactly the selected before identities; versions are never minted.",
     );
+  if (input.scientific)
+    for (const [key, candidate] of candidateByIdentity)
+      assertScientificRepairPaths(beforeByIdentity.get(key)!, candidate);
+  const scientific = input.scientific
+    ? readScientificRepairEvidence({
+        ...input.scientific,
+        beforeFile: input.beforeFile,
+        candidateFile: input.candidateFile,
+        userId: input.targetUserId,
+      })
+    : undefined;
   const changedPaths: string[] = [];
   const actions: FoundryRepairScope["actions"] = native.contract.actions.map((action) => {
     const key = JSON.stringify([action.id, action.version]);
@@ -369,15 +443,26 @@ export function readFoundryRepairScope(input: {
       };
     const changed = collectRepairChangedPaths(beforePayload, candidatePayload);
     const verdict = classifyRepairMetadataDiff(beforePayload, candidatePayload);
-    if (!verdict.allowed) {
+    if (!verdict.allowed && !scientific) {
+      const requiresProviderImpact = verdict.blockers.some(
+        (blocker) => blocker.reason === "provider_impact_diagnostics_missing",
+      );
+      const affectedPaths = verdict.blockers
+        .slice(0, 8)
+        .map((item) => item.path)
+        .join(", ");
       fail(
-        verdict.blockers.some((blocker) => blocker.reason === "provider_impact_diagnostics_missing")
+        requiresProviderImpact
           ? "repair_provider_impact_diagnostics_missing"
           : "repair_metadata_scope_blocked",
-        `Repair diff is outside the phase-1 metadata allowlist: ${verdict.blockers
-          .slice(0, 8)
-          .map((item) => item.path)
-          .join(", ")}`,
+        requiresProviderImpact
+          ? `Scientific repair remains blocked for changed paths ${affectedPaths}. ` +
+              "Retain the exact before and candidate inputs for the Worker-owned frozen-input " +
+              "provider-impact diagnostic tracked at https://github.com/tiangong-lca/worker/issues/288, " +
+              "binding before/candidate content and affected provider/consumer closure. " +
+              "Foundry must separately verify field-bound source evidence, QA and curation " +
+              "before scientific repair can enter authorization."
+          : `Repair diff is outside the phase-1 metadata allowlist. Changed paths ${affectedPaths}.`,
       );
     }
     changedPaths.push(...changed);
@@ -391,7 +476,8 @@ export function readFoundryRepairScope(input: {
     };
   });
   return Object.freeze({
-    kind: FOUNDRY_REPAIR_SELECTION_KIND,
+    kind: scientific ? FOUNDRY_SCIENTIFIC_REPAIR_SELECTION_KIND : FOUNDRY_REPAIR_SELECTION_KIND,
+    ...(scientific ? { scientific } : {}),
     status: changedPaths.length ? ("dispatchable" as const) : ("satisfied" as const),
     contract_sha256: native.canonical_sha256,
     rows_sha256: native.rows_sha256,

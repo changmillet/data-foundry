@@ -81,7 +81,10 @@ function publicCommand(argv: string[]): ParsedPublicCommand | null {
     return { operation: "workspace.init", args: parseArgs(rest) };
   if (group === "workspace" && action === "migrate")
     return { operation: "workspace.migrate", args: parseArgs(rest) };
-  if (group === "task" && ["start", "status", "resume", "adopt-runtime"].includes(action))
+  if (
+    group === "task" &&
+    ["start", "status", "resume", "adopt-runtime", "prepare-input"].includes(action)
+  )
     return { operation: `task.${action}` as FoundryPublicOperation, args: parseArgs(rest) };
   if (group === "workspace" || group === "task")
     return { operation: "unknown", args: parseArgs([action, ...rest].filter(Boolean)) };
@@ -213,9 +216,11 @@ async function runPublicCommand(
               ]
             : parsed.operation === "task.adopt-runtime"
               ? ["task", "actor", "dryRun", "apply", "audit", "selection", "plan"]
-              : parsed.operation === "task.status"
-                ? ["task", "actor"]
-                : []),
+              : parsed.operation === "task.prepare-input"
+                ? ["task", "actor", "kind", "input"]
+                : parsed.operation === "task.status"
+                  ? ["task", "actor"]
+                  : []),
   ]);
   const unknownOption = Object.keys(parsed.args).find((key) => !allowed.has(key));
   if (unknownOption)
@@ -472,9 +477,20 @@ async function runPublicCommand(
         parsed.operation,
         taskId,
         "argument_task_actor_required",
-        "Task status and resume require exact --task and --actor values.",
+        "Task operations require exact --task and --actor values.",
       );
-    if (parsed.operation === "task.adopt-runtime") {
+    if (parsed.operation === "task.prepare-input") {
+      const kind = option(parsed.args.kind, "--kind"),
+        draftFile = option(parsed.args.input, "--input");
+      if ((kind !== "interaction" && kind !== "semantic") || !draftFile)
+        return invalidResult(
+          parsed.operation,
+          taskId,
+          "argument_input_draft_required",
+          "Input preparation requires --kind interaction|semantic and one --input draft file.",
+        );
+      result = await facade.prepareInput({ taskId, actorId, kind, draftFile });
+    } else if (parsed.operation === "task.adopt-runtime") {
       const modes = [parsed.args.dryRun, parsed.args.apply, parsed.args.audit];
       if (
         modes.filter((value) => value === true).length !== 1 ||

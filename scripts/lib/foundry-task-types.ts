@@ -36,6 +36,7 @@ export interface FoundryTaskJob {
     contract: string;
     before: string;
     candidate: string;
+    scientific?: string;
     predecessor: Readonly<{ task_id: string; receipt_sha256: string }> | null;
   }>;
 }
@@ -57,6 +58,7 @@ export interface FoundryTaskOptions {
     contract: string;
     before: string;
     candidate: string;
+    scientific?: string;
     predecessor: Readonly<{ task_id: string; receipt_sha256: string }> | null;
   }>;
 }

@@ -1,3 +1,4 @@
+import { prepareFoundryTaskInput } from "./lib/foundry-task-input-preparation.ts";
 import {
   planFoundryTaskRuntimeAdoption,
   applyFoundryTaskRuntimeAdoption,
@@ -2201,6 +2202,64 @@ export function createFoundryFacade(options: FoundryFacadeOptions) {
         });
       } catch (error) {
         return failure("task.start", taskId, error, current ? runtimeIdentity(current) : null);
+      }
+    },
+    async prepareInput(input: {
+      taskId: string;
+      actorId: string;
+      kind: "interaction" | "semantic";
+      draftFile: string;
+    }): Promise<FoundryOperationResult> {
+      let current: ReturnType<typeof createFoundryRuntimeContext> | null = null;
+      try {
+        assertNotInterrupted(options.signal);
+        current = base();
+        const record = loadFoundryFacadeTaskRecord(current, input.taskId, input.actorId);
+        const context = taskContext(options, current, record);
+        const qualified = qualification(context, options.runtimeSelection);
+        const runtime = createFoundryRuntime(context, qualified);
+        const before = await runtime.inspectTask();
+        if (input.kind !== "interaction" && input.kind !== "semantic")
+          throw new FoundryContextError(
+            "task_input_draft_invalid",
+            "Select interaction or semantic input preparation.",
+          );
+        const descriptor = prepareFoundryTaskInput(
+          context,
+          before.artifacts,
+          record.spec.target_entities,
+          input.kind,
+          input.draftFile,
+        );
+        const after = await runtime.inspectTask();
+        if (sha256Json(before.artifacts) !== sha256Json(after.artifacts))
+          throw new FoundryContextError(
+            "task_input_state_changed",
+            "Task evidence changed during input preparation. Inspect the current task and prepare again.",
+          );
+        assertNotInterrupted(options.signal);
+        return createFoundryOperationResult({
+          operation: "task.prepare-input",
+          status: "ready",
+          taskId: record.task_id,
+          artifacts: [inlineArtifact("prepared_task_input", descriptor)],
+          blockers: [],
+          nextActions: [
+            human(
+              "save_prepared_task_input",
+              `Save the prepared_task_input value as JSON and submit it through task resume --${input.kind}-input. Its SHA-256 bindings name the current indexed state and exact raw file bytes. Review the selected decisions and evidence before submission.`,
+            ),
+          ],
+          runtimeIdentity: runtimeIdentity(context, qualified),
+          permissions: noPermission(),
+        });
+      } catch (error) {
+        return failure(
+          "task.prepare-input",
+          input.taskId,
+          error,
+          current ? runtimeIdentity(current) : null,
+        );
       }
     },
     async status(input: { taskId: string; actorId: string }): Promise<FoundryOperationResult> {

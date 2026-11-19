@@ -6,6 +6,7 @@ import test from "node:test";
 import { sha256BatchJson, canonicalBatchJson, type BatchJsonValue } from "@tiangong-lca/cli/batch";
 import {
   classifyRepairMetadataDiff,
+  assertScientificRepairPaths,
   collectRepairChangedPaths,
   parseFoundryRepairSelection,
   readFoundryRepairScope,
@@ -321,6 +322,47 @@ test("repair metadata diff blocks every scientific and provider-impact surface",
   }
 });
 
+test("scientific repair keeps identity, ownership, permission and technical fields protected", () => {
+  const before = processPayload();
+  const candidate = structuredClone(before);
+  arrayValue(
+    recordValue(recordValue(candidate, "processDataSet"), "exchanges"),
+    "exchange",
+  )[0].meanAmount = "2.5";
+  assert.doesNotThrow(() => assertScientificRepairPaths(before, candidate));
+  for (const mutate of [
+    (payload: Json) => {
+      recordValue(payload, "processDataSet")["@xmlns"] = "changed namespace";
+    },
+    (payload: Json) => {
+      recordValue(
+        recordValue(recordValue(payload, "processDataSet"), "processInformation"),
+        "dataSetInformation",
+      )["common:UUID"] = "foreign-id";
+    },
+    (payload: Json) => {
+      recordValue(
+        recordValue(recordValue(payload, "processDataSet"), "administrativeInformation"),
+        "publicationAndOwnership",
+      )["common:copyright"] = "new licensing";
+    },
+    (payload: Json) => {
+      recordValue(
+        recordValue(recordValue(payload, "processDataSet"), "processInformation"),
+        "dataSetInformation",
+      )["common:other"] = { permission: "approved" };
+    },
+  ]) {
+    const mixed = structuredClone(candidate);
+    mutate(mixed);
+    assert.throws(
+      () => assertScientificRepairPaths(before, mixed),
+      (error: unknown) =>
+        (error as { code?: string }).code === "repair_scientific_scope_unsupported",
+    );
+  }
+});
+
 test("repair selection parsing enforces three selected sources and predecessor binding", () => {
   const sources = [
     { path: "inputs/contract.json" },
@@ -437,8 +479,20 @@ test("repair scope blocks scientific diffs and non-Process dataset types", () =>
   arrayValue(contract, "actions")[0].desired_sha256 = sha256Json(scientific);
   assert.throws(
     () => readScope(writeScope(fixture.dir, { ...fixture, contract, candidate: scientific })),
-    (error: unknown) =>
-      (error as { code?: string }).code === "repair_provider_impact_diagnostics_missing",
+    (error: unknown) => {
+      assert.equal((error as { code?: string }).code, "repair_provider_impact_diagnostics_missing");
+      assert.ok(error instanceof Error);
+      assert.match(error.message, /processDataSet\.exchanges\.exchange\.0\.meanAmount/u);
+      assert.match(error.message, /https:\/\/github\.com\/tiangong-lca\/worker\/issues\/288/u);
+      assert.match(
+        error.message,
+        /before\/candidate content and affected provider\/consumer closure/u,
+      );
+      assert.match(error.message, /field-bound source evidence, QA and curation/u);
+      assert.match(error.message, /Scientific repair remains blocked/u);
+      assert.equal(error.message.includes("9.9"), false, "diagnostics expose paths, not values");
+      return true;
+    },
   );
 
   const unsupported = structuredClone(fixture.candidate);

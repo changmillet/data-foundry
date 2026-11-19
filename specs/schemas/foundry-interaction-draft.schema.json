@@ -1,0 +1,323 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tiangong-lca.local/foundry/interaction-draft.schema.json",
+  "title": "Foundry interaction preparation draft v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "events"],
+  "properties": {
+    "schema": {
+      "const": "tiangong-foundry.interaction-draft.v1"
+    },
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/question"
+          },
+          {
+            "$ref": "#/$defs/answer"
+          },
+          {
+            "$ref": "#/$defs/assumption"
+          }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "pattern": "^[^\\u0000\\r\\n]+$"
+    },
+    "shortText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1200,
+      "pattern": "^[^\\u0000\\r\\n]+$"
+    },
+    "scope": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "enum": [
+            "contact",
+            "source",
+            "support",
+            "flow",
+            "flowproperty",
+            "unitgroup",
+            "process",
+            "lifecyclemodel"
+          ]
+        }
+      ]
+    },
+    "concreteScope": {
+      "enum": [
+        "contact",
+        "source",
+        "flow",
+        "flowproperty",
+        "unitgroup",
+        "process",
+        "lifecyclemodel"
+      ]
+    },
+    "objectScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entity_id", "version"],
+      "properties": {
+        "entity_id": {
+          "$ref": "#/$defs/id"
+        },
+        "version": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/text"
+      }
+    },
+    "question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id",
+        "dataset_type",
+        "missing",
+        "impact",
+        "recommendation",
+        "ask",
+        "choices",
+        "evidence_files",
+        "supersedes"
+      ],
+      "properties": {
+        "kind": {
+          "const": "question"
+        },
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "dataset_type": {
+          "$ref": "#/$defs/scope"
+        },
+        "object_scope": {
+          "$ref": "#/$defs/objectScope"
+        },
+        "missing": {
+          "$ref": "#/$defs/shortText"
+        },
+        "impact": {
+          "$ref": "#/$defs/shortText"
+        },
+        "recommendation": {
+          "$ref": "#/$defs/shortText"
+        },
+        "ask": {
+          "$ref": "#/$defs/shortText"
+        },
+        "choices": {
+          "type": "array",
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240,
+            "pattern": "^[^\\u0000\\r\\n]+$"
+          }
+        },
+        "supersedes": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_files": {
+          "$ref": "#/$defs/evidence"
+        }
+      },
+      "if": {
+        "properties": {
+          "object_scope": {}
+        },
+        "required": ["object_scope"]
+      },
+      "then": {
+        "properties": {
+          "dataset_type": {
+            "$ref": "#/$defs/concreteScope"
+          }
+        }
+      }
+    },
+    "answer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "question_id",
+        "decision_id",
+        "supersedes_decision_id",
+        "raw_answer",
+        "adopted_decision",
+        "disposition",
+        "evidence_files"
+      ],
+      "properties": {
+        "kind": {
+          "const": "answer"
+        },
+        "question_id": {
+          "$ref": "#/$defs/id"
+        },
+        "decision_id": {
+          "$ref": "#/$defs/id"
+        },
+        "supersedes_decision_id": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "raw_answer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384,
+          "pattern": "^[^\\u0000]+$"
+        },
+        "adopted_decision": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "disposition": {
+          "enum": ["decided", "investigate"]
+        },
+        "evidence_files": {
+          "$ref": "#/$defs/evidence"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "disposition": {
+                "const": "investigate"
+              }
+            },
+            "required": ["disposition"]
+          },
+          "then": {
+            "properties": {
+              "adopted_decision": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "adopted_decision": {
+                "$ref": "#/$defs/text"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "assumption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id",
+        "dataset_type",
+        "statement",
+        "impact",
+        "evidence_files",
+        "supersedes"
+      ],
+      "properties": {
+        "kind": {
+          "const": "assumption"
+        },
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "dataset_type": {
+          "$ref": "#/$defs/scope"
+        },
+        "object_scope": {
+          "$ref": "#/$defs/objectScope"
+        },
+        "statement": {
+          "$ref": "#/$defs/text"
+        },
+        "impact": {
+          "$ref": "#/$defs/text"
+        },
+        "supersedes": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_files": {
+          "$ref": "#/$defs/evidence"
+        }
+      },
+      "if": {
+        "properties": {
+          "object_scope": {}
+        },
+        "required": ["object_scope"]
+      },
+      "then": {
+        "properties": {
+          "dataset_type": {
+            "$ref": "#/$defs/concreteScope"
+          }
+        }
+      }
+    }
+  }
+}

@@ -25,6 +25,13 @@ import {
 } from "./foundry-repair-preflight.ts";
 import { sha256Json } from "./identity-preflight-proof.ts";
 import { workflowObject } from "./foundry-workflow-state.ts";
+import { runTidasRowsValidation } from "./tidas-adapter.ts";
+import { createFoundryIsolatedChildEnvironment } from "./foundry-runtime-environment.ts";
+import { runDatasetCurationCleanup } from "./import-curation/curation-cleanup.ts";
+import { runDatasetCurationGate } from "./import-curation/curation-gate.ts";
+import { projectFoundryValidationReferences } from "./foundry-validation-reference-context.ts";
+import { datasetIdentity, detectDatasetType } from "./import-curation/internal/dataset-payload.ts";
+import type { ScientificRepairEvidence } from "./foundry-scientific-repair.ts";
 
 const invalid = (message: string) =>
   new FoundryContextError("repair_edge_preflight_invalid", message);
@@ -60,7 +67,13 @@ export async function prepareEdgeProcessRepair(
   qualified: QualifiedFoundryRuntime,
   authentication: FoundryAuthentication,
   expectation: FoundryRepairExpectation,
-  files: { before: string; candidate: string; temporary: string; directory: string },
+  files: {
+    before: string;
+    candidate: string;
+    temporary: string;
+    directory: string;
+    scientific?: ScientificRepairEvidence;
+  },
 ) {
   const { before, candidate, temporary, directory } = files;
   const actor = await createFoundryEdgeActor(context, qualified, authentication);
@@ -97,7 +110,43 @@ export async function prepareEdgeProcessRepair(
   const referenceReport = references.report.files.report;
   if (typeof referenceReport !== "string") throw invalid("Repair dependency evidence is missing.");
   const documents = path.join(directory, "validation-references.json");
-  save(documents, references.referenceDocuments);
+  let validationReferences = references.referenceDocuments;
+  if (files.scientific) {
+    const input = JSON.parse(
+      readFoundryInput(context, files.scientific.worker_input.path, 64 * 1024 * 1024).toString(
+        "utf8",
+      ),
+    );
+    const frozen = workflowObject(input.baseline).documents;
+    if (!Array.isArray(frozen))
+      throw invalid(
+        "Scientific repair requires its complete census-verified native source inventory.",
+      );
+    const additional = frozen
+      .map(workflowObject)
+      .filter((entry) =>
+        ["flow", "flowproperty", "unitgroup"].includes(
+          String(workflowObject(entry.identity).dataset_type),
+        ),
+      )
+      .map((entry) => entry.document);
+    const byIdentity = new Map<string, unknown>();
+    for (const row of [...validationReferences, ...additional]) {
+      const type = detectDatasetType(row);
+      if (!type || !["flow", "flowproperty", "unitgroup"].includes(type))
+        throw invalid(
+          "Scientific QA references must be exact Flow, FlowProperty or UnitGroup bodies.",
+        );
+      const identity = datasetIdentity(row, 0, type);
+      const key = `${type}:${identity.id}@${identity.version}`;
+      const prior = byIdentity.get(key);
+      if (prior && sha256Json(prior) !== sha256Json(identity.payload))
+        throw invalid("Scientific QA references contain competing exact source bodies.");
+      byIdentity.set(key, identity.payload);
+    }
+    validationReferences = [...byIdentity.values()];
+  }
+  save(documents, validationReferences);
   const validate = (file: string, directory: string) => {
     const validation = runFoundryTypedDatasetQa(
       context,
@@ -119,7 +168,77 @@ export async function prepareEdgeProcessRepair(
   };
   const complete = validate(candidate, path.join(directory, "validation"));
   const ruleVerification = readEdgeRepairValidation(complete, expectation);
+  if (files.scientific && Object.values(ruleVerification).some((passed) => !passed))
+    throw invalid(
+      "Scientific repair requires every candidate validation layer to pass before authorization.",
+    );
   const requiresBeforeValidation = Object.values(ruleVerification).includes(false);
+  let scientificGates: Record<string, unknown> | null = null;
+  if (files.scientific) {
+    const cleanupDirectory = path.join(directory, "cleanup");
+    const cleanup = runDatasetCurationCleanup({
+      repoRoot: context.assetRoot,
+      options: { type: "process", rowsFile: candidate, outDir: cleanupDirectory },
+    });
+    const cleanedFile = cleanup.cleaned_rows_file;
+    if (cleanup.status !== "completed" || typeof cleanedFile !== "string")
+      throw invalid("Scientific repair cleanup must complete before validation and curation.");
+    if (sha256Json(readRows(candidate)) !== sha256Json(readRows(cleanedFile)))
+      throw invalid(
+        "Cleanup changed the selected scientific candidate. Review and register that complete candidate as a new immutable repair scope.",
+      );
+    const schemaRows = path.join(directory, "schema-validation-rows.jsonl");
+    const projected = projectFoundryValidationReferences(readRows(candidate), validationReferences);
+    writeFoundryArtifact(
+      context,
+      schemaRows,
+      projected.map((row) => JSON.stringify(row)).join("\n") + "\n",
+    );
+    const schema = runTidasRowsValidation({
+      repoRoot: context.assetRoot,
+      options: {
+        type: "process",
+        rowsFile: schemaRows,
+        outDir: path.join(directory, "schema"),
+        tidasBin: qualified.tidas.executable_path,
+      },
+      environment: createFoundryIsolatedChildEnvironment({
+        tempRoot: path.join(temporary, "science-schema-runtime"),
+      }),
+    });
+    if (typeof schema.report_file !== "string")
+      throw invalid("Scientific repair requires the qualified native schema report.");
+    const gateDirectory = path.join(directory, "curation");
+    const gate = runDatasetCurationGate({
+      repoRoot: context.assetRoot,
+      cliValidation: {
+        report: path.join(directory, "validation", "outputs", "validation-report.json"),
+        exit: 0,
+      },
+      options: {
+        type: "process",
+        rowsFile: candidate,
+        schemaReport: schema.report_file,
+        qaReport: path.join(directory, "validation", "process-qa-report.json"),
+        cleanupReport: path.join(cleanupDirectory, "dataset-curation-cleanup-report.json"),
+        outDir: gateDirectory,
+        profile: "generic",
+        includeExecutionCommands: false,
+      },
+    });
+    if (gate.status !== "ready")
+      throw invalid(
+        "Scientific repair requires the exact candidate to pass the existing Foundry curation gate without unresolved authoring or cleanup findings.",
+      );
+    scientificGates = {
+      schema: captureFoundryInput(schema.report_file),
+      schema_projection: captureFoundryInput(schemaRows),
+      cleanup: captureFoundryInput(
+        path.join(cleanupDirectory, "dataset-curation-cleanup-report.json"),
+      ),
+      curation: captureFoundryInput(path.join(gateDirectory, "dataset-curation-gate-report.json")),
+    };
+  }
   const beforeEvidence = requiresBeforeValidation
     ? validate(before, path.join(directory, "before-validation"))
     : null;
@@ -181,6 +300,7 @@ export async function prepareEdgeProcessRepair(
     rule_verification: ruleVerification,
     reference_evidence: captureFoundryInput(referenceReport),
     remote_before_sha256: sha256Json(checked.responses),
+    ...(scientificGates ? { scientific_gates: scientificGates } : {}),
   };
   save(path.join(directory, "owner-report.json"), report);
   return report;

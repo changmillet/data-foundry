@@ -257,7 +257,7 @@ export function advanceFoundryInteractionState(
 ): FoundryInteractionState {
   if (input.expected_state_sha256 !== currentSha256)
     invalid(
-      "Interaction state changed; reload the current question and submit against its digest.",
+      "Interaction state raw file-byte SHA-256 changed. Reload current_interaction_state.sha256 and prepare the input against that exact state.",
     );
   if (previous && (previous.task_id !== input.task_id || previous.actor_id !== input.actor_id))
     invalid("Interaction state belongs to another task or actor.");
@@ -390,7 +390,9 @@ export function readSelectedFoundryInteractionBytes(fact: FoundryInputFact): Buf
       bytes.length !== fact.bytes ||
       createHash("sha256").update(bytes).digest("hex") !== fact.sha256
     )
-      invalid("Interaction input changed after selection.");
+      invalid(
+        "Interaction input raw file-byte SHA-256 changed after selection. Preserve the selected file bytes and prepare again.",
+      );
     return bytes;
   } finally {
     fs.closeSync(fd);
