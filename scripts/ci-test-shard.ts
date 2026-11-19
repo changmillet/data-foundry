@@ -10,6 +10,7 @@ import {
 import { foundryCiReporterUrl } from "./ci-test-reporter.ts";
 import { readFoundryReleaseGit as git } from "./lib/foundry-release-contract.ts";
 import { readFoundryReleaseArtifact } from "./lib/foundry-release-prepared.ts";
+import { captureFoundryCiTestHost } from "./lib/foundry-ci-test-host.ts";
 import {
   managedDiagnosticsEnvironment,
   startManagedDiagnosticsOutput,
@@ -78,6 +79,7 @@ async function main(args: readonly string[]): Promise<void> {
   delete environment.NODE_OPTIONS;
   delete environment.NODE_TEST_CONTEXT;
   const started = performance.now();
+  let cancelled = false;
   const exitCode = await new Promise<number>((resolve, reject) => {
     const child = spawn(
       process.execPath,
@@ -95,7 +97,10 @@ async function main(args: readonly string[]): Promise<void> {
       { cwd: root, env: environment, stdio: "inherit", shell: false },
     );
     child.once("error", reject);
-    child.once("exit", (code) => resolve(code ?? 1));
+    child.once("exit", (code, signal) => {
+      cancelled = signal !== null;
+      resolve(code ?? 1);
+    });
   });
   const errors: string[] = [];
   let counts: Record<string, unknown> | null = null;
@@ -159,7 +164,20 @@ async function main(args: readonly string[]): Promise<void> {
       available: Boolean(managedFeedback.root),
       omission: managedFeedback.omission,
     },
+    host_observation: undefined as ReturnType<typeof captureFoundryCiTestHost> | undefined,
   };
+  if (process.platform === "win32")
+    receipt.host_observation = captureFoundryCiTestHost(root, {
+      source,
+      plan_sha256: expectedPlan,
+      index,
+      outcome:
+        cancelled || (typeof counts?.cancelled === "number" && counts.cancelled > 0)
+          ? "cancelled"
+          : errors.length
+            ? "failed"
+            : "passed",
+    });
   fs.writeFileSync(path.join(output, "test-shard.json"), `${JSON.stringify(receipt, null, 2)}\n`, {
     flag: "wx",
     mode: 0o644,
