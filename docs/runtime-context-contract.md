@@ -60,6 +60,8 @@ The runtime entry now exposes the six W05 hierarchical operations described in `
 
 The public task facade delegates sealed owner execution to `foundry-workflow-execution.ts`, request/attempt state to `foundry-owner-execution-store.ts`, and independent owner verification to `foundry-owner-readback.ts`. The existing closeout factory lives under `lib/finalize-owners` with its developer-command re-export preserved. Local operation receipts capture evidence only; the CLI batch boundary owns one-shot mutation and readback recovery. `foundry-workflow-reference-verify.ts` separately binds current semantic canonical targets to qualified CLI reference checks, using an explicit authentication environment and fresh output generation. See [public execution and recovery](public-runtime-contract.md#owner-execution-and-recovery).
 
+A scientific repair pins its deployment-selected Worker executable separately from the CLI and TIDAS runtime qualification. Its public result binds the frozen input, native report and the observed visible directory. The original task keeps those input and execution identities across preparation, approval and recovery. [Scientific repair](public-runtime-contract.md#scientific-process-repair)
+
 ## Runtime qualification and child admission
 
 The installed CLI contract test exercises the package's actual executable without credentials. It checks command and option availability for authoring context, identity preflight, exact reference/readback verification, and execution-contract draft writes. A dependency candidate can retain the public TypeScript exports while removing these executable routes. When migrating the Foundry callers, update the test alongside those callers and qualify behavior with the candidate's real package.

@@ -46,6 +46,7 @@ import { isEdgeSupportPlan } from "./foundry-edge-support-plan.ts";
 import { createFoundryEdgeActor } from "./foundry-edge-session.ts";
 import { dispatchFoundryEdgeSupport, verifyFoundryEdgeSupport } from "./foundry-edge-support.ts";
 import { createFoundryTypedModelDraft } from "./foundry-typed-model-write.ts";
+import { verifyScientificRepairBeforeDispatch } from "./foundry-workflow-repair.ts";
 
 type RequestArtifact = ReturnType<typeof readOwnerExecutionRequests>[number];
 type Readback = Awaited<ReturnType<typeof readbackFoundryOwner>>;
@@ -131,6 +132,13 @@ export async function executeFoundryOwnerScope(
             "Existing dispatch evidence cannot be treated as unattempted.",
           );
         if (edgePlan) {
+          if (edgePlan.update)
+            await verifyScientificRepairBeforeDispatch(
+              context,
+              qualified,
+              authentication,
+              requested.entry.sha256,
+            );
           const rows = verifySelectedEdgeDraftPlan(
             context,
             edgePlan,

@@ -189,6 +189,8 @@ Foundry selects a private session reference and exact project/user intent, then 
 
 `foundry-runtime-qualification.ts` binds current Foundry package identity to exact public CLI and independently selected native TIDAS bytes/protocols. `foundry-execution-admission.ts` then binds the current source lineage, derived final rows, active grant/actions/QA evidence and owner CLI CommandSpec. Rehydration in a new process reconstructs every process-local proof and checks the exact owner-draft argv shape before returning the spec. Mutation dispatch, attempt transitions and readback remain with the existing CLI/orchestration owners.
 
+The local descriptor preparer in `foundry-task-input-preparation.ts` derives digests from indexed task state. The scientific repair path in `foundry-scientific-repair.ts` binds the field sources, reviewer and native comparison. `foundry-repair-census.ts` independently observes visible identities and dependencies for preparation and original-attempt verification. [Public repair workflow](public-runtime-contract.md#scientific-process-repair)
+
 ## Public facade composition
 
 Preparation quality review is a Foundry-owned local policy decision over retained CLI QA evidence. `foundry-quality-review-input.ts` selects strict descriptors; `foundry-quality-review.ts` registers and rehydrates task-indexed evidence; `foundry-quality-review-lineage.ts` verifies the existing cleanup producer's exact validation-context derivation. Assessment, curation, finalization and execution admission consume the same narrow receipt. The CLI continues to own numerical QA, existing reference owners continue to own closure, and ordinary task authorization continues to own write permission. No separate task/state store or dataset writer is introduced.

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import childProcess from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -201,4 +202,47 @@ test("a stale or mismatched repair selection blocks registration with zero write
     hasCode("repair_provider_impact_diagnostics_missing"),
   );
   assert.equal(fs.existsSync(path.join(invalid.context.taskRoot!, "attempts")), false);
+});
+
+test("scientific Exchanges repair identifies the Worker evidence dependency before any remote call", (t) => {
+  const fixture = repairFixture(t, "Original source", ({ candidateFile, contractFile }) => {
+    const candidate = JSON.parse(fs.readFileSync(candidateFile, "utf8"));
+    candidate.processDataSet.exchanges.exchange[0].meanAmount = "9.9";
+    fs.writeFileSync(candidateFile, `${JSON.stringify(candidate)}\n`);
+    const contract = JSON.parse(fs.readFileSync(contractFile, "utf8"));
+    contract.actions[0].desired_sha256 = sha256Json(candidate);
+    fs.writeFileSync(contractFile, `${JSON.stringify(contract)}\n`);
+  });
+  const refuseRemote = (): never => {
+    throw new Error("Scientific repair registration must stay offline.");
+  };
+  const fetch = t.mock.method(globalThis, "fetch", refuseRemote);
+  const spawn = t.mock.method(childProcess, "spawn", refuseRemote);
+  const spawnSync = t.mock.method(childProcess, "spawnSync", refuseRemote);
+  assert.throws(
+    () =>
+      fixture.runtime.startTask({
+        lane: "existing-owner-draft-repair",
+        requestId: "repair-request-science-diagnostic",
+        targetEntities: ["process"],
+        repair: fixture.selection,
+      }),
+    (error: unknown) => {
+      assert.equal(hasCode("repair_provider_impact_diagnostics_missing")(error), true);
+      assert.ok(error instanceof Error);
+      assert.match(error.message, /processDataSet\.exchanges\.exchange\.0\.meanAmount/u);
+      assert.match(error.message, /tiangong-lca\/worker\/issues\/288/u);
+      assert.match(error.message, /Scientific repair remains blocked/u);
+      return true;
+    },
+  );
+  assert.equal(fetch.mock.calls.length, 0);
+  assert.equal(spawn.mock.calls.length, 0);
+  assert.equal(spawnSync.mock.calls.length, 0);
+  assert.equal(fs.existsSync(path.join(fixture.context.taskRoot!, "repair-scope.json")), false);
+  assert.equal(fs.existsSync(path.join(fixture.context.taskRoot!, "attempts")), false);
+  assert.equal(
+    fs.existsSync(path.join(fixture.context.taskRoot!, "outputs/execution-requests")),
+    false,
+  );
 });

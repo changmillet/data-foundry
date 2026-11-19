@@ -3,7 +3,7 @@ import type { createFoundryEdgeActor } from "./foundry-edge-session.ts";
 import type { EdgeSupportPlan, EdgeSupportRoot } from "./foundry-edge-support-plan.ts";
 import { sha256Json } from "./identity-preflight-proof.ts";
 
-type Actor = Awaited<ReturnType<typeof createFoundryEdgeActor>>;
+type Actor = Pick<Awaited<ReturnType<typeof createFoundryEdgeActor>>, "receipt" | "post">;
 type RootContent = {
   root: EdgeSupportRoot;
   content: Record<string, unknown>;

@@ -37,8 +37,15 @@ import {
   type FoundryRepairExpectation,
 } from "./foundry-repair-preflight.ts";
 import type { ArtifactEntry } from "./foundry-task-types.ts";
+import {
+  applyScientificRepairProposals,
+  assertScientificRepairDiagnosticReport,
+  runScientificRepairDiagnostic,
+} from "./foundry-scientific-repair.ts";
+import { verifyFoundryRepairCensus } from "./foundry-repair-census.ts";
 import { readTaskJson, relative as taskRelative } from "./foundry-task-io.ts";
 import { sha256Json } from "./identity-preflight-proof.ts";
+import { datasetIdentity } from "./import-curation/internal/dataset-payload.ts";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -54,6 +61,7 @@ export interface FoundryRepairSelectionFacts {
   readonly contract: string;
   readonly before: string;
   readonly candidate: string;
+  readonly scientific?: string;
 }
 
 export interface FoundryRepairPreparationRead {
@@ -132,6 +140,7 @@ export function foundryRepairSelection(
     contract: repair.contract as string,
     before: repair.before as string,
     candidate: repair.candidate as string,
+    ...(typeof repair.scientific === "string" ? { scientific: repair.scientific } : {}),
   });
 }
 
@@ -165,7 +174,31 @@ function resolveRepairScope(context: FoundryRuntimeContext): RepairScopeSeed {
     verifiedProjectRef: account.projectRef,
     stateCode: "0",
     relativePath: (file) => path.relative(context.workspaceRoot, file),
+    ...(selection.scientific
+      ? {
+          scientific: {
+            descriptorFile: resolveFoundryInputPath(context, selection.scientific),
+            actorId: context.actorId!,
+            selectedFiles: context.inputs.map((input) => input.path),
+            excludedRuntimeRoots: [
+              context.workspaceRoot,
+              context.cacheRoot,
+              ...context.inputs.map((input) => input.path),
+            ],
+            read: (file: string) => readFoundryInput(context, file, MAX_REPORT_BYTES),
+          },
+        }
+      : {}),
   });
+  if (
+    scope.scientific &&
+    sha256Json(readTaskJson(context, "repair-scope.json").scientific) !==
+      sha256Json(scope.scientific)
+  )
+    fail(
+      "repair_scientific_runtime_changed",
+      "Scientific repair must retain its originally registered source evidence and trusted provider-impact runtime.",
+    );
   return { scope, contractFile, beforeFile, candidateFile };
 }
 
@@ -403,6 +436,97 @@ export function readFoundryRepairPreparation(
       const reference = artifact("references/edge-support-precommit.json");
       const before = artifact("edge-before.json");
       const rules = readEdgeRepairValidation(typed, expected);
+      if (currentScope.scope.scientific) {
+        const native = verified.get("science:provider-impact-report.json");
+        const census = verified.get("science:census/proof.json");
+        if (
+          !native ||
+          !census ||
+          native.sha256 !== currentScope.scope.scientific.worker_report.sha256 ||
+          Object.values(rules).some((value) => !value)
+        )
+          fail(
+            "repair_report_invalid",
+            "Scientific repair requires indexed exact native provider-impact, complete census and fully passed validation evidence.",
+          );
+        const proof = readWorkflowArtifact(context, census).value;
+        assertScientificRepairDiagnosticReport(
+          readWorkflowArtifact(context, native).value,
+          currentScope.scope.scientific,
+        );
+        const gates = workflowObject(report.scientific_gates);
+        const workerInput = JSON.parse(
+          readFoundryInput(
+            context,
+            currentScope.scope.scientific.worker_input.path,
+            MAX_REPORT_BYTES,
+          ).toString("utf8"),
+        );
+        if (
+          proof.schema !== "tiangong-foundry.repair-census.v1" ||
+          proof.status !== "verified" ||
+          proof.actor_user_id !== context.accountIntent!.userId ||
+          proof.project_ref !== context.accountIntent!.projectRef ||
+          proof.input_object_sha256 !== sha256Json(workerInput) ||
+          proof.observation_phase !== "before" ||
+          proof.double_scan !== true ||
+          proof.transaction_snapshot !== false
+        )
+          fail(
+            "repair_report_invalid",
+            "Scientific repair census must bind the exact registered Worker input, account and complete observed scope.",
+          );
+        for (const [kind, role] of [
+          ["schema", "schema/outputs/validation-report.json"],
+          ["cleanup", "cleanup/dataset-curation-cleanup-report.json"],
+          ["curation", "curation/dataset-curation-gate-report.json"],
+        ] as const) {
+          const entry = verified.get(`edge-repair:out/${role}`);
+          const fact = workflowObject(gates[kind]);
+          if (!entry || fact.sha256 !== entry.sha256 || fact.bytes !== entry.bytes)
+            fail(
+              "repair_report_invalid",
+              "Scientific repair requires complete indexed native schema, cleanup and curation producer evidence.",
+            );
+          const checked = readWorkflowArtifact(context, entry).value;
+          if (
+            (kind === "cleanup" && checked.status !== "completed") ||
+            (kind === "curation" && checked.status !== "ready")
+          )
+            fail(
+              "repair_report_invalid",
+              "Scientific repair cannot adopt failed cleanup or curation evidence.",
+            );
+        }
+      }
+      if (currentScope.scope.scientific) {
+        const gates = workflowObject(report.scientific_gates);
+        const projection = verified.get("edge-repair:out/schema-validation-rows.jsonl");
+        const projectionFact = workflowObject(gates.schema_projection);
+        if (
+          !projection ||
+          projection.sha256 !== projectionFact.sha256 ||
+          projection.bytes !== projectionFact.bytes
+        )
+          fail(
+            "repair_report_invalid",
+            "Scientific native validation requires its indexed exact-payload Flow-context projection.",
+          );
+        const candidateRows = readRows(currentScope.candidateFile);
+        const projectedRows = readRows(resolveFoundryOutput(context, projection.path));
+        if (
+          candidateRows.length !== projectedRows.length ||
+          candidateRows.some(
+            (row, index) =>
+              sha256Json(datasetIdentity(row, index, "process").payload) !==
+              sha256Json(datasetIdentity(projectedRows[index], index, "process").payload),
+          )
+        )
+          fail(
+            "repair_report_invalid",
+            "Scientific native validation projection changed a reviewed write payload.",
+          );
+      }
       const beforeValidation = Object.values(rules).includes(false)
         ? artifact("before-validation/outputs/validation-report.json")
         : null;
@@ -498,6 +622,44 @@ export async function prepareFoundryRepair(
       verifyCommands: [FOUNDRY_REPAIR_PREFLIGHT_COMMAND],
     });
     try {
+      if (scope.scientific) {
+        if (qualified.cli.expectation.package_version !== "0.4.0")
+          fail(
+            "repair_scientific_runtime_unsupported",
+            "Scientific repair requires the qualified typed Process runtime.",
+          );
+        const directory = path.join(temporary, "science");
+        fs.mkdirSync(directory, { mode: 0o700 });
+        stagedTrees.push({ name: "science", directory });
+        const workerInput = JSON.parse(
+          readFoundryInput(context, scope.scientific.worker_input.path, MAX_REPORT_BYTES).toString(
+            "utf8",
+          ),
+        );
+        const census = await verifyFoundryRepairCensus(
+          context,
+          qualified,
+          authentication,
+          workerInput,
+          path.join(directory, "census"),
+        );
+        const diagnostic = runScientificRepairDiagnostic(scope.scientific, directory);
+        applyScientificRepairProposals(
+          context,
+          qualified,
+          temporary,
+          scope.scientific,
+          beforeFile,
+          candidateFile,
+          path.join(directory, "patch"),
+        );
+        evidenceDetails.push({
+          role: "scientific_preflight",
+          census: census.proof,
+          diagnostic_sha256: scope.scientific.worker_report.sha256,
+          affected_processes: diagnostic.affected_processes,
+        });
+      }
       if (qualified.cli.expectation.package_version === "0.4.0") {
         const root = path.join(temporary, "edge-repair");
         fs.mkdirSync(root, { mode: 0o700 });
@@ -512,6 +674,7 @@ export async function prepareFoundryRepair(
             candidate: candidateFile,
             temporary,
             directory: path.join(root, "out"),
+            scientific: scope.scientific,
           },
         );
         evidenceDetails.push({ role: "edge_preflight", report });
@@ -757,6 +920,7 @@ export async function prepareFoundryRepair(
             rows_sha256: scope.rows_sha256,
             changed_paths: [...scope.changed_paths],
             actions: scope.actions.map((action) => ({ ...action })),
+            ...(scope.scientific ? { scientific: scope.scientific } : {}),
           },
           contract: {
             role: "execution_contract",
@@ -793,4 +957,97 @@ export async function prepareFoundryRepair(
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true });
   }
+}
+
+/** Fresh observation belongs before the first consumed attempt. Recovery keeps the original write. */
+export async function verifyScientificRepairBeforeDispatch(
+  context: FoundryRuntimeContext,
+  qualified: QualifiedFoundryRuntime,
+  authentication: FoundryAuthentication,
+  requestSha256: string,
+): Promise<void> {
+  const { scope } = resolveRepairScope(context);
+  if (!scope.scientific) return;
+  const evidence = scope.scientific;
+  const temporary = createWorkflowDirectory(context, "tmp/scientific-repair-precommit-");
+  try {
+    const input = JSON.parse(
+      readFoundryInput(context, evidence.worker_input.path, MAX_REPORT_BYTES).toString("utf8"),
+    );
+    const census = await verifyFoundryRepairCensus(
+      context,
+      qualified,
+      authentication,
+      input,
+      path.join(temporary, "census"),
+    );
+    await runFoundryTaskOperation(
+      context,
+      {
+        command: FOUNDRY_REPAIR_PREFLIGHT_COMMAND,
+        options: {
+          task: context.taskId,
+          stage: "scientific_precommit",
+          request_sha256: requestSha256,
+          nonce: randomUUID(),
+        },
+        validateCurrent: () => {
+          resolveRepairScope(context);
+        },
+      },
+      (operation) => {
+        const stage = createWorkflowStageDirectory(context, operation, "scientific-precommit");
+        for (const file of census.files) {
+          const relative = path.relative(temporary, file);
+          if (relative.startsWith("..") || path.isAbsolute(relative))
+            fail(
+              "repair_census_unproven",
+              "Scientific precommit evidence must remain inside its producer directory.",
+            );
+          operation.writeText(path.join(stage, relative), fs.readFileSync(file));
+        }
+        const report = {
+          schema: "tiangong-foundry.scientific-repair-precommit.v1",
+          request_sha256: requestSha256,
+          worker_input: evidence.worker_input,
+          observed_census: census.proof,
+          remote_writes: 0,
+        };
+        operation.writeJson(path.join(stage, "scientific-precommit.json"), report);
+        return report;
+      },
+    );
+  } finally {
+    fs.rmSync(temporary, { recursive: true, force: true });
+  }
+}
+
+/** Observe the written overlay and all peers again. This cannot close the interval between reads. */
+export async function verifyScientificRepairAfterReadback(
+  context: FoundryRuntimeContext,
+  qualified: QualifiedFoundryRuntime,
+  authentication: FoundryAuthentication,
+  directory: string,
+): Promise<JsonRecord | null> {
+  const { scope } = resolveRepairScope(context);
+  if (!scope.scientific) return null;
+  const input = JSON.parse(
+    readFoundryInput(context, scope.scientific.worker_input.path, MAX_REPORT_BYTES).toString(
+      "utf8",
+    ),
+  );
+  const census = await verifyFoundryRepairCensus(
+    context,
+    qualified,
+    authentication,
+    input,
+    directory,
+    "after",
+  );
+  return {
+    original_worker_input: scope.scientific.worker_input,
+    observed_census: census.proof,
+    concurrent_interval_atomicity: "unproven",
+    publication_ready: false,
+  };
 }

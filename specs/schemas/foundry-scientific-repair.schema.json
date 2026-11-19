@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tiangong-lca.local/foundry/scientific-repair.schema.json",
+  "title": "Foundry scientific owner-draft repair evidence selection",
+  "type": "object",
+  "required": [
+    "schema",
+    "author_id",
+    "worker_input",
+    "worker_report",
+    "changes",
+    "review",
+    "sources"
+  ],
+  "properties": {
+    "schema": {
+      "const": "tiangong-foundry.scientific-repair.v1"
+    },
+    "author_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "worker_input": {
+      "$ref": "#/$defs/selectedFile"
+    },
+    "worker_report": {
+      "$ref": "#/$defs/selectedFile"
+    },
+    "changes": {
+      "$ref": "#/$defs/selectedFile"
+    },
+    "review": {
+      "$ref": "#/$defs/selectedFile"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/selectedFile"
+      },
+      "minItems": 1,
+      "maxItems": 128,
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "selectedFile": {
+      "type": "object",
+      "properties": {
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Canonical path of a source selected in this task."
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "SHA-256 of the selected file bytes."
+        }
+      },
+      "required": ["file", "sha256"],
+      "additionalProperties": false
+    }
+  }
+}

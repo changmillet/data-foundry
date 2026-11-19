@@ -45,6 +45,7 @@ import { verifySelectedEdgeDraftPlan } from "./foundry-edge-draft-admission.ts";
 import { isEdgeSupportPlan } from "./foundry-edge-support-plan.ts";
 import { createFoundryEdgeActor } from "./foundry-edge-session.ts";
 import { verifyFoundryEdgeSupport } from "./foundry-edge-support.ts";
+import { verifyScientificRepairAfterReadback } from "./foundry-workflow-repair.ts";
 
 export async function readbackFoundryOwner(
   context: FoundryRuntimeContext,
@@ -78,6 +79,26 @@ export async function readbackFoundryOwner(
     const verification = await verifyFoundryEdgeSupport(actor, plan, "after");
     const output = resolveFoundryOutput(context, `outputs/owner-readback/${randomUUID()}`);
     fs.mkdirSync(output, { recursive: true, mode: 0o700 });
+    let scientificReadback: Record<string, unknown> | null = null;
+    const scientificBlockers: Record<string, unknown>[] = [];
+    if (repair && !verification.blockers.length) {
+      try {
+        scientificReadback = await verifyScientificRepairAfterReadback(
+          context,
+          qualified,
+          authentication,
+          path.join(output, "scientific-census"),
+        );
+      } catch (error) {
+        if (!(error instanceof FoundryContextError)) throw error;
+        scientificBlockers.push({
+          code: error.code,
+          message: error.message,
+          mutation_attempt_consumed: true,
+          recovery: "readback_only",
+        });
+      }
+    }
     const report = path.join(output, "edge-verification.json");
     const checks = path.join(output, "edge-checks.json");
     fs.writeFileSync(report, JSON.stringify(verification.responses, null, 2) + "\n", {
@@ -89,7 +110,7 @@ export async function readbackFoundryOwner(
     readFoundryInput(context, request.content.input.path);
     const proof = {
       schema: "tiangong-foundry.owner-readback.v1",
-      status: verification.blockers.length ? "unresolved" : "verified",
+      status: verification.blockers.length || scientificBlockers.length ? "unresolved" : "verified",
       request_scope: request.scope_id,
       input: request.content.input,
       edge_plan_sha256: plan.sha256,
@@ -104,7 +125,8 @@ export async function readbackFoundryOwner(
         : {}),
       report: captureFoundryInput(report),
       checks: captureFoundryInput(checks),
-      blockers: verification.blockers,
+      blockers: [...verification.blockers, ...scientificBlockers],
+      ...(scientificReadback ? { scientific_readback: scientificReadback } : {}),
     };
     fs.writeFileSync(
       path.join(output, "owner-readback.json"),

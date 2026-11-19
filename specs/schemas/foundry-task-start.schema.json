@@ -335,8 +335,9 @@
       "required": ["kind", "contract", "before", "candidate", "predecessor"],
       "properties": {
         "kind": {
-          "const": "existing-owner-draft-metadata"
+          "enum": ["existing-owner-draft-metadata", "existing-owner-draft-scientific"]
         },
+        "scientific": { "type": "string", "minLength": 1, "maxLength": 4096 },
         "contract": {
           "type": "string",
           "minLength": 1,
@@ -373,7 +374,14 @@
             }
           ]
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "existing-owner-draft-scientific" } } },
+          "then": { "required": ["scientific"] },
+          "else": { "not": { "required": ["scientific"] } }
+        }
+      ]
     }
   }
 }

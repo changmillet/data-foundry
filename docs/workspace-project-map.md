@@ -110,7 +110,7 @@ The Wave 26 library, classification, authoring, process-scope and batch modules 
 
 | Need | Owning project | Normal surface |
 | --- | --- | --- |
-| Installed workspace/task facade, request revisions and local task evidence | `tiangong-lca-data-foundry` | W06 candidate `tiangong-foundry workspace ...`, `doctor`, and `task start/status/resume`; W08 publishes F1 |
+| Installed workspace/task facade, request revisions and local task evidence | `tiangong-lca-data-foundry` | W06 candidate `tiangong-foundry workspace ...`, `doctor`, and `task start/prepare-input/status/resume`; W08 publishes F1 |
 | Task-local goal, decision history, scoped reassessment and indexed recap source | `tiangong-lca-data-foundry` for state and deterministic binding; `tiangong-lca-skills` for question/answer wording and recap prose | Optional task brief, `task resume --interaction-input`, explicit task/type/registered-object scope, per-object current authoring context and decision-bound row successors; CLI scientific and write gates remain separate |
 | Offline final-delivery promotion and reviewer gate | `tiangong-lca-data-foundry` | `node scripts/foundry.ts final-delivery-promote`, `foundry-final-delivery-manifest.v1`, immutable promotion ledger/report, detached non-production seal |
 | TIDAS schema/methodology runtime contract | Rust `tidas` for deterministic validation; `tidas-sdk`/`tiangong-lca-cli` for AI context | `tidas validate --describe`; `pnpm exec tiangong-lca dataset context-pack` |

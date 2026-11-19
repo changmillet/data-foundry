@@ -1,9 +1,48 @@
 {
   "$schema": "../specs/schemas/file-location-registry.schema.json",
   "schema_version": 1,
-  "updated_at_utc": "2026-10-10T23:53:47.112839+00:00",
+  "updated_at_utc": "2026-11-19T02:18:52.473335+00:00",
   "policy_doc": "docs/file-organization.md",
   "entries": [
+    {
+      "id": "task-input-preparation",
+      "status": "active",
+      "classification": "task-evidence-adapter",
+      "current_path": "scripts/lib/foundry-task-input-preparation.ts",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": ["scripts/foundry-facade.ts", "docs/public-runtime-contract.md"],
+      "sensitivity": "Tracked runtime source. Private task evidence stays in the actor workspace.",
+      "tracked": true,
+      "notes": "Derives strict task descriptors from registered state and selected input facts."
+    },
+    {
+      "id": "scientific-repair-evidence",
+      "status": "active",
+      "classification": "task-evidence-adapter",
+      "current_path": "scripts/lib/foundry-scientific-repair.ts",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": ["scripts/lib/foundry-repair-scope.ts", "docs/public-runtime-contract.md"],
+      "sensitivity": "Tracked runtime source. Private task evidence stays in the actor workspace.",
+      "tracked": true,
+      "notes": "Binds selected field sources, review and a deployment-qualified Worker report."
+    },
+    {
+      "id": "scientific-repair-census",
+      "status": "active",
+      "classification": "task-evidence-adapter",
+      "current_path": "scripts/lib/foundry-repair-census.ts",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "referenced_by": [
+        "scripts/lib/foundry-workflow-repair.ts",
+        "docs/public-runtime-contract.md"
+      ],
+      "sensitivity": "Tracked runtime source. Private task evidence stays in the actor workspace.",
+      "tracked": true,
+      "notes": "Compares authenticated catalog observations with the frozen Worker family."
+    },
     {
       "id": "codex-stop-hook-config",
       "status": "active",

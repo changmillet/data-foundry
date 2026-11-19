@@ -545,6 +545,10 @@ Production case TDD is deliberately separate from the numbered import lane and o
 
 Rows remain source-language before import. Bilingual completion is a separate post-import task only when requested.
 
+## Revising a current owner draft
+
+For scientific edits to an existing Process, select its exact before document, a reviewed candidate and the source evidence for each change. Run the qualified Worker comparison, then start the installed repair lane with its scientific selection. The task returns the next preparation, approval or recovery action. For an uncertain write, retain its request and use the returned readback action. [Scientific Process repair](docs/public-runtime-contract.md#scientific-process-repair)
+
 ## Incremental Release Lane
 
 When the task imports a newer release over existing owner-draft rows, do not restart the whole authoring/write path by default:

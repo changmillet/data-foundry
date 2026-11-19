@@ -7,6 +7,7 @@ import {
   assertFoundryWorkspaceWrite,
   assertPendingFoundryTaskIntent,
   captureFoundryInput,
+  readFoundryInput,
   resolveFoundryAsset,
   resolveFoundryOutput,
   resolveFoundryInputPath,
@@ -333,6 +334,11 @@ export function createTask(
       "task_spec_repair_invalid",
       "Phase 1 repair admits exactly one target entity type: process.",
     );
+  if (repairSelection?.scientific && profileId !== "generic")
+    fail(
+      "repair_scientific_profile_unsupported",
+      "Scientific repair currently admits the generic profile with complete validation and no profile waivers.",
+    );
   if (
     ![
       "external-dataset-curated-import",
@@ -443,6 +449,21 @@ export function createTask(
       verifiedProjectRef: projectRef,
       stateCode: "0",
       relativePath: (file) => path.relative(context.workspaceRoot, file),
+      ...(repairSelection.scientific
+        ? {
+            scientific: {
+              descriptorFile: boundPath(repairSelection.scientific),
+              actorId: context.actorId!,
+              selectedFiles: context.inputs.map((input) => input.path),
+              excludedRuntimeRoots: [
+                context.workspaceRoot,
+                context.cacheRoot,
+                ...context.inputs.map((input) => input.path),
+              ],
+              read: (file: string) => readFoundryInput(context, file, 64 * 1024 * 1024),
+            },
+          }
+        : {}),
     });
     repairDocuments = [
       [
@@ -455,6 +476,7 @@ export function createTask(
           rows_sha256: scope.rows_sha256,
           changed_paths: [...scope.changed_paths],
           actions: scope.actions.map((action) => ({ ...action })),
+          ...(scope.scientific ? { scientific: scope.scientific } : {}),
           remote_state_verified: false as const,
         }),
       ],

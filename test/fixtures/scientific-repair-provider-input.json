@@ -1,0 +1,1793 @@
+{
+  "baseline": {
+    "actor_user_id": "c536ee37-64ab-427b-b7e3-4e2bb4fdffb7",
+    "documents": [
+      {
+        "identity": {
+          "dataset_type": "process",
+          "id": "11111111-1111-4111-8111-111111111111",
+          "version": "01.00.000"
+        },
+        "document": {
+          "processDataSet": {
+            "@xmlns": "http://lca.jrc.it/ILCD/Process",
+            "@xmlns:common": "http://lca.jrc.it/ILCD/Common",
+            "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+            "@version": "1.1",
+            "@locations": "../ILCDLocations.xml",
+            "@xsi:schemaLocation": "http://lca.jrc.it/ILCD/Process ../../schemas/ILCD_ProcessDataSet.xsd",
+            "processInformation": {
+              "dataSetInformation": {
+                "common:UUID": "11111111-1111-4111-8111-111111111111",
+                "name": {
+                  "baseName": [
+                    {
+                      "#text": "Annual volume validation fixture",
+                      "@xml:lang": "en"
+                    }
+                  ],
+                  "treatmentStandardsRoutes": [
+                    {
+                      "#text": "Controlled validation fixture",
+                      "@xml:lang": "en"
+                    }
+                  ],
+                  "mixAndLocationTypes": [
+                    {
+                      "#text": "GLO",
+                      "@xml:lang": "en"
+                    }
+                  ],
+                  "functionalUnitFlowProperties": [
+                    {
+                      "#text": "kg",
+                      "@xml:lang": "en"
+                    }
+                  ]
+                },
+                "classificationInformation": {
+                  "common:classification": {
+                    "common:class": [
+                      {
+                        "@level": "0",
+                        "@classId": "D",
+                        "#text": "Electricity, gas, steam and air conditioning supply"
+                      },
+                      {
+                        "@level": "1",
+                        "@classId": "35",
+                        "#text": "Electricity, gas, steam and air conditioning supply"
+                      },
+                      {
+                        "@level": "2",
+                        "@classId": "351",
+                        "#text": "Electric power generation, transmission and distribution activities"
+                      },
+                      {
+                        "@level": "3",
+                        "@classId": "3511",
+                        "#text": "Electric power generation activities from non-renewable sources"
+                      }
+                    ]
+                  }
+                },
+                "common:generalComment": [
+                  {
+                    "#text": "Controlled synthetic test input; no operational dataset.",
+                    "@xml:lang": "en"
+                  }
+                ]
+              },
+              "quantitativeReference": {
+                "@type": "Reference flow(s)",
+                "referenceToReferenceFlow": "1",
+                "functionalUnitOrOther": {
+                  "@xml:lang": "en",
+                  "#text": "1 kg of synthetic product"
+                }
+              },
+              "time": {
+                "common:referenceYear": 2025,
+                "common:timeRepresentativenessDescription": [
+                  {
+                    "#text": "Reference year documented in build plan evidence.",
+                    "@xml:lang": "en"
+                  }
+                ]
+              },
+              "geography": {
+                "locationOfOperationSupplyOrProduction": {
+                  "@location": "GLO",
+                  "descriptionOfRestrictions": [
+                    {
+                      "#text": "Operation location: GLO.",
+                      "@xml:lang": "en"
+                    }
+                  ]
+                }
+              },
+              "technology": {
+                "technologyDescriptionAndIncludedProcesses": [
+                  {
+                    "#text": "Controlled validation fixture",
+                    "@xml:lang": "en"
+                  }
+                ]
+              }
+            },
+            "modellingAndValidation": {
+              "LCIMethodAndAllocation": {
+                "typeOfDataSet": "Unit process, single operation",
+                "LCIMethodPrinciple": "Attributional"
+              },
+              "dataSourcesTreatmentAndRepresentativeness": {
+                "dataCutOffAndCompletenessPrinciples": [
+                  {
+                    "#text": "Cut-off and completeness principles are documented in the build plan evidence.",
+                    "@xml:lang": "en"
+                  }
+                ],
+                "referenceToDataSource": {
+                  "@type": "source data set",
+                  "@refObjectId": "33333333-3333-4333-8333-333333333333",
+                  "@version": "00.00.000",
+                  "@uri": "../source-data-set/33333333-3333-4333-8333-333333333333.xml",
+                  "common:shortDescription": {
+                    "#text": "Build plan evidence source",
+                    "@xml:lang": "en"
+                  }
+                },
+                "annualSupplyOrProductionVolume": [
+                  {
+                    "#text": "100 kg/year",
+                    "@xml:lang": "en"
+                  }
+                ]
+              },
+              "validation": {
+                "review": {
+                  "@type": "Not reviewed"
+                }
+              },
+              "complianceDeclarations": {
+                "compliance": {
+                  "common:referenceToComplianceSystem": {
+                    "@type": "source data set",
+                    "@refObjectId": "3fe52597-8eb8-5b70-9b5d-8e966000304f",
+                    "@version": "00.00.000",
+                    "@uri": "../source-data-set/3fe52597-8eb8-5b70-9b5d-8e966000304f.xml",
+                    "common:shortDescription": {
+                      "#text": "Build plan compliance system",
+                      "@xml:lang": "en"
+                    }
+                  },
+                  "common:approvalOfOverallCompliance": "Not defined",
+                  "common:nomenclatureCompliance": "Not defined",
+                  "common:methodologicalCompliance": "Not defined",
+                  "common:reviewCompliance": "Not defined",
+                  "common:documentationCompliance": "Not defined",
+                  "common:qualityCompliance": "Not defined"
+                }
+              }
+            },
+            "administrativeInformation": {
+              "common:commissionerAndGoal": {
+                "common:referenceToCommissioner": {
+                  "@type": "contact data set",
+                  "@refObjectId": "6ad65cb3-6224-53fb-ba60-42c5eaf798dd",
+                  "@version": "00.00.000",
+                  "@uri": "../contact-data-set/6ad65cb3-6224-53fb-ba60-42c5eaf798dd.xml",
+                  "common:shortDescription": {
+                    "#text": "Build plan commissioner",
+                    "@xml:lang": "en"
+                  }
+                },
+                "common:intendedApplications": [
+                  {
+                    "#text": "Automated LCA data production draft for expert review.",
+                    "@xml:lang": "en"
+                  }
+                ]
+              },
+              "dataEntryBy": {
+                "common:timeStamp": "1970-01-01T00:00:00.000Z",
+                "common:referenceToDataSetFormat": {
+                  "@type": "source data set",
+                  "@refObjectId": "56e8b7bd-4eaf-5c2c-9113-f8d42b8f14b3",
+                  "@version": "00.00.000",
+                  "@uri": "../source-data-set/56e8b7bd-4eaf-5c2c-9113-f8d42b8f14b3.xml",
+                  "common:shortDescription": {
+                    "#text": "TIDAS / ILCD data set format",
+                    "@xml:lang": "en"
+                  }
+                },
+                "common:referenceToPersonOrEntityEnteringTheData": {
+                  "@type": "contact data set",
+                  "@refObjectId": "d1d4b02d-5cab-5f60-a784-781239de028c",
+                  "@version": "00.00.000",
+                  "@uri": "../contact-data-set/d1d4b02d-5cab-5f60-a784-781239de028c.xml",
+                  "common:shortDescription": {
+                    "#text": "Build plan data_entry",
+                    "@xml:lang": "en"
+                  }
+                }
+              },
+              "publicationAndOwnership": {
+                "common:dataSetVersion": "01.00.000",
+                "common:permanentDataSetURI": "https://data.tiangong.earth/processes/11111111-1111-4111-8111-111111111111.xml",
+                "common:referenceToOwnershipOfDataSet": {
+                  "@type": "contact data set",
+                  "@refObjectId": "4d2c29b9-6856-54df-994f-d118e1e0484d",
+                  "@version": "00.00.000",
+                  "@uri": "../contact-data-set/4d2c29b9-6856-54df-994f-d118e1e0484d.xml",
+                  "common:shortDescription": {
+                    "#text": "Build plan owner",
+                    "@xml:lang": "en"
+                  }
+                },
+                "common:copyright": "false",
+                "common:licenseType": "Free of charge for all users and uses"
+              }
+            },
+            "exchanges": {
+              "exchange": [
+                {
+                  "@dataSetInternalID": "1",
+                  "referenceToFlowDataSet": {
+                    "@type": "flow data set",
+                    "@refObjectId": "22222222-2222-4222-8222-222222222222",
+                    "@version": "01.00.000",
+                    "@uri": "../flow-data-set/22222222-2222-4222-8222-222222222222.xml",
+                    "common:shortDescription": {
+                      "@xml:lang": "en",
+                      "#text": "2-chloro-3-methyl-4-(methylsulfonyl) benzoic acid; Synthetic fixture; Global synthetic flow"
+                    }
+                  },
+                  "exchangeDirection": "Output",
+                  "meanAmount": "1",
+                  "resultingAmount": "1",
+                  "dataDerivationTypeStatus": "Estimated",
+                  "quantitativeReference": true,
+                  "referencesToDataSource": {
+                    "referenceToDataSource": {
+                      "@type": "source data set",
+                      "@refObjectId": "33333333-3333-4333-8333-333333333333",
+                      "@version": "00.00.000",
+                      "@uri": "../source-data-set/33333333-3333-4333-8333-333333333333.xml",
+                      "common:shortDescription": {
+                        "#text": "Build plan evidence source",
+                        "@xml:lang": "en"
+                      }
+                    }
+                  },
+                  "allocations": {
+                    "allocation": {
+                      "@internalReferenceToCoProduct": "1",
+                      "@allocatedFraction": "100"
+                    }
+                  }
+                },
+                {
+                  "@dataSetInternalID": "0",
+                  "referenceToFlowDataSet": {
+                    "@type": "flow data set",
+                    "@refObjectId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+                    "@version": "01.00.000",
+                    "@uri": "../flow-data-set/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb.xml",
+                    "common:shortDescription": {
+                      "@xml:lang": "en",
+                      "#text": "2-chloro-3-methyl-4-(methylsulfonyl) benzoic acid; Synthetic fixture; Global synthetic flow"
+                    }
+                  },
+                  "exchangeDirection": "Input",
+                  "meanAmount": "1",
+                  "resultingAmount": "1",
+                  "dataDerivationTypeStatus": "Estimated",
+                  "quantitativeReference": false,
+                  "referencesToDataSource": {
+                    "referenceToDataSource": {
+                      "@type": "source data set",
+                      "@refObjectId": "33333333-3333-4333-8333-333333333333",
+                      "@version": "00.00.000",
+                      "@uri": "../source-data-set/33333333-3333-4333-8333-333333333333.xml",
+                      "common:shortDescription": {
+                        "#text": "Build plan evidence source",
+                        "@xml:lang": "en"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "document_sha256": "7b0a84222a505c980ab220bde183d24365fe5b85a52b88c4cffaeff437d91730",
+        "user_id": "c536ee37-64ab-427b-b7e3-4e2bb4fdffb7",
+        "state_code": 0,
+        "model_id": null,
+        "model_version": null,
+        "team_id": null,
+        "review_id": null
+      },
+      {
+        "identity": {
+          "dataset_type": "process",
+          "id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+          "version": "01.00.000"
+        },
+        "document": {
+          "processDataSet": {
+            "@xmlns": "http://lca.jrc.it/ILCD/Process",
+            "@xmlns:common": "http://lca.jrc.it/ILCD/Common",
+            "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+            "@version": "1.1",
+            "@locations": "../ILCDLocations.xml",
+            "@xsi:schemaLocation": "http://lca.jrc.it/ILCD/Process ../../schemas/ILCD_ProcessDataSet.xsd",
+            "processInformation": {
+              "dataSetInformation": {
+                "common:UUID": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+                "name": {
+                  "baseName": [
+                    {
+                      "#text": "Annual volume validation fixture",
+                      "@xml:lang": "en"
+                    }
+                  ],
+                  "treatmentStandardsRoutes": [
+                    {
+                      "#text": "Controlled validation fixture",
+                      "@xml:lang": "en"
+                    }
+                  ],
+                  "mixAndLocationTypes": [
+                    {
+                      "#text": "GLO",
+                      "@xml:lang": "en"
+                    }
+                  ],
+                  "functionalUnitFlowProperties": [
+                    {
+                      "#text": "kg",
+                      "@xml:lang": "en"
+                    }
+                  ]
+                },
+                "classificationInformation": {
+                  "common:classification": {
+                    "common:class": [
+                      {
+                        "@level": "0",
+                        "@classId": "D",
+                        "#text": "Electricity, gas, steam and air conditioning supply"
+                      },
+                      {
+                        "@level": "1",
+                        "@classId": "35",
+                        "#text": "Electricity, gas, steam and air conditioning supply"
+                      },
+                      {
+                        "@level": "2",
+                        "@classId": "351",
+                        "#text": "Electric power generation, transmission and distribution activities"
+                      },
+                      {
+                        "@level": "3",
+                        "@classId": "3511",
+                        "#text": "Electric power generation activities from non-renewable sources"
+                      }
+                    ]
+                  }
+                },
+                "common:generalComment": [
+                  {
+                    "#text": "Controlled synthetic test input; no operational dataset.",
+                    "@xml:lang": "en"
+                  }
+                ]
+              },
+              "quantitativeReference": {
+                "@type": "Reference flow(s)",
+                "referenceToReferenceFlow": "1",
+                "functionalUnitOrOther": {
+                  "@xml:lang": "en",
+                  "#text": "1 kg of synthetic product"
+                }
+              },
+              "time": {
+                "common:referenceYear": 2025,
+                "common:timeRepresentativenessDescription": [
+                  {
+                    "#text": "Reference year documented in build plan evidence.",
+                    "@xml:lang": "en"
+                  }
+                ]
+              },
+              "geography": {
+                "locationOfOperationSupplyOrProduction": {
+                  "@location": "GLO",
+                  "descriptionOfRestrictions": [
+                    {
+                      "#text": "Operation location: GLO.",
+                      "@xml:lang": "en"
+                    }
+                  ]
+                }
+              },
+              "technology": {
+                "technologyDescriptionAndIncludedProcesses": [
+                  {
+                    "#text": "Controlled validation fixture",
+                    "@xml:lang": "en"
+                  }
+                ]
+              }
+            },
+            "modellingAndValidation": {
+              "LCIMethodAndAllocation": {
+                "typeOfDataSet": "Unit process, single operation",
+                "LCIMethodPrinciple": "Attributional"
+              },
+              "dataSourcesTreatmentAndRepresentativeness": {
+                "dataCutOffAndCompletenessPrinciples": [
+                  {
+                    "#text": "Cut-off and completeness principles are documented in the build plan evidence.",
+                    "@xml:lang": "en"
+                  }
+                ],
+                "referenceToDataSource": {
+                  "@type": "source data set",
+                  "@refObjectId": "33333333-3333-4333-8333-333333333333",
+                  "@version": "00.00.000",
+                  "@uri": "../source-data-set/33333333-3333-4333-8333-333333333333.xml",
+                  "common:shortDescription": {
+                    "#text": "Build plan evidence source",
+                    "@xml:lang": "en"
+                  }
+                },
+                "annualSupplyOrProductionVolume": [
+                  {
+                    "#text": "100 kg/year",
+                    "@xml:lang": "en"
+                  }
+                ]
+              },
+              "validation": {
+                "review": {
+                  "@type": "Not reviewed"
+                }
+              },
+              "complianceDeclarations": {
+                "compliance": {
+                  "common:referenceToComplianceSystem": {
+                    "@type": "source data set",
+                    "@refObjectId": "3fe52597-8eb8-5b70-9b5d-8e966000304f",
+                    "@version": "00.00.000",
+                    "@uri": "../source-data-set/3fe52597-8eb8-5b70-9b5d-8e966000304f.xml",
+                    "common:shortDescription": {
+                      "#text": "Build plan compliance system",
+                      "@xml:lang": "en"
+                    }
+                  },
+                  "common:approvalOfOverallCompliance": "Not defined",
+                  "common:nomenclatureCompliance": "Not defined",
+                  "common:methodologicalCompliance": "Not defined",
+                  "common:reviewCompliance": "Not defined",
+                  "common:documentationCompliance": "Not defined",
+                  "common:qualityCompliance": "Not defined"
+                }
+              }
+            },
+            "administrativeInformation": {
+              "common:commissionerAndGoal": {
+                "common:referenceToCommissioner": {
+                  "@type": "contact data set",
+                  "@refObjectId": "6ad65cb3-6224-53fb-ba60-42c5eaf798dd",
+                  "@version": "00.00.000",
+                  "@uri": "../contact-data-set/6ad65cb3-6224-53fb-ba60-42c5eaf798dd.xml",
+                  "common:shortDescription": {
+                    "#text": "Build plan commissioner",
+                    "@xml:lang": "en"
+                  }
+                },
+                "common:intendedApplications": [
+                  {
+                    "#text": "Automated LCA data production draft for expert review.",
+                    "@xml:lang": "en"
+                  }
+                ]
+              },
+              "dataEntryBy": {
+                "common:timeStamp": "1970-01-01T00:00:00.000Z",
+                "common:referenceToDataSetFormat": {
+                  "@type": "source data set",
+                  "@refObjectId": "56e8b7bd-4eaf-5c2c-9113-f8d42b8f14b3",
+                  "@version": "00.00.000",
+                  "@uri": "../source-data-set/56e8b7bd-4eaf-5c2c-9113-f8d42b8f14b3.xml",
+                  "common:shortDescription": {
+                    "#text": "TIDAS / ILCD data set format",
+                    "@xml:lang": "en"
+                  }
+                },
+                "common:referenceToPersonOrEntityEnteringTheData": {
+                  "@type": "contact data set",
+                  "@refObjectId": "d1d4b02d-5cab-5f60-a784-781239de028c",
+                  "@version": "00.00.000",
+                  "@uri": "../contact-data-set/d1d4b02d-5cab-5f60-a784-781239de028c.xml",
+                  "common:shortDescription": {
+                    "#text": "Build plan data_entry",
+                    "@xml:lang": "en"
+                  }
+                }
+              },
+              "publicationAndOwnership": {
+                "common:dataSetVersion": "01.00.000",
+                "common:permanentDataSetURI": "https://data.tiangong.earth/processes/cccccccc-cccc-4ccc-8ccc-cccccccccccc.xml",
+                "common:referenceToOwnershipOfDataSet": {
+                  "@type": "contact data set",
+                  "@refObjectId": "4d2c29b9-6856-54df-994f-d118e1e0484d",
+                  "@version": "00.00.000",
+                  "@uri": "../contact-data-set/4d2c29b9-6856-54df-994f-d118e1e0484d.xml",
+                  "common:shortDescription": {
+                    "#text": "Build plan owner",
+                    "@xml:lang": "en"
+                  }
+                },
+                "common:copyright": "false",
+                "common:licenseType": "Free of charge for all users and uses"
+              }
+            },
+            "exchanges": {
+              "exchange": [
+                {
+                  "@dataSetInternalID": "1",
+                  "referenceToFlowDataSet": {
+                    "@type": "flow data set",
+                    "@refObjectId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+                    "@version": "01.00.000",
+                    "@uri": "../flow-data-set/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb.xml",
+                    "common:shortDescription": {
+                      "@xml:lang": "en",
+                      "#text": "2-chloro-3-methyl-4-(methylsulfonyl) benzoic acid; Synthetic fixture; Global synthetic flow"
+                    }
+                  },
+                  "exchangeDirection": "Output",
+                  "meanAmount": "1",
+                  "resultingAmount": "1",
+                  "dataDerivationTypeStatus": "Estimated",
+                  "quantitativeReference": true,
+                  "referencesToDataSource": {
+                    "referenceToDataSource": {
+                      "@type": "source data set",
+                      "@refObjectId": "33333333-3333-4333-8333-333333333333",
+                      "@version": "00.00.000",
+                      "@uri": "../source-data-set/33333333-3333-4333-8333-333333333333.xml",
+                      "common:shortDescription": {
+                        "#text": "Build plan evidence source",
+                        "@xml:lang": "en"
+                      }
+                    }
+                  },
+                  "allocations": {
+                    "allocation": {
+                      "@internalReferenceToCoProduct": "1",
+                      "@allocatedFraction": "100"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "document_sha256": "0ac33fa49ed8ac2b5021463a9a17129fa8425530e1bfd7ed9f9f0e41ee10fa11",
+        "user_id": "c536ee37-64ab-427b-b7e3-4e2bb4fdffb7",
+        "state_code": 0,
+        "model_id": null,
+        "model_version": null,
+        "team_id": null,
+        "review_id": null
+      },
+      {
+        "identity": {
+          "dataset_type": "flow",
+          "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+          "version": "01.00.000"
+        },
+        "document": {
+          "flowDataSet": {
+            "@xmlns": "http://lca.jrc.it/ILCD/Flow",
+            "@version": "1.1",
+            "@xmlns:ecn": "http://eplca.jrc.ec.europa.eu/ILCD/Extensions/2018/ECNumber",
+            "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+            "@xmlns:common": "http://lca.jrc.it/ILCD/Common",
+            "flowProperties": {
+              "flowProperty": {
+                "meanValue": "1.0",
+                "@dataSetInternalID": "0",
+                "referenceToFlowPropertyDataSet": {
+                  "@uri": "../flowproperties/93a60a56-a3c8-11da-a746-0800200b9a66.xml",
+                  "@type": "flow property data set",
+                  "@refObjectId": "93a60a56-a3c8-11da-a746-0800200b9a66",
+                  "common:shortDescription": {
+                    "#text": "Mass",
+                    "@xml:lang": "en"
+                  },
+                  "@version": "00.00.001"
+                }
+              }
+            },
+            "flowInformation": {
+              "dataSetInformation": {
+                "name": {
+                  "baseName": {
+                    "#text": "2-chloro-3-methyl-4-(methylsulfonyl) benzoic acid",
+                    "@xml:lang": "en"
+                  },
+                  "treatmentStandardsRoutes": {
+                    "@xml:lang": "en",
+                    "#text": "Synthetic fixture"
+                  },
+                  "mixAndLocationTypes": {
+                    "@xml:lang": "en",
+                    "#text": "Global synthetic flow"
+                  }
+                },
+                "CASNumber": "106904-09-0",
+                "common:UUID": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+                "common:other": {
+                  "ecn:ECNumber": "600-786-0"
+                },
+                "common:synonyms": [
+                  {
+                    "#text": "organic;benzoicacid,2-chloro-3-methyl-4-(methylsulfonyl)-",
+                    "@xml:lang": "en"
+                  },
+                  {
+                    "#text": "有机物;苯甲酸,2-氯-3-甲基-4-(甲磺酰基)-",
+                    "@xml:lang": "zh"
+                  }
+                ],
+                "common:generalComment": {
+                  "#text": "Reference elementary flow of the International Reference Life Cycle Data System (ILCD).",
+                  "@xml:lang": "en"
+                },
+                "classificationInformation": {
+                  "common:classification": [
+                    {
+                      "@name": "Synthetic fixture",
+                      "common:class": [
+                        {
+                          "@level": "0",
+                          "@classId": "fixture",
+                          "#text": "Synthetic flow evidence"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "quantitativeReference": {
+                "referenceToReferenceFlowProperty": "0"
+              }
+            },
+            "@xsi:schemaLocation": "http://lca.jrc.it/ILCD/Flow ../../schemas/ILCD_FlowDataSet.xsd",
+            "modellingAndValidation": {
+              "LCIMethod": {
+                "typeOfDataSet": "Product flow"
+              },
+              "complianceDeclarations": {
+                "compliance": {
+                  "common:approvalOfOverallCompliance": "Fully compliant",
+                  "common:referenceToComplianceSystem": {
+                    "@uri": "../sources/9ba3ac1e-6797-4cc0-afd5-1b8f7bf28c6a.xml",
+                    "@type": "source data set",
+                    "@refObjectId": "9ba3ac1e-6797-4cc0-afd5-1b8f7bf28c6a",
+                    "common:shortDescription": {
+                      "#text": "ILCD Data Network - compliance (non-Process)",
+                      "@xml:lang": "en"
+                    },
+                    "@version": "00.00.001"
+                  }
+                }
+              }
+            },
+            "administrativeInformation": {
+              "dataEntryBy": {
+                "common:timeStamp": "2018-07-12T15:52:21.041+01:00",
+                "common:referenceToDataSetFormat": {
+                  "@uri": "../sources/a97a0155-0234-4b87-b4ce-a45da52f2a40.xml",
+                  "@type": "source data set",
+                  "@refObjectId": "a97a0155-0234-4b87-b4ce-a45da52f2a40",
+                  "common:shortDescription": {
+                    "#text": "ILCD format",
+                    "@xml:lang": "en"
+                  },
+                  "@version": "00.00.001"
+                }
+              },
+              "publicationAndOwnership": {
+                "common:dataSetVersion": "01.00.000",
+                "common:permanentDataSetURI": "http://eplca.jrc.ec.europa.eu/EF-node/resource/flows/4d8a3345-51fd-44ac-87e0-59bc8d3b0fdc.xml",
+                "common:referenceToOwnershipOfDataSet": {
+                  "@type": "contact data set",
+                  "@refObjectId": "33333333-3333-4333-8333-333333333333",
+                  "@version": "00.00.001",
+                  "@uri": "../contacts/33333333-3333-4333-8333-333333333333.xml",
+                  "common:shortDescription": {
+                    "@xml:lang": "en",
+                    "#text": "Synthetic fixture owner"
+                  }
+                }
+              }
+            },
+            "@locations": "../ILCDLocations.xml"
+          }
+        },
+        "document_sha256": "509f934e1cab92a3bb1fbb3bed936b948ba1682f6dbe6244faaa0e2b0dc9d0d3",
+        "user_id": "c536ee37-64ab-427b-b7e3-4e2bb4fdffb7",
+        "state_code": 100,
+        "model_id": null,
+        "model_version": null,
+        "team_id": null,
+        "review_id": null
+      },
+      {
+        "identity": {
+          "dataset_type": "flow",
+          "id": "22222222-2222-4222-8222-222222222222",
+          "version": "01.00.000"
+        },
+        "document": {
+          "flowDataSet": {
+            "@xmlns": "http://lca.jrc.it/ILCD/Flow",
+            "@version": "1.1",
+            "@xmlns:ecn": "http://eplca.jrc.ec.europa.eu/ILCD/Extensions/2018/ECNumber",
+            "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+            "@xmlns:common": "http://lca.jrc.it/ILCD/Common",
+            "flowProperties": {
+              "flowProperty": {
+                "meanValue": "1.0",
+                "@dataSetInternalID": "0",
+                "referenceToFlowPropertyDataSet": {
+                  "@uri": "../flowproperties/93a60a56-a3c8-11da-a746-0800200b9a66.xml",
+                  "@type": "flow property data set",
+                  "@refObjectId": "93a60a56-a3c8-11da-a746-0800200b9a66",
+                  "common:shortDescription": {
+                    "#text": "Mass",
+                    "@xml:lang": "en"
+                  },
+                  "@version": "00.00.001"
+                }
+              }
+            },
+            "flowInformation": {
+              "dataSetInformation": {
+                "name": {
+                  "baseName": {
+                    "#text": "2-chloro-3-methyl-4-(methylsulfonyl) benzoic acid",
+                    "@xml:lang": "en"
+                  },
+                  "treatmentStandardsRoutes": {
+                    "@xml:lang": "en",
+                    "#text": "Synthetic fixture"
+                  },
+                  "mixAndLocationTypes": {
+                    "@xml:lang": "en",
+                    "#text": "Global synthetic flow"
+                  }
+                },
+                "CASNumber": "106904-09-0",
+                "common:UUID": "22222222-2222-4222-8222-222222222222",
+                "common:other": {
+                  "ecn:ECNumber": "600-786-0"
+                },
+                "common:synonyms": [
+                  {
+                    "#text": "organic;benzoicacid,2-chloro-3-methyl-4-(methylsulfonyl)-",
+                    "@xml:lang": "en"
+                  },
+                  {
+                    "#text": "有机物;苯甲酸,2-氯-3-甲基-4-(甲磺酰基)-",
+                    "@xml:lang": "zh"
+                  }
+                ],
+                "common:generalComment": {
+                  "#text": "Reference elementary flow of the International Reference Life Cycle Data System (ILCD).",
+                  "@xml:lang": "en"
+                },
+                "classificationInformation": {
+                  "common:classification": [
+                    {
+                      "@name": "Synthetic fixture",
+                      "common:class": [
+                        {
+                          "@level": "0",
+                          "@classId": "fixture",
+                          "#text": "Synthetic flow evidence"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "quantitativeReference": {
+                "referenceToReferenceFlowProperty": "0"
+              }
+            },
+            "@xsi:schemaLocation": "http://lca.jrc.it/ILCD/Flow ../../schemas/ILCD_FlowDataSet.xsd",
+            "modellingAndValidation": {
+              "LCIMethod": {
+                "typeOfDataSet": "Product flow"
+              },
+              "complianceDeclarations": {
+                "compliance": {
+                  "common:approvalOfOverallCompliance": "Fully compliant",
+                  "common:referenceToComplianceSystem": {
+                    "@uri": "../sources/9ba3ac1e-6797-4cc0-afd5-1b8f7bf28c6a.xml",
+                    "@type": "source data set",
+                    "@refObjectId": "9ba3ac1e-6797-4cc0-afd5-1b8f7bf28c6a",
+                    "common:shortDescription": {
+                      "#text": "ILCD Data Network - compliance (non-Process)",
+                      "@xml:lang": "en"
+                    },
+                    "@version": "00.00.001"
+                  }
+                }
+              }
+            },
+            "administrativeInformation": {
+              "dataEntryBy": {
+                "common:timeStamp": "2018-07-12T15:52:21.041+01:00",
+                "common:referenceToDataSetFormat": {
+                  "@uri": "../sources/a97a0155-0234-4b87-b4ce-a45da52f2a40.xml",
+                  "@type": "source data set",
+                  "@refObjectId": "a97a0155-0234-4b87-b4ce-a45da52f2a40",
+                  "common:shortDescription": {
+                    "#text": "ILCD format",
+                    "@xml:lang": "en"
+                  },
+                  "@version": "00.00.001"
+                }
+              },
+              "publicationAndOwnership": {
+                "common:dataSetVersion": "01.00.000",
+                "common:permanentDataSetURI": "http://eplca.jrc.ec.europa.eu/EF-node/resource/flows/4d8a3345-51fd-44ac-87e0-59bc8d3b0fdc.xml",
+                "common:referenceToOwnershipOfDataSet": {
+                  "@type": "contact data set",
+                  "@refObjectId": "33333333-3333-4333-8333-333333333333",
+                  "@version": "00.00.001",
+                  "@uri": "../contacts/33333333-3333-4333-8333-333333333333.xml",
+                  "common:shortDescription": {
+                    "@xml:lang": "en",
+                    "#text": "Synthetic fixture owner"
+                  }
+                }
+              }
+            },
+            "@locations": "../ILCDLocations.xml"
+          }
+        },
+        "document_sha256": "36dc4f9983ba8042e29f9b58d1537bb0492d6f0670f8b441619ebc2ba6362c89",
+        "user_id": "c536ee37-64ab-427b-b7e3-4e2bb4fdffb7",
+        "state_code": 100,
+        "model_id": null,
+        "model_version": null,
+        "team_id": null,
+        "review_id": null
+      },
+      {
+        "identity": {
+          "dataset_type": "flowproperty",
+          "id": "93a60a56-a3c8-11da-a746-0800200b9a66",
+          "version": "00.00.001"
+        },
+        "document": {
+          "flowPropertyDataSet": {
+            "@xmlns": "http://lca.jrc.it/ILCD/FlowProperty",
+            "@xmlns:common": "http://lca.jrc.it/ILCD/Common",
+            "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+            "@version": "1.1",
+            "@xsi:schemaLocation": "http://lca.jrc.it/ILCD/FlowProperty ../../schemas/ILCD_FlowPropertyDataSet.xsd",
+            "modellingAndValidation": {
+              "complianceDeclarations": {
+                "compliance": {
+                  "common:referenceToComplianceSystem": {
+                    "@type": "source data set",
+                    "@refObjectId": "22222222-2222-4222-8222-222222222222",
+                    "@version": "00.00.001",
+                    "@uri": "https://example.invalid/source/22222222-2222-4222-8222-222222222222",
+                    "common:shortDescription": {
+                      "@xml:lang": "en",
+                      "#text": "Fixture compliance system"
+                    }
+                  },
+                  "common:approvalOfOverallCompliance": "Not defined"
+                }
+              }
+            },
+            "administrativeInformation": {
+              "dataEntryBy": {
+                "common:timeStamp": "2026-09-01T00:00:00.000Z",
+                "common:referenceToDataSetFormat": {
+                  "@type": "source data set",
+                  "@refObjectId": "33333333-3333-4333-8333-333333333333",
+                  "@version": "00.00.001",
+                  "@uri": "https://example.invalid/source/33333333-3333-4333-8333-333333333333",
+                  "common:shortDescription": {
+                    "@xml:lang": "en",
+                    "#text": "Fixture data format"
+                  }
+                }
+              },
+              "publicationAndOwnership": {
+                "common:dataSetVersion": "00.00.001",
+                "common:referenceToOwnershipOfDataSet": {
+                  "@type": "contact data set",
+                  "@refObjectId": "44444444-4444-4444-8444-444444444444",
+                  "@version": "00.00.001",
+                  "@uri": "https://example.invalid/contact/44444444-4444-4444-8444-444444444444",
+                  "common:shortDescription": {
+                    "@xml:lang": "en",
+                    "#text": "Fixture dataset owner"
+                  }
+                }
+              }
+            },
+            "flowPropertiesInformation": {
+              "dataSetInformation": {
+                "common:UUID": "93a60a56-a3c8-11da-a746-0800200b9a66",
+                "common:name": {
+                  "@xml:lang": "en",
+                  "#text": "Fixture pulse count"
+                },
+                "classificationInformation": {
+                  "common:classification": {
+                    "common:class": {
+                      "@level": "0",
+                      "@classId": "4",
+                      "#text": "Other flow properties"
+                    }
+                  }
+                }
+              },
+              "quantitativeReference": {
+                "referenceToReferenceUnitGroup": {
+                  "@type": "unit group data set",
+                  "@refObjectId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                  "@version": "00.00.001",
+                  "@uri": "https://example.invalid/unit group/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                  "common:shortDescription": {
+                    "@xml:lang": "en",
+                    "#text": "Units of fixture pulses"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "document_sha256": "0f79f5eec9354185b6846bf622f39b1bdd9a2b50c17908778e66f3f2966c8856",
+        "user_id": "c536ee37-64ab-427b-b7e3-4e2bb4fdffb7",
+        "state_code": 100,
+        "model_id": null,
+        "model_version": null,
+        "team_id": null,
+        "review_id": null
+      },
+      {
+        "identity": {
+          "dataset_type": "unitgroup",
+          "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "version": "00.00.001"
+        },
+        "document": {
+          "unitGroupDataSet": {
+            "@xmlns": "http://lca.jrc.it/ILCD/UnitGroup",
+            "@xmlns:common": "http://lca.jrc.it/ILCD/Common",
+            "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+            "@version": "1.1",
+            "@xsi:schemaLocation": "http://lca.jrc.it/ILCD/UnitGroup ../../schemas/ILCD_UnitGroupDataSet.xsd",
+            "modellingAndValidation": {
+              "complianceDeclarations": {
+                "compliance": {
+                  "common:referenceToComplianceSystem": {
+                    "@type": "source data set",
+                    "@refObjectId": "22222222-2222-4222-8222-222222222222",
+                    "@version": "00.00.001",
+                    "@uri": "https://example.invalid/source/22222222-2222-4222-8222-222222222222",
+                    "common:shortDescription": {
+                      "@xml:lang": "en",
+                      "#text": "Fixture compliance system"
+                    }
+                  },
+                  "common:approvalOfOverallCompliance": "Not defined"
+                }
+              }
+            },
+            "administrativeInformation": {
+              "dataEntryBy": {
+                "common:timeStamp": "2026-09-01T00:00:00.000Z",
+                "common:referenceToDataSetFormat": {
+                  "@type": "source data set",
+                  "@refObjectId": "33333333-3333-4333-8333-333333333333",
+                  "@version": "00.00.001",
+                  "@uri": "https://example.invalid/source/33333333-3333-4333-8333-333333333333",
+                  "common:shortDescription": {
+                    "@xml:lang": "en",
+                    "#text": "Fixture data format"
+                  }
+                }
+              },
+              "publicationAndOwnership": {
+                "common:dataSetVersion": "00.00.001",
+                "common:referenceToOwnershipOfDataSet": {
+                  "@type": "contact data set",
+                  "@refObjectId": "44444444-4444-4444-8444-444444444444",
+                  "@version": "00.00.001",
+                  "@uri": "https://example.invalid/contact/44444444-4444-4444-8444-444444444444",
+                  "common:shortDescription": {
+                    "@xml:lang": "en",
+                    "#text": "Fixture dataset owner"
+                  }
+                }
+              }
+            },
+            "unitGroupInformation": {
+              "dataSetInformation": {
+                "common:UUID": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                "common:name": {
+                  "@xml:lang": "en",
+                  "#text": "Units of fixture pulses"
+                },
+                "classificationInformation": {
+                  "common:classification": {
+                    "common:class": {
+                      "@level": "0",
+                      "@classId": "4",
+                      "#text": "Other unit groups"
+                    }
+                  }
+                }
+              },
+              "quantitativeReference": {
+                "referenceToReferenceUnit": "0"
+              }
+            },
+            "units": {
+              "unit": [
+                {
+                  "@dataSetInternalID": "0",
+                  "name": "kg",
+                  "meanValue": "1"
+                }
+              ]
+            }
+          }
+        },
+        "document_sha256": "f63c646462d19a8f5451753bdb9c94c6d0d58eab1ff133b2ab58bedb7c99c765",
+        "user_id": "c536ee37-64ab-427b-b7e3-4e2bb4fdffb7",
+        "state_code": 100,
+        "model_id": null,
+        "model_version": null,
+        "team_id": null,
+        "review_id": null
+      },
+      {
+        "identity": {
+          "dataset_type": "source",
+          "id": "33333333-3333-4333-8333-333333333333",
+          "version": "00.00.000"
+        },
+        "document": {
+          "sourceDataSet": {
+            "sourceInformation": {
+              "dataSetInformation": {
+                "common:UUID": "33333333-3333-4333-8333-333333333333"
+              }
+            },
+            "administrativeInformation": {
+              "publicationAndOwnership": {
+                "common:dataSetVersion": "00.00.000"
+              }
+            }
+          }
+        },
+        "document_sha256": "eaa03431eae65055b9458df60989e7de32238f7ca32c2dbe5422168cbdbb46f3",
+        "user_id": "c536ee37-64ab-427b-b7e3-4e2bb4fdffb7",
+        "state_code": 100,
+        "model_id": null,
+        "model_version": null,
+        "team_id": null,
+        "review_id": null
+      },
+      {
+        "identity": {
+          "dataset_type": "source",
+          "id": "3fe52597-8eb8-5b70-9b5d-8e966000304f",
+          "version": "00.00.000"
+        },
+        "document": {
+          "sourceDataSet": {
+            "sourceInformation": {
+              "dataSetInformation": {
+                "common:UUID": "3fe52597-8eb8-5b70-9b5d-8e966000304f"
+              }
+            },
+            "administrativeInformation": {
+              "publicationAndOwnership": {
+                "common:dataSetVersion": "00.00.000"
+              }
+            }
+          }
+        },
+        "document_sha256": "b7e309922207f031d491e77fdde1da8cadb9cd87e5990edddbe32290dd1c69a6",
+        "user_id": "c536ee37-64ab-427b-b7e3-4e2bb4fdffb7",
+        "state_code": 100,
+        "model_id": null,
+        "model_version": null,
+        "team_id": null,
+        "review_id": null
+      },
+      {
+        "identity": {
+          "dataset_type": "contact",
+          "id": "6ad65cb3-6224-53fb-ba60-42c5eaf798dd",
+          "version": "00.00.000"
+        },
+        "document": {
+          "contactDataSet": {
+            "contactInformation": {
+              "dataSetInformation": {
+                "common:UUID": "6ad65cb3-6224-53fb-ba60-42c5eaf798dd"
+              }
+            },
+            "administrativeInformation": {
+              "publicationAndOwnership": {
+                "common:dataSetVersion": "00.00.000"
+              }
+            }
+          }
+        },
+        "document_sha256": "47047f623a7cbc748b2ad1301c5f83f7968077617d0c74ce7c097a0d94d14db2",
+        "user_id": "c536ee37-64ab-427b-b7e3-4e2bb4fdffb7",
+        "state_code": 100,
+        "model_id": null,
+        "model_version": null,
+        "team_id": null,
+        "review_id": null
+      },
+      {
+        "identity": {
+          "dataset_type": "source",
+          "id": "56e8b7bd-4eaf-5c2c-9113-f8d42b8f14b3",
+          "version": "00.00.000"
+        },
+        "document": {
+          "sourceDataSet": {
+            "sourceInformation": {
+              "dataSetInformation": {
+                "common:UUID": "56e8b7bd-4eaf-5c2c-9113-f8d42b8f14b3"
+              }
+            },
+            "administrativeInformation": {
+              "publicationAndOwnership": {
+                "common:dataSetVersion": "00.00.000"
+              }
+            }
+          }
+        },
+        "document_sha256": "68f55fea8d5df3dde8ffa7614b6d8f0d31ce6d670786a820f267b9fdd0be2872",
+        "user_id": "c536ee37-64ab-427b-b7e3-4e2bb4fdffb7",
+        "state_code": 100,
+        "model_id": null,
+        "model_version": null,
+        "team_id": null,
+        "review_id": null
+      },
+      {
+        "identity": {
+          "dataset_type": "contact",
+          "id": "d1d4b02d-5cab-5f60-a784-781239de028c",
+          "version": "00.00.000"
+        },
+        "document": {
+          "contactDataSet": {
+            "contactInformation": {
+              "dataSetInformation": {
+                "common:UUID": "d1d4b02d-5cab-5f60-a784-781239de028c"
+              }
+            },
+            "administrativeInformation": {
+              "publicationAndOwnership": {
+                "common:dataSetVersion": "00.00.000"
+              }
+            }
+          }
+        },
+        "document_sha256": "83e73d6b38bd26e6cf2f4c34223c67695370f555e3bb261463da5dffbe6be9b4",
+        "user_id": "c536ee37-64ab-427b-b7e3-4e2bb4fdffb7",
+        "state_code": 100,
+        "model_id": null,
+        "model_version": null,
+        "team_id": null,
+        "review_id": null
+      },
+      {
+        "identity": {
+          "dataset_type": "contact",
+          "id": "4d2c29b9-6856-54df-994f-d118e1e0484d",
+          "version": "00.00.000"
+        },
+        "document": {
+          "contactDataSet": {
+            "contactInformation": {
+              "dataSetInformation": {
+                "common:UUID": "4d2c29b9-6856-54df-994f-d118e1e0484d"
+              }
+            },
+            "administrativeInformation": {
+              "publicationAndOwnership": {
+                "common:dataSetVersion": "00.00.000"
+              }
+            }
+          }
+        },
+        "document_sha256": "6dccd29025f56f7106fb26e715d8a59d806ebd14f889b763be3268416a313910",
+        "user_id": "c536ee37-64ab-427b-b7e3-4e2bb4fdffb7",
+        "state_code": 100,
+        "model_id": null,
+        "model_version": null,
+        "team_id": null,
+        "review_id": null
+      },
+      {
+        "identity": {
+          "dataset_type": "source",
+          "id": "9ba3ac1e-6797-4cc0-afd5-1b8f7bf28c6a",
+          "version": "00.00.001"
+        },
+        "document": {
+          "sourceDataSet": {
+            "sourceInformation": {
+              "dataSetInformation": {
+                "common:UUID": "9ba3ac1e-6797-4cc0-afd5-1b8f7bf28c6a"
+              }
+            },
+            "administrativeInformation": {
+              "publicationAndOwnership": {
+                "common:dataSetVersion": "00.00.001"
+              }
+            }
+          }
+        },
+        "document_sha256": "933f02f67b4ef0068c36f3bab39b91254188404590879a1ce1027f09e2b53afb",
+        "user_id": "c536ee37-64ab-427b-b7e3-4e2bb4fdffb7",
+        "state_code": 100,
+        "model_id": null,
+        "model_version": null,
+        "team_id": null,
+        "review_id": null
+      },
+      {
+        "identity": {
+          "dataset_type": "source",
+          "id": "a97a0155-0234-4b87-b4ce-a45da52f2a40",
+          "version": "00.00.001"
+        },
+        "document": {
+          "sourceDataSet": {
+            "sourceInformation": {
+              "dataSetInformation": {
+                "common:UUID": "a97a0155-0234-4b87-b4ce-a45da52f2a40"
+              }
+            },
+            "administrativeInformation": {
+              "publicationAndOwnership": {
+                "common:dataSetVersion": "00.00.001"
+              }
+            }
+          }
+        },
+        "document_sha256": "a7ac1c417185d45491b45b840e56961742e68d4b1ac56c151f4657a74dce40f0",
+        "user_id": "c536ee37-64ab-427b-b7e3-4e2bb4fdffb7",
+        "state_code": 100,
+        "model_id": null,
+        "model_version": null,
+        "team_id": null,
+        "review_id": null
+      },
+      {
+        "identity": {
+          "dataset_type": "contact",
+          "id": "33333333-3333-4333-8333-333333333333",
+          "version": "00.00.001"
+        },
+        "document": {
+          "contactDataSet": {
+            "contactInformation": {
+              "dataSetInformation": {
+                "common:UUID": "33333333-3333-4333-8333-333333333333"
+              }
+            },
+            "administrativeInformation": {
+              "publicationAndOwnership": {
+                "common:dataSetVersion": "00.00.001"
+              }
+            }
+          }
+        },
+        "document_sha256": "336bfa1089ed048a901008b145ec85611cf5c2550f0d8e5b166ff68a4a145faf",
+        "user_id": "c536ee37-64ab-427b-b7e3-4e2bb4fdffb7",
+        "state_code": 100,
+        "model_id": null,
+        "model_version": null,
+        "team_id": null,
+        "review_id": null
+      },
+      {
+        "identity": {
+          "dataset_type": "source",
+          "id": "22222222-2222-4222-8222-222222222222",
+          "version": "00.00.001"
+        },
+        "document": {
+          "sourceDataSet": {
+            "sourceInformation": {
+              "dataSetInformation": {
+                "common:UUID": "22222222-2222-4222-8222-222222222222"
+              }
+            },
+            "administrativeInformation": {
+              "publicationAndOwnership": {
+                "common:dataSetVersion": "00.00.001"
+              }
+            }
+          }
+        },
+        "document_sha256": "4f49dae8edf1cf7c259e899d24e4c27af898014fb8a05e2a0cb76ce5e177f334",
+        "user_id": "c536ee37-64ab-427b-b7e3-4e2bb4fdffb7",
+        "state_code": 100,
+        "model_id": null,
+        "model_version": null,
+        "team_id": null,
+        "review_id": null
+      },
+      {
+        "identity": {
+          "dataset_type": "source",
+          "id": "33333333-3333-4333-8333-333333333333",
+          "version": "00.00.001"
+        },
+        "document": {
+          "sourceDataSet": {
+            "sourceInformation": {
+              "dataSetInformation": {
+                "common:UUID": "33333333-3333-4333-8333-333333333333"
+              }
+            },
+            "administrativeInformation": {
+              "publicationAndOwnership": {
+                "common:dataSetVersion": "00.00.001"
+              }
+            }
+          }
+        },
+        "document_sha256": "24c38313a1271ea2ba098d3df48e7b9b4fa7ed9dafc40810e2d7c873eb6ccd17",
+        "user_id": "c536ee37-64ab-427b-b7e3-4e2bb4fdffb7",
+        "state_code": 100,
+        "model_id": null,
+        "model_version": null,
+        "team_id": null,
+        "review_id": null
+      },
+      {
+        "identity": {
+          "dataset_type": "contact",
+          "id": "44444444-4444-4444-8444-444444444444",
+          "version": "00.00.001"
+        },
+        "document": {
+          "contactDataSet": {
+            "contactInformation": {
+              "dataSetInformation": {
+                "common:UUID": "44444444-4444-4444-8444-444444444444"
+              }
+            },
+            "administrativeInformation": {
+              "publicationAndOwnership": {
+                "common:dataSetVersion": "00.00.001"
+              }
+            }
+          }
+        },
+        "document_sha256": "e9295d44cb743ca1b699508b122f28b3e8ca83da7eac4e37a6ede7252bf33378",
+        "user_id": "c536ee37-64ab-427b-b7e3-4e2bb4fdffb7",
+        "state_code": 100,
+        "model_id": null,
+        "model_version": null,
+        "team_id": null,
+        "review_id": null
+      }
+    ],
+    "effective_processes": [
+      {
+        "process_id": "11111111-1111-4111-8111-111111111111",
+        "process_version": "01.00.000"
+      },
+      {
+        "process_id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+        "process_version": "01.00.000"
+      }
+    ],
+    "models": [],
+    "native_policy": {
+      "allocation_fraction_mode": "strict",
+      "allocation_semantics_version": "tidas-reference-allocation-v5",
+      "flow_identity_policy": "exact-flow-version-reference-unit-v2",
+      "has_lcia": false,
+      "link_semantics_version": "signed-flow-balance-v1",
+      "method_ids": [],
+      "provider_candidate_eligibility_mode": "opposite_sign_reference_port",
+      "provider_lineage_policy": "version-exact-lineage-gate-v1",
+      "provider_rule": "split_by_process_volume",
+      "reference_normalization_mode": "strict",
+      "self_loop_cutoff": 0.999999,
+      "singular_eps": 1e-12,
+      "source_closure_policy": "path-aware-bounded-frontier-v2",
+      "source_reference_policy": "source-reference-policy.v4",
+      "technosphere_boundary_policy": "closed"
+    },
+    "omitted_flow_resolutions": [],
+    "request_roots": [
+      {
+        "process_id": "11111111-1111-4111-8111-111111111111",
+        "process_version": "01.00.000"
+      },
+      {
+        "process_id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+        "process_version": "01.00.000"
+      }
+    ],
+    "scope_manifest": {
+      "actor": {
+        "kind": "authenticated_user",
+        "user_id": "c536ee37-64ab-427b-b7e3-4e2bb4fdffb7"
+      },
+      "applies_to": ["processes", "flows"],
+      "predicate": {
+        "clauses": [
+          {
+            "state_code": {
+              "eq": 100
+            }
+          },
+          {
+            "clauses": [
+              {
+                "user_id": {
+                  "eq": "c536ee37-64ab-427b-b7e3-4e2bb4fdffb7"
+                }
+              },
+              {
+                "state_code": {
+                  "eq": 0
+                }
+              }
+            ],
+            "operator": "and"
+          }
+        ],
+        "operator": "or"
+      },
+      "predicate_version": "public_state_100_or_authenticated_owner_state_0.v2",
+      "schema_version": "lca.data_scope.manifest.v2",
+      "scope": "public_plus_owner_draft"
+    }
+  },
+  "baseline_sha256": "521abeb7473424729a6a6ab0f40efd6a441f10ce72f18e74f8316422ef2b933a",
+  "expected_worker_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "mode": "matrix_only",
+  "overlays": [
+    {
+      "identity": {
+        "dataset_type": "process",
+        "id": "11111111-1111-4111-8111-111111111111",
+        "version": "01.00.000"
+      },
+      "before_sha256": "7b0a84222a505c980ab220bde183d24365fe5b85a52b88c4cffaeff437d91730",
+      "candidate_sha256": "a900ccc02162f1eafa8eb3868a7120a3739cfa0912659de61b47f5aa9a23df82",
+      "document": {
+        "processDataSet": {
+          "@xmlns": "http://lca.jrc.it/ILCD/Process",
+          "@xmlns:common": "http://lca.jrc.it/ILCD/Common",
+          "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+          "@version": "1.1",
+          "@locations": "../ILCDLocations.xml",
+          "@xsi:schemaLocation": "http://lca.jrc.it/ILCD/Process ../../schemas/ILCD_ProcessDataSet.xsd",
+          "processInformation": {
+            "dataSetInformation": {
+              "common:UUID": "11111111-1111-4111-8111-111111111111",
+              "name": {
+                "baseName": [
+                  {
+                    "#text": "Annual volume validation fixture",
+                    "@xml:lang": "en"
+                  }
+                ],
+                "treatmentStandardsRoutes": [
+                  {
+                    "#text": "Controlled validation fixture",
+                    "@xml:lang": "en"
+                  }
+                ],
+                "mixAndLocationTypes": [
+                  {
+                    "#text": "GLO",
+                    "@xml:lang": "en"
+                  }
+                ],
+                "functionalUnitFlowProperties": [
+                  {
+                    "#text": "kg",
+                    "@xml:lang": "en"
+                  }
+                ]
+              },
+              "classificationInformation": {
+                "common:classification": {
+                  "common:class": [
+                    {
+                      "@level": "0",
+                      "@classId": "D",
+                      "#text": "Electricity, gas, steam and air conditioning supply"
+                    },
+                    {
+                      "@level": "1",
+                      "@classId": "35",
+                      "#text": "Electricity, gas, steam and air conditioning supply"
+                    },
+                    {
+                      "@level": "2",
+                      "@classId": "351",
+                      "#text": "Electric power generation, transmission and distribution activities"
+                    },
+                    {
+                      "@level": "3",
+                      "@classId": "3511",
+                      "#text": "Electric power generation activities from non-renewable sources"
+                    }
+                  ]
+                }
+              },
+              "common:generalComment": [
+                {
+                  "#text": "Controlled synthetic test input; no operational dataset.",
+                  "@xml:lang": "en"
+                }
+              ]
+            },
+            "quantitativeReference": {
+              "@type": "Reference flow(s)",
+              "referenceToReferenceFlow": "1",
+              "functionalUnitOrOther": {
+                "@xml:lang": "en",
+                "#text": "1.2 kg of synthetic product"
+              }
+            },
+            "time": {
+              "common:referenceYear": 2025,
+              "common:timeRepresentativenessDescription": [
+                {
+                  "#text": "Reference year documented in build plan evidence.",
+                  "@xml:lang": "en"
+                }
+              ]
+            },
+            "geography": {
+              "locationOfOperationSupplyOrProduction": {
+                "@location": "GLO",
+                "descriptionOfRestrictions": [
+                  {
+                    "#text": "Operation location: GLO.",
+                    "@xml:lang": "en"
+                  }
+                ]
+              }
+            },
+            "technology": {
+              "technologyDescriptionAndIncludedProcesses": [
+                {
+                  "#text": "Controlled validation fixture",
+                  "@xml:lang": "en"
+                }
+              ]
+            }
+          },
+          "modellingAndValidation": {
+            "LCIMethodAndAllocation": {
+              "typeOfDataSet": "Unit process, single operation",
+              "LCIMethodPrinciple": "Attributional"
+            },
+            "dataSourcesTreatmentAndRepresentativeness": {
+              "dataCutOffAndCompletenessPrinciples": [
+                {
+                  "#text": "Cut-off and completeness principles are documented in the build plan evidence.",
+                  "@xml:lang": "en"
+                }
+              ],
+              "referenceToDataSource": {
+                "@type": "source data set",
+                "@refObjectId": "33333333-3333-4333-8333-333333333333",
+                "@version": "00.00.000",
+                "@uri": "../source-data-set/33333333-3333-4333-8333-333333333333.xml",
+                "common:shortDescription": {
+                  "#text": "Build plan evidence source",
+                  "@xml:lang": "en"
+                }
+              },
+              "annualSupplyOrProductionVolume": [
+                {
+                  "#text": "100 kg/year",
+                  "@xml:lang": "en"
+                }
+              ]
+            },
+            "validation": {
+              "review": {
+                "@type": "Not reviewed"
+              }
+            },
+            "complianceDeclarations": {
+              "compliance": {
+                "common:referenceToComplianceSystem": {
+                  "@type": "source data set",
+                  "@refObjectId": "3fe52597-8eb8-5b70-9b5d-8e966000304f",
+                  "@version": "00.00.000",
+                  "@uri": "../source-data-set/3fe52597-8eb8-5b70-9b5d-8e966000304f.xml",
+                  "common:shortDescription": {
+                    "#text": "Build plan compliance system",
+                    "@xml:lang": "en"
+                  }
+                },
+                "common:approvalOfOverallCompliance": "Not defined",
+                "common:nomenclatureCompliance": "Not defined",
+                "common:methodologicalCompliance": "Not defined",
+                "common:reviewCompliance": "Not defined",
+                "common:documentationCompliance": "Not defined",
+                "common:qualityCompliance": "Not defined"
+              }
+            }
+          },
+          "administrativeInformation": {
+            "common:commissionerAndGoal": {
+              "common:referenceToCommissioner": {
+                "@type": "contact data set",
+                "@refObjectId": "6ad65cb3-6224-53fb-ba60-42c5eaf798dd",
+                "@version": "00.00.000",
+                "@uri": "../contact-data-set/6ad65cb3-6224-53fb-ba60-42c5eaf798dd.xml",
+                "common:shortDescription": {
+                  "#text": "Build plan commissioner",
+                  "@xml:lang": "en"
+                }
+              },
+              "common:intendedApplications": [
+                {
+                  "#text": "Automated LCA data production draft for expert review.",
+                  "@xml:lang": "en"
+                }
+              ]
+            },
+            "dataEntryBy": {
+              "common:timeStamp": "1970-01-01T00:00:00.000Z",
+              "common:referenceToDataSetFormat": {
+                "@type": "source data set",
+                "@refObjectId": "56e8b7bd-4eaf-5c2c-9113-f8d42b8f14b3",
+                "@version": "00.00.000",
+                "@uri": "../source-data-set/56e8b7bd-4eaf-5c2c-9113-f8d42b8f14b3.xml",
+                "common:shortDescription": {
+                  "#text": "TIDAS / ILCD data set format",
+                  "@xml:lang": "en"
+                }
+              },
+              "common:referenceToPersonOrEntityEnteringTheData": {
+                "@type": "contact data set",
+                "@refObjectId": "d1d4b02d-5cab-5f60-a784-781239de028c",
+                "@version": "00.00.000",
+                "@uri": "../contact-data-set/d1d4b02d-5cab-5f60-a784-781239de028c.xml",
+                "common:shortDescription": {
+                  "#text": "Build plan data_entry",
+                  "@xml:lang": "en"
+                }
+              }
+            },
+            "publicationAndOwnership": {
+              "common:dataSetVersion": "01.00.000",
+              "common:permanentDataSetURI": "https://data.tiangong.earth/processes/11111111-1111-4111-8111-111111111111.xml",
+              "common:referenceToOwnershipOfDataSet": {
+                "@type": "contact data set",
+                "@refObjectId": "4d2c29b9-6856-54df-994f-d118e1e0484d",
+                "@version": "00.00.000",
+                "@uri": "../contact-data-set/4d2c29b9-6856-54df-994f-d118e1e0484d.xml",
+                "common:shortDescription": {
+                  "#text": "Build plan owner",
+                  "@xml:lang": "en"
+                }
+              },
+              "common:copyright": "false",
+              "common:licenseType": "Free of charge for all users and uses"
+            }
+          },
+          "exchanges": {
+            "exchange": [
+              {
+                "@dataSetInternalID": "1",
+                "referenceToFlowDataSet": {
+                  "@type": "flow data set",
+                  "@refObjectId": "22222222-2222-4222-8222-222222222222",
+                  "@version": "01.00.000",
+                  "@uri": "../flow-data-set/22222222-2222-4222-8222-222222222222.xml",
+                  "common:shortDescription": {
+                    "@xml:lang": "en",
+                    "#text": "2-chloro-3-methyl-4-(methylsulfonyl) benzoic acid; Synthetic fixture; Global synthetic flow"
+                  }
+                },
+                "exchangeDirection": "Output",
+                "meanAmount": "1.2",
+                "resultingAmount": "1.2",
+                "dataDerivationTypeStatus": "Estimated",
+                "quantitativeReference": true,
+                "referencesToDataSource": {
+                  "referenceToDataSource": {
+                    "@type": "source data set",
+                    "@refObjectId": "33333333-3333-4333-8333-333333333333",
+                    "@version": "00.00.000",
+                    "@uri": "../source-data-set/33333333-3333-4333-8333-333333333333.xml",
+                    "common:shortDescription": {
+                      "#text": "Build plan evidence source",
+                      "@xml:lang": "en"
+                    }
+                  }
+                },
+                "allocations": {
+                  "allocation": {
+                    "@internalReferenceToCoProduct": "1",
+                    "@allocatedFraction": "100"
+                  }
+                }
+              },
+              {
+                "@dataSetInternalID": "0",
+                "referenceToFlowDataSet": {
+                  "@type": "flow data set",
+                  "@refObjectId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+                  "@version": "01.00.000",
+                  "@uri": "../flow-data-set/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb.xml",
+                  "common:shortDescription": {
+                    "@xml:lang": "en",
+                    "#text": "2-chloro-3-methyl-4-(methylsulfonyl) benzoic acid; Synthetic fixture; Global synthetic flow"
+                  }
+                },
+                "exchangeDirection": "Input",
+                "meanAmount": "1.2",
+                "resultingAmount": "1.2",
+                "dataDerivationTypeStatus": "Estimated",
+                "quantitativeReference": false,
+                "referencesToDataSource": {
+                  "referenceToDataSource": {
+                    "@type": "source data set",
+                    "@refObjectId": "33333333-3333-4333-8333-333333333333",
+                    "@version": "00.00.000",
+                    "@uri": "../source-data-set/33333333-3333-4333-8333-333333333333.xml",
+                    "common:shortDescription": {
+                      "#text": "Build plan evidence source",
+                      "@xml:lang": "en"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "schema_version": "worker.provider-impact.input.v1"
+}
