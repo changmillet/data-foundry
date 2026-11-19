@@ -279,9 +279,9 @@ checkPaths:
   - AGENTS.md
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
-lastReviewedAt: 2026-11-19
-lastReviewedCommit: 119f1e2b6248532baf3d0f9989fe84fcebc864e3
-lastReviewedNote: "Foundry #287: reviewed the four eligible development-tool updates and complete unchanged lock graph during formatting; native/source qualification, compiler and public-runtime closure, cache inputs, credential and publishing authority remain unchanged."
+lastReviewedAt: 2026-11-20
+lastReviewedCommit: 24029b8a5c04887cfa346d229ae84489d4f91a97
+lastReviewedNote: "Foundry #287: reviewed the four eligible development-tool updates and complete unchanged lock graph during formatting; native/source qualification, compiler and public-runtime closure, cache inputs, credential and publishing authority remain unchanged. Foundry #296: reviewed the allowlisted ordinary Windows host observation, exact source/plan/run/partition binding, original elapsed snapshot, safe omissions and signalled/failed/Node-cancelled outcomes. Legacy receipts, all test gates and installed runtime/publishing authority are unchanged."
 ---
 
 # Test Layout
