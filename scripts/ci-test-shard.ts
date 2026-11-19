@@ -11,6 +11,10 @@ import { foundryCiReporterUrl } from "./ci-test-reporter.ts";
 import { readFoundryReleaseGit as git } from "./lib/foundry-release-contract.ts";
 import { readFoundryReleaseArtifact } from "./lib/foundry-release-prepared.ts";
 import {
+  captureFoundryCiTestHost,
+  foundryCiObservedTestOutcome,
+} from "./lib/foundry-ci-test-host.ts";
+import {
   managedDiagnosticsEnvironment,
   startManagedDiagnosticsOutput,
 } from "../test/fixtures/managed-adoption-diagnostics.mts";
@@ -78,6 +82,7 @@ async function main(args: readonly string[]): Promise<void> {
   delete environment.NODE_OPTIONS;
   delete environment.NODE_TEST_CONTEXT;
   const started = performance.now();
+  let processSignal: NodeJS.Signals | null = null;
   const exitCode = await new Promise<number>((resolve, reject) => {
     const child = spawn(
       process.execPath,
@@ -95,7 +100,10 @@ async function main(args: readonly string[]): Promise<void> {
       { cwd: root, env: environment, stdio: "inherit", shell: false },
     );
     child.once("error", reject);
-    child.once("exit", (code) => resolve(code ?? 1));
+    child.once("exit", (code, signal) => {
+      processSignal = signal;
+      resolve(code ?? 1);
+    });
   });
   const errors: string[] = [];
   let counts: Record<string, unknown> | null = null;
@@ -159,7 +167,16 @@ async function main(args: readonly string[]): Promise<void> {
       available: Boolean(managedFeedback.root),
       omission: managedFeedback.omission,
     },
+    host_observation: undefined as ReturnType<typeof captureFoundryCiTestHost> | undefined,
   };
+  if (process.platform === "win32" && process.env.GITHUB_ACTIONS === "true")
+    receipt.host_observation = captureFoundryCiTestHost(root, {
+      source,
+      plan_sha256: expectedPlan,
+      index,
+      outcome: foundryCiObservedTestOutcome(receipt.status, counts, processSignal),
+      signal: processSignal,
+    });
   fs.writeFileSync(path.join(output, "test-shard.json"), `${JSON.stringify(receipt, null, 2)}\n`, {
     flag: "wx",
     mode: 0o644,

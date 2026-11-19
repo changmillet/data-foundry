@@ -34,9 +34,9 @@ checkPaths:
   - scripts/public-api.ts
   - test/scenarios/foundry-package-consumer.test.mts
   - test/unit/foundry-runtime-environment.test.mts
-lastReviewedAt: 2026-11-19
-lastReviewedCommit: 119f1e2b6248532baf3d0f9989fe84fcebc864e3
-lastReviewedNote: "Foundry #287: reviewed the four eligible development-tool updates and complete unchanged lock graph during formatting; native/source qualification, compiler and public-runtime closure, cache inputs, credential and publishing authority remain unchanged."
+lastReviewedAt: 2026-11-20
+lastReviewedCommit: 53d1c063d793b617ea678b06b043e53f0a3358a4
+lastReviewedNote: "Foundry #287: reviewed the four eligible development-tool updates and complete unchanged lock graph during formatting; native/source qualification, compiler and public-runtime closure, cache inputs, credential and publishing authority remain unchanged. Foundry #296: reviewed the allowlisted ordinary Windows host observation, exact source/plan/run/partition binding, original elapsed snapshot, safe omissions and signalled/failed/Node-cancelled outcomes. Legacy receipts, all test gates and installed runtime/publishing authority are unchanged."
 ---
 
 # Environment Surface Policy
@@ -70,6 +70,8 @@ The `release:prepare-production` command binds its own clean physical Git root a
 CI tooling additionally uses `FOUNDRY_CI_BASE_SHA` and `FOUNDRY_CI_SOURCE_SHA` for exact PR/caller-source selection. `FOUNDRY_CI_PACKAGE_DIR`, `FOUNDRY_CI_PACKAGE_MANIFEST_SHA256` and `FOUNDRY_CI_PACKAGE_SHA256` are a complete source-job-only artifact selection supplied from independent producing-job outputs. Partial or invalid selection fails; it never silently rebuilds or reads an operator credential. The package context includes only non-secret Git/toolchain/run facts. These variables are excluded from `.env.example`, ordinary task inputs and installed runtime configuration.
 
 `FOUNDRY_MANAGED_TEST_DIAGNOSTICS_ROOT` is a source-test-only output selector supplied by the validated CI shard runner. Its fresh diagnostics directory binds the selected source, platform, plan and shard; partial observations cannot qualify a test or runtime. The managed fixture exports only bounded, allowlisted completion and failure facts, preserving null unknown counts and observed negative exits. It omits raw output, free-form messages, paths, arguments, environment, account/auth objects, credentials, queries and task payloads. The selector is not forwarded to managed product children and is excluded from `.env.example`, task inputs, component manifests and installed runtime authority.
+
+The ordinary Windows CI shard may read only `RUNNER_OS`, `ImageOS`, `ImageVersion`, `GITHUB_RUN_ID` and `GITHUB_RUN_ATTEMPT` for its post-timing diagnostic host observation. Native CPU model/count, OS/architecture and actual Node/pnpm executable/version/lock hashes complete that allowlisted record. pnpm selection continues through the existing native package-manager resolver. Missing or invalid facts become bounded omissions without changing the test outcome. No hostname, machine/processor identifier, path, environment map, arbitrary error or credential is emitted. These variables add no `.env.example`, installed-runtime input, hardware-selection policy or publishing authority.
 
 ## Allowed Variables
 

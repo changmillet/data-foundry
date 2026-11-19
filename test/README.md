@@ -279,9 +279,9 @@ checkPaths:
   - AGENTS.md
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
-lastReviewedAt: 2026-11-19
-lastReviewedCommit: 119f1e2b6248532baf3d0f9989fe84fcebc864e3
-lastReviewedNote: "Foundry #287: reviewed the four eligible development-tool updates and complete unchanged lock graph during formatting; native/source qualification, compiler and public-runtime closure, cache inputs, credential and publishing authority remain unchanged."
+lastReviewedAt: 2026-11-20
+lastReviewedCommit: 53d1c063d793b617ea678b06b043e53f0a3358a4
+lastReviewedNote: "Foundry #287: reviewed the four eligible development-tool updates and complete unchanged lock graph during formatting; native/source qualification, compiler and public-runtime closure, cache inputs, credential and publishing authority remain unchanged. Foundry #296: reviewed the allowlisted ordinary Windows host observation, exact source/plan/run/partition binding, original elapsed snapshot, safe omissions and signalled/failed/Node-cancelled outcomes. Legacy receipts, all test gates and installed runtime/publishing authority are unchanged."
 ---
 
 # Test Layout
@@ -541,6 +541,8 @@ The Windows direct-context RED identified `ENOENT` from `mkdtemp` at a path cont
 The public workflow scenario also injects an authentic TIDAS `io` exit during Process row assessment. It proves the whole native report and bounded stderr are indexed with the selected row file/count, that a fresh process sees a concise I/O blocker and full evidence path, that unchanged resume does not replay native validation, and that altered evidence cannot become completion. This characterizes the Foundry evidence adapter; real Windows deep-path issue-spool persistence is tracked separately in Toolkit #223 and must be tested with the native executable.
 
 ## CI test execution and release lanes
+
+`unit/foundry-ci-workflow.test.mts` also verifies the optional ordinary Windows `host_observation`: the thirteen static host fields, source/plan/partition and run/attempt bindings, fixed null/omission categories, bounded field projection, and distinct failed, Node-cancelled and signalled outcomes (without inferring user cancellation). Existing legacy receipts and the aggregation success criteria remain unchanged. The shard freezes its original elapsed value before collecting these diagnostic facts. An observation cannot qualify failed tests, fill an unexecuted sample, select a hardware class or prove a timeout repair. Actual Windows production of this record still requires the ordinary reviewed-source hosted gate.
 
 The public workflow scenarios retain their assertions and names. Heavy identity/approval and dependent-scope cases have separate scenario entry files over `fixtures/foundry-public-workflow.ts`, so process-global mocks and environment remain isolated. The CI planner includes every test file exactly once in each platform partition and balances known slow files with measured durations; estimates never replace execution evidence. The runner and collector reject missing/duplicate files, wrong source/plan/platform, failed execution and changed event bytes.
 
