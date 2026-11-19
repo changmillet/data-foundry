@@ -280,7 +280,7 @@ checkPaths:
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
 lastReviewedAt: 2026-11-19
-lastReviewedCommit: 0306fdd8bf452a6139021884178da27f6a6fcb40
+lastReviewedCommit: 119f1e2b6248532baf3d0f9989fe84fcebc864e3
 lastReviewedNote: "Foundry #287: reviewed the four eligible development-tool updates and complete unchanged lock graph during formatting; native/source qualification, compiler and public-runtime closure, cache inputs, credential and publishing authority remain unchanged."
 ---
 

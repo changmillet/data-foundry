@@ -32,7 +32,7 @@ checkPaths:
   - prettier.config.ts
   - tsconfig*.json
 lastReviewedAt: 2026-11-19
-lastReviewedCommit: 0306fdd8bf452a6139021884178da27f6a6fcb40
+lastReviewedCommit: 119f1e2b6248532baf3d0f9989fe84fcebc864e3
 lastReviewedNote: "Foundry #287: scoped review of eligible development tools, full lock graph and unchanged compiler/runtime/publishing boundaries. Existing CLI-version prose drift is separately reported; executable CLI inputs and all qualification protections remain unchanged."
 ---
 
