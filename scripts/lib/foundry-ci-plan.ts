@@ -1,6 +1,13 @@
 import { createHash } from "node:crypto";
 import path from "node:path";
 import fs from "node:fs";
+import {
+  foundryTestWallSeconds,
+  isFoundryCiTestPath,
+  loadFoundryWindowsExecutionInput,
+  planFoundryWindowsShards,
+  type FoundryWindowsExecutionInput,
+} from "./foundry-ci-windows.ts";
 
 export const foundryCiTestConcurrency = 2;
 
@@ -10,22 +17,14 @@ export interface FoundryTestShard {
   readonly files: readonly string[];
   readonly estimatedSeconds: number;
   readonly estimatedWallSeconds: number;
+  readonly observedScenarioWallSeconds?: number;
 }
 
 function estimatedWallSeconds(
   files: readonly string[],
   durations: Readonly<Record<string, number>>,
 ): number {
-  const workers = Array.from({ length: foundryCiTestConcurrency }, () => 0);
-  // Node's test-file queue is lexical even when LPT supplies heavy-first argv.
-  for (const file of [...files].sort()) {
-    const worker = workers.reduce(
-      (first, next, index) => (next < workers[first] ? index : first),
-      0,
-    );
-    workers[worker] += durations[file] ?? 1;
-  }
-  return Math.max(...workers);
+  return foundryTestWallSeconds(files, durations, foundryCiTestConcurrency);
 }
 
 export interface FoundryTestPlan {
@@ -40,6 +39,7 @@ export function planFoundryTestShards(
   selectedFiles: readonly string[],
   durations: Readonly<Record<string, number>>,
   count: number,
+  execution?: FoundryWindowsExecutionInput,
 ): FoundryTestPlan {
   if (!Number.isInteger(count) || count < 1 || count > selectedFiles.length)
     throw new Error("CI shard count must select at least one test file per shard.");
@@ -47,14 +47,7 @@ export function planFoundryTestShards(
   if (new Set(files).size !== files.length)
     throw new Error("CI test inventory contains duplicate paths.");
   for (const file of files) {
-    if (
-      !file.startsWith("test/") ||
-      !file.endsWith(".test.mts") ||
-      path.posix.normalize(file) !== file ||
-      file.includes("\\") ||
-      file.includes(":") ||
-      file.split("").some((character) => character.charCodeAt(0) < 32)
-    )
+    if (!isFoundryCiTestPath(file))
       throw new Error(`Invalid CI test path: ${JSON.stringify(file)}`);
   }
   for (const [file, duration] of Object.entries(durations)) {
@@ -64,6 +57,33 @@ export function planFoundryTestShards(
       throw new Error(`Invalid CI test duration: ${file}`);
   }
   const weighted = files.map((file) => ({ file, seconds: durations[file] ?? 1 }));
+  if (execution && count === 10) {
+    const shards = planFoundryWindowsShards(
+      weighted,
+      durations,
+      count,
+      execution,
+      foundryCiTestConcurrency,
+    );
+    const boundExecution = {
+      exclusiveFiles: [...execution.exclusiveFiles].sort(
+        (a, b) => a.index - b.index || (a.file < b.file ? -1 : a.file > b.file ? 1 : 0),
+      ),
+      retainedFiles: [...new Set(execution.retainedFiles)].sort(),
+      observedSeconds: Object.fromEntries(
+        Object.entries(execution.observedSeconds).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+      ),
+      observationsSha256: execution.observationsSha256,
+    };
+    return Object.freeze({
+      schema: "tiangong-foundry.ci-test-plan.v1",
+      planSha256: createHash("sha256")
+        .update(JSON.stringify({ count, weighted, execution: boundExecution, shards }))
+        .digest("hex"),
+      unprofiledFiles: Object.freeze(files.filter((file) => durations[file] === undefined)),
+      shards: Object.freeze(shards),
+    });
+  }
   const shards = Array.from({ length: count }, (_, offset) => ({
     index: offset + 1,
     total: count,
@@ -142,7 +162,10 @@ export function loadFoundryTestPlan(root: string, count = 4): FoundryTestPlan {
     durations[file] = seconds;
   }
   const files = walk("test");
-  const base = planFoundryTestShards(files, durations, count);
+  const selectedDurations = Object.fromEntries(
+    files.filter((file) => durations[file] !== undefined).map((file) => [file, durations[file]]),
+  );
+  const base = planFoundryTestShards(files, selectedDurations, count);
   const counts = input.shards_by_platform;
   if (
     !counts ||
@@ -162,7 +185,17 @@ export function loadFoundryTestPlan(root: string, count = 4): FoundryTestPlan {
       size > (platform === "win32-x64" ? 10 : 8)
     )
       throw new Error("Invalid platform CI shard count.");
-    return [platform, planFoundryTestShards(files, durations, size)] as const;
+    return [
+      platform,
+      planFoundryTestShards(
+        files,
+        selectedDurations,
+        size,
+        platform === "win32-x64" && size === 10 && input.windows_execution !== undefined
+          ? loadFoundryWindowsExecutionInput(root, files, input.windows_execution)
+          : undefined,
+      ),
+    ] as const;
   });
   return Object.freeze({
     ...base,

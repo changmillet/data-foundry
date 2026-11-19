@@ -1,9 +1,14 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import fs from "node:fs";
+import { createHash } from "node:crypto";
 import os from "node:os";
 import test from "node:test";
 import { spawnSync } from "node:child_process";
+import {
+  loadFoundryWindowsExecutionInput,
+  foundryRetainedTestFiles,
+} from "../../scripts/lib/foundry-ci-windows.ts";
 import {
   foundryCiTestConcurrency,
   loadFoundryTestPlan,
@@ -83,6 +88,7 @@ test("measured deadline envelope rejects eight/nine shards and keeps all files w
   ) as {
     weights_seconds: Record<string, number>;
     estimated_weights: Record<string, number>;
+    windows_execution: unknown;
     deadline_refresh: {
       transferred_files: number;
       retained_prior_weights: Array<{ file: string; seconds: number; reason: string }>;
@@ -102,6 +108,7 @@ test("measured deadline envelope rejects eight/nine shards and keeps all files w
       inventory,
       { ...profile.weights_seconds, ...profile.estimated_weights },
       10,
+      loadFoundryWindowsExecutionInput(root, inventory, profile.windows_execution),
     ).shards,
   );
   assert.equal(windows.length, 10);
@@ -129,6 +136,7 @@ test("Node admits the lexical first two files despite heavy-first argument order
       file,
       `
 import fs from "node:fs";
+import { createHash } from "node:crypto";
 import test from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
 test(${JSON.stringify(name)}, async () => {
@@ -384,5 +392,299 @@ test("global CI digest binds all platform counts and rejects malformed mappings"
   ]) {
     write(mapping);
     assert.throws(() => loadFoundryTestPlan(root), /shard count/);
+  }
+});
+
+test("Windows isolates both retained deadline suites and balances the remaining execution classes", () => {
+  const root = path.resolve(import.meta.dirname, "../..");
+  const plan = loadFoundryTestPlan(root);
+  const windows = foundryPlatformTestShards(plan, "win32-x64");
+  const protectedFiles = [
+    "test/scenarios/foundry-public-native-draft.test.mts",
+    "test/scenarios/foundry-repair-successor.test.mts",
+  ];
+  for (const [index, file] of [
+    [0, protectedFiles[0]],
+    [8, protectedFiles[1]],
+  ] as const)
+    if (plan.shards.some((s) => s.files.includes(file)))
+      assert.deepEqual(windows[index].files, [file]);
+  const inventory = windows.flatMap((s) => s.files).sort();
+  assert.deepEqual(inventory, plan.shards.flatMap((s) => s.files).sort());
+  const profile = JSON.parse(
+    fs.readFileSync(path.join(root, "specs/ci/test-durations.json"), "utf8"),
+  );
+  const execution = loadFoundryWindowsExecutionInput(root, inventory, profile.windows_execution);
+  const reserved = execution.exclusiveFiles.filter((x) => inventory.includes(x.file));
+  const cap = Math.ceil(
+    execution.retainedFiles.filter((f) => !reserved.some((x) => x.file === f)).length /
+      (10 - reserved.length),
+  );
+  const fileCap = Math.ceil((inventory.length - reserved.length) / (10 - reserved.length));
+  for (const shard of windows.filter((s) => !reserved.some((r) => r.index === s.index)))
+    assert.ok(shard.files.length <= fileCap);
+  for (const shard of windows) {
+    assert.ok(fitsWindowsBudget(shard.estimatedWallSeconds));
+    assert.ok(fitsWindowsBudget(shard.observedScenarioWallSeconds!));
+    if (shard.files.length > 1)
+      assert.ok(shard.files.filter((f) => execution.retainedFiles.includes(f)).length <= cap);
+  }
+  assert.ok(Math.max(...windows.map((s) => s.observedScenarioWallSeconds!)) < 1925);
+  assert.notEqual(
+    plan.planSha256,
+    "d0db856ee079fc9d9ef85b4703bba585cee65723422f1ef86ade8abcbe9d772e",
+  );
+  const durations = { ...profile.weights_seconds, ...profile.estimated_weights };
+  for (const [platform, count] of [
+    ["linux-x64", 4],
+    ["linux-arm64", 4],
+    ["darwin-arm64", 8],
+  ] as const)
+    assert.deepEqual(
+      foundryPlatformTestShards(plan, platform),
+      planFoundryTestShards(inventory, durations, count).shards,
+    );
+});
+
+test("Windows complete planner inputs preserve protection for added, absent and unmeasured tests", () => {
+  const native = "test/scenarios/foundry-public-native-draft.test.mts";
+  const successor = "test/scenarios/foundry-repair-successor.test.mts";
+  const selected = [
+    native,
+    successor,
+    ...Array.from({ length: 24 }, (_, i) => `test/unit/item-${i}.test.mts`),
+  ];
+  const execution = {
+    exclusiveFiles: [
+      { file: native, index: 1 },
+      { file: successor, index: 9 },
+    ],
+    retainedFiles: selected.slice(0, 19),
+    observedSeconds: { "test/unit/removed.test.mts": 3 },
+    observationsSha256: "a".repeat(64),
+  };
+  const plan = planFoundryTestShards(selected, {}, 10, execution);
+  assert.deepEqual(plan.shards[0].files, [native]);
+  assert.deepEqual(plan.shards[8].files, [successor]);
+  assert.deepEqual(plan.shards.flatMap((s) => s.files).sort(), selected.sort());
+  for (const shard of plan.shards.filter((s) => s.files.length > 1))
+    assert.ok(shard.files.filter((f) => execution.retainedFiles.includes(f)).length <= 3);
+  const absent = selected.filter((f) => f !== native);
+  const replanned = planFoundryTestShards(absent, {}, 10, execution);
+  assert.deepEqual(replanned.shards[8].files, [successor]);
+  assert.deepEqual(replanned.shards.flatMap((s) => s.files).sort(), absent.sort());
+  const newFile = "test/commands/报告 1.test.mts";
+  const added = planFoundryTestShards([...selected, newFile], {}, 10, execution);
+  assert.ok(added.unprofiledFiles.includes(newFile));
+  assert.deepEqual(added.shards[0].files, [native]);
+  assert.notEqual(added.planSha256, plan.planSha256);
+  assert.deepEqual(
+    planFoundryTestShards([...selected].reverse(), {}, 10, {
+      ...execution,
+      retainedFiles: [...execution.retainedFiles].reverse(),
+      exclusiveFiles: [...execution.exclusiveFiles].reverse(),
+    }),
+    plan,
+  );
+  for (const count of [1, 4])
+    assert.deepEqual(
+      planFoundryTestShards(selected, {}, count, execution),
+      planFoundryTestShards(selected, {}, count),
+    );
+  assert.notEqual(
+    plan.planSha256,
+    planFoundryTestShards(selected, {}, 10, { ...execution, observationsSha256: "b".repeat(64) })
+      .planSha256,
+  );
+  assert.throws(() => planFoundryTestShards(selected, { [native]: 1925 }, 10, execution), /budget/);
+  assert.throws(
+    () =>
+      planFoundryTestShards(selected, {}, 10, { ...execution, observedSeconds: { [native]: NaN } }),
+    /observation/,
+  );
+});
+
+test("retained classes are source-bound and unknown or changed files remain conservative", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-ci-class-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(root, "test/unit"), { recursive: true });
+  const write = (name: string, text: string) => {
+    const file = `test/unit/${name}.test.mts`;
+    fs.writeFileSync(path.join(root, file), text);
+    return file;
+  };
+  const registered = write("registered", "export {};\n");
+  const ordinary = write("ordinary", "export {};\n");
+  const unknown = write(
+    "new-dynamic",
+    "await import(`../helpers/retained-foundry-runtime.mts`);\n",
+  );
+  const hash = createHash("sha256").update("export {};\n").digest("hex");
+  assert.deepEqual(
+    foundryRetainedTestFiles(root, [registered, ordinary, unknown], [registered], {
+      [ordinary]: hash,
+    }),
+    [registered, unknown].sort(),
+  );
+  fs.writeFileSync(
+    path.join(root, ordinary),
+    "await import(`../helpers/retained-foundry-runtime.mts`);\n",
+  );
+  assert.deepEqual(
+    foundryRetainedTestFiles(root, [registered, ordinary, unknown], [registered], {
+      [ordinary]: hash,
+    }),
+    [registered, ordinary, unknown].sort(),
+  );
+  fs.writeFileSync(path.join(root, ordinary), "export {};\r\n");
+  assert.deepEqual(
+    foundryRetainedTestFiles(root, [registered, ordinary], [registered], { [ordinary]: hash }),
+    [registered],
+  );
+});
+
+test("the installed native TS parser verifies the current registered retained helper imports", (t) => {
+  const root = path.resolve(import.meta.dirname, "../..");
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-ci-import-audit-"));
+  t.after(() => fs.rmSync(scratch, { recursive: true, force: true }));
+  const config = path.join(scratch, "config.json");
+  fs.writeFileSync(
+    config,
+    JSON.stringify({
+      categories: Object.fromEntries(
+        ["correctness", "suspicious", "pedantic", "perf", "style", "restriction", "nursery"].map(
+          (x) => [x, "off"],
+        ),
+      ),
+      rules: {
+        "eslint/no-restricted-imports": [
+          "error",
+          { paths: ["../helpers/retained-foundry-runtime.mts"] },
+        ],
+      },
+    }),
+  );
+  const output = spawnSync(
+    process.execPath,
+    [
+      path.join(root, "node_modules/oxlint/bin/oxlint"),
+      "--disable-nested-config",
+      "--config",
+      config,
+      "--format=json",
+      "test",
+    ],
+    { cwd: root, encoding: "utf8", timeout: 30000, maxBuffer: 8 * 1024 * 1024, shell: false },
+  );
+  assert.ifError(output.error);
+  assert.equal(output.status, 1, output.stderr);
+  const diagnostics = JSON.parse(output.stdout).diagnostics as Array<{
+    code: string;
+    filename: string;
+  }>;
+  assert.ok(diagnostics.every((x) => x.code === "eslint(no-restricted-imports)"));
+  const calls = new Set(
+    diagnostics.map((x) =>
+      (path.isAbsolute(x.filename) ? path.relative(root, x.filename) : x.filename).replaceAll(
+        "\\",
+        "/",
+      ),
+    ),
+  );
+  const plan = loadFoundryTestPlan(root),
+    files = plan.shards.flatMap((s) => s.files);
+  const profile = JSON.parse(
+    fs.readFileSync(path.join(root, "specs/ci/test-durations.json"), "utf8"),
+  );
+  const data = JSON.parse(fs.readFileSync(path.join(root, profile.windows_execution.file), "utf8"));
+  const execution = loadFoundryWindowsExecutionInput(root, files, profile.windows_execution);
+  for (const file of data.retained_files as string[])
+    if (files.includes(file)) assert.ok(calls.has(file), `Registered class needs review: ${file}`);
+  for (const file of calls)
+    assert.ok(
+      execution.retainedFiles.includes(file),
+      `Retained import needs classification: ${file}`,
+    );
+});
+
+test("Windows observation evidence rejects malformed provenance and normalizes checkout line endings", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-ci-observed-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(root, "specs/ci"), { recursive: true });
+  fs.mkdirSync(path.join(root, "test/unit"), { recursive: true });
+  fs.writeFileSync(path.join(root, "test/unit/a.test.mts"), "export {};\n");
+  const filename = path.join(root, "specs/ci/windows-test-observations.json");
+  const source = fs.readFileSync(
+    path.resolve(import.meta.dirname, "../../specs/ci/windows-test-observations.json"),
+    "utf8",
+  );
+  fs.writeFileSync(filename, source);
+  const reference = (value: unknown) => ({
+    file: "specs/ci/windows-test-observations.json",
+    canonical_sha256: createHash("sha256").update(JSON.stringify(value)).digest("hex"),
+  });
+  const sourceRef = reference(JSON.parse(source));
+  const lf = loadFoundryWindowsExecutionInput(root, ["test/unit/a.test.mts"], sourceRef);
+  fs.writeFileSync(filename, source.replace(/\n/gu, "\r\n"));
+  assert.deepEqual(loadFoundryWindowsExecutionInput(root, ["test/unit/a.test.mts"], sourceRef), lf);
+  const valid = JSON.parse(source);
+  for (const invalid of [
+    null,
+    [],
+    {},
+    { ...valid, run_id: "old/run" },
+    { ...valid, source: "b" },
+    { ...valid, inventory_sha256: "a".repeat(64) },
+    { ...valid, artifacts: [...valid.artifacts.slice(0, 9), valid.artifacts[0]] },
+    { ...valid, files: { "test/../private.test.mts": [3, "a".repeat(64)] } },
+    { ...valid, files: { "test/unit/a.test.mts": [0, "a".repeat(64)] } },
+  ]) {
+    fs.writeFileSync(filename, JSON.stringify(invalid));
+    assert.throws(
+      () => loadFoundryWindowsExecutionInput(root, ["test/unit/a.test.mts"], reference(invalid)),
+      /observation/,
+    );
+  }
+  fs.unlinkSync(filename);
+  assert.throws(
+    () =>
+      loadFoundryWindowsExecutionInput(
+        root,
+        ["test/scenarios/foundry-public-native-draft.test.mts"],
+        sourceRef,
+      ),
+    /observation/,
+  );
+});
+
+test("only an explicit ten-shard Windows opt-in requires observation evidence", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-ci-opt-in-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(root, "test"));
+  fs.mkdirSync(path.join(root, "specs/ci"), { recursive: true });
+  for (let i = 0; i < 12; i++) fs.writeFileSync(path.join(root, `test/${i}.test.mts`), "");
+  const reference = {
+    file: "specs/ci/windows-test-observations.json",
+    canonical_sha256: "a".repeat(64),
+  };
+  for (const count of [1, 4, 10]) {
+    const config = {
+      schema: "tiangong-foundry.ci-test-durations.v1",
+      weights_seconds: { "test/removed.test.mts": 3 },
+      shards_by_platform: {
+        "linux-x64": 4,
+        "linux-arm64": 4,
+        "darwin-arm64": 4,
+        "win32-x64": count,
+      },
+      windows_execution: reference,
+    };
+    fs.writeFileSync(path.join(root, "specs/ci/test-durations.json"), JSON.stringify(config));
+    if (count === 10) assert.throws(() => loadFoundryTestPlan(root), /observation/);
+    else
+      assert.equal(foundryPlatformTestShards(loadFoundryTestPlan(root), "win32-x64").length, count);
+    delete (config as { windows_execution?: unknown }).windows_execution;
+    fs.writeFileSync(path.join(root, "specs/ci/test-durations.json"), JSON.stringify(config));
+    assert.equal(foundryPlatformTestShards(loadFoundryTestPlan(root), "win32-x64").length, count);
   }
 });

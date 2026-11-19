@@ -1,0 +1,1878 @@
+{
+  "schema": "tiangong-foundry.windows-test-observations.v1",
+  "source": "ab115d56455377cd211b20653d47b0c8b09f3d5d",
+  "run_id": "44603639659",
+  "attempt": 1,
+  "platform": "win32-x64",
+  "prior_plan_sha256": "d0db856ee079fc9d9ef85b4703bba585cee65723422f1ef86ade8abcbe9d772e",
+  "inventory_sha256": "57ce3f74e2a79a4fe0ea54c4bf37e94b54f5306d24fab839a737fe4b9d53cf18",
+  "precision": "Whole-file successful summaries, rounded upward to microseconds. Historical planning scenario; not future bounds or qualification.",
+  "artifacts": [
+    {
+      "index": 1,
+      "id": "14571695409",
+      "archive_sha256": "5c7378c5ad889a798c88dc94af9ae199e56ff57dfe4a226c77f894403ba16c39",
+      "events_sha256": "1ca6880fa3398a3a6b406d17627ed08f440361f52dba8f98a9f1f566bdd1a238"
+    },
+    {
+      "index": 2,
+      "id": "14571023926",
+      "archive_sha256": "70de3d9489aef084dfe6fd6d77c44a8e5929f5f0b0b366bc2ece35e43b011d7b",
+      "events_sha256": "a233e070d6e21bb52fcfe7dcf0286665b41c76928d1a4b6dc588f7ea0c87cbc8"
+    },
+    {
+      "index": 3,
+      "id": "14569344031",
+      "archive_sha256": "42c3d635d74029b4dfa1a85f0fea339e6c139eeaaecfd264eddd90acde8d5de7",
+      "events_sha256": "afaf84f5f1d9df913d28cbfd27c6a269c0803ee4c4681d42eca5dbb34024e9d2"
+    },
+    {
+      "index": 4,
+      "id": "14571127496",
+      "archive_sha256": "c4c2fa7efacd0e0d3b358b9496c217336279949257aa7a5410b953c4226cc752",
+      "events_sha256": "0e1c906ad562725c8d870b47fc9e99508d018133f32db861a60ac70fa9db62f8"
+    },
+    {
+      "index": 5,
+      "id": "14571856217",
+      "archive_sha256": "e17894aa4bc4e00363ad78f82e078b802909def4eb3dc6578c9fbd3275ab12cf",
+      "events_sha256": "d1f292d4baa8bbe2b737e5c8f8e579d88c9285d7c703d5b12cc10b1a3a12118c"
+    },
+    {
+      "index": 6,
+      "id": "14571445936",
+      "archive_sha256": "b4bc9174afe5e7c44f681b46c36f04d68d76acf19c59a99c51a15fb6b0856f86",
+      "events_sha256": "ae620dd369d61102839d14eacb897849e5294e221b1a249b665ad1bcd21cd3ec"
+    },
+    {
+      "index": 7,
+      "id": "14571147891",
+      "archive_sha256": "60f7ad5b5a7c578411d529beb14b526c6feee12dceb4c2ec6ad410e54d5f0239",
+      "events_sha256": "842354183f5fbebc2536286aa94e32400ab34a475d218053fbb80012179ab5b9"
+    },
+    {
+      "index": 8,
+      "id": "14572091263",
+      "archive_sha256": "06e0a6e7b44e17689bfdfc57461264931836c9766c251ad8ce8b027680ce53ea",
+      "events_sha256": "210c05b3074590a94305bcb7a5bd4a5851d4bc06fc3598d2233a859c1852edbd"
+    },
+    {
+      "index": 9,
+      "id": "14571505813",
+      "archive_sha256": "b35fc53cfd21738a0e6b92f0787dccfaafbb82408335a18014aa4bc861479af6",
+      "events_sha256": "e19c98a6fe75e36dd3cb6a3cf208482a6894319b5bb4e8e6736eef01ca583e7e"
+    },
+    {
+      "index": 10,
+      "id": "14570587729",
+      "archive_sha256": "dd7245da0a14e3e550ea8cc391739edf6f962deef132211028fe908dfa292ddc",
+      "events_sha256": "b575888ea0d8d1a7bbe719ba109b20bbc5763e889f8c519ddf2e5214da3d72c0"
+    }
+  ],
+  "columns": ["seconds", "source_sha256_lf"],
+  "files": {
+    "test/commands/account-context-wrapper.test.mts": [
+      0.312383,
+      "27119cff08a926f7f354833ce6a45b0a2a513a5914049dffd8d8655ad458388c"
+    ],
+    "test/commands/authoring-plan.test.mts": [
+      4.230984,
+      "1ea3d65abaac23bcd10e49a92383ed58d057160af6d02b84d189ad213e514f66"
+    ],
+    "test/commands/authoring-task-context.test.mts": [
+      3.964837,
+      "6ecf430d9f5b1915ed3abc1e87f99b47fc74cc965e4424df0626a7aae9966309"
+    ],
+    "test/commands/bafu-auto-authoring.test.mts": [
+      24.020828,
+      "08b79d479b2160a5a661764eed871a024d2e8728762c1644a9c8694cc265a0cb"
+    ],
+    "test/commands/bafu-batch-import-run.test.mts": [
+      9.031139,
+      "ebddab784c7cb68afcaa0578b21e919d9e811c514699397c43d8c9ce3d774cee"
+    ],
+    "test/commands/bafu-leaf-classification-tasks.test.mts": [
+      3.593375,
+      "5b59e7482b0813ffd5d379bbd63ba3e88c0df27b3f1df11a4486a252629c013f"
+    ],
+    "test/commands/bafu-process-scope-e2e.test.mts": [
+      3.007302,
+      "9508bd0268aa4fa337a6a50688767185a5b14c98f096616006c091909cfa6608"
+    ],
+    "test/commands/bundle-sample-rows.test.mts": [
+      24.671718,
+      "84f2ceed8a70d667711f16415d4a36de4967731ca3f50611b34df2f4fbfef71e"
+    ],
+    "test/commands/canonical-support-rewrites.test.mts": [
+      0.078236,
+      "763be3d096542e4f546ca7ea4c7626e72e35fa2cb28abd86b27b2438f5247afd"
+    ],
+    "test/commands/classification-decisions.test.mts": [
+      22.829083,
+      "68aba48a8b31657cdd0d081cc86c85fe367aa9522bda1617c9736947d475fd26"
+    ],
+    "test/commands/execution-capsule.test.mts": [
+      11.277278,
+      "539abf2bd5f59d12c241d8a02ca35a467cfa1431e1bbe1641889b437adb76230"
+    ],
+    "test/commands/final-delivery-promotion.test.mts": [
+      44.053335,
+      "be1ec18555d0e67281c361c0e65369572cf6bbc61c9c65c160561f3bfa6a18f0"
+    ],
+    "test/commands/foundry-release-aggregate.test.mts": [
+      3.166196,
+      "e5f7fb150e1a706fd1e2fa86daed6cb2fbc1fa4f90815520fa9000c48ba4d4dd"
+    ],
+    "test/commands/foundry-release-inspect.test.mts": [
+      12.652843,
+      "27da30200ecb3c548a34f2ae0cf3042869a49e3226efadef7356239f7a32366e"
+    ],
+    "test/commands/foundry-release-native.test.mts": [
+      3.714426,
+      "430e97d7b7c3a5d7fb3ccf2b496c83b1037c7f2b12d88cd92f297c6e1ca034db"
+    ],
+    "test/commands/foundry-release-prepare.test.mts": [
+      13.898175,
+      "22cef89bc95f070c55d8213ab626f6f5beda8cba13213a39509041f65f19a9d9"
+    ],
+    "test/commands/foundry-release-production.test.mts": [
+      4.182049,
+      "25dcc1b373df8060be972027c3e2d325eddd6e2cd62d146f065077f238683542"
+    ],
+    "test/commands/foundry-release-publish-components.test.mts": [
+      1.790437,
+      "461f440a1ba1517dfc2c5db0532148a515a5e5b3d4ff450b43fee255d29be187"
+    ],
+    "test/commands/foundry-release-publish-manifest.test.mts": [
+      1.757814,
+      "7ac573c1ce91ae8e2b1d58a0012f2e2ee68b9a9b250e8b0f78ee6c2a43c15363"
+    ],
+    "test/commands/foundry-release-qualify-bootstrap.test.mts": [
+      2.846409,
+      "27706082d87d0002d012fd97f30632701704398a01b2fd4e3163b9b5393dfaf9"
+    ],
+    "test/commands/foundry-release-runtime.test.mts": [
+      5.011064,
+      "d0f2e7ea45f54aa1fdee8d730b1bbb0ad871d5d952e87d5b65eda7190117e97f"
+    ],
+    "test/commands/identity-query-multilingual.test.mts": [
+      7.127161,
+      "3bada4dd5a99fffa8917e7fd92267326af3030d44b0b215c2781c3ab3095189b"
+    ],
+    "test/commands/identity-source-trace-formats.test.mts": [
+      21.295152,
+      "d7ac8c7014a2d82feb6c7d1b6eaca2ab1e4e6ef810b556bcbbadc4ef64903a2a"
+    ],
+    "test/commands/import-ledger.test.mts": [
+      1.021451,
+      "946de80d0a688fd4c6b01861165abbac8e5940fc3b86953edfac39f923f08b58"
+    ],
+    "test/commands/incremental-change-set.test.mts": [
+      41.834422,
+      "f7072c9ab47e7c923a881cf312a1555c22c071df743aeb444ad6cdb17c12df4a"
+    ],
+    "test/commands/library-scope-workflow-elementary-identity.test.mts": [
+      0.02986,
+      "f15650c4b277ef2e6f421d41de69ede7ae4995eea5f1571cabf1ba820ba83e86"
+    ],
+    "test/commands/location-decisions.test.mts": [
+      11.395925,
+      "5b72d97d4ad7c1b5172213937b1de41574421027fcef4692cb5b80c80caf111c"
+    ],
+    "test/commands/scientific-repair-fixture.test.mts": [
+      1.063282,
+      "95a39426d10b2661ec2f46e3561f8a940396fb2e354a44d22441fd4dc25cbc31"
+    ],
+    "test/commands/support-cache.test.mts": [
+      0.825167,
+      "35bd883a4a52866432be787d301eaf8dcab744de6d2c8ddb5cb650d2000a68c4"
+    ],
+    "test/commands/topology-convergence.test.mts": [
+      9.291634,
+      "c521d9ab6851e2c0006e152fdeedce8486a0128c4a55a6d98a32d9492675cb2d"
+    ],
+    "test/scenarios/authoring-shared-context.test.mts": [
+      6.742072,
+      "7f01dea8b85678fc854d5be09b1842d9e559d8fae3193ce6aa8c844b4763d696"
+    ],
+    "test/scenarios/bafu-mydata-override.test.mts": [
+      0.020971,
+      "c8285050789a9c2b2f5e8916a5b2a3511c81c1d4adbb93c69c94fbb8e8059d4f"
+    ],
+    "test/scenarios/content-saturation-gates.test.mts": [
+      12.444111,
+      "4f4bf41ee70eb9d92b066cd5dea3dbad90f60ad132787606793315710060fae3"
+    ],
+    "test/scenarios/curation-cleanup-quality-gates.test.mts": [
+      23.819948,
+      "f543cb170a60d9a0c8f5c9224ff707c62879b6983d48a5bac93ceb0533c8ccb9"
+    ],
+    "test/scenarios/decision-task-context-and-classification.test.mts": [
+      6.806483,
+      "40e1b022829bad4c04334e5c40b1efdbe6de8e7b18494b437519dc82103b7562"
+    ],
+    "test/scenarios/finalize-reference-inputs.test.mts": [
+      0.031298,
+      "c3a9c362da869ba12f91bbcb5258939110806ed784a0dacc80eba53f951cf43d"
+    ],
+    "test/scenarios/flow-classification-authoring.test.mts": [
+      10.417847,
+      "cf1084e6921d3ca31c96fe5cddf8ab1babf85f6e211a31d21a66f7bcb8c1f2f2"
+    ],
+    "test/scenarios/flow-identity-decisions.test.mts": [
+      9.994069,
+      "f4d7342b72c08b9f1989bb53d91094ce0fb11941c882216c9390c665e10bbd6a"
+    ],
+    "test/scenarios/flow-reference-reuse-and-traces.test.mts": [
+      8.147559,
+      "bec9a7b6bdd27c74acea83ecd21c1fc20b30a2c9c72d9b6e697356ab45528eab"
+    ],
+    "test/scenarios/foundry-account-mode.test.mts": [
+      0.198919,
+      "07d1ca000d81ec0500c730e2ef69e5b140ef16902ece7897aa8b34505aa1a839"
+    ],
+    "test/scenarios/foundry-assessment-producer-recovery.test.mts": [
+      22.125239,
+      "2c38f46f291d4121037b8437eedd9a0992145bb7460c3b362686e18a3b5b9aac"
+    ],
+    "test/scenarios/foundry-execution-admission.test.mts": [
+      84.309929,
+      "208deff8ddca06acff0eb8f75a502913cbae8674af7271d88b082be131c9835c"
+    ],
+    "test/scenarios/foundry-facade-request-store.test.mts": [
+      3.252136,
+      "781ff91a7a39ab2711eacba003ae91b3c6d56cccf37714aa6cfcc4926da09d68"
+    ],
+    "test/scenarios/foundry-flow-current-rows-candidate.test.mts": [
+      346.760846,
+      "63def1c373a2e6e1819aa217f541f87342398a50b4666e2df67cd3a96ea087de"
+    ],
+    "test/scenarios/foundry-flow-draft-readback-mismatch.test.mts": [
+      751.814512,
+      "3ab1db6c9e555c01ac86f6a964f54f9443a00fb867cad816ec715f593665bb28"
+    ],
+    "test/scenarios/foundry-flow-model-draft-candidate.test.mts": [
+      381.392542,
+      "5a199b0ec8ab565f1bb9bfcc75d2a0075623c94ad95cd19279d5b3d44c98f989"
+    ],
+    "test/scenarios/foundry-flow-reference-draft-candidate.test.mts": [
+      343.879464,
+      "2d78c2c8096cf55288ae060b88bae199fb582e2ea4d4e0c0ee19f1f1d7228e77"
+    ],
+    "test/scenarios/foundry-interaction-workflow.test.mts": [
+      105.08181,
+      "330a89e00875ba3bf43f78d88091045fc862ba2ac03e1df803c943fac24e749b"
+    ],
+    "test/scenarios/foundry-managed-adoption.test.mts": [
+      388.080813,
+      "0d69502c996f0380a4d86f528151ad5c85924b5f0e375afd3f3e981315655d32"
+    ],
+    "test/scenarios/foundry-managed-auth-rejection.test.mts": [
+      484.76204,
+      "a364a1bf6d96fd06cb3001e1b0570cd23769a56d88e3b82553c77f119b62cf62"
+    ],
+    "test/scenarios/foundry-managed-authority.test.mts": [
+      230.682731,
+      "bf2395f7dfb60504aca39a0028a59e87ac482eb9b076ccc6c39f57d443915ba5"
+    ],
+    "test/scenarios/foundry-managed-carrier-rejection.test.mts": [
+      565.422308,
+      "d74108184f83d2dbf90dc9e1a06c264d2735320891a0195a8c94de2c1ab32487"
+    ],
+    "test/scenarios/foundry-managed-readonly-concurrent.test.mts": [
+      810.538144,
+      "6c59b621673c1bc59c625064e06f699fd9dfeea09fa56e3e3f1e01ac287f71e7"
+    ],
+    "test/scenarios/foundry-managed-readonly-unknown.test.mts": [
+      584.018486,
+      "fc77934e69266cf4a44d0c0b6c9a07bdabfe064f9f488ce3b666359251e9f98b"
+    ],
+    "test/scenarios/foundry-migrated-authorization-freshness.test.mts": [
+      63.039335,
+      "2d23d49b53fbc0c512987cc757364c971008d64eba14957f67b6cf4367aef210"
+    ],
+    "test/scenarios/foundry-object-interaction-workflow.test.mts": [
+      286.482513,
+      "253cada05e24b83e232ec88896f9b3203ff8bac0e81dffd0363f6fca05e07e8f"
+    ],
+    "test/scenarios/foundry-owner-readback-reference-context.test.mts": [
+      196.663925,
+      "106b0e95f95a18ca3a0ac0b65e21d9ef6d2716e2dcf9ccee87019ec0447d5588"
+    ],
+    "test/scenarios/foundry-package-consumer.test.mts": [
+      796.062574,
+      "61d6d5a86c073e43a1d9ee8c114c68b847587a4e4d25054adb4900134a2c2085"
+    ],
+    "test/scenarios/foundry-package-preparation-annual.test.mts": [
+      1142.535411,
+      "2b233b90b45e02621e7e3ddfd341fb97528ce5ad1dfe122d2bbed61af05c6462"
+    ],
+    "test/scenarios/foundry-package-preparation-legacy.test.mts": [
+      752.279366,
+      "439e05660af6a9172f2e4e88951ab4c3bd30e228322a3dc7b3d4cac171f26f68"
+    ],
+    "test/scenarios/foundry-package-preparation-targets.test.mts": [
+      872.55388,
+      "9a7fe99482b8f2d064323571226547c0fc29e96a3010852d403aec777d95d601"
+    ],
+    "test/scenarios/foundry-package-preparation-unresolved.test.mts": [
+      785.245469,
+      "33716ab610e16d8ed8905e8bfb8dbe84dc654501827864210655f41769c9a215"
+    ],
+    "test/scenarios/foundry-preparation-annual.test.mts": [
+      444.975886,
+      "bdc6bc3c29359ff8f67c598949d7668ef7c413fc34c6379e47219b5c6abb64b9"
+    ],
+    "test/scenarios/foundry-preparation-targets.test.mts": [
+      535.86106,
+      "08cc28ce97c99d0d045179340b0703c1ac73d93c74c4d58f1288c311b902352a"
+    ],
+    "test/scenarios/foundry-preparation-unresolved.test.mts": [
+      383.58971,
+      "943be219009051af5ae66765cc00fc779ee5ab428740a0fb539619d751d7295b"
+    ],
+    "test/scenarios/foundry-public-approval-current-rows.test.mts": [
+      599.198793,
+      "09368f6d9d4101ed1dcb39793644edde24d987ee2e71c93ddb49ac172f83ce9d"
+    ],
+    "test/scenarios/foundry-public-approval-current-trace.test.mts": [
+      702.461764,
+      "524dfb94a2ed944d2bcbdf6916069a0f562cbb45d65e9803e4b3db2fd62e7a91"
+    ],
+    "test/scenarios/foundry-public-authorization-metadata-freshness.test.mts": [
+      393.020366,
+      "add7db6f4a34faf1da63fa4b551c07b2512725019bc31d52fc203d0fdcf06b81"
+    ],
+    "test/scenarios/foundry-public-dependent-flowproperty.test.mts": [
+      1022.329535,
+      "a5173017104f79141c6c901e90b103b229a824d3be7a7adbefd8634cadc463f4"
+    ],
+    "test/scenarios/foundry-public-dependent-source.test.mts": [
+      190.135973,
+      "ca1cc545f29dc509808bc60ee4722c7e3efb5b3d552b7acfaffdfc92c5f09ff0"
+    ],
+    "test/scenarios/foundry-public-edge-identity.test.mts": [
+      32.802226,
+      "154e9d23860596eb1df22ff045b786fe657c7c5d2093e7670139f681ab566e9e"
+    ],
+    "test/scenarios/foundry-public-explicit-identity-stage.test.mts": [
+      269.185401,
+      "612bfa6b7ac60b374dd00cc6e1bbf3a30a768bf8e707b9e4b9885f88738ff704"
+    ],
+    "test/scenarios/foundry-public-facade.test.mts": [
+      30.375779,
+      "aff20c0cfc7345a22acf46457b03de970ef7deecb6db6d173241e517abccc4ab"
+    ],
+    "test/scenarios/foundry-public-finalization-flow-evidence.test.mts": [
+      1046.473276,
+      "8b11e710d6020b3b72b313e34949637f6f9895be4a0aadec65f2fc8b68fdcd73"
+    ],
+    "test/scenarios/foundry-public-identity-final-rows.test.mts": [
+      343.616154,
+      "3781141b6775f0499360d846554be9412ebf1d02ceca38c6ba86d305196a4fe0"
+    ],
+    "test/scenarios/foundry-public-identity-mixed-reuse.test.mts": [
+      437.148063,
+      "1197793bf3f2b8115673209aca865da874975f5e99ac5e2da7d6265d5a8623ca"
+    ],
+    "test/scenarios/foundry-public-identity-recovery-negative.test.mts": [
+      353.932631,
+      "7276b7acc812bccbb7e908408c8f400b618ab056a5531f22d38bcfebf149ba1f"
+    ],
+    "test/scenarios/foundry-public-identity-recovery.test.mts": [
+      364.070905,
+      "5776eb4d597723e6beb4cf6193df705f4c726adb2e5435145def324b0a8d4552"
+    ],
+    "test/scenarios/foundry-public-identity-reference-reuse.test.mts": [
+      428.736195,
+      "a07b4d698647478d82daf3fe929cd32cb740bae910587f51a4a2bbd40686c2e6"
+    ],
+    "test/scenarios/foundry-public-jsonl-identity.test.mts": [
+      122.308411,
+      "184f4280a77bb21565959a3e839165801339876f50eeded06c0b02a8373818fe"
+    ],
+    "test/scenarios/foundry-public-native-draft.test.mts": [
+      850.427727,
+      "cd0779f799055160a916f6b55fad67c95ed4e4521db3856ade4ca4cd2583663e"
+    ],
+    "test/scenarios/foundry-public-native-insert.test.mts": [
+      454.709288,
+      "846232001e19ca4459131c8fee32b3ae31c54d801dd8665948af5d44ad542b21"
+    ],
+    "test/scenarios/foundry-public-native-lost.test.mts": [
+      345.866749,
+      "d1d391365f83db441c3365c541b320e1a0108b4a8b38dbe776a03a7ad4ee07d0"
+    ],
+    "test/scenarios/foundry-public-native-missing.test.mts": [
+      474.074804,
+      "3738111e267176f77c55b27d5b1de5a79e612c77f9604df8c6353992a10f852a"
+    ],
+    "test/scenarios/foundry-public-native-reuse.test.mts": [
+      536.435862,
+      "9769648455ef48ce2d8ffa9abeb183ee51beab975584d67bb7a0d4f103f00488"
+    ],
+    "test/scenarios/foundry-public-native-unknown.test.mts": [
+      385.125657,
+      "c44550a4c83b3cd9555321f62baf6ad33d355a1e993761f514c35bde32d75afc"
+    ],
+    "test/scenarios/foundry-public-reference-input.test.mts": [
+      444.527744,
+      "93980a4a26b617f919b03ff5adf471e41c99aac5fc52bf7610621e7f10061a6e"
+    ],
+    "test/scenarios/foundry-public-reference-qa.test.mts": [
+      296.396571,
+      "99be3d20bf718003299b48065ac1943831a1a85d5ab5ff03e097ea52e489b363"
+    ],
+    "test/scenarios/foundry-public-reference-recovery.test.mts": [
+      656.884106,
+      "edc8fbcb834deca058088435499c1a61683fd339ebe5f148f68379e61220539c"
+    ],
+    "test/scenarios/foundry-public-repair.test.mts": [
+      217.013055,
+      "72476ddd1a2cf10d678639aee11ca9dd066d9e542f2617830fb0bb34d29954bb"
+    ],
+    "test/scenarios/foundry-public-trace-acceptance.test.mts": [
+      476.565019,
+      "53681911d7b5b1b383b37d5f2026f9ac6cc6d23d77b4c49b66e847ab4a767fbc"
+    ],
+    "test/scenarios/foundry-public-trace-strict-owner.test.mts": [
+      482.214545,
+      "293e4842557f061ea17a8913b1f690cecd5fa1cce7df98cccf0ef44c0ce20ead"
+    ],
+    "test/scenarios/foundry-public-trace-unrelated-change.test.mts": [
+      352.822233,
+      "21ca144c53af66420498b379ac79323c54885350423cf15955328b2a164a3f71"
+    ],
+    "test/scenarios/foundry-public-workflow.test.mts": [
+      634.690879,
+      "bdc21da8604ac68a76d7ac0d70eefb1f68042ad49e41fe08365617476ae60f76"
+    ],
+    "test/scenarios/foundry-quality-review-template.test.mts": [
+      166.79349,
+      "5565e5ff9cef526a30f1d1a2a28703e45d76d85ebdb346ea6a2d692a3247564d"
+    ],
+    "test/scenarios/foundry-quality-review.test.mts": [
+      1039.646669,
+      "d5947e8fcf40f62e347aecafc6c5dad51b1d6a0dd88f51c3262624b43f712af5"
+    ],
+    "test/scenarios/foundry-repair-census-read.test.mts": [
+      9.787737,
+      "72413ac1aa011606b827b0ec4ed0e021d2efc9e71d0dc6bb17f95ab28569b61f"
+    ],
+    "test/scenarios/foundry-repair-edge-update.test.mts": [
+      262.374668,
+      "f7c39c4c2921d3240d6a180be976f0104b8011820902e76de8da8065f1701771"
+    ],
+    "test/scenarios/foundry-repair-execution.test.mts": [
+      231.662783,
+      "e1d6f44688d5217b7e59c9101a1f8350805dee434bc881898a07663a22f68966"
+    ],
+    "test/scenarios/foundry-repair-registration.test.mts": [
+      0.991659,
+      "407f85516ed94fcef758bb08adbe99ca3512fe8603f09d2afb6d97ff6badc543"
+    ],
+    "test/scenarios/foundry-repair-retained-references.test.mts": [
+      65.460113,
+      "ce569c60842fec3771abd7e79e517f5372dd3b096e2831158bf0a6a6c91e3059"
+    ],
+    "test/scenarios/foundry-repair-successor.test.mts": [
+      695.523872,
+      "8646d707a701f4e77f0fa0c6d10886d2bb409ff0fbb1a8379c81951066ee6476"
+    ],
+    "test/scenarios/foundry-scientific-repair-native.test.mts": [
+      0.00857,
+      "877771c2351e79804b26d1bcab539ed0693cc7bb7dd228319ea483194770965c"
+    ],
+    "test/scenarios/foundry-task-artifact-registration.test.mts": [
+      6.185028,
+      "42d102b51dc2a4de13589bc02d346e930e3ff68680cf44bc86b6517586d19640"
+    ],
+    "test/scenarios/foundry-task-input-preparation.test.mts": [
+      22.70685,
+      "6304de31f953598ce36858d0b368a246ae98c3cdef49a6c063d97c80338da680"
+    ],
+    "test/scenarios/foundry-task-runtime-adoption.test.mts": [
+      991.720673,
+      "8af557ac65e470c6c1380b5821d05cca1077f5946b74e53de7a56ffce6836b4d"
+    ],
+    "test/scenarios/foundry-workflow-child-failure.test.mts": [
+      383.281329,
+      "7ec441500a9e739911aa5640f3d8589645bc34b8119323ef0d505c3880f59722"
+    ],
+    "test/scenarios/foundry-workflow-readonly-failure.test.mts": [
+      304.965026,
+      "38dc2b36ca1b0be95f62cb74163864502905d7502bfe76fa2b6ada1a019373d6"
+    ],
+    "test/scenarios/full-context-completion-closeout.test.mts": [
+      22.632658,
+      "90af1d8eff143e4f2e9c0fb5f1979e0f5c1ed1c69226458bb0a4f9755d262ce0"
+    ],
+    "test/scenarios/handoff-reference-intent.test.mts": [
+      0.474659,
+      "c9d6bad36aa4e0fa6880999c9df0e412bf3f88092f861c015c41f40c9b5d25b2"
+    ],
+    "test/scenarios/identity-curation-context.test.mts": [
+      10.147709,
+      "3c80b2a741b8b259e321fcf408d9337bbfa5ec712d83af558b6812df598abac3"
+    ],
+    "test/scenarios/identity-preflight-diagnostic-exit.test.mts": [
+      27.341986,
+      "74ce5d733d897392d844b9f604f1c6248f18ee9b8e0615f96754f14019f86e66"
+    ],
+    "test/scenarios/identity-preflight-fail-closed.test.mts": [
+      22.750666,
+      "0f60de9d8b26603cb949903bff91e0fb557426bebfa881b500916358ca52b794"
+    ],
+    "test/scenarios/identity-preflight-run-and-merge.test.mts": [
+      2.462941,
+      "9df053f575f67cdda5ae38eaab205122813196a8597478c9c58668e4aeee6461"
+    ],
+    "test/scenarios/incremental-change-set-handoff.test.mts": [
+      1.673689,
+      "42b56a16b774bffead7b0033d3de1f0029f75dc621bd765cfca6aac741cffe11"
+    ],
+    "test/scenarios/library-scope-workflow.test.mts": [
+      11.653439,
+      "991e2ec60a2e38b09698cd0e53b75916e618d6df12764cbc5048e9602be3b25c"
+    ],
+    "test/scenarios/location-and-finalize-gates.test.mts": [
+      9.941685,
+      "9ae8f38237f7c4f613bf88fffa29bcf5f6cfa17b6aeb50eb98a34978fd899acc"
+    ],
+    "test/scenarios/mutation-full-context-evidence.test.mts": [
+      18.843954,
+      "adaf8484178a69edae7b71379a204aeb146f5ecb13f0d930110968ee1605c5d6"
+    ],
+    "test/scenarios/mutation-lineage-helpers.test.mts": [
+      0.064573,
+      "f528682d517133a0822b628e6c279bd05ba4c5639df5aaba3f36cf4ba0cf7730"
+    ],
+    "test/scenarios/mutation-manifest-reference-closure.test.mts": [
+      12.888413,
+      "81b3b665a7ac1e02385679322a935a62e00568969ef6992c2f36f8feec36d473"
+    ],
+    "test/scenarios/native-insert-closeout.test.mts": [
+      3.005137,
+      "3952cec70df2dda85498230a96beb865e0afa95b00894f7cecd40eb531a9094c"
+    ],
+    "test/scenarios/post-authoring-finalize-gates.test.mts": [
+      35.487677,
+      "0698f1ac42bc6441b7a2772c61a4d44ada2381f28169e7e4e0d5ab3f818157f8"
+    ],
+    "test/scenarios/post-write-unique-root-closeout.test.mts": [
+      3.967615,
+      "c5ceee3dfd942dc517c239883e313d96f5063b005322382a24cf658dc0f038ab"
+    ],
+    "test/scenarios/production-contact-draft-case.test.mts": [
+      0.018217,
+      "756f186ed5bf9763481a4287fab78f5b741ac59777929627212f4ba317e318b5"
+    ],
+    "test/scenarios/runtime-workspace.test.mts": [
+      5.603323,
+      "82e201437dbead90a2e174a3fb0c970ae0cb77ea5362ce543c6c69daa632c8ab"
+    ],
+    "test/scenarios/scenario-authoring-curation-test-migration.test.mts": [
+      0.014171,
+      "74922a933035ee3fc007994c3b95dd395325680238d71a95348fa63a65f7f3f5"
+    ],
+    "test/scenarios/scenario-identity-reference-test-migration.test.mts": [
+      0.014081,
+      "d60e1c1e540c918bedac6eb155c759a41fdbf575ca1bcf5c421d29b95888c920"
+    ],
+    "test/scenarios/scenario-library-algorithm-test-migration.test.mts": [
+      0.014131,
+      "382accc34634a0672ff4f88edd8eb69b730fd090f50862abb123ae54c952c97a"
+    ],
+    "test/scenarios/scenario-mutation-finalize-test-migration.test.mts": [
+      0.016339,
+      "1dff535a58ce174f09a2d865e78730328c6d00e7153d81b4b1d86fcf4c5a2729"
+    ],
+    "test/scenarios/task-authorization-persistence.test.mts": [
+      1.112214,
+      "180103ff5a1677b5fcb2780c2dc0cb764368356e96b2996bf1508166dcc3ade9"
+    ],
+    "test/scenarios/task-runtime-binding.test.mts": [
+      2.057029,
+      "273880f733bc609f446e26822a2e3f9ed4d222b8ce5ebb03e38f5c03e5e5f41f"
+    ],
+    "test/scenarios/topology-convergence-handoff.test.mts": [
+      1.111893,
+      "243d119b05d7d03ce6a417567053bd2deca584b8a3f109c58074fbbfe46ee9a2"
+    ],
+    "test/scenarios/workspace-migration-adoption.test.mts": [
+      26.572287,
+      "84c8fe5e242b88ed9bebecfbf76a9cd4308429ad71a5d1b58883460e3ad2d29c"
+    ],
+    "test/scenarios/workspace-migration-planning.test.mts": [
+      2.271032,
+      "d2af7778608078742eae4d652feb6df196fa035844211146545b02114cec38c9"
+    ],
+    "test/scenarios/workspace-migration-transfer.test.mts": [
+      17.651216,
+      "0408d564b2a4ae36ceb208c60ad7f96ec68d468c027bf6084a4cc792ddd5d0bd"
+    ],
+    "test/scenarios/workspace-read-write-compatibility.test.mts": [
+      0.605302,
+      "3918739204dc1e3c2f6467502fcfc1ca2a6989d1f1066a4fa6d3a56194d2df69"
+    ],
+    "test/scenarios/workspace-runtime-selection.test.mts": [
+      0.771702,
+      "cab9663587417df54e717bf429d38e4e28ce7b1b644f39cee24e95337e95ac1c"
+    ],
+    "test/unit/artifact-inputs.test.mts": [
+      0.030689,
+      "eea261221289756bc73fa68f4d377f2e3436a80971d0352b2809b9d80423ec10"
+    ],
+    "test/unit/authoring-packages-runner-contract.test.mts": [
+      0.088831,
+      "ec15055a43d0a7c1b28a35c852335ee74a77e2540b1be7e01c155d893d18e4a3"
+    ],
+    "test/unit/authoring-plan-command-migration.test.mts": [
+      0.7262,
+      "1f614f6191937033a372f299c6a18c415d3bbd08707b079504f4a686732fb274"
+    ],
+    "test/unit/authoring-workflow-facades-contract.test.mts": [
+      0.011434,
+      "b301800d1191de0303bfe39ceedfb3b4fba2ef993ec15d927dfb5a3cfeaa50c2"
+    ],
+    "test/unit/bafu-batch-finalize-stage.test.mts": [
+      0.054731,
+      "9715f2c8f4081f642c8163af6193da5a781d9ecf78442d8c82e205c037219fcc"
+    ],
+    "test/unit/bafu-family-signatures-contract.test.mts": [
+      0.035964,
+      "02d1691e76932b4bda541aff29a997dd15e5eccca20609819fdc1b909518d45c"
+    ],
+    "test/unit/bafu-family-signatures.test.mts": [
+      0.893434,
+      "64b4f3e1e79bcaeba0cbf12a9bc754f437f5310f0d9445ad6f4cfcad1091745f"
+    ],
+    "test/unit/bafu-identity-decision-carry-forward.test.mts": [
+      0.059474,
+      "d6607c00d5a637f8451096e05a34ced281ba0e6833cccfce6b1e156253973d06"
+    ],
+    "test/unit/bafu-identity-equivalence-contract.test.mts": [
+      0.028438,
+      "ee34b8ac1bc616a63ecc9d87d3077344a84a0c60bccd80b99005596ba5304348"
+    ],
+    "test/unit/bafu-leaf-category-map-projection.test.mts": [
+      0.032614,
+      "e66f17baf4110044c268af6a605f79cfde0f4368c3cc6717cfdcf781c99a5a14"
+    ],
+    "test/unit/bafu-leaf-repair-contract.test.mts": [
+      0.01803,
+      "14027b0c0f439a82d8f5d9ac07043eccd535111a3c0485d0db8a5380c87d5c4e"
+    ],
+    "test/unit/bafu-leaf-task-preparation-contract.test.mts": [
+      0.035152,
+      "930a2bc6efb5d7086e3f366d3fa2426cb1fa01205e5924507a1ff65f4d40d286"
+    ],
+    "test/unit/bafu-name-plan-contract.test.mts": [
+      0.049662,
+      "dcb0f5dce1cb404bf2ea1c092f4ba51fa9e752c9607512a854b57395b2631fc2"
+    ],
+    "test/unit/bafu-name-plan-module-boundary.test.mts": [
+      0.043487,
+      "5a21978260099af1e3f15f86a5976fc65da7b80c98711f109011660acb803343"
+    ],
+    "test/unit/bafu-patch-projection-contract.test.mts": [
+      0.038938,
+      "0904ab2132690594468b0f710c453c3982f36c2514711df2ba9f2e83af93827d"
+    ],
+    "test/unit/bafu-process-scope-report.test.mts": [
+      0.012445,
+      "9876745bd3e22095d4c4075a2e81fceceedeaeb68273ee57bd1b24dd71524e51"
+    ],
+    "test/unit/batch-orchestration-identity-patch.test.mts": [
+      0.032062,
+      "df04656c3fdaa0d07eea5480f4aaa790643420551746a1919206512cfaf850ba"
+    ],
+    "test/unit/batch-orchestration-scope-execution.test.mts": [
+      0.05637,
+      "99e53446925c200808bb533101ffd4d611bb14c5d6171835f0c1977cfc947ce6"
+    ],
+    "test/unit/batch-orchestration-scope-selection.test.mts": [
+      0.018041,
+      "1d335ec448856f463ca777bc3d704717684079c7849433be7bdd888134f1cb68"
+    ],
+    "test/unit/batch-post-write-handoff.test.mts": [
+      0.027837,
+      "68790e663d670f5119342ca528d7665a009897ecfefe60edb7370160a55667cc"
+    ],
+    "test/unit/batch-scope-finalize-commit.test.mts": [
+      0.017879,
+      "86b4691f14918ca60cb8f957ec689b3ad123032385ed7a31082b813f7c896255"
+    ],
+    "test/unit/batch-verified-ledger-projection.test.mts": [
+      0.023939,
+      "141fa34828392f262d51e96d8122f09e90c4688874e56f97470de72d4092bb59"
+    ],
+    "test/unit/brace-expansion-security.test.mts": [
+      0.749451,
+      "bf02049e601b7607835479686b5508181eb73c6b5827b9cdc5eab79ae9306e50"
+    ],
+    "test/unit/bundle-dataset-types.test.mts": [
+      0.020201,
+      "1d1d80c3cb047a0c68acf71c46a9c4c71a4192a4c860b87c1095738fb4a6edd1"
+    ],
+    "test/unit/bundle-sample-command-migration.test.mts": [
+      1.307333,
+      "f60f193784632ef9206d148465073b3996d76e3a8efb5f66fae88de42a80d171"
+    ],
+    "test/unit/bundle-sample-utils-contract.test.mts": [
+      0.057458,
+      "51fc20708d5bc86d9d907605054833eea20491725b7c804e14ecaccffe563947"
+    ],
+    "test/unit/canonical-source-review-report-rewrite.test.mts": [
+      0.032278,
+      "db529c3749a6372ab639283d464d307cc36f9723eac9b5918cdb374a690d890c"
+    ],
+    "test/unit/canonical-support-mappings.test.mts": [
+      0.011609,
+      "76125522edcf13aa8b88b844188e12b729251bbfa14bd378e5a19ff70bed98bc"
+    ],
+    "test/unit/canonical-support-rewrites-contract.test.mts": [
+      0.757611,
+      "02bea3da41f080ea9a29f108def5687247e1a8f4588a73f9d14d37b91af88c60"
+    ],
+    "test/unit/classification-schema-repair-contract.test.mts": [
+      0.026848,
+      "2b9bc2140c23b80b223c4183af18bcded5d8265bf152f30d74607d79c7494ba6"
+    ],
+    "test/unit/cli-bounded-batch-runner.test.mts": [
+      0.035032,
+      "2eda5d97f8de9c5e8058f6b1a52802299ca22697806946ac93b53a54ee9a759a"
+    ],
+    "test/unit/cli-support-export.test.mts": [
+      0.094489,
+      "6884dab46d66c57dd2bf3840e58cc2e2855fe007953059206f5e1cf1a76452f7"
+    ],
+    "test/unit/cli-wrapper-command-factory.test.mts": [
+      0.235034,
+      "63532cbeef549ab9e08594acb93fb92f65590a01149bdfcb5550e2fc1d1bbde0"
+    ],
+    "test/unit/command-tests-authoring-decisions-migration.test.mts": [
+      0.011734,
+      "0dbe33702f525a1c6978288baec1d00e36d3511fef4dfe25d3cb0e17952f5041"
+    ],
+    "test/unit/command-tests-bafu-library-migration.test.mts": [
+      0.027758,
+      "dc9fb6d16c689f5f6edc200203323cb274790468ed0579596e9d35906a02a0cb"
+    ],
+    "test/unit/command-tests-core-support-migration.test.mts": [
+      0.021154,
+      "ec93bb532d1d7a11b15a500fcdd5d1d235529a6e2c85149a72df779bae3fa076"
+    ],
+    "test/unit/command-tests-offline-planners-migration.test.mts": [
+      0.012449,
+      "95d845e829b66ae7154125523ed97d7f30cffd15be1280a741fb8ad9d33fec7f"
+    ],
+    "test/unit/content-policy-profile-waiver.test.mts": [
+      0.019521,
+      "c6f0135a3d861ff18efa1b9b71ce16109d741a0d0f7f35288a284b77a2baadcd"
+    ],
+    "test/unit/context-identity-mutation-fixture-migration.test.mts": [
+      0.046818,
+      "8f9eeb8848440b0b7b03ad8db0ef8c3b413cbdc3a84ae600d5d13334fd2b4d41"
+    ],
+    "test/unit/context-inputs.test.mts": [
+      0.085378,
+      "623df3d8542b332c6fb12daf98583bcfec9f4961abd232e72628ebaf79e3ff75"
+    ],
+    "test/unit/control-artifact-retention.test.mts": [
+      4.003633,
+      "b222a3ee87a26eacea754ddd409a6049732aa66d77b3251304ebd5e241cc9dbc"
+    ],
+    "test/unit/core-command-factory.test.mts": [
+      1.214638,
+      "2c4ffd36d19b9ca61ca314ef478427850f8f40d01da472cc8e578fa2867cf355"
+    ],
+    "test/unit/curation-cleanup-runner-contract.test.mts": [
+      0.078101,
+      "681e1e08b500df2cfb8c2e230313f006302b274f1b46a15cff94a2f152e04e9d"
+    ],
+    "test/unit/curation-cleanup-validation-context.test.mts": [
+      0.037491,
+      "e42840f035b02182cd43cfc17366cfe704539758b5ac9bcc6c94835c206b209e"
+    ],
+    "test/unit/curation-gate-runner-contract.test.mts": [
+      0.118267,
+      "9ec794820a3db2fac119a5102044d7e167cc7015e8a90b30b4cb71a56360c1c9"
+    ],
+    "test/unit/curation-gate-workflow-facade-contract.test.mts": [
+      0.008334,
+      "642c6b220432ddd09e994efacf7406fa777406d4b688d2bfe24271360621b7c5"
+    ],
+    "test/unit/dataset-payload.test.mts": [
+      0.017198,
+      "2a85d4f3b25f777a44d72ee35093e70983eb697c817593dfe133823d4b40e72b"
+    ],
+    "test/unit/dependency-uri-security.test.mts": [
+      0.160241,
+      "610710e73e92b3adf5c67ab3a20cd648003f1bbf63fc6ccefaf4593ad06e5b0a"
+    ],
+    "test/unit/evidence-decision-leaves.test.mts": [
+      0.853507,
+      "5f6b689d6663d1b62a59934c0d0fa53fa2144e516551a6c575a664bf09348408"
+    ],
+    "test/unit/evidence-leaf-migration.test.mts": [
+      0.012859,
+      "02ec6a537a68ecf4c3d967acd7a6e4b38316484c34732a36b7f0365a5b63300f"
+    ],
+    "test/unit/execution-capsule-attempt-state.test.mts": [
+      0.010037,
+      "ca1bc75d1d4f778e285594f7972ef690362fed486ac292a96798498f54cc88df"
+    ],
+    "test/unit/execution-capsule-command-factory.test.mts": [
+      0.01822,
+      "f04d2c69a982d150d00ce77a75a687cc3c6a622704a6ee0d52a3e9bf16bdfe11"
+    ],
+    "test/unit/final-delivery-algebra.test.mts": [
+      0.02178,
+      "79a54c0f0fddfc4bbb1536abc7855c0fde66869179e46e4bbfe838a1ad99b8a3"
+    ],
+    "test/unit/final-delivery-redaction.test.mts": [
+      0.021847,
+      "6a542c82d4d47b4acbca760c2680eec1daba06ee9c045505cb35a3844d18fa91"
+    ],
+    "test/unit/final-delivery-workbook.test.mts": [
+      0.090578,
+      "4cc241ac85bae73a1f89500caeb8c84c00118403ac713d7af41ada30b4968f80"
+    ],
+    "test/unit/finalize-recovery-policy-contract.test.mts": [
+      0.014901,
+      "e58db0259dd983a295f727150bf81a9d953be5061f55ebd2ced1f5dc7d84c7a7"
+    ],
+    "test/unit/finalize-resolution-reuse-seed.test.mts": [
+      0.017727,
+      "62d04d0585718e26e688ff08005a3f7bc1b3b06569b44c2b0850101f6b185fec"
+    ],
+    "test/unit/fixture-executable-core-migration.test.mts": [
+      0.116174,
+      "f34362809021a5bb89ab322db72089354d05b548da0591afff854cd5f071da72"
+    ],
+    "test/unit/fixture-helpers-contract.test.mts": [
+      0.341055,
+      "353b8d621269d92ec7d6347b8b3b1a8ae419f93027e7cd4acb260f0d3f892b7a"
+    ],
+    "test/unit/flow-resume-ledger.test.mts": [
+      0.014141,
+      "424873c8c56be8981996cedda035e2f8a4bc334d97da39460a43aee666b012ed"
+    ],
+    "test/unit/foundry-application-composition.test.mts": [
+      0.993368,
+      "e89100e5eba07be60c5f4c55517512390fab6da4fcd2674215280eab4010b489"
+    ],
+    "test/unit/foundry-authentication-environment.test.mts": [
+      0.007561,
+      "e3f8c0202f6046439442b99f8ba5ad52dce3df123f802816748076cf80b6fe53"
+    ],
+    "test/unit/foundry-authorization-input.test.mts": [
+      0.111108,
+      "04e61a7cfd636008f9e1af8fa74487ae6fbf5dc59422d5d6fe69cc2c3b34b76b"
+    ],
+    "test/unit/foundry-ci-capsule.test.mts": [
+      0.021916,
+      "12fc81e3adc46813b890e53b1d4cd0f8db3e6b7fd1802d718c60ded2737bd6c8"
+    ],
+    "test/unit/foundry-ci-package.test.mts": [
+      0.012099,
+      "44d51dce95890e246a25b38e1ebca9c4cc774a09cb94e3cd0912fb203d5c995f"
+    ],
+    "test/unit/foundry-ci-plan.test.mts": [
+      0.45404,
+      "e15dbbeb20c0dede1f859719b4dd885f6e5505fe2934c7a2a741640dc534bd63"
+    ],
+    "test/unit/foundry-ci-reporter.test.mts": [
+      9.100773,
+      "2937c4582e1b6daae4a5dcb796b0be2d04c7f86163ed4185b2c7fa68b544d702"
+    ],
+    "test/unit/foundry-ci-results.test.mts": [
+      0.028423,
+      "e9cf6d8fd0d3e12edfaf49a1dc8d105b9eca487bbf9c7ff45714c4d148dd3371"
+    ],
+    "test/unit/foundry-ci-stage.test.mts": [
+      0.00811,
+      "39737c49c76910001c5c6f89a9a44b0fbed48fe5ef45b8983ee3f65e9772be01"
+    ],
+    "test/unit/foundry-ci-workflow.test.mts": [
+      1.512436,
+      "18f310d3fdbcd661a27328e7b61fdd9ea190b4d5353741e793d96e04b793253d"
+    ],
+    "test/unit/foundry-cli-spine.test.mts": [
+      0.256251,
+      "9acc6e03ddc45e1e486965cc48794bc846122eb6a6195674b8cc018892d3dd7d"
+    ],
+    "test/unit/foundry-command-metadata.test.mts": [
+      0.050504,
+      "0d73edc01d9186f04822c89119a1a92f282b0c0d4e0ad012290e39a628a60f67"
+    ],
+    "test/unit/foundry-command-spec.test.mts": [
+      0.027904,
+      "5a226cdb545579e0294cfe3896a9d30a0829f819e2f8a9ba8cc9b1124b893a71"
+    ],
+    "test/unit/foundry-curation-queue.test.mts": [
+      0.067684,
+      "0aae07245744928df60a8f7227f27bee44fef813ff54336ca08d7efb4142a577"
+    ],
+    "test/unit/foundry-edge-flow-model.test.mts": [
+      0.016325,
+      "50e5fb81a97a396a7a9ec88ffdd7896707948612905f6f54b634654f551a8eb1"
+    ],
+    "test/unit/foundry-edge-identity-preflight.test.mts": [
+      0.013387,
+      "e5fb004117f8019b0234b1f8b198ea1a735e4c09b7a937d09b28cce3658f2ac3"
+    ],
+    "test/unit/foundry-edge-support.test.mts": [
+      0.020304,
+      "a5f0c70764856348d285fd64583b543692cd3d89deb87d8829f41da64ab68e9c"
+    ],
+    "test/unit/foundry-entry-closure-migration.test.mts": [
+      12.140739,
+      "94cff25303e5fd220632119f8b8b0c61f0fb29a6b9589481c4d73126d779c431"
+    ],
+    "test/unit/foundry-explicit-identity-stage.test.mts": [
+      331.350695,
+      "57937f0720729d884e78f0396b1f4a1f9fc723438f5164da65f681ea7506dc61"
+    ],
+    "test/unit/foundry-facade-schemas.test.mts": [
+      0.186348,
+      "39ff99e54caf988e18ce2f4ed08f612b8aa379e05fb78a9734e78db2038e10e7"
+    ],
+    "test/unit/foundry-golden-diff-contract.test.mts": [
+      53.764292,
+      "a129a85f0fddff673dc6b2aef5fe46832739ccd17c7f210bb57ad828d43b67e6"
+    ],
+    "test/unit/foundry-golden-normalization.test.mts": [
+      0.018548,
+      "40612ad00cf748e291e2c9cc5d93a31141e69f4e83e9b08e41fa6327ebd36e7f"
+    ],
+    "test/unit/foundry-identity-apply.test.mts": [
+      2.164405,
+      "3353f44d75125c8ea7bea9f603a860d43a3822565679c1517be4b4fc5fa277ce"
+    ],
+    "test/unit/foundry-identity-stage-input.test.mts": [
+      0.022562,
+      "832e80f08e88fbb39b993a406218d612b210eb035858324beb1d68b12d9aec04"
+    ],
+    "test/unit/foundry-import-isolation.test.mts": [
+      1.095929,
+      "2231c48d0b7c5e3e2126ce41b7c6bafa6dcf540c143cad13a8b74f0f38ef5dff"
+    ],
+    "test/unit/foundry-industrial-terminology.test.mts": [
+      0.058466,
+      "05d5d02e1fcf778ddd281e76499aada6c05bcae4894a7d264a725b0d83177b6d"
+    ],
+    "test/unit/foundry-installed-entry.test.mts": [
+      27.088337,
+      "b4bcc52eb6c474e970ced936af1eff50a2ec718176398e730f7b52916f4ba3e6"
+    ],
+    "test/unit/foundry-interaction-contract.test.mts": [
+      0.195887,
+      "636e8acfb1dcc52c39d233be15972c8528283d3765466e3ff229afd180c8973f"
+    ],
+    "test/unit/foundry-managed-actions.test.mts": [
+      1.768306,
+      "9c7d0b0e42ddb135c70178ffdf4e625dbaa90bd49bd294cf3437670015c400ff"
+    ],
+    "test/unit/foundry-managed-adoption-schema.test.mts": [
+      0.085907,
+      "a7c927cfaf0a6f0036b04df38766712d3858322e3139ab8695b3b42c75c8088e"
+    ],
+    "test/unit/foundry-managed-adoption.test.mts": [
+      0.058739,
+      "bf9dd33c0ffa839a680f781d111e5a434982f92fbda6cf1a82d5910c3b01f352"
+    ],
+    "test/unit/foundry-managed-authentication.test.mts": [
+      0.010256,
+      "ee52edea6dafc42a446a77280bd4925e086aadec6d36023244221438d890763b"
+    ],
+    "test/unit/foundry-managed-runtime-schema.test.mts": [
+      0.094509,
+      "09894440c822907a5aa3905e47c2535867cb00e55e6ec268760a60e3f6f1cb23"
+    ],
+    "test/unit/foundry-migration-plan.test.mts": [
+      0.246478,
+      "26ada2eed9bcc4b3ac96f7f0527cb42b1096db88348a5ba2b94eb44a98b58d0b"
+    ],
+    "test/unit/foundry-migration-scope.test.mts": [
+      0.007931,
+      "3ad29a33cf14d244cc35cf3836598f928b4d3fa37663e4de878a6e68cf9b0ef7"
+    ],
+    "test/unit/foundry-migration-transfer.test.mts": [
+      3.649354,
+      "803efcb76df7cd7611e999fbf809381286524906542ef05099a3b87367f58b66"
+    ],
+    "test/unit/foundry-native-validation-failure.test.mts": [
+      0.020053,
+      "119f562b6d3a0f75f068a03700bbca1dd10f9eff85b4f8524815e13c31f52608"
+    ],
+    "test/unit/foundry-operation-result.test.mts": [
+      0.009816,
+      "5931666ebef780d7afdc1e9d8c02fd0b9d45aa64753414d82b1c0c977afff761"
+    ],
+    "test/unit/foundry-owner-execution-scope.test.mts": [
+      0.011795,
+      "23079bdd247b454e465d05de3731dc87269027fe91112c2dd52603b303db91a9"
+    ],
+    "test/unit/foundry-package-archive.test.mts": [
+      0.011352,
+      "838bab408edcfac0511cd64c900fce77e113d92e5356e015b4769c9e6b7bdcaa"
+    ],
+    "test/unit/foundry-package-contract.test.mts": [
+      0.023426,
+      "3d43dd6d6ccd1dd91876f4fe03b4537521df0003554f3d03fff5fb1c29b5aa1d"
+    ],
+    "test/unit/foundry-preparation-cli-validation.test.mts": [
+      0.068615,
+      "89891068f9427f5ff85056ba05af4ebc1319aa2e7d8c33729349cf094cb1cb4a"
+    ],
+    "test/unit/foundry-preparation-layout.test.mts": [
+      0.010416,
+      "3912c8e38c4266cbbfff36847780bc8f5758aa802c41a889974d0af28bf2c7ac"
+    ],
+    "test/unit/foundry-quality-review-input.test.mts": [
+      0.451349,
+      "2cca2de302a51f8c6a3b938c7e6f07f6c4151c4263fbdac27b4a3b0ead126643"
+    ],
+    "test/unit/foundry-quality-review-lineage.test.mts": [
+      0.228149,
+      "ded0e8d9bd6660005b5e7c89f16b046a5ba7c75d920ac345c60fadd63dc0c0d0"
+    ],
+    "test/unit/foundry-reference-input.test.mts": [
+      0.137384,
+      "ec58b3e132f72c752dc427252e328a51a147d9a46d339eb43a55816d5f1057bc"
+    ],
+    "test/unit/foundry-release-adoption-review.test.mts": [
+      0.046919,
+      "7783050efd3e78fcb55dc8ef307cce46b96b2c3cd25c80ae862314bc3ecd5db0"
+    ],
+    "test/unit/foundry-release-aggregate.test.mts": [
+      0.036254,
+      "a623344e1400d367b03b5c24a9c7511eca3060cbc89090295e1882281541c6fa"
+    ],
+    "test/unit/foundry-release-assets.test.mts": [
+      0.055257,
+      "28e030527c2b52ce4446676ff48213747211e58f1b14fd1d51f65fb2f44bd57b"
+    ],
+    "test/unit/foundry-release-bootstrap-environment.test.mts": [
+      0.010707,
+      "1137b1b1d75b04e153fe030fffe093f5533e037488ffdc06317af0d4bd37eb2d"
+    ],
+    "test/unit/foundry-release-bootstrap.test.mts": [
+      0.607615,
+      "dfa52ba6fe0119750628cc717a14da5ba5f1d1e22a7545cd06f1e30e9ccc1f55"
+    ],
+    "test/unit/foundry-release-cli-candidate.test.mts": [
+      6.135184,
+      "2ae7bdc1b397dde5c3b2de0af20f4b01ba37fc6949cc31c032c8eea79e6b822e"
+    ],
+    "test/unit/foundry-release-component-io.test.mts": [
+      0.034263,
+      "cdcdcd64aad994105598527ffe0316ad90c52c737a60bb4e060dddc5fc6937a1"
+    ],
+    "test/unit/foundry-release-components.test.mts": [
+      0.011544,
+      "4977fcc3e3b86ea2e324dfd44eba10169a212e937f605fe4f749a54ecd3c740a"
+    ],
+    "test/unit/foundry-release-consumer-cache.test.mts": [
+      0.015273,
+      "d522f5f715a67eeee40cc9ede686c86f820c67921b50109ff2e7de529836a645"
+    ],
+    "test/unit/foundry-release-contract.test.mts": [
+      0.140353,
+      "b0d9c9a949896b6861ad3e7491a2dbb86d0e5df28fcd688e80192f03071a4b97"
+    ],
+    "test/unit/foundry-release-extract.test.mts": [
+      0.068564,
+      "c8a13bfef65a0a57be90eba0890a613d2ee475fd5db3c639867b487d6b7cbcfd"
+    ],
+    "test/unit/foundry-release-metadata.test.mts": [
+      0.200814,
+      "d3f6e7bf5af3c618814c4731d5d7b703fc5dab0cc54b4954a3bc1354e9a3b343"
+    ],
+    "test/unit/foundry-release-native.test.mts": [
+      0.062433,
+      "15ff508f7c3f5ef3ce6653f870fe13953d81a2d1da1a67d9a2ed7ed914405340"
+    ],
+    "test/unit/foundry-release-prepared.test.mts": [
+      0.021399,
+      "975704147748bbc0c9ced845c26842b070d00f13e4a6e17809cab2924855a7c2"
+    ],
+    "test/unit/foundry-release-production-materialize.test.mts": [
+      0.217444,
+      "38cda47c33e25a76e1ab79c0162edf33b64f8f6802638a340c66dbc531964cde"
+    ],
+    "test/unit/foundry-release-production.test.mts": [
+      0.439794,
+      "0e08d05d1257c5dc252ed89233285cb565fd10d377f2fb440ce367269bc89721"
+    ],
+    "test/unit/foundry-release-provenance.test.mts": [
+      0.018753,
+      "817b477f20c33e481610db961a878de14ebc5510c4331a4a146a8217f5281f7a"
+    ],
+    "test/unit/foundry-release-public-qualification.test.mts": [
+      0.024638,
+      "d967f5c5a4543dfa0d93a4a72476b3fe931c1d29f46eae155710379efad4519b"
+    ],
+    "test/unit/foundry-release-publish.test.mts": [
+      0.042466,
+      "d0b286498df73e4023c265fd902bad21cadf82921393d216df95705c473eb5ae"
+    ],
+    "test/unit/foundry-release-readback.test.mts": [
+      0.013739,
+      "7b962b90ec017988293708ac5f15af2fd9105b238f910c41687854553dc84f70"
+    ],
+    "test/unit/foundry-release-signing.test.mts": [
+      0.031593,
+      "8ce039dcb1a3919fd0f759d926208a82654711a4c27fc36c06bcb0af0dd1c075"
+    ],
+    "test/unit/foundry-release-tag.test.mts": [
+      0.05074,
+      "1e32f1c2290b23855b8828e79f872b4b3142948056763da132c030a0ef41a625"
+    ],
+    "test/unit/foundry-release-tidas.test.mts": [
+      0.046256,
+      "3bd408d0a4d5eec3c365e48e44f3f5eb7190e58f61d2fde75252aba1960e6b7d"
+    ],
+    "test/unit/foundry-release-version.test.mts": [
+      0.712604,
+      "7af3422f170163e2a506172b3c56061c061c4f06b94999809225046ab84c1b9e"
+    ],
+    "test/unit/foundry-release-workflow.test.mts": [
+      0.022042,
+      "bdc9fdae655c1088f6c30e8e157af56963e2617070c7c6ed7f747fe78d42060d"
+    ],
+    "test/unit/foundry-repair-authorization-input.test.mts": [
+      0.11597,
+      "19e40de3f3a7d79d3d3ce2f26f5251713e9a450cddeea782db26b48cdd0cc3e9"
+    ],
+    "test/unit/foundry-repair-census.test.mts": [
+      0.034474,
+      "ee23e76ecf19af9a9bc2bd6463de00178e251c6a5bad52ff4d8676e95ef0e9f3"
+    ],
+    "test/unit/foundry-repair-family.test.mts": [
+      3.024314,
+      "c04c50663d84787c48c47714ba2f5d047461d14f7ebc47b732bc7dc428359b6f"
+    ],
+    "test/unit/foundry-repair-reference-proof.test.mts": [
+      0.047833,
+      "80d68053b0cba6ece2d1d122baabd85cd4f1d30eb953d9153557b5f07b63d3ba"
+    ],
+    "test/unit/foundry-repair-root-proof.test.mts": [
+      0.009385,
+      "5e9cc38914df5eeaa466817417a447f3f10e7d72d3932d3137c9ed4f4dc37691"
+    ],
+    "test/unit/foundry-repair-scope.test.mts": [
+      0.062632,
+      "a622aaae66252e6777458296088e6c56b98d87d52805b78c808f9ca1faf2451e"
+    ],
+    "test/unit/foundry-repository-identity.test.mts": [
+      0.011751,
+      "1466ebb1634692ca1f563e8f7891151302dc0dc6946cbab81c8c6c33edb21b03"
+    ],
+    "test/unit/foundry-runtime-authority-schemas.test.mts": [
+      0.126212,
+      "df4af8fcc990ab737c13f37c09a9d26ade8e3e268a3ca0a490bdba72f55e2529"
+    ],
+    "test/unit/foundry-runtime-command-policy.test.mts": [
+      0.014131,
+      "672014f60ff3b3a132ed47b065dd977ec2fce98daa5c5169b2cdf7d8be981def"
+    ],
+    "test/unit/foundry-runtime-context.test.mts": [
+      0.104811,
+      "a372d0dabe037129423ce76fa651db4074a6ccfe54d618152b846f5a72a68ab8"
+    ],
+    "test/unit/foundry-runtime-environment.test.mts": [
+      0.379069,
+      "22422c5e548e41956030f9e2cb067914454805fe7294e205c1648bfb5835cba5"
+    ],
+    "test/unit/foundry-runtime-host-initialization.test.mts": [
+      0.036096,
+      "ab935bbc4a1c6317b73fc15df74d4b829c8be620878a2e48e89060c8a3969ac8"
+    ],
+    "test/unit/foundry-runtime-qualification.test.mts": [
+      10.783716,
+      "a1e1669f2cd0ad26ff3bca8cac9b23a39974f6c2df8e40ee470ccfa746fd4109"
+    ],
+    "test/unit/foundry-runtime-utils-contract.test.mts": [
+      0.244033,
+      "414453f3357791fa825641fbc33601f933994855e3100d4d866802801d7519ee"
+    ],
+    "test/unit/foundry-scientific-repair-runtime.test.mts": [
+      0.091113,
+      "5838b9d8ce635aa6fd751240f26e8b6f10d78b0b50943b2b85bc16ce090153ee"
+    ],
+    "test/unit/foundry-scientific-repair.test.mts": [
+      0.230473,
+      "a6d6e220be7612299a6939f70da68fd716dcb00ef2e3a8effa18575daa0c3cba"
+    ],
+    "test/unit/foundry-semantic-adoption-index.test.mts": [
+      0.019484,
+      "7bea693f380a3151849cd9f74ac176593f649d7b7dc90a1199e204a9ce7ddaab"
+    ],
+    "test/unit/foundry-semantic-decision-object-scope.test.mts": [
+      0.011219,
+      "8dc7dc736be50dc6503c685cfdd413fd359cbeba6ce88d25c09d2d68b09b589a"
+    ],
+    "test/unit/foundry-semantic-input.test.mts": [
+      0.169725,
+      "3bde942ccd8e5aa605b5b957d5d977b3ca4b6fbb41e45148e5c88ea5295d46e8"
+    ],
+    "test/unit/foundry-stage-contract.test.mts": [
+      5.996874,
+      "5530969f0536258f30bba7d0b0d2ea86a9d74e3a722a399afd04108600f68925"
+    ],
+    "test/unit/foundry-task-start-spec.test.mts": [
+      0.024717,
+      "52dd3bd4007bfac336d766924f31159a602f6e94229689b49ee67e1690ff0280"
+    ],
+    "test/unit/foundry-typed-context.test.mts": [
+      0.028347,
+      "913e9f143d8a074974bcc3a8638025e704015662ad5018d5507b59a061ae1703"
+    ],
+    "test/unit/foundry-typed-flow-qa.test.mts": [
+      0.011886,
+      "e70e28e35039e7a802dda7c03d182f6915d0e7249de7108e6762fd18a33662c7"
+    ],
+    "test/unit/foundry-validation-reference-context.test.mts": [
+      7.450974,
+      "c5dc9681b01f2dfb3a29dde21c621dc2e042cd8e67198101a69bd2d8a5976821"
+    ],
+    "test/unit/foundry-workflow-directories.test.mts": [
+      0.047388,
+      "a57d1b685f8ea9b90a167a5d29a9e92e01af019265c918429bb57c8fc3ce0e75"
+    ],
+    "test/unit/foundry-workflow-failure-bounds.test.mts": [
+      3.619217,
+      "9530b6d9a634d27255b9750e464e25515233660e63ef825b468ba0a0848d058c"
+    ],
+    "test/unit/foundry-workflow-object-scope.test.mts": [
+      0.068536,
+      "23460cfaca7e2380ffda0ce0d3978af0df475bc08f16909adfbd30ec4a689431"
+    ],
+    "test/unit/foundry-workflow-repair.test.mts": [
+      0.019088,
+      "facd1eba9806ef7499c9abb34dd9ebe24f1be98f011548fc17131ef7386dc4e7"
+    ],
+    "test/unit/full-context-proof-contract.test.mts": [
+      0.037791,
+      "15c74e03698849e9dccb156cca8f3955e625f1f3098e51990e3c4e6069435467"
+    ],
+    "test/unit/git-hook-isolation.test.mts": [
+      0.007478,
+      "ae25d2245f1d78a511bef1b49a2c28f48cb4a6c7125bcc560383b289d499ecde"
+    ],
+    "test/unit/golden-skill-ownership.test.mts": [
+      0.008868,
+      "0729d6d54b62345837813d96b14af23951817749e7378ef73028bb371fdcb55b"
+    ],
+    "test/unit/handoff-identity-task-command-factories.test.mts": [
+      0.317457,
+      "a2ffe423ab68ac294e308cc1e401915ad8702ddc34e5066205f4cd3d671375ee"
+    ],
+    "test/unit/hash-utils.test.mts": [
+      0.013862,
+      "d884a778aa7b59e16a06971b9cfa1feaf5a0b74be4f05f63c7a4fc2c0e278b45"
+    ],
+    "test/unit/identity-preflight-diagnostic-proof.test.mts": [
+      0.025575,
+      "47c59bb1f54b61e0a70780f3ca43dfd18a84c5e387a13c1930256626d623dbca"
+    ],
+    "test/unit/identity-preflight-proof.test.mts": [
+      0.026902,
+      "a380aa9884fc1608ef5ed1666d0cde664659ce054228bf808fc4f0bd2c089c65"
+    ],
+    "test/unit/identity-preflight-run-command-factory.test.mts": [
+      4.602663,
+      "e3d1c47ad648c9043826e61e63e2cf8c50acda9405ff9626249cf793338fb006"
+    ],
+    "test/unit/identity-reference-rewrite-command-factory.test.mts": [
+      0.013216,
+      "fad1e8ee5cca43cea3fc40f912078163de558004300ede6405da132fa073352a"
+    ],
+    "test/unit/identity-rewrite-explicit-any-contract.test.mts": [
+      0.912002,
+      "8b625a793737a01d5b0a79c3ad69304642ebb570cd6e28cc36b2d74a4576856e"
+    ],
+    "test/unit/import-curation-entry-barrels-migration.test.mts": [
+      2.293957,
+      "1ff7ebc8a86541ee8df0aa21df673a641e225b82c670ef4dd9b9d0c98488ca07"
+    ],
+    "test/unit/import-curation-leaf-barrels-migration.test.mts": [
+      0.017769,
+      "7e5f97f0c0220940e4c3a6fe010ab0eb00e582f0e8b258842cd761ed4233cfd5"
+    ],
+    "test/unit/import-ledger-command-factory.test.mts": [
+      0.017166,
+      "99e68df78b9a48c5b5504ee0b060ae552aaf2395b655ef3c1e462b9e8f507b29"
+    ],
+    "test/unit/import-ledger-contract.test.mts": [
+      0.388126,
+      "f47d7817b462103e0e27e950bff1c102f5d31c2286fd5a7328b249e495b4ec3c"
+    ],
+    "test/unit/import-ledger-type-contract.test.mts": [
+      1.103285,
+      "6dd6cc2f58237519298c57a4d9c0aa9b82a8c6c62d2f85ae4b3909714975f1d1"
+    ],
+    "test/unit/import-ledger-utils.test.mts": [
+      0.015911,
+      "5a49290e795592a70ddf21a8cc4389c3cf7f5e744588db143ece7f5d8c6d2842"
+    ],
+    "test/unit/incremental-change-set.test.mts": [
+      0.053439,
+      "db834039806db56cf915375f8482ed018f91cf391f9972f6086448375504101a"
+    ],
+    "test/unit/incremental-command-migration.test.mts": [
+      0.980253,
+      "8c3523458c5efcf0d683bfcd7b883582629d34cf009c1871571456d28a0b0610"
+    ],
+    "test/unit/incremental-fixture-migration.test.mts": [
+      0.036116,
+      "ac0543cf53fe547b36630dfdd7025c4e58c12fe6b6c5bec2832730794ab90ca9"
+    ],
+    "test/unit/internal-contract-migration.test.mts": [
+      0.022798,
+      "a13f08d5513230e355ee22d89702feb22654744a707c2bcb188aeff937221c2c"
+    ],
+    "test/unit/library-contact-reuse.test.mts": [
+      0.012646,
+      "138efd0b15dff414f430e0b6b30eceaf87a2cc88352653b194bab47ceac4b5e6"
+    ],
+    "test/unit/library-decision-apply.test.mts": [
+      0.023208,
+      "76dbf3f6c30d6f0458039b10ff63b85238d0564c2895354d88aef31f04baadd9"
+    ],
+    "test/unit/library-elementary-identity-projection.test.mts": [
+      0.056552,
+      "cf13ee7fca1b5401027b021708666479cb578680c26464fbef21112f9d11d401"
+    ],
+    "test/unit/library-entity-projection.test.mts": [
+      0.048557,
+      "1272f52a3e01c84a109c63b108e4da5a7fcc1691459729fdeac01e72139e4a49"
+    ],
+    "test/unit/library-identity-preflight-runner.test.mts": [
+      0.041997,
+      "2da0e79a895c679c89e3e9f35c835e385a50e2ebab0922210f65b90e915f76c3"
+    ],
+    "test/unit/library-index-authoring-plan-contract.test.mts": [
+      0.099814,
+      "1e6b35a93ba1a7e344eac183719ed387681504700d8286a620bad1c4627dd582"
+    ],
+    "test/unit/library-profile-command-factories.test.mts": [
+      0.01151,
+      "d7be5243bddd89b8ee5890f39ba6595a6157adbfb04d64014f6f08b874ee23c6"
+    ],
+    "test/unit/library-scope-command-runtime.test.mts": [
+      0.00717,
+      "5d00b838e02c2a78f20969e6ae1e5ac483c1ce25d3ccdaf3db2bbb61ee94d69b"
+    ],
+    "test/unit/lint-suppression-audit.test.mts": [
+      0.333336,
+      "7ab62039632392e1f7775d2fe4f94864f6efc6af0134649f72c6dc85a3c07201"
+    ],
+    "test/unit/location-quality-utils-contract.test.mts": [
+      0.034174,
+      "8b52efcc3d6d3eae9d0f89c34f58a6a240192059c4ef8f4448fb9ef746b1a982"
+    ],
+    "test/unit/managed-adoption-diagnostics.test.mts": [
+      0.81957,
+      "febdb2d2afce52ee13383a21dbd509c285e3b63b9431a26c2289c387e897e979"
+    ],
+    "test/unit/managed-adoption-fixture-inventory.test.mts": [
+      0.024261,
+      "81ef1c4c22f1f8f7db3f7a6c444be98c829331ac476ad8115137b1cd22ffe3f1"
+    ],
+    "test/unit/mutation-manifest-runner-contract.test.mts": [
+      0.058302,
+      "dc2bd282b22ab4f56e30a064f2ccd2dfafb0d0a3c5f475f60790133f4d74375e"
+    ],
+    "test/unit/mutation-manifest-workflow-facade-contract.test.mts": [
+      0.022736,
+      "42ed0583a58aac81400a96a4fa14d1e31849fd4c011c5504ad30f18a30db8c98"
+    ],
+    "test/unit/oauth-identity-contract.test.mts": [
+      0.013748,
+      "57a23f467bc24e0c7a324ba023449599b21fabe62acb27396f93bcd7bda70fe0"
+    ],
+    "test/unit/orchestration-module-budget.test.mts": [
+      0.088538,
+      "387d6b69fa3cf5fd4fa529cf2c77f24a305246780381be69e71295631c3bedd7"
+    ],
+    "test/unit/package-consumer-timing.test.mts": [
+      1.632224,
+      "92efa67dbe798c9e47b4b164253446e141cf1a6811ff0c769633f772b561e849"
+    ],
+    "test/unit/package-manager-command.test.mts": [
+      0.26645,
+      "5a751a3d039ad2704bad73315cf3e54ddaa03c763683f2451c3e144612a2d3ea"
+    ],
+    "test/unit/patch-collect-runner-contract.test.mts": [
+      0.033265,
+      "447b088552638f7b3fd127af093452f0a9a055d67d4ce4d8eb13b3cc4f4ae3c6"
+    ],
+    "test/unit/post-authoring-finalize-command-factory.test.mts": [
+      1.04088,
+      "aefa366ed1325a4df4cba18e870757a3fbdac65d8d12e6cc0db2db9d35b01497"
+    ],
+    "test/unit/post-authoring-finalize-utils-contract.test.mts": [
+      0.034034,
+      "72ddab1883210a716ccfc9e0b05e6dedd2be4c4f2db0f1fd51568cdda5021f1b"
+    ],
+    "test/unit/post-finalize-recovery-orchestration.test.mts": [
+      0.023416,
+      "b9c78fe1e5abd8fb084a65b9765102fd6090db1c237f183fb1bd7eed7ec0b300"
+    ],
+    "test/unit/post-write-closeout-command-factory.test.mts": [
+      0.018054,
+      "f8def302b34f60a2959eca5eef92690b7482bdab85b23a6bea8a7b056bbac116"
+    ],
+    "test/unit/post-write-root-proof.test.mts": [
+      0.012028,
+      "2c60d80cadeb0ef489ae08b7da617649dc1f900e72055526dadcb00510c4ddd9"
+    ],
+    "test/unit/pre-push-deletion.test.mts": [
+      20.859666,
+      "daa9e6c9caa7ffe0c4f9b8e9c756a91cedffde56f6fd35634c5d42240c7ae213"
+    ],
+    "test/unit/prewrite-cleanup-contract.test.mts": [
+      0.033137,
+      "a1a09c0bca4ebd8b0576695a40e4d6f72537ca3fa783403c576f08045aa157da"
+    ],
+    "test/unit/process-handoff-orchestration.test.mts": [
+      0.023864,
+      "6273d4f2b6447ec9c561ba06f3669a07f6fc3630acbc9d41fe4a0887b444375c"
+    ],
+    "test/unit/process-scope-resume-contract.test.mts": [
+      0.009737,
+      "b48a7025c7c82d493b3457689cf4f41ba9871ab03311f1b7e3e7337d2ada7177"
+    ],
+    "test/unit/process-scope-run-orchestration.test.mts": [
+      0.027564,
+      "919d3bd930963bc590c3ff4898901fbd25d066b32f5bdeb27c5e1511ea1def55"
+    ],
+    "test/unit/production-case-policy.test.mts": [
+      0.010234,
+      "596231a320f8824d73938a05c49c0a3298945856baa28705370c00af52f226fe"
+    ],
+    "test/unit/profiles-config-contract.test.mts": [
+      0.022096,
+      "1b378a1bab71a122eb5a837fc5eebb823ea26aea81f9cfb91836aac774f7b137"
+    ],
+    "test/unit/public-cli-batch-runtime.test.mts": [
+      0.032978,
+      "37429332808fb228a920f669018e36b6580a3b821d996d087a7c9d9002196255"
+    ],
+    "test/unit/public-cli-runtime.test.mts": [
+      11.163302,
+      "e6caf46a55ac8afb590948fdadf675b3f12f2e7a3a61acb72c6deded795b4fac"
+    ],
+    "test/unit/ready-process-scope-runner.test.mts": [
+      0.052199,
+      "6e25488a9e1c8e129fe9d78d9eb784214e7c47e3acc37ee2333a3b3cc7cb817c"
+    ],
+    "test/unit/ready-scope-scheduler.test.mts": [
+      0.026378,
+      "554f1dbc029429f31ccdeb6dcc44193d73514adfa0c05db1e91cde6e12fe536d"
+    ],
+    "test/unit/remote-verification-accepted-diff.test.mts": [
+      0.051246,
+      "b6d205ee1bd05efd3c08bbc202e88a7f6f70af9518fd3d622cf71ad05a042a6a"
+    ],
+    "test/unit/row-builders-fixture-migration.test.mts": [
+      0.011159,
+      "24db8a8408de6aa73c479be461dc67476b05aa87821a0dff2a5d7c2837aaff6f"
+    ],
+    "test/unit/runtime-io.test.mts": [
+      0.037965,
+      "f2277278b948dca2a854c7286a2c89c2c4ca43be5deb50f7a7e15809e8768887"
+    ],
+    "test/unit/runtime-layout.test.mts": [
+      0.059164,
+      "72cd9bf446354210a7d570e8db392aa8685568124f6bd107503463689fe55ddf"
+    ],
+    "test/unit/runtime-skill-config.test.mts": [
+      0.085803,
+      "ff1ce37246e1902c27c56e201e9c51fd2f85127bf7ed8580bf133afe1549c6f0"
+    ],
+    "test/unit/scope-attempt-ledger.test.mts": [
+      1.83652,
+      "8963cdde6ebc136a050885b2cddf39709a862b110a5fbd3d50167fd697aafebb"
+    ],
+    "test/unit/scope-mutation-recovery.test.mts": [
+      0.009962,
+      "2ae9d662a59d954fa95129bbb173ecc0ae1d771b05fae8cac288034d3d17d684"
+    ],
+    "test/unit/scope-resume-contract.test.mts": [
+      0.016221,
+      "135e02494584326dfbac7640b3657388be2b6ae8f2ea1a133f0dafdc6422f07e"
+    ],
+    "test/unit/signature-fetch-cache-boundary.test.mts": [
+      0.042489,
+      "7c6fc0910a8b062c35b33dfdeb2a711476fb3f4b42dc88672aa05e6fae4c7a7d"
+    ],
+    "test/unit/source-row-explicit-any-contract.test.mts": [
+      0.780489,
+      "f84c42c58c24917d6af994fd0aa8d99888d81d25bb55809138f48d4bce3360cb"
+    ],
+    "test/unit/source-semantics-contract.test.mts": [
+      0.030039,
+      "78830199a774e67cba936d8c221e27fb89d19fa0f0f8d787cc21a5e20bbbd7f8"
+    ],
+    "test/unit/source-semantics.test.mts": [
+      0.011911,
+      "c00213e709cfb6e22fbec85cdda79efd503c8def970a0d4f72e4296875b9ee83"
+    ],
+    "test/unit/standalone-leaf-migration.test.mts": [
+      0.009195,
+      "f7b5d07dc8f1176018437a9f0a83c4850af6d1f5a475539c34b9f83e28815f00"
+    ],
+    "test/unit/support-cache-command-factory.test.mts": [
+      0.025776,
+      "d845ec1faa9dd0ec20f00a9a6f38df80378c12888b1a1de1cee0c25c396f81d3"
+    ],
+    "test/unit/support-closure-proof-keys.test.mts": [
+      0.02429,
+      "1b385a11fab6a4f20747812edff230637a63762631f2939a810b2fe352096c78"
+    ],
+    "test/unit/support-identity-cache-contract.test.mts": [
+      0.023206,
+      "e72c63ac3ddfe1796371acc6eea622e2db01ba07af201bd0622ff1f0083c5c56"
+    ],
+    "test/unit/surface-audit-typescript.test.mts": [
+      0.367586,
+      "36e2dbed6cd6547683b491b4c85ca4378e56ac84f541747a87ba876ef272bc61"
+    ],
+    "test/unit/task-authorization.test.mts": [
+      0.01554,
+      "781d7c14f2402c916e6015210b909cad8f4e8ac3a2667114a33a14d112bc5da1"
+    ],
+    "test/unit/task-completion-command-factories.test.mts": [
+      0.054993,
+      "546c1be69ae25c8de13fe4b4401998c9fd72cb9eab97cb375816630303750002"
+    ],
+    "test/unit/task-profile-authority.test.mts": [
+      0.036405,
+      "ea4a2a444eec8ad77f0ff76ac218212346d4037f32d39a90a82b04e49eef582a"
+    ],
+    "test/unit/tidas-adapter-migration-contract.test.mts": [
+      0.07939,
+      "e5745e6d95ee2979d57876ee3e98c1843b08630872847ab44fd1c593efa9c7d0"
+    ],
+    "test/unit/tidas-adapter.test.mts": [
+      6.615433,
+      "6fb9038babbd3e9ee5033cc1099e613344b485b5c4dc3d3efdfd5a008b404646"
+    ],
+    "test/unit/tidas-cutover-audit.test.mts": [
+      0.387284,
+      "734f682d8f05541835bb2ddca34c40b8c9d8903f08a4692fa45dd478db12eeac"
+    ],
+    "test/unit/tidas-cutover-script-contract.test.mts": [
+      0.493001,
+      "bbbdfde124cec3fa46e64d10d5bc5a7b8c8da6bdd32d44fbbee55c5bd1dc6cdf"
+    ],
+    "test/unit/tidas-fixture-exit.test.mts": [
+      0.136856,
+      "d60afa2531c97ea5b291d77b4595621bcf5669be150be84b2d7e7eb645f44fdc"
+    ],
+    "test/unit/tidas-language-utils.test.mts": [
+      0.010457,
+      "1b94e78147c9fbe3c640db316561aadd008f764c814a518e9aa0037f1eb08323"
+    ],
+    "test/unit/tidas-row-utils.test.mts": [
+      0.015596,
+      "843e862ae9a31b5e8986147d7aca4efbcb5b8936adb0bd1d363e5659161e4444"
+    ],
+    "test/unit/tidas-workflow-command-factory.test.mts": [
+      0.013938,
+      "3d109d9ee12c8d5924b9a19747ba5f336e799907cc3e76cc45f25f88d8ae79be"
+    ],
+    "test/unit/toolchain-contract.test.mts": [
+      3.264541,
+      "173b4b9b955fa128d58b829b6b01323c981c57c8cd8d6f460d3dd04df2020a6c"
+    ],
+    "test/unit/topology-command-migration.test.mts": [
+      0.953003,
+      "a6768c8c62f226cb59c04be455c6a9d06283fbda732b9e89ab6f5982ac4934ff"
+    ],
+    "test/unit/topology-convergence.test.mts": [
+      0.023832,
+      "fe4038934f2b3bdc7488faa18e3ac7ef88a5eee60141559ceed96136114cffe1"
+    ],
+    "test/unit/topology-fixture-migration.test.mts": [
+      0.037217,
+      "7850cb62b5756ea6b7c03cc2667178b7d68967322fb8fff7167e19b9bd1f8129"
+    ],
+    "test/unit/trace-coverage.test.mts": [
+      0.02673,
+      "8ae1c4e4d816e0fcc8abe9a25ceeb7d78273d7d98441693de803891997545bd6"
+    ],
+    "test/unit/trace-summary.test.mts": [
+      0.022719,
+      "52e304e33b1e664f0cfa9bd0848489cdc8bf2141a50ac6e26387d3b7a49c4b31"
+    ],
+    "test/unit/unit-algorithm-adapter-test-migration.test.mts": [
+      0.014513,
+      "6f8a8ab3dac2c9f2c9ae29d0481e72c68e95f6f7cf9ad09495faa5860ce59161"
+    ],
+    "test/unit/unit-execution-library-test-migration.test.mts": [
+      0.01318,
+      "42c0f0949528ed15827257b46678839056b6817c2ef836ab7466ef806127a4f4"
+    ],
+    "test/unit/unit-runtime-policy-test-migration.test.mts": [
+      0.011456,
+      "a3ccdb974e12d5253f31688d55ef663bb5df6e6cac66568c75542ae286b83714"
+    ],
+    "test/unit/unit-source-ledger-test-migration.test.mts": [
+      0.015173,
+      "314a52c8f50d5dbedb9b8c29a17a521f37502b2a669f6a90bedd110b63513443"
+    ],
+    "test/unit/universe-coverage-contract.test.mts": [
+      0.049632,
+      "1f66f42f8b25d4b154e8361ae8b6b5ff01e57d8852a030ea6b745a5b5abfb6e6"
+    ],
+    "test/unit/wave10-runtime-migration.test.mts": [
+      0.012471,
+      "1323f7ece42482b506d879aab32a17c17aeb785f0f35790651c01bbe023d1aa5"
+    ],
+    "test/unit/wave11-location-migration.test.mts": [
+      0.012222,
+      "942cd2645255624b5e8326c87d28cf2eb0cc7763fabc74e048c37d13b1ee7e87"
+    ],
+    "test/unit/wave12-prewrite-migration.test.mts": [
+      0.014889,
+      "15ddb346598d975e1d1db1dbdf40b2599f7b034489f0c9dd4c1f2d8dd1d85b47"
+    ],
+    "test/unit/wave13-queue-context-migration.test.mts": [
+      0.013671,
+      "588917d1071ea802af4c6bb0b64f32c1f8519be1f064884d92b110fff8a8605c"
+    ],
+    "test/unit/wave14-full-context-proof-migration.test.mts": [
+      0.012784,
+      "78849d00f07a7ae408350460493ff842244d4f3bf273d7359bd02e91f254befa"
+    ],
+    "test/unit/wave15-decision-apply-context-migration.test.mts": [
+      0.013291,
+      "d436d549743fb2f55485e83ef4965cbd9221d088fd670fcf5816da1b802674a5"
+    ],
+    "test/unit/wave16-profiles-config-migration.test.mts": [
+      0.018383,
+      "cfdc7986f39d7c72ff231d8f283bca8f3c8ee074e8e28700707a7e7e68f9b8fa"
+    ],
+    "test/unit/wave17-patch-collect-migration.test.mts": [
+      0.017018,
+      "92ee3e7f491ff36469f81271fcd534141efe883ef20febd9a6b47d9c51e31f67"
+    ],
+    "test/unit/wave18-identity-decision-context-migration.test.mts": [
+      0.01514,
+      "9205e3ff31b5247dd2a7038083a46f8adfa1e6a11b6212b4bd4e5f0e8495960d"
+    ],
+    "test/unit/wave19-patch-evidence-context-migration.test.mts": [
+      0.018964,
+      "da11e7d3832d091c353518e37039faccb69dbfa32bb7866f45837b5acc14199d"
+    ],
+    "test/unit/wave20-row-transform-context-migration.test.mts": [
+      0.010332,
+      "a957420555ee85833960d4cece079b42fe34ae65dc3016057181c3127fb70797"
+    ],
+    "test/unit/wave21-dry-run-context-migration.test.mts": [
+      0.011073,
+      "c251c8e4135e9305fb34fd771ddf74cc24f0c18486d43d7c1444a28691f92ca5"
+    ],
+    "test/unit/wave21-evidence-scope-migration.test.mts": [
+      0.014624,
+      "bf16643e1b1277d1bf1fd252c46cabee9bd5993d92fe471c461f2d755a951347"
+    ],
+    "test/unit/wave22-authoring-scc-migration.test.mts": [
+      0.017384,
+      "88fc2ade6c459bfa7c971855a2439290f9f90f3be606e8124b3ed6d803f350a4"
+    ],
+    "test/unit/wave22-decision-full-context-migration.test.mts": [
+      0.013066,
+      "a22f939c107fcf581ae975bd2942d3217e9248158446693ca01dc407311aec25"
+    ],
+    "test/unit/wave22-identity-preflight-migration.test.mts": [
+      0.013402,
+      "7c91b4780e05b6cf5a9f535cc5fb02cb71f4e2af2a30c47c3240e91d89a726ca"
+    ],
+    "test/unit/wave23-authoring-facades-migration.test.mts": [
+      0.012582,
+      "b9ae9a352caa70483d116356b198c4a8337d4d745fe849f513d0795e8ccdc897"
+    ],
+    "test/unit/wave23-authoring-packages-migration.test.mts": [
+      0.011123,
+      "416ee037bc79421283442a6510a70c992c83b5c02d260794daaf47f2a65e752f"
+    ],
+    "test/unit/wave23-patch-collect-runner-migration.test.mts": [
+      0.014429,
+      "452ffaee0f42eba8600fffa3ec5d1d4d3a0e45cb3acd950b84cc7fa936ee44af"
+    ],
+    "test/unit/wave24-curation-cleanup-runner-migration.test.mts": [
+      0.009794,
+      "01c08a11639bb2d22339533a0e2e84614d5103aab03b40a78f28cb7fc97d97d5"
+    ],
+    "test/unit/wave24-curation-gate-runner-migration.test.mts": [
+      0.016177,
+      "292bb8e5b00f70e1886c9f69447d21a10f3bca9312657602b8cc05bccbb0deaa"
+    ],
+    "test/unit/wave24-curation-gate-workflow-migration.test.mts": [
+      0.011203,
+      "3efbb3dd9db7e95310b19731c9077d07cfadfa29e429aaeefe2dbe0adcdd6614"
+    ],
+    "test/unit/wave25-classification-location-command-migration.test.mts": [
+      0.041452,
+      "87bad6e89379dfb283966f6ca43506b42d0c5222c665d08552a1dc56bc49b1ae"
+    ],
+    "test/unit/wave25-identity-decision-command-migration.test.mts": [
+      0.145352,
+      "32626f398a451ef24c6cd4d4648d55ea45afb014d7b58b0a7b25da6f645a076a"
+    ],
+    "test/unit/wave25-mutation-manifest-migration.test.mts": [
+      0.017152,
+      "5b00732bc9303a44e2721846389025b7965e44936c79365e2ddcb256887f6d50"
+    ],
+    "test/unit/wave25-reference-closure-migration.test.mts": [
+      0.021418,
+      "01ef4553c8f4e10b4986d1ffbdb65f89fc721a9e689cf65054bfc4a2d44bdd24"
+    ],
+    "test/unit/wave25-source-reference-context-migration.test.mts": [
+      0.011674,
+      "a5591995a0d76632384017e7e0d47f22ce69368de6b538049b747d7181dcb5a2"
+    ],
+    "test/unit/wave26-bafu-auto-authoring-command-migration.test.mts": [
+      2.473236,
+      "6709c281cc3807c61249db7a4004aa2c6461345aeeeeed37519e43d3a19d0a7a"
+    ],
+    "test/unit/wave26-bafu-batch-command-migration.test.mts": [
+      1.859744,
+      "1e5db1b009faf5ce50cde01517bc7f1ac3dfaf1e1c9b4915234c787dfb63d344"
+    ],
+    "test/unit/wave26-bafu-leaf-classification-command-migration.test.mts": [
+      1.867105,
+      "64e98de3665210037dbd3ce53e1dc3a95f484c300e520f479d8a8cfe57eb40a2"
+    ],
+    "test/unit/wave26-bafu-process-scope-command-migration.test.mts": [
+      1.012029,
+      "618fd1a36c08ea45f2b5689a290188a19296cd45be956618b8aa292f4b7eeccd"
+    ],
+    "test/unit/wave26-library-scope-command-migration.test.mts": [
+      4.702772,
+      "c76124d7745396859a82be6a951fe0d5768011d6e466596009469bc70ee8ad61"
+    ],
+    "test/unit/wave8-large-leaf-migration.test.mts": [
+      0.019167,
+      "03237ba233190425f193f24f546f2dd647f36d00fbb3d16036fa15129a291777"
+    ],
+    "test/unit/wave9-canonical-bundle-migration.test.mts": [
+      0.028121,
+      "3d736bbf899dad3590e7267bf5cd9485e1b3fa37770a917ed8ba6663546dac8b"
+    ],
+    "test/unit/workflow-authoring-scc-contract.test.mts": [
+      0.024811,
+      "80c84d1d1172281d85a5a9015579536008da79af8f5ae27da5eaeb639a71f2c3"
+    ],
+    "test/unit/workflow-decision-apply-context-contract.test.mts": [
+      0.07745,
+      "9dca2f700e8a95e02296e924c6522bf496647ae3df7164cefbc1a34352e1b14d"
+    ],
+    "test/unit/workflow-decision-full-context-contract.test.mts": [
+      0.050673,
+      "3fea5383c1c0d0ee082ab602744c6e60e0735e829513a9dda55f3a9ca5d02a4a"
+    ],
+    "test/unit/workflow-dry-run-context-contract.test.mts": [
+      0.021487,
+      "b7268ab4427f220c4595c0876c7c595c5f1d6e92bd3a49e4b8d168eb2d8f31dd"
+    ],
+    "test/unit/workflow-evidence-scope-contract.test.mts": [
+      0.031253,
+      "465f128cefc589dfbca54c43b273d378a857b49f489e547be42d13bbed870d54"
+    ],
+    "test/unit/workflow-identity-decision-context-contract.test.mts": [
+      0.036906,
+      "bfba2ad0dcf5f60d6548ffdca92cdca527cbd9d973d740dbb880f9c4effa754e"
+    ],
+    "test/unit/workflow-identity-preflight-contract.test.mts": [
+      0.019259,
+      "47ffe0c6e396f6df3eb696356711c21cf0b864e9aa673039cf4e18e2cd17b9ba"
+    ],
+    "test/unit/workflow-patch-collect-contract.test.mts": [
+      0.02898,
+      "f871382cf65606acb414faea71478f8ba732b01a9fc951cc8457fb40c5d707b7"
+    ],
+    "test/unit/workflow-patch-evidence-context-contract.test.mts": [
+      0.024451,
+      "646038e8c9468d9f1d071f372d476ec88d13d78e53141efba7cafa971455c25d"
+    ],
+    "test/unit/workflow-queue-context-contract.test.mts": [
+      0.054877,
+      "6e907dbc6dcbe66e3f84100a6164daac405adb04a042bbba927f31e008ddd074"
+    ],
+    "test/unit/workflow-queue-context-native-errors.test.mts": [
+      0.011202,
+      "3ce940a06f86b651cc0607be06b1727b6a228e6cbbd5918c99ed424e2d810180"
+    ],
+    "test/unit/workflow-reference-closure-contract.test.mts": [
+      0.030812,
+      "9b8bdb017864c4ab26c9b8cd3905ce0a464105f2a6e505d2fc0f77dc61ae9e5c"
+    ],
+    "test/unit/workflow-row-transform-context-contract.test.mts": [
+      0.062852,
+      "ad1abefa23003cd67f4c5389927bb7ebeb4a0a0e36c2b7e58db06fa6902540f4"
+    ],
+    "test/unit/workflow-semantic-actions.test.mts": [
+      0.022354,
+      "bccd638346c0b263d8d8fad1a367b13a010f81981f059756cf29cc910e9152cb"
+    ],
+    "test/unit/workflow-source-reference-context-contract.test.mts": [
+      0.025372,
+      "b8e4f10aaedbcb7923d0d49153e49c30c7badff49fc2a0957e0b5fff6edc2ee4"
+    ],
+    "test/unit/worldsteel-support-mint-truth.test.mts": [
+      0.015023,
+      "119c55626f01591c935c3c19e2d1f483e6a8469e0ddb7f18a2f6a474aa0131e8"
+    ],
+    "test/unit/zero-javascript-ratchet.test.mts": [
+      2.693279,
+      "b4d66eea37aa0e159651a62276f2b8785b5564e40fb7f994e70b18f3a7c6bb5a"
+    ]
+  },
+  "retained_files": [
+    "test/scenarios/foundry-owner-readback-reference-context.test.mts",
+    "test/scenarios/foundry-public-approval-current-rows.test.mts",
+    "test/scenarios/foundry-public-approval-current-trace.test.mts",
+    "test/scenarios/foundry-public-authorization-metadata-freshness.test.mts",
+    "test/scenarios/foundry-public-explicit-identity-stage.test.mts",
+    "test/scenarios/foundry-public-identity-final-rows.test.mts",
+    "test/scenarios/foundry-public-identity-mixed-reuse.test.mts",
+    "test/scenarios/foundry-public-identity-recovery-negative.test.mts",
+    "test/scenarios/foundry-public-identity-recovery.test.mts",
+    "test/scenarios/foundry-public-identity-reference-reuse.test.mts",
+    "test/scenarios/foundry-public-jsonl-identity.test.mts",
+    "test/scenarios/foundry-public-native-draft.test.mts",
+    "test/scenarios/foundry-public-native-insert.test.mts",
+    "test/scenarios/foundry-public-native-lost.test.mts",
+    "test/scenarios/foundry-public-native-missing.test.mts",
+    "test/scenarios/foundry-public-native-reuse.test.mts",
+    "test/scenarios/foundry-public-native-unknown.test.mts",
+    "test/scenarios/foundry-public-reference-input.test.mts",
+    "test/scenarios/foundry-public-reference-recovery.test.mts",
+    "test/scenarios/foundry-public-repair.test.mts",
+    "test/scenarios/foundry-public-trace-acceptance.test.mts",
+    "test/scenarios/foundry-public-trace-strict-owner.test.mts",
+    "test/scenarios/foundry-public-trace-unrelated-change.test.mts",
+    "test/scenarios/foundry-public-workflow.test.mts",
+    "test/scenarios/foundry-repair-execution.test.mts",
+    "test/scenarios/foundry-repair-retained-references.test.mts",
+    "test/scenarios/foundry-repair-successor.test.mts",
+    "test/scenarios/foundry-workflow-child-failure.test.mts",
+    "test/scenarios/foundry-workflow-readonly-failure.test.mts",
+    "test/scenarios/identity-preflight-diagnostic-exit.test.mts",
+    "test/scenarios/production-contact-draft-case.test.mts",
+    "test/unit/foundry-explicit-identity-stage.test.mts"
+  ],
+  "ordinary_files": {
+    "test/unit/foundry-ci-plan.test.mts": "73596fd2eafdb5210f73a46b469e18437fcbe39a7e86db6dd06b9fb16b1df6df",
+    "test/unit/foundry-ci-reporter.test.mts": "24a9b5a35c5a19bf7748a93caf9a3bfae6b486b01ba3af0480f2c543e76552af"
+  },
+  "source_tree": "32cead9cbb0837650e9c7764301cdca0a2bf36c8"
+}
