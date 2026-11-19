@@ -73,10 +73,9 @@ test("facade task, result, request and migration schemas compile and reject unsa
     false,
   );
 
-  const validateRepair = ajv.getSchema(
-    "https://tiangong-lca.local/foundry/task-start.schema.json#/$defs/repairSelection",
-  );
-  assert.ok(validateRepair);
+  const validateRepair = ajv.compile({
+    $ref: "https://tiangong-lca.local/foundry/task-start.schema.json#/$defs/repairSelection",
+  });
   const files = {
     contract: "contract",
     before: "before",
