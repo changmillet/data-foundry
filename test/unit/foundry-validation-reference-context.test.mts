@@ -133,12 +133,11 @@ test("the selected CLI keeps real SDK allocation outcomes for projected exact ev
   const os = await import("node:os");
   const path = await import("node:path");
   const { spawnSync } = await import("node:child_process");
-  const { resolveInstalledTiangongLcaCliPackage } =
-    await import("../../scripts/lib/foundry-runtime-utils.ts");
+  const { describeCliRuntime } = await import("@tiangong-lca/cli/runtime");
   const { captureFoundryInput } = await import("../../scripts/lib/foundry-runtime-context.ts");
   const { readPreparationCliEvidence } =
     await import("../../scripts/lib/foundry-preparation-cli-validation.ts");
-  const packageVersion = resolveInstalledTiangongLcaCliPackage().packageVersion;
+  const packageVersion = describeCliRuntime().package.version;
   const fixture = JSON.parse(
     fs.readFileSync(new URL("../fixtures/managed-allocation-input.json", import.meta.url), "utf8"),
   );
