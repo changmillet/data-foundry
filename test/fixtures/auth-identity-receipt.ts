@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { describeCliRuntime } from "@tiangong-lca/cli/runtime";
+import { readFileSync } from "node:fs";
 
 import type {
   AuthIdentityReceipt,
@@ -7,7 +7,18 @@ import type {
 } from "@tiangong-lca/cli/auth-identity-receipt";
 
 type JsonRecord = Record<string, unknown>;
-const currentCliVersion = describeCliRuntime().package.version;
+// This fixture also runs from the installed CLI's bin directory in managed tests.
+const cliBin = import.meta.resolve("@tiangong-lca/cli/bin/tiangong-lca.js");
+const manifest: unknown = JSON.parse(readFileSync(new URL("../package.json", cliBin), "utf8"));
+if (
+  !isRecord(manifest) ||
+  manifest.name !== "@tiangong-lca/cli" ||
+  typeof manifest.version !== "string" ||
+  !manifest.version
+) {
+  throw new Error("Expected the installed CLI package name and version for the test receipt.");
+}
+const currentCliVersion = manifest.version;
 
 export interface TestAuthIdentityReceiptOptions {
   projectRef?: string;

@@ -778,13 +778,13 @@ test("a claim interrupted before query stays unproven and cannot be dispatched b
 
 for (const outcome of ["wrong-target-exit0", "stderr-exit0"] as const) {
   test(`new stage rejects a fully emitted exit-zero ${outcome} result`, async (t) => {
-    const f = await explicitIdentityStageFixture(t);
     if (typed)
       return runRetainedFoundryTests(
         t,
         originalSuite,
         `^new stage rejects a fully emitted exit-zero ${outcome} result$`,
       );
+    const f = await explicitIdentityStageFixture(t);
     f.outcome(outcome);
     const result = await runExplicitFoundryIdentityStage(
       f.context,

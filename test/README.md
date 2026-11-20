@@ -280,7 +280,7 @@ checkPaths:
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
 lastReviewedAt: 2026-11-20
-lastReviewedCommit: 1d94c0ec9baf4cd352d8c4f8eaaebffb40510ad2
+lastReviewedCommit: ffc3e3e6ac059a80a400b6dae6ef05be0f55ec26
 lastReviewedNote: "Foundry #287: reviewed the four eligible development-tool updates and complete unchanged lock graph during formatting; native/source qualification, compiler and public-runtime closure, cache inputs, credential and publishing authority remain unchanged. Foundry #296: reviewed the allowlisted ordinary Windows host observation, exact source/plan/run/partition binding, original elapsed snapshot, safe omissions and signalled/failed/Node-cancelled outcomes. Legacy receipts, all test gates and installed runtime/publishing authority are unchanged. Foundry #298: reviewed two exclusive Windows retained-suite partitions, source-bound dual timing inputs, conservative execution classes and dynamic class/file caps. Canonical weights, other platforms, original tests/deadlines, source/plan guards and ordinary qualification/publishing authority remain unchanged; modeled feasibility is not a passing Windows result."
 ---
 
@@ -517,7 +517,7 @@ The interaction scenario also checks a valid exit-1 blocked Process queue with a
 
 - `pnpm test`: run the full suite.
 - `pnpm test:toolchain`: verify the pnpm/TS7 graph and migration inventory.
-- `pnpm test:unit`: run pure logic and metadata tests.
+- `pnpm test:unit`: run pure logic and metadata tests. The two retained exit-zero identity error cases select their original pinned test before allocating a modern identity-stage fixture. Each case still runs its own fixed-source child with the existing deadline.
 - `pnpm test:commands`: run command contract tests.
 - `pnpm test:scenarios`: run workflow scenario tests.
 - `node --test test/unit/tidas-adapter.test.mts`: verify 0.2.x handshake, invocation precedence, stable report/exit mapping, validation-batch compatibility, cancellation, cleanup, and rollback at the Foundry boundary.
