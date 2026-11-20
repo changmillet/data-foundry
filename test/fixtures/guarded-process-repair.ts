@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import childProcess from "node:child_process";
 import fs from "node:fs";
-import { describeCliRuntime } from "@tiangong-lca/cli/runtime";
 import { FOUNDRY_TIDAS_EXPECTATION_SCHEMA } from "../../scripts/lib/foundry-runtime-qualification.ts";
 import { captureFoundryInput } from "../../scripts/lib/foundry-runtime-context.ts";
 import {
@@ -73,7 +72,7 @@ export async function verifyGuardedUpdate(
       tidasExecutable: scientific.tidas_executable,
       tidasExpectation: {
         schema: FOUNDRY_TIDAS_EXPECTATION_SCHEMA,
-        platform: describeCliRuntime().platform,
+        platform: facadeOptions.runtimeSelection.cliExpectation.platform,
         binary_version: scientific.tidas_version,
         executable: { bytes: nativeFact.bytes, sha256: nativeFact.sha256 },
         validation: {

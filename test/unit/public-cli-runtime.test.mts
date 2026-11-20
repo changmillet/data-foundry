@@ -21,7 +21,10 @@ import {
   pruneRuntimeComponents,
 } from "@tiangong-lca/cli/runtime";
 import { createFoundryIsolatedChildEnvironment } from "../../scripts/lib/foundry-runtime-environment.ts";
-import { tiangongLcaCliPackageVersion } from "../../scripts/lib/foundry-runtime-utils.ts";
+import {
+  resolveInstalledTiangongLcaCliPackage,
+  tiangongLcaCliPackageVersion,
+} from "../../scripts/lib/foundry-runtime-utils.ts";
 
 test("Foundry consumes the exact published CLI C1 runtime boundary", async () => {
   const descriptor = describeCliRuntime();
@@ -66,7 +69,7 @@ test("the installed CLI advertises the dataset contracts used by managed Foundry
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const env = createFoundryIsolatedChildEnvironment({ tempRoot: root });
   const bin = fileURLToPath(import.meta.resolve("@tiangong-lca/cli/bin/tiangong-lca.js"));
-  const typed = describeCliRuntime().package.version === "0.4.0";
+  const typed = resolveInstalledTiangongLcaCliPackage().packageVersion === "0.4.0";
   const calls = typed
     ? [
         {

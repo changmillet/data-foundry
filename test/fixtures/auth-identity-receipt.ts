@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { describeCliRuntime } from "@tiangong-lca/cli/runtime";
+import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
 
 import type {
   AuthIdentityReceipt,
@@ -7,7 +7,7 @@ import type {
 } from "@tiangong-lca/cli/auth-identity-receipt";
 
 type JsonRecord = Record<string, unknown>;
-const currentCliVersion = describeCliRuntime().package.version;
+const currentCliVersion = resolveInstalledTiangongLcaCliPackage().packageVersion;
 
 export interface TestAuthIdentityReceiptOptions {
   projectRef?: string;
