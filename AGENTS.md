@@ -32,7 +32,7 @@ checkPaths:
   - prettier.config.ts
   - tsconfig*.json
 lastReviewedAt: 2026-11-20
-lastReviewedCommit: 1d94c0ec9baf4cd352d8c4f8eaaebffb40510ad2
+lastReviewedCommit: ffc3e3e6ac059a80a400b6dae6ef05be0f55ec26
 lastReviewedNote: "Foundry #287: scoped review of eligible development tools, full lock graph and unchanged compiler/runtime/publishing boundaries. Existing CLI-version prose drift is separately reported; executable CLI inputs and all qualification protections remain unchanged. Foundry #296: reviewed ordinary GitHub Windows shard host observations, source/plan/partition/run binding, null omissions and failed/cancelled/signalled evidence after the original elapsed snapshot. Test qualification, public runtime, task/skill ownership, credentials and publisher authority remain unchanged. Foundry #298: reviewed two exclusive Windows retained-suite partitions, source-bound dual timing inputs, conservative execution classes and dynamic class/file caps. Canonical weights, other platforms, original tests/deadlines, source/plan guards and ordinary qualification/publishing authority remain unchanged; modeled feasibility is not a passing Windows result."
 ---
 

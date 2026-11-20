@@ -160,8 +160,8 @@ checkPaths:
   - test/unit/identity-preflight-run-command-factory.test.mts
   - test/unit/post-authoring-finalize-command-factory.test.mts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-10-11
-lastReviewedCommit: 2d5cbf38f4e44b4b4d30bba52abd38ef8947bed3
+lastReviewedAt: 2026-11-20
+lastReviewedCommit: ffc3e3e6ac059a80a400b6dae6ef05be0f55ec26
 lastReviewedNote: "Reviewed current-main integration of explicit preparation review, payload-bound context and diagnostic-only failures, plus native candidate generation and independently reviewed managed adoption; original Task eligibility and data acceptance remain separate."
 ---
 
