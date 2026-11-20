@@ -1959,5 +1959,9 @@
       "reserve_seconds": 90,
       "qualification": "Requires complete fresh same-attempt source/native/aggregate/bootstrap outcomes for the changed candidate."
     }
+  },
+  "windows_execution": {
+    "file": "specs/ci/windows-test-observations.json",
+    "canonical_sha256": "2d89ef04edaf183006ede819747c5865793c6e69ed80b78d22dba989984d5505"
   }
 }

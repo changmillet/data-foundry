@@ -427,7 +427,7 @@ test("actual shard runner admits index ten only for its declared platform and pr
     }),
   );
   const source = "a".repeat(40);
-  const plan = loadFoundryTestPlan(fixtureRoot);
+  let plan = loadFoundryTestPlan(fixtureRoot);
   const environment = { ...process.env };
   delete environment.NODE_OPTIONS;
   delete environment.NODE_TEST_CONTEXT;
@@ -504,6 +504,45 @@ syncBuiltinESMExports();
   );
   assert.match(
     run("win32", "10", path.join(directory, "stale-plan"), source, "b".repeat(64)).stderr,
+    /independently selected digest/u,
+  );
+  // Only the platform/Git boundary is synthetic: the original entry still runs the complete selected files.
+  const legacyDigest = plan.planSha256;
+  const native = "test/scenarios/foundry-public-native-draft.test.mts";
+  const successor = "test/scenarios/foundry-repair-successor.test.mts";
+  fs.mkdirSync(path.join(fixtureRoot, "test/scenarios"));
+  fs.renameSync(path.join(fixtureRoot, "test/0.test.mts"), path.join(fixtureRoot, native));
+  fs.renameSync(path.join(fixtureRoot, "test/1.test.mts"), path.join(fixtureRoot, successor));
+  fs.copyFileSync(
+    path.join(sourceRoot, "specs/ci/windows-test-observations.json"),
+    path.join(fixtureRoot, "specs/ci/windows-test-observations.json"),
+  );
+  const configuration = JSON.parse(
+    fs.readFileSync(path.join(fixtureRoot, "specs/ci/test-durations.json"), "utf8"),
+  );
+  configuration.windows_execution = JSON.parse(
+    fs.readFileSync(path.join(sourceRoot, "specs/ci/test-durations.json"), "utf8"),
+  ).windows_execution;
+  fs.writeFileSync(
+    path.join(fixtureRoot, "specs/ci/test-durations.json"),
+    JSON.stringify(configuration),
+  );
+  plan = loadFoundryTestPlan(fixtureRoot);
+  assert.notEqual(plan.planSha256, legacyDigest);
+  for (const [index, file] of [
+    ["1", native],
+    ["9", successor],
+  ]) {
+    const target = path.join(directory, `exclusive-${index}`);
+    const result = run("win32", index, target);
+    assert.ifError(result.error);
+    assert.equal(result.status, 0, result.stderr);
+    const evidence = JSON.parse(fs.readFileSync(path.join(target, "test-shard.json"), "utf8"));
+    assert.deepEqual(evidence.files, [file]);
+    assert.equal(evidence.status, "passed");
+  }
+  assert.match(
+    run("win32", "1", path.join(directory, "prior-assignment"), source, legacyDigest).stderr,
     /independently selected digest/u,
   );
 });
