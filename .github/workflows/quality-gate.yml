@@ -30,6 +30,9 @@ permissions:
   contents: read
   actions: read
   attestations: read
+concurrency:
+  group: quality-gate-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   plan:
     name: Select exact CI qualification

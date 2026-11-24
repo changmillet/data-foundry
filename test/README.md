@@ -279,8 +279,8 @@ checkPaths:
   - AGENTS.md
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
-lastReviewedAt: 2026-11-20
-lastReviewedCommit: ffc3e3e6ac059a80a400b6dae6ef05be0f55ec26
+lastReviewedAt: 2026-11-24
+lastReviewedCommit: 5f1573b43cc037ab141275ebdaf5204c5ef56dd3
 lastReviewedNote: "Foundry #287: reviewed the four eligible development-tool updates and complete unchanged lock graph during formatting; native/source qualification, compiler and public-runtime closure, cache inputs, credential and publishing authority remain unchanged. Foundry #296: reviewed the allowlisted ordinary Windows host observation, exact source/plan/run/partition binding, original elapsed snapshot, safe omissions and signalled/failed/Node-cancelled outcomes. Legacy receipts, all test gates and installed runtime/publishing authority are unchanged. Foundry #298: reviewed two exclusive Windows retained-suite partitions, source-bound dual timing inputs, conservative execution classes and dynamic class/file caps. Canonical weights, other platforms, original tests/deadlines, source/plan guards and ordinary qualification/publishing authority remain unchanged; modeled feasibility is not a passing Windows result."
 ---
 
