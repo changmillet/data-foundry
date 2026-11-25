@@ -7,8 +7,21 @@ import path from "node:path";
 import { writeRuntimeComponentArchive, type ComponentFile } from "@tiangong-lca/cli/runtime";
 import { command, isolatedEnvironment } from "./package-consumer-process.mts";
 
+export function preferredHostTempRoot(): string {
+  const runnerTemp = process.env.RUNNER_TEMP;
+  if (
+    runnerTemp &&
+    path.isAbsolute(runnerTemp) &&
+    fs.existsSync(runnerTemp) &&
+    fs.statSync(runnerTemp).isDirectory()
+  ) {
+    return fs.realpathSync(runnerTemp);
+  }
+  return fs.realpathSync(os.tmpdir());
+}
+
 const repo = path.resolve(import.meta.dirname, "../..");
-const canonicalTmpDir = fs.realpathSync(os.tmpdir());
+const canonicalTmpDir = preferredHostTempRoot();
 const digest = (bytes: Buffer | string) => createHash("sha256").update(bytes).digest("hex");
 
 export interface InstalledPreparationTemplate {

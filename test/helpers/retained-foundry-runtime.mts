@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import type { TestContext } from "node:test";
 import {
@@ -8,12 +7,15 @@ import {
   isolatedEnvironment,
   packageManagerCommand,
 } from "./package-consumer-process.mts";
-import { acquireDirectoryLockSync } from "./shared-installed-package-template.mts";
+import {
+  acquireDirectoryLockSync,
+  preferredHostTempRoot,
+} from "./shared-installed-package-template.mts";
 
 // The published Foundry 0.1.18 source locks both the original CLI and its dependency graph.
 const retainedSource = "b57ae1166759ee2c490eff9b79b74dfad08a5b58";
 const repo = path.resolve(import.meta.dirname, "../..");
-const canonicalTmpDir = fs.realpathSync(os.tmpdir());
+const canonicalTmpDir = preferredHostTempRoot();
 const sharedRetainedStoreDir = path.join(canonicalTmpDir, "foundry-retained-pnpm-store-v1");
 
 export function runRetainedFoundryTests(
@@ -27,9 +29,14 @@ export function runRetainedFoundryTests(
   );
   const root = fs.realpathSync(fs.mkdtempSync(path.join(canonicalTmpDir, "foundry-original-")));
   const source = path.join(root, "source");
+  const childTmp = path.join(root, "tmp");
+  fs.mkdirSync(childTmp, { recursive: true, mode: 0o700 });
   const env = isolatedEnvironment(path.join(root, "home"), {
     CI: "true",
     COREPACK_ENABLE_NETWORK: "1",
+    TMP: childTmp,
+    TEMP: childTmp,
+    TMPDIR: childTmp,
   });
   try {
     const commonDirResult = command("git", ["rev-parse", "--git-common-dir"], repo, env);
@@ -54,14 +61,7 @@ export function runRetainedFoundryTests(
     try {
       const install = packageManagerCommand(
         "pnpm",
-        [
-          "install",
-          "--frozen-lockfile",
-          "--ignore-scripts",
-          "--store-dir",
-          sharedRetainedStoreDir,
-          "--package-import-method=copy",
-        ],
+        ["install", "--frozen-lockfile", "--ignore-scripts", "--store-dir", sharedRetainedStoreDir],
         source,
         env,
         300_000,
@@ -89,7 +89,7 @@ export function runRetainedFoundryTests(
       ],
       source,
       env,
-      900_000,
+      1_800_000,
     );
     assert.equal(tests.status, 0, tests.stderr + tests.stdout);
     assert.match(tests.stdout, /^ℹ pass [1-9][0-9]*$/mu);
