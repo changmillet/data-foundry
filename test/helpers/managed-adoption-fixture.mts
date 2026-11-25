@@ -407,7 +407,12 @@ globalThis.fetch = async (url, request) => {
   return Response.json({ data: [] });
 };
 `;
-      fs.writeFileSync(entry, source.replace("\n", `\n${edgeTransport}`));
+      const firstNewline = source.indexOf("\n");
+      assert.notEqual(firstNewline, -1, "Expected newline in emitted package-entry.js");
+      fs.writeFileSync(
+        entry,
+        `${source.slice(0, firstNewline + 1)}${edgeTransport}${source.slice(firstNewline + 1)}`,
+      );
       const files = (
         JSON.parse(fs.readFileSync(descriptor, "utf8")) as { files: Array<{ path: string }> }
       ).files;
