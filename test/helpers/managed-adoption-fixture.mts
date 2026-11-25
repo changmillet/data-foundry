@@ -12,7 +12,6 @@ import {
   ensureRuntimeComponents,
   inspectRuntimeComponents,
   trustRuntimeManifest,
-  writeRuntimeComponentArchive,
   type ComponentFile,
   type RuntimeManifest,
   type RuntimeComponent,
@@ -27,12 +26,14 @@ import {
 } from "../../scripts/lib/foundry-package-contract.ts";
 import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
 import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
+import { captureImmutableComponentFile } from "../../scripts/lib/immutable-digest-cache.ts";
 import { flowRow, processRowWithFlowRef } from "../fixtures/row-builders.ts";
 import {
   startManagedDiagnostics,
   managedChildEnvironment,
   managedDiagnosticsEnvironment,
 } from "../fixtures/managed-adoption-diagnostics.mts";
+import { writeOrCopyCachedComponentArchive } from "./shared-installed-package-template.mts";
 
 const repo = path.resolve(import.meta.dirname, "../..");
 const entryRelative = "node_modules/@tiangong-lca/foundry/package-dist/scripts/package-entry.js";
@@ -46,8 +47,8 @@ export const managedFixtureAccount = {
 };
 export const managedFixtureToken = "managed-fixture-process-token-never-a-credential";
 export const managedFileFact = (file: string) => {
-  const bytes = fs.readFileSync(file);
-  return { path: fs.realpathSync(file), bytes: bytes.length, sha256: digest(bytes) };
+  const captured = captureImmutableComponentFile(file);
+  return { path: fs.realpathSync(file), bytes: captured.bytes, sha256: captured.sha256 };
 };
 const json = (file: string, value: unknown) => {
   fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -70,12 +71,12 @@ export function managedInventory(
         return managedInventory(root, selected, requireIndependentFiles, executables);
       assert.ok(stat.isFile(), file);
       if (requireIndependentFiles) assert.equal(stat.nlink, 1, file);
-      const bytes = fs.readFileSync(file);
+      const captured = captureImmutableComponentFile(file);
       return [
         {
           path: selected,
-          bytes: bytes.length,
-          sha256: digest(bytes),
+          bytes: captured.bytes,
+          sha256: captured.sha256,
           mode: executables.includes(selected) || stat.mode & 0o111 ? 493 : 420,
         },
       ];
@@ -88,58 +89,34 @@ function packageFiles(root: string, requireIndependentFiles = true) {
     .map(({ mode: _mode, ...file }) => file);
 }
 async function physicalPackage(source: string, target: string): Promise<void> {
-  const running = new Set<Promise<void>>();
-  const errors: unknown[] = [];
-  const enqueue = async (job: () => Promise<void>) => {
-    while (running.size >= 4) await Promise.race(running);
-    if (errors.length) return;
-    const pending = Promise.resolve()
-      .then(job)
-      .catch((error: unknown) => {
-        errors.push(error);
-      })
-      .finally(() => {
-        running.delete(pending);
-      });
-    running.add(pending);
-  };
-  const visit = async (originRoot: string, destinationRoot: string): Promise<void> => {
-    // Per-invocation directory creation only; no cross-call/operation proof cache.
-    let targetCreation: Promise<string | undefined> | undefined;
+  const visit = (originRoot: string, destinationRoot: string): void => {
+    let targetCreated = false;
     for (const entry of fs.readdirSync(originRoot, { withFileTypes: true })) {
-      if (errors.length) return;
       if (entry.name === "node_modules") continue;
-      const origin = path.join(originRoot, entry.name),
-        destination = path.join(destinationRoot, entry.name);
-      if (entry.isDirectory()) await visit(origin, destination);
-      else {
-        assert.ok(entry.isFile(), origin);
-        await enqueue(async () => {
-          await (targetCreation ??= fs.promises.mkdir(path.dirname(destination), {
-            recursive: true,
-          }));
-          await fs.promises.copyFile(origin, destination);
-          await fs.promises.chmod(destination, (await fs.promises.stat(origin)).mode & 0o777);
-          const destinationBytes = await fs.promises.readFile(destination);
-          const originBytes = await fs.promises.readFile(origin);
-          assert.equal(digest(destinationBytes), digest(originBytes), destination);
-          assert.equal((await fs.promises.stat(destination)).nlink, 1);
-          if (process.platform !== "win32")
-            assert.notEqual(
-              (await fs.promises.stat(destination)).ino,
-              (await fs.promises.stat(origin)).ino,
-            );
-        });
+      const origin = path.join(originRoot, entry.name);
+      const destination = path.join(destinationRoot, entry.name);
+      const originStat = fs.lstatSync(origin);
+      assert.equal(originStat.isSymbolicLink(), false, origin);
+      if (originStat.isDirectory()) {
+        visit(origin, destination);
+      } else {
+        assert.ok(originStat.isFile(), origin);
+        if (!targetCreated) {
+          fs.mkdirSync(destinationRoot, { recursive: true });
+          targetCreated = true;
+        }
+        fs.copyFileSync(origin, destination, fs.constants.COPYFILE_EXCL);
+        fs.chmodSync(destination, originStat.mode & 0o777);
+        const destinationStat = fs.lstatSync(destination);
+        assert.equal(destinationStat.size, originStat.size, destination);
+        assert.equal(destinationStat.nlink, 1);
+        if (process.platform !== "win32") {
+          assert.notEqual(destinationStat.ino, originStat.ino);
+        }
       }
     }
   };
-  try {
-    await visit(source, target);
-  } catch (error) {
-    errors.push(error);
-  }
-  await Promise.all(running);
-  if (errors.length) throw errors[0];
+  visit(source, target);
 }
 function resolvePackage(file: string, name: string): string {
   const selected = createRequire(file)
@@ -193,6 +170,8 @@ export function managedAdoptionPackage() {
   );
   for (const item of [
     "scripts",
+    "src",
+    "devops",
     "specs",
     "docs",
     "package.json",
@@ -200,18 +179,21 @@ export function managedAdoptionPackage() {
     "tsconfig.package.json",
     "README.md",
     "LICENSE",
-  ])
-    fs.cpSync(path.join(repo, item), path.join(root, item), { recursive: true });
+  ]) {
+    const sourceItem = path.join(repo, item);
+    if (fs.existsSync(sourceItem)) {
+      fs.cpSync(sourceItem, path.join(root, item), { recursive: true });
+    }
+  }
   fs.symlinkSync(
     path.join(repo, "node_modules"),
     path.join(root, "node_modules"),
     process.platform === "win32" ? "junction" : "dir",
   );
-  const result = spawnSync(
-    process.execPath,
-    [path.join(root, "scripts/build-foundry-package.ts")],
-    { cwd: root, encoding: "utf8" },
-  );
+  const buildScript = fs.existsSync(path.join(root, "devops/build/build-foundry-package.ts"))
+    ? path.join(root, "devops/build/build-foundry-package.ts")
+    : path.join(root, "scripts/build-foundry-package.ts");
+  const result = spawnSync(process.execPath, [buildScript], { cwd: root, encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr || result.stdout);
   return (build = { root, stage: path.join(root, "package-stage") });
 }
@@ -588,7 +570,7 @@ globalThis.fetch = async (url, request) => {
       archive = path.join(root, `${id}-${digest(JSON.stringify(files))}.tar.gz`);
     const archiveFact = fs.existsSync(archive)
       ? { bytes: managedFileFact(archive).bytes, sha256: managedFileFact(archive).sha256 }
-      : await writeRuntimeComponentArchive(input, files, archive);
+      : await writeOrCopyCachedComponentArchive(input, files, archive);
     const component: RuntimeComponent = {
       id,
       version,

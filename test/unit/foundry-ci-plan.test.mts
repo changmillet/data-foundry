@@ -96,8 +96,22 @@ test("measured deadline envelope rejects eight/nine shards and keeps all files w
   };
   const plan = loadFoundryTestPlan(root);
   const inventory = plan.shards.flatMap((shard) => shard.files).sort();
+  const activeWeights = Object.fromEntries(
+    inventory
+      .filter((file) => profile.weights_seconds[file] !== undefined)
+      .map((file) => [file, profile.weights_seconds[file]]),
+  );
+  const allDurations: Record<string, number> = {
+    ...profile.weights_seconds,
+    ...profile.estimated_weights,
+  };
+  const activeDurations = Object.fromEntries(
+    inventory
+      .filter((file) => allDurations[file] !== undefined)
+      .map((file) => [file, allDurations[file]]),
+  );
   for (const count of [8, 9]) {
-    const old = planFoundryTestShards(inventory, profile.weights_seconds, count);
+    const old = planFoundryTestShards(inventory, activeWeights, count);
     assert.ok(old.shards.some((shard) => !fitsWindowsBudget(shard.estimatedWallSeconds)));
     assert.deepEqual(old.shards.flatMap((shard) => shard.files).sort(), inventory);
   }
@@ -106,7 +120,7 @@ test("measured deadline envelope rejects eight/nine shards and keeps all files w
     windows,
     planFoundryTestShards(
       inventory,
-      { ...profile.weights_seconds, ...profile.estimated_weights },
+      activeDurations,
       10,
       loadFoundryWindowsExecutionInput(root, inventory, profile.windows_execution),
     ).shards,
@@ -434,7 +448,15 @@ test("Windows isolates both retained deadline suites and balances the remaining 
     plan.planSha256,
     "d0db856ee079fc9d9ef85b4703bba585cee65723422f1ef86ade8abcbe9d772e",
   );
-  const durations = { ...profile.weights_seconds, ...profile.estimated_weights };
+  const allDurations: Record<string, number> = {
+    ...profile.weights_seconds,
+    ...profile.estimated_weights,
+  };
+  const durations = Object.fromEntries(
+    inventory
+      .filter((file) => allDurations[file] !== undefined)
+      .map((file) => [file, allDurations[file]]),
+  );
   for (const [platform, count] of [
     ["linux-x64", 4],
     ["linux-arm64", 4],

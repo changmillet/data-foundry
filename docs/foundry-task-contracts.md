@@ -28,8 +28,8 @@ checkPaths:
   - specs/schemas/execution-context.schema.json
   - specs/import-profiles.json
   - tasks/**
-lastReviewedAt: 2026-10-11
-lastReviewedCommit: 2d5cbf38f4e44b4b4d30bba52abd38ef8947bed3
+lastReviewedAt: 2026-11-25
+lastReviewedCommit: a191bd3dbe633e60ef40ab5fb6fc5e00c015fd02
 related:
   - AGENTS.md
   - WORKFLOW.md

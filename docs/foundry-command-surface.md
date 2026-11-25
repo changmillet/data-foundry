@@ -79,22 +79,15 @@ checkPaths:
   - docs/final-delivery-promotion-contract.md
   - test/unit/foundry-command-metadata.test.mts
   - test/unit/foundry-entry-closure-migration.test.mts
-  - test/unit/wave25-identity-decision-command-migration.test.mts
-  - test/unit/wave25-classification-location-command-migration.test.mts
   - test/unit/import-curation-entry-barrels-migration.test.mts
   - test/unit/import-curation-leaf-barrels-migration.test.mts
-  - test/unit/wave26-library-scope-command-migration.test.mts
-  - test/unit/wave26-bafu-leaf-classification-command-migration.test.mts
-  - test/unit/wave26-bafu-auto-authoring-command-migration.test.mts
-  - test/unit/wave26-bafu-process-scope-command-migration.test.mts
-  - test/unit/wave26-bafu-batch-command-migration.test.mts
   - test/unit/core-command-factory.test.mts
   - test/unit/identity-preflight-run-command-factory.test.mts
   - test/unit/post-authoring-finalize-command-factory.test.mts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-11-20
-lastReviewedCommit: ffc3e3e6ac059a80a400b6dae6ef05be0f55ec26
-lastReviewedNote: "Reviewed final existing-output capture verification on the working delta based on baaa384e. Current writer/runtime/job/profile and source/input checks run before, between and after two fresh output reads; an independent P2 report-before-capture late-drift repro is fixed, including a caught error returning previously written JSON. New receipt publication reloads current writer/Task/runtime and preserves final input verification; ordinary bytewriters, cached replay, sorted depth-first roster, index CAS and authority/science remain unchanged. Focused59/59 and wholeadoption23/23 pass; latejob2RED->2GREEN and retainedCLI first/second/caught negatives are recorded. No cross-operation hash cache or filesystem-wide atomicity claim. baaa preparation remained unused,87bd Native19/20 failed history remains preserved; new full Source/emitted/installed/native qualification is pending. No originalDATA requery/default034/science/release change."
+lastReviewedAt: 2026-11-25
+lastReviewedCommit: a191bd3dbe633e60ef40ab5fb6fc5e00c015fd02
+lastReviewedNote: "Foundry #306: retired completed historical JS-to-TS wave migration scaffolding tests in favor of zero-javascript-ratchet and toolchain-contract; command registry, consumer runtime disposition and public facade contracts remain unchanged."
 ---
 
 # Foundry Command Surface

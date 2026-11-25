@@ -1,7 +1,7 @@
 {
   "$schema": "../specs/schemas/file-location-registry.schema.json",
   "schema_version": 1,
-  "updated_at_utc": "2026-11-19T22:54:04.241713+00:00",
+  "updated_at_utc": "2026-11-25T04:20:00Z",
   "policy_doc": "docs/file-organization.md",
   "entries": [
     {
@@ -912,9 +912,27 @@
       "sensitivity": "Reviewed CI timing and source digests only; no credentials, raw test payloads, machine identifiers or private paths.",
       "tracked": true,
       "notes": "Ten complete ordinary Windows artifacts and source-bound file classes supply a historical planning scenario. They do not qualify the candidate or establish future runtime bounds."
+    },
+    {
+      "id": "immutable-digest-cache",
+      "status": "active",
+      "classification": "runtime-integrity-cache",
+      "current_path": "scripts/lib/immutable-digest-cache.ts",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "task_id": "306",
+      "referenced_by": [
+        "scripts/lib/foundry-package-contract.ts",
+        "scripts/lib/foundry-runtime-paths.ts",
+        "scripts/lib/foundry-runtime-qualification.ts",
+        "test/unit/immutable-digest-cache.test.mts"
+      ],
+      "sensitivity": "Tracked runtime source; caches process-local regular-file SHA-256 digests guarded by O_NOFOLLOW stat tuples without storing file contents or credentials.",
+      "tracked": true,
+      "notes": "Stat-guarded bounded LRU digest and directory-tree snapshot helper for immutable installed package/CLI/TIDAS components; mutable task/workspace outputs remain outside this cache."
     }
   ],
-  "lastReviewedCommit": "bf43cdf7ed694412bf6ddfc9a308b704600d1827",
-  "lastReviewedNote": "Reviewed the bounded directory-batch repair on BF43 after its actual Native19/20 failure. One result captures only accepted original run and registered output roots; the owner report self-path binds its fixed original run file. TaskStore, fresh before/middle/after bookends, two output reads, final receipt/input/CAS checks, per-write checks, original assertions/deadlines and UNKNOWN/no-requery remain. Existing focused31/24/23 local results and independent foreign-locator RED-to-GREEN evidence are retained; new full Source/package/emitted/installed/Native qualification remains pending. No cross-operation proof cache, whole-parent capture, scientific approval, OriginalDATA replay/default/Toolkit034/release change.",
-  "lastReviewedAt": "2026-10-11"
+  "lastReviewedCommit": "a191bd3dbe633e60ef40ab5fb6fc5e00c015fd02",
+  "lastReviewedNote": "Foundry #306: registered scripts/lib/immutable-digest-cache.ts for stat-guarded immutable component digest verification while keeping mutable task/workspace output capture and ledger storage unchanged.",
+  "lastReviewedAt": "2026-11-25"
 }

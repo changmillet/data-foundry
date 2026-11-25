@@ -141,16 +141,8 @@ checkPaths:
   - test/fixtures/mutation-fixtures.ts
   - test/fixtures/row-builders.ts
   - test/fixtures/topology-convergence-fixtures.ts
-  - test/unit/unit-source-ledger-test-migration.test.mts
-  - test/unit/unit-execution-library-test-migration.test.mts
-  - test/unit/unit-algorithm-adapter-test-migration.test.mts
-  - test/unit/unit-runtime-policy-test-migration.test.mts
   - test/unit/source-row-explicit-any-contract.test.mts
   - test/unit/identity-rewrite-explicit-any-contract.test.mts
-  - test/scenarios/scenario-authoring-curation-test-migration.test.mts
-  - test/scenarios/scenario-identity-reference-test-migration.test.mts
-  - test/scenarios/scenario-mutation-finalize-test-migration.test.mts
-  - test/scenarios/scenario-library-algorithm-test-migration.test.mts
   - scripts/lib/import-curation/**
   - test/unit/foundry-command-metadata.test.mts
   - test/unit/foundry-entry-closure-migration.test.mts
@@ -160,9 +152,9 @@ checkPaths:
   - test/unit/identity-preflight-run-command-factory.test.mts
   - test/unit/post-authoring-finalize-command-factory.test.mts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-11-20
-lastReviewedCommit: ffc3e3e6ac059a80a400b6dae6ef05be0f55ec26
-lastReviewedNote: "Reviewed current-main integration of explicit preparation review, payload-bound context and diagnostic-only failures, plus native candidate generation and independently reviewed managed adoption; original Task eligibility and data acceptance remain separate."
+lastReviewedAt: 2026-11-25
+lastReviewedCommit: a191bd3dbe633e60ef40ab5fb6fc5e00c015fd02
+lastReviewedNote: "Foundry #306: retired completed historical JS-to-TS wave migration scaffolding tests in favor of zero-javascript-ratchet and toolchain-contract, and added stat-guarded immutable component digest caching; navigation owners and runtime boundaries remain unchanged."
 ---
 
 # Foundry AI Navigation
@@ -255,7 +247,7 @@ The typed canonical/materialization leaves are `canonical-support-rewrites.ts` a
 
 `import-ledger.ts` exports the typed ledger vocabulary as well as its factory. Navigate there for recursive JSON values, dependency injection, closeout/finalize discriminators, verified/blocked/dependency/retry/resume rows, manifests, write results, and read-only report results. `import-ledger-type-contract.test.mts` compiles positive and negative usage outside the main tsconfig; behavioral tests remain authoritative for bytes and ordering. Test-only shared paths/default report builders live in `test/fixtures/fixture-roots.ts` and `finalize-fixtures.ts`.
 
-The typed runtime leaf is `foundry-runtime-utils.ts`. Navigate there for the pinned installed CLI manifest/bin/schema contract, `TIANGONG_LCA_CLI_BIN` precedence and command rendering, generic text/JSON/JSONL/path/count/search helpers, task frontmatter and scalar fields, explicit env-file loading, list/option/hash/UUID helpers, stage blocker aggregation and CLI JSON subprocess envelopes. `foundry-runtime-utils-contract.test.mts` covers all returned helpers without invoking `loadRuntimeEnv()`; `wave10-runtime-migration.test.mts` pins the zero-any source and every static consumer.
+The typed runtime leaf is `foundry-runtime-utils.ts`. Navigate there for the pinned installed CLI manifest/bin/schema contract, `TIANGONG_LCA_CLI_BIN` precedence and command rendering, generic text/JSON/JSONL/path/count/search helpers, task frontmatter and scalar fields, explicit env-file loading, list/option/hash/UUID helpers, stage blocker aggregation and CLI JSON subprocess envelopes. `foundry-runtime-utils-contract.test.mts` covers all returned helpers without invoking `loadRuntimeEnv()`.
 
 Two focused leaves sit beside that factory. Navigate to `foundry-runtime-paths.ts` when source and emitted commands need the trusted repository root or their active `.ts`/`.js` entry; its closure test runs both forms from an unrelated CWD and pins nested batch/finalize/process argv. Navigate to `foundry-runtime-environment.ts` for credential-free subprocess isolation; Golden uses it to give baseline and current sides byte-identical allowlisted environments while dropping ambient credentials, `NODE_OPTIONS`, user config, and filesystem `.env` loading. Toolchain suppression policy is owned by `check-lint-suppressions.ts`, which uses Oxlint's comment parser to reject native disable directives without confusing strings or regex literals.
 
@@ -319,9 +311,7 @@ The typed adapter/tooling owners are `tidas-adapter.ts` for the external Rust ma
 
 The typed fixture chain starts at `test/fixtures/foundry-core.ts` and `row-builders.ts`, then branches into full-context/identity/mutation evidence and independent incremental/topology packages. Navigate to `fake-tidas.ts` only for the stable Rust operation-report/exit harness; dispatch it as `process.execPath` plus script argv. Fixture modules preserve runtime export namespaces and artifact bytes but are never semantic command owners.
 
-All unit suites use `.test.mts`. Navigate through the four `unit-*-test-migration.test.mts` contracts for the source/ledger/support, execution/finalize/library, adapter/algorithm, and runtime/content-policy partitions; navigate from each behavior test to its existing semantic owner without treating test-side type narrowing as a new runtime abstraction.
-
-All scenario suites use `.test.mts`. Navigate through the four `scenario-*-test-migration.test.mts` contracts for authoring/curation, identity/reference, mutation/finalize and library/algorithm partitions. Their shared report types describe captured test artifacts only; semantic ownership stays in command metadata and runtime owners.
+All unit and scenario suites use `.test.mts`, enforced repository-wide by `zero-javascript-ratchet.test.mts` and `toolchain-contract.test.mts`; navigate from each behavior test to its existing semantic owner without treating test-side type narrowing as a new runtime abstraction.
 
 The supported toolchain is Node.js 24, `pnpm@11.24.0`, TypeScript `7.0.2` only with erasable syntax, root-config Oxlint plus the native-suppression audit, and Prettier. Before merging a migration slice, verify it in a clean arbitrary Git worktree with frozen pnpm install, clean/type-error-no-emit build proof, and no dependency on sibling checkouts, external `node_modules`, credentials, or ignored `.foundry` state.
 
