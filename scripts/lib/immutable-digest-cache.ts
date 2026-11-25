@@ -97,14 +97,9 @@ export function captureImmutableComponentFile(
 
   let canonicalPath: string;
   try {
-    const nativeResolved = fs.realpathSync.native(filePath);
-    canonicalPath = nativeResolved;
+    canonicalPath = fs.realpathSync(filePath);
   } catch {
-    try {
-      canonicalPath = fs.realpathSync(filePath);
-    } catch {
-      return failInvalid("missing_or_linked", `Component file path could not resolve: ${filePath}`);
-    }
+    return failInvalid("missing_or_linked", `Component file path could not resolve: ${filePath}`);
   }
 
   const fp = statFingerprint(outerBefore);
