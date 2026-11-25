@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertFoundryPackage, foundryPackageDescriptorPath } from "./foundry-package-contract.ts";
+import { captureImmutableComponentFile } from "./immutable-digest-cache.ts";
 
 const foundryPackageName = "@tiangong-lca/foundry";
 const supportedEntryExtensions = new Set([".js", ".ts"]);
@@ -69,9 +70,28 @@ function layoutPath(value: unknown, directory = false): value is string {
   );
 }
 
+const runtimePackageMemo = new Map<
+  string,
+  Readonly<{ fingerprint: string; pkg: RuntimePackage }>
+>();
+
 function readRuntimePackage(root: string): RuntimePackage | null {
   const manifestPath = path.join(root, "package.json");
   if (!fs.existsSync(manifestPath)) return null;
+  let stat: fs.BigIntStats;
+  try {
+    stat = fs.lstatSync(manifestPath, { bigint: true });
+  } catch {
+    return null;
+  }
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.size > BigInt(1024 * 1024)) return null;
+  const statFp = `${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeNs}:${stat.ctimeNs}:${stat.mode}`;
+  const nowNs = BigInt(Date.now()) * 1_000_000n;
+  const stable = nowNs > stat.mtimeNs && nowNs - stat.mtimeNs >= 100_000_000n;
+  if (stable) {
+    const cached = runtimePackageMemo.get(root);
+    if (cached && cached.fingerprint === statFp) return cached.pkg;
+  }
   let fd: number;
   try {
     fd = fs.openSync(manifestPath, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
@@ -120,7 +140,7 @@ function readRuntimePackage(root: string): RuntimePackage | null {
   ) {
     throw new Error("Invalid Foundry runtime layout descriptor.");
   }
-  return {
+  const pkg: RuntimePackage = {
     root,
     name: manifest.name,
     version: manifest.version,
@@ -134,6 +154,16 @@ function readRuntimePackage(root: string): RuntimePackage | null {
       package_descriptor: isV2 ? String(layout.package_descriptor) : null,
     },
   };
+  if (stable) {
+    if (runtimePackageMemo.size >= 64 && !runtimePackageMemo.has(root)) {
+      const oldest = runtimePackageMemo.keys().next().value;
+      if (oldest !== undefined) runtimePackageMemo.delete(oldest);
+    }
+    runtimePackageMemo.set(root, Object.freeze({ fingerprint: statFp, pkg }));
+  } else {
+    runtimePackageMemo.delete(root);
+  }
+  return pkg;
 }
 
 export function describeFoundryRuntime(moduleUrl: string): FoundryRuntimeIdentity {
@@ -196,7 +226,7 @@ export function describeFoundryRuntime(moduleUrl: string): FoundryRuntimeIdentit
     packageName: runtimePackage.name,
     packageVersion: runtimePackage.version,
     packageManifestSha256: runtimePackage.manifestSha256,
-    entrySha256: createHash("sha256").update(fs.readFileSync(entryPath)).digest("hex"),
+    entrySha256: captureImmutableComponentFile(entryPath, { maxBytes: 16 * 1024 * 1024 }).sha256,
     mode,
   });
 }

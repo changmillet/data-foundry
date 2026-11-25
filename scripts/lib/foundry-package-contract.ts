@@ -2,6 +2,10 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { sha256Json } from "./identity-preflight-proof.ts";
+import {
+  captureImmutableComponentFile,
+  snapshotImmutableDirectoryTree,
+} from "./immutable-digest-cache.ts";
 
 export const FOUNDRY_PACKAGE_DESCRIPTOR_SCHEMA = "tiangong-foundry.package-descriptor.v1" as const;
 export const foundryPackageDescriptorPath =
@@ -389,51 +393,77 @@ function readPackageFile(
 }
 
 function captureFile(root: string, relative: string): Readonly<FoundryPackageFileFact> {
-  return readPackageFile(root, relative).fact;
+  const target = path.resolve(root, relative);
+  const within = path.relative(root, target);
+  if (path.isAbsolute(within) || within === ".." || within.startsWith(`..${path.sep}`))
+    fail("package_file_invalid", "Package payload escapes its root.");
+  const captured = captureImmutableComponentFile(target, {
+    maxBytes: maxPayloadFileBytes,
+    onInvalid: (reason) => {
+      if (reason === "missing_or_linked")
+        return fail("package_file_invalid", `Package payload is missing or linked: ${relative}.`);
+      if (reason === "not_bounded_file")
+        return fail("package_file_invalid", `Package payload is not a bounded file: ${relative}.`);
+      return fail("package_file_invalid", `Package payload changed while read: ${relative}.`);
+    },
+  });
+  return Object.freeze({
+    path: relative,
+    bytes: captured.bytes,
+    sha256: captured.sha256,
+  });
 }
 
-function packageFiles(root: string): string[] {
-  const files: string[] = [];
-  const walk = (directory: string, relativeDirectory: string, depth: number): void => {
-    if (depth > 32) fail("package_file_invalid", "Package payload exceeds its depth limit.");
-    for (const entry of fs
-      .readdirSync(directory, { withFileTypes: true })
-      .sort((a, b) => comparePortable(a.name, b.name))) {
-      const relative = relativeDirectory ? `${relativeDirectory}/${entry.name}` : entry.name;
-      const target = path.join(directory, entry.name);
-      const stat = fs.lstatSync(target);
-      if (relativeDirectory === "" && entry.name === "node_modules") {
-        if (!stat.isDirectory() || stat.isSymbolicLink())
-          fail("package_file_invalid", "Installed package node_modules must be a real directory.");
-        continue;
-      }
-      if (stat.isSymbolicLink())
-        fail("package_file_invalid", `Package payload contains a link: ${relative}.`);
-      if (stat.isDirectory()) walk(target, relative, depth + 1);
-      else if (stat.isFile()) files.push(relative);
-      else
-        fail("package_file_invalid", `Package payload contains an unsupported entry: ${relative}.`);
-      if (files.length > maxPayloadFiles + 1)
-        fail("package_file_invalid", "Package payload exceeds its file-count limit.");
-    }
-  };
-  walk(root, "", 0);
-  return files.sort(comparePortable);
-}
+const MAX_VERIFIED_PACKAGES = 64;
+const skipPackageTopLevelDirs = new Set(["node_modules"]);
+const verifiedPackages = new Map<
+  string,
+  Readonly<{ treeFingerprint: string; descriptor: FoundryPackageDescriptor }>
+>();
 
 export function assertFoundryPackage(packageRoot: string): FoundryPackageDescriptor {
   const root = fs.realpathSync(packageRoot);
   if (!fs.statSync(root).isDirectory())
     fail("package_root_invalid", "Package root is not a directory.");
+  const treeSnapshot = snapshotImmutableDirectoryTree(root, {
+    maxDepth: 32,
+    maxFiles: maxPayloadFiles + 3,
+    skipTopLevelDirectories: skipPackageTopLevelDirs,
+    onInvalidEntry: (reason, relative) => {
+      if (reason === "depth_exceeded")
+        return fail("package_file_invalid", "Package payload exceeds its depth limit.");
+      if (reason === "invalid_skipped_dir")
+        return fail(
+          "package_file_invalid",
+          "Installed package node_modules must be a real directory.",
+        );
+      if (reason === "symlink")
+        return fail("package_file_invalid", `Package payload contains a link: ${relative}.`);
+      if (reason === "file_limit_exceeded")
+        return fail("package_file_invalid", "Package payload exceeds its file-count limit.");
+      return fail(
+        "package_file_invalid",
+        `Package payload contains an unsupported entry: ${relative}.`,
+      );
+    },
+  });
+  if (treeSnapshot.allFilesStableForCache) {
+    const hit = verifiedPackages.get(root);
+    if (hit && hit.treeFingerprint === treeSnapshot.treeFingerprint) {
+      return hit.descriptor;
+    }
+  }
   const capturedDescriptor = readPackageFile(root, foundryPackageDescriptorPath);
   if (capturedDescriptor.fact.bytes > maxDescriptorBytes)
     fail("package_descriptor_invalid", "Package descriptor exceeds its byte limit.");
   const descriptor = assertFoundryPackageDescriptor(
     JSON.parse(capturedDescriptor.content.toString("utf8")),
   );
-  const actualPaths = packageFiles(root).filter(
+  const actualPaths = treeSnapshot.files.filter(
     (file) => file !== foundryPackageDescriptorPath && file !== "package.json",
   );
+  if (actualPaths.length > maxPayloadFiles + 1)
+    fail("package_file_invalid", "Package payload exceeds its file-count limit.");
   const expectedPaths = descriptor.files.map((file) => file.path);
   if (!sameArray(actualPaths, expectedPaths))
     fail("package_file_set_changed", "Installed package has missing or extra payload files.");
@@ -461,6 +491,18 @@ export function assertFoundryPackage(packageRoot: string): FoundryPackageDescrip
       )
     )
       fail("package_private_file", `Installed package exposes a private/source path: ${file}.`);
+  }
+  if (treeSnapshot.allFilesStableForCache) {
+    if (verifiedPackages.size >= MAX_VERIFIED_PACKAGES && !verifiedPackages.has(root)) {
+      const oldest = verifiedPackages.keys().next().value;
+      if (oldest !== undefined) verifiedPackages.delete(oldest);
+    }
+    verifiedPackages.set(
+      root,
+      Object.freeze({ treeFingerprint: treeSnapshot.treeFingerprint, descriptor }),
+    );
+  } else {
+    verifiedPackages.delete(root);
   }
   return descriptor;
 }
