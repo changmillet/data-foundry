@@ -133,6 +133,8 @@
     "skills:source-evidence:use:document": "pnpm dlx skills@latest use https://github.com/tiangong-ai/skills --skill document-granular-decompose --full-depth",
     "skills:use": "pnpm dlx skills@latest use",
     "test": "node --test \"test/**/*.test.mts\"",
+    "test:fast": "node --test \"test/unit/*.test.mts\" \"test/commands/*.test.mts\"",
+    "test:smoke:public": "node --test test/scenarios/foundry-public-facade.test.mts test/scenarios/foundry-package-consumer.test.mts",
     "test:unit": "node --test \"test/unit/*.test.mts\"",
     "test:commands": "node --test \"test/commands/*.test.mts\"",
     "test:scenarios": "node --test \"test/scenarios/*.test.mts\"",

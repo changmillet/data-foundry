@@ -151,10 +151,8 @@ checkPaths:
   - test/unit/identity-rewrite-explicit-any-contract.test.mts
   - test/unit/bafu-family-signatures-contract.test.mts
   - test/unit/import-ledger-contract.test.mts
-  - test/unit/wave8-large-leaf-migration.test.mts
   - test/unit/canonical-support-rewrites-contract.test.mts
   - test/unit/bundle-sample-utils-contract.test.mts
-  - test/unit/wave9-canonical-bundle-migration.test.mts
   - test/unit/import-ledger-type-contract.test.mts
   - test/unit/fixture-helpers-contract.test.mts
   - test/unit/fixture-executable-core-migration.test.mts
@@ -178,10 +176,6 @@ checkPaths:
   - test/unit/tidas-cutover-audit.test.mts
   - test/unit/topology-convergence.test.mts
   - test/unit/workflow-semantic-actions.test.mts
-  - test/unit/unit-source-ledger-test-migration.test.mts
-  - test/unit/unit-execution-library-test-migration.test.mts
-  - test/unit/unit-algorithm-adapter-test-migration.test.mts
-  - test/unit/unit-runtime-policy-test-migration.test.mts
   - test/scenarios/authoring-shared-context.test.mts
   - test/scenarios/bafu-mydata-override.test.mts
   - test/scenarios/content-saturation-gates.test.mts
@@ -201,62 +195,33 @@ checkPaths:
   - test/scenarios/mutation-manifest-reference-closure.test.mts
   - test/scenarios/post-authoring-finalize-gates.test.mts
   - test/scenarios/topology-convergence-handoff.test.mts
-  - test/scenarios/scenario-authoring-curation-test-migration.test.mts
-  - test/scenarios/scenario-identity-reference-test-migration.test.mts
-  - test/scenarios/scenario-mutation-finalize-test-migration.test.mts
-  - test/scenarios/scenario-library-algorithm-test-migration.test.mts
   - test/unit/foundry-runtime-utils-contract.test.mts
-  - test/unit/wave10-runtime-migration.test.mts
   - test/unit/location-quality-utils-contract.test.mts
-  - test/unit/wave11-location-migration.test.mts
   - test/unit/prewrite-cleanup-contract.test.mts
-  - test/unit/wave12-prewrite-migration.test.mts
   - test/unit/workflow-queue-context-contract.test.mts
   - test/unit/workflow-queue-context-native-errors.test.mts
-  - test/unit/wave13-queue-context-migration.test.mts
   - test/unit/full-context-proof-contract.test.mts
-  - test/unit/wave14-full-context-proof-migration.test.mts
   - test/unit/workflow-decision-apply-context-contract.test.mts
-  - test/unit/wave15-decision-apply-context-migration.test.mts
   - test/unit/profiles-config-contract.test.mts
-  - test/unit/wave16-profiles-config-migration.test.mts
   - test/unit/workflow-patch-collect-contract.test.mts
-  - test/unit/wave17-patch-collect-migration.test.mts
   - test/unit/workflow-identity-decision-context-contract.test.mts
-  - test/unit/wave18-identity-decision-context-migration.test.mts
   - test/unit/workflow-patch-evidence-context-contract.test.mts
-  - test/unit/wave19-patch-evidence-context-migration.test.mts
   - test/unit/workflow-row-transform-context-contract.test.mts
-  - test/unit/wave20-row-transform-context-migration.test.mts
   - test/unit/workflow-dry-run-context-contract.test.mts
-  - test/unit/wave21-dry-run-context-migration.test.mts
   - test/unit/workflow-evidence-scope-contract.test.mts
-  - test/unit/wave21-evidence-scope-migration.test.mts
   - test/unit/workflow-decision-full-context-contract.test.mts
-  - test/unit/wave22-decision-full-context-migration.test.mts
   - test/unit/workflow-authoring-scc-contract.test.mts
-  - test/unit/wave22-authoring-scc-migration.test.mts
   - test/unit/workflow-identity-preflight-contract.test.mts
-  - test/unit/wave22-identity-preflight-migration.test.mts
   - test/unit/authoring-workflow-facades-contract.test.mts
-  - test/unit/wave23-authoring-facades-migration.test.mts
   - test/unit/authoring-packages-runner-contract.test.mts
-  - test/unit/wave23-authoring-packages-migration.test.mts
   - test/unit/patch-collect-runner-contract.test.mts
-  - test/unit/wave23-patch-collect-runner-migration.test.mts
   - test/unit/curation-gate-workflow-facade-contract.test.mts
-  - test/unit/wave24-curation-gate-workflow-migration.test.mts
   - test/unit/curation-gate-runner-contract.test.mts
-  - test/unit/wave24-curation-gate-runner-migration.test.mts
   - test/unit/curation-cleanup-runner-contract.test.mts
-  - test/unit/wave24-curation-cleanup-runner-migration.test.mts
   - test/unit/workflow-reference-closure-contract.test.mts
-  - test/unit/wave25-reference-closure-migration.test.mts
   - test/unit/workflow-source-reference-context-contract.test.mts
-  - test/unit/wave25-source-reference-context-migration.test.mts
   - test/unit/mutation-manifest-workflow-facade-contract.test.mts
   - test/unit/mutation-manifest-runner-contract.test.mts
-  - test/unit/wave25-mutation-manifest-migration.test.mts
   - test/unit/cli-wrapper-command-factory.test.mts
   - test/unit/execution-capsule-command-factory.test.mts
   - test/unit/post-write-closeout-command-factory.test.mts
@@ -264,15 +229,8 @@ checkPaths:
   - test/unit/identity-preflight-run-command-factory.test.mts
   - test/unit/post-authoring-finalize-command-factory.test.mts
   - test/commands/*.test.mts
-  - test/unit/wave25-identity-decision-command-migration.test.mts
-  - test/unit/wave25-classification-location-command-migration.test.mts
   - test/unit/import-curation-leaf-barrels-migration.test.mts
   - test/unit/import-curation-entry-barrels-migration.test.mts
-  - test/unit/wave26-library-scope-command-migration.test.mts
-  - test/unit/wave26-bafu-leaf-classification-command-migration.test.mts
-  - test/unit/wave26-bafu-auto-authoring-command-migration.test.mts
-  - test/unit/wave26-bafu-process-scope-command-migration.test.mts
-  - test/unit/wave26-bafu-batch-command-migration.test.mts
   - test/unit/tidas-adapter-migration-contract.test.mts
   - test/unit/post-authoring-finalize-utils-contract.test.mts
   - test/unit/tidas-cutover-script-contract.test.mts
@@ -302,9 +260,9 @@ policy:
   require_dry_run_before_remote_write: true
   required_multilang_english_before_write: true
   preserve_source_language_variants: true
-lastReviewedAt: 2026-11-24
-lastReviewedCommit: 0cbbd150bcf73b128e0151163557e0ccc365ac95
-lastReviewedNote: "Foundry #287: reviewed the four eligible development-tool updates and complete unchanged lock graph during formatting; native/source qualification, compiler and public-runtime closure, cache inputs, credential and publishing authority remain unchanged. Foundry #296: reviewed ordinary GitHub Windows shard host observations, source/plan/partition/run binding, null omissions and failed/cancelled/signalled evidence after the original elapsed snapshot. Test qualification, public runtime, task/skill ownership, credentials and publisher authority remain unchanged. Foundry #298: reviewed two exclusive Windows retained-suite partitions, source-bound dual timing inputs, conservative execution classes and dynamic class/file caps. Canonical weights, other platforms, original tests/deadlines, source/plan guards and ordinary qualification/publishing authority remain unchanged; modeled feasibility is not a passing Windows result."
+lastReviewedAt: 2026-11-25
+lastReviewedCommit: a191bd3dbe633e60ef40ab5fb6fc5e00c015fd02
+lastReviewedNote: "Foundry #306: retired completed JS-to-TS wave migration scaffolding tests in favor of zero-javascript-ratchet and toolchain-contract, and added stat-guarded immutable component digest caching; task order, gate sequence and runtime skill policy remain unchanged."
 ---
 
 You are working on a TianGong LCA data import task.

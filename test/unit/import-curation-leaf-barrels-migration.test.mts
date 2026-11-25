@@ -50,8 +50,4 @@ test("every active leaf-barrel consumer targets the typed module", () => {
   assert.match(indexSource, /from "\.\/profiles\.ts"/u);
   assert.match(indexSource, /from "\.\/trace-summary\.ts"/u);
   assert.doesNotMatch(indexSource, /from "\.\/(?:profiles|trace-summary)\.mjs"/u);
-
-  const profileMigration = readRepoFile("test/unit/wave16-profiles-config-migration.test.mts");
-  assert.match(profileMigration, /scripts\/lib\/import-curation\/profiles\.ts/u);
-  assert.doesNotMatch(profileMigration, /scripts\/lib\/import-curation\/profiles\.mjs/u);
 });

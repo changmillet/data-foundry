@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   CLI_RUNTIME_EXPECTATION_SCHEMA,
   assertCliRuntimeMatches,
@@ -16,6 +17,10 @@ import {
 import { createFoundryIsolatedChildEnvironment } from "./foundry-runtime-environment.ts";
 import { copyFoundryIsolatedExecutable } from "./foundry-runtime-environment.ts";
 import { sha256Json } from "./identity-preflight-proof.ts";
+import {
+  captureImmutableComponentFile,
+  snapshotImmutableDirectoryTree,
+} from "./immutable-digest-cache.ts";
 import {
   runTidasHandshake,
   TIDAS_OPERATION_REPORT_SCHEMA,
@@ -169,22 +174,134 @@ function hash(value: unknown): string {
   return sha256Json(value);
 }
 
+const MAX_QUALIFICATION_CACHE_ENTRIES = 64;
+const skipCliTopLevelDirs = new Set(["node_modules"]);
+const verifiedCliObservations = new Map<string, CliRuntimeDescriptor>();
+
+interface CachedTidasHandshake {
+  readonly schemaVersion: unknown;
+  readonly binaryVersion: string;
+  readonly validationSchemaVersion: unknown;
+  readonly assetFingerprint: unknown;
+  readonly protocols: readonly string[];
+  readonly eventSchemaVersions: readonly string[];
+}
+const verifiedTidasHandshakes = new Map<string, CachedTidasHandshake>();
+
+let resolvedCliPackageRoot: string | null = null;
+function locateInstalledCliPackageRoot(): string | null {
+  if (resolvedCliPackageRoot !== null) return resolvedCliPackageRoot;
+  try {
+    let current = path.dirname(fileURLToPath(import.meta.resolve("@tiangong-lca/cli/runtime")));
+    while (true) {
+      const candidate = path.join(current, "package.json");
+      if (fs.existsSync(candidate) && fs.lstatSync(candidate).isFile()) {
+        const parsed = JSON.parse(fs.readFileSync(candidate, "utf8")) as { name?: unknown };
+        if (parsed.name === "@tiangong-lca/cli") {
+          resolvedCliPackageRoot = fs.realpathSync(current);
+          return resolvedCliPackageRoot;
+        }
+      }
+      const parent = path.dirname(current);
+      if (parent === current) return null;
+      current = parent;
+    }
+  } catch {
+    return null;
+  }
+}
+
+function verifyCliRuntimeWithStatGuard(rawExpectation: unknown): CliRuntimeDescriptor {
+  let cacheKey: string | null = null;
+  try {
+    const cliRoot = locateInstalledCliPackageRoot();
+    const nodeStat = fs.lstatSync(process.execPath, { bigint: true });
+    if (cliRoot && nodeStat.isFile() && !nodeStat.isSymbolicLink()) {
+      const nodeFp = `${nodeStat.dev}:${nodeStat.ino}:${nodeStat.size}:${nodeStat.mtimeNs}:${nodeStat.ctimeNs}:${nodeStat.mode}`;
+      const cliSnap = snapshotImmutableDirectoryTree(cliRoot, {
+        maxDepth: 32,
+        maxFiles: 4096,
+        skipTopLevelDirectories: skipCliTopLevelDirs,
+      });
+      if (cliSnap.allFilesStableForCache) {
+        cacheKey = `${hash(rawExpectation)}|${process.versions.node}|${process.platform}-${process.arch}|${nodeFp}|${cliSnap.treeFingerprint}`;
+        const hit = verifiedCliObservations.get(cacheKey);
+        if (hit) return hit;
+      }
+    }
+  } catch {
+    cacheKey = null;
+  }
+  const verified = assertCliRuntimeMatches(rawExpectation);
+  if (cacheKey) {
+    if (
+      verifiedCliObservations.size >= MAX_QUALIFICATION_CACHE_ENTRIES &&
+      !verifiedCliObservations.has(cacheKey)
+    ) {
+      const oldest = verifiedCliObservations.keys().next().value;
+      if (oldest !== undefined) verifiedCliObservations.delete(oldest);
+    }
+    verifiedCliObservations.set(cacheKey, verified);
+  }
+  return verified;
+}
+
+function tidasEnvironmentCacheKey(): string {
+  const entries = Object.entries(process.env)
+    .filter(([key]) => key.startsWith("TIDAS_") || key.startsWith("FAKE_TIDAS_"))
+    .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0));
+  return JSON.stringify(entries);
+}
+
 function captureExpectedTidas(
   expectation: FoundryTidasRuntimeExpectation,
   executablePath: string,
 ): ReturnType<typeof captureFoundryInput> {
   if (!path.isAbsolute(executablePath))
     fail("runtime_tidas_unqualified", "TIDAS executable selection must be absolute.");
-  const executable = captureFoundryInput(executablePath);
+  const captured = captureImmutableComponentFile(executablePath, {
+    maxBytes: 512 * 1024 * 1024,
+    onInvalid: (reason) => {
+      if (reason === "missing_or_linked")
+        return fail("runtime_tidas_unqualified", "TIDAS executable is missing or linked.");
+      return fail(
+        "runtime_tidas_unqualified",
+        "TIDAS executable could not be read as a bounded regular file.",
+      );
+    },
+  });
   if (
-    executable.bytes !== expectation.executable.bytes ||
-    executable.sha256 !== expectation.executable.sha256
+    captured.bytes !== expectation.executable.bytes ||
+    captured.sha256 !== expectation.executable.sha256
   )
     fail(
       "runtime_tidas_unqualified",
       "TIDAS executable bytes do not match the independent expectation.",
     );
-  return executable;
+  return Object.freeze({
+    path: captured.canonicalPath,
+    bytes: captured.bytes,
+    sha256: captured.sha256,
+  });
+}
+
+function assertObservedTidasMatchesExpectation(
+  observed: CachedTidasHandshake,
+  expectation: FoundryTidasRuntimeExpectation,
+): void {
+  if (
+    observed.schemaVersion !== TIDAS_OPERATION_REPORT_SCHEMA ||
+    observed.binaryVersion !== expectation.binary_version ||
+    observed.validationSchemaVersion !== expectation.validation.schema_version ||
+    observed.assetFingerprint !== expectation.validation.asset_fingerprint ||
+    JSON.stringify(observed.protocols) !== JSON.stringify(expectation.validation.protocols) ||
+    JSON.stringify(observed.eventSchemaVersions) !==
+      JSON.stringify(expectation.validation.event_schema_versions)
+  )
+    fail(
+      "runtime_tidas_unqualified",
+      "TIDAS version, protocols or assets do not match the independent expectation.",
+    );
 }
 
 function observeTidas(
@@ -193,6 +310,12 @@ function observeTidas(
   executablePath: string,
 ): ReturnType<typeof captureFoundryInput> {
   const executable = captureExpectedTidas(expectation, executablePath);
+  const handshakeCacheKey = `${context.runtimeRoot}|${executable.path}|${executable.bytes}|${executable.sha256}|${tidasEnvironmentCacheKey()}`;
+  const cachedHandshake = verifiedTidasHandshakes.get(handshakeCacheKey);
+  if (cachedHandshake) {
+    assertObservedTidasMatchesExpectation(cachedHandshake, expectation);
+    return executable;
+  }
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-runtime-qualification-"));
   fs.chmodSync(temp, 0o700);
   try {
@@ -220,21 +343,25 @@ function observeTidas(
     if (handshake.stderr || handshake.validation_describe_stderr)
       fail("runtime_tidas_unqualified", "TIDAS qualification produced diagnostics.");
     const validation = handshake.validation_describe;
-    const protocols = [...(validation.protocols ?? [])].sort();
-    const eventSchemaVersions = [...(validation.event_schema_versions ?? [])].sort();
+    const protocols = Object.freeze([...(validation.protocols ?? [])].sort());
+    const eventSchemaVersions = Object.freeze([...(validation.event_schema_versions ?? [])].sort());
+    const observed: CachedTidasHandshake = Object.freeze({
+      schemaVersion: handshake.report.schema_version,
+      binaryVersion: handshake.binary_version,
+      validationSchemaVersion: validation.schema_version,
+      assetFingerprint: validation.asset_fingerprint,
+      protocols,
+      eventSchemaVersions,
+    });
+    assertObservedTidasMatchesExpectation(observed, expectation);
     if (
-      handshake.report.schema_version !== TIDAS_OPERATION_REPORT_SCHEMA ||
-      handshake.binary_version !== expectation.binary_version ||
-      validation.schema_version !== expectation.validation.schema_version ||
-      validation.asset_fingerprint !== expectation.validation.asset_fingerprint ||
-      JSON.stringify(protocols) !== JSON.stringify(expectation.validation.protocols) ||
-      JSON.stringify(eventSchemaVersions) !==
-        JSON.stringify(expectation.validation.event_schema_versions)
-    )
-      fail(
-        "runtime_tidas_unqualified",
-        "TIDAS version, protocols or assets do not match the independent expectation.",
-      );
+      verifiedTidasHandshakes.size >= MAX_QUALIFICATION_CACHE_ENTRIES &&
+      !verifiedTidasHandshakes.has(handshakeCacheKey)
+    ) {
+      const oldest = verifiedTidasHandshakes.keys().next().value;
+      if (oldest !== undefined) verifiedTidasHandshakes.delete(oldest);
+    }
+    verifiedTidasHandshakes.set(handshakeCacheKey, observed);
     return executable;
   } catch (error) {
     if (error instanceof FoundryContextError) throw error;
@@ -275,7 +402,7 @@ export function qualifyFoundryRuntime(
   assertFoundryRuntimeContext(context);
   let cli: CliRuntimeDescriptor;
   try {
-    cli = assertCliRuntimeMatches(options.cliExpectation);
+    cli = verifyCliRuntimeWithStatGuard(options.cliExpectation);
   } catch {
     return fail(
       "runtime_cli_unqualified",
@@ -322,7 +449,7 @@ export function assertQualifiedFoundryRuntime(
     );
   let cli: CliRuntimeDescriptor;
   try {
-    cli = assertCliRuntimeMatches(qualification.cli.expectation);
+    cli = verifyCliRuntimeWithStatGuard(qualification.cli.expectation);
   } catch {
     return fail(
       "runtime_cli_unqualified",

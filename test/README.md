@@ -131,10 +131,8 @@ checkPaths:
   - test/fixtures/topology-convergence-fixtures.ts
   - test/unit/bafu-family-signatures-contract.test.mts
   - test/unit/import-ledger-contract.test.mts
-  - test/unit/wave8-large-leaf-migration.test.mts
   - test/unit/canonical-support-rewrites-contract.test.mts
   - test/unit/bundle-sample-utils-contract.test.mts
-  - test/unit/wave9-canonical-bundle-migration.test.mts
   - test/unit/import-ledger-type-contract.test.mts
   - test/unit/source-row-explicit-any-contract.test.mts
   - test/unit/identity-rewrite-explicit-any-contract.test.mts
@@ -161,10 +159,6 @@ checkPaths:
   - test/unit/tidas-language-utils.test.mts
   - test/unit/topology-convergence.test.mts
   - test/unit/workflow-semantic-actions.test.mts
-  - test/unit/unit-source-ledger-test-migration.test.mts
-  - test/unit/unit-execution-library-test-migration.test.mts
-  - test/unit/unit-algorithm-adapter-test-migration.test.mts
-  - test/unit/unit-runtime-policy-test-migration.test.mts
   - test/scenarios/authoring-shared-context.test.mts
   - test/scenarios/bafu-mydata-override.test.mts
   - test/scenarios/content-saturation-gates.test.mts
@@ -184,57 +178,31 @@ checkPaths:
   - test/scenarios/mutation-manifest-reference-closure.test.mts
   - test/scenarios/post-authoring-finalize-gates.test.mts
   - test/scenarios/topology-convergence-handoff.test.mts
-  - test/scenarios/scenario-authoring-curation-test-migration.test.mts
-  - test/scenarios/scenario-identity-reference-test-migration.test.mts
-  - test/scenarios/scenario-mutation-finalize-test-migration.test.mts
-  - test/scenarios/scenario-library-algorithm-test-migration.test.mts
   - test/unit/foundry-entry-closure-migration.test.mts
   - test/unit/foundry-runtime-environment.test.mts
   - test/unit/foundry-runtime-utils-contract.test.mts
-  - test/unit/wave10-runtime-migration.test.mts
   - test/unit/location-quality-utils-contract.test.mts
-  - test/unit/wave11-location-migration.test.mts
   - test/unit/prewrite-cleanup-contract.test.mts
-  - test/unit/wave12-prewrite-migration.test.mts
   - test/unit/workflow-queue-context-contract.test.mts
   - test/unit/workflow-queue-context-native-errors.test.mts
-  - test/unit/wave13-queue-context-migration.test.mts
   - test/unit/full-context-proof-contract.test.mts
-  - test/unit/wave14-full-context-proof-migration.test.mts
   - test/unit/workflow-decision-apply-context-contract.test.mts
-  - test/unit/wave15-decision-apply-context-migration.test.mts
   - test/unit/profiles-config-contract.test.mts
-  - test/unit/wave16-profiles-config-migration.test.mts
   - test/unit/workflow-patch-collect-contract.test.mts
-  - test/unit/wave17-patch-collect-migration.test.mts
   - test/unit/workflow-identity-decision-context-contract.test.mts
-  - test/unit/wave18-identity-decision-context-migration.test.mts
   - test/unit/workflow-patch-evidence-context-contract.test.mts
-  - test/unit/wave19-patch-evidence-context-migration.test.mts
   - test/unit/workflow-row-transform-context-contract.test.mts
-  - test/unit/wave20-row-transform-context-migration.test.mts
   - test/unit/workflow-dry-run-context-contract.test.mts
-  - test/unit/wave21-dry-run-context-migration.test.mts
   - test/unit/workflow-evidence-scope-contract.test.mts
-  - test/unit/wave21-evidence-scope-migration.test.mts
   - test/unit/workflow-decision-full-context-contract.test.mts
-  - test/unit/wave22-decision-full-context-migration.test.mts
   - test/unit/workflow-authoring-scc-contract.test.mts
-  - test/unit/wave22-authoring-scc-migration.test.mts
   - test/unit/workflow-identity-preflight-contract.test.mts
-  - test/unit/wave22-identity-preflight-migration.test.mts
   - test/unit/authoring-workflow-facades-contract.test.mts
-  - test/unit/wave23-authoring-facades-migration.test.mts
   - test/unit/authoring-packages-runner-contract.test.mts
-  - test/unit/wave23-authoring-packages-migration.test.mts
   - test/unit/patch-collect-runner-contract.test.mts
-  - test/unit/wave23-patch-collect-runner-migration.test.mts
   - test/unit/curation-gate-workflow-facade-contract.test.mts
-  - test/unit/wave24-curation-gate-workflow-migration.test.mts
   - test/unit/curation-gate-runner-contract.test.mts
-  - test/unit/wave24-curation-gate-runner-migration.test.mts
   - test/unit/curation-cleanup-runner-contract.test.mts
-  - test/unit/wave24-curation-cleanup-runner-migration.test.mts
   - test/unit/cli-wrapper-command-factory.test.mts
   - test/unit/execution-capsule-command-factory.test.mts
   - test/unit/post-write-closeout-command-factory.test.mts
@@ -251,19 +219,9 @@ checkPaths:
   - test/unit/handoff-identity-task-command-factories.test.mts
   - test/unit/support-cache-command-factory.test.mts
   - test/unit/workflow-reference-closure-contract.test.mts
-  - test/unit/wave25-reference-closure-migration.test.mts
   - test/unit/workflow-source-reference-context-contract.test.mts
-  - test/unit/wave25-source-reference-context-migration.test.mts
   - test/unit/mutation-manifest-workflow-facade-contract.test.mts
   - test/unit/mutation-manifest-runner-contract.test.mts
-  - test/unit/wave25-mutation-manifest-migration.test.mts
-  - test/unit/wave25-identity-decision-command-migration.test.mts
-  - test/unit/wave25-classification-location-command-migration.test.mts
-  - test/unit/wave26-library-scope-command-migration.test.mts
-  - test/unit/wave26-bafu-leaf-classification-command-migration.test.mts
-  - test/unit/wave26-bafu-auto-authoring-command-migration.test.mts
-  - test/unit/wave26-bafu-process-scope-command-migration.test.mts
-  - test/unit/wave26-bafu-batch-command-migration.test.mts
   - test/commands/classification-decisions.test.mts
   - test/commands/location-decisions.test.mts
   - test/scenarios/flow-identity-decisions.test.mts
@@ -279,9 +237,9 @@ checkPaths:
   - AGENTS.md
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
-lastReviewedAt: 2026-11-24
-lastReviewedCommit: 5f1573b43cc037ab141275ebdaf5204c5ef56dd3
-lastReviewedNote: "Foundry #287: reviewed the four eligible development-tool updates and complete unchanged lock graph during formatting; native/source qualification, compiler and public-runtime closure, cache inputs, credential and publishing authority remain unchanged. Foundry #296: reviewed the allowlisted ordinary Windows host observation, exact source/plan/run/partition binding, original elapsed snapshot, safe omissions and signalled/failed/Node-cancelled outcomes. Legacy receipts, all test gates and installed runtime/publishing authority are unchanged. Foundry #298: reviewed two exclusive Windows retained-suite partitions, source-bound dual timing inputs, conservative execution classes and dynamic class/file caps. Canonical weights, other platforms, original tests/deadlines, source/plan guards and ordinary qualification/publishing authority remain unchanged; modeled feasibility is not a passing Windows result."
+lastReviewedAt: 2026-11-25
+lastReviewedCommit: a191bd3dbe633e60ef40ab5fb6fc5e00c015fd02
+lastReviewedNote: "Foundry #306: retired 41 completed JS-to-TS wave/test-migration scaffolding suites covered by zero-javascript-ratchet and toolchain-contract, shared snapshot/archive/store helpers across heavy installed-package and adoption scenarios, and added test:fast / test:smoke:public scripts."
 ---
 
 # Test Layout
@@ -419,33 +377,33 @@ The Issue #63 migration is complete. `unit/zero-javascript-ratchet.test.mts` per
 
 `unit/lint-suppression-audit.test.mts` proves the tracked-TypeScript audit catches native line, next-line, and block disable directives while ignoring identical raw tokens in strings, templates, regexes, and non-directive prose comments. It also simulates inherited pre-push `GIT_DIR`/`GIT_WORK_TREE` and proves audit/fixture commands remain bound to the temporary repository rather than the parent index. `unit/zero-javascript-ratchet.test.mts` additionally requires `typescript/no-explicit-any` and `typescript/ban-ts-comment` as global Oxlint errors, rejects nested config and TS-comment suppression bypasses, reconciles every Git-visible `.ts`/`.mts`/`.cts` path with intentional Oxlint and `tsc` inventories, and checks the printed rule graph. `unit/toolchain-contract.test.mts` pins package wiring, `erasableSyntaxOnly`, guarded stale-`dist` cleanup, retired `.mjs`/map removal, and no emit on a controlled TypeScript diagnostic; it deliberately does not claim arbitrary I/O failure atomicity. These are permanent whole-repository boundaries; focused family contracts remain diagnostic TDD evidence.
 
-`unit/bafu-family-signatures-contract.test.mts` and `unit/import-ledger-contract.test.mts` characterize the Wave 8 leaves independently: exact normalized family and ordered exchange hashes, scope-order grouping/rank/summary/missing envelopes, then append-only verified/blocked/dependency/retry bytes, root-based row identity, payload hashes, human actions, duplicate suppression, latest-row resume ordering, artifact paths, and native errors. `unit/wave8-large-leaf-migration.test.mts` pins both native `.ts` files, their consumers, and named exports.
+`unit/bafu-family-signatures-contract.test.mts` and `unit/import-ledger-contract.test.mts` characterize the family-signature and import-ledger leaves independently: exact normalized family and ordered exchange hashes, scope-order grouping/rank/summary/missing envelopes, then append-only verified/blocked/dependency/retry bytes, root-based row identity, payload hashes, human actions, duplicate suppression, latest-row resume ordering, artifact paths, and native errors.
 
-`unit/canonical-support-rewrites-contract.test.mts` and `unit/bundle-sample-utils-contract.test.mts` characterize Wave 9 independently: normalized cache lookup, traversal/rewrite order, known/unresolved scale contracts, pending/proof/override/stale/defer behavior, exact artifacts/errors, then trace DFS/sanitization, process evidence repair, classification/elementary queues, canonical contact reference proof, profile fallbacks, seeded selection, and identity-key conflicts. `commands/bundle-sample-rows.test.mts` proves real materialization keeps scaling facts in the report and scope ledger before the source-unit FP is replaced; `unit/wave9-canonical-bundle-migration.test.mts` pins native files, consumers, and exports.
+`unit/canonical-support-rewrites-contract.test.mts` and `unit/bundle-sample-utils-contract.test.mts` characterize canonical support rewrites and bundle sampling independently: normalized cache lookup, traversal/rewrite order, known/unresolved scale contracts, pending/proof/override/stale/defer behavior, exact artifacts/errors, then trace DFS/sanitization, process evidence repair, classification/elementary queues, canonical contact reference proof, profile fallbacks, seeded selection, and identity-key conflicts. `commands/bundle-sample-rows.test.mts` proves real materialization keeps scaling facts in the report and scope ledger before the source-unit FP is replaced.
 
 `unit/import-ledger-type-contract.test.mts` runs an isolated TS7 compile fixture for the public ledger type surface and rejects explicit `any`; the existing ledger behavior tests still pin exact schemas, JSONL bytes, hashes, ordering, paths, dedupe, and errors. `unit/fixture-helpers-contract.test.mts` pins all shared root names against the worktree-local test run id plus ready-finalize mutation/report bytes, defaults, overrides, native `.ts` paths, and consumers.
 
-`unit/foundry-runtime-utils-contract.test.mts` characterizes pinned installed-CLI discovery and override rendering, the exact 49-helper factory surface, synchronous file/JSON/JSONL bytes and errors, row counts/search/path portability, scalar/frontmatter/options/hash/UUID behavior, explicit temporary env-file precedence, stage/blocker/artifact envelopes, and local Node subprocess JSON. Its filesystem-env-disabled case uses only a temporary root. `unit/foundry-runtime-environment.test.mts` pins the credential-free allowlist and protected overrides; `unit/foundry-entry-closure-migration.test.mts` pins source/emitted root, profile and nested-entry parity from an unrelated CWD. None reads repository `.env`; `unit/wave10-runtime-migration.test.mts` retains the exact runtime-utils export contract.
+`unit/foundry-runtime-utils-contract.test.mts` characterizes pinned installed-CLI discovery and override rendering, the exact 49-helper factory surface, synchronous file/JSON/JSONL bytes and errors, row counts/search/path portability, scalar/frontmatter/options/hash/UUID behavior, explicit temporary env-file precedence, stage/blocker/artifact envelopes, and local Node subprocess JSON. Its filesystem-env-disabled case uses only a temporary root. `unit/foundry-runtime-environment.test.mts` pins the credential-free allowlist and protected overrides; `unit/foundry-entry-closure-migration.test.mts` pins source/emitted root, profile and nested-entry parity from an unrelated CWD. None reads repository `.env`.
 
-`unit/location-quality-utils-contract.test.mts` characterizes classification/location command plans, installed and missing schema maps, fallback/schema location keys, nested `#text` paths, depth-first/ascending-array order, exact counters, queue context, blocker order and invalid row-type errors. `unit/wave11-location-migration.test.mts` pins the zero-any factory, named export and static consumers; bundle/location/finalize command scenarios retain integration coverage.
+`unit/location-quality-utils-contract.test.mts` characterizes classification/location command plans, installed and missing schema maps, fallback/schema location keys, nested `#text` paths, depth-first/ascending-array order, exact counters, queue context, blocker order and invalid row-type errors; bundle/location/finalize command scenarios retain integration coverage.
 
-`unit/prewrite-cleanup-contract.test.mts` characterizes strict Gregorian/leap-century/clock/offset validation, accepted UTC bytes, four-digit year-boundary preservation, recursive blocker order, all-or-nothing mutation, annual-supply evidence preservation, unknown-evidence normalization, bound evidence gaps and unsupported-shape passthrough, source-row map precedence, output-only exchange proof and order-sensitive hashes, duplicate proof suppression, trace summary/hash/error behavior, namespace repair and exact local-locator SHA redaction. `unit/curation-cleanup-runner-contract.test.mts` adds the multi-row fail-close: one invalid datetime yields zero transforms, a null cleaned path, and no automatic deletion; managed/custom/replaced/symlink-root stale defaults remain byte-identical and reported, while explicit outputs stay untouched. `unit/wave12-prewrite-migration.test.mts` pins the zero-any native module, eleven exports, seven direct consumers and the bundle injection edge (eight runtime consumers total).
+`unit/prewrite-cleanup-contract.test.mts` characterizes strict Gregorian/leap-century/clock/offset validation, accepted UTC bytes, four-digit year-boundary preservation, recursive blocker order, all-or-nothing mutation, annual-supply evidence preservation, unknown-evidence normalization, bound evidence gaps and unsupported-shape passthrough, source-row map precedence, output-only exchange proof and order-sensitive hashes, duplicate proof suppression, trace summary/hash/error behavior, namespace repair and exact local-locator SHA redaction. `unit/curation-cleanup-runner-contract.test.mts` adds the multi-row fail-close: one invalid datetime yields zero transforms, a null cleaned path, and no automatic deletion; managed/custom/replaced/symlink-root stale defaults remain byte-identical and reported, while explicit outputs stay untouched.
 
-`unit/workflow-queue-context-contract.test.mts` characterizes annual-supply actions, queue manifest filtering/order/map behavior, task paths and summaries, exact-version then id-only selection, closure dependency/support order, authoring JSONL filtering/last-row binding and identity-preflight paths. `unit/workflow-queue-context-native-errors.test.mts` locks the legacy non-null-object task traversal and native `TypeError` for a null dependency; `unit/wave13-queue-context-migration.test.mts` pins the zero-any native module, exact runtime exports and all static consumers.
+`unit/workflow-queue-context-contract.test.mts` characterizes annual-supply actions, queue manifest filtering/order/map behavior, task paths and summaries, exact-version then id-only selection, closure dependency/support order, authoring JSONL filtering/last-row binding and identity-preflight paths. `unit/workflow-queue-context-native-errors.test.mts` locks the legacy non-null-object task traversal and native `TypeError` for a null dependency.
 
-`unit/full-context-proof-contract.test.mts` characterizes context alias/pattern detection, UTF-8 text presence, exact package/task bytes and hashes, embedded/shared context order, manifest and apply-report aliases, required-context blocker order, classification/location schema-pattern selection, decision-row envelope precedence, payload identity encounter order/last-write behavior, caught proof parse envelopes and native row parse errors. `unit/wave14-full-context-proof-migration.test.mts` pins the zero-any native module, twenty runtime exports and all six static consumers.
+`unit/full-context-proof-contract.test.mts` characterizes context alias/pattern detection, UTF-8 text presence, exact package/task bytes and hashes, embedded/shared context order, manifest and apply-report aliases, required-context blocker order, classification/location schema-pattern selection, decision-row envelope precedence, payload identity encounter order/last-write behavior, caught proof parse envelopes and native row parse errors.
 
-`unit/workflow-decision-apply-context-contract.test.mts` characterizes null/empty reports, snake/camel decision and task aliases, decision/task/path encounter order, flow-before-process fallback inference, decision-task proof binding, input/output identity payload hashes, duplicate last-write behavior, count coercion and native JSON/path errors. `unit/wave15-decision-apply-context-migration.test.mts` pins the zero-any native module, sole runtime export and all three static consumers.
+`unit/workflow-decision-apply-context-contract.test.mts` characterizes null/empty reports, snake/camel decision and task aliases, decision/task/path encounter order, flow-before-process fallback inference, decision-task proof binding, input/output identity payload hashes, duplicate last-write behavior, count coercion and native JSON/path errors.
 
-`unit/profiles-config-contract.test.mts` characterizes camel/snake precedence, scalar profile envelopes, full-context normalization, raw account-local overrides, exact config/fallback identity, requested/default/generic selection, docs and waiver addition order, conditional dataset-type errors, profile key/list order and native JSON/argument failures. `unit/wave16-profiles-config-migration.test.mts` pins the zero-any native module, four runtime exports and all five pre-existing static consumers.
+`unit/profiles-config-contract.test.mts` characterizes camel/snake precedence, scalar profile envelopes, full-context normalization, raw account-local overrides, exact config/fallback identity, requested/default/generic selection, docs and waiver addition order, conditional dataset-type errors, profile key/list order and native JSON/argument failures.
 
-`unit/workflow-patch-collect-contract.test.mts` characterizes early invalid returns, valid action closure, top-level and operation blocker order, annual-supply defer rejection, full-context structured evidence, native circular/path errors, JSONL delimiters and row envelopes, artifact option aliases/order/duplicates, source-rewrite candidate priority and normalized evidence. `unit/wave17-patch-collect-migration.test.mts` pins the zero-any native module, nine runtime exports and all nine pre-existing workflow consumers.
+`unit/workflow-patch-collect-contract.test.mts` characterizes early invalid returns, valid action closure, top-level and operation blocker order, annual-supply defer rejection, full-context structured evidence, native circular/path errors, JSONL delimiters and row envelopes, artifact option aliases/order/duplicates, source-rewrite candidate priority and normalized evidence.
 
-`unit/workflow-identity-decision-context-contract.test.mts` characterizes rewrite-file candidate priority, normalized rewrite evidence, scoped exact/bare indexes, decision/canonical/package aliases and values, file/embedded fallback, package-proof dedupe, payload hash last-write, path encounter order, multi-context merge/dedupe, completed-action predicates, unresolved flow reference keys and native JSON/path failures. `unit/wave18-identity-decision-context-migration.test.mts` pins the zero-any native module, nineteen runtime exports and all five pre-existing workflow consumers.
+`unit/workflow-identity-decision-context-contract.test.mts` characterizes rewrite-file candidate priority, normalized rewrite evidence, scoped exact/bare indexes, decision/canonical/package aliases and values, file/embedded fallback, package-proof dedupe, payload hash last-write, path encounter order, multi-context merge/dedupe, completed-action predicates, unresolved flow reference keys and native JSON/path failures.
 
-`unit/workflow-patch-evidence-context-contract.test.mts` characterizes compact evidence aliases, identity/row indexes, exact-bare-row query/dedupe order, apply report blockers, output path and payload hash order, closure codes, exact deterministic cleanup proof, unresolved/source trace alternatives, policy snapshot SHA/order, recursive import-only trace detection and native parse/path/cycle failures. `unit/wave19-patch-evidence-context-migration.test.mts` pins the zero-any native module, ten runtime exports and both pre-existing workflow consumers.
+`unit/workflow-patch-evidence-context-contract.test.mts` characterizes compact evidence aliases, identity/row indexes, exact-bare-row query/dedupe order, apply report blockers, output path and payload hash order, closure codes, exact deterministic cleanup proof, unresolved/source trace alternatives, policy snapshot SHA/order, recursive import-only trace detection and native parse/path/cycle failures.
 
-`unit/workflow-row-transform-context-contract.test.mts` characterizes unresolved/canonical/generic report aliases, trace/count/blocker/proof order, payload hashes, transform cross-products and fixed aggregation order, status gates, exact/content-equivalent rows, unordered/cyclic graph reachability, cleanup/decision aliases and every direct patch/identity/classification/externalization chain helper. `unit/wave20-row-transform-context-migration.test.mts` pins the zero-any native module, thirty-one runtime exports and all seven workflow plus scenario consumers.
+`unit/workflow-row-transform-context-contract.test.mts` characterizes unresolved/canonical/generic report aliases, trace/count/blocker/proof order, payload hashes, transform cross-products and fixed aggregation order, status gates, exact/content-equivalent rows, unordered/cyclic graph reachability, cleanup/decision aliases and every direct patch/identity/classification/externalization chain helper.
 
 `unit/workflow-dry-run-context-contract.test.mts` pins exact-last/bare-first maps, operation normalization, flow aliases, three progress/failure readers, overwrite order and planned-root blocker suppression. `unit/workflow-evidence-scope-contract.test.mts` pins portable blocker envelopes, row aliases, all-missing/valid/mismatch stage order, deterministic rewrite-chain acceptance, QA parse envelopes and native path errors. Their Wave 21 migration tests pin native zero-any sources and every consumer.
 
@@ -461,11 +419,11 @@ Wave 25 covers the reference stack in three dependency-ordered RED/GREEN familie
 
 Wave 25 covers three runtime command owners. `unit/cli-wrapper-command-factory.test.mts` executes a real local Node child to pin executable prefixes, argv, CWD/environment, stdout/stderr, nonzero exits and native spawn errors without shell strings. `unit/execution-capsule-command-factory.test.mts` and the existing command fixture pin offline help, attempt/no-replay states, immutable snapshots, predecessor receipts, semantic/raw hashes, reviewer/boundary checks and seals. `unit/post-write-closeout-command-factory.test.mts` routes to realistic unique-root, byte-drift, canonical-hash, accepted-diff and production-mode fixtures.
 
-Wave 25 covers the three decision command factories. `unit/wave25-identity-decision-command-migration.test.mts` and `unit/wave25-classification-location-command-migration.test.mts` pin native-only sources, exact export identity, zero explicit type escapes or suppressions, every dispatcher/metadata consumer, and exact serialized help reports. The realistic command/scenario fixtures continue to pin option aliases/defaults, queue and row path order, task-context and unclosed-item blockers, CLI argv/stage short-circuiting, identity output partitioning, report/JSONL writes, and native malformed-artifact failures.
+The realistic command/scenario fixtures pin decision option aliases/defaults, queue and row path order, task-context and unclosed-item blockers, CLI argv/stage short-circuiting, identity output partitioning, report/JSONL writes, and native malformed-artifact failures.
 
-Wave 25 covers two re-export families. `unit/import-curation-leaf-barrels-migration.test.mts` pins the exact profile/trace namespaces and direct owner references. `unit/import-curation-entry-barrels-migration.test.mts` pins the complete eight-export index/public namespace, every owner reference, Foundry CLI injection keys, metadata owner routes, TS-only atomic entry migration, and a clean temporary TypeScript build loaded by Node 24. No fixture reads credentials, `.env`, production state, or ignored Foundry artifacts.
+`unit/import-curation-leaf-barrels-migration.test.mts` pins the exact profile/trace namespaces and direct owner references. `unit/import-curation-entry-barrels-migration.test.mts` pins the complete eight-export index/public namespace, every owner reference, Foundry CLI injection keys, metadata owner routes, TS-only atomic entry migration, and a clean temporary TypeScript build loaded by Node 24. No fixture reads credentials, `.env`, production state, or ignored Foundry artifacts.
 
-Wave 26 covers five dependency-ordered orchestration families. The five `unit/wave26-*-command-migration.test.mts` contracts require one native zero-escape owner, every dispatcher/metadata/wrapper consumer and exact serialized help bytes. Existing command and scenario fixtures remain the behavior authority for generic-versus-BAFU configuration, library/scope/classification/identity blocker and artifact order, resume ledgers, pause/stop, bounded parallel selection, read-only preflight, guarded commit delegation, native errors and deterministic report/JSONL bytes. All fixtures are local and read neither `.env` nor production.
+Existing command and scenario fixtures remain the behavior authority for generic-versus-BAFU configuration, library/scope/classification/identity blocker and artifact order, resume ledgers, pause/stop, bounded parallel selection, read-only preflight, guarded commit delegation, native errors and deterministic report/JSONL bytes. All fixtures are local and read neither `.env` nor production.
 
 Issue #74 is pinned across three owners. `unit/foundry-command-spec.test.mts` requires the local facade to be a direct public CLI re-export with identical function identity. `unit/ready-process-scope-runner.test.mts` freezes two-way real concurrency, input-order report/checkpoint bytes, shell-free artifact-bound execution, raw-array and byte/SHA drift rejection, independent failure progress and one mutation attempt. `unit/ready-scope-scheduler.test.mts` freezes pause, stop, unclaimed order and exception isolation through the locked CLI engine; `scenarios/library-scope-workflow.test.mts` proves the public command path. Budget/cycle tests track the 494/310/79/below-140 boundaries.
 
@@ -489,7 +447,7 @@ Issue #83 is pinned in `unit/batch-orchestration-scope-execution.test.mts`. The 
 
 `fixtures/auth-identity-receipt.ts` is the only test-only receipt materializer. It recreates the frozen public wire fingerprints and scope hash, then every consumer still passes the bytes through `@tiangong-lca/cli/auth-identity-receipt`. `unit/public-cli-batch-runtime.test.mts` loads exact installed CLI 0.1.11 and exercises public batch/run-lock plus strict receipt parsing. `unit/public-cli-runtime.test.mts` exercises the C1 descriptor, expectation drift rejection, manifest and manager/exec exports. `unit/toolchain-contract.test.mts` rejects every private `@tiangong-lca/cli/dist/src/**` import and binds only the exact provenance-verified current release exception.
 
-`unit/cli-bounded-batch-runner.test.mts` is the Foundry/CLI scheduling boundary: it proves the physical run lock exists only during execution, public contract claims are bounded, pause leaves items unclaimed, stop drains claimed work, one family key is FIFO-serialized while an independent key proceeds, and the composition root has no manual worker/`Promise.all` claim loop. Existing BAFU command cases preserve pending-before-limit, pause report bytes, family-master selection, ledgers, and preflight behavior. `wave26-bafu-batch-command-migration.test.mts` fixes the five-line facade's three exports and exact help bytes; `unit/orchestration-module-budget.test.mts` separately exposes the 20-line facade and 1,700-line composition-root ceilings instead of hiding the move.
+`unit/cli-bounded-batch-runner.test.mts` is the Foundry/CLI scheduling boundary: it proves the physical run lock exists only during execution, public contract claims are bounded, pause leaves items unclaimed, stop drains claimed work, one family key is FIFO-serialized while an independent key proceeds, and the composition root has no manual worker/`Promise.all` claim loop. Existing BAFU command cases preserve pending-before-limit, pause report bytes, family-master selection, ledgers, and preflight behavior; `unit/orchestration-module-budget.test.mts` separately exposes the 20-line facade and 1,700-line composition-root ceilings instead of hiding the move.
 
 `unit/batch-scope-finalize-commit.test.mts` covers the enclosing state machine: a missing finalize report fails before recovery or handoff; verified support is reused before the main handoff; stale reuse is invalidated before fresh support commit/cache evidence; recovered rows and reports feed the next finalize attempt; and failed support never reaches the main handoff.
 
@@ -503,9 +461,7 @@ Wave 27 migrates all sixteen remaining command tests in four coherent families. 
 
 Wave 26 covers the remaining eight shared fixtures as five dependency-ordered RED/GREEN families. `unit/fixture-executable-core-migration.test.mts` pins the core namespace/live Node references, exact writer bytes, native errors and a non-executable `fake-tidas.ts` launched only through `process.execPath`. `unit/row-builders-fixture-migration.test.mts` pins every payload family and one combined byte/hash contract. `unit/context-identity-mutation-fixture-migration.test.mts` pins workflow namespaces, receipt and row bytes, context/dependency order and isolated roots. `unit/incremental-fixture-migration.test.mts` and `unit/topology-fixture-migration.test.mts` pin their policy/graph constants, artifact order, stable JSONL/package bytes and native failures. All consumers use `.ts`; no fixture reads credentials, `.env`, production state or historical `.foundry` data.
 
-Wave 26 completes the unit-test boundary in four more RED/GREEN families. `unit/unit-source-ledger-test-migration.test.mts` covers six source/language/ledger/support suites; `unit/unit-execution-library-test-migration.test.mts` covers capsule attempt, finalize reuse and library contact suites; `unit/unit-algorithm-adapter-test-migration.test.mts` covers tidas adapter/cutover plus incremental/topology suites and typed fixture imports; `unit/unit-runtime-policy-test-migration.test.mts` covers runtime skill, stage and content/semantic policy suites. All 17 legacy `.test.mjs` files are gone, all 65 original cases stay green, and explicit test-side narrowing adds no production behavior or authority.
-
-Wave 26 completes the scenario boundary in four RED/GREEN families. `scenarios/scenario-authoring-curation-test-migration.test.mts`, `scenario-identity-reference-test-migration.test.mts`, `scenario-mutation-finalize-test-migration.test.mts`, and `scenario-library-algorithm-test-migration.test.mts` require all 19 suites to be native `.mts` with typed fixture imports and no explicit type escape. All 86 original multi-command cases preserve artifact bytes/order/hashes, blockers, native errors, fail-close and remote-write boundaries; no `.test.mjs` remains under `test/scenarios`.
+All unit and scenario suites are native `.test.mts` with typed fixture imports and zero explicit type escapes, enforced permanently by `unit/zero-javascript-ratchet.test.mts` and `unit/toolchain-contract.test.mts`.
 
 Toolchain and migration contracts must pass in a clean arbitrary Git worktree after `pnpm install --frozen-lockfile`. Tests must not borrow another worktree's `node_modules`, depend on the workspace superproject, read credentials, or use ignored `.foundry` artifacts as fixtures.
 

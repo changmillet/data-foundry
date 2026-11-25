@@ -9,13 +9,14 @@ import {
   inspectRuntimeComponents,
   pruneRuntimeComponents,
   trustRuntimeManifest,
-  writeRuntimeComponentArchive,
   type ComponentFile,
   type RuntimeManifest,
   type RuntimeLaunch,
   type TrustedRuntimeManifest,
 } from "@tiangong-lca/cli/runtime";
+import { captureImmutableComponentFile } from "../../scripts/lib/immutable-digest-cache.ts";
 import { workspaceManifestFixture } from "./foundry-runtime-manifest.mts";
+import { writeOrCopyCachedComponentArchive } from "./shared-installed-package-template.mts";
 
 const hash = (bytes: string | Buffer) => createHash("sha256").update(bytes).digest("hex");
 function trusted(value: RuntimeManifest): TrustedRuntimeManifest {
@@ -37,12 +38,12 @@ function files(root: string, relative = ""): ComponentFile[] {
         true,
         `Component fixture must contain regular files: ${selected}`,
       );
-      const bytes = fs.readFileSync(target);
+      const captured = captureImmutableComponentFile(target);
       return [
         {
           path: selected,
-          bytes: bytes.length,
-          sha256: hash(bytes),
+          bytes: captured.bytes,
+          sha256: captured.sha256,
           mode: stat.mode & 0o111 ? 493 : 420,
         },
       ];
@@ -73,7 +74,7 @@ async function component(
     .map((file) => (executables.has(file.path) ? { ...file, mode: 493 as const } : file))
     .sort((left, right) => (left.path < right.path ? -1 : left.path > right.path ? 1 : 0));
   const archive = path.join(root, `${id}.tar.gz`);
-  const archiveFact = await writeRuntimeComponentArchive(source, inventory, archive);
+  const archiveFact = await writeOrCopyCachedComponentArchive(source, inventory, archive);
   const platform = template.manifest.components[0].platform;
   const manifest = trusted({
     ...template.manifest,

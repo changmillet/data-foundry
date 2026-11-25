@@ -31,7 +31,6 @@ test("metadata and migration consumers target the typed command tests", () => {
       "scripts/lib/foundry-command-metadata.ts",
       ["bundle-sample-rows", "import-ledger", "support-cache"],
     ],
-    ["test/unit/wave9-canonical-bundle-migration.test.mts", ["canonical-support-rewrites"]],
     [
       "docs/import-profiles/bafu/fp-ug-canonical-support-governance.md",
       ["canonical-support-rewrites"],
