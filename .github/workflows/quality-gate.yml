@@ -100,7 +100,8 @@ jobs:
         run: node scripts/ci-build-package.ts --output "${{ runner.temp }}/foundry-ci-package" --github-output
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: foundry-ci-package-${{ github.run_attempt }}
+          name: foundry-ci-package
+          overwrite: true
           path: ${{ runner.temp }}/foundry-ci-package/
           if-no-files-found: error
           retention-days: 7
@@ -138,7 +139,8 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
-          name: foundry-tests-${{ github.run_attempt }}-${{ matrix.platform }}-${{ matrix.shard }}
+          name: foundry-test-shard-${{ matrix.platform }}-${{ matrix.shard }}
+          overwrite: true
           path: ${{ runner.temp }}/foundry-ci-tests/
           if-no-files-found: warn
           retention-days: 7
@@ -167,7 +169,7 @@ jobs:
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
-          pattern: foundry-tests-${{ github.run_attempt }}-*
+          pattern: foundry-test-shard-*
           path: ${{ runner.temp }}/foundry-test-shards
       - name: Verify source, inventory, counters and event digests
         env:
@@ -176,7 +178,8 @@ jobs:
         run: node scripts/ci-verify-tests.ts --input "$RUNNER_TEMP/foundry-test-shards" --plan-sha256 "$CI_TEST_PLAN" --source-sha "$CI_TEST_SOURCE" --output "$RUNNER_TEMP/foundry-tests.json"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: foundry-tests-complete-${{ github.run_attempt }}
+          name: foundry-tests-complete
+          overwrite: true
           path: ${{ runner.temp }}/foundry-tests.json
           if-no-files-found: error
           retention-days: 7
@@ -267,7 +270,7 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         if: needs.plan.outputs.mode == 'full'
         with:
-          name: foundry-ci-package-${{ github.run_attempt }}
+          name: foundry-ci-package
           path: ${{ runner.temp }}/foundry-ci-package
       - name: Qualify native runtime with the same verified package
         if: needs.plan.outputs.mode == 'full'
@@ -279,7 +282,8 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: needs.plan.outputs.mode == 'full'
         with:
-          name: foundry-runtime-${{ github.run_attempt }}-${{ matrix.platform }}
+          name: foundry-runtime-${{ matrix.platform }}
+          overwrite: true
           path: ${{ runner.temp }}/foundry-runtime-candidate/
           if-no-files-found: error
           retention-days: 7
@@ -311,22 +315,22 @@ jobs:
       - name: Download linux-x64 from this run attempt
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
-          name: foundry-runtime-${{ github.run_attempt }}-linux-x64
+          name: foundry-runtime-linux-x64
           path: ${{ runner.temp }}/foundry-platforms/linux-x64
       - name: Download linux-arm64 from this run attempt
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
-          name: foundry-runtime-${{ github.run_attempt }}-linux-arm64
+          name: foundry-runtime-linux-arm64
           path: ${{ runner.temp }}/foundry-platforms/linux-arm64
       - name: Download darwin-arm64 from this run attempt
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
-          name: foundry-runtime-${{ github.run_attempt }}-darwin-arm64
+          name: foundry-runtime-darwin-arm64
           path: ${{ runner.temp }}/foundry-platforms/darwin-arm64
       - name: Download win32-x64 from this run attempt
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
-          name: foundry-runtime-${{ github.run_attempt }}-win32-x64
+          name: foundry-runtime-win32-x64
           path: ${{ runner.temp }}/foundry-platforms/win32-x64
       - name: Verify all archives and aggregate the candidate contract
         id: aggregate
@@ -334,7 +338,8 @@ jobs:
       - name: Preserve the verified combined contract
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: foundry-runtime-set-${{ github.run_attempt }}
+          name: foundry-runtime-set
+          overwrite: true
           path: |
             ${{ runner.temp }}/foundry-runtime-set/runtime-manifest.json
             ${{ runner.temp }}/foundry-runtime-set/runtime-aggregate.json
@@ -378,12 +383,12 @@ jobs:
       - name: Download the complete verified contract
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
-          name: foundry-runtime-set-${{ github.run_attempt }}
+          name: foundry-runtime-set
           path: ${{ runner.temp }}/foundry-bootstrap-input
       - name: Download this native platform's archives
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
-          name: foundry-runtime-${{ github.run_attempt }}-${{ matrix.platform }}
+          name: foundry-runtime-${{ matrix.platform }}
           path: ${{ runner.temp }}/foundry-bootstrap-native
       - name: Verify original script, system tar and cached startup
         shell: bash
@@ -396,7 +401,8 @@ jobs:
       - name: Preserve copied-script qualification
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: foundry-bootstrap-cached-${{ github.run_attempt }}-${{ matrix.platform }}
+          name: foundry-bootstrap-cached-${{ matrix.platform }}
+          overwrite: true
           path: ${{ runner.temp }}/foundry-bootstrap-qualification/bootstrap-qualification.json
           if-no-files-found: error
           retention-days: 7
@@ -465,31 +471,31 @@ jobs:
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
-          name: foundry-ci-package-${{ github.run_attempt }}
+          name: foundry-ci-package
           path: ${{ runner.temp }}/source-package
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
-          name: foundry-tests-complete-${{ github.run_attempt }}
+          name: foundry-tests-complete
           path: ${{ runner.temp }}/source-tests
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
-          name: foundry-runtime-set-${{ github.run_attempt }}
+          name: foundry-runtime-set
           path: ${{ runner.temp }}/source-aggregate
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
-          name: foundry-bootstrap-cached-${{ github.run_attempt }}-linux-x64
+          name: foundry-bootstrap-cached-linux-x64
           path: ${{ runner.temp }}/source-bootstrap/linux-x64
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
-          name: foundry-bootstrap-cached-${{ github.run_attempt }}-linux-arm64
+          name: foundry-bootstrap-cached-linux-arm64
           path: ${{ runner.temp }}/source-bootstrap/linux-arm64
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
-          name: foundry-bootstrap-cached-${{ github.run_attempt }}-darwin-arm64
+          name: foundry-bootstrap-cached-darwin-arm64
           path: ${{ runner.temp }}/source-bootstrap/darwin-arm64
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
-          name: foundry-bootstrap-cached-${{ github.run_attempt }}-win32-x64
+          name: foundry-bootstrap-cached-win32-x64
           path: ${{ runner.temp }}/source-bootstrap/win32-x64
       - name: Validate and inventory every required qualification result
         env:
