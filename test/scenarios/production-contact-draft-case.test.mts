@@ -10,7 +10,7 @@ import {
   runProductionContactDraftCase,
   type ProductionContactDraftSpawn,
   type RunProductionContactDraftCaseDeps,
-} from "../../scripts/cases/production-contact-draft.ts";
+} from "../../src/cases/production-contact-draft.ts";
 import {
   fs,
   path,
@@ -113,7 +113,7 @@ test(
     fs.rmSync(root, { recursive: true, force: true });
     fs.mkdirSync(root, { recursive: true });
     const link = path.join(root, "production-contact-draft.ts");
-    fs.symlinkSync(path.join(repoRoot, "scripts", "cases", "production-contact-draft.ts"), link);
+    fs.symlinkSync(path.join(repoRoot, "src", "cases", "production-contact-draft.ts"), link);
     try {
       const child = spawnSync(process.execPath, [link, "--help"], {
         cwd: repoRoot,
@@ -210,7 +210,7 @@ test("production contact case requires POSIX-private ignored output before runti
 
 test("production case source contracts bind dependency bytes and durable private evidence", () => {
   const source = fs.readFileSync(
-    path.join(repoRoot, "scripts", "cases", "production-contact-draft.ts"),
+    path.join(repoRoot, "src", "cases", "production-contact-draft.ts"),
     "utf8",
   );
   assert.match(source, /pnpmInstallationSha256/u);

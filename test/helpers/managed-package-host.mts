@@ -19,14 +19,14 @@ import { verifyManagedProcessPreparation } from "./managed-process-preparation.m
 import {
   exitCodeForFoundryOperationResult,
   assertFoundryOperationResult,
-} from "../../scripts/lib/foundry-operation-result.ts";
+} from "../../src/lib/foundry-operation-result.ts";
 import { createManagedComponentFixture } from "./managed-package-cache.mts";
 import { workspaceManifestFixture } from "./foundry-runtime-manifest.mts";
 import { verifyManagedAllocationConsumer } from "./managed-allocation-consumer.mts";
 
 const hash = (bytes: string | Buffer) => createHash("sha256").update(bytes).digest("hex");
 const managedSchema = "tiangong-foundry.managed-runtime.v1";
-const entryPath = "node_modules/@tiangong-lca/foundry/package-dist/scripts/package-entry.js";
+const entryPath = "node_modules/@tiangong-lca/foundry/package-dist/src/package-entry.js";
 const applicationId = "managed-application";
 const nativeId = "managed-native";
 function trusted(value: RuntimeManifest) {

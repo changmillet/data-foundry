@@ -1,9 +1,9 @@
 import test from "node:test";
-import { referenceKey } from "../../scripts/lib/import-curation/internal/workflow-reference-closure.ts";
+import { referenceKey } from "../../src/lib/import-curation/internal/workflow-reference-closure.ts";
 import {
   sourceContactSupportCanonicalUnitGroupProofKeys,
   sourceContactSupportTrueSourceProofKeys,
-} from "../../scripts/lib/import-curation/internal/workflow-source-reference-context.ts";
+} from "../../src/lib/import-curation/internal/workflow-source-reference-context.ts";
 import { assert } from "../fixtures/foundry-core.ts";
 
 // CLASS 1: a minted (account-local) Flow Property whose reference Unit Group is a public

@@ -6,7 +6,7 @@ import test from "node:test";
 import {
   createTypedContextCommand,
   projectTypedContext,
-} from "../../scripts/lib/foundry-typed-context.ts";
+} from "../../src/lib/foundry-typed-context.ts";
 
 const output = path.resolve("typed-contract.json");
 const schema = '{"type":"object"}';

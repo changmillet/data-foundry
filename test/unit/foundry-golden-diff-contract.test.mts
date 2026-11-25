@@ -9,7 +9,7 @@ const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
 
 function runGolden(base: string): { status: number | null; stdout: string; stderr: string } {
-  const result = spawnSync(process.execPath, ["scripts/foundry-golden-diff.ts"], {
+  const result = spawnSync(process.execPath, ["devops/ci/foundry-golden-diff.ts"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: { ...process.env, FOUNDRY_GOLDEN_BASE: base },
@@ -50,7 +50,7 @@ test("Golden harness rejects a HEAD self-comparison before producing artifacts",
 });
 
 test("Golden source preserves Node-native comparison and executable-plus-argv portability", () => {
-  const source = fs.readFileSync(path.join(repoRoot, "scripts/foundry-golden-diff.ts"), "utf8");
+  const source = fs.readFileSync(path.join(repoRoot, "devops/ci/foundry-golden-diff.ts"), "utf8");
   assert.match(source, /merge-base/u);
   assert.match(source, /path\.join\("scripts",\s*"foundry\.ts"\)/u);
   assert.match(source, /path\.join\("scripts",\s*"foundry\.mjs"\)/u);
@@ -64,7 +64,7 @@ test("Golden source preserves Node-native comparison and executable-plus-argv po
 });
 
 test("Golden baseline and current commands share one explicit credential-free environment", () => {
-  const source = fs.readFileSync(path.join(repoRoot, "scripts/foundry-golden-diff.ts"), "utf8");
+  const source = fs.readFileSync(path.join(repoRoot, "devops/ci/foundry-golden-diff.ts"), "utf8");
   assert.match(source, /createFoundryIsolatedChildEnvironment/u);
   assert.match(source, /copyFoundryIsolatedExecutable/u);
   assert.match(source, /process\.platform\s*===\s*["']win32["']/u);
@@ -82,7 +82,7 @@ test("Golden baseline and current commands share one explicit credential-free en
 });
 
 test("Golden admits only exact reviewed Worldsteel profile-truth contracts", () => {
-  const source = fs.readFileSync(path.join(repoRoot, "scripts/foundry-golden-diff.ts"), "utf8");
+  const source = fs.readFileSync(path.join(repoRoot, "devops/ci/foundry-golden-diff.ts"), "utf8");
   assert.match(source, /worldsteelProfileContractMigrations/u);
   for (const sha256 of [
     "3ea8f90134ab5cc6f19ea6825556d1ef21136011b7c35ecd3d949a266de023c7",
@@ -96,7 +96,7 @@ test("Golden admits only exact reviewed Worldsteel profile-truth contracts", () 
 });
 
 test("Golden admits only exact strict-datetime capability contract pairs", () => {
-  const source = fs.readFileSync(path.join(repoRoot, "scripts/foundry-golden-diff.ts"), "utf8");
+  const source = fs.readFileSync(path.join(repoRoot, "devops/ci/foundry-golden-diff.ts"), "utf8");
   assert.match(source, /capabilityContractMigrationHashes/u);
   for (const sha256 of [
     "4d041cb2ce4b0f9b9181a94e44a0569b71ce7101097cb56db51f254460feade9",
@@ -117,7 +117,7 @@ test("Golden admits only exact strict-datetime capability contract pairs", () =>
 });
 
 test("Golden harness exists only as zero-escape native TypeScript", () => {
-  const typedPath = path.join(repoRoot, "scripts/foundry-golden-diff.ts");
+  const typedPath = path.join(repoRoot, "devops/ci/foundry-golden-diff.ts");
   assert.equal(fs.existsSync(typedPath), true);
   assert.equal(fs.existsSync(typedPath.replace(/\.ts$/u, ".mjs")), false);
   const source = fs.readFileSync(typedPath, "utf8");
@@ -127,23 +127,23 @@ test("Golden harness exists only as zero-escape native TypeScript", () => {
 
 test("package, metadata, surface, and toolchain target the typed Golden entrypoint", () => {
   const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8"));
-  assert.equal(packageJson.scripts["golden:diff"], "node scripts/foundry-golden-diff.ts");
+  assert.equal(packageJson.scripts["golden:diff"], "node devops/ci/foundry-golden-diff.ts");
   for (const consumer of [
-    "scripts/lib/foundry-command-metadata.ts",
-    "scripts/lib/surface-audit.ts",
+    "src/lib/foundry-command-metadata.ts",
+    "src/lib/surface-audit.ts",
     "test/unit/foundry-command-metadata.test.mts",
     "test/unit/surface-audit-typescript.test.mts",
     "test/unit/toolchain-contract.test.mts",
     "test/unit/foundry-golden-diff-contract.test.mts",
   ]) {
     const source = fs.readFileSync(path.join(repoRoot, consumer), "utf8");
-    assert.match(source, /scripts\/foundry-golden-diff\.ts/u);
+    assert.match(source, /devops\/ci\/foundry-golden-diff\.ts/u);
     assert.doesNotMatch(source, /foundry-golden-diff\.mjs/u);
   }
 });
 
 test("Golden normalizes canonical and pre-rename CLI schema-asset paths alike", () => {
-  const source = fs.readFileSync(path.join(repoRoot, "scripts/foundry-golden-diff.ts"), "utf8");
+  const source = fs.readFileSync(path.join(repoRoot, "devops/ci/foundry-golden-diff.ts"), "utf8");
   const patternLine = source
     .split("\n")
     .find((line) => line.includes("assets[\\\\/]tidas-schemas/gu,"));
@@ -187,7 +187,7 @@ test("Golden normalizes canonical and pre-rename CLI schema-asset paths alike", 
 });
 
 test("Golden admits only the reviewed CLI 0.1.14 to 0.1.19 schema migrations", () => {
-  const source = fs.readFileSync(path.join(repoRoot, "scripts/foundry-golden-diff.ts"), "utf8");
+  const source = fs.readFileSync(path.join(repoRoot, "devops/ci/foundry-golden-diff.ts"), "utf8");
   assert.match(source, /cliSchemaAssetMigrationHashes/u);
   for (const digest of [
     "18643:e7b05dd2f082f2a60f4520f9a6eee1f28a2cabd5ea92f47c6ce07194275b26ea",

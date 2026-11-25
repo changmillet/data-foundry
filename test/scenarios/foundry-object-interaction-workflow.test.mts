@@ -3,15 +3,15 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
-import { createFoundryFacade } from "../../scripts/foundry-facade.ts";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
+import { createFoundryFacade } from "../../src/foundry-facade.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
 import { workflowFixture } from "../fixtures/foundry-public-workflow.ts";
 import { processRowWithInvalidLocation } from "../fixtures/row-builders.ts";
 
 const firstId = "66666666-6666-4666-8666-666666666666";
 const secondId = "77777777-7777-4777-8777-777777777777";
 const actorId = "object-scope-actor";
-const moduleUrl = new URL("../../scripts/runtime-entry.ts", import.meta.url).href;
+const moduleUrl = new URL("../../src/runtime-entry.ts", import.meta.url).href;
 const fileSha256 = (file: string) =>
   createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 const readJson = (file: string): Record<string, unknown> =>

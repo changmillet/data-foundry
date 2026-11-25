@@ -3,10 +3,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test, { type TestContext } from "node:test";
-import { unchangedQualityReviewRows } from "../../scripts/lib/foundry-quality-review-lineage.ts";
-import { captureFoundryInput } from "../../scripts/lib/foundry-runtime-context.ts";
-import { sha256Json } from "../../scripts/lib/import-curation/internal/hash-utils.ts";
-import { datasetIdentity } from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
+import { unchangedQualityReviewRows } from "../../src/lib/foundry-quality-review-lineage.ts";
+import { captureFoundryInput } from "../../src/lib/foundry-runtime-context.ts";
+import { sha256Json } from "../../src/lib/import-curation/internal/hash-utils.ts";
+import { datasetIdentity } from "../../src/lib/import-curation/internal/dataset-payload.ts";
 
 type Json = Record<string, unknown>;
 // These fixtures follow the cleanup proof and projection producer inspected at fb658de6:

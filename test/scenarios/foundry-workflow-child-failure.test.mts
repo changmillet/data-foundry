@@ -4,17 +4,17 @@ import fs from "node:fs";
 import { syncBuiltinESMExports } from "node:module";
 import path from "node:path";
 import test from "node:test";
-import { createFoundryRuntime } from "../../scripts/foundry-runtime.ts";
+import { createFoundryRuntime } from "../../src/foundry-runtime.ts";
 import {
   createFoundryRuntimeContext,
   captureFoundryInput,
-} from "../../scripts/lib/foundry-runtime-context.ts";
-import { qualifyFoundryRuntime } from "../../scripts/lib/foundry-runtime-qualification.ts";
-import { createFoundryFacade } from "../../scripts/public-api.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
+import { qualifyFoundryRuntime } from "../../src/lib/foundry-runtime-qualification.ts";
+import { createFoundryFacade } from "../../src/public-api.ts";
 import { flowRow, processRowWithFlowRef } from "../fixtures/row-builders.ts";
 import { workflowFixture } from "../fixtures/foundry-public-workflow.ts";
 import { runRetainedFoundryTests } from "../helpers/retained-foundry-runtime.mts";
-import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
+import { resolveInstalledTiangongLcaCliPackage } from "../../src/lib/foundry-runtime-utils.ts";
 
 const typed = resolveInstalledTiangongLcaCliPackage().packageVersion === "0.4.0";
 
@@ -288,7 +288,7 @@ test("failed context receipts cannot become cached success or completed producer
   assert.ok(Buffer.byteLength(detail.failure.stderr.preview) <= 4096);
   assert.ok(detail.failure.stderr.bytes > 40_000);
   const context = createFoundryRuntimeContext({
-    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
     workspace,
     cacheBase: path.join(root, "cache"),
     ...invocation,
@@ -308,7 +308,7 @@ test("failed context receipts cannot become cached success or completed producer
   assert.equal(calls, 1);
   const derived = createFoundryRuntime(
     createFoundryRuntimeContext({
-      moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+      moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
       workspace,
       cacheBase: path.join(root, "cache"),
       ...invocation,

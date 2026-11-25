@@ -6,8 +6,8 @@ import {
   createBatchScopeFinalizeCommitService,
   type BatchScopeFinalizeCommitAdapter,
   type BatchScopeFinalizeJsonRecord,
-} from "../../scripts/lib/batch-orchestration/scope-finalize-commit.ts";
-import type { BatchPostWriteHandoffResult } from "../../scripts/lib/batch-orchestration/post-write-handoff.ts";
+} from "../../src/lib/batch-orchestration/scope-finalize-commit.ts";
+import type { BatchPostWriteHandoffResult } from "../../src/lib/batch-orchestration/post-write-handoff.ts";
 
 type JsonRecord = BatchScopeFinalizeJsonRecord;
 

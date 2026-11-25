@@ -5,16 +5,16 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { createFoundryRuntime } from "../../scripts/foundry-runtime.ts";
+import { createFoundryRuntime } from "../../src/foundry-runtime.ts";
 import {
   captureFoundryInput,
   createFoundryRuntimeContext,
   initializeFoundryWorkspace,
-} from "../../scripts/lib/foundry-runtime-context.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const entry = path.join(repoRoot, "scripts/foundry.ts");
-const moduleUrl = new URL("../../scripts/runtime-entry.ts", import.meta.url).href;
+const entry = path.join(repoRoot, "src/dev-cli.ts");
+const moduleUrl = new URL("../../src/runtime-entry.ts", import.meta.url).href;
 const inputBytes =
   JSON.stringify({
     flowDataSet: {

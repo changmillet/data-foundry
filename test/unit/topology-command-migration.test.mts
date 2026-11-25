@@ -8,8 +8,8 @@ import { fileURLToPath } from "node:url";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
-const typedPath = path.join(repoRoot, "scripts/commands/topology-convergence.ts");
-const legacyPath = path.join(repoRoot, "scripts/commands/topology-convergence.mjs");
+const typedPath = path.join(repoRoot, "src/commands/topology-convergence.ts");
+const legacyPath = path.join(repoRoot, "src/commands/topology-convergence.mjs");
 
 function readRepoFile(relativePath: string): string {
   return fs.readFileSync(path.join(repoRoot, relativePath), "utf8");
@@ -35,7 +35,7 @@ test("topology command exists only as native TypeScript", () => {
 });
 
 test("topology consumers and metadata target the typed module", () => {
-  for (const consumer of ["scripts/foundry.ts", "scripts/lib/foundry-command-metadata.ts"]) {
+  for (const consumer of ["src/dev-cli.ts", "src/lib/foundry-command-metadata.ts"]) {
     const source = readRepoFile(consumer);
     assert.match(source, /topology-convergence\.ts/u, consumer);
     assert.doesNotMatch(source, /topology-convergence\.mjs/u, consumer);
@@ -47,12 +47,12 @@ test("topology consumers and metadata target the typed module", () => {
 test("topology help report retains exact bytes", () => {
   const output = execFileSync(
     process.execPath,
-    ["scripts/foundry.ts", "dataset-topology-convergence-compose", "--help"],
+    ["src/dev-cli.ts", "dataset-topology-convergence-compose", "--help"],
     { cwd: repoRoot, encoding: "utf8" },
   );
-  assert.equal(Buffer.byteLength(output, "utf8"), 3345);
+  assert.equal(Buffer.byteLength(output, "utf8"), 3341);
   assert.equal(
     createHash("sha256").update(output).digest("hex"),
-    "3cba0f75ac66da36ca1e20863e6b039ec9474edd2da95ef66822509f1c9ca66d",
+    "b5787ef83ebbdf328397a41561d5349cd1b78ff5f3cc2efeb63ae4ca151f6ec9",
   );
 });

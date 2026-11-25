@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { selectStageArtifacts, stageArtifactPrefix } from "../../scripts/lib/foundry-ci-stage.ts";
-import { type CapsuleExpectation } from "../../scripts/lib/foundry-ci-capsule.ts";
-import { parsePlatformDiagnostic } from "../../scripts/release-diagnose-platform.ts";
+import { selectStageArtifacts, stageArtifactPrefix } from "../../devops/ci/foundry-ci-stage.ts";
+import { type CapsuleExpectation } from "../../devops/ci/foundry-ci-capsule.ts";
+import { parsePlatformDiagnostic } from "../../devops/release/release-diagnose-platform.ts";
 const expected: CapsuleExpectation = {
   stage: "native",
   platform: "linux-x64",

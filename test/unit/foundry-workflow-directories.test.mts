@@ -6,14 +6,14 @@ import test from "node:test";
 import {
   createFoundryRuntimeContext,
   initializeFoundryWorkspace,
-} from "../../scripts/lib/foundry-runtime-context.ts";
-import { createWorkflowDirectory } from "../../scripts/lib/foundry-workflow-io.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
+import { createWorkflowDirectory } from "../../src/lib/foundry-workflow-io.ts";
 
 test("workflow generations remain exclusive and confined beyond the Windows mkdtemp limit", (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-long-workflow-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const options = {
-    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
     workspace: path.join(root, "项目 workspace"),
     cacheBase: path.join(root, "cache"),
   };

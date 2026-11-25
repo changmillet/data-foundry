@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import {
   createExecutionCapsuleCommands,
   modelExecutionAttemptDisposition,
-} from "../../scripts/commands/execution-capsule.ts";
+} from "../../src/commands/execution-capsule.ts";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
@@ -21,7 +21,7 @@ test("execution capsule help is exact and does not touch the filesystem", () => 
     status: "help",
     command: "execution-capsule-admit",
     usage:
-      "node scripts/foundry.ts execution-capsule-admit --stage-manifest <revision.json> [--predecessor-stage-manifest <previous-revision.json>] --out-dir <fresh-dir>",
+      "node src/dev-cli.ts execution-capsule-admit --stage-manifest <revision.json> [--predecessor-stage-manifest <previous-revision.json>] --out-dir <fresh-dir>",
     effects: "local evidence files only; zero network, database, CLI dispatch, and mutation",
   });
 });
@@ -89,7 +89,7 @@ test("attempt disposition matrix consumes dispatch exactly once and only exact r
 });
 
 test("execution capsule source remains offline, exclusive, hash-bound, and zero-authority", () => {
-  const source = readRepoFile("scripts/commands/execution-capsule.ts");
+  const source = readRepoFile("src/commands/execution-capsule.ts");
   for (const forbidden of [
     "node:child_process",
     "node:http",
@@ -108,7 +108,7 @@ test("execution capsule source remains offline, exclusive, hash-bound, and zero-
 });
 
 test("execution capsule exists only as zero-escape native TypeScript", () => {
-  const typedPath = path.join(repoRoot, "scripts/commands/execution-capsule.ts");
+  const typedPath = path.join(repoRoot, "src/commands/execution-capsule.ts");
   assert.equal(fs.existsSync(typedPath), true);
   assert.equal(fs.existsSync(typedPath.replace(/\.ts$/u, ".mjs")), false);
   const source = fs.readFileSync(typedPath, "utf8");
@@ -118,8 +118,8 @@ test("execution capsule exists only as zero-escape native TypeScript", () => {
 
 test("execution capsule consumers and contract target the typed command owner", () => {
   for (const consumer of [
-    "scripts/foundry.ts",
-    "scripts/lib/foundry-command-metadata.ts",
+    "src/dev-cli.ts",
+    "src/lib/foundry-command-metadata.ts",
     "test/commands/execution-capsule.test.mts",
     "test/unit/execution-capsule-attempt-state.test.mts",
     "test/unit/execution-capsule-command-factory.test.mts",

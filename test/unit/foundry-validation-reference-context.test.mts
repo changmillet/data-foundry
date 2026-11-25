@@ -3,8 +3,8 @@ import test from "node:test";
 import {
   projectFoundryValidationReferences,
   selectedFoundryExternalFlowReferences,
-} from "../../scripts/lib/foundry-validation-reference-context.ts";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
+} from "../../src/lib/foundry-validation-reference-context.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
 import { flowRow } from "../fixtures/row-builders.ts";
 const id = "77777777-7777-4777-8777-777777777777";
 const flow = {
@@ -134,9 +134,9 @@ test("the selected CLI keeps real SDK allocation outcomes for projected exact ev
   const path = await import("node:path");
   const { spawnSync } = await import("node:child_process");
   const { describeCliRuntime } = await import("@tiangong-lca/cli/runtime");
-  const { captureFoundryInput } = await import("../../scripts/lib/foundry-runtime-context.ts");
+  const { captureFoundryInput } = await import("../../src/lib/foundry-runtime-context.ts");
   const { readPreparationCliEvidence } =
-    await import("../../scripts/lib/foundry-preparation-cli-validation.ts");
+    await import("../../src/lib/foundry-preparation-cli-validation.ts");
   const packageVersion = describeCliRuntime().package.version;
   const fixture = JSON.parse(
     fs.readFileSync(new URL("../fixtures/managed-allocation-input.json", import.meta.url), "utf8"),

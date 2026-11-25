@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { createBafuIdentityDecisionCarryForwardService } from "../../scripts/lib/bafu-orchestration/identity-decision-carry-forward.ts";
+import { createBafuIdentityDecisionCarryForwardService } from "../../src/lib/bafu-orchestration/identity-decision-carry-forward.ts";
 
 type JsonRecord = Record<string, unknown>;
 

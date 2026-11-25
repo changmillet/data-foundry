@@ -65,7 +65,7 @@ test("verified-ledger projection preserves prior-file first rows, BAFU flow orde
     [scopeLedger, jsonLines([localFlowA])],
   ]);
   const { createVerifiedLedgerProjectionService } =
-    await import("../../scripts/lib/batch-orchestration/verified-ledger-projection.ts");
+    await import("../../src/lib/batch-orchestration/verified-ledger-projection.ts");
   const service = createVerifiedLedgerProjectionService(runtimeFor(files));
 
   assert.deepEqual(
@@ -179,7 +179,7 @@ test("blocked-ledger projection preserves historical order, active/resolved view
     ],
   ]);
   const { createVerifiedLedgerProjectionService } =
-    await import("../../scripts/lib/batch-orchestration/verified-ledger-projection.ts");
+    await import("../../src/lib/batch-orchestration/verified-ledger-projection.ts");
   const service = createVerifiedLedgerProjectionService(runtimeFor(files));
 
   assert.deepEqual(
@@ -205,7 +205,7 @@ test("blocked-ledger projection preserves historical order, active/resolved view
 
 test("verified-ledger row projections and batch status matrix remain byte-stable", async () => {
   const { createVerifiedLedgerProjectionService } =
-    await import("../../scripts/lib/batch-orchestration/verified-ledger-projection.ts");
+    await import("../../src/lib/batch-orchestration/verified-ledger-projection.ts");
   const service = createVerifiedLedgerProjectionService(runtimeFor(new Map<string, string>()));
 
   const ok = service.okDatasetRow({
@@ -225,7 +225,7 @@ test("verified-ledger row projections and batch status matrix remain byte-stable
       required_human_action: "Complete the exact BAFU authoring task.",
     },
     report: "/case/current/authoring/report.json",
-    rerunCommand: "node scripts/foundry.ts dataset-bafu-batch-import-run --process-id process-b",
+    rerunCommand: "node src/dev-cli.ts dataset-bafu-batch-import-run --process-id process-b",
   });
   const projectedBytes = `${JSON.stringify(ok)}\n${JSON.stringify(blocked)}\n`;
   assert.equal(projectedBytes, expectedProjectedRowsBytes);
@@ -394,6 +394,6 @@ const expectedActiveSha256 = "c868ef91e6657f61072a6dcce3a711e0b9bc151acd99993fa8
 const expectedResolvedSha256 = "f343b550837d22ea94ccf163345239a20b584eaa1ec9576c0eea7cef70ca5966";
 const expectedProjectedRowsBytes =
   '{"schema_version":1,"generated_at_utc":"2026-08-26T02:03:04.000Z","dataset_type":"flow","dataset_id":"11111111-2222-4333-8444-555555555551","dataset_version":"00.00.001","process_id":"aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeee1","status":"verified","report":"current/finalize/report.json","files":{"rows":"current/final.jsonl"}}\n' +
-  '{"schema_version":1,"generated_at_utc":"2026-08-26T02:03:04.000Z","process_id":"aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeee2","process_version":"00.00.001","stage":"flow.authoring","code":"bafu_name_split_unsupported","message":"Name-plan evidence is incomplete.","blocker":{"code":"bafu_name_split_unsupported","message":"Name-plan evidence is incomplete.","required_human_action":"Complete the exact BAFU authoring task."},"report":"current/authoring/report.json","required_human_action":"Complete the exact BAFU authoring task.","rerun_command":"node scripts/foundry.ts dataset-bafu-batch-import-run --process-id process-b"}\n';
+  '{"schema_version":1,"generated_at_utc":"2026-08-26T02:03:04.000Z","process_id":"aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeee2","process_version":"00.00.001","stage":"flow.authoring","code":"bafu_name_split_unsupported","message":"Name-plan evidence is incomplete.","blocker":{"code":"bafu_name_split_unsupported","message":"Name-plan evidence is incomplete.","required_human_action":"Complete the exact BAFU authoring task."},"report":"current/authoring/report.json","required_human_action":"Complete the exact BAFU authoring task.","rerun_command":"node src/dev-cli.ts dataset-bafu-batch-import-run --process-id process-b"}\n';
 const expectedProjectedRowsSha256 =
-  "d49ada76420417e6af9a87b04acb8e54b93a701b5794d42b5148a5fb056d623c";
+  "6e14c4dc417ad0b18520dab3d7715f2de4a3560fb112b60aaff3df0610b855ba";

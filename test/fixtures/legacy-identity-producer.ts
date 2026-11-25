@@ -3,20 +3,20 @@ import path from "node:path";
 import {
   createFoundryRuntimeContext,
   captureFoundryInput,
-} from "../../scripts/lib/foundry-runtime-context.ts";
-import { qualifyFoundryRuntime } from "../../scripts/lib/foundry-runtime-qualification.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
+import { qualifyFoundryRuntime } from "../../src/lib/foundry-runtime-qualification.ts";
 type FoundryRuntimeSelection = Parameters<typeof qualifyFoundryRuntime>[1];
 import {
   readVerifiedTaskSnapshot,
   runFoundryTaskOperation,
-} from "../../scripts/lib/foundry-task-store.ts";
-import { currentWorkflowState, workflowObject } from "../../scripts/lib/foundry-workflow-state.ts";
-import { createFoundryIdentityOwners } from "../../scripts/lib/foundry-identity-owners.ts";
-import { verifyFoundryRuntimeIdentity } from "../../scripts/lib/foundry-runtime-identity.ts";
-import { createFoundryAuthenticationEnvironment } from "../../scripts/lib/foundry-authentication-environment.ts";
-import { registerWorkflowStageFiles } from "../../scripts/lib/foundry-workflow-io.ts";
-import { datasetIdentity } from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
-import { readRows } from "../../scripts/lib/import-curation/internal/runtime-io.ts";
+} from "../../src/lib/foundry-task-store.ts";
+import { currentWorkflowState, workflowObject } from "../../src/lib/foundry-workflow-state.ts";
+import { createFoundryIdentityOwners } from "../../src/lib/foundry-identity-owners.ts";
+import { verifyFoundryRuntimeIdentity } from "../../src/lib/foundry-runtime-identity.ts";
+import { createFoundryAuthenticationEnvironment } from "../../src/lib/foundry-authentication-environment.ts";
+import { registerWorkflowStageFiles } from "../../src/lib/foundry-workflow-io.ts";
+import { datasetIdentity } from "../../src/lib/import-curation/internal/dataset-payload.ts";
+import { readRows } from "../../src/lib/import-curation/internal/runtime-io.ts";
 
 /** Synthetic old producer: publish the original exit-1 rejection once, before any native registration.
  * This fixture never rewrites a registered attempt, receipt, ledger or report. */
@@ -35,7 +35,7 @@ export async function publishLegacyIdentityFailure(input: {
   retainAuthReceipt?: boolean;
 }) {
   const options = {
-    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
     workspace: input.workspace,
     cacheBase: path.join(input.root, "cache"),
     taskId: input.taskId,

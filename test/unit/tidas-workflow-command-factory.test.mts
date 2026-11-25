@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { createTidasWorkflowCommands } from "../../scripts/commands/tidas-workflow.ts";
+import { createTidasWorkflowCommands } from "../../src/commands/tidas-workflow.ts";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
@@ -48,7 +48,7 @@ test("tidas workflow help payloads are exact and never invoke an adapter", () =>
     status: "help",
     command: "tidas-handshake",
     usage: [
-      "node scripts/foundry.ts tidas-handshake [--tidas-bin /path/to/tidas] [--tidas-config /path/to/config]",
+      "node src/dev-cli.ts tidas-handshake [--tidas-bin /path/to/tidas] [--tidas-config /path/to/config]",
     ],
     owner: "tidas",
     remote_write_mode: "read-only",
@@ -120,10 +120,10 @@ test("tidas validation preserves rows-file branch precedence and package fallbac
 });
 
 test("tidas workflow command factory exists only as zero-any native TypeScript", () => {
-  const typedPath = path.join(repoRoot, "scripts/commands/tidas-workflow.ts");
+  const typedPath = path.join(repoRoot, "src/commands/tidas-workflow.ts");
   assert.equal(fs.existsSync(typedPath), true);
   assert.equal(fs.existsSync(typedPath.replace(/\.ts$/u, ".mjs")), false);
-  const source = readRepoFile("scripts/commands/tidas-workflow.ts");
+  const source = readRepoFile("src/commands/tidas-workflow.ts");
   assert.doesNotMatch(source, /\bany\b/u);
   assert.deepEqual(
     [...source.matchAll(/export function\s+([A-Za-z0-9_]+)/gu)].map((match) => match[1]),
@@ -133,8 +133,8 @@ test("tidas workflow command factory exists only as zero-any native TypeScript",
 
 test("all active tidas workflow owner consumers target the typed command factory", () => {
   for (const consumer of [
-    "scripts/foundry.ts",
-    "scripts/lib/foundry-command-metadata.ts",
+    "src/dev-cli.ts",
+    "src/lib/foundry-command-metadata.ts",
     "test/unit/tidas-workflow-command-factory.test.mts",
   ]) {
     const source = readRepoFile(consumer);

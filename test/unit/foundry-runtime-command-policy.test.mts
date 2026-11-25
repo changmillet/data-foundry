@@ -1,23 +1,23 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { knownCommands } from "../../scripts/lib/foundry-command-registry.ts";
-import { commandMetadata } from "../../scripts/lib/foundry-command-metadata.ts";
+import { internalStageCommands } from "../../src/lib/foundry-command-registry.ts";
+import { internalStageMetadata } from "../../src/lib/foundry-command-metadata.ts";
 import {
   foundryRuntimeCommandPolicies,
   foundryRuntimeCommandPolicy,
-} from "../../scripts/lib/foundry-runtime-command-policy.ts";
+} from "../../src/lib/foundry-runtime-command-policy.ts";
 
 const hasCode = (code: string) => (error: unknown) =>
   Boolean(error && typeof error === "object" && "code" in error && error.code === code);
 
 test("all internal commands have one explicit runtime and path ownership disposition", () => {
-  assert.equal(foundryRuntimeCommandPolicies.length, knownCommands.length);
+  assert.equal(foundryRuntimeCommandPolicies.length, internalStageCommands.length);
   assert.equal(new Set(foundryRuntimeCommandPolicies.map((item) => item.command)).size, 64);
   assert.deepEqual(
     foundryRuntimeCommandPolicies.map((item) => item.command),
-    knownCommands,
+    internalStageCommands,
   );
-  assert.deepEqual(Object.keys(commandMetadata).sort(), [...knownCommands].sort());
+  assert.deepEqual(Object.keys(internalStageMetadata).sort(), [...internalStageCommands].sort());
   for (const policy of foundryRuntimeCommandPolicies) {
     assert.equal(Object.isFrozen(policy), true);
     assert.equal(Object.isFrozen(policy.declared_inputs), true);

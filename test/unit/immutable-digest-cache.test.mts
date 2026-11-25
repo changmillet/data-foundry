@@ -9,7 +9,7 @@ import {
   clearImmutableDigestCacheForTest,
   immutableDigestCacheSizeForTest,
   snapshotImmutableDirectoryTree,
-} from "../../scripts/lib/immutable-digest-cache.ts";
+} from "../../src/lib/immutable-digest-cache.ts";
 
 const sha256 = (value: Buffer | string) => createHash("sha256").update(value).digest("hex");
 

@@ -6,7 +6,7 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { auditTrackedTypeScriptSuppressions } from "../../scripts/check-lint-suppressions.ts";
+import { auditTrackedTypeScriptSuppressions } from "../../devops/ci/check-lint-suppressions.ts";
 
 // Explicit TypeScript AnyKeyword closures are enforced by Oxlint; this suite remains the
 // permanent boundary against reintroducing first-party JavaScript compatibility paths.
@@ -121,9 +121,12 @@ test("TypeScript and pnpm surfaces contain no JavaScript compatibility graph", (
   const typecheckConfig = JSON.parse(readRepoFile("tsconfig.json")) as { include?: string[] };
   assert.deepEqual(typecheckConfig.include, [
     "prettier.config.ts",
-    "scripts/**/*.ts",
-    "scripts/**/*.mts",
-    "scripts/**/*.cts",
+    "src/**/*.ts",
+    "src/**/*.mts",
+    "src/**/*.cts",
+    "devops/**/*.ts",
+    "devops/**/*.mts",
+    "devops/**/*.cts",
     "test/**/*.ts",
     "test/**/*.mts",
     "test/**/*.cts",
@@ -143,7 +146,7 @@ test("TypeScript and pnpm surfaces contain no JavaScript compatibility graph", (
   assert.equal(packageJson.scripts?.["test:scenarios"], 'node --test "test/scenarios/*.test.mts"');
   assert.equal(
     packageJson.scripts?.["lint:suppressions"],
-    "node scripts/check-lint-suppressions.ts",
+    "node devops/ci/check-lint-suppressions.ts",
   );
   assert.match(packageJson.scripts?.lint ?? "", /^pnpm lint:suppressions\s+&&/u);
   assert.match(packageJson.scripts?.["lint:oxlint"] ?? "", /\s\.\s*$/u);
@@ -259,7 +262,7 @@ test("root Oxlint policy wins over nested configuration and nested configs stay 
 });
 
 test("suppression inventory cannot inherit a Git hook repository or index", () => {
-  const auditSource = readRepoFile("scripts/check-lint-suppressions.ts");
+  const auditSource = readRepoFile("devops/ci/check-lint-suppressions.ts");
   assert.match(auditSource, /repositoryScopedGitEnvironment/u);
   for (const key of ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY"]) {
     assert.match(auditSource, new RegExp(`"${key}"`, "u"), key);

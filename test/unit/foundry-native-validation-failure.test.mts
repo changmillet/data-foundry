@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { nativeValidationFailureEvidence } from "../../scripts/lib/foundry-native-validation-failure.ts";
+import { nativeValidationFailureEvidence } from "../../src/lib/foundry-native-validation-failure.ts";
 
 const rowSha = "a".repeat(64);
 const report = {

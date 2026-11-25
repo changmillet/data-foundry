@@ -7,7 +7,7 @@ import {
   projectBafuLeafClassificationTaskArtifacts,
   type BafuLeafTaskProjectionHelpers,
   type JsonRecord,
-} from "../../scripts/lib/bafu-classification/task-preparation.ts";
+} from "../../src/lib/bafu-classification/task-preparation.ts";
 
 const fixtureRoot = "tmp/bafu-leaf-task-preparation-contract";
 const processA = "11111111-1111-4111-8111-111111111111";
@@ -179,7 +179,7 @@ const blockedRows: JsonRecord[] = [
     reason: "process_classification_requires_leaf_authoring",
     message: "first duplicate wins",
     required_human_action: "Author a process leaf classification.",
-    rerun_command: "node scripts/foundry.ts dataset-library-decisions-apply ...",
+    rerun_command: "node src/dev-cli.ts dataset-library-decisions-apply ...",
   },
   {
     blocked_process_id: processB,
@@ -315,8 +315,8 @@ test("leaf task preparation preserves realistic blocked-process projection and e
 
   assertArtifact(
     jsonLines(projection.tasks),
-    9463,
-    "1425985e9e98ad8224032cf294fa3f166443246702496a5c44a47c180e0f387e",
+    9451,
+    "91c1b40f4406f548dff83dc42852528c8a6203b124a6c2533de629d48b7766e6",
   );
   assertArtifact(
     jsonLines(projection.templates),
@@ -329,8 +329,8 @@ test("leaf task preparation preserves realistic blocked-process projection and e
   );
   assertArtifact(
     jsonLines(projection.shards[0]?.tasks ?? []),
-    5061,
-    "2f9ee9f18a3348935a555e5adfcf9fed843987d9c8fd1df1b6d7586916de51b0",
+    5053,
+    "af70a058226fa0916dbf65855cbd685faffb14651c4bfec910a46a1098e8195e",
   );
   assertArtifact(
     jsonLines(projection.shards[0]?.templates ?? []),
@@ -339,8 +339,8 @@ test("leaf task preparation preserves realistic blocked-process projection and e
   );
   assertArtifact(
     jsonLines(projection.shards[1]?.tasks ?? []),
-    4402,
-    "f00b3d534fb827e8fce9577e6c853ff2ffc9b0f206f76a8fe3db2ff955500721",
+    4398,
+    "1a47b927541427b7583fdb6aa09aa8b0a7a0a15ae57c0a5f5c9c5f239377120a",
   );
   assertArtifact(
     jsonLines(projection.shards[1]?.templates ?? []),

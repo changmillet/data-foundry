@@ -3,7 +3,7 @@ import { test } from "node:test";
 import {
   assertFoundryRepairRootProof,
   type FoundryRepairExpectation,
-} from "../../scripts/lib/foundry-repair-preflight.ts";
+} from "../../src/lib/foundry-repair-preflight.ts";
 const expectation: FoundryRepairExpectation = {
   dataset_type: "process",
   contract_sha256: "a".repeat(64),

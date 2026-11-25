@@ -4,7 +4,10 @@ import path from "node:path";
 import test from "node:test";
 
 test("component publication refuses local or caller-selected release inputs before network access", () => {
-  const entry = path.resolve(import.meta.dirname, "../../scripts/release-publish-components.ts");
+  const entry = path.resolve(
+    import.meta.dirname,
+    "../../devops/release/release-publish-components.ts",
+  );
   for (const args of [
     [],
     ["--source", "a".repeat(40)],

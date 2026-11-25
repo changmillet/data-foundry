@@ -3,8 +3,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import * as transforms from "../../scripts/lib/import-curation/internal/workflow-row-transform-context.ts";
-import { sha256Json } from "../../scripts/lib/import-curation/internal/hash-utils.ts";
+import * as transforms from "../../src/lib/import-curation/internal/workflow-row-transform-context.ts";
+import { sha256Json } from "../../src/lib/import-curation/internal/hash-utils.ts";
 
 type JsonRecord = Record<string, unknown>;
 

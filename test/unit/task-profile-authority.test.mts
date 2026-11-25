@@ -5,10 +5,10 @@ import { fileURLToPath } from "node:url";
 import {
   normalizeProfile,
   profileFor,
-} from "../../scripts/lib/import-curation/internal/profiles-config.ts";
-import { prewriteContentQualityBlockers } from "../../scripts/lib/import-curation/internal/workflow-identity-preflight.ts";
+} from "../../src/lib/import-curation/internal/profiles-config.ts";
+import { prewriteContentQualityBlockers } from "../../src/lib/import-curation/internal/workflow-identity-preflight.ts";
 import { authorizedProfileOptions } from "../fixtures/task-authorizations.ts";
-import { taskAuthorizationAllows } from "../../scripts/lib/task-authorization.ts";
+import { taskAuthorizationAllows } from "../../src/lib/task-authorization.ts";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 

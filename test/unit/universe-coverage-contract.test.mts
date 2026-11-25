@@ -7,7 +7,7 @@ import {
   createUniverseCoverageService,
   type JsonRecord,
   type UniverseCoverageRuntimeAdapter,
-} from "../../scripts/lib/batch-orchestration/universe-coverage.ts";
+} from "../../src/lib/batch-orchestration/universe-coverage.ts";
 
 const P1 = "11111111-2222-4333-8444-555555555591";
 const P2 = "11111111-2222-4333-8444-555555555592";

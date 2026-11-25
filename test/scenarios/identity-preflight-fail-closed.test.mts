@@ -352,7 +352,7 @@ test("explicit receipt cannot substitute another receipt-bound account", () => {
   const result = spawnSync(
     process.execPath,
     [
-      "scripts/foundry.ts",
+      "test/fixtures/run-internal-stage.ts",
       "dataset-identity-preflight-run",
       "--index",
       rel(fixture.indexFile),

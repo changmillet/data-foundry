@@ -11,9 +11,9 @@ import {
   resolveFoundryOutput,
   resolveFoundryAsset,
   writeFoundryArtifact,
-} from "../../scripts/lib/foundry-runtime-context.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
 
-const moduleUrl = new URL("../../scripts/foundry.ts", import.meta.url).href;
+const moduleUrl = new URL("../../src/dev-cli.ts", import.meta.url).href;
 const code = (expected: string) => (error: unknown) =>
   Boolean(error && typeof error === "object" && "code" in error && error.code === expected);
 

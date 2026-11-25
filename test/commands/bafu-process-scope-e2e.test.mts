@@ -4,13 +4,13 @@ import test from "node:test";
 import {
   bafuProcessScopeE2eTestHooks,
   createBafuProcessScopeE2eCommands,
-} from "../../scripts/commands/bafu-process-scope-e2e.ts";
+} from "../../src/commands/bafu-process-scope-e2e.ts";
 import {
   createFileArtifactFact,
   createFoundryCommandSpec,
-} from "../../scripts/lib/foundry-command-spec.ts";
-import { createProcessScopeResumeContract } from "../../scripts/lib/bafu-orchestration/process-scope-resume.ts";
-import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
+} from "../../src/lib/foundry-command-spec.ts";
+import { createProcessScopeResumeContract } from "../../src/lib/bafu-orchestration/process-scope-resume.ts";
+import { resolveInstalledTiangongLcaCliPackage } from "../../src/lib/foundry-runtime-utils.ts";
 import {
   fs,
   path,
@@ -91,7 +91,7 @@ function processRow(id: string = processId) {
 function runHelper(args: string[]) {
   const result = spawnSync(
     process.execPath,
-    ["scripts/foundry.ts", "dataset-bafu-process-scope-e2e", ...args],
+    ["test/fixtures/run-internal-stage.ts", "dataset-bafu-process-scope-e2e", ...args],
     {
       cwd: repoRoot,
       encoding: "utf8",
@@ -418,7 +418,7 @@ test("BAFU process scope helper reads verified support identities for handoff re
         commit: createFoundryCommandSpec({
           executable: process.execPath,
           argv: [
-            "scripts/foundry.ts",
+            "src/dev-cli.ts",
             "dataset",
             "save-draft",
             "--type",

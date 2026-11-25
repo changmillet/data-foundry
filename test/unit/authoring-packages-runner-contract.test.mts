@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { runDatasetAuthoringTaskBuild } from "../../scripts/lib/import-curation/authoring-packages.ts";
+import { runDatasetAuthoringTaskBuild } from "../../src/lib/import-curation/authoring-packages.ts";
 
 type AuthoringTaskRunner = (args?: {
   repoRoot?: string;
@@ -45,9 +45,9 @@ test("authoring package runner preserves exact help without touching the filesys
     status: "help",
     command: "dataset-authoring-task-build",
     usage: [
-      "node scripts/foundry.ts dataset-authoring-task-build --authoring-package <package.json> --out-dir <task-dir>",
-      "node scripts/foundry.ts dataset-authoring-task-build --curation-gate-report <dataset-curation-gate-report.json> --out-dir <tasks-dir> [--shared-context-cache-dir <cache-dir>]",
-      "node scripts/foundry.ts dataset-authoring-task-build --package ./curation-gate/ai-authoring-packages/process-<uuid>.authoring-package.json --out-dir ./authoring-task",
+      "node src/dev-cli.ts dataset-authoring-task-build --authoring-package <package.json> --out-dir <task-dir>",
+      "node src/dev-cli.ts dataset-authoring-task-build --curation-gate-report <dataset-curation-gate-report.json> --out-dir <tasks-dir> [--shared-context-cache-dir <cache-dir>]",
+      "node src/dev-cli.ts dataset-authoring-task-build --package ./curation-gate/ai-authoring-packages/process-<uuid>.authoring-package.json --out-dir ./authoring-task",
     ],
     purpose:
       "Build Codex/skill-facing authoring tasks and strict patch templates from Foundry AI authoring packages. This command is local-only and never writes the database.",

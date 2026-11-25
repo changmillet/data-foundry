@@ -9,7 +9,7 @@ test("production-input command requires a fresh explicit output and offers no so
   const run = (args: string[]) =>
     spawnSync(
       process.execPath,
-      [path.join(source, "scripts/release-prepare-production.ts"), ...args],
+      [path.join(source, "devops/release/release-prepare-production.ts"), ...args],
       {
         cwd: os.tmpdir(),
         encoding: "utf8",

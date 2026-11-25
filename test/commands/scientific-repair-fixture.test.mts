@@ -4,12 +4,12 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
-import { createFoundryIsolatedChildEnvironment } from "../../scripts/lib/foundry-runtime-environment.ts";
-import { projectFoundryValidationReferences } from "../../scripts/lib/foundry-validation-reference-context.ts";
-import { foundryProcessQa } from "../../scripts/lib/foundry-process-qa.ts";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
-import type { MassReferenceEvidence } from "../../scripts/lib/foundry-process-mass-balance.ts";
+import { resolveInstalledTiangongLcaCliPackage } from "../../src/lib/foundry-runtime-utils.ts";
+import { createFoundryIsolatedChildEnvironment } from "../../src/lib/foundry-runtime-environment.ts";
+import { projectFoundryValidationReferences } from "../../src/lib/foundry-validation-reference-context.ts";
+import { foundryProcessQa } from "../../src/lib/foundry-process-qa.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
+import type { MassReferenceEvidence } from "../../src/lib/foundry-process-mass-balance.ts";
 
 type Json = Record<string, unknown>;
 const object = (value: unknown) => value as Json;

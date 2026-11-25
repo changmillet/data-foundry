@@ -3,11 +3,11 @@ import test from "node:test";
 import { createHash } from "node:crypto";
 import type { RuntimeManifest } from "@tiangong-lca/cli/runtime";
 import inputs from "../../specs/release/runtime-inputs.json" with { type: "json" };
-import { aggregateFoundryRuntimeManifests } from "../../scripts/lib/foundry-release-aggregate.ts";
+import { aggregateFoundryRuntimeManifests } from "../../devops/release/foundry-release-aggregate.ts";
 import {
   readPreparedFoundryRuntimeAggregate,
   type PreparedFoundryRuntimeAggregate,
-} from "../../scripts/release-aggregate-runtime.ts";
+} from "../../devops/release/release-aggregate-runtime.ts";
 
 const sha = (value: Uint8Array | string) => createHash("sha256").update(value).digest("hex");
 const encode = (value: unknown) => Buffer.from(JSON.stringify(value));

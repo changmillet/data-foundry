@@ -11,8 +11,8 @@ import {
   type PostFinalizeRecoveryAdapter,
   type PostFinalizeRecoveryArgvStageInput,
   type PostFinalizeRecoveryCommandResult,
-} from "../../scripts/lib/bafu-orchestration/post-finalize-recovery.ts";
-import { compactCommandStage } from "../../scripts/lib/bafu-orchestration/process-scope-report.ts";
+} from "../../src/lib/bafu-orchestration/post-finalize-recovery.ts";
+import { compactCommandStage } from "../../src/lib/bafu-orchestration/process-scope-report.ts";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -30,7 +30,7 @@ interface RecoveryHarness {
 
 const fakeRepoRoot = path.join(path.sep, "repo");
 const processExecutable = "/runtime/node";
-const foundryEntryPath = "scripts/foundry.ts";
+const foundryEntryPath = "src/dev-cli.ts";
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
 
@@ -175,11 +175,11 @@ function assertProjectedAuthorities(
 
 test("post-finalize recovery is a bounded typed adapter leaf reused by the process owner", () => {
   const moduleSource = fs.readFileSync(
-    path.join(repoRoot, "scripts", "lib", "bafu-orchestration", "post-finalize-recovery.ts"),
+    path.join(repoRoot, "src", "lib", "bafu-orchestration", "post-finalize-recovery.ts"),
     "utf8",
   );
   const ownerSource = fs.readFileSync(
-    path.join(repoRoot, "scripts", "commands", "bafu-process-scope-e2e.ts"),
+    path.join(repoRoot, "src", "commands", "bafu-process-scope-e2e.ts"),
     "utf8",
   );
 
@@ -307,8 +307,8 @@ test("post-finalize identity recovery preserves task, autofill, and apply argv p
     ],
   );
   assertFrozen("identity recovery result", result, {
-    bytes: 2789,
-    sha256: "5017d130a26200a8c8715d0d4c8298e17fbc109d6cb468f4b0b8f166cae952d9",
+    bytes: 2765,
+    sha256: "499d50c63cc695c755c6746514e8d76de114a55f9bf33a90936aa0d74f4687b7",
   });
 });
 
@@ -554,8 +554,8 @@ test("post-finalize semantic recovery preserves task, autofill, collect, and app
     ],
   );
   assertFrozen("semantic recovery result", result, {
-    bytes: 3656,
-    sha256: "0fee15a233f454521e3ee26a8144bef75191b39a42253dffecbc083eb3d8dc59",
+    bytes: 3624,
+    sha256: "904f01e87a9397137b86fbfcc66124dd4c55eceeb498307509a6fabebdc0c7f0",
   });
 });
 
@@ -603,8 +603,8 @@ test("post-finalize recovery stops on missing gate and missing stage evidence", 
   assert.equal(missingIdentityTask.stages?.[0]?.exit_code, 9);
   assertProjectedAuthorities(missingIdentityTask, missingIdentityTaskHarness.invocations);
   assertFrozen("missing identity task result", missingIdentityTask, {
-    bytes: 1017,
-    sha256: "b77a5339e3684f7604f577730d952d62cfd762f5b5230fc4148a5789cf554478",
+    bytes: 1009,
+    sha256: "e7070ef0c1110d36fee08549a31fddd628d3567b6ee736f876b530dc8defffa5",
   });
 
   const missingCollectHarness = makeHarness({
@@ -652,7 +652,7 @@ test("post-finalize recovery stops on missing gate and missing stage evidence", 
   assert.equal(missingCollect.stages?.[2]?.exit_code, 7);
   assertProjectedAuthorities(missingCollect, missingCollectHarness.invocations);
   assertFrozen("missing semantic collect result", missingCollect, {
-    bytes: 2316,
-    sha256: "a46b70f9f4457af14b3895ad5a8424dcf390313d636963941de887ec9fd0deff",
+    bytes: 2292,
+    sha256: "cf0baaa70c22a79d18cfa47bbc8d21696f04d1fef927567029fe0460106640de",
   });
 });

@@ -1,5 +1,5 @@
-import { collectDatasetReferences } from "../../scripts/lib/import-curation/internal/workflow-reference-closure.ts";
-import { unwrapDatasetPayload } from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
+import { collectDatasetReferences } from "../../src/lib/import-curation/internal/workflow-reference-closure.ts";
+import { unwrapDatasetPayload } from "../../src/lib/import-curation/internal/dataset-payload.ts";
 import assert from "node:assert/strict";
 import childProcess from "node:child_process";
 import fs from "node:fs";
@@ -7,8 +7,8 @@ import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { syncBuiltinESMExports } from "node:module";
 import type { TestContext } from "node:test";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
-import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
+import { resolveInstalledTiangongLcaCliPackage } from "../../src/lib/foundry-runtime-utils.ts";
 import { testAuthIdentityReceipt } from "./auth-identity-receipt.ts";
 import { workflowFixture } from "./foundry-public-workflow.ts";
 

@@ -1,6 +1,6 @@
 import test from "node:test";
-import { canonicalPayloadSha256 } from "../../scripts/lib/post-write-root-proof.ts";
-import { profileFor } from "../../scripts/lib/import-curation/internal/profiles-config.ts";
+import { canonicalPayloadSha256 } from "../../src/lib/post-write-root-proof.ts";
+import { profileFor } from "../../src/lib/import-curation/internal/profiles-config.ts";
 import { fixtureRoot } from "../fixtures/fixture-roots.ts";
 import {
   assert,
@@ -20,7 +20,7 @@ import {
   writeText,
 } from "../fixtures/foundry-core.ts";
 import { createFixture } from "../fixtures/full-context-fixtures.ts";
-import { assertFoundryCommandSpecArtifactsCurrent } from "../../scripts/lib/foundry-command-spec.ts";
+import { assertFoundryCommandSpecArtifactsCurrent } from "../../src/lib/foundry-command-spec.ts";
 
 test("full-context import completion gates block missing proof and pass evidenced BAFU scopes", () => {
   const fixture = createFixture();

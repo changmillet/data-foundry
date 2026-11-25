@@ -12,8 +12,8 @@ import {
   materializeCapsule,
   type VerifiedCapsule,
   type CapsuleReceipt,
-} from "../../scripts/lib/foundry-ci-capsule.ts";
-import { currentCapsuleRepositoryIdentity } from "../../scripts/lib/foundry-ci-capsule.ts";
+} from "../../devops/ci/foundry-ci-capsule.ts";
+import { currentCapsuleRepositoryIdentity } from "../../devops/ci/foundry-ci-capsule.ts";
 
 const identity = {
   repository: { id: "1234", owner_id: "123" },

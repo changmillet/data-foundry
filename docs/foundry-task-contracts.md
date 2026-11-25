@@ -16,13 +16,13 @@ checkPaths:
   - docs/foundry-task-contracts.md
   - AGENTS.md
   - WORKFLOW.md
-  - scripts/lib/foundry-task-store.ts
-  - scripts/lib/foundry-task-authorization.ts
-  - scripts/lib/foundry-execution-admission.ts
-  - scripts/foundry-facade.ts
-  - scripts/lib/foundry-facade-store.ts
-  - scripts/lib/foundry-task-start-spec.ts
-  - scripts/lib/foundry-package-contract.ts
+  - src/lib/foundry-task-store.ts
+  - src/lib/foundry-task-authorization.ts
+  - src/lib/foundry-execution-admission.ts
+  - src/foundry-facade.ts
+  - src/lib/foundry-facade-store.ts
+  - src/lib/foundry-task-start-spec.ts
+  - src/lib/foundry-package-contract.ts
   - docs/package-distribution-contract.md
   - specs/schemas/authorization-derivation.schema.json
   - specs/schemas/execution-context.schema.json

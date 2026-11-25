@@ -2,11 +2,11 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { normalizeProfile } from "../../scripts/lib/import-curation/internal/profiles-config.ts";
+import { normalizeProfile } from "../../src/lib/import-curation/internal/profiles-config.ts";
 import {
   flowPrewriteIdentityBlockers,
   prewriteIdentityBlockers,
-} from "../../scripts/lib/import-curation/internal/workflow-identity-preflight.ts";
+} from "../../src/lib/import-curation/internal/workflow-identity-preflight.ts";
 import { assert } from "../fixtures/foundry-core.ts";
 
 test("legacy profile override evidence is not fresh task authorization", () => {

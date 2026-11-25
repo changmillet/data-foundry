@@ -6,13 +6,13 @@ import test from "node:test";
 import {
   readFoundryAdoptionReviewInput,
   verifyFoundryAdoptionReview,
-} from "../../scripts/lib/foundry-release-adoption.ts";
-import { adoptionFileFact } from "../../scripts/lib/foundry-release-adoption-facts.ts";
+} from "../../devops/release/foundry-release-adoption.ts";
+import { adoptionFileFact } from "../../devops/release/foundry-release-adoption-facts.ts";
 import {
   foundryComponentHash as hash,
   foundryComponentJson as json,
-} from "../../scripts/lib/foundry-release-component-io.ts";
-import { parseFoundryRuntimePreparationArgs } from "../../scripts/release-prepare-runtime.ts";
+} from "../../devops/release/foundry-release-component-io.ts";
+import { parseFoundryRuntimePreparationArgs } from "../../devops/release/release-prepare-runtime.ts";
 
 function fixture() {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "foundry-adoption-review-")));
@@ -124,7 +124,7 @@ test("retained review evidence and complete request bytes are rechecked instead 
 
 test("compatibility facts preserve the managed access ceiling and the exact Node/Toolkit combination", async () => {
   const { assertFoundryAdoptionCompatibleDependencies } =
-    await import("../../scripts/lib/foundry-release-adoption-facts.ts");
+    await import("../../devops/release/foundry-release-adoption-facts.ts");
   const original = {
     access_ceiling: [
       { id: "foundry", access: "write", target: null },
@@ -136,7 +136,7 @@ test("compatibility facts preserve the managed access ceiling and the exact Node
       executable: { bytes: 200, sha256: "2".repeat(64) },
       expectation: { binary_version: "0.3.4", validation: "unchanged" },
     },
-  } as unknown as import("../../scripts/lib/foundry-release-adoption-facts.ts").FoundryAdoptionRuntimeFacts;
+  } as unknown as import("../../devops/release/foundry-release-adoption-facts.ts").FoundryAdoptionRuntimeFacts;
   assert.doesNotThrow(() => assertFoundryAdoptionCompatibleDependencies(original, original));
   for (const changed of [
     { ...original, access_ceiling: [{ id: "foundry-read", access: "write", target: null }] },
@@ -168,7 +168,7 @@ test("compatibility facts preserve the managed access ceiling and the exact Node
 
 test("native child doctor must match the complete independently selected package/CLI/Node/Toolkit identity", async () => {
   const { assertFoundryAdoptionNativeIdentity } =
-    await import("../../scripts/lib/foundry-release-adoption.ts");
+    await import("../../devops/release/foundry-release-adoption.ts");
   const expected = {
     runtime: {
       package_name: "@tiangong-lca/foundry",
@@ -197,7 +197,7 @@ test("native child doctor must match the complete independently selected package
         },
       },
     },
-  } as unknown as import("../../scripts/lib/foundry-release-adoption-facts.ts").FoundryAdoptionRuntimeFacts;
+  } as unknown as import("../../devops/release/foundry-release-adoption-facts.ts").FoundryAdoptionRuntimeFacts;
   const { schema: _schema, ...cli } = expected.cli.expectation;
   const identity = {
     foundry: {

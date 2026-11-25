@@ -20,8 +20,8 @@ type OxlintReport = {
 };
 
 const sourceRowTargets = [
-  "scripts/lib/source-semantics.ts",
-  "scripts/lib/tidas-row-utils.ts",
+  "src/lib/source-semantics.ts",
+  "src/lib/tidas-row-utils.ts",
   "test/unit/source-semantics-contract.test.mts",
   "test/unit/tidas-row-utils.test.mts",
 ] as const;

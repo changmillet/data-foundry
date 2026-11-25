@@ -13,137 +13,15 @@ whenToUpdate:
   - when Foundry ownership, lane architecture, runtime model, or cross-project routing changes
 checkPaths:
   - docs/architecture.md
+  - AGENTS.md
+  - src/**
+  - devops/**
+  - specs/module-budgets.json
+  - docs/public-runtime-contract.md
+  - docs/package-distribution-contract.md
+  - docs/orchestration-module-contract.md
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
-  - docs/final-delivery-promotion-contract.md
-  - AGENTS.md
-  - README.md
-  - WORKFLOW.md
-  - test/README.md
-  - docs/capability-ownership-policy.md
-  - docs/workspace-project-map.md
-  - docs/package-distribution-contract.md
-  - specs/capability-ownership-rules.json
-  - specs/automated-lca-capability-registry.json
-  - test/unit/zero-javascript-ratchet.test.mts
-  - test/unit/source-row-explicit-any-contract.test.mts
-  - test/unit/identity-rewrite-explicit-any-contract.test.mts
-  - scripts/foundry-golden-diff.ts
-  - scripts/check-tidas-cutover.ts
-  - scripts/check-lint-suppressions.ts
-  - scripts/clean-build-output.ts
-  - scripts/build-foundry-package.ts
-  - scripts/package-entry.ts
-  - scripts/public-api.ts
-  - scripts/lib/foundry-package-contract.ts
-  - scripts/lib/tidas-adapter.ts
-  - scripts/lib/post-authoring-finalize-utils.ts
-  - scripts/commands/tasks.ts
-  - scripts/commands/import-completion.ts
-  - scripts/commands/commit-handoff.ts
-  - scripts/commands/identity-decision-task.ts
-  - scripts/commands/support-cache.ts
-  - scripts/commands/cli-wrappers.ts
-  - scripts/commands/execution-capsule.ts
-  - scripts/commands/post-write-closeout.ts
-  - scripts/commands/authoring-plan.ts
-  - scripts/commands/bundle-sample-rows.ts
-  - scripts/commands/incremental-change-set.ts
-  - scripts/commands/topology-convergence.ts
-  - scripts/commands/core.ts
-  - scripts/commands/identity-preflight-run.ts
-  - scripts/commands/post-authoring-finalize.ts
-  - scripts/lib/foundry-args.ts
-  - scripts/commands/identity-decisions.ts
-  - scripts/commands/classification-decisions.ts
-  - scripts/commands/location-decisions.ts
-  - scripts/commands/library-scope-workflow.ts
-  - scripts/commands/bafu-leaf-classification-tasks.ts
-  - scripts/commands/bafu-auto-authoring.ts
-  - scripts/commands/bafu-process-scope-e2e.ts
-  - scripts/commands/bafu-batch-import-run.ts
-  - scripts/lib/foundry-command-registry.ts
-  - scripts/lib/foundry-command-metadata.ts
-  - scripts/lib/surface-audit.ts
-  - scripts/lib/foundry-runtime-environment.ts
-  - scripts/lib/foundry-runtime-paths.ts
-  - scripts/lib/foundry-runtime-utils.ts
-  - scripts/lib/location-quality-utils.ts
-  - scripts/lib/bundle-row-types.ts
-  - scripts/lib/tidas-language-utils.ts
-  - scripts/lib/import-curation/internal/hash-utils.ts
-  - scripts/lib/import-curation.ts
-  - scripts/lib/import-curation/index.ts
-  - scripts/lib/import-curation/profiles.ts
-  - scripts/lib/import-curation/trace-summary.ts
-  - scripts/lib/import-curation/internal/dataset-types.ts
-  - scripts/lib/import-curation/internal/runtime-io.ts
-  - scripts/lib/import-curation/internal/prewrite-cleanup.ts
-  - scripts/lib/import-curation/internal/workflow-queue-context.ts
-  - scripts/lib/import-curation/internal/full-context-proof.ts
-  - scripts/lib/import-curation/internal/workflow-decision-apply-context.ts
-  - scripts/lib/import-curation/internal/profiles-config.ts
-  - scripts/lib/import-curation/internal/workflow-patch-collect.ts
-  - scripts/lib/import-curation/internal/workflow-identity-decision-context.ts
-  - scripts/lib/import-curation/internal/workflow-patch-evidence-context.ts
-  - scripts/lib/import-curation/internal/workflow-row-transform-context.ts
-  - scripts/lib/import-curation/internal/workflow-dry-run-context.ts
-  - scripts/lib/import-curation/internal/workflow-evidence-scope.ts
-  - scripts/lib/import-curation/internal/workflow-decision-full-context.ts
-  - scripts/lib/import-curation/internal/workflow-authoring-tasks.ts
-  - scripts/lib/import-curation/internal/workflow-semantic-actions.ts
-  - scripts/lib/import-curation/internal/workflow-patch-evidence.ts
-  - scripts/lib/import-curation/internal/workflow-identity-preflight.ts
-  - scripts/lib/import-curation/internal/authoring-task-workflow.ts
-  - scripts/lib/import-curation/internal/authoring-patch-workflow.ts
-  - scripts/lib/import-curation/internal/curation-gate-workflow.ts
-  - scripts/lib/import-curation/authoring-packages.ts
-  - scripts/lib/import-curation/patch-collect.ts
-  - scripts/lib/import-curation/curation-gate.ts
-  - scripts/lib/import-curation/curation-cleanup.ts
-  - scripts/lib/import-curation/internal/workflow-reference-closure.ts
-  - scripts/lib/import-curation/internal/workflow-source-reference-context.ts
-  - scripts/lib/import-curation/internal/mutation-manifest-workflow.ts
-  - scripts/lib/import-curation/mutation-manifest.ts
-  - scripts/lib/import-curation/internal/artifact-inputs.ts
-  - scripts/lib/import-curation/internal/context-inputs.ts
-  - scripts/lib/import-curation/internal/dataset-payload.ts
-  - scripts/lib/import-curation/internal/trace-summary.ts
-  - scripts/lib/canonical-support-mappings.ts
-  - scripts/lib/source-semantics.ts
-  - scripts/lib/trace-coverage.ts
-  - scripts/lib/tidas-row-utils.ts
-  - scripts/lib/decision-task-utils.ts
-  - scripts/lib/identity-reference-rewrite-utils.ts
-  - scripts/lib/full-context-proof.ts
-  - scripts/lib/identity-preflight-artifacts.ts
-  - scripts/lib/bafu-family-signatures.ts
-  - scripts/lib/import-ledger.ts
-  - scripts/lib/canonical-support-rewrites.ts
-  - scripts/lib/bundle-sample-utils.ts
-  - specs/prewrite-content-policy.json
-  - test/fixtures/fixture-roots.ts
-  - test/fixtures/finalize-fixtures.ts
-  - test/commands/*.test.mts
-  - test/fixtures/fake-tidas.ts
-  - test/fixtures/foundry-core.ts
-  - test/fixtures/full-context-fixtures.ts
-  - test/fixtures/identity-fixtures.ts
-  - test/fixtures/incremental-change-set-fixtures.ts
-  - test/fixtures/mutation-fixtures.ts
-  - test/fixtures/row-builders.ts
-  - test/fixtures/topology-convergence-fixtures.ts
-  - .prettierignore
-  - package.json
-  - pnpm-lock.yaml
-  - pnpm-workspace.yaml
-  - prettier.config.ts
-  - tsconfig*.json
-  - scripts/with-lca-account.ts
-  - test/unit/foundry-entry-closure-migration.test.mts
-  - test/unit/foundry-runtime-environment.test.mts
-  - test/unit/lint-suppression-audit.test.mts
-  - docs/incremental-change-set-contract.md
 lastReviewedAt: 2026-11-25
 lastReviewedCommit: a191bd3dbe633e60ef40ab5fb6fc5e00c015fd02
 lastReviewedNote: "Foundry #306: retired completed historical JS-to-TS wave migration scaffolding tests in favor of zero-javascript-ratchet and toolchain-contract, and introduced stat-guarded immutable component digest caching; runtime architecture, qualification, authorization and release boundaries remain unchanged."
@@ -163,7 +41,7 @@ Task-local interaction is a small owner over the existing facade and artifact tr
 
 Native validation failure evidence is a separate assessment result, not a partially valid schema report. `foundry-native-validation-failure.ts` checks the TIDAS exit/report and bounds full diagnostics/stderr against the selected row set before the task transaction indexes them. The facade rechecks the registered result, active row manifest and file hashes, then projects an actionable blocker after restart without retrying the same operation or reaching write planning. The native path fix itself belongs to the TIDAS Toolkit; this Foundry adapter preserves the evidence and prevents the generic error from hiding it.
 
-The explicit workspace runtime is defined by `docs/runtime-context-contract.md`: package layout comes from `package.json.foundryRuntime`, emitted execution needs no source TypeScript or Git, and selected inputs/task outputs are bound to an immutable runtime context. `scripts/runtime-entry.ts` now implements workspace init/migration, consumer doctor and task start/status/resume as the separate hierarchical facade. All 63 flat owner commands retain explicit public/internal/excluded, path, child, qualification and authorization dispositions; the facade reaches them only through registered task state and never falls back to the developer runner.
+The explicit workspace runtime is defined by `docs/runtime-context-contract.md`: package layout comes from `package.json.foundryRuntime`, emitted execution needs no source TypeScript or Git, and selected inputs/task outputs are bound to an immutable runtime context. `src/runtime-entry.ts` now implements workspace init/migration, consumer doctor and task start/status/resume as the separate hierarchical facade. All 64 internal stage commands retain explicit public/internal/excluded, path, child, qualification and authorization dispositions; the facade reaches them only through registered task state and never falls back to the developer runner.
 
 `createFoundryApplication` constructs the existing command factories for one explicit root and optional injected runtime utilities. Its `execute` method uses the same `createFoundryCommandDispatcher` registry as the CLI and returns a promise without the dispatcher printing or exiting the host. Construction does not load `.env` or discover operator state; independent applications retain independent root bindings. The developer `main(argv)` alone loads its environment and chooses the process adapter under `import.meta.main`. Consumer commands still require individual task/I/O admission through `runtime-entry.ts`; this internal composition API does not make every legacy owner safe for an installed consumer or authorize a write.
 
@@ -177,7 +55,7 @@ Foundry selects a private session reference and exact project/user intent, then 
 
 ## Qualified execution boundary
 
-`foundry-runtime-command-policy.ts` explicitly classifies all 63 existing commands. Package assets, workspace selections, task-lineage inputs, state/artifact outputs, native/CLI child ownership and restricted authorization are separate fields. Adding a command without a disposition fails module initialization. Repository maintenance is excluded from the consumer surface; local preparation does not acquire task permission merely because it is a task stage.
+`foundry-runtime-command-policy.ts` explicitly classifies all 64 internal stage commands. Package assets, workspace selections, task-lineage inputs, state/artifact outputs, native/CLI child ownership and restricted authorization are separate fields. Adding a command without a disposition fails module initialization. Repository maintenance is excluded from the consumer surface; local preparation does not acquire task permission merely because it is a task stage.
 
 `foundry-runtime-qualification.ts` binds current Foundry package identity to exact public CLI and independently selected native TIDAS bytes/protocols. `foundry-execution-admission.ts` then binds the current source lineage, derived final rows, active grant/actions/QA evidence and owner CLI CommandSpec. Rehydration in a new process reconstructs every process-local proof and checks the exact owner-draft argv shape before returning the spec. Mutation dispatch, attempt transitions and readback remain with the existing CLI/orchestration owners.
 
@@ -207,7 +85,7 @@ Runtime selection is an injected host capability. Direct/unqualified use can ini
 
 ## Package boundary
 
-The repository and public package have separate composition roots. `scripts/foundry.ts` retains all developer owners. The public bin calls only `runFoundryPublicCommand`, and `scripts/public-api.ts` binds its own module identity before exposing the typed host facade. `tsconfig.package.json` follows those two roots to the descriptor-bound JavaScript closure plus declarations; internal command/case implementations and source maps never enter the package tree.
+The repository and public package have separate composition roots. `src/dev-cli.ts` retains all developer owners. The public bin calls only `runFoundryPublicCommand`, and `src/public-api.ts` binds its own module identity before exposing the typed host facade. `tsconfig.package.json` follows those two roots to the descriptor-bound JavaScript closure plus declarations; internal command/case implementations and source maps never enter the package tree.
 
 `build-foundry-package.ts` creates a sanitized publish stage without scripts, dev dependencies or package-manager metadata, copies only the reviewed allowlist and writes a strict file descriptor. Installed v2 package resolution checks that descriptor and the complete semantic manifest before returning a context. Exact file hashes protect code/assets; W08 provenance and component signatures protect distribution origin.
 
@@ -215,7 +93,7 @@ The repository and public package have separate composition roots. `scripts/foun
 
 Foundry is a thin local control plane. It owns task intake, profile locks, workspace ledgers, owner routing, and gate aggregation. It does not own reusable dataset execution logic.
 
-For command ownership and navigation, use `docs/foundry-ai-navigation.md`, `docs/foundry-command-surface.md`, and the checked `scripts/lib/foundry-command-metadata.ts` map. Those files classify every Foundry command and link each command to its owner module, artifacts, and tests without changing the runtime `help` output.
+For command ownership and navigation, use `docs/foundry-ai-navigation.md`, `docs/foundry-command-surface.md`, and the checked `src/lib/foundry-command-metadata.ts` map. Those files classify every Foundry command and link each command to its owner module, artifacts, and tests without changing the runtime `help` output.
 
 The minimum runtime shape is:
 
@@ -250,107 +128,39 @@ entrypoint + args
   -> scenario and real-case fixtures
 ```
 
-This boundary avoids a misleading bulk rename. Each module remains in the inventory until a TypeScript replacement preserves its command, artifact, stdout, exit, and safety behavior under focused tests. Completion means no untyped business-runtime modules remain and the full case-driven suite is green.
-
-The native TypeScript leaf set now also covers decision context, identity reference rewrite, full-context proof, and preflight artifact factories. Focused characterization preserves queue/context SHA scopes, exact reference rows/reports, fail-closed missing evidence, transform relevance, request/report artifact facts, CommandSpec argv, first-bound source indexes, positive-only execution reuse, and every static consumer. `decision-task-utils.ts` and `identity-preflight-artifacts.ts` now model their dependency injection, queue/context/proof, dataset request and source-index shapes directly; external JSON stays `unknown` until its local boundary, and an Oxlint AST contract keeps this family free of explicit `any` without moving search or execution authority.
-
-The source-semantics, reusable TIDAS-row, and identity-reference-rewrite leaves now expose concrete local dependency and evidence shapes with `unknown` narrowed at dynamic JSON boundaries instead of explicit `any`. Worktree-local Oxlint AST contracts guard those exact production/test targets without introducing a compiler-API dependency; the change remains type-only and does not move source policy, reference decisions, filesystem errors, CLI dispatch, or remote-write authority.
-
-After the decision, source and proof families converge, `.oxlintrc.json` promotes `typescript/no-explicit-any` to one global error and removes every family-specific override. `zero-javascript-ratchet.test.mts` validates both raw and printed rule graphs and a controlled failing fixture, so all first-party TypeScript remains covered without a TS6 compatibility compiler.
-
-The typed BAFU family and import-ledger leaves preserve two local control-plane boundaries: deterministic family grouping/ranking over ordered signature hashes, and append-only resume evidence over verified, blocked, dependency, retry, and skipped JSONL rows. `cli-bounded-batch-runner.ts` projects those family group keys into the public CLI scheduler's exclusive-resource queue and wraps the entire run in its cross-process lock; only independent families/scopes claim in parallel. Foundry callbacks still own database-command delegation and every ledger/report byte, so command ownership, public help, profile defaults, and remote authority do not move.
-
-The public `bafu-batch-import-run.ts` file contains only re-exports. `bafu-batch-command-runtime.ts` is a composition root, not a semantic owner: it installs the runtime/profile adapters and combines selection, semantic callbacks, CLI scheduling, and final reports. Its explicit 1,700-line ceiling makes remaining composition density visible; the ordinary semantic-stage target remains 800 lines and applies to the focused modules reached from it.
-
-The typed canonical-support and bundle-sampling leaves own local reference rewriting and source-package materialization, not amount conversion or remote execution. Canonical scale evidence is collected before the package-local FP reference is replaced: the explicit blocking flag distinguishes a known positive non-1 factor from an unresolved missing/non-finite/non-positive factor, and projects either blocker into the report and process-scope ledger. Without that flag, existing profile behavior remains compatible.
-
-The typed import-ledger boundary now models its JSON graph, external dependencies, report state unions, every emitted row family, manifest and write results directly. Unknown external values are narrowed at the boundary and no explicit `any` remains; the emitted append-only schema and byte/order/hash behavior are unchanged. Typed fixture roots/finalize builders remain test-only delivery infrastructure and do not enter the runtime dependency graph.
-
-The high-fan-in runtime utility boundary is native TypeScript and owns only Foundry-local file/path/frontmatter/env-file/stage mechanics plus exact installed-package discovery. The focused runtime-path leaf resolves a trusted package root and the active source/emitted entry; the runtime-environment leaf creates allowlisted child environments with isolated local state. Runtime tests execute only local Node subprocesses and explicit temporary env files or the internal filesystem-env-disabled policy; production credentials and repository `.env` remain outside the test boundary.
-
-The typed location-quality boundary reads the installed CLI location vocabulary and discovers only schema/fallback-declared location fields. It creates local authoring commands, queue context and blockers; the CLI owns classification lookup/apply and the schema package owns valid codes. Missing schema evidence yields an empty valid-code map rather than approving unknown values, and invalid targets remain blocking before finalize.
-
-The typed prewrite-cleanup boundary performs deterministic transformations only after authoring evidence exists. It first plans datetime handling across the complete batch: full timezone-qualified syntax, Gregorian calendar, clock, and offset components must validate before any update is applied. A single invalid value returns ordered blockers, no cleaned rows, and zero sentinel/proof/trace/namespace/redaction counts. Only a blocker-free plan may proceed to required-field annual-supply evidence preservation and unknown-evidence normalization, UTC normalization, source/final exchange proof, import-only trace externalization, namespace repair and local locator redaction; four-digit year-boundary offset values remain byte-preserved when a UTC projection would require an extended year. Source and final exchange signatures exclude only permitted flow-reference rewrites; their array and object order remains content-addressed. It cannot invent source evidence or grant write authority.
-
-The typed workflow-queue-context boundary reads local queue manifests, task rows, closure dependencies and optional authoring JSONL indexes without changing their encounter order or evidence bytes. It attaches that evidence to curation packages using exact-version then id-only lookup and retains native missing, malformed and invalid-dependency failures; it does not execute queue work or expand remote-write authority.
-
-The typed internal full-context-proof boundary reads content-addressed authoring packages, decision tasks, shared context bundles and row artifacts. It verifies exact bytes, required non-empty kinds/files, task kind/status and payload identity hashes while preserving evidence encounter order and existing parse envelopes. It constructs blockers only; schema ownership, AI decisions and remote execution remain outside this module.
-
-The typed decision-apply-context boundary projects an existing classification apply report into local evidence: normalized decisions, bound decision-task proof, resolved input/output row paths, content hashes and applied count. It preserves report order and aliases and performs no decision application, schema mutation or remote operation.
-
-The typed profiles-config boundary reads and normalizes the repository's declarative import profiles, then projects profile lookup and listing views. It preserves configuration order, fallbacks, waiver scopes and account-local override evidence; it does not own schema rules or permit a profile to bypass downstream gates beyond its already-declared policy.
-
-The typed workflow-patch-collect boundary validates AI patch-set structure, targets, action closure, resolution/evidence contracts and specialized trace/classification/location decisions, then exposes local artifact readers used by downstream context modules. It neither applies patches nor writes remotely; deterministic blocker order and native malformed-artifact failures remain part of admission evidence.
-
-The typed workflow-identity-decision-context boundary reads identity apply/rewrite artifacts, normalizes their aliases, binds authoring-package and row-payload proof, indexes decisions for later gates and merges multiple reports without reordering first-seen evidence. It does not search, decide identity, rewrite rows or execute remote operations.
-
-The typed workflow-patch-evidence-context boundary indexes deterministic patch-apply evidence, binds input/output row hashes, checks trace evidence alternatives and snapshots active safety/profile policy. It supplies proof to mutation/reference-closure gates without applying patches, performing cleanup or granting remote-write authority.
-
-The typed workflow-row-transform-context boundary projects existing transform reports into content-bound edges and answers whether an expected rows artifact is reachable from decision outputs. It may compare exact bytes for deterministic no-op copies, but it never rewrites rows, invents an edge or grants mutation authority.
-
-The typed dry-run context projects owner-command result files into local identity maps; the typed evidence-scope context compares every required report to the exact final rows and emits ordered blockers. Neither performs validation, curation, patching, dry-run execution, verification or remote writes.
-
-The typed decision-full-context boundary evaluates existing classification, location, identity and deterministic transform proof without applying decisions. Authoring task, semantic action and patch evidence helpers form one existing, characterized SCC; they are compiled as a single native-TypeScript closure so no `.mjs`/`.ts` dual track can split their runtime identity. The typed identity-preflight boundary resolves local request/report artifacts, validates execution receipts and payload freshness, and projects read-only candidate evidence into curation blockers. These modules preserve hashes, encounter order and fail-closed errors; Edge/database search and CLI execution remain outside Foundry.
-
-The typed authoring facades expose that SCC without wrapping or duplicating it. The package runner copies immutable content-addressed authoring snapshots and writes ordered local task manifests; the patch runner classifies local task outputs and writes an ordered batch only after every blocker check passes. Both are filesystem-only Foundry adapters and neither applies patches, invokes the CLI, or grants mutation authority.
-
-The typed curation planning boundary follows those authoring layers. `curation-gate-workflow.ts` is a live-reference aggregate; `curation-gate.ts` reads local rows and evidence into ordered blockers, authoring packages and reports; `curation-cleanup.ts` deep-clones rows, runs the batch-wide strict datetime plan, and only then performs deterministic annual-supply, trace, proof and redaction transforms. Its blocked report carries a null cleaned path and never deletes pre-existing bytes; retained default output becomes an explicit blocker, while explicit output remains untouched and unreferenced. Their byte/order contracts are local Foundry evidence only and do not execute or authorize a database mutation.
-
-The typed command-owner layer now includes filesystem task/completion aggregation, commit handoff and identity task preparation, and canonical support-cache refresh/autofill. These factories keep their injected/local orchestration boundaries: task/report bytes and order remain content-stable, handoff only emits artifact-bound CommandSpecs, identity tasks only snapshot and package local evidence, and support refresh performs authenticated read-only queries. No factory implements CLI mutation, database semantics, review, or publication.
-
-The typed mutation reference stack remains an offline planning boundary. Reference closure classifies local roots and externally proven dependencies without querying or mutating the database; source context admits only ordered, in-scope public-canonical proofs; mutation manifest aggregates exact evidence and writes JSON/JSONL partitions. If any item is blocked, no write-candidate payload is emitted for execution.
-
-The typed dataset-orchestration layer composes those owners without absorbing them. The generic library workflow prepares deduplicated library and scope artifacts; BAFU classification, auto-authoring and process-scope owners retain dataset-specific policy; the shared batch engine adds exact-authority resume ledgers, compact consumed-attempt state, bounded parallelism, interruption/preflight modes and explicit handoff delegation. It owns local ordering and checkpoints, not CLI mutation, profile meaning, remote state or publication.
-
-The generic ready-scope execution path is split into three bounded owners. `ready-process-scope-runner.ts` retains ready/block/report semantics and input ordering; `ready-scope-command.ts` delegates artifact-bound specs to `@tiangong-lca/cli/command-spec`; `ready-scope-scheduler.ts` projects full scope/spec/policy and exact CLI package identity into the locked public batch engine. This replaces the former synchronous raw-argv loop with real independent concurrency, exclusive process keys, pause/stop closure and mutation no-retry. `foundry-command-spec.ts` contains no implementation—only the public re-export.
+Physical source ownership is split into `src/` (public package/runtime facade, the 15-command `src/dev-cli.ts` diagnostic/offline-planner CLI, and the 64 consumer-policy internal stages) and `devops/{build,ci,release}/` (package staging, CI sharding/Golden/lint gates, and four-platform release orchestration). `specs/module-budgets.json` enforces an 800-line default module ceiling, shrink-only debt/owner/semantic ceilings across 100% of `src/` and `devops/`, `src/lib/` below `src/commands/`, and zero `src/ -> devops/` imports.
 
 The shared BAFU/USLCI/Worldsteel batch path splits resume by evidence. `cli-bounded-batch-runner.ts` owns only the generic run contract/lock; `foundry-scope-batch-runner.ts` owns item projections and CLI event/recovery adaptation. `scope-resume-contract.ts` plus `scope-source-content.ts` bind source/shared bytes, options, stage/CommandSpec and CLI identity. `scope-resume-ledger.ts` plus `scope-resume-projection.ts` admit only exact verified/blocked rows and re-admit repaired contracts. `scope-attempt-ledger.ts` compacts consumed incomplete attempts, while `scope-mutation-recovery.ts` accepts only exact process closeout readback. `process-scope-resume.ts` binds finalize checkpoint and current report bytes; `flow-resume-ledger.ts` plus `verified-flow-write.ts` bind canonical Flow payload SHA. These local contracts can prevent replay or require reprocessing, but they cannot authorize a new remote mutation.
 
 Verified-scope retention is split again by evidence meaning. `control-artifact-store.ts` owns immutable SHA-256 blobs and hardlink/copy/reuse verification; `control-receipt-contract.ts` owns the self-hashed receipt shape; `control-reference-projection.ts` separates required control locators from disposable payload locators; `control-receipt-verification.ts` rechecks every required blob after pruning; `scope-safe-prune.ts` owns symlink-free scope deletion; `scope-control-retention.ts` orders receipt → report binding → prune → verification; and `shared-context-cache-prune.ts` owns explicit recomputable-cache eviction. The store is run-level, while each scope report retains its own artifact identities, original/store locators, receipt SHA, and prune outcome. This is filesystem evidence/retention only and grants no mutation authority.
 
-Canonical description transport is a small shared JSON boundary under that orchestration. `scripts/lib/canonical-description.ts` accepts scalar strings or losslessly cloneable JSON objects/arrays, preserves insertion/language/value order, and rejects unsupported values or cycles before any reference mutation. Library decision apply uses that one value for authoritative multilingual process-reference and rewrite-ledger evidence; batch identity resolution, identity apply/reference rewrite, and BAFU carry-forward preserve it without display coercion. This changes evidence fidelity only—canonical selection, payload preservation hashes outside the selected description, paths, and mutation authority stay fixed.
+Canonical description transport is a small shared JSON boundary under that orchestration. `src/lib/canonical-description.ts` accepts scalar strings or losslessly cloneable JSON objects/arrays, preserves insertion/language/value order, and rejects unsupported values or cycles before any reference mutation. Library decision apply uses that one value for authoritative multilingual process-reference and rewrite-ledger evidence; batch identity resolution, identity apply/reference rewrite, and BAFU carry-forward preserve it without display coercion. This changes evidence fidelity only—canonical selection, payload preservation hashes outside the selected description, paths, and mutation authority stay fixed.
 
-Post-finalize recovery command evidence has one construction boundary in `scripts/lib/bafu-orchestration/post-finalize-recovery.ts`. The helper derives `{ executable, argv, display }`, dispatches a fresh copy of the same executable/argv, passes that authority to the reader projection, and verifies the projected object exactly before returning. Thus success, failure, exception, and missing-report branches cannot diverge or hide options. This is local execution/report fidelity; it adds no CommandSpec mutation authority and does not change recovery semantics or stage ordering.
+Post-finalize recovery command evidence has one construction boundary in `src/lib/bafu-orchestration/post-finalize-recovery.ts`. The helper derives `{ executable, argv, display }`, dispatches a fresh copy of the same executable/argv, passes that authority to the reader projection, and verifies the projected object exactly before returning. Thus success, failure, exception, and missing-report branches cannot diverge or hide options. This is local execution/report fidelity; it adds no CommandSpec mutation authority and does not change recovery semantics or stage ordering.
 
-Location decision queue identity is a bounded artifact boundary in `scripts/lib/batch-orchestration/location-task-queue.ts`. Scope preparation discovers the generated queue once, stores relative path/bytes/SHA, drives suggestion from that fact, and verifies the same resolved file and relative path before apply. The drift path emits exact expected/observed facts; the stable path adds no report stage or byte change. Taxonomy choice stays with location decision tooling, while this leaf owns only local artifact continuity.
+Location decision queue identity is a bounded artifact boundary in `src/lib/batch-orchestration/location-task-queue.ts`. Scope preparation discovers the generated queue once, stores relative path/bytes/SHA, drives suggestion from that fact, and verifies the same resolved file and relative path before apply. The drift path emits exact expected/observed facts; the stable path adds no report stage or byte change. Taxonomy choice stays with location decision tooling, while this leaf owns only local artifact continuity.
 
-BAFU flow identity equivalence is a narrow semantic boundary inside that layer. Candidate search remains Edge/database-owned, while `scripts/lib/bafu-authoring/identity-equivalence.ts` deterministically reviews returned candidates. Exact normalized names can rank a candidate but cannot suppress an ordered non-equivalence reason; only a zero-conflict exact candidate can be reused. Physically conflicting exact-name candidates flow through local `create_new` evidence and deterministic identity apply without changing the source flow UUID.
+BAFU flow identity equivalence is a narrow semantic boundary inside that layer. Candidate search remains Edge/database-owned, while `src/lib/bafu-authoring/identity-equivalence.ts` deterministically reviews returned candidates. Exact normalized names can rank a candidate but cannot suppress an ordered non-equivalence reason; only a zero-conflict exact candidate can be reused. Physically conflicting exact-name candidates flow through local `create_new` evidence and deterministic identity apply without changing the source flow UUID.
 
 BAFU category-map handling is split into two bounded leaves. `category-map-projection.ts` retains every supplied decision and manual-review artifact independent of task reachability; `category-map-report.ts` derives reader status/counts/blockers from that complete closure. Manual rows add compact source/reason/artifact blockers, produce `completed_with_manual_review`, and force a nonzero command exit; fully resolved inputs preserve the historical report bytes/status. This is local evidence control and does not move taxonomy choice or remote authority.
 
-Process and batch commit handoffs share `scripts/lib/same-identity-commit-recovery.ts` as the sole same-id/version lost-success classifier. It admits only structured `23505` evidence with exact same-id/version semantics; text-only, mixed, malformed, and incomplete failures reject. `process-handoff-plan.ts` and `process-handoff-closeout.ts` keep process verification and closeout argv construction bounded, while the main process handoff preserves one mutation dispatch and carries recovery as pending until exact readback succeeds.
+Process and batch commit handoffs share `src/lib/same-identity-commit-recovery.ts` as the sole same-id/version lost-success classifier. It admits only structured `23505` evidence with exact same-id/version semantics; text-only, mixed, malformed, and incomplete failures reject. `process-handoff-plan.ts` and `process-handoff-closeout.ts` keep process verification and closeout argv construction bounded, while the main process handoff preserves one mutation dispatch and carries recovery as pending until exact readback succeeds.
 
-The batch engine delegates its asynchronous post-write closure to `scripts/lib/batch-orchestration/post-write-handoff.ts`. That stage discovers the exact commit and verification reports, uses the shared strict recovery classifier without replaying a mutation, retries only classified read-only verification failures, delegates ordinary trace-hash normalization policy, and invokes Foundry closeout only after exact owner/state/id/version/payload/root readback. The command owner continues to supply process isolation, timeouts, paths, and profile context.
+The batch engine delegates its asynchronous post-write closure to `src/lib/batch-orchestration/post-write-handoff.ts`. That stage discovers the exact commit and verification reports, uses the shared strict recovery classifier without replaying a mutation, retries only classified read-only verification failures, delegates ordinary trace-hash normalization policy, and invokes Foundry closeout only after exact owner/state/id/version/payload/root readback. The command owner continues to supply process isolation, timeouts, paths, and profile context.
 
-`scripts/lib/batch-orchestration/scope-finalize-commit.ts` composes finalize and handoff without absorbing their owners. It holds the support-commit serialization queue and verified identity set adapter, invalidates stale support reuse, reruns finalize after support or evidence recovery, and preserves the exact three-attempt post-finalize recovery ceiling before delegating the content-bound main handoff.
-
-The typed runtime-command layer also includes CLI wrappers, offline capsule admission and post-write closeout. Wrappers delegate to the installed CLI with an executable and argv array; capsule admission writes immutable local evidence with zero dispatch; closeout aggregates already-produced commit/readback proof without issuing a remote operation. Unique-root, owner/state/payload, accepted-diff and production-test rules remain in their typed proof owners rather than moving into transport code.
-
-The typed command-owner layer now also includes `core.ts`, `identity-preflight-run.ts`, and `post-authoring-finalize.ts`. Core owns local runtime/bootstrap and diagnostic projection. Identity preflight invokes only the published read-only CLI through receipt-bound executable/argv arrays and content-bound request evidence. Finalize orders existing rewrite, parent cleanup, nested source/contact support finalize, validation, curation, dry-run, mutation-manifest and handoff adapters; cleanup must return `completed` plus a concrete cleaned artifact before nested support or any later stage is constructed. A blocked attempt preserves every pre-existing downstream artifact, reports the stale paths as blockers, and emits only current blocker/import-ledger evidence. None of these owners implement schema/search semantics, direct database mutation, review, or publication.
-
-The typed decision command boundary now includes `identity-decisions.ts`, `classification-decisions.ts`, and `location-decisions.ts`. Identity validation partitions local rows into write candidates, reference reuse, and unresolved evidence without executing a remote mutation. Classification and location validate task-bound decisions, preserve queue grouping and schema/path order, and delegate deterministic apply through the existing CLI argv boundary only after blockers are empty. Their reports and artifacts remain Foundry-local evidence; schema vocabularies, search, mutation, and readback authority remain with their existing owners.
-
-The import-curation entry topology is typed end to end. `profiles.ts` and `trace-summary.ts` are identity-preserving leaf barrels; `import-curation/index.ts` aggregates the eight semantic owner exports; `import-curation.ts` is the public entry consumed by `foundry.ts`. These modules contain no runtime wrapper or initialization logic. The CLI dispatcher still receives the same injected functions, and command metadata still names the semantic owner modules rather than assigning behavior to a barrel.
-
-The typed adapter/tooling layer keeps external ownership explicit. `tidas-adapter.ts` only selects and validates the Rust machine contract; finalize utilities coordinate existing CLI/identity stages; cutover audit reads the TypeScript-aware Git inventory; Golden comparison creates isolated worktrees and compares normalized local outputs under one identical credential-free environment. None owns converter rules, database behavior or production mutation.
-
-The shared fixture topology is typed end to end but remains outside the production build. `foundry-core.ts` provides worktree-local filesystem and command helpers; `row-builders.ts` feeds full-context, identity and mutation evidence fixtures; incremental and topology packages remain separate algorithm fixtures. The fake tidas process is a published-report/exit harness only and is launched through Node executable-plus-argv even without an executable bit. This layer cannot acquire credentials, network access, schema ownership, or mutation authority.
-
-The unit-test topology is now TypeScript-only. Four migration contracts retain the established behavior families and verify that governed paths no longer name `.test.mjs`; test-local types narrow fixture/report values while the production runtime dependency graph and owner module specifiers remain unchanged.
-
-The scenario topology is also TypeScript-only. Four migration contracts retain authoring/curation, identity/reference, mutation/finalize and library/algorithm workflow evidence; the broad fixture-report vocabulary exists only to type already-produced test JSON and grants no runtime or remote authority.
+`src/lib/batch-orchestration/scope-finalize-commit.ts` composes finalize and handoff without absorbing their owners. It holds the support-commit serialization queue and verified identity set adapter, invalidates stale support reuse, reruns finalize after support or evidence recovery, and preserves the exact three-attempt post-finalize recovery ceiling before delegating the content-bound main handoff.
 
 Build and test resolution must be worktree-local. A clean arbitrary Git worktree must be able to run `pnpm install --frozen-lockfile`, lint, typecheck, build, toolchain tests, and the full test suite without a superproject-relative dependency, another checkout's `node_modules`, ignored `.foundry` state, or credentials.
 
 Cross-platform characterization is also explicit: the Golden harness compares normalized outputs to a non-`HEAD` merge-base, performs recursive comparison in Node rather than calling an external Unix utility, and uses full Git history in CI. Script-backed executable overrides are represented as an executable plus argv prefix and run through Node on macOS, Linux, and Windows. The root `.gitattributes` fixes text files to LF while allowing Windows launcher exceptions, preventing checkout policy from masquerading as format drift.
 
-The first credential-bearing entrypoint on that spine is `scripts/with-lca-account.ts`. It does not authenticate against Supabase itself. It resolves the exact installed CLI 0.1.27, requests `auth identity-receipt` with both expected project and user assertions, accepts only a fresh intent-bound forced signin, and then launches the requested executable plus argv with `shell:false` and a restricted environment. The CLI owns session and live identity behavior; Foundry owns the profile/thread intent checks and safe process boundary.
+The first credential-bearing entrypoint on that spine is `src/with-lca-account.ts`. It does not authenticate against Supabase itself. It resolves the exact installed CLI 0.1.27, requests `auth identity-receipt` with both expected project and user assertions, accepts only a fresh intent-bound forced signin, and then launches the requested executable plus argv with `shell:false` and a restricted environment. The CLI owns session and live identity behavior; Foundry owns the profile/thread intent checks and safe process boundary.
 
-`scripts/lib/identity-preflight-proof.ts` imports the strict parser from the public `@tiangong-lca/cli/auth-identity-receipt` subpath. `test/fixtures/auth-identity-receipt.ts` is the sole test-only wire-fixture owner and produces bytes that must pass that public parser. No production module or fixture may load CLI `dist/src/**`; the installed-package contract also exercises public batch scheduling/run-lock behavior and proves the private path remains closed.
+`src/lib/identity-preflight-proof.ts` imports the strict parser from the public `@tiangong-lca/cli/auth-identity-receipt` subpath. `test/fixtures/auth-identity-receipt.ts` is the sole test-only wire-fixture owner and produces bytes that must pass that public parser. No production module or fixture may load CLI `dist/src/**`; the installed-package contract also exercises public batch scheduling/run-lock behavior and proves the private path remains closed.
 
 The artifact layer treats JSON paths as portable identifiers: scope extraction normalizes separators, transitional command parsers retain native backslashes, and durable writers flush a writable descriptor before close. POSIX file-mode assertions are evidence on POSIX platforms rather than a fabricated Windows contract.
 
-The handoff execution boundary is typed and content-addressed. `scripts/lib/foundry-command-spec.ts` strictly parses `tiangong-foundry.command-spec.v1`, rejects duplicate safety-critical flags, and hashes `executable`, `argv`, and artifact bindings. `display` is derived but non-authoritative. Commit and verify bind the same `final_rows_artifact`; BAFU runners re-read its byte count and SHA-256 before spawning the published CLI without a shell.
+The handoff execution boundary is typed and content-addressed. `src/lib/foundry-command-spec.ts` strictly parses `tiangong-foundry.command-spec.v1`, rejects duplicate safety-critical flags, and hashes `executable`, `argv`, and artifact bindings. `display` is derived but non-authoritative. Commit and verify bind the same `final_rows_artifact`; BAFU runners re-read its byte count and SHA-256 before spawning the published CLI without a shell.
 
 ## Foundry-Owned Layers
 

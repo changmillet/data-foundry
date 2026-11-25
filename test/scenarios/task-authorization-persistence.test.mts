@@ -4,25 +4,25 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { createFoundryRuntime } from "../../scripts/foundry-runtime.ts";
+import { createFoundryRuntime } from "../../src/foundry-runtime.ts";
 import {
   captureFoundryInput,
   createFoundryRuntimeContext,
   initializeFoundryWorkspace,
-} from "../../scripts/lib/foundry-runtime-context.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
 import {
   assertVerifiedFoundryIdentity,
   verifyFoundryRuntimeIdentity,
-} from "../../scripts/lib/foundry-runtime-identity.ts";
-import { taskAuthorizationAllows } from "../../scripts/lib/task-authorization.ts";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
+} from "../../src/lib/foundry-runtime-identity.ts";
+import { taskAuthorizationAllows } from "../../src/lib/task-authorization.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
 import {
   testAuthIdentityReceipt,
   testAuthIdentityReceiptOutput,
 } from "../fixtures/auth-identity-receipt.ts";
-import { runFoundryTaskOperation } from "../../scripts/lib/foundry-task-store.ts";
+import { runFoundryTaskOperation } from "../../src/lib/foundry-task-store.ts";
 
-const moduleUrl = new URL("../../scripts/runtime-entry.ts", import.meta.url).href;
+const moduleUrl = new URL("../../src/runtime-entry.ts", import.meta.url).href;
 const accountIntent = {
   projectRef: "aaaaaaaaaaaaaaaaaaaa",
   userId: "11111111-1111-4111-8111-111111111111",

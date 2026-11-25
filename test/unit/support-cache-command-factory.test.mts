@@ -5,8 +5,8 @@ import path from "node:path";
 import process from "node:process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import type { CliSupportExport } from "../../scripts/lib/cli-support-export.ts";
-import { createSupportCacheCommands } from "../../scripts/commands/support-cache.ts";
+import type { CliSupportExport } from "../../src/lib/cli-support-export.ts";
+import { createSupportCacheCommands } from "../../src/commands/support-cache.ts";
 
 type JsonObject = Record<string, unknown>;
 
@@ -325,7 +325,7 @@ test("support cache factory preserves native JSON/credential errors before write
 });
 
 test("support cache factory exists only as zero-escape native TypeScript", () => {
-  const typedPath = path.join(repoRoot, "scripts/commands/support-cache.ts");
+  const typedPath = path.join(repoRoot, "src/commands/support-cache.ts");
   assert.equal(fs.existsSync(typedPath), true);
   assert.equal(fs.existsSync(typedPath.replace(/\.ts$/u, ".mjs")), false);
   const source = fs.readFileSync(typedPath, "utf8");
@@ -335,8 +335,8 @@ test("support cache factory exists only as zero-escape native TypeScript", () =>
 
 test("support cache consumers target the typed command factory", () => {
   for (const consumer of [
-    "scripts/foundry.ts",
-    "scripts/lib/foundry-command-metadata.ts",
+    "src/dev-cli.ts",
+    "src/lib/foundry-command-metadata.ts",
     "test/unit/support-cache-command-factory.test.mts",
   ]) {
     const source = fs.readFileSync(path.join(repoRoot, consumer), "utf8");

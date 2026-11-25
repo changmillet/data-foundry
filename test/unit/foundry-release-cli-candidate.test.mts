@@ -4,17 +4,17 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
-import { parseFoundryRuntimePreparationArgs } from "../../scripts/release-prepare-runtime.ts";
+import { parseFoundryRuntimePreparationArgs } from "../../devops/release/release-prepare-runtime.ts";
 import {
   inspectFoundryCliCandidateSource,
   prepareFoundryCliCandidate,
   assertPreparedFoundryCliCandidate,
   type PreparedFoundryCliCandidate,
-} from "../../scripts/lib/foundry-release-cli-candidate.ts";
+} from "../../devops/release/foundry-release-cli-candidate.ts";
 import {
   preparedFoundryRuntimeAuthority,
   type PreparedFoundryRuntimeComponents,
-} from "../../scripts/lib/foundry-release-components.ts";
+} from "../../devops/release/foundry-release-components.ts";
 
 function sourceFixture(buildable = false) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-cli-source-"));

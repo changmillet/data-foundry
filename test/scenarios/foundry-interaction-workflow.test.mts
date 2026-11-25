@@ -4,19 +4,19 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { createFoundryFacade } from "../../scripts/foundry-facade.ts";
-import { createFoundryRuntime } from "../../scripts/foundry-runtime.ts";
+import { createFoundryFacade } from "../../src/foundry-facade.ts";
+import { createFoundryRuntime } from "../../src/foundry-runtime.ts";
 import {
   captureFoundryInput,
   createFoundryRuntimeContext,
-} from "../../scripts/lib/foundry-runtime-context.ts";
-import { runFoundryTaskOperation } from "../../scripts/lib/foundry-task-store.ts";
-import { selectFoundryInteractionInput } from "../../scripts/lib/foundry-interaction-input.ts";
-import { recordFoundryInteractionInput } from "../../scripts/lib/foundry-workflow-interaction.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
+import { runFoundryTaskOperation } from "../../src/lib/foundry-task-store.ts";
+import { selectFoundryInteractionInput } from "../../src/lib/foundry-interaction-input.ts";
+import { recordFoundryInteractionInput } from "../../src/lib/foundry-workflow-interaction.ts";
 import { workflowFixture } from "../fixtures/foundry-public-workflow.ts";
 import { flowRow, processRowWithFlowRef, sourceRow } from "../fixtures/row-builders.ts";
 
-const moduleUrl = new URL("../../scripts/runtime-entry.ts", import.meta.url).href;
+const moduleUrl = new URL("../../src/runtime-entry.ts", import.meta.url).href;
 const actor = "agent/session-190";
 const sha = (value: Buffer) => createHash("sha256").update(value).digest("hex");
 

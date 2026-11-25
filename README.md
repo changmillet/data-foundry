@@ -13,143 +13,21 @@ whenToUpdate:
   - when Foundry public commands, lane names, runtime skill policy, or repository layout change
 checkPaths:
   - README.md
-  - .nvmrc
-  - .oxlintrc.json
-  - .prettierignore
   - package.json
-  - pnpm-lock.yaml
   - pnpm-workspace.yaml
-  - prettier.config.ts
   - tsconfig*.json
-  - scripts/foundry.ts
-  - scripts/lib/import-curation.ts
-  - scripts/lib/import-curation/index.ts
-  - scripts/lib/import-curation/profiles.ts
-  - scripts/lib/import-curation/trace-summary.ts
-  - scripts/foundry-golden-diff.ts
-  - scripts/check-tidas-cutover.ts
-  - scripts/check-lint-suppressions.ts
-  - scripts/clean-build-output.ts
-  - scripts/build-foundry-package.ts
-  - scripts/pack-foundry-package.ts
-  - scripts/verify-foundry-package.ts
-  - scripts/package-entry.ts
-  - scripts/public-api.ts
-  - scripts/lib/foundry-package-contract.ts
-  - tsconfig.package.json
-  - docs/package-distribution-contract.md
-  - scripts/lib/tidas-adapter.ts
-  - scripts/lib/post-authoring-finalize-utils.ts
-  - scripts/commands/tasks.ts
-  - scripts/commands/import-completion.ts
-  - scripts/commands/commit-handoff.ts
-  - scripts/commands/identity-decision-task.ts
-  - scripts/commands/support-cache.ts
-  - scripts/commands/cli-wrappers.ts
-  - scripts/commands/execution-capsule.ts
-  - scripts/commands/post-write-closeout.ts
-  - scripts/commands/core.ts
-  - scripts/commands/identity-preflight-run.ts
-  - scripts/commands/post-authoring-finalize.ts
-  - scripts/commands/identity-decisions.ts
-  - scripts/commands/classification-decisions.ts
-  - scripts/commands/location-decisions.ts
-  - scripts/commands/library-scope-workflow.ts
-  - scripts/commands/bafu-leaf-classification-tasks.ts
-  - scripts/commands/bafu-auto-authoring.ts
-  - scripts/commands/bafu-process-scope-e2e.ts
-  - scripts/commands/bafu-batch-import-run.ts
-  - scripts/commands/authoring-plan.ts
-  - scripts/commands/bundle-sample-rows.ts
-  - scripts/commands/incremental-change-set.ts
-  - scripts/commands/topology-convergence.ts
-  - scripts/lib/foundry-args.ts
-  - scripts/lib/foundry-command-registry.ts
-  - scripts/lib/foundry-command-metadata.ts
-  - scripts/lib/surface-audit.ts
-  - scripts/lib/foundry-runtime-environment.ts
-  - scripts/lib/foundry-runtime-paths.ts
-  - scripts/lib/foundry-runtime-utils.ts
-  - scripts/lib/location-quality-utils.ts
-  - scripts/lib/bundle-row-types.ts
-  - scripts/lib/tidas-language-utils.ts
-  - scripts/lib/import-curation/internal/hash-utils.ts
-  - scripts/lib/import-curation/internal/dataset-types.ts
-  - scripts/lib/import-curation/internal/runtime-io.ts
-  - scripts/lib/import-curation/internal/prewrite-cleanup.ts
-  - scripts/lib/import-curation/internal/workflow-queue-context.ts
-  - scripts/lib/import-curation/internal/full-context-proof.ts
-  - scripts/lib/import-curation/internal/workflow-decision-apply-context.ts
-  - scripts/lib/import-curation/internal/profiles-config.ts
-  - scripts/lib/import-curation/internal/workflow-patch-collect.ts
-  - scripts/lib/import-curation/internal/workflow-identity-decision-context.ts
-  - scripts/lib/import-curation/internal/workflow-patch-evidence-context.ts
-  - scripts/lib/import-curation/internal/workflow-row-transform-context.ts
-  - scripts/lib/import-curation/internal/workflow-dry-run-context.ts
-  - scripts/lib/import-curation/internal/workflow-evidence-scope.ts
-  - scripts/lib/import-curation/internal/workflow-decision-full-context.ts
-  - scripts/lib/import-curation/internal/workflow-authoring-tasks.ts
-  - scripts/lib/import-curation/internal/workflow-semantic-actions.ts
-  - scripts/lib/import-curation/internal/workflow-patch-evidence.ts
-  - scripts/lib/import-curation/internal/workflow-identity-preflight.ts
-  - scripts/lib/import-curation/internal/authoring-task-workflow.ts
-  - scripts/lib/import-curation/internal/authoring-patch-workflow.ts
-  - scripts/lib/import-curation/internal/curation-gate-workflow.ts
-  - scripts/lib/import-curation/authoring-packages.ts
-  - scripts/lib/import-curation/patch-collect.ts
-  - scripts/lib/import-curation/curation-gate.ts
-  - scripts/lib/import-curation/curation-cleanup.ts
-  - scripts/lib/import-curation/internal/workflow-reference-closure.ts
-  - scripts/lib/import-curation/internal/workflow-source-reference-context.ts
-  - scripts/lib/import-curation/internal/mutation-manifest-workflow.ts
-  - scripts/lib/import-curation/mutation-manifest.ts
-  - scripts/lib/import-curation/internal/artifact-inputs.ts
-  - scripts/lib/import-curation/internal/context-inputs.ts
-  - scripts/lib/import-curation/internal/dataset-payload.ts
-  - scripts/lib/import-curation/internal/trace-summary.ts
-  - scripts/lib/canonical-support-mappings.ts
-  - scripts/lib/source-semantics.ts
-  - scripts/lib/trace-coverage.ts
-  - scripts/lib/tidas-row-utils.ts
-  - scripts/lib/decision-task-utils.ts
-  - scripts/lib/identity-reference-rewrite-utils.ts
-  - scripts/lib/full-context-proof.ts
-  - scripts/lib/identity-preflight-artifacts.ts
-  - scripts/lib/bafu-family-signatures.ts
-  - scripts/lib/import-ledger.ts
-  - scripts/lib/canonical-support-rewrites.ts
-  - scripts/lib/bundle-sample-utils.ts
-  - specs/prewrite-content-policy.json
-  - test/fixtures/fixture-roots.ts
-  - test/fixtures/finalize-fixtures.ts
-  - test/fixtures/fake-tidas.ts
-  - test/fixtures/foundry-core.ts
-  - test/fixtures/full-context-fixtures.ts
-  - test/fixtures/identity-fixtures.ts
-  - test/fixtures/incremental-change-set-fixtures.ts
-  - test/fixtures/mutation-fixtures.ts
-  - test/fixtures/row-builders.ts
-  - test/fixtures/topology-convergence-fixtures.ts
-  - test/unit/import-ledger-type-contract.test.mts
-  - test/unit/source-row-explicit-any-contract.test.mts
-  - test/unit/identity-rewrite-explicit-any-contract.test.mts
-  - test/unit/fixture-helpers-contract.test.mts
-  - test/commands/*.test.mts
-  - test/unit/core-command-factory.test.mts
-  - test/unit/identity-preflight-run-command-factory.test.mts
-  - test/unit/post-authoring-finalize-command-factory.test.mts
+  - src/dev-cli.ts
+  - src/package-entry.ts
+  - src/public-api.ts
+  - src/runtime-entry.ts
+  - src/commands/**
+  - src/lib/import-curation.ts
+  - devops/**
   - docs/architecture.md
-  - docs/runtime-skill-management.md
-  - docs/foundry-task-contracts.md
-  - docs/incremental-change-set-contract.md
-  - docs/topology-convergence-contract.md
-  - docs/final-delivery-promotion-contract.md
+  - docs/public-runtime-contract.md
+  - docs/package-distribution-contract.md
   - specs/import-profiles.json
-  - test/unit/foundry-entry-closure-migration.test.mts
-  - test/unit/foundry-runtime-environment.test.mts
-  - test/unit/lint-suppression-audit.test.mts
   - test/unit/zero-javascript-ratchet.test.mts
-  - test/scenarios/foundry-package-consumer.test.mts
 lastReviewedAt: 2026-11-25
 lastReviewedCommit: a191bd3dbe633e60ef40ab5fb6fc5e00c015fd02
 lastReviewedNote: "Foundry #306: retired completed historical JS-to-TS wave migration scaffolding tests in favor of zero-javascript-ratchet and toolchain-contract, added fast local unit/command and public smoke scripts, and introduced stat-guarded immutable component digest caching; public runtime, qualification, authorization and release boundaries remain unchanged."
@@ -169,19 +47,19 @@ Migration transfer planning is governed by [the workspace migration contract](do
 
 The v2 task store persists registered job/source/profile identity, account intent, producer receipts and artifact lineage; deterministic local retries reuse verified results. Exact C1/TIDAS qualification, all-command disposition, derived authorization and child admission form the W04 authority boundary. The W05 hierarchical facade adds strict result/task schemas, deterministic request revisions, actor-bound status/resume, local preparation and read-only migration inventory. W06 packages that facade as a deterministic source-free candidate; `docs/package-distribution-contract.md` owns its files and integrity. F1 registry/component publication remains W08. See `docs/public-runtime-contract.md`, `docs/runtime-context-contract.md`, `docs/task-authorization-contract.md` and `docs/foundry-task-contracts.md`.
 
-The explicit workspace runtime is defined by `docs/runtime-context-contract.md`: package layout comes from `package.json.foundryRuntime`, emitted execution needs no source TypeScript or Git, and selected inputs/task outputs are bound to an immutable runtime context. `scripts/runtime-entry.ts` now implements workspace init/migration, consumer doctor and task start/status/resume as the separate hierarchical facade. All 63 flat owner commands retain explicit public/internal/excluded, path, child, qualification and authorization dispositions; the facade reaches them only through registered task state and never falls back to the developer runner.
+The explicit workspace runtime is defined by `docs/runtime-context-contract.md`: package layout comes from `package.json.foundryRuntime`, emitted execution needs no source TypeScript or Git, and selected inputs/task outputs are bound to an immutable runtime context. `src/runtime-entry.ts` now implements workspace init/migration, consumer doctor and task start/status/resume as the separate hierarchical facade. All 64 internal stage commands retain explicit public/internal/excluded, path, child, qualification and authorization dispositions; the facade reaches them only through registered task state and never falls back to the developer runner.
 
 Import profiles distribute source rules only. Historical BAFU/USLCI/Worldsteel account overrides, QA waivers and the Worldsteel full-context relaxation grant no permission to a new task. `docs/task-authorization-contract.md` owns the separate workspace/task/actor/account/profile/input binding and exact action evidence. Local candidate preparation and checked public-reference proofs remain available; current final-row hashes, task permissions and all content/closure/no-replay gates are required before a restricted write handoff.
 
 The source checkout can exercise the future package facade now:
 
 ```sh
-node scripts/foundry.ts workspace init --workspace /absolute/project --json
-node scripts/foundry.ts doctor --workspace /absolute/project --json
-node scripts/foundry.ts task start --workspace /absolute/project --spec /absolute/task.json --json
-node scripts/foundry.ts task status --workspace /absolute/project --task <task-id> --actor <actor-id> --json
-node scripts/foundry.ts task resume --workspace /absolute/project --task <task-id> --actor <actor-id> --json
-node scripts/foundry.ts workspace migrate --workspace /absolute/project --dry-run --json
+node src/dev-cli.ts workspace init --workspace /absolute/project --json
+node src/dev-cli.ts doctor --workspace /absolute/project --json
+node src/dev-cli.ts task start --workspace /absolute/project --spec /absolute/task.json --json
+node src/dev-cli.ts task status --workspace /absolute/project --task <task-id> --actor <actor-id> --json
+node src/dev-cli.ts task resume --workspace /absolute/project --task <task-id> --actor <actor-id> --json
+node src/dev-cli.ts workspace migrate --workspace /absolute/project --dry-run --json
 ```
 
 Each command emits one compact machine object. Use only structured next-action argv with its recorded CWD. Task start is local and does not log in. `pnpm package:build && pnpm package:check` qualifies the W06 candidate, and `pnpm package:pack` creates the local tarball from its sanitized staging tree. The candidate is not the public F1 release until W08.
@@ -212,73 +90,7 @@ Foundry is a pnpm-only, non-JSX Node.js 24 project. The reproducible toolchain i
 
 The permanent `test/unit/zero-javascript-ratchet.test.mts` requires zero tracked first-party JavaScript and a TypeScript-only compiler, lint, and test graph.
 
-The first completed CLI-spine slice migrates `scripts/lib/foundry-args.ts` and `scripts/lib/foundry-command-registry.ts`. Its focused test fixes parser coercion, exact help JSON and command order, exit-code families, and all static consumer imports before later entrypoint and dispatcher slices proceed.
-
-The next slice migrates `scripts/lib/foundry-command-metadata.ts` and `scripts/lib/surface-audit.ts`. Characterization fixes all 63 metadata owner/export/artifact contracts plus TS import discovery, portable report paths, test-only inbound exclusion, orphan docs, declared entrypoints, hidden handlers, report JSON, and static consumers.
-
-The following low-level slice migrates bundle row/root mappings, the complete TIDAS language enumeration, exact `JSON.stringify`/text SHA-256 helpers, and dataset-type aliases/constants. Characterization preserves invalid-input failures, object insertion and array order, root detection, and every direct import before higher workflow modules migrate.
-
-The runtime I/O slice migrates the shared `runtime-io.ts` leaf without changing its synchronous visible contract: parent creation, exact text/pretty-JSON/JSONL bytes, direct overwrite, JSONL prefix retention on mid-stream serialization failure, descriptor closure, native filesystem/parse errors, JSON row envelopes, and portable repository/artifact paths.
-
-The next internal-contract slice migrates artifact/QA inputs, dataset payload identity, compact trace summaries, and full-context inputs. Characterization preserves path fallback, file/hash facts, dedupe and traversal order, installed CLI schema resolution, missing/duplicate/drift findings, exact trace hashes, and native JSON/filesystem errors.
-
-The standalone-leaf slice migrates canonical FlowProperty mappings, profile-aware source semantics, trace queue coverage, and reusable TIDAS row helpers. Characterization preserves all scale factors and pending defaults, BAFU/USLCI/worldsteel source identities, canonical reference rewrites, trace evidence keys/blockers, multilingual/root/id/version helpers, and invalid-input behavior.
-
-The evidence/decision slice migrates decision-task context and stable hashes, identity reference rewrites, full-context completion proof, and identity-preflight request artifacts. Characterization preserves exact paths/bytes/SHA/ordering, missing or ambiguous evidence blockers, artifact-bound CommandSpecs, source-index first binding, and positive-only cache/execution reuse boundaries. The strict follow-up gives `decision-task-utils.ts` and `identity-preflight-artifacts.ts` concrete dependency, queue, context, proof, payload, request and index contracts with `unknown` at external JSON boundaries; an Oxlint AST check and the existing cases prohibit explicit `any` without changing outputs or authority.
-
-The explicit-any hardening slice removes all 197 explicit TypeScript `any` nodes from `source-semantics.ts`, `tidas-row-utils.ts`, `identity-reference-rewrite-utils.ts`, and their directly coupled contract tests. The decision/preflight and proof/signature/trace families remove the complementary debt through their own RED/GREEN cases. Focused contracts run the installed Oxlint TypeScript AST rule through `process.execPath`, while the established behavior cases preserve exact rows, report bytes, order, hashes, native errors, and remote-write fail-close behavior. The integrated repository now enables `typescript/no-explicit-any` once at the global Oxlint rule layer, with zero target-specific exceptions.
-
-The family/ledger slice migrates BAFU family signatures and the append-only import ledger. Characterization preserves normalized family names, ordered exchange skeleton/template/amount hashes, scope-order master selection and summaries, verified/blocked/retry row schemas, payload identity hashes, duplicate suppression, human-review ordering, resume/skipped artifacts, relative paths, and native parse/filesystem errors.
-
-The canonical/bundle slice migrates canonical FlowProperty reference rewrites and bundle sampling utilities. Characterization preserves normalized mapping lookup, scale/pending/proof/stale-version decisions, support/source/contact/profile fallbacks, source-trace field repair, reference-closure materialization, deterministic selection/dedupe, exact report ordering, and native errors. Bundle sampling also carries the existing scale contract end to end: under the explicit blocking flag, known non-1 factors and unresolved invalid factors use distinct blockers and remain visible in scaling/report/scope-ledger artifacts; scale 1 and no-flag defaults do not change.
-
-The ledger hardening follow-up removes every explicit `any` from `import-ledger.ts` and publishes concrete JSON, dependency, blocker, manifest, report, row, write-option/result, and report-result types. A separate TypeScript compile fixture proves valid state unions and rejects invalid discriminators or numeric paths, while behavior tests preserve exact JSONL bytes, hashes, ordering, dedupe, paths, and errors. The first test-fixture slice also migrates shared fixture roots and ready-finalize builders with all direct consumers updated; inventory accounting therefore moves from 130 to 128 without changing production code.
-
-The runtime wave migrates `foundry-runtime-utils.ts`, the high-fan-in helper used by the entrypoint, account wrapper, context discovery, BAFU commands, location/remote verification and shared tests. Characterization pins the installed CLI package contract, override command rendering, all 49 factory helpers, exact file/JSON/JSONL/frontmatter/env-file/stage behavior, portable paths, errors, hashes, UUIDs and local subprocess reports. The runtime source has no explicit `any`; migration inventory moves from 128 to 127 without reading `.env` or accessing production.
-
-The location wave migrates `location-quality-utils.ts`, which feeds bundle sampling and location/finalize authoring through the Foundry entrypoint. Characterization pins classification/location command strings and artifacts, installed schema code loading, fallback and recursive location target discovery, depth-first/array order, valid/blocker counts, queue context, blocker envelopes and invalid-input errors. It remains fail-closed and zero-any; inventory moves from 127 to 126.
-
-The prewrite wave migrated `prewrite-cleanup.ts` as a deterministic evidence boundary and initially froze the inherited `Date.parse` behavior. Issue #69 supersedes that rollover: eight runtime consumers now share one strict metadata contract. Full timezone-qualified timestamps keep prior UTC bytes for valid inputs; valid offsets that would cross outside the four-digit UTC year grammar keep exact source bytes. Impossible Gregorian dates, invalid clocks, partial/sentinel/non-string values, or invalid offsets block the entire cleanup before any annual-supply/proof/trace/redaction transform or cleaned-row output. Bundle materialization preserves invalid and timezone-less values for that gate, the CLI exits nonzero, and post-authoring finalize completes parent cleanup before nested support finalization. On failure, cleanup/finalize never delete a pre-existing artifact: retained default/downstream paths become blockers, explicit outputs remain untouched and unreferenced, the blocked ledger is written, and no CommandSpec is emitted. A repaired rerun uses a new output path or deliberate operator-managed archival.
-
-The queue-context wave migrates `import-curation/internal/workflow-queue-context.ts`, a five-consumer authoring-evidence boundary. Characterization pins annual-supply action envelopes, manifest task order and duplicate-map behavior, exact-identity then id-only selection, queue-relative paths, closure dependency/support order, JSONL filtering and last-row binding, identity-preflight path precedence, and native filesystem/parse/invalid-dependency errors. It remains zero-any and fail-closed; inventory moves from 125 to 124.
-
-The internal full-context wave migrates `import-curation/internal/full-context-proof.ts`, a six-consumer evidence boundary. Characterization pins context aliases and UTF-8 presence, exact authoring-package/decision-task bytes and hashes, embedded-before-shared file order, manifest/task alias fallbacks, required-kind/file blocker order, classification schema-pattern selection, payload identity encounter order and last-write hashes, caught proof parse envelopes, and native row JSON errors. It remains zero-any and fail-closed; inventory moves from 124 to 123.
-
-The decision-apply context wave migrates `import-curation/internal/workflow-decision-apply-context.ts`, the evidence adapter shared by curation, mutation and full-context gates. Characterization pins missing/empty envelopes, snake/camel decision and task aliases, decision/task/path order, flow-before-process fallback selection, exact input/output payload hashes with duplicate last-write behavior, applied-count coercion, and native JSON/path errors. It remains zero-any and read-only; inventory moves from 123 to 122.
-
-The typed profile selector now applies the W03 task-authorization contract: rule/doc lookup remains deterministic, while legacy profile defaults and command waiver flags grant no permission. Task grants and their input/profile/actor/account binding are explicit; old locks are retained as evidence.
-
-The patch-collect wave migrates `import-curation/internal/workflow-patch-collect.ts`, the admission/helper boundary shared by nine workflow modules. Characterization pins early invalid returns, deterministic blocker and operation order, action closure, annual-supply defer rejection, full-context/trace evidence, circular-input failure, JSON/JSONL delimiters and parse errors, artifact-option alias order and duplicates, source-rewrite discovery priority and normalized evidence envelopes. It remains zero-any and fail-closed; inventory moves from 121 to 120.
-
-The identity-decision context wave migrates `import-curation/internal/workflow-identity-decision-context.ts`, the evidence adapter shared by curation, mutation, preflight, patch evidence and full-context gates. Characterization pins rewrite candidate priority, scoped/dual-index encounter order, decision/canonical/package aliases, normalized reuse/create/block values, file-versus-embedded fallback, authoring-package proof dedupe, payload hash last-write, merge/unique order, completion predicates, unresolved flow reference keys and native JSON/path errors. It remains zero-any and fail-closed; inventory moves from 120 to 119.
-
-The patch-evidence context wave migrates `import-curation/internal/workflow-patch-evidence-context.ts`, the apply/trace evidence adapter shared by mutation and reference closure. Characterization pins compact aliases, identity/row indexes, exact-bare-row query/dedupe order, apply blockers, output path priority, payload hash last-write, closure codes, exact deterministic cleanup proof, unresolved-before-source trace blockers, safety/profile snapshot SHA/order, recursive import-only trace detection and native JSON/path/cycle failures. It remains zero-any and fail-closed; inventory moves from 119 to 118.
-
-The row-transform context wave migrates `import-curation/internal/workflow-row-transform-context.ts`, the lineage boundary shared by seven workflow modules. Characterization pins unresolved/canonical/generic report aliases, trace/blocker/proof order, payload hash last-write, transform-entry cross products and fixed family order, allowed status matrices, exact/content-equivalent artifacts, unordered multi-pass/cycle-safe graph reachability, cleanup/decision aliases and every direct patch/identity/classification/externalization chain. It remains zero-any and read-only; inventory moves from 118 to 117.
-
-Wave 21 batches two independent low-fan-in families. `workflow-dry-run-context.ts` preserves schema/curation map precedence, operation normalization, flow payload aliases, progress/failure overwrite order and planned-root blocker suppression; inventory moves 117→116. `workflow-evidence-scope.ts` preserves portable blocker envelopes, dry-run aliases, complete stage blocker order, QA parse envelopes and deterministic patch/rewrite chain acceptance; inventory moves 116→115. Both remain zero-any and fail-closed.
-
-Wave 22 follows the real dependency topology rather than treating connected modules as independent leaves. `workflow-decision-full-context.ts` moves first; the mutually dependent `workflow-authoring-tasks.ts`, `workflow-semantic-actions.ts`, and `workflow-patch-evidence.ts` move as one cycle-safe atomic SCC; `workflow-identity-preflight.ts` follows only after that typed closure exists. Characterization preserves proof relevance and row chains, patch/action/trace ordering, full-context and shared-bundle hashes, identity result aliases, exact-version lookup, execution-receipt fail-close, payload freshness, source context, policy blockers and native JSON/filesystem errors. Inventory moves 115→110 without changing command help, Golden artifacts, profile defaults, or remote-write authority.
-
-Wave 23 migrates the authoring facade and runner layer above that SCC. `authoring-task-workflow.ts` and `authoring-patch-workflow.ts` remain pure live-reference facades; `authoring-packages.ts` preserves gate-entry/task order, content-addressed snapshot names, original package bytes, task directories and exact manifest/JSONL output; `patch-collect.ts` preserves task/blocker classification, patch-file/set/operation order, exact ready batch bytes and native manifest errors. Only a blocker-free collection writes a fresh batch. Inventory moves 105→101 without changing help, profiles, Golden artifacts or remote-write authority.
-
-Wave 24 B3 migrates the curation planning boundary in topology order. `curation-gate-workflow.ts` remains a pure live-reference aggregate; `curation-gate.ts` preserves blocked entity, schema/QA/context/action ordering, authoring-package hashes and report/process aliases; `curation-cleanup.ts` preserves deep-cloned row order, exact JSONL/report bytes, annual-supply evidence and trace transforms, source-only-output proof, redaction counts and native failures. Inventory moves 101→98 without changing profiles, command help, Golden artifacts, Worldsteel semantics or remote-write authority.
-
-Wave 24 migrates five command factories in three RED/GREEN families. `tasks.ts` and `import-completion.ts` preserve queue/file order, full-context completion gates, task moves and exact Markdown/JSON bytes. `commit-handoff.ts` and `identity-decision-task.ts` preserve final-row artifact SHA/bytes, authoritative CommandSpec argv, package snapshots, action encounter/dedupe order and fail-closed blockers. `support-cache.ts` preserves auth-then-read request order, pagination, public cache row order, unit mapping/manual-block order and native errors; tests stub HTTP locally and read no credentials. Inventory moves 101→96 without changing help, remote-write mode, profiles, or production authority.
-
-Together the parallel Wave 24 lanes reduce the inventory from 101 to 93 without changing public help, Golden artifacts, profiles, Worldsteel semantics, or remote-write authority.
-
-Wave 25 migrates the mutation reference stack in dependency order. `workflow-reference-closure.ts` preserves DFS reference discovery and self/remote/proven/unresolved/foreign closure algebra; `workflow-source-reference-context.ts` preserves explicit/default source-rewrite precedence and public-canonical filtering; `mutation-manifest-workflow.ts` plus `mutation-manifest.ts` preserve ordered write/reference/blocked partitions, report/items JSON bytes and hashes, native failures and the rule that one blocked item leaves the executable write file empty. Inventory moves 93→89 without changing help, profiles, Worldsteel semantics, Date.parse behavior or remote-write authority.
-
-Wave 25 migrates three runtime command owners. `cli-wrappers.ts` preserves installed-CLI executable prefixes, exact argv order, CWD/environment, JSON stdout, stderr, nonzero exits and native spawn errors without a shell-string path. `execution-capsule.ts` preserves exclusive immutable snapshots, predecessor receipts, raw/semantic hashes, reviewer and boundary checks, seal hashes, zero dispatch and no-replay attempt states. `post-write-closeout.ts` preserves artifact binding, exact unique-root readback, ordinary-only traceHash normalization, production-test fail-close and foreign/RLS-hidden `missing_dataset` rejection. Inventory moves 93→90 with no command-help, profile, Worldsteel or remote-authority change.
-
-Wave 25 migrates the three decision command factories in dependency order: standalone `identity-decisions.ts` first, then the shared-dispatch `classification-decisions.ts` and `location-decisions.ts` family. Characterization preserves exact help/report bytes, input aliases and defaults, row/path/order semantics, decision-task and queue closure blockers, deterministic CLI argv/stage failure behavior, read-only identity splitting, artifact write boundaries, and native JSON/filesystem errors. Inventory moves 98→95 without changing command names, profile defaults, Worldsteel behavior, or remote-write authority.
-
-Wave 25 migrates the import-curation re-export topology without wrappers. `profiles.ts` and `trace-summary.ts` retain their exact namespaces and owner function identity; `import-curation/index.ts` and the public `import-curation.ts` entry retain the complete eight-export namespace and direct references to the semantic owners. Node 24 loads both source and emitted entry layers, and command metadata continues to route each command to its semantic owner. Inventory moves 93→89 without changing runtime behavior, command help, profiles, Worldsteel semantics, or remote-write authority.
-
-Wave 26 migrates five dataset-orchestration owners in dependency order: generic `library-scope-workflow.ts`, then BAFU leaf classification and auto-authoring, process-scope E2E, and the shared BAFU batch engine used by the USLCI and Worldsteel adapters. Characterization preserves profile-agnostic versus BAFU configuration, library/scope/identity/classification blocker and artifact order, resume/pause/parallel/preflight/commit delegation, authoritative executable-plus-argv and receipt/hash checks, exact help/report bytes, native errors, and explicit-commit-only authority. Inventory moves 79→74 without changing command names, profile defaults, Golden artifacts, Worldsteel semantics, Date.parse behavior, or production authority; every case is local and reads neither `.env` nor production.
-
-Issue #70 decomposes that stable typed layer by semantic stage. `scripts/lib/batch-orchestration/post-write-handoff.ts` owns asynchronous commit/report discovery, same-id/version idempotent recovery followed by mandatory readback, bounded read-only verification retry, accepted-difference delegation, and post-write closeout. `scripts/lib/batch-orchestration/scope-finalize-commit.ts` owns exact finalize reports, serialized support reuse/invalidation/commit, post-finalize identity/patch recovery, and the final dataset handoff. `scripts/lib/batch-orchestration/cli-bounded-batch-runner.ts` owns the public run contract/lock, while `foundry-scope-batch-runner.ts` owns Foundry item projection, family keys, pause/stop, events, and recovery without absorbing LCA semantics. `scripts/commands/bafu-batch-import-run.ts` is a five-line public facade; `bafu-batch-command-runtime.ts` is the explicit 1,700-line composition root for adapter wiring and final report assembly, with its own shrink-only ceiling rather than being mislabeled as a small semantic stage. All behavior navigation should continue into the narrower modules.
+Issue #70 decomposes that stable typed layer by semantic stage. `src/lib/batch-orchestration/post-write-handoff.ts` owns asynchronous commit/report discovery, same-id/version idempotent recovery followed by mandatory readback, bounded read-only verification retry, accepted-difference delegation, and post-write closeout. `src/lib/batch-orchestration/scope-finalize-commit.ts` owns exact finalize reports, serialized support reuse/invalidation/commit, post-finalize identity/patch recovery, and the final dataset handoff. `src/lib/batch-orchestration/cli-bounded-batch-runner.ts` owns the public run contract/lock, while `foundry-scope-batch-runner.ts` owns Foundry item projection, family keys, pause/stop, events, and recovery without absorbing LCA semantics. `src/commands/bafu-batch-import-run.ts` is a five-line public facade; `bafu-batch-command-runtime.ts` is the explicit 1,700-line composition root for adapter wiring and final report assembly, with its own shrink-only ceiling rather than being mislabeled as a small semantic stage. All behavior navigation should continue into the narrower modules.
 
 Issue #74 removes the generic library scope runner's raw-argv and fake-parallel contracts. The retained `commit_command` and `verify_command` scope fields now contain published artifact-bound CommandSpecs; arrays, malformed specs, empty bindings, SHA/byte drift, and display drift cannot execute. The installed CLI package fingerprint, full scope bytes, spec SHAs, policy, exclusivity, and concurrency enter the public locked batch contract. Independent scopes execute concurrently, failed mutations run once, pause/stop remain CLI-engine policy, and checkpoint/report output stays in input order. `foundry-command-spec.ts` is now a one-line public CLI re-export, eliminating 367 duplicated lines.
 
@@ -297,20 +109,6 @@ Issue #80 makes post-finalize recovery reports truthful to executed authority. A
 Issue #81 aligns process and batch lost-success recovery through `same-identity-commit-recovery.ts`. Recovery requires explicit database code `23505` plus exact same-id/version conflict semantics; text-only, mixed, malformed, or incomplete evidence fails closed. Neither orchestration path replays a commit. The outcome remains `readback_recovery_pending` until the existing content-bound verifier proves exact owner, state, identity, version, payload, and root closure; every mismatch, unexpected row, missing report, or exhausted readback blocks closeout.
 
 Issue #83 removes the location queue TOCTOU inside batch scope preparation. The task-produced queue is resolved once and bound as `{ path, bytes, sha256 }`; both suggestion and apply use that path. A missing queue, length change, same-length content replacement, or relative-path drift after suggestion yields an expected/observed blocker before apply. Stable-input stage order, report/ledger/help/Golden bytes, classification/location outcomes, and remote authority remain unchanged.
-
-Wave 26 migrates four adapter/tool boundaries. `tidas-adapter.ts` retains executable/config precedence, controlled script argv/env, operation/version/asset reports, batch document hashes and atomic rollback. `post-authoring-finalize-utils.ts` retains rewrite discovery, identity reuse, payload-freshness hashes, external-reference and finalize order. `check-tidas-cutover.ts` retains authoritative Git inventory and JSON/exit behavior; `foundry-golden-diff.ts` retains non-HEAD merge-base selection, cross-platform path/argv normalization and Node-native comparison. Inventory moves 89→85 without changing help, profiles, Worldsteel, Date.parse or remote-write authority.
-
-Wave 26 migrates four algorithmic command owners as four RED/GREEN families. `authoring-plan.ts` preserves phase and row ordering, source/task lineage, content hashes, exact plan artifacts and native input failures. `bundle-sample-rows.ts` preserves seeded selection, row-type/location order and canonical scale fail-close. `incremental-change-set.ts` preserves three-way merge, dependency activation/hold isolation, terminal hash-chained receipts and CLI handoff candidates. `topology-convergence.ts` preserves occurrence-aware graph composition, F/P/D ordering, cycle-safe retry/hold behavior and separate no-authority handoffs. Exact command help remains unchanged, and inventory moves 89→85 without changing profiles, Worldsteel semantics, Date.parse behavior or remote-write authority.
-
-Wave 26 migrates the three remaining non-entry command owners. `core.ts` preserves runtime-directory order, workflow/storage/environment diagnostics, surface aggregation, route artifacts and exact help. `identity-preflight-run.ts` preserves receipt-bound CLI argv, request/target/binding hashes, positive-only cache reuse, stale or mismatched disk/stdout failure, nonzero exits and only-pending semantics without shell authority. `post-authoring-finalize.ts` preserves identity, unresolved-exchange, source/contact and canonical-support rewrite order; cleanup, preflight, queue, schema, QA, location, curation and dry-run gates; mutation evidence and read-only handoff planning. Inventory moves 79→76 without changing profiles, Worldsteel or Date.parse behavior, or remote-write authority.
-
-Wave 27 migrates all sixteen remaining `test/commands` JavaScript contracts in four RED/GREEN families: core/ledger/support, authoring/decisions, BAFU/library, and offline incremental/topology/capsule planners. The original suite passed 173/173 before renames; `pnpm test:commands` now exposes one `.mts` glob and includes the existing typed account-wrapper cases. Inventory moves 76→60 with no runtime owner, fixture, profile, Worldsteel, Date.parse, or authority change.
-
-Wave 26 migrates the remaining eight shared fixtures in dependency order: the fake-tidas/core executable boundary, pure row builders, full-context/identity/mutation evidence fixtures, and incremental/topology algorithm packages. Characterization preserves exact runtime namespaces and live Node references, JSON/JSONL bytes and hashes, row/graph/dependency order, worktree-local temporary isolation and native filesystem/argument failures. `fake-tidas.ts` has no executable-bit contract and is always launched through `process.execPath` plus argv. Inventory moves 79→71 without reading `.env`, accessing production, or changing command help, profiles, Worldsteel/Date.parse behavior, or remote-write authority.
-
-Wave 26 then migrates all 17 remaining `test/unit/*.test.mjs` suites in four behavior-aligned RED/GREEN families. The original suites pass before rename; migration contracts require native `.mts`, zero explicit escapes/suppressions, typed fixture imports and updated governed paths. Their 65 established cases retain exact source/language/ledger/support rules, capsule/finalize/library behavior, adapter/cutover/incremental/topology algebra, runtime-skill/stage/content policy and native errors. Inventory moves 71→54 without changing production modules, help, profiles, Worldsteel/Date.parse behavior or authority.
-
-Wave 26 then migrates all 19 remaining `test/scenarios/*.test.mjs` suites in four multi-command RED/GREEN families. Their 86 original cases pass before rename; migration contracts require `.mts`, typed fixtures and zero explicit escapes/suppressions. Authoring/curation, identity/reference, mutation/finalize and library/incremental/topology packages retain exact artifacts, order, hashes, native failures, fail-close and no-remote-authority boundaries. Inventory moves 54→35 without changing production behavior, help, profiles, Worldsteel/Date.parse semantics or authority.
 
 Every toolchain or migration change must also pass from a clean arbitrary Git worktree: install with `pnpm install --frozen-lockfile`, then run the canonical lint, typecheck, build, toolchain, and test gates without borrowing sibling checkouts, another worktree's `node_modules`, ignored `.foundry` artifacts, or credentials.
 
@@ -375,13 +173,13 @@ pnpm skills:list
 pnpm workspace:map
 pnpm capabilities:list -- --class tidas-contract-context
 pnpm profiles:list
-node scripts/foundry.ts tidas-handshake
+node src/dev-cli.ts tidas-handshake
 pnpm task:route -- --kind external-dataset-curated-import --dataset-type process --required-gates contract,schema,qa,curation
 pnpm task:route -- --kind source-evidence-dataset-development --dataset-type process --required-gates context,schema,qa,curation
 pnpm skills:source-evidence:use:document
 pnpm skills:source-evidence:use:sci
-node scripts/foundry.ts dataset-incremental-change-set-compose --request <request.json> --out-dir <fresh-output-dir>
-node scripts/foundry.ts dataset-topology-convergence-compose --request <request.json> --out-dir <fresh-output-dir>
+node src/dev-cli.ts dataset-incremental-change-set-compose --request <request.json> --out-dir <fresh-output-dir>
+node src/dev-cli.ts dataset-topology-convergence-compose --request <request.json> --out-dir <fresh-output-dir>
 ```
 
 Tests are organized by behavior layer in `test/README.md`. Use `pnpm test` for the full suite and `pnpm test:unit|test:commands|test:scenarios` for targeted checks; `pnpm test:toolchain` protects the pnpm/TS7 contract. Old incident-numbered test aliases are not part of the maintained surface.
@@ -389,11 +187,11 @@ Tests are organized by behavior layer in `test/README.md`. Use `pnpm test` for t
 Use owner-routed execution commands for dataset work:
 
 ```bash
-node scripts/foundry.ts dataset-tidas-import \
+node src/dev-cli.ts dataset-tidas-import \
   --input ./source-package \
   --output ./.foundry/workspaces/<task-id>/conversion
 
-node scripts/foundry.ts dataset-tidas-validate \
+node src/dev-cli.ts dataset-tidas-validate \
   --rows-file ./rows/processes.jsonl \
   --type process \
   --out-dir ./schema
@@ -413,7 +211,7 @@ pnpm exec tiangong-lca dataset curation-queue verify \
   --type process \
   --json
 
-node scripts/foundry.ts dataset-curation-gate \
+node src/dev-cli.ts dataset-curation-gate \
   --type process \
   --rows-file ./rows/processes.jsonl \
   --schema-report ./schema/report.json \
@@ -439,21 +237,21 @@ For BAFU ready-scope resumes, `dataset-bafu-batch-import-run` supports `--pendin
 Whole-library packaged imports should first deduplicate root TIDAS entities, then project the resulting decisions back to process scopes:
 
 ```bash
-node scripts/foundry.ts dataset-library-index-build \
+node src/dev-cli.ts dataset-library-index-build \
   --source-dir <converted-library-root> \
   --process-bundles-dir <converted-library-root>/process-bundles \
   --out-dir <run-dir>/library-index
 
-node scripts/foundry.ts dataset-library-authoring-plan \
+node src/dev-cli.ts dataset-library-authoring-plan \
   --library-index <run-dir>/library-index \
   --out-dir <run-dir>/authoring-plan
 
-node scripts/foundry.ts dataset-library-decisions-apply \
+node src/dev-cli.ts dataset-library-decisions-apply \
   --library-index <run-dir>/library-index \
   --decisions-dir <run-dir>/decisions \
   --out-dir <run-dir>/library-resolution
 
-node scripts/foundry.ts dataset-process-scope-run \
+node src/dev-cli.ts dataset-process-scope-run \
   --process-bundles-dir <converted-library-root>/process-bundles \
   --library-resolution <run-dir>/library-resolution/library-resolution.json \
   --scope-file <run-dir>/library-resolution/scope-checkpoints.jsonl \
@@ -512,8 +310,11 @@ Installed shared runtime skills such as `.agents/skills/tiangong-kb-sci-search/`
 
 ## Repository Shape
 
-- `scripts/foundry.ts`: small Foundry command surface.
-- `scripts/lib/import-curation.ts`: typed public barrel for generic dataset curation/cleanup owners.
+- `src/dev-cli.ts`: 15-command flat developer diagnostic and offline-planner CLI (`doctor`, `env-check`, `workflow-check`, `storage-check`, `surface-audit`, `workspace-map`, `capabilities-list`, `profiles-list`, `tidas-handshake`, `execution-capsule-admit`, `dataset-incremental-change-set-compose`, `dataset-topology-convergence-compose`, `final-delivery-promote`, `dataset-import-ledger-report`, and `library-batch-import --profile <bafu|uslci|worldsteel>`) plus hierarchical `workspace`/`task` routing.
+- `src/`: public package/facade entries (`package-entry.ts`, `public-api.ts`, `runtime-entry.ts`, `foundry-facade.ts`, `foundry-runtime.ts`), stage command owners (`src/commands/`), and typed domain/runtime libraries (`src/lib/`).
+- `devops/{build,ci,release}/`: repository build/staging, CI shard/Golden/lint-audit, and four-platform release scripts (`0` imports from `src/` into `devops/`).
+- `specs/module-budgets.json`: repo-wide 800-line default module ceiling, shrink-only debt/owner/semantic budgets, and dependency-direction ratchet.
+- `src/lib/import-curation.ts`: typed public barrel for generic dataset curation/cleanup owners.
 - `.agents/shared-skills.json`: configured Foundry-local and shared runtime skills that may appear under `.agents/skills`.
 - `specs/automated-lca-capability-registry.json`: capability routing registry.
 - `specs/import-profiles.json`: data-driven import profiles.

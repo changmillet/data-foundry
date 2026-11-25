@@ -23,9 +23,9 @@ NODE
   exit 0
 fi
 
-if [[ ! -f package.json || ! -f scripts/foundry.ts ]]; then
+if [[ ! -f package.json || ! -f src/dev-cli.ts ]]; then
   node - <<'NODE'
-const message = 'Foundry acceptance Stop hook skipped because package.json or scripts/foundry.ts was not found at the repository root.';
+const message = 'Foundry acceptance Stop hook skipped because package.json or src/dev-cli.ts was not found at the repository root.';
 console.log(JSON.stringify({ systemMessage: message }));
 NODE
   exit 0
@@ -34,7 +34,7 @@ fi
 cat > "${HOOK_EVENT_PATH}" || true
 
 set +e
-pnpm acceptance:check > "${SUMMARY_PATH}" 2>&1
+node --input-type=module -e 'import { createFoundryApplication } from "./src/dev-cli.ts"; import { exitCodeForCommand } from "./src/lib/foundry-command-registry.ts"; const result = await createFoundryApplication({ repoRoot: process.cwd() }).execute("acceptance-check", {}); process.stdout.write(`${JSON.stringify(result, null, 2)}\n`); process.exit(exitCodeForCommand("acceptance-check", result));' > "${SUMMARY_PATH}" 2>&1
 status=$?
 set -e
 

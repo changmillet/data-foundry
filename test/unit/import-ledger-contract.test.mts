@@ -8,7 +8,7 @@ import {
   type CloseoutReport,
   type JsonRecord,
   type JsonValue,
-} from "../../scripts/lib/import-ledger.ts";
+} from "../../src/lib/import-ledger.ts";
 
 const createImportLedgerUtils = createImportLedgerUtilsSource;
 
@@ -537,7 +537,7 @@ test("ledger skip and error envelopes remain exact for absent inputs, ready repo
       status: "help",
       command: "dataset-import-ledger-report",
       usage: [
-        "node scripts/foundry.ts dataset-import-ledger-report --ledger-dir .foundry/workspaces/<task-id>/import-ledger --out-dir .foundry/workspaces/<task-id>/import-ledger",
+        "node src/dev-cli.ts dataset-import-ledger-report --ledger-dir .foundry/workspaces/<task-id>/import-ledger --out-dir .foundry/workspaces/<task-id>/import-ledger",
       ],
       purpose:
         "Build a read-only resume report from append-only ok/blocked/retry import ledgers. It never writes the database.",

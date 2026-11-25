@@ -6,7 +6,7 @@ import {
   sha256Text,
   validateIdentityPreflightExecution,
   validateIdentityPreflightEvidence,
-} from "../../scripts/lib/identity-preflight-proof.ts";
+} from "../../src/lib/identity-preflight-proof.ts";
 import { testAuthIdentityReceipt } from "../fixtures/auth-identity-receipt.ts";
 
 const started = Date.parse("2026-08-25T01:00:00.000Z");

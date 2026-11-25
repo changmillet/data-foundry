@@ -1,20 +1,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import * as facadeModule from "../../scripts/lib/import-curation/internal/curation-gate-workflow.ts";
-import * as artifactInputs from "../../scripts/lib/import-curation/internal/artifact-inputs.ts";
-import * as contextInputs from "../../scripts/lib/import-curation/internal/context-inputs.ts";
-import * as datasetPayload from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
-import * as datasetTypes from "../../scripts/lib/import-curation/internal/dataset-types.ts";
-import * as hashUtils from "../../scripts/lib/import-curation/internal/hash-utils.ts";
-import * as profilesConfig from "../../scripts/lib/import-curation/internal/profiles-config.ts";
-import * as runtimeIo from "../../scripts/lib/import-curation/internal/runtime-io.ts";
-import * as decisionApply from "../../scripts/lib/import-curation/internal/workflow-decision-apply-context.ts";
-import * as identityDecision from "../../scripts/lib/import-curation/internal/workflow-identity-decision-context.ts";
-import * as identityPreflight from "../../scripts/lib/import-curation/internal/workflow-identity-preflight.ts";
-import * as patchCollect from "../../scripts/lib/import-curation/internal/workflow-patch-collect.ts";
-import * as queueContext from "../../scripts/lib/import-curation/internal/workflow-queue-context.ts";
-import * as rowTransform from "../../scripts/lib/import-curation/internal/workflow-row-transform-context.ts";
-import * as semanticActions from "../../scripts/lib/import-curation/internal/workflow-semantic-actions.ts";
+import * as facadeModule from "../../src/lib/import-curation/internal/curation-gate-workflow.ts";
+import * as artifactInputs from "../../src/lib/import-curation/internal/artifact-inputs.ts";
+import * as contextInputs from "../../src/lib/import-curation/internal/context-inputs.ts";
+import * as datasetPayload from "../../src/lib/import-curation/internal/dataset-payload.ts";
+import * as datasetTypes from "../../src/lib/import-curation/internal/dataset-types.ts";
+import * as hashUtils from "../../src/lib/import-curation/internal/hash-utils.ts";
+import * as profilesConfig from "../../src/lib/import-curation/internal/profiles-config.ts";
+import * as runtimeIo from "../../src/lib/import-curation/internal/runtime-io.ts";
+import * as decisionApply from "../../src/lib/import-curation/internal/workflow-decision-apply-context.ts";
+import * as identityDecision from "../../src/lib/import-curation/internal/workflow-identity-decision-context.ts";
+import * as identityPreflight from "../../src/lib/import-curation/internal/workflow-identity-preflight.ts";
+import * as patchCollect from "../../src/lib/import-curation/internal/workflow-patch-collect.ts";
+import * as queueContext from "../../src/lib/import-curation/internal/workflow-queue-context.ts";
+import * as rowTransform from "../../src/lib/import-curation/internal/workflow-row-transform-context.ts";
+import * as semanticActions from "../../src/lib/import-curation/internal/workflow-semantic-actions.ts";
 
 type ModuleNamespace = Record<string, unknown>;
 

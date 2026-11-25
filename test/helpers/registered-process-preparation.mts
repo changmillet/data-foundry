@@ -3,8 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import type { TestContext } from "node:test";
 import { digestFile, workflowFixture } from "../fixtures/foundry-public-workflow.ts";
-import { readRows } from "../../scripts/lib/import-curation/internal/runtime-io.ts";
-import { unwrapDatasetPayload } from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
+import { readRows } from "../../src/lib/import-curation/internal/runtime-io.ts";
+import { unwrapDatasetPayload } from "../../src/lib/import-curation/internal/dataset-payload.ts";
 import { supportFlowPropertyRow, supportUnitGroupRow } from "../fixtures/support-row-builders.ts";
 
 type Json = Record<string, unknown>;

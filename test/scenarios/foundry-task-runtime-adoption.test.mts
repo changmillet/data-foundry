@@ -7,29 +7,29 @@ import test, { before, after, type TestContext } from "node:test";
 import { pathToFileURL } from "node:url";
 import { copyTrustedRuntimeManifestBytes, describeCliRuntime } from "@tiangong-lca/cli/runtime";
 import { spawn, spawnSync } from "node:child_process";
-import { createFoundryFacade } from "../../scripts/foundry-facade.ts";
-import { createFoundryRuntimeAdoptionQualification } from "../../scripts/public-api.ts";
+import { createFoundryFacade } from "../../src/foundry-facade.ts";
+import { createFoundryRuntimeAdoptionQualification } from "../../src/public-api.ts";
 import {
   createFoundryPackageDescriptor,
   captureFoundryPackageFile,
-} from "../../scripts/lib/foundry-package-contract.ts";
+} from "../../src/lib/foundry-package-contract.ts";
 import {
   captureFoundryInput,
   createFoundryRuntimeContext,
-} from "../../scripts/lib/foundry-runtime-context.ts";
-import { createFoundryRuntime } from "../../scripts/foundry-runtime.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
+import { createFoundryRuntime } from "../../src/foundry-runtime.ts";
 import {
   currentAdoptionRuntime,
   readFoundryTaskRuntimeAdoptionChain,
   adoptionSuccessorPath,
-} from "../../scripts/lib/foundry-task-runtime-adoption.ts";
+} from "../../src/lib/foundry-task-runtime-adoption.ts";
 import { workspaceManifestFixture } from "../helpers/foundry-runtime-manifest.mts";
-import { bytes, digest } from "../../scripts/lib/foundry-task-io.ts";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
+import { bytes, digest } from "../../src/lib/foundry-task-io.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
 import { workflowFixture } from "../fixtures/foundry-public-workflow.ts";
-import { runFoundryPublicCommand } from "../../scripts/runtime-entry.ts";
+import { runFoundryPublicCommand } from "../../src/runtime-entry.ts";
 import { copyCliProductionClosure } from "../helpers/managed-adoption-fixture.mts";
-import { runFoundryTaskOperation } from "../../scripts/lib/foundry-task-store.ts";
+import { runFoundryTaskOperation } from "../../src/lib/foundry-task-store.ts";
 
 // Build once in a test-owned root: the package-consumer scenario rebuilds the repo's stage concurrently.
 let buildRoot: string;
@@ -39,7 +39,8 @@ before(async () => {
   buildRoot = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "foundry-adoption-build-")));
   const repo = path.resolve(import.meta.dirname, "../..");
   for (const selected of [
-    "scripts",
+    "src",
+    "devops",
     "specs",
     "docs",
     "package.json",
@@ -56,7 +57,7 @@ before(async () => {
   );
   const built = spawnSync(
     process.execPath,
-    [path.join(buildRoot, "scripts/build-foundry-package.ts")],
+    [path.join(buildRoot, "devops/build/build-foundry-package.ts")],
     { cwd: buildRoot, encoding: "utf8" },
   );
   assert.equal(built.status, 0, built.stderr || built.stdout);
@@ -70,7 +71,7 @@ before(async () => {
       1,
       "The initial successor must own its retained CLI payload independently of the pnpm store",
     );
-  moduleUrl = pathToFileURL(path.join(packageRoot, "package-dist/scripts/package-entry.js")).href;
+  moduleUrl = pathToFileURL(path.join(packageRoot, "package-dist/src/package-entry.js")).href;
 });
 after(() => {
   if (buildRoot) fs.rmSync(buildRoot, { recursive: true, force: true });
@@ -166,10 +167,10 @@ async function fixture(t: TestContext, sameSummary = false) {
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const oldRoot = path.join(root, "old-package");
   fs.cpSync(packageRoot, oldRoot, { recursive: true });
-  const oldEntry = path.join(oldRoot, "package-dist/scripts/package-entry.js");
+  const oldEntry = path.join(oldRoot, "package-dist/src/package-entry.js");
   fs.appendFileSync(
     sameSummary
-      ? path.join(oldRoot, "package-dist/scripts/lib/foundry-task-runtime-adoption.js")
+      ? path.join(oldRoot, "package-dist/src/lib/foundry-task-runtime-adoption.js")
       : oldEntry,
     "\n// immutable earlier package fixture\n",
   );
@@ -373,10 +374,10 @@ function nextRuntime(
 ) {
   const runtimeRoot = path.join(f.root, label);
   fs.cpSync(previous.runtimeRoot, runtimeRoot, { recursive: true });
-  const entry = path.join(runtimeRoot, "package-dist/scripts/package-entry.js");
+  const entry = path.join(runtimeRoot, "package-dist/src/package-entry.js");
   fs.appendFileSync(
     sameSummary
-      ? path.join(runtimeRoot, "package-dist/scripts/lib/foundry-task-runtime-adoption.js")
+      ? path.join(runtimeRoot, "package-dist/src/lib/foundry-task-runtime-adoption.js")
       : entry,
     `\n// exact successor fixture ${label}\n`,
   );
@@ -430,7 +431,7 @@ function nextRuntime(
   const selection = {
     ...f.selection,
     original_entry: captureFoundryInput(
-      path.join(previous.runtimeRoot, "package-dist/scripts/package-entry.js"),
+      path.join(previous.runtimeRoot, "package-dist/src/package-entry.js"),
     ),
     original_descriptor: captureFoundryInput(
       path.join(previous.runtimeRoot, "package-dist/assets/foundry-package-descriptor.json"),
@@ -774,7 +775,7 @@ test("historical receipt, immutable successor link and retained installed bytes 
   for (const file of [
     path.join(f.taskRoot, "runtime-adoptions", `${first.plan_sha256}.json`),
     adoptionSuccessorPath(f.context, String(first.plan_sha256)),
-    path.join(second.context.runtimeRoot, "package-dist/scripts/package-entry.js"),
+    path.join(second.context.runtimeRoot, "package-dist/src/package-entry.js"),
     path.join(second.context.runtimeRoot, "node_modules/@tiangong-lca/cli/package.json"),
   ]) {
     const original = fs.readFileSync(file);
@@ -1056,8 +1057,8 @@ test("qualified but unselected Toolkit is refused before adoption and during con
 
 test("installed public API host adopts without private context and returns the same-task continuation", async (t) => {
   const f = await fixture(t);
-  const apiUrl = pathToFileURL(path.join(packageRoot, "package-dist/scripts/public-api.js")).href;
-  const installed = (await import(apiUrl)) as typeof import("../../scripts/public-api.ts");
+  const apiUrl = pathToFileURL(path.join(packageRoot, "package-dist/src/public-api.js")).href;
+  const installed = (await import(apiUrl)) as typeof import("../../src/public-api.ts");
   const qualificationBytes = Buffer.from(JSON.stringify(f.q));
   const manifestBytes = copyTrustedRuntimeManifestBytes(f.options.workspaceAccess.manifest);
   const facade = installed.createFoundryFacade({
@@ -1157,3 +1158,207 @@ for (const changed of ["assessment", "rows", "producer-receipt", "producer-plan"
     assert.equal(replanned.status, "blocked", "drift cannot become a new accepted preimage");
   });
 }
+
+test("cross-version predecessor package at package-dist/scripts/package-entry.js adopts cleanly to package-dist/src/package-entry.js", async (t) => {
+  const root = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), "foundry-cross-layout-adoption-")),
+  );
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const oldRoot = path.join(root, "legacy-layout-package");
+  fs.cpSync(packageRoot, oldRoot, { recursive: true });
+  fs.renameSync(path.join(oldRoot, "package-dist/src"), path.join(oldRoot, "package-dist/scripts"));
+  const oldEntry = path.join(oldRoot, "package-dist/scripts/package-entry.js");
+  fs.appendFileSync(oldEntry, "\n// predecessor package-dist/scripts layout\n");
+  const oldContractJs = path.join(oldRoot, "package-dist/scripts/lib/foundry-package-contract.js");
+  fs.writeFileSync(
+    oldContractJs,
+    fs.readFileSync(oldContractJs, "utf8").replaceAll("package-dist/src/", "package-dist/scripts/"),
+  );
+  const oldPkgFile = path.join(oldRoot, "package.json");
+  const oldPkgText = fs
+    .readFileSync(oldPkgFile, "utf8")
+    .replaceAll("package-dist/src/", "package-dist/scripts/");
+  fs.writeFileSync(oldPkgFile, oldPkgText);
+
+  const descriptorFile = path.join(oldRoot, "package-dist/assets/foundry-package-descriptor.json");
+  const currentDescriptor = JSON.parse(fs.readFileSync(descriptorFile, "utf8")) as {
+    schema: string;
+    package: Record<string, unknown>;
+    runtime: Record<string, unknown>;
+    files: Array<{ path: string }>;
+  };
+  const legacyFiles = currentDescriptor.files
+    .map((fact) =>
+      captureFoundryPackageFile(
+        oldRoot,
+        fact.path.replace(/^package-dist\/src\//u, "package-dist/scripts/"),
+      ),
+    )
+    .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+  json(descriptorFile, {
+    schema: currentDescriptor.schema,
+    package: {
+      ...currentDescriptor.package,
+      bin: "package-dist/scripts/package-entry.js",
+      public_api: "package-dist/scripts/public-api.js",
+      types: "package-dist/scripts/public-api.d.ts",
+    },
+    runtime: currentDescriptor.runtime,
+    files_sha256: sha256Json(legacyFiles),
+    files: legacyFiles,
+  });
+
+  const cli = describeCliRuntime();
+  const expectation = {
+    schema: "tiangong-lca.cli-runtime-expectation.v1",
+    package_version: cli.package.version,
+    platform: cli.platform,
+    content_sha256: cli.content_sha256,
+    node_version: cli.node.version,
+    node_sha256: cli.node.sha256,
+  };
+  const manifest = workspaceManifestFixture({
+    write: ["migration-adoption-v1", "registered-tasks-v2"],
+  });
+  const oldManifest = path.join(root, "old-manifest.json"),
+    newManifest = path.join(root, "new-manifest.json");
+  fs.writeFileSync(oldManifest, copyTrustedRuntimeManifestBytes(manifest));
+  fs.writeFileSync(newManifest, copyTrustedRuntimeManifestBytes(manifest));
+  const workspace = path.join(root, "workspace"),
+    cacheBase = path.join(root, "cache");
+  const runtimeSelection = workflowFixture(t).runtimeSelection;
+  const options = {
+    moduleUrl,
+    workspace,
+    cacheBase,
+    runtimeSelection,
+    workspaceAccess: { manifest, access: "write" as const },
+  };
+  const oldApiUrl = pathToFileURL(path.join(oldRoot, "package-dist/scripts/public-api.js")).href;
+  const oldInstalled = (await import(oldApiUrl)) as typeof import("../../src/public-api.ts");
+  const manifestBytes = copyTrustedRuntimeManifestBytes(manifest);
+  const oldFacade = oldInstalled.createFoundryFacade({
+    workspace,
+    cacheBase,
+    runtimeSelection,
+    workspaceAccess: oldInstalled.createFoundryWorkspaceAccess({
+      manifestBytes,
+      expectedSha256: digest(manifestBytes),
+      access: "write",
+    }),
+  });
+  assert.equal(oldFacade.initialize().status, "ready");
+  const seed = path.join(root, "seed.json");
+  json(seed, {
+    rows: [
+      {
+        id: "22222222-2222-4222-8222-222222222222",
+        version: "00.00.001",
+        json: flowRow("22222222-2222-4222-8222-222222222222"),
+      },
+    ],
+  });
+  const spec = path.join(root, "task.json");
+  json(spec, {
+    schema: "tiangong-foundry.task-start.v1",
+    request_id: "cross-layout-original-task",
+    actor_id: "original-writer",
+    lane: "source-evidence-dataset-development",
+    profile_id: "generic",
+    target_entities: ["flow"],
+    sources: [{ path: seed }],
+    seed: { path: seed },
+    account_intent: null,
+    preparation: null,
+  });
+  const started = await oldFacade.start({ specFile: spec });
+  assert.equal(started.status, "ready", JSON.stringify(started));
+  const invocation = { taskId: started.task_id!, actorId: "original-writer" };
+  const context = createFoundryRuntimeContext({
+    ...options,
+    ...invocation,
+    inputs: [captureFoundryInput(seed)],
+  });
+  const registrationPath = path.join(
+    workspace,
+    ".foundry/state/task-registrations",
+    `${invocation.taskId}.json`,
+  );
+  const registration = JSON.parse(fs.readFileSync(registrationPath, "utf8")) as {
+    job: { runtime_identity: unknown };
+  };
+  const report = path.join(root, "independent-report.json"),
+    authorization = path.join(root, "authorization.json"),
+    handoff = path.join(root, "writer-stopped.json"),
+    oldTidas = path.join(root, "old-tidas"),
+    newTidas = runtimeSelection.tidasExecutable;
+  json(report, { result: "reviewed cross-layout fixture", boundary: "synthetic only" });
+  json(authorization, { scope: "test local cross-layout adoption only" });
+  json(handoff, { writer: invocation.actorId, stopped: true });
+  fs.copyFileSync(newTidas, oldTidas);
+  const q = {
+    schema: "tiangong-foundry.runtime-adoption-qualification.v1",
+    original_descriptor_sha256: captureFoundryInput(descriptorFile).sha256,
+    successor_descriptor_sha256: captureFoundryInput(
+      path.join(packageRoot, "package-dist/assets/foundry-package-descriptor.json"),
+    ).sha256,
+    original_runtime: registration.job.runtime_identity,
+    successor_runtime: currentAdoptionRuntime(context),
+    original_manifest_sha256: captureFoundryInput(oldManifest).sha256,
+    successor_manifest_sha256: captureFoundryInput(newManifest).sha256,
+    original_cli: { expectation, files: cli.files },
+    successor_cli: { expectation, files: cli.files },
+    tidas: [captureFoundryInput(oldTidas), captureFoundryInput(newTidas)],
+    reviewer: "independent-fixture-reviewer",
+    evidence: [captureFoundryInput(report)],
+    allowed_changes: ["foundry", "cli"],
+    runtime_manifests: [captureFoundryInput(oldManifest), captureFoundryInput(newManifest)],
+  };
+  const qBytes = Buffer.from(JSON.stringify(q));
+  const successor = createFoundryFacade({
+    ...options,
+    runtimeAdoptionQualification: createFoundryRuntimeAdoptionQualification({
+      bytes: qBytes,
+      expectedSha256: digest(qBytes),
+    }),
+  });
+  const selection = {
+    schema: "tiangong-foundry.task-runtime-compatibility-selection.v1",
+    scope: [
+      {
+        task_id: invocation.taskId,
+        registration_sha256: captureFoundryInput(registrationPath).sha256,
+      },
+    ],
+    original_entry: captureFoundryInput(oldEntry),
+    original_descriptor: captureFoundryInput(descriptorFile),
+    original_runtime: registration.job.runtime_identity,
+    successor_runtime: currentAdoptionRuntime(context),
+    qualification: q,
+    authorization: captureFoundryInput(authorization),
+    writer_handoff: {
+      schema: "tiangong-foundry.runtime-adoption-handoff.v1",
+      task_id: invocation.taskId,
+      actor_id: invocation.actorId,
+      registration_sha256: captureFoundryInput(registrationPath).sha256,
+      writer_stopped: true,
+      evidence: captureFoundryInput(handoff),
+    },
+  };
+  const planned = await successor.adoptTaskRuntime({ ...invocation, mode: "plan", selection });
+  assert.equal(planned.status, "ready", JSON.stringify(planned));
+  const planArtifact = planned.artifacts[0];
+  assert.equal(planArtifact.kind, "inline");
+  const applied = await successor.adoptTaskRuntime({
+    ...invocation,
+    mode: "apply",
+    plan: planArtifact.kind === "inline" ? planArtifact.value : null,
+  });
+  assert.equal(applied.status, "completed", JSON.stringify(applied));
+  const audited = await successor.adoptTaskRuntime({ ...invocation, mode: "audit" });
+  assert.equal(audited.status, "completed", JSON.stringify(audited));
+  assert.notEqual((await oldFacade.status(invocation)).status, "ready");
+  const successorStatus = await successor.status(invocation);
+  assert.equal(successorStatus.status, "ready", JSON.stringify(successorStatus));
+  assert.equal(successorStatus.task_id, invocation.taskId);
+});

@@ -5,11 +5,11 @@ import {
   buildEdgeSupportPlan,
   isFoundryEdgeDraftType,
   verifyEdgeSupportPlan,
-} from "../../scripts/lib/foundry-edge-support-plan.ts";
+} from "../../src/lib/foundry-edge-support-plan.ts";
 import {
   dispatchFoundryEdgeSupport,
   verifyFoundryEdgeSupport,
-} from "../../scripts/lib/foundry-edge-support.ts";
+} from "../../src/lib/foundry-edge-support.ts";
 import { testAuthIdentityReceipt } from "../fixtures/auth-identity-receipt.ts";
 
 const receipt = testAuthIdentityReceipt();

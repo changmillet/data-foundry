@@ -4,7 +4,10 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-const entry = path.resolve(import.meta.dirname, "../../scripts/release-aggregate-runtime.ts");
+const entry = path.resolve(
+  import.meta.dirname,
+  "../../devops/release/release-aggregate-runtime.ts",
+);
 test("runtime aggregation exposes bounded inputs without source or publication overrides", () => {
   const run = (args: string[]) =>
     spawnSync(process.execPath, [entry, ...args], {

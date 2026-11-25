@@ -12,12 +12,12 @@ import {
   type IdentityPatchJsonRecord,
   type IdentityPatchStageAdapter,
   type IdentityPatchStageResult,
-} from "../../scripts/lib/batch-orchestration/identity-patch-stage.ts";
+} from "../../src/lib/batch-orchestration/identity-patch-stage.ts";
 import { repoRoot } from "../fixtures/foundry-core.ts";
 
-const ownerRelativePath = "scripts/commands/bafu-batch-import-run.ts";
-const runtimeRelativePath = "scripts/lib/batch-orchestration/bafu-batch-command-runtime.ts";
-const stageRelativePath = "scripts/lib/batch-orchestration/identity-patch-stage.ts";
+const ownerRelativePath = "src/commands/bafu-batch-import-run.ts";
+const runtimeRelativePath = "src/lib/batch-orchestration/bafu-batch-command-runtime.ts";
+const stageRelativePath = "src/lib/batch-orchestration/identity-patch-stage.ts";
 const baselineOwnerLines = 3148;
 
 interface StageHarness {

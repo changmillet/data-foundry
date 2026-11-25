@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import * as patchCollect from "../../scripts/lib/import-curation/internal/workflow-patch-collect.ts";
+import * as patchCollect from "../../src/lib/import-curation/internal/workflow-patch-collect.ts";
 
 type JsonRecord = Record<string, unknown>;
 

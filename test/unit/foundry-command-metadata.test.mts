@@ -7,12 +7,16 @@ import {
   commandMetadata,
   commandMetadataEntries,
   commandMetadataFor,
-} from "../../scripts/lib/foundry-command-metadata.ts";
+  internalStageMetadata,
+  internalStageMetadataEntries,
+  internalStageMetadataFor,
+} from "../../src/lib/foundry-command-metadata.ts";
 import {
   datasetPolicyCommands,
+  internalStageCommands,
   knownCommands,
   publicCommands,
-} from "../../scripts/lib/foundry-command-registry.ts";
+} from "../../src/lib/foundry-command-registry.ts";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 const allowedCategories = new Set(commandCategories);
@@ -46,10 +50,22 @@ function readOwnerClosure(filePath: string): string {
   return `${source}\n${readRepoFile(target)}`;
 }
 
-test("foundry command metadata covers every registered command", () => {
+test("foundry command metadata covers every registered command and internal stage", () => {
   const metadataCommands = Object.keys(commandMetadata).sort();
   assert.deepEqual(metadataCommands, [...knownCommands].sort());
   assert.equal(commandMetadataEntries().length, knownCommands.length);
+
+  const stageCommands = Object.keys(internalStageMetadata).sort();
+  assert.deepEqual(stageCommands, [...internalStageCommands].sort());
+  assert.equal(internalStageMetadataEntries().length, internalStageCommands.length);
+  for (const entry of internalStageMetadataEntries()) {
+    assert.ok(repoFileExists(entry.ownerModule), `${entry.command} stage owner missing`);
+    assert.deepEqual(entry.navigationPath, [
+      "src/dev-cli.ts",
+      "src/lib/foundry-cli.ts",
+      entry.ownerModule,
+    ]);
+  }
 });
 
 test("metadata entries preserve declared order and exact command lookup", () => {
@@ -93,7 +109,7 @@ test("foundry command metadata is navigable and evidence backed", () => {
     assert.ok(entry.ownerExport, `${entry.command} is missing ownerExport`);
     assert.deepEqual(
       entry.navigationPath,
-      ["scripts/foundry.ts", "scripts/lib/foundry-cli.ts", entry.ownerModule],
+      ["src/dev-cli.ts", "src/lib/foundry-cli.ts", entry.ownerModule],
       `${entry.command} navigation path should be entrypoint -> dispatcher -> owner`,
     );
     assert.ok(
@@ -127,7 +143,7 @@ test("foundry command metadata is navigable and evidence backed", () => {
 });
 
 test("metadata preserves exact owner, artifact, workflow, and key-test schemas", () => {
-  assert.deepEqual(commandCategories, ["public", "workflow-internal", "cli-wrapper"]);
+  assert.deepEqual(commandCategories, ["public", "workflow-internal"]);
   for (const entry of commandMetadataEntries() as MetadataEntryWithCommand[]) {
     assert.deepEqual(
       Object.keys(entry)
@@ -170,11 +186,11 @@ test("metadata preserves exact owner, artifact, workflow, and key-test schemas",
         case "command-smoke":
           assert.deepEqual(Object.keys(keyTest).sort(), ["command", "kind"]);
           assert.ok(keyTest.command);
-          assert.match(keyTest.command, /^node scripts\/foundry\.ts /u);
+          assert.match(keyTest.command, /^node src\/dev-cli\.ts /u);
           break;
         case "golden-diff":
           assert.deepEqual(Object.keys(keyTest).sort(), ["kind", "path"]);
-          assert.equal(keyTest.path, "scripts/foundry-golden-diff.ts");
+          assert.equal(keyTest.path, "devops/ci/foundry-golden-diff.ts");
           break;
         case "node-test":
           assert.deepEqual(Object.keys(keyTest).sort(), ["assertion", "kind", "path"]);
@@ -193,13 +209,13 @@ test("public command implementation paths are at most two jumps from the CLI ent
     const pathLength = metadataByCommand[command].navigationPath.length;
     assert.ok(
       pathLength <= 3,
-      `${command} should be reachable as foundry.mjs -> foundry-cli.ts -> owner`,
+      `${command} should be reachable as dev-cli.ts -> foundry-cli.ts -> owner`,
     );
   }
 });
 
 test("command owners do not depend on removed compatibility modules", () => {
-  for (const entry of commandMetadataEntries()) {
+  for (const entry of [...commandMetadataEntries(), ...internalStageMetadataEntries()]) {
     const source = readRepoFile(entry.ownerModule);
     assert.equal(
       source.includes("legacy-implementation.mjs"),
@@ -210,14 +226,16 @@ test("command owners do not depend on removed compatibility modules", () => {
 });
 
 test("commit handoff metadata declares authoritative CommandSpec and final-row binding evidence", () => {
-  const handoff = metadataByCommand["dataset-commit-handoff-plan"];
+  const handoff = internalStageMetadataFor("dataset-commit-handoff-plan")!;
+  assert.ok(handoff);
   assert.ok(handoff.outputs.some((output) => /CommandSpec/u.test(output)));
   assert.ok(handoff.outputs.some((output) => /final rows.*bytes.*SHA-256/iu.test(output)));
   assert.ok(
     handoff.keyTests.some(
       (keyTest) =>
+        keyTest.kind === "node-test" &&
         keyTest.path === "test/unit/foundry-command-spec.test.mts" &&
-        /artifact byte drift/iu.test(keyTest.assertion ?? ""),
+        /artifact byte drift/iu.test(keyTest.assertion),
     ),
   );
 });

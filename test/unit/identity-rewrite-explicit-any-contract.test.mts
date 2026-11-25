@@ -20,7 +20,7 @@ type OxlintReport = {
 };
 
 const identityRewriteTargets = [
-  "scripts/lib/identity-reference-rewrite-utils.ts",
+  "src/lib/identity-reference-rewrite-utils.ts",
   "test/unit/evidence-decision-leaves.test.mts",
 ] as const;
 

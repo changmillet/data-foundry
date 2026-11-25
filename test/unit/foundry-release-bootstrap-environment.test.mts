@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import os from "node:os";
 import test from "node:test";
-import { createFoundryBootstrapEnvironment } from "../../scripts/lib/foundry-release-bootstrap-qualification.ts";
+import { createFoundryBootstrapEnvironment } from "../../devops/release/foundry-release-bootstrap-qualification.ts";
 
 test("copied bootstrap cannot inherit account credentials, Node hooks or execution-policy overrides", () => {
   const keys = [

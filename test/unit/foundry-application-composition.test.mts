@@ -90,7 +90,7 @@ test("command applications return results without loading env, exiting or sharin
     }
     const result = spawnSync(
       process.execPath,
-      ["--input-type=module", "-e", probe, path.join(repoRoot, "scripts/foundry.ts")],
+      ["--input-type=module", "-e", probe, path.join(repoRoot, "src/dev-cli.ts")],
       { cwd: root, env, encoding: "utf8", timeout: 15_000, maxBuffer: 512 * 1024 },
     );
     assert.equal(result.status, 0, result.stderr);

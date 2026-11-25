@@ -8,8 +8,8 @@ import { fileURLToPath } from "node:url";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
-const typedPath = path.join(repoRoot, "scripts/commands/bundle-sample-rows.ts");
-const legacyPath = path.join(repoRoot, "scripts/commands/bundle-sample-rows.mjs");
+const typedPath = path.join(repoRoot, "src/commands/bundle-sample-rows.ts");
+const legacyPath = path.join(repoRoot, "src/commands/bundle-sample-rows.mjs");
 
 function readRepoFile(relativePath: string): string {
   return fs.readFileSync(path.join(repoRoot, relativePath), "utf8");
@@ -28,7 +28,7 @@ test("bundle-sample command exists only as native TypeScript", () => {
 });
 
 test("bundle-sample consumers and metadata target the typed factory", () => {
-  for (const consumer of ["scripts/foundry.ts", "scripts/lib/foundry-command-metadata.ts"]) {
+  for (const consumer of ["src/dev-cli.ts", "src/lib/foundry-command-metadata.ts"]) {
     const source = readRepoFile(consumer);
     assert.match(source, /bundle-sample-rows\.ts/u, consumer);
     assert.doesNotMatch(source, /bundle-sample-rows\.mjs/u, consumer);
@@ -38,12 +38,12 @@ test("bundle-sample consumers and metadata target the typed factory", () => {
 test("bundle-sample help report retains exact bytes", () => {
   const output = execFileSync(
     process.execPath,
-    ["scripts/foundry.ts", "dataset-bundle-sample-rows", "--help"],
+    ["test/fixtures/run-internal-stage.ts", "dataset-bundle-sample-rows", "--help"],
     { cwd: repoRoot, encoding: "utf8" },
   );
-  assert.equal(Buffer.byteLength(output, "utf8"), 4924);
+  assert.equal(Buffer.byteLength(output, "utf8"), 4920);
   assert.equal(
     createHash("sha256").update(output).digest("hex"),
-    "3a323fb07d2ab82ab267cd923432990496db5877f6b0b97ad99123a992b3b8c7",
+    "e233f1c56025bc22e12a4a76056b1de1862c2e1a4a73ff2528bc25fa02166914",
   );
 });

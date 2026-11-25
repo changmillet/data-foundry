@@ -17,6 +17,8 @@ const retainedSource = "b57ae1166759ee2c490eff9b79b74dfad08a5b58";
 const repo = path.resolve(import.meta.dirname, "../..");
 const canonicalTmpDir = preferredHostTempRoot();
 const sharedRetainedStoreDir = path.join(canonicalTmpDir, "foundry-retained-pnpm-store-v1");
+const sharedRetainedCorepackHome = path.join(canonicalTmpDir, "foundry-retained-corepack-v1");
+const storePopulatedMarker = path.join(sharedRetainedStoreDir, `populated-${retainedSource}.json`);
 
 export function runRetainedFoundryTests(
   t: TestContext,
@@ -34,6 +36,7 @@ export function runRetainedFoundryTests(
   const env = isolatedEnvironment(path.join(root, "home"), {
     CI: "true",
     COREPACK_ENABLE_NETWORK: "1",
+    COREPACK_HOME: sharedRetainedCorepackHome,
     TMP: childTmp,
     TEMP: childTmp,
     TMPDIR: childTmp,
@@ -57,16 +60,34 @@ export function runRetainedFoundryTests(
     );
     assert.equal(checkout.status, 0, checkout.stderr);
     fs.mkdirSync(sharedRetainedStoreDir, { recursive: true, mode: 0o700 });
-    const releaseStoreLock = acquireDirectoryLockSync(`${sharedRetainedStoreDir}.lock`, 300_000);
+    fs.mkdirSync(sharedRetainedCorepackHome, { recursive: true, mode: 0o700 });
+    const releaseStoreLock = acquireDirectoryLockSync(`${sharedRetainedStoreDir}.lock`, 900_000);
     try {
-      const install = packageManagerCommand(
+      const storeReady = fs.existsSync(storePopulatedMarker);
+      const baseArgs = [
+        "install",
+        "--frozen-lockfile",
+        "--ignore-scripts",
+        "--store-dir",
+        sharedRetainedStoreDir,
+      ];
+      let install = packageManagerCommand(
         "pnpm",
-        ["install", "--frozen-lockfile", "--ignore-scripts", "--store-dir", sharedRetainedStoreDir],
+        storeReady ? [...baseArgs, "--offline"] : baseArgs,
         source,
         env,
         300_000,
       );
+      if (storeReady && install.status !== 0) {
+        install = packageManagerCommand("pnpm", baseArgs, source, env, 300_000);
+      }
       assert.equal(install.status, 0, install.stderr || install.stdout);
+      if (!storeReady) {
+        fs.writeFileSync(
+          storePopulatedMarker,
+          JSON.stringify({ retainedSource, populatedAt: new Date().toISOString() }),
+        );
+      }
     } finally {
       releaseStoreLock();
     }

@@ -103,6 +103,31 @@ export function copyRegularPackageTreeSync(sourceRoot: string, targetRoot: strin
   }
 }
 
+function reclaimDeadOwnerLockSync(lockDir: string): void {
+  const ownerFile = path.join(lockDir, "owner.json");
+  try {
+    const stat = fs.statSync(ownerFile);
+    if (Date.now() - stat.mtimeMs < 5_000) return;
+    const owner = JSON.parse(fs.readFileSync(ownerFile, "utf8")) as { pid?: unknown };
+    if (typeof owner.pid !== "number" || !Number.isInteger(owner.pid) || owner.pid <= 0) return;
+    try {
+      process.kill(owner.pid, 0);
+    } catch (killError) {
+      if ((killError as NodeJS.ErrnoException).code === "ESRCH") {
+        const stalePath = `${lockDir}.stale-${process.pid}-${Date.now()}`;
+        try {
+          fs.renameSync(lockDir, stalePath);
+          fs.rmSync(stalePath, { recursive: true, force: true });
+        } catch {
+          // Another waiter already reclaimed or replaced the stale lock.
+        }
+      }
+    }
+  } catch {
+    // Lock is still being initialized or was just released.
+  }
+}
+
 export function acquireDirectoryLockSync(lockDir: string, timeoutMs = 180_000): () => void {
   const deadline = Date.now() + timeoutMs;
   const spinBuffer = new Int32Array(new SharedArrayBuffer(4));
@@ -118,6 +143,7 @@ export function acquireDirectoryLockSync(lockDir: string, timeoutMs = 180_000): 
       };
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      reclaimDeadOwnerLockSync(lockDir);
       if (Date.now() >= deadline) {
         throw new Error(`Timed out waiting for shared test lock: ${lockDir}`);
       }
@@ -143,6 +169,7 @@ async function acquireDirectoryLockAsync(
       };
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      reclaimDeadOwnerLockSync(lockDir);
       if (Date.now() >= deadline) {
         throw new Error(`Timed out waiting for shared archive lock: ${lockDir}`);
       }
@@ -270,7 +297,7 @@ export function ensureSharedInstalledPreparationTemplate(): InstalledPreparation
         path.join(sourceDir, "devops/build/build-foundry-package.ts"),
       )
         ? path.join(sourceDir, "devops/build/build-foundry-package.ts")
-        : path.join(sourceDir, "scripts/build-foundry-package.ts");
+        : path.join(sourceDir, "devops/build/build-foundry-package.ts");
       const built = command(
         process.execPath,
         [buildScript],

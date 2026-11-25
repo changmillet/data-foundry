@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import * as closureModule from "../../scripts/lib/import-curation/internal/workflow-reference-closure.ts";
+import * as closureModule from "../../src/lib/import-curation/internal/workflow-reference-closure.ts";
 import {
   datasetIdentity,
   identityKey,
-} from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
+} from "../../src/lib/import-curation/internal/dataset-payload.ts";
 
 type JsonRecord = Record<string, unknown>;
 

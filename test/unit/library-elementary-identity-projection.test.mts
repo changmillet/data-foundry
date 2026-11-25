@@ -405,7 +405,7 @@ test("library elementary identity projection freezes exact rows, order, bytes, S
   );
 
   const { projectLibraryElementaryIdentityDecisions } =
-    await import("../../scripts/lib/library-orchestration/identity-preflight-projection.ts");
+    await import("../../src/lib/library-orchestration/identity-preflight-projection.ts");
   const projection = projectLibraryElementaryIdentityDecisions({
     entityRows,
     projectionRows,
@@ -434,7 +434,7 @@ test("library elementary identity projection freezes exact rows, order, bytes, S
 
 test("identity preflight aliases preserve exact precedence, defaults and key bytes", async () => {
   const { identityPreflightArtifactPaths, identityPreflightKey } =
-    await import("../../scripts/lib/library-orchestration/identity-preflight-projection.ts");
+    await import("../../src/lib/library-orchestration/identity-preflight-projection.ts");
   const fakeRoot = path.resolve(path.sep, "repo");
   const resolveRepoPath = (value: unknown): string | null =>
     value ? path.join(fakeRoot, String(value)) : null;

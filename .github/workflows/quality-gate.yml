@@ -68,7 +68,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           FOUNDRY_RESUME_RUN: ${{ inputs.resume_run_id || '' }}
           FOUNDRY_CI_CAN_SEAL: ${{ github.repository == 'tiangong-lca/foundry' && github.repository_id == '1260957221' && github.repository_owner_id == '327771381' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login != 'dependabot[bot]')) }}
-        run: node scripts/ci-plan.ts --github-output
+        run: node devops/ci/ci-plan.ts --github-output
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: ${{ steps.plan.outputs.capsule_name }}
@@ -97,7 +97,7 @@ jobs:
           cache: true
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - id: build
-        run: node scripts/ci-build-package.ts --output "${{ runner.temp }}/foundry-ci-package" --github-output
+        run: node devops/ci/ci-build-package.ts --output "${{ runner.temp }}/foundry-ci-package" --github-output
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: foundry-ci-package
@@ -135,7 +135,7 @@ jobs:
           CI_TEST_INDEX: ${{ matrix.shard }}
           CI_TEST_PLAN: ${{ needs.plan.outputs.test_plan_sha256 }}
           CI_TEST_SOURCE: ${{ needs.plan.outputs.source_sha }}
-        run: node scripts/ci-test-shard.ts --index "$CI_TEST_INDEX" --plan-sha256 "$CI_TEST_PLAN" --source-sha "$CI_TEST_SOURCE" --output "$RUNNER_TEMP/foundry-ci-tests"
+        run: node devops/ci/ci-test-shard.ts --index "$CI_TEST_INDEX" --plan-sha256 "$CI_TEST_PLAN" --source-sha "$CI_TEST_SOURCE" --output "$RUNNER_TEMP/foundry-ci-tests"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
@@ -175,7 +175,7 @@ jobs:
         env:
           CI_TEST_PLAN: ${{ needs.plan.outputs.test_plan_sha256 }}
           CI_TEST_SOURCE: ${{ needs.plan.outputs.source_sha }}
-        run: node scripts/ci-verify-tests.ts --input "$RUNNER_TEMP/foundry-test-shards" --plan-sha256 "$CI_TEST_PLAN" --source-sha "$CI_TEST_SOURCE" --output "$RUNNER_TEMP/foundry-tests.json"
+        run: node devops/ci/ci-verify-tests.ts --input "$RUNNER_TEMP/foundry-test-shards" --plan-sha256 "$CI_TEST_PLAN" --source-sha "$CI_TEST_SOURCE" --output "$RUNNER_TEMP/foundry-tests.json"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: foundry-tests-complete
@@ -206,7 +206,7 @@ jobs:
       - name: Revalidate exact version projection and contracts
         env:
           FOUNDRY_CI_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: node scripts/ci-version-gate.ts
+        run: node devops/ci/ci-version-gate.ts
   quality-gate:
     name: quality-gate (${{ matrix.os }} / ${{ matrix.arch }})
     needs:
@@ -503,8 +503,8 @@ jobs:
           FOUNDRY_SOURCE_PACKAGE_SHA256: ${{ needs.build-package.outputs.package_sha256 }}
           FOUNDRY_SOURCE_PACKAGE_MANIFEST_SHA256: ${{ needs.build-package.outputs.package_manifest_sha256 }}
         run: |-
-          node scripts/ci-collect-qualification.ts
-          node scripts/ci-stage.ts seal --stage source --platform all --directory "${{ runner.temp }}/qualified-source"
+          node devops/ci/ci-collect-qualification.ts
+          node devops/ci/ci-stage.ts seal --stage source --platform all --directory "${{ runner.temp }}/qualified-source"
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8
         with:
           subject-path: ${{ runner.temp }}/qualified-source/receipt.json

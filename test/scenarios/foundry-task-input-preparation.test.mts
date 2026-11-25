@@ -5,7 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { workflowFixture, digestFile } from "../fixtures/foundry-public-workflow.ts";
 import { flowRow } from "../fixtures/row-builders.ts";
-import { runFoundryPublicCommand } from "../../scripts/public-api.ts";
+import { runFoundryPublicCommand } from "../../src/public-api.ts";
 
 test("public input preparation binds question and answer atomically without changing task state", async (t) => {
   const { root, workspace, facade, facadeOptions } = workflowFixture(t);
@@ -108,7 +108,7 @@ test("public input preparation binds question and answer atomically without chan
   const child = spawnSync(
     process.execPath,
     [
-      path.resolve(import.meta.dirname, "../../scripts/foundry.ts"),
+      path.resolve(import.meta.dirname, "../../src/dev-cli.ts"),
       "task",
       "prepare-input",
       "--workspace",

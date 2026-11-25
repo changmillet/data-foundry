@@ -14,7 +14,7 @@ import {
   type RuntimeLaunch,
   type TrustedRuntimeManifest,
 } from "@tiangong-lca/cli/runtime";
-import { captureImmutableComponentFile } from "../../scripts/lib/immutable-digest-cache.ts";
+import { captureImmutableComponentFile } from "../../src/lib/immutable-digest-cache.ts";
 import { workspaceManifestFixture } from "./foundry-runtime-manifest.mts";
 import { writeOrCopyCachedComponentArchive } from "./shared-installed-package-template.mts";
 
@@ -131,7 +131,7 @@ export async function verifyManagedPackageCache(installedPackage: string, root: 
     "application",
     input,
     workspaceManifestFixture({ write: ["registered-tasks-v2"] }),
-    "node_modules/@tiangong-lca/foundry/package-dist/scripts/package-entry.js",
+    "node_modules/@tiangong-lca/foundry/package-dist/src/package-entry.js",
   );
   const oldInput = path.join(root, "older-component-input");
   fs.mkdirSync(oldInput);
@@ -163,8 +163,8 @@ export async function verifyManagedPackageCache(installedPackage: string, root: 
   assert.equal(installed.status, "ready");
   const packageRoot = path.join(installed.components[0].root, "node_modules/@tiangong-lca/foundry");
   const api = (await import(
-    pathToFileURL(path.join(packageRoot, "package-dist/scripts/public-api.js")).href
-  )) as typeof import("../../scripts/public-api.ts");
+    pathToFileURL(path.join(packageRoot, "package-dist/src/public-api.js")).href
+  )) as typeof import("../../src/public-api.ts");
   const access = (manifest: TrustedRuntimeManifest, mode: "read" | "write") =>
     api.createFoundryWorkspaceAccess({
       manifestBytes: copyTrustedRuntimeManifestBytes(manifest),

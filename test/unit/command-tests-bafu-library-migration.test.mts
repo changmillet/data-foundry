@@ -27,7 +27,7 @@ test("BAFU and library command tests exist only as zero-escape TypeScript", () =
 
 test("command metadata targets typed BAFU tests", () => {
   const metadata = fs.readFileSync(
-    path.join(repoRoot, "scripts/lib/foundry-command-metadata.ts"),
+    path.join(repoRoot, "src/lib/foundry-command-metadata.ts"),
     "utf8",
   );
   for (const name of commandTests.filter((candidate) => metadata.includes(candidate))) {

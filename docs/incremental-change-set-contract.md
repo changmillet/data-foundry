@@ -14,7 +14,7 @@ whenToUpdate:
 checkPaths:
   - docs/incremental-change-set-contract.md
   - specs/schemas/incremental-change-set.schema.json
-  - scripts/commands/incremental-change-set.ts
+  - src/commands/incremental-change-set.ts
   - test/unit/incremental-command-migration.test.mts
   - test/fixtures/incremental-change-set-fixtures.ts
   - test/unit/incremental-fixture-migration.test.mts
@@ -40,7 +40,7 @@ The command produces a candidate change set and audit evidence. It never connect
 ## Invocation
 
 ```bash
-node scripts/foundry.ts dataset-incremental-change-set-compose \
+node src/dev-cli.ts dataset-incremental-change-set-compose \
   --request .foundry/workspaces/<task-id>/incremental/request.json \
   --out-dir .foundry/workspaces/<task-id>/incremental/composition-0001
 ```

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseFreshIntentBoundAuthReceipt } from "../../scripts/lib/identity-preflight-proof.ts";
+import { parseFreshIntentBoundAuthReceipt } from "../../src/lib/identity-preflight-proof.ts";
 import { testAuthIdentityReceipt } from "../fixtures/auth-identity-receipt.ts";
 
 const nowMs = Date.parse("2026-09-04T08:00:00.000Z");

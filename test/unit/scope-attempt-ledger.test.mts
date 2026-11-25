@@ -3,8 +3,8 @@ import test from "node:test";
 
 import { createBatchItemContract, type BatchEvent } from "@tiangong-lca/cli/batch";
 
-import { createScopeAttemptLedgerService } from "../../scripts/lib/batch-orchestration/scope-attempt-ledger.ts";
-import { createScopeResumeContract } from "../../scripts/lib/batch-orchestration/scope-resume-contract.ts";
+import { createScopeAttemptLedgerService } from "../../src/lib/batch-orchestration/scope-attempt-ledger.ts";
+import { createScopeResumeContract } from "../../src/lib/batch-orchestration/scope-resume-contract.ts";
 
 type JsonRecord = Record<string, unknown>;
 

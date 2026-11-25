@@ -6,7 +6,7 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { auditTrackedTypeScriptSuppressions } from "../../scripts/check-lint-suppressions.ts";
+import { auditTrackedTypeScriptSuppressions } from "../../devops/ci/check-lint-suppressions.ts";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const oxlintPath = path.join(repoRoot, "node_modules", "oxlint", "bin", "oxlint");

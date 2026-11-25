@@ -9,7 +9,7 @@ import { zipSync } from "fflate";
 import {
   selectFoundryNativeFiles,
   fetchFoundryNativeBytes,
-} from "../../scripts/lib/foundry-release-native.ts";
+} from "../../devops/release/foundry-release-native.ts";
 
 const digest = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 

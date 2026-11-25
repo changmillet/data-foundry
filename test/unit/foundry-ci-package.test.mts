@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   verifyFoundryCiPackageBytes,
   type FoundryCiBuildContext,
-} from "../../scripts/lib/foundry-ci-package.ts";
+} from "../../devops/ci/foundry-ci-package.ts";
 
 const hash = (value: Uint8Array) => createHash("sha256").update(value).digest("hex");
 const context: FoundryCiBuildContext = {
@@ -115,7 +115,7 @@ test("CI package metadata cannot redirect paths or conceal artifact mismatches",
 import {
   selectedFoundryCiPackage,
   materializeVerifiedFoundryCiPackage,
-} from "../../scripts/lib/foundry-ci-package.ts";
+} from "../../devops/ci/foundry-ci-package.ts";
 
 test("CI reuse never falls back after a partial selection or accepts a serialized proof", () => {
   assert.equal(selectedFoundryCiPackage({}), undefined);

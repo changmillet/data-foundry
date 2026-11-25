@@ -4,7 +4,7 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { auditTidasCutover } from "../../scripts/check-tidas-cutover.ts";
+import { auditTidasCutover } from "../../devops/ci/check-tidas-cutover.ts";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 

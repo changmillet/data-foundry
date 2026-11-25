@@ -5,29 +5,49 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+type ForbiddenCrossImport = {
+  from: string;
+  to: string;
+};
+
 type BudgetContract = {
-  schema_version: 1;
+  schema_version: 2;
+  default_max_lines: number;
   owner_target_lines: number;
   semantic_stage_target_lines: number;
   pure_rule_target_lines: number;
   owner_ceiling_lines: Record<string, number>;
   semantic_module_ceiling_lines: Record<string, number>;
+  debt_ceiling_lines: Record<string, number>;
   allowed_upward_imports: Record<string, string[]>;
   allowed_cycles: string[][];
+  forbidden_cross_imports: ForbiddenCrossImport[];
 };
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
-const contractPath = path.join(repoRoot, "specs", "orchestration-module-budgets.json");
+const contractPath = path.join(repoRoot, "specs", "module-budgets.json");
 
 function trackedTypeScriptFiles(): string[] {
-  return execFileSync("git", ["ls-files", "scripts/**/*.ts"], {
-    cwd: repoRoot,
-    encoding: "utf8",
-  })
-    .trim()
-    .split(/\r?\n/u)
-    .filter(Boolean);
+  return execFileSync(
+    "git",
+    [
+      "ls-files",
+      "--cached",
+      "--others",
+      "--exclude-standard",
+      "-z",
+      "src/**/*.ts",
+      "devops/**/*.ts",
+    ],
+    {
+      cwd: repoRoot,
+      encoding: "utf8",
+    },
+  )
+    .split("\0")
+    .filter((file) => Boolean(file) && fs.existsSync(path.join(repoRoot, file)))
+    .sort();
 }
 
 function sourceLineCount(relativePath: string): number {
@@ -37,7 +57,7 @@ function sourceLineCount(relativePath: string): number {
 
 function relativeImports(relativePath: string): string[] {
   const source = fs.readFileSync(path.join(repoRoot, relativePath), "utf8");
-  return [...source.matchAll(/(?:from\s+|import\s*)["'](?<specifier>\.[^"']+)["']/gu)]
+  return [...source.matchAll(/(?:from\s+|import\s*(?:\(\s*)?)["'](?<specifier>\.[^"']+)["']/gu)]
     .map((match) => match.groups?.specifier ?? "")
     .filter(Boolean);
 }
@@ -101,124 +121,104 @@ function stronglyConnectedComponents(graph: Map<string, string[]>): string[][] {
     .sort((left, right) => left.join("\0").localeCompare(right.join("\0")));
 }
 
-test("orchestration owners have an explicit shrink-only line budget", () => {
+test("repo-wide module budgets enforce shrink-only ceilings across src/ and devops/", () => {
+  assert.equal(
+    fs.existsSync(path.join(repoRoot, "specs", "orchestration-module-budgets.json")),
+    false,
+  );
   const contract = JSON.parse(fs.readFileSync(contractPath, "utf8")) as BudgetContract;
-  assert.equal(contract.schema_version, 1);
+  assert.equal(contract.schema_version, 2);
+  assert.equal(contract.default_max_lines, 800);
   assert.equal(contract.owner_target_lines, 500);
   assert.equal(contract.semantic_stage_target_lines, 800);
   assert.equal(contract.pure_rule_target_lines, 1200);
+
   assert.deepEqual(Object.keys(contract.owner_ceiling_lines), [
-    "scripts/commands/library-scope-workflow.ts",
-    "scripts/commands/bafu-leaf-classification-tasks.ts",
-    "scripts/commands/bafu-auto-authoring.ts",
-    "scripts/commands/bafu-process-scope-e2e.ts",
-    "scripts/commands/bafu-batch-import-run.ts",
+    "src/commands/library-scope-workflow.ts",
+    "src/commands/bafu-leaf-classification-tasks.ts",
+    "src/commands/bafu-auto-authoring.ts",
+    "src/commands/bafu-process-scope-e2e.ts",
+    "src/commands/bafu-batch-import-run.ts",
+    "src/commands/library-batch-import.ts",
   ]);
-  for (const [relativePath, ceiling] of Object.entries(contract.owner_ceiling_lines)) {
-    assert.ok(fs.existsSync(path.join(repoRoot, relativePath)), relativePath);
-    assert.ok(
-      Number.isSafeInteger(ceiling) && ceiling > 0,
-      `${relativePath} has an invalid ceiling`,
-    );
-    assert.ok(sourceLineCount(relativePath) <= ceiling, `${relativePath} exceeds ${ceiling} lines`);
+
+  for (const [label, table] of [
+    ["owner_ceiling_lines", contract.owner_ceiling_lines],
+    ["semantic_module_ceiling_lines", contract.semantic_module_ceiling_lines],
+    ["debt_ceiling_lines", contract.debt_ceiling_lines],
+  ] as const) {
+    for (const [relativePath, ceiling] of Object.entries(table)) {
+      assert.ok(
+        fs.existsSync(path.join(repoRoot, relativePath)),
+        `${label}: missing ${relativePath}`,
+      );
+      assert.ok(
+        Number.isSafeInteger(ceiling) && ceiling > 0,
+        `${label}: ${relativePath} has an invalid ceiling`,
+      );
+      if (label === "debt_ceiling_lines") {
+        assert.ok(
+          ceiling > contract.default_max_lines,
+          `${relativePath} is at or below ${contract.default_max_lines} lines and should drop its debt entry`,
+        );
+      }
+      assert.ok(
+        sourceLineCount(relativePath) <= ceiling,
+        `${relativePath} (${sourceLineCount(relativePath)} lines) exceeds ${ceiling} lines`,
+      );
+    }
   }
-  assert.deepEqual(Object.keys(contract.semantic_module_ceiling_lines), [
-    "scripts/lib/bafu-authoring/name-plan.ts",
-    "scripts/lib/bafu-authoring/name-plan-contract.ts",
-    "scripts/lib/bafu-authoring/name-plan-from-parts.ts",
-    "scripts/lib/bafu-authoring/name-plan-overrides.ts",
-    "scripts/lib/bafu-authoring/name-plan-rules.ts",
-    "scripts/lib/bafu-authoring/name-plan-text.ts",
-    "scripts/lib/bafu-authoring/identity-equivalence.ts",
-    "scripts/lib/bafu-authoring/patch-projection.ts",
-    "scripts/lib/bafu-classification/category-map-projection.ts",
-    "scripts/lib/bafu-classification/category-map-report.ts",
-    "scripts/lib/bafu-classification/leaf-repair.ts",
-    "scripts/lib/bafu-classification/schema-repair.ts",
-    "scripts/lib/bafu-classification/task-preparation.ts",
-    "scripts/lib/bafu-orchestration/batch-finalize-stage.ts",
-    "scripts/lib/bafu-orchestration/finalize-recovery-policy.ts",
-    "scripts/lib/bafu-orchestration/identity-decision-carry-forward.ts",
-    "scripts/lib/bafu-orchestration/post-finalize-recovery.ts",
-    "scripts/lib/bafu-orchestration/process-handoff-closeout.ts",
-    "scripts/lib/bafu-orchestration/process-handoff-plan.ts",
-    "scripts/lib/bafu-orchestration/process-handoff.ts",
-    "scripts/lib/bafu-orchestration/process-scope-run.ts",
-    "scripts/lib/bafu-orchestration/process-scope-resume.ts",
-    "scripts/lib/bafu-orchestration/process-scope-runtime.ts",
-    "scripts/lib/bafu-orchestration/process-scope-report.ts",
-    "scripts/lib/batch-orchestration/authoring-task-filter.ts",
-    "scripts/lib/batch-orchestration/bafu-batch-command-runtime.ts",
-    "scripts/lib/batch-orchestration/cli-bounded-batch-runner.ts",
-    "scripts/lib/batch-orchestration/control-artifact-store.ts",
-    "scripts/lib/batch-orchestration/control-receipt-contract.ts",
-    "scripts/lib/batch-orchestration/control-reference-projection.ts",
-    "scripts/lib/batch-orchestration/control-receipt-verification.ts",
-    "scripts/lib/batch-orchestration/foundry-scope-batch-runner.ts",
-    "scripts/lib/batch-orchestration/flow-resume-ledger.ts",
-    "scripts/lib/batch-orchestration/verified-flow-write.ts",
-    "scripts/lib/batch-orchestration/identity-patch-stage.ts",
-    "scripts/lib/batch-orchestration/location-task-queue.ts",
-    "scripts/lib/batch-orchestration/post-write-handoff.ts",
-    "scripts/lib/batch-orchestration/scope-execution-contract.ts",
-    "scripts/lib/batch-orchestration/scope-execution.ts",
-    "scripts/lib/batch-orchestration/scope-finalize-commit.ts",
-    "scripts/lib/batch-orchestration/scope-preparation.ts",
-    "scripts/lib/batch-orchestration/scope-recovery-evidence.ts",
-    "scripts/lib/batch-orchestration/scope-resume-contract.ts",
-    "scripts/lib/batch-orchestration/scope-resume-ledger.ts",
-    "scripts/lib/batch-orchestration/scope-resume-projection.ts",
-    "scripts/lib/batch-orchestration/scope-source-content.ts",
-    "scripts/lib/batch-orchestration/scope-attempt-ledger.ts",
-    "scripts/lib/batch-orchestration/scope-control-retention.ts",
-    "scripts/lib/batch-orchestration/scope-execution-exception.ts",
-    "scripts/lib/batch-orchestration/scope-mutation-recovery.ts",
-    "scripts/lib/batch-orchestration/scope-scratch-policy.ts",
-    "scripts/lib/batch-orchestration/scope-safe-prune.ts",
-    "scripts/lib/batch-orchestration/shared-context-cache-prune.ts",
-    "scripts/lib/batch-orchestration/scope-selection.ts",
-    "scripts/lib/batch-orchestration/support-identity-cache.ts",
-    "scripts/lib/batch-orchestration/universe-coverage.ts",
-    "scripts/lib/batch-orchestration/verified-ledger-projection.ts",
-    "scripts/lib/canonical-description.ts",
-    "scripts/lib/library-orchestration/authoring-plan.ts",
-    "scripts/lib/library-orchestration/command-runtime.ts",
-    "scripts/lib/library-orchestration/decision-apply.ts",
-    "scripts/lib/library-orchestration/entity-projection.ts",
-    "scripts/lib/library-orchestration/elementary-identity.ts",
-    "scripts/lib/library-orchestration/identity-preflight-projection.ts",
-    "scripts/lib/library-orchestration/identity-preflight-runner.ts",
-    "scripts/lib/library-orchestration/index-build.ts",
-    "scripts/lib/library-orchestration/ready-process-scope-runner.ts",
-    "scripts/lib/library-orchestration/ready-scope-command.ts",
-    "scripts/lib/library-orchestration/ready-scope-scheduler.ts",
-    "scripts/lib/same-identity-commit-recovery.ts",
-  ]);
-  for (const [relativePath, ceiling] of Object.entries(contract.semantic_module_ceiling_lines)) {
-    assert.ok(fs.existsSync(path.join(repoRoot, relativePath)), relativePath);
-    assert.ok(sourceLineCount(relativePath) <= ceiling, `${relativePath} exceeds ${ceiling} lines`);
+
+  const trackedFiles = trackedTypeScriptFiles();
+  assert.ok(trackedFiles.some((file) => file.startsWith("src/")));
+  assert.ok(trackedFiles.some((file) => file.startsWith("devops/")));
+  for (const relativePath of trackedFiles) {
+    const ceiling =
+      contract.owner_ceiling_lines[relativePath] ??
+      contract.semantic_module_ceiling_lines[relativePath] ??
+      contract.debt_ceiling_lines[relativePath] ??
+      contract.default_max_lines;
+    const lines = sourceLineCount(relativePath);
+    assert.ok(
+      lines <= ceiling,
+      `${relativePath} (${lines} lines) exceeds module budget ceiling ${ceiling}`,
+    );
   }
 });
 
-test("scripts/lib remains below command owners and the existing authoring SCC is the only cycle", () => {
+test("src/lib remains below command owners, src never imports devops, and authoring SCC is the only cycle", () => {
   const contract = JSON.parse(fs.readFileSync(contractPath, "utf8")) as BudgetContract;
+  assert.deepEqual(contract.forbidden_cross_imports, [{ from: "src/", to: "devops/" }]);
   const trackedFiles = trackedTypeScriptFiles();
   const tracked = new Set(trackedFiles);
   const graph = new Map<string, string[]>();
+  const crossBoundaryViolations: Array<{ from: string; to: string }> = [];
 
   for (const relativePath of trackedFiles) {
     const resolved = relativeImports(relativePath)
       .map((specifier) => resolveImport(relativePath, specifier, tracked))
       .filter((value): value is string => Boolean(value));
     graph.set(relativePath, resolved);
-    if (relativePath.startsWith("scripts/lib/")) {
+
+    if (relativePath.startsWith("src/lib/")) {
       assert.deepEqual(
-        resolved.filter((dependency) => dependency.startsWith("scripts/commands/")).sort(),
+        resolved.filter((dependency) => dependency.startsWith("src/commands/")).sort(),
         [...(contract.allowed_upward_imports[relativePath] ?? [])].sort(),
         `${relativePath} changed its command-owner imports`,
       );
     }
+
+    for (const rule of contract.forbidden_cross_imports) {
+      if (!relativePath.startsWith(rule.from)) continue;
+      for (const dependency of resolved) {
+        if (dependency.startsWith(rule.to)) {
+          crossBoundaryViolations.push({ from: relativePath, to: dependency });
+        }
+      }
+    }
   }
+
+  assert.deepEqual(crossBoundaryViolations, []);
 
   const expectedCycles = contract.allowed_cycles
     .map((component) => [...component].sort())

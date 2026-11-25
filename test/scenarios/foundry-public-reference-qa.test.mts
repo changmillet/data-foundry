@@ -6,15 +6,15 @@ import { syncBuiltinESMExports } from "node:module";
 import test, { type TestContext } from "node:test";
 import { workflowFixture, digestFile } from "../fixtures/foundry-public-workflow.ts";
 import { processRowWithInvalidLocation, flowRow, sourceRow } from "../fixtures/row-builders.ts";
-import { createFoundryRuntime } from "../../scripts/foundry-runtime.ts";
+import { createFoundryRuntime } from "../../src/foundry-runtime.ts";
 import {
   createFoundryRuntimeContext,
   captureFoundryInput,
-} from "../../scripts/lib/foundry-runtime-context.ts";
-import { qualifyFoundryRuntime } from "../../scripts/lib/foundry-runtime-qualification.ts";
-import { assessFoundryWorkflowRows } from "../../scripts/lib/foundry-workflow-assessment.ts";
-import { currentWorkflowState } from "../../scripts/lib/foundry-workflow-state.ts";
-import { finalizeFoundryWorkflow } from "../../scripts/lib/foundry-workflow-finalize.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
+import { qualifyFoundryRuntime } from "../../src/lib/foundry-runtime-qualification.ts";
+import { assessFoundryWorkflowRows } from "../../src/lib/foundry-workflow-assessment.ts";
+import { currentWorkflowState } from "../../src/lib/foundry-workflow-state.ts";
+import { finalizeFoundryWorkflow } from "../../src/lib/foundry-workflow-finalize.ts";
 import { supportFlowPropertyRow, supportUnitGroupRow } from "../fixtures/support-row-builders.ts";
 
 function massReferences() {
@@ -298,7 +298,7 @@ test("public Process references reach initial queue and QA without creating depe
   // Invoke the existing finalization owner on the same registered public task.
   // No account is selected: this exercises real offline QA transport, not remote identity or a write.
   const options = {
-    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
     workspace,
     cacheBase: path.join(root, "cache"),
     ...invocation,
@@ -737,7 +737,7 @@ test("stale Process references do not block assessment of an independent Source"
   assert.ok(started.task_id, JSON.stringify(started.blockers));
   const invocation = { taskId: started.task_id, actorId: "qa-actor" };
   const options = {
-    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
     workspace,
     cacheBase: path.join(root, "cache"),
     ...invocation,

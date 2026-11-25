@@ -7,7 +7,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const source = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const helperPath = "scripts/pre-push-deletion-only.sh";
+const helperPath = "devops/ci/pre-push-deletion-only.sh";
 const zero = "0".repeat(40);
 const oid = "1".repeat(40);
 const deletion = "(delete) " + zero + " refs/heads/old " + oid + "\n";

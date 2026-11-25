@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { gzipSync, gunzipSync } from "node:zlib";
 import test from "node:test";
-import { canonicalizeFoundryPackageArchive } from "../../scripts/pack-foundry-package.ts";
+import { canonicalizeFoundryPackageArchive } from "../../devops/build/pack-foundry-package.ts";
 
 test("canonical package gzip headers give identical bytes across actual pnpm host OS markers", () => {
   const payload = Buffer.from("identical package tar payload\n");

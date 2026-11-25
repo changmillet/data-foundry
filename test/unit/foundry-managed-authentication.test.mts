@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createManagedFoundryAuthentication } from "../../scripts/lib/foundry-managed-authentication.ts";
-import { createFoundryAuthenticationEnvironment } from "../../scripts/lib/foundry-authentication-environment.ts";
+import { createManagedFoundryAuthentication } from "../../src/lib/foundry-managed-authentication.ts";
+import { createFoundryAuthenticationEnvironment } from "../../src/lib/foundry-authentication-environment.ts";
 
 test("legacy and isolated managed launches never consume ambient authentication", () => {
   const unread = new Proxy(

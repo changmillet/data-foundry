@@ -12,19 +12,19 @@ whenToUpdate:
   - when public command names, result envelopes or exit semantics change
   - when task next-action availability or local continuation rules change
 checkPaths:
-  - scripts/runtime-entry.ts
-  - scripts/foundry-runtime.ts
-  - scripts/foundry-facade.ts
-  - scripts/lib/foundry-operation-result.ts
-  - scripts/lib/foundry-task-start-spec.ts
-  - scripts/lib/foundry-facade-store.ts
-  - scripts/lib/foundry-migration-inventory.ts
-  - scripts/lib/foundry-runtime-command-policy.ts
-  - scripts/lib/foundry-runtime-qualification.ts
-  - scripts/lib/foundry-execution-admission.ts
-  - scripts/package-entry.ts
-  - scripts/public-api.ts
-  - scripts/lib/foundry-package-contract.ts
+  - src/runtime-entry.ts
+  - src/foundry-runtime.ts
+  - src/foundry-facade.ts
+  - src/lib/foundry-operation-result.ts
+  - src/lib/foundry-task-start-spec.ts
+  - src/lib/foundry-facade-store.ts
+  - src/lib/foundry-migration-inventory.ts
+  - src/lib/foundry-runtime-command-policy.ts
+  - src/lib/foundry-runtime-qualification.ts
+  - src/lib/foundry-execution-admission.ts
+  - src/package-entry.ts
+  - src/public-api.ts
+  - src/lib/foundry-package-contract.ts
   - specs/schemas/foundry-operation-result.schema.json
   - specs/schemas/foundry-task-start.schema.json
   - specs/schemas/foundry-facade-request-index.schema.json
@@ -61,7 +61,7 @@ This is the implemented v1 facade protocol for `@tiangong-lca/foundry` and its `
 
 The CLI-owned `tiangong-lca runtime ensure/status` manages qualified components only; it does not initialize a Foundry job or grant data permissions. Skills invoke the Foundry facade and its next actions rather than rebuilding its task state machine.
 
-The installed bin calls `runFoundryPublicCommand`; any non-facade name returns `operation=unknown` and cannot enter the developer dispatcher. `runtime-entry.ts` remains the shared implementation adapter. The repository-maintenance `pnpm doctor` and flat `scripts/foundry.ts doctor` command remain a separate source-only developer surface with their existing behavior.
+The installed bin calls `runFoundryPublicCommand`; any non-facade name returns `operation=unknown` and cannot enter the developer dispatcher. `runtime-entry.ts` remains the shared implementation adapter. The repository-maintenance `pnpm doctor` and flat `src/dev-cli.ts doctor` command remain a separate source-only developer surface with their existing behavior.
 
 For a CLI-managed process, the bin first receives the inherited host context and validates its full manifest, installed entry and inventory-bound Foundry runtime metadata. This completes before any workspace operation. An invalid managed context never falls back to unmanaged execution. Plain installed calls without IPC retain their existing behavior. The package distribution contract owns the metadata shape and read/write/target bindings.
 

@@ -8,9 +8,9 @@ import { pathToFileURL } from "node:url";
 import {
   applyFoundryReleaseVersion,
   planFoundryReleaseVersion,
-} from "../../scripts/lib/foundry-release-version.ts";
-import { inspectFoundryReleaseWorkflow } from "../../scripts/lib/foundry-release-workflow.ts";
-import { inspectFoundryRelease } from "../../scripts/lib/foundry-release-contract.ts";
+} from "../../devops/release/foundry-release-version.ts";
+import { inspectFoundryReleaseWorkflow } from "../../devops/release/foundry-release-workflow.ts";
+import { inspectFoundryRelease } from "../../devops/release/foundry-release-contract.ts";
 
 const source = path.resolve(import.meta.dirname, "../..");
 
@@ -46,15 +46,15 @@ function fixture(): {
   };
   for (const file of [
     "package.json",
-    "scripts/lib/foundry-package-contract.ts",
+    "src/lib/foundry-package-contract.ts",
     "specs/schemas/foundry-package-descriptor.schema.json",
-    "scripts/lib/foundry-release-version.ts",
-    "scripts/lib/foundry-release-root.ts",
-    "scripts/lib/foundry-release-contract.ts",
-    "scripts/lib/foundry-repository-identity.ts",
-    "scripts/release-inspect.ts",
-    "scripts/lib/foundry-release-workflow.ts",
-    "scripts/release-workflow-context.ts",
+    "devops/release/foundry-release-version.ts",
+    "devops/release/foundry-release-root.ts",
+    "devops/release/foundry-release-contract.ts",
+    "src/lib/foundry-repository-identity.ts",
+    "devops/release/release-inspect.ts",
+    "devops/release/foundry-release-workflow.ts",
+    "devops/release/release-workflow-context.ts",
   ]) {
     fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     fs.copyFileSync(path.join(source, file), path.join(root, file));
@@ -81,7 +81,7 @@ function fixture(): {
       spawnSync(
         process.execPath,
         [
-          path.join(root, "scripts/release-inspect.ts"),
+          path.join(root, "devops/release/release-inspect.ts"),
           "--base",
           base,
           "--head",
@@ -244,7 +244,7 @@ test("workflow command skips an ordinary main commit without a token or PR looku
     );
     const result = spawnSync(
       process.execPath,
-      [path.join(f.root, "scripts/release-workflow-context.ts"), "--github-output"],
+      [path.join(f.root, "devops/release/release-workflow-context.ts"), "--github-output"],
       {
         cwd: os.tmpdir(),
         encoding: "utf8",
@@ -294,7 +294,7 @@ test("release root identity accepts filesystem case aliases without accepting an
       assert.throws(() => inspectFoundryRelease(alias, f.initial, head), /Git inspection/iu);
     }
     assert.throws(
-      () => inspectFoundryRelease(path.join(f.root, "scripts"), f.initial, head),
+      () => inspectFoundryRelease(path.join(f.root, "src"), f.initial, head),
       /root mismatch/iu,
     );
   } finally {
@@ -313,7 +313,11 @@ test("tag command refuses a qualification job before reading an event or using t
     );
     const result = spawnSync(
       process.execPath,
-      ["--import", pathToFileURL(hook).href, path.join(source, "scripts/release-create-tag.ts")],
+      [
+        "--import",
+        pathToFileURL(hook).href,
+        path.join(source, "devops/release/release-create-tag.ts"),
+      ],
       {
         cwd: root,
         encoding: "utf8",

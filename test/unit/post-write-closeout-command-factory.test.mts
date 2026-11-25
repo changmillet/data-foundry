@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { createPostWriteCloseoutCommands } from "../../scripts/commands/post-write-closeout.ts";
+import { createPostWriteCloseoutCommands } from "../../src/commands/post-write-closeout.ts";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
@@ -43,7 +43,7 @@ test("post-write closeout help is exact and invokes no artifact or verification 
     status: "help",
     command: "dataset-post-write-closeout",
     usage: [
-      "node scripts/foundry.ts dataset-post-write-closeout --handoff-plan <dataset-commit-handoff-plan.json> --commit-report <summary-or-sync-report.json> --post-write-verify-report <remote-verification-report.json> --out-dir <closeout-dir> --ledger-dir <task-import-ledger-dir>",
+      "node src/dev-cli.ts dataset-post-write-closeout --handoff-plan <dataset-commit-handoff-plan.json> --commit-report <summary-or-sync-report.json> --post-write-verify-report <remote-verification-report.json> --out-dir <closeout-dir> --ledger-dir <task-import-ledger-dir>",
     ],
     purpose:
       "Close an explicit remote write only after Foundry handoff, CLI commit report, and post-write verify-root-payload evidence prove the exact same final rows were written and read back.",
@@ -52,7 +52,7 @@ test("post-write closeout help is exact and invokes no artifact or verification 
 });
 
 test("post-write closeout keeps accepted-diff and unique-root proof in typed owner modules", () => {
-  const source = readRepoFile("scripts/lib/finalize-owners/post-write-closeout.ts");
+  const source = readRepoFile("src/lib/finalize-owners/post-write-closeout.ts");
   assert.match(
     source,
     /normalizeAllowedTraceHashDifference\s*\}\s*from\s*["']\.\.\/remote-verification-accepted-diff\.ts["']/u,
@@ -68,7 +68,7 @@ test("post-write closeout keeps accepted-diff and unique-root proof in typed own
 });
 
 test("post-write closeout exists only as zero-escape native TypeScript", () => {
-  const typedPath = path.join(repoRoot, "scripts/lib/finalize-owners/post-write-closeout.ts");
+  const typedPath = path.join(repoRoot, "src/lib/finalize-owners/post-write-closeout.ts");
   assert.equal(fs.existsSync(typedPath), true);
   assert.equal(fs.existsSync(typedPath.replace(/\.ts$/u, ".mjs")), false);
   const source = fs.readFileSync(typedPath, "utf8");
@@ -78,8 +78,8 @@ test("post-write closeout exists only as zero-escape native TypeScript", () => {
 
 test("post-write closeout consumers target the typed command factory", () => {
   for (const consumer of [
-    "scripts/foundry.ts",
-    "scripts/lib/foundry-command-metadata.ts",
+    "src/dev-cli.ts",
+    "src/lib/foundry-command-metadata.ts",
     "test/unit/post-write-closeout-command-factory.test.mts",
   ]) {
     const source = readRepoFile(consumer);

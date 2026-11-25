@@ -3,9 +3,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { runDatasetCurationCleanup } from "../../scripts/lib/import-curation/curation-cleanup.ts";
-import { datasetIdentity } from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
-import { sha256Json } from "../../scripts/lib/import-curation/internal/hash-utils.ts";
+import { runDatasetCurationCleanup } from "../../src/lib/import-curation/curation-cleanup.ts";
+import { datasetIdentity } from "../../src/lib/import-curation/internal/dataset-payload.ts";
+import { sha256Json } from "../../src/lib/import-curation/internal/hash-utils.ts";
 
 type JsonRecord = Record<string, unknown>;
 

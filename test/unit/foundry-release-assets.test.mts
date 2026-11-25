@@ -6,7 +6,7 @@ import {
   publishFoundryReleaseAssets,
   type FoundryAssetRelease,
   type FoundryAssetStore,
-} from "../../scripts/lib/foundry-release-assets.ts";
+} from "../../devops/release/foundry-release-assets.ts";
 
 const sha = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 const request = {

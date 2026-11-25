@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { projectFoundryValidationReferences } from "../../scripts/lib/foundry-validation-reference-context.ts";
+import { projectFoundryValidationReferences } from "../../src/lib/foundry-validation-reference-context.ts";
 import { typedFinalizationProcessFixture } from "../fixtures/finalization-process.ts";
 
 type Json = Record<string, unknown>;

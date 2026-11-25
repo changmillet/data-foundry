@@ -10,16 +10,13 @@ import {
   loadFoundryTestPlan,
   foundryCiTestMatrix,
   planFoundryTestShards,
-} from "../../scripts/lib/foundry-ci-plan.ts";
-import {
-  foundryCiPlatforms,
-  verifyFoundryTestShards,
-} from "../../scripts/lib/foundry-ci-results.ts";
+} from "../../devops/ci/foundry-ci-plan.ts";
+import { foundryCiPlatforms, verifyFoundryTestShards } from "../../devops/ci/foundry-ci-results.ts";
 import {
   inventoryCapsuleFiles,
   type CapsuleExpectation,
-} from "../../scripts/lib/foundry-ci-capsule.ts";
-import { validateStageEvidence } from "../../scripts/lib/foundry-ci-stage.ts";
+} from "../../devops/ci/foundry-ci-capsule.ts";
+import { validateStageEvidence } from "../../devops/ci/foundry-ci-stage.ts";
 
 const root = path.resolve(import.meta.dirname, "../..");
 function object(value: unknown): Record<string, unknown> {
@@ -435,7 +432,7 @@ import {
   captureFoundryCiTestHost,
   foundryCiObservedTestOutcome,
   type FoundryCiTestHostContext,
-} from "../../scripts/lib/foundry-ci-test-host.ts";
+} from "../../devops/ci/foundry-ci-test-host.ts";
 
 const hostFacts: Record<string, unknown> = {
   runner_os: "Windows",
@@ -544,7 +541,7 @@ test("signals and Node cancellation counts do not relabel an observed test failu
 
 test("host collection follows the original elapsed snapshot and is Windows-only in the ordinary entry", () => {
   const root = path.resolve(import.meta.dirname, "../..");
-  const entry = fs.readFileSync(path.join(root, "scripts/ci-test-shard.ts"), "utf8");
+  const entry = fs.readFileSync(path.join(root, "devops/ci/ci-test-shard.ts"), "utf8");
   assert.ok(
     entry.includes('process.platform === "win32" && process.env.GITHUB_ACTIONS === "true"'),
   );

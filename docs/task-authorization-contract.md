@@ -12,16 +12,16 @@ whenToUse:
 whenToUpdate:
   - when task binding, allowed actions, waiver evidence or replay boundaries change
 checkPaths:
-  - scripts/lib/task-authorization.ts
-  - scripts/lib/foundry-task-authorization.ts
-  - scripts/lib/foundry-execution-admission.ts
-  - scripts/lib/foundry-package-contract.ts
-  - scripts/public-api.ts
+  - src/lib/task-authorization.ts
+  - src/lib/foundry-task-authorization.ts
+  - src/lib/foundry-execution-admission.ts
+  - src/lib/foundry-package-contract.ts
+  - src/public-api.ts
   - docs/package-distribution-contract.md
-  - scripts/lib/import-curation/internal/profiles-config.ts
-  - scripts/lib/import-curation/mutation-manifest.ts
-  - scripts/commands/commit-handoff.ts
-  - scripts/commands/identity-decisions.ts
+  - src/lib/import-curation/internal/profiles-config.ts
+  - src/lib/import-curation/mutation-manifest.ts
+  - src/commands/commit-handoff.ts
+  - src/commands/identity-decisions.ts
   - specs/import-profiles.json
   - specs/schemas/task-authorization.schema.json
   - specs/schemas/authorization-derivation.schema.json

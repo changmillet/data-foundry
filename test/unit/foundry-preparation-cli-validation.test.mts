@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
 import {
   parseFoundryPreparationCliReport,
   preparationValidationActions,
-} from "../../scripts/lib/foundry-preparation-cli-validation.ts";
+} from "../../src/lib/foundry-preparation-cli-validation.ts";
 
 type Json = Record<string, unknown>;
 const object = (value: unknown) => value as Json;

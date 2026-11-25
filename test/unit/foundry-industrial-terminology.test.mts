@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import test from "node:test";
-import { bundleRowTypes } from "../../scripts/lib/bundle-row-types.ts";
-import { prewriteContentQualityBlockers } from "../../scripts/lib/import-curation/internal/workflow-identity-preflight.ts";
+import { bundleRowTypes } from "../../src/lib/bundle-row-types.ts";
+import { prewriteContentQualityBlockers } from "../../src/lib/import-curation/internal/workflow-identity-preflight.ts";
 
 const repoRoot = path.resolve(import.meta.dirname, "../..");
 const scientific = [

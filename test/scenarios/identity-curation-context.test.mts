@@ -17,7 +17,7 @@ import {
   writeJsonLines,
 } from "../fixtures/foundry-core.ts";
 import { writeContextPackFiles } from "../fixtures/full-context-fixtures.ts";
-import { readIdentityPreflightIndexRow } from "../../scripts/lib/import-curation/internal/workflow-identity-preflight.ts";
+import { readIdentityPreflightIndexRow } from "../../src/lib/import-curation/internal/workflow-identity-preflight.ts";
 import {
   writeCompletedIdentityPreflightIndex,
   writeIdentityPreflightExecutionFixture,

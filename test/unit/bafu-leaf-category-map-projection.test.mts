@@ -5,15 +5,15 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { buildBafuLeafCategoryMapProjectReport } from "../../scripts/lib/bafu-classification/category-map-report.ts";
+import { buildBafuLeafCategoryMapProjectReport } from "../../src/lib/bafu-classification/category-map-report.ts";
 import {
   parseBafuFlowProductCategorySchema,
   parseBafuProcessCategorySchema,
   projectBafuLeafCategoryMapArtifacts,
   type BafuLeafCategoryMapHelpers,
   type BafuLeafCategoryMapProjection,
-} from "../../scripts/lib/bafu-classification/category-map-projection.ts";
-import type { JsonRecord } from "../../scripts/lib/bafu-classification/leaf-repair.ts";
+} from "../../src/lib/bafu-classification/category-map-projection.ts";
+import type { JsonRecord } from "../../src/lib/bafu-classification/leaf-repair.ts";
 
 const contextSha = "a".repeat(64);
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -322,15 +322,15 @@ function semanticSnapshot(projection: BafuLeafCategoryMapProjection): JsonRecord
 
 test("category-map semantics stay below the command I/O boundary and module ceilings", () => {
   const moduleSource = fs.readFileSync(
-    path.join(repoRoot, "scripts/lib/bafu-classification/category-map-projection.ts"),
+    path.join(repoRoot, "src/lib/bafu-classification/category-map-projection.ts"),
     "utf8",
   );
   const ownerSource = fs.readFileSync(
-    path.join(repoRoot, "scripts/commands/bafu-leaf-classification-tasks.ts"),
+    path.join(repoRoot, "src/commands/bafu-leaf-classification-tasks.ts"),
     "utf8",
   );
   const reportSource = fs.readFileSync(
-    path.join(repoRoot, "scripts/lib/bafu-classification/category-map-report.ts"),
+    path.join(repoRoot, "src/lib/bafu-classification/category-map-report.ts"),
     "utf8",
   );
   assert.ok(moduleSource.trimEnd().split("\n").length <= 800);

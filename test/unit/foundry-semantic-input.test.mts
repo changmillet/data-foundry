@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import fs from "node:fs";
 import Ajv2020 from "ajv/dist/2020.js";
-import { parseFoundrySemanticInput } from "../../scripts/lib/foundry-semantic-input.ts";
+import { parseFoundrySemanticInput } from "../../src/lib/foundry-semantic-input.ts";
 
 const input = () => ({
   schema: "tiangong-foundry.semantic-input.v1",

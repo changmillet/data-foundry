@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { bundleRowTypes } from "../../scripts/lib/bundle-row-types.ts";
-import { asText, ensureArray } from "../../scripts/lib/import-curation/internal/runtime-io.ts";
-import { createTidasRowUtils } from "../../scripts/lib/tidas-row-utils.ts";
+import { bundleRowTypes } from "../../src/lib/bundle-row-types.ts";
+import { asText, ensureArray } from "../../src/lib/import-curation/internal/runtime-io.ts";
+import { createTidasRowUtils } from "../../src/lib/tidas-row-utils.ts";
 
 type FlowPayloadFixture = {
   flowDataSet: {

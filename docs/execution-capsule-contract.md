@@ -14,12 +14,12 @@ whenToUpdate:
 checkPaths:
   - docs/execution-capsule-contract.md
   - specs/schemas/execution-capsule-stage.schema.json
-  - scripts/commands/execution-capsule.ts
+  - src/commands/execution-capsule.ts
   - test/commands/execution-capsule.test.mts
   - test/unit/execution-capsule-attempt-state.test.mts
   - test/unit/execution-capsule-command-factory.test.mts
   - specs/schemas/execution-context.schema.json
-  - scripts/lib/foundry-execution-admission.ts
+  - src/lib/foundry-execution-admission.ts
 lastReviewedAt: 2026-09-21
 lastReviewedCommit: 1a6a3eae94661170bc6cbcd5774e145d8c0985f3
 lastReviewedNote: "Reviewed for Foundry #30 / PR #41 at 1a6a3ea: the final-delivery workbook reader now resolves OPC relationship targets from the package root for absolute targets, retains legal docProps parts and still scans them, and keeps traversal, external, encrypted, compression, CRC, UTF-8, namespace and relationship-type boundaries unchanged. That is local offline parsing of a declared delivery artifact; it still grants no execution-capsule or public-runtime authority, and the capsule and delivery seal remain deliberately un-unified."
@@ -36,7 +36,7 @@ This `foundry-execution-capsule-stage.v1` contract is distinct from `tiangong-fo
 Prepare a `foundry-execution-capsule-stage.v1` manifest and its content-addressed leaves, then run:
 
 ```bash
-node scripts/foundry.ts execution-capsule-admit \
+node src/dev-cli.ts execution-capsule-admit \
   --stage-manifest .foundry/workspaces/<task-id>/stage-revisions/revision-0001.json \
   --out-dir .foundry/workspaces/<task-id>/admissions/revision-0001
 ```
@@ -72,4 +72,4 @@ Pre-seal constructor, parser, validator, auditor, or composer failures do not co
 
 The admission command only accepts the pre-dispatch `UNATTEMPTED` state. The exported attempt-state model exists for deterministic evidence interpretation and performs no remote action.
 
-The pure attempt model is owned by `scripts/lib/foundry-execution-attempt.ts` and re-exported unchanged by the internal command owner. Migration planning reuses this leaf, adds zero-count/dispatch consistency checks, and binds selected stage bytes; it does not ship the command owner or claim a selected historical stage is a fresh admission.
+The pure attempt model is owned by `src/lib/foundry-execution-attempt.ts` and re-exported unchanged by the internal command owner. Migration planning reuses this leaf, adds zero-count/dispatch consistency checks, and binds selected stage bytes; it does not ship the command owner or claim a selected historical stage is a fresh admission.

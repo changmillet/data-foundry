@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 import Ajv2020 from "ajv/dist/2020.js";
-import { parseFoundryReferenceInput } from "../../scripts/lib/foundry-reference-input.ts";
+import { parseFoundryReferenceInput } from "../../src/lib/foundry-reference-input.ts";
 
 const sample = () => ({
   schema: "tiangong-foundry.reference-input.v1",

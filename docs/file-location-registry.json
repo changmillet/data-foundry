@@ -1,17 +1,17 @@
 {
   "$schema": "../specs/schemas/file-location-registry.schema.json",
   "schema_version": 1,
-  "updated_at_utc": "2026-11-25T04:20:00Z",
+  "updated_at_utc": "2026-11-25T08:30:00Z",
   "policy_doc": "docs/file-organization.md",
   "entries": [
     {
       "id": "task-input-preparation",
       "status": "active",
       "classification": "task-evidence-adapter",
-      "current_path": "scripts/lib/foundry-task-input-preparation.ts",
+      "current_path": "src/lib/foundry-task-input-preparation.ts",
       "previous_paths": [],
       "owner": "tiangong-lca-data-foundry",
-      "referenced_by": ["scripts/foundry-facade.ts", "docs/public-runtime-contract.md"],
+      "referenced_by": ["src/foundry-facade.ts", "docs/public-runtime-contract.md"],
       "sensitivity": "Tracked runtime source. Private task evidence stays in the actor workspace.",
       "tracked": true,
       "notes": "Derives strict task descriptors from registered state and selected input facts."
@@ -20,10 +20,10 @@
       "id": "scientific-repair-evidence",
       "status": "active",
       "classification": "task-evidence-adapter",
-      "current_path": "scripts/lib/foundry-scientific-repair.ts",
+      "current_path": "src/lib/foundry-scientific-repair.ts",
       "previous_paths": [],
       "owner": "tiangong-lca-data-foundry",
-      "referenced_by": ["scripts/lib/foundry-repair-scope.ts", "docs/public-runtime-contract.md"],
+      "referenced_by": ["src/lib/foundry-repair-scope.ts", "docs/public-runtime-contract.md"],
       "sensitivity": "Tracked runtime source. Private task evidence stays in the actor workspace.",
       "tracked": true,
       "notes": "Binds selected field sources, review and a deployment-qualified Worker report."
@@ -32,13 +32,10 @@
       "id": "scientific-repair-census",
       "status": "active",
       "classification": "task-evidence-adapter",
-      "current_path": "scripts/lib/foundry-repair-census.ts",
+      "current_path": "src/lib/foundry-repair-census.ts",
       "previous_paths": [],
       "owner": "tiangong-lca-data-foundry",
-      "referenced_by": [
-        "scripts/lib/foundry-workflow-repair.ts",
-        "docs/public-runtime-contract.md"
-      ],
+      "referenced_by": ["src/lib/foundry-workflow-repair.ts", "docs/public-runtime-contract.md"],
       "sensitivity": "Tracked runtime source. Private task evidence stays in the actor workspace.",
       "tracked": true,
       "notes": "Compares authenticated catalog observations with the frozen Worker family."
@@ -104,7 +101,7 @@
       "current_path": "specs/automated-lca-capability-registry.json",
       "previous_paths": [],
       "owner": "tiangong-lca-data-foundry",
-      "referenced_by": ["specs/workspace-capability-adapters.md", "scripts/foundry.ts"],
+      "referenced_by": ["specs/workspace-capability-adapters.md", "src/dev-cli.ts"],
       "sensitivity": "non-sensitive command and artifact contracts; no credentials or private payloads",
       "tracked": true,
       "notes": "Routes deterministic import/conversion/schema validation to unified Rust tidas and keeps CLI context, QA/curation, remote operations, and Foundry-owned gates explicit."
@@ -131,7 +128,7 @@
       "id": "foundry-command-spec",
       "status": "active",
       "classification": "typed-handoff-contract",
-      "current_path": "scripts/lib/foundry-command-spec.ts",
+      "current_path": "src/lib/foundry-command-spec.ts",
       "previous_paths": [],
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
@@ -144,9 +141,9 @@
         "docs/foundry-command-surface.md",
         "docs/foundry-task-contracts.md",
         "docs/safety-policy.md",
-        "scripts/commands/commit-handoff.ts",
-        "scripts/commands/bafu-batch-import-run.ts",
-        "scripts/commands/bafu-process-scope-e2e.ts",
+        "src/commands/commit-handoff.ts",
+        "src/commands/bafu-batch-import-run.ts",
+        "src/commands/bafu-process-scope-e2e.ts",
         "test/unit/foundry-command-spec.test.mts"
       ],
       "sensitivity": "non-sensitive typed executable/argv and artifact-fact contract; contains no credentials or runtime payloads",
@@ -162,7 +159,7 @@
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
         "README.md",
-        "scripts/lib/import-curation.ts",
+        "src/lib/import-curation.ts",
         "docs/import-profiles/bafu/profile.md",
         "docs/import-profiles/bafu/constraints.md",
         "docs/import-profiles/bafu/leaf-process-classification-authoring.md"
@@ -235,51 +232,51 @@
         "WORKFLOW.md",
         "docs/skill-orchestration/dataset-authoring-skill-architecture.md",
         "docs/skill-orchestration/source-evidence-top-level-skill-design.md",
-        "scripts/lib/foundry-task-registration.ts",
-        "scripts/lib/foundry-task-store.ts",
-        "scripts/lib/foundry-task-authorization.ts",
-        "scripts/lib/foundry-workflow-import.ts",
-        "scripts/lib/foundry-workflow-context.ts",
-        "scripts/lib/foundry-workflow-rows.ts",
-        "scripts/lib/foundry-workflow-assessment.ts",
-        "scripts/lib/foundry-semantic-input.ts",
-        "scripts/lib/foundry-interaction-input.ts",
-        "scripts/lib/foundry-interaction-types.ts",
-        "scripts/lib/foundry-interaction-projection.ts",
-        "scripts/lib/foundry-interaction-scope.ts",
-        "scripts/lib/foundry-workflow-interaction.ts",
-        "scripts/lib/foundry-workflow-object-scope.ts",
-        "scripts/lib/foundry-semantic-interaction.ts",
-        "scripts/lib/foundry-workflow-semantic.ts",
-        "scripts/lib/foundry-workflow-state.ts",
-        "scripts/lib/foundry-workflow-identity.ts",
-        "scripts/lib/foundry-workflow-identity-stage.ts",
-        "scripts/lib/foundry-identity-stage-input.ts",
-        "scripts/lib/foundry-identity-stage-state.ts",
-        "scripts/lib/foundry-task-runtime-adoption.ts",
-        "scripts/lib/foundry-task-runtime-adoption-write.ts",
-        "scripts/lib/foundry-workflow-identity-apply.ts",
-        "scripts/lib/foundry-workflow-finalize.ts",
-        "scripts/lib/foundry-authorization-input.ts",
-        "scripts/lib/foundry-workflow-authorization.ts",
-        "scripts/lib/foundry-successor-predecessor.ts",
-        "scripts/lib/foundry-repair-handoff.ts",
-        "scripts/lib/foundry-repair-execution.ts",
-        "scripts/lib/foundry-repair-preflight.ts",
-        "scripts/lib/foundry-repair-reference-binding.ts",
-        "scripts/lib/foundry-repair-reference-proof.ts",
-        "scripts/lib/foundry-repair-scope.ts",
-        "scripts/lib/foundry-workflow-repair.ts",
-        "scripts/lib/foundry-workflow-approval-continuation.ts",
+        "src/lib/foundry-task-registration.ts",
+        "src/lib/foundry-task-store.ts",
+        "src/lib/foundry-task-authorization.ts",
+        "src/lib/foundry-workflow-import.ts",
+        "src/lib/foundry-workflow-context.ts",
+        "src/lib/foundry-workflow-rows.ts",
+        "src/lib/foundry-workflow-assessment.ts",
+        "src/lib/foundry-semantic-input.ts",
+        "src/lib/foundry-interaction-input.ts",
+        "src/lib/foundry-interaction-types.ts",
+        "src/lib/foundry-interaction-projection.ts",
+        "src/lib/foundry-interaction-scope.ts",
+        "src/lib/foundry-workflow-interaction.ts",
+        "src/lib/foundry-workflow-object-scope.ts",
+        "src/lib/foundry-semantic-interaction.ts",
+        "src/lib/foundry-workflow-semantic.ts",
+        "src/lib/foundry-workflow-state.ts",
+        "src/lib/foundry-workflow-identity.ts",
+        "src/lib/foundry-workflow-identity-stage.ts",
+        "src/lib/foundry-identity-stage-input.ts",
+        "src/lib/foundry-identity-stage-state.ts",
+        "src/lib/foundry-task-runtime-adoption.ts",
+        "src/lib/foundry-task-runtime-adoption-write.ts",
+        "src/lib/foundry-workflow-identity-apply.ts",
+        "src/lib/foundry-workflow-finalize.ts",
+        "src/lib/foundry-authorization-input.ts",
+        "src/lib/foundry-workflow-authorization.ts",
+        "src/lib/foundry-successor-predecessor.ts",
+        "src/lib/foundry-repair-handoff.ts",
+        "src/lib/foundry-repair-execution.ts",
+        "src/lib/foundry-repair-preflight.ts",
+        "src/lib/foundry-repair-reference-binding.ts",
+        "src/lib/foundry-repair-reference-proof.ts",
+        "src/lib/foundry-repair-scope.ts",
+        "src/lib/foundry-workflow-repair.ts",
+        "src/lib/foundry-workflow-approval-continuation.ts",
         "docs/public-runtime-contract.md",
-        "scripts/lib/foundry-owner-execution-store.ts",
-        "scripts/lib/foundry-workflow-reference-verify.ts",
-        "scripts/lib/foundry-owner-trace-acceptance.ts",
-        "scripts/lib/foundry-managed-adoption.ts",
-        "scripts/lib/foundry-managed-authentication.ts",
+        "src/lib/foundry-owner-execution-store.ts",
+        "src/lib/foundry-workflow-reference-verify.ts",
+        "src/lib/foundry-owner-trace-acceptance.ts",
+        "src/lib/foundry-managed-adoption.ts",
+        "src/lib/foundry-managed-authentication.ts",
         "test/helpers/managed-adoption-fixture.mts",
         "test/scenarios/foundry-managed-adoption.test.mts",
-        "scripts/lib/foundry-workflow-io.ts",
+        "src/lib/foundry-workflow-io.ts",
         "test/scenarios/foundry-task-artifact-registration.test.mts"
       ],
       "sensitivity": "non-sensitive task ledger schema examples; contains no credentials and no private payloads",
@@ -315,7 +312,7 @@
       "referenced_by": [
         "README.md",
         "docs/foundry-command-surface.md",
-        "scripts/commands/execution-capsule.ts"
+        "src/commands/execution-capsule.ts"
       ],
       "sensitivity": "non-sensitive local evidence contract; no credentials or private payloads",
       "tracked": true,
@@ -330,7 +327,7 @@
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
         "docs/execution-capsule-contract.md",
-        "scripts/commands/execution-capsule.ts",
+        "src/commands/execution-capsule.ts",
         "test/commands/execution-capsule.test.mts"
       ],
       "sensitivity": "non-sensitive schema; no credentials or private payloads",
@@ -349,7 +346,7 @@
         "README.md",
         "WORKFLOW.md",
         "docs/foundry-command-surface.md",
-        "scripts/commands/incremental-change-set.ts"
+        "src/commands/incremental-change-set.ts"
       ],
       "sensitivity": "non-sensitive local planning contract; private payloads remain in ignored workspaces",
       "tracked": true,
@@ -364,7 +361,7 @@
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
         "docs/incremental-change-set-contract.md",
-        "scripts/commands/incremental-change-set.ts",
+        "src/commands/incremental-change-set.ts",
         "test/commands/incremental-change-set.test.mts"
       ],
       "sensitivity": "non-sensitive schema; no credentials or private payloads",
@@ -383,7 +380,7 @@
         "README.md",
         "WORKFLOW.md",
         "docs/foundry-command-surface.md",
-        "scripts/commands/topology-convergence.ts"
+        "src/commands/topology-convergence.ts"
       ],
       "sensitivity": "non-sensitive planning contract; private candidate and owner payloads remain in ignored workspaces",
       "tracked": true,
@@ -398,7 +395,7 @@
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
         "docs/topology-convergence-contract.md",
-        "scripts/commands/topology-convergence.ts",
+        "src/commands/topology-convergence.ts",
         "test/commands/topology-convergence.test.mts"
       ],
       "sensitivity": "non-sensitive schema; no credentials or private payloads",
@@ -414,7 +411,7 @@
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
         "docs/runtime-context-contract.md",
-        "scripts/lib/foundry-runtime-qualification.ts",
+        "src/lib/foundry-runtime-qualification.ts",
         "test/unit/foundry-runtime-authority-schemas.test.mts"
       ],
       "sensitivity": "non-sensitive content and protocol expectations; no executable bytes or credentials",
@@ -430,7 +427,7 @@
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
         "docs/runtime-context-contract.md",
-        "scripts/lib/foundry-runtime-qualification.ts",
+        "src/lib/foundry-runtime-qualification.ts",
         "test/unit/foundry-runtime-authority-schemas.test.mts"
       ],
       "sensitivity": "non-sensitive diagnostic component identity; no paths, credentials or private payloads",
@@ -447,7 +444,7 @@
       "referenced_by": [
         "docs/task-authorization-contract.md",
         "docs/foundry-task-contracts.md",
-        "scripts/lib/foundry-task-authorization.ts"
+        "src/lib/foundry-task-authorization.ts"
       ],
       "sensitivity": "non-sensitive task content facts; private payload bytes remain outside Git",
       "tracked": true,
@@ -464,7 +461,7 @@
         "docs/runtime-context-contract.md",
         "docs/task-authorization-contract.md",
         "docs/execution-capsule-contract.md",
-        "scripts/lib/foundry-execution-admission.ts"
+        "src/lib/foundry-execution-admission.ts"
       ],
       "sensitivity": "non-sensitive task/runtime digests and paths; no environment or credential material",
       "tracked": true,
@@ -479,7 +476,7 @@
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
         "docs/public-runtime-contract.md",
-        "scripts/lib/foundry-operation-result.ts",
+        "src/lib/foundry-operation-result.ts",
         "test/unit/foundry-facade-schemas.test.mts"
       ],
       "sensitivity": "non-sensitive public protocol; runtime paths may appear only in local results",
@@ -495,7 +492,7 @@
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
         "docs/public-runtime-contract.md",
-        "scripts/lib/foundry-task-start-spec.ts",
+        "src/lib/foundry-task-start-spec.ts",
         "test/unit/foundry-facade-schemas.test.mts"
       ],
       "sensitivity": "non-sensitive schema; credentials and session contents are forbidden",
@@ -512,7 +509,7 @@
       "referenced_by": [
         "docs/public-runtime-contract.md",
         "docs/foundry-task-contracts.md",
-        "scripts/lib/foundry-interaction-input.ts",
+        "src/lib/foundry-interaction-input.ts",
         "test/unit/foundry-interaction-contract.test.mts"
       ],
       "sensitivity": "non-sensitive schema; task-local raw answers stay in ignored runtime artifacts",
@@ -529,7 +526,7 @@
       "referenced_by": [
         "docs/public-runtime-contract.md",
         "docs/foundry-task-contracts.md",
-        "scripts/lib/foundry-facade-store.ts"
+        "src/lib/foundry-facade-store.ts"
       ],
       "sensitivity": "non-sensitive schema; local request instances can contain private path facts",
       "tracked": true,
@@ -544,7 +541,7 @@
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
         "docs/public-runtime-contract.md",
-        "scripts/lib/foundry-migration-inventory.ts",
+        "src/lib/foundry-migration-inventory.ts",
         "test/unit/foundry-facade-schemas.test.mts"
       ],
       "sensitivity": "non-sensitive schema; local plans contain path/hash inventory but no file contents",
@@ -625,7 +622,7 @@
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
         "docs/package-distribution-contract.md",
-        "scripts/lib/foundry-package-contract.ts",
+        "src/lib/foundry-package-contract.ts",
         "test/unit/foundry-facade-schemas.test.mts"
       ],
       "sensitivity": "non-sensitive package identity and content-hash schema",
@@ -636,18 +633,18 @@
       "id": "foundry-package-public-entry",
       "status": "active",
       "classification": "public-package-entry",
-      "current_path": "scripts/package-entry.ts",
+      "current_path": "src/package-entry.ts",
       "previous_paths": [],
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
         "package.json",
-        "scripts/public-api.ts",
+        "src/public-api.ts",
         "docs/package-distribution-contract.md",
         "test/scenarios/foundry-package-consumer.test.mts"
       ],
       "sensitivity": "public source entry; no credentials or task payloads",
       "tracked": true,
-      "notes": "Public-only tiangong-foundry bin source; never falls back to the 63-command developer dispatcher."
+      "notes": "Public-only tiangong-foundry bin source; never falls back to the flat developer dispatcher."
     },
     {
       "id": "foundry-package-consumer-qualification",
@@ -674,7 +671,7 @@
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
         "docs/workspace-migration-contract.md",
-        "scripts/lib/foundry-migration-adoption-plan.ts",
+        "src/lib/foundry-migration-adoption-plan.ts",
         "test/scenarios/workspace-migration-adoption.test.mts"
       ],
       "sensitivity": "non-sensitive schema; runtime records contain identity and content references, never credential contents",
@@ -690,7 +687,7 @@
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
         "docs/workspace-migration-contract.md",
-        "scripts/lib/foundry-migration-authority.ts",
+        "src/lib/foundry-migration-authority.ts",
         "test/scenarios/workspace-migration-adoption.test.mts"
       ],
       "sensitivity": "non-sensitive schema; runtime records contain identity and content references, never credential contents",
@@ -706,7 +703,7 @@
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
         "docs/workspace-migration-contract.md",
-        "scripts/lib/foundry-runtime-context.ts",
+        "src/lib/foundry-runtime-context.ts",
         "test/scenarios/workspace-migration-adoption.test.mts"
       ],
       "sensitivity": "non-sensitive schema; runtime records contain identity and content references, never credential contents",
@@ -722,7 +719,7 @@
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
         "docs/workspace-migration-contract.md",
-        "scripts/lib/foundry-runtime-selection.ts",
+        "src/lib/foundry-runtime-selection.ts",
         "test/scenarios/workspace-migration-adoption.test.mts"
       ],
       "sensitivity": "non-sensitive schema; runtime records contain identity and content references, never credential contents",
@@ -738,7 +735,7 @@
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
         "docs/package-distribution-contract.md",
-        "scripts/lib/foundry-managed-host.ts",
+        "src/lib/foundry-managed-host.ts",
         "test/unit/foundry-managed-runtime-schema.test.mts"
       ],
       "sensitivity": "non-sensitive runtime expectation and component-file reference schema; no credentials",
@@ -749,14 +746,14 @@
       "id": "native-draft-handoff",
       "status": "active",
       "classification": "native-execution-adapter",
-      "current_path": "scripts/lib/finalize-owners/native-draft-handoff.ts",
+      "current_path": "src/lib/finalize-owners/native-draft-handoff.ts",
       "previous_paths": ["scripts/lib/finalize-owners/native-insert-handoff.ts"],
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
-        "scripts/lib/finalize-owners/commit-handoff.ts",
-        "scripts/lib/finalize-owners/native-draft-closeout.ts",
-        "scripts/lib/foundry-execution-admission.ts",
-        "scripts/lib/foundry-workflow-authorization.ts"
+        "src/lib/finalize-owners/commit-handoff.ts",
+        "src/lib/finalize-owners/native-draft-closeout.ts",
+        "src/lib/foundry-execution-admission.ts",
+        "src/lib/foundry-workflow-authorization.ts"
       ],
       "sensitivity": "non-sensitive consumer orchestration source; contains no credentials or task payloads",
       "tracked": true,
@@ -766,10 +763,10 @@
       "id": "native-draft-closeout",
       "status": "active",
       "classification": "native-execution-adapter",
-      "current_path": "scripts/lib/finalize-owners/native-draft-closeout.ts",
+      "current_path": "src/lib/finalize-owners/native-draft-closeout.ts",
       "previous_paths": ["scripts/lib/finalize-owners/native-insert-closeout.ts"],
       "owner": "tiangong-lca-data-foundry",
-      "referenced_by": ["scripts/lib/finalize-owners/post-write-closeout.ts"],
+      "referenced_by": ["src/lib/finalize-owners/post-write-closeout.ts"],
       "sensitivity": "non-sensitive consumer orchestration source; contains no credentials or task payloads",
       "tracked": true,
       "notes": "Validates matching native CLI v2 execution receipts per action operation, including strict recovered-exact-readback rows, against handoff contracts; independent root verification remains mandatory."
@@ -778,10 +775,10 @@
       "id": "finalize-reference-inputs",
       "status": "active",
       "classification": "reference-evidence-adapter",
-      "current_path": "scripts/lib/finalize-owners/finalize-reference-inputs.ts",
+      "current_path": "src/lib/finalize-owners/finalize-reference-inputs.ts",
       "previous_paths": [],
       "owner": "tiangong-lca-data-foundry",
-      "referenced_by": ["scripts/lib/finalize-owners/post-authoring.ts"],
+      "referenced_by": ["src/lib/finalize-owners/post-authoring.ts"],
       "sensitivity": "non-sensitive runtime source; no credentials or task payloads",
       "tracked": true,
       "notes": "Validates explicit local reference selections before output and delegates scientific eligibility to CLI."
@@ -790,12 +787,12 @@
       "id": "handoff-reference-intent",
       "status": "active",
       "classification": "reference-evidence-adapter",
-      "current_path": "scripts/lib/finalize-owners/handoff-reference-intent.ts",
+      "current_path": "src/lib/finalize-owners/handoff-reference-intent.ts",
       "previous_paths": [],
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
-        "scripts/lib/finalize-owners/commit-handoff.ts",
-        "scripts/lib/foundry-execution-admission.ts"
+        "src/lib/finalize-owners/commit-handoff.ts",
+        "src/lib/foundry-execution-admission.ts"
       ],
       "sensitivity": "non-sensitive runtime source; no credentials or task payloads",
       "tracked": true,
@@ -805,10 +802,10 @@
       "id": "reference-intent-closeout",
       "status": "active",
       "classification": "reference-evidence-adapter",
-      "current_path": "scripts/lib/finalize-owners/reference-intent-closeout.ts",
+      "current_path": "src/lib/finalize-owners/reference-intent-closeout.ts",
       "previous_paths": [],
       "owner": "tiangong-lca-data-foundry",
-      "referenced_by": ["scripts/lib/finalize-owners/post-write-closeout.ts"],
+      "referenced_by": ["src/lib/finalize-owners/post-write-closeout.ts"],
       "sensitivity": "non-sensitive runtime source; no credentials or task payloads",
       "tracked": true,
       "notes": "Requires matching reference readback and complete current handoff evidence."
@@ -817,10 +814,10 @@
       "id": "foundry-reference-input",
       "status": "active",
       "classification": "reference-evidence-adapter",
-      "current_path": "scripts/lib/foundry-reference-input.ts",
+      "current_path": "src/lib/foundry-reference-input.ts",
       "previous_paths": [],
       "owner": "tiangong-lca-data-foundry",
-      "referenced_by": ["scripts/foundry-facade.ts"],
+      "referenced_by": ["src/foundry-facade.ts"],
       "sensitivity": "non-sensitive runtime source; no credentials or task payloads",
       "tracked": true,
       "notes": "Parses explicit public reference input and records immutable indexed control snapshots."
@@ -829,10 +826,10 @@
       "id": "foundry-quality-review-input",
       "status": "active",
       "classification": "public-input-selector",
-      "current_path": "scripts/lib/foundry-quality-review-input.ts",
+      "current_path": "src/lib/foundry-quality-review-input.ts",
       "previous_paths": [],
       "owner": "tiangong-lca-data-foundry",
-      "referenced_by": ["scripts/foundry-facade.ts", "docs/public-runtime-contract.md"],
+      "referenced_by": ["src/foundry-facade.ts", "docs/public-runtime-contract.md"],
       "sensitivity": "non-sensitive source/contract; private task rows and review evidence stay outside Git",
       "tracked": true,
       "notes": "Strict immutable preparation-review descriptor and independently selected evidence; no write grant."
@@ -846,7 +843,7 @@
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
         "docs/public-runtime-contract.md",
-        "scripts/lib/foundry-quality-review-input.ts"
+        "src/lib/foundry-quality-review-input.ts"
       ],
       "sensitivity": "non-sensitive source/contract; private task rows and review evidence stay outside Git",
       "tracked": true,
@@ -856,14 +853,14 @@
       "id": "foundry-quality-review",
       "status": "active",
       "classification": "local-quality-review-owner",
-      "current_path": "scripts/lib/foundry-quality-review.ts",
+      "current_path": "src/lib/foundry-quality-review.ts",
       "previous_paths": [],
       "owner": "tiangong-lca-data-foundry",
       "referenced_by": [
-        "scripts/foundry-facade.ts",
-        "scripts/lib/foundry-workflow-assessment.ts",
-        "scripts/lib/foundry-workflow-finalize.ts",
-        "scripts/lib/foundry-execution-admission.ts"
+        "src/foundry-facade.ts",
+        "src/lib/foundry-workflow-assessment.ts",
+        "src/lib/foundry-workflow-finalize.ts",
+        "src/lib/foundry-execution-admission.ts"
       ],
       "sensitivity": "non-sensitive source/contract; private task rows and review evidence stay outside Git",
       "tracked": true,
@@ -873,10 +870,10 @@
       "id": "foundry-quality-review-lineage",
       "status": "active",
       "classification": "quality-review-lineage-verifier",
-      "current_path": "scripts/lib/foundry-quality-review-lineage.ts",
+      "current_path": "src/lib/foundry-quality-review-lineage.ts",
       "previous_paths": [],
       "owner": "tiangong-lca-data-foundry",
-      "referenced_by": ["scripts/lib/foundry-quality-review.ts"],
+      "referenced_by": ["src/lib/foundry-quality-review.ts"],
       "sensitivity": "non-sensitive source/contract; private task rows and review evidence stay outside Git",
       "tracked": true,
       "notes": "Verifies unchanged full rows or the existing cleanup producer's exact selected Flow-context projection without changing payload or closure."
@@ -885,13 +882,10 @@
       "id": "foundry-quality-review-context",
       "status": "active",
       "classification": "quality-review-context-binding",
-      "current_path": "scripts/lib/foundry-quality-review-context.ts",
+      "current_path": "src/lib/foundry-quality-review-context.ts",
       "previous_paths": [],
       "owner": "tiangong-lca-data-foundry",
-      "referenced_by": [
-        "scripts/lib/foundry-quality-review.ts",
-        "scripts/lib/foundry-workflow-state.ts"
-      ],
+      "referenced_by": ["src/lib/foundry-quality-review.ts", "src/lib/foundry-workflow-state.ts"],
       "sensitivity": "non-sensitive source; task context remains outside Git",
       "tracked": true,
       "notes": "Binds applicable broad and object-scoped Process interaction context without accepting decisions for unrelated entity types."
@@ -906,7 +900,7 @@
       "task_id": "298",
       "referenced_by": [
         "specs/ci/test-durations.json",
-        "scripts/lib/foundry-ci-windows.ts",
+        "devops/ci/foundry-ci-windows.ts",
         "docs/package-distribution-contract.md"
       ],
       "sensitivity": "Reviewed CI timing and source digests only; no credentials, raw test payloads, machine identifiers or private paths.",
@@ -917,19 +911,54 @@
       "id": "immutable-digest-cache",
       "status": "active",
       "classification": "runtime-integrity-cache",
-      "current_path": "scripts/lib/immutable-digest-cache.ts",
+      "current_path": "src/lib/immutable-digest-cache.ts",
       "previous_paths": [],
       "owner": "tiangong-lca-data-foundry",
       "task_id": "306",
       "referenced_by": [
-        "scripts/lib/foundry-package-contract.ts",
-        "scripts/lib/foundry-runtime-paths.ts",
-        "scripts/lib/foundry-runtime-qualification.ts",
+        "src/lib/foundry-package-contract.ts",
+        "src/lib/foundry-runtime-paths.ts",
+        "src/lib/foundry-runtime-qualification.ts",
         "test/unit/immutable-digest-cache.test.mts"
       ],
       "sensitivity": "Tracked runtime source; caches process-local regular-file SHA-256 digests guarded by O_NOFOLLOW stat tuples without storing file contents or credentials.",
       "tracked": true,
       "notes": "Stat-guarded bounded LRU digest and directory-tree snapshot helper for immutable installed package/CLI/TIDAS components; mutable task/workspace outputs remain outside this cache."
+    },
+    {
+      "id": "library-batch-import",
+      "status": "active",
+      "classification": "offline-batch-import-entry",
+      "current_path": "src/commands/library-batch-import.ts",
+      "previous_paths": [],
+      "owner": "tiangong-lca-data-foundry",
+      "task_id": "308",
+      "referenced_by": [
+        "src/dev-cli.ts",
+        "src/lib/foundry-command-metadata.ts",
+        "docs/foundry-command-surface.md",
+        "test/commands/library-batch-import.test.mts"
+      ],
+      "sensitivity": "Tracked runtime source; delegates profile-selected batch execution without credentials.",
+      "tracked": true,
+      "notes": "Unified profile-driven batch import CLI owner (--profile bafu|uslci|worldsteel) over the typed profile batch runners."
+    },
+    {
+      "id": "module-budgets",
+      "status": "active",
+      "classification": "architecture-budget-contract",
+      "current_path": "specs/module-budgets.json",
+      "previous_paths": ["specs/orchestration-module-budgets.json"],
+      "owner": "tiangong-lca-data-foundry",
+      "task_id": "308",
+      "referenced_by": [
+        "docs/orchestration-module-contract.md",
+        "test/unit/orchestration-module-budget.test.mts",
+        ".docpact/config.yaml"
+      ],
+      "sensitivity": "Non-sensitive module line-budget and dependency-direction contract.",
+      "tracked": true,
+      "notes": "Enforces default_max_lines (800), shrink-only debt/owner/semantic ceilings across src/ and devops/, zero src/ -> devops/ cross-imports, and cycle limits."
     }
   ],
   "lastReviewedCommit": "a191bd3dbe633e60ef40ab5fb6fc5e00c015fd02",

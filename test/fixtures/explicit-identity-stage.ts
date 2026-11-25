@@ -7,33 +7,33 @@ import path from "node:path";
 import { syncBuiltinESMExports } from "node:module";
 import type { TestContext } from "node:test";
 import { describeCliRuntime, CLI_RUNTIME_EXPECTATION_SCHEMA } from "@tiangong-lca/cli/runtime";
-import { createFoundryRuntime } from "../../scripts/foundry-runtime.ts";
+import { createFoundryRuntime } from "../../src/foundry-runtime.ts";
 import {
   createFoundryRuntimeContext,
   initializeFoundryWorkspace,
   captureFoundryInput,
-} from "../../scripts/lib/foundry-runtime-context.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
 import {
   qualifyFoundryRuntime,
   FOUNDRY_TIDAS_EXPECTATION_SCHEMA,
-} from "../../scripts/lib/foundry-runtime-qualification.ts";
+} from "../../src/lib/foundry-runtime-qualification.ts";
 import {
   runFoundryTaskOperation,
   readFoundryTaskArtifactIndex,
-} from "../../scripts/lib/foundry-task-store.ts";
-import { sha256Json, sha256Text } from "../../scripts/lib/identity-preflight-proof.ts";
-import { datasetIdentity } from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
+} from "../../src/lib/foundry-task-store.ts";
+import { sha256Json, sha256Text } from "../../src/lib/identity-preflight-proof.ts";
+import { datasetIdentity } from "../../src/lib/import-curation/internal/dataset-payload.ts";
 import {
   selectFoundryIdentityStageInput,
   type FoundryIdentityStageInput,
   type SelectedFoundryIdentityStageInput,
-} from "../../scripts/lib/foundry-identity-stage-input.ts";
+} from "../../src/lib/foundry-identity-stage-input.ts";
 import { testAuthIdentityReceipt, testAuthIdentityReceiptOutput } from "./auth-identity-receipt.ts";
 import {
   currentFoundryInteractionState,
   selectFoundryInteractionInput,
-} from "../../scripts/lib/foundry-interaction-input.ts";
-import { recordFoundryInteractionInput } from "../../scripts/lib/foundry-workflow-interaction.ts";
+} from "../../src/lib/foundry-interaction-input.ts";
+import { recordFoundryInteractionInput } from "../../src/lib/foundry-workflow-interaction.ts";
 import { flowRow, processRowWithFlowRef } from "./row-builders.ts";
 
 export async function explicitIdentityStageFixture(
@@ -174,7 +174,7 @@ export async function explicitIdentityStageFixture(
   const seed = path.join(root, "seed.json");
   fs.writeFileSync(seed, JSON.stringify({ rows: values }));
   const base = {
-    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
     workspace: path.join(root, "workspace"),
     cacheBase: path.join(root, "cache"),
   };

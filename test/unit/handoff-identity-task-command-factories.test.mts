@@ -6,19 +6,19 @@ import path from "node:path";
 import process from "node:process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { createCommitHandoffCommands } from "../../scripts/commands/commit-handoff.ts";
-import { createIdentityDecisionTaskCommands } from "../../scripts/commands/identity-decision-task.ts";
-import { profileFor } from "../../scripts/lib/import-curation/internal/profiles-config.ts";
+import { createCommitHandoffCommands } from "../../src/commands/commit-handoff.ts";
+import { createIdentityDecisionTaskCommands } from "../../src/commands/identity-decision-task.ts";
+import { profileFor } from "../../src/lib/import-curation/internal/profiles-config.ts";
 import {
   authorizedProfileOptions,
   taskAuthorizationFixture,
 } from "../fixtures/task-authorizations.ts";
-import { validateTaskAuthorization } from "../../scripts/lib/task-authorization.ts";
-import { parseArgs, parseScalar } from "../../scripts/lib/foundry-args.ts";
-import { createFoundryRuntimeUtils } from "../../scripts/lib/foundry-runtime-utils.ts";
-import { createFoundryCommandSpec } from "../../scripts/lib/foundry-command-spec.ts";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
-import { validateNativeDraftCloseout } from "../../scripts/lib/finalize-owners/native-draft-closeout.ts";
+import { validateTaskAuthorization } from "../../src/lib/task-authorization.ts";
+import { parseArgs, parseScalar } from "../../src/lib/foundry-args.ts";
+import { createFoundryRuntimeUtils } from "../../src/lib/foundry-runtime-utils.ts";
+import { createFoundryCommandSpec } from "../../src/lib/foundry-command-spec.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
+import { validateNativeDraftCloseout } from "../../src/lib/finalize-owners/native-draft-closeout.ts";
 
 type JsonObject = Record<string, unknown>;
 
@@ -1587,13 +1587,13 @@ test("identity task blocks malformed packages and preserves native malformed-gat
 
 test("handoff and identity task factories exist only as zero-escape native TypeScript", () => {
   for (const moduleName of ["commit-handoff", "identity-decision-task"]) {
-    const typedPath = path.join(repoRoot, `scripts/commands/${moduleName}.ts`);
+    const typedPath = path.join(repoRoot, `src/commands/${moduleName}.ts`);
     assert.equal(fs.existsSync(typedPath), true);
     assert.equal(fs.existsSync(typedPath.replace(/\.ts$/u, ".mjs")), false);
     const ownerPath =
       moduleName === "commit-handoff"
-        ? path.join(repoRoot, "scripts/lib/finalize-owners/commit-handoff.ts")
-        : path.join(repoRoot, "scripts/lib/decision-owners/identity-task.ts");
+        ? path.join(repoRoot, "src/lib/finalize-owners/commit-handoff.ts")
+        : path.join(repoRoot, "src/lib/decision-owners/identity-task.ts");
     const source = fs.readFileSync(ownerPath, "utf8");
     assert.doesNotMatch(source, /\bas\s+any\b|:\s*any\b|\bany\s*\[\]|<\s*any\b|,\s*any\s*>/u);
     assert.doesNotMatch(source, /@ts-(?:no)?check|@ts-ignore/u);
@@ -1603,15 +1603,15 @@ test("handoff and identity task factories exist only as zero-escape native TypeS
 test("handoff and identity task consumers target the typed command factories", () => {
   for (const moduleName of ["commit-handoff", "identity-decision-task"]) {
     for (const consumer of [
-      "scripts/foundry.ts",
-      "scripts/lib/foundry-command-metadata.ts",
+      "src/dev-cli.ts",
+      "src/lib/foundry-command-metadata.ts",
       "test/unit/handoff-identity-task-command-factories.test.mts",
     ]) {
       const source = fs.readFileSync(path.join(repoRoot, consumer), "utf8");
-      assert.match(source, new RegExp(`(?:commands/|scripts/commands/)${moduleName}\\.ts`, "u"));
+      assert.match(source, new RegExp(`(?:commands/|src/commands/)${moduleName}\\.ts`, "u"));
       assert.doesNotMatch(
         source,
-        new RegExp(`(?:commands/|scripts/commands/)${moduleName}\\.mjs`, "u"),
+        new RegExp(`(?:commands/|src/commands/)${moduleName}\\.mjs`, "u"),
       );
     }
   }

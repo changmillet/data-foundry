@@ -3,11 +3,11 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { createFoundryProductionFixture } from "../fixtures/foundry-release-production.ts";
-import { materializeFoundryProductionPackages } from "../../scripts/lib/foundry-release-production-materialize.ts";
+import { materializeFoundryProductionPackages } from "../../devops/release/foundry-release-production-materialize.ts";
 import {
   collectFoundryNpmMetadata,
   createFoundrySpdxDocument,
-} from "../../scripts/lib/foundry-release-metadata.ts";
+} from "../../devops/release/foundry-release-metadata.ts";
 
 const context = {
   component: "fixture-runtime",

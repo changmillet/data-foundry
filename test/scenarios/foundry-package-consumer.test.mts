@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
-import { canonicalizeFoundryPackageArchive } from "../../scripts/pack-foundry-package.ts";
+import { canonicalizeFoundryPackageArchive } from "../../devops/build/pack-foundry-package.ts";
 import { verifyManagedPackageCache } from "../helpers/managed-package-cache.mts";
 import { verifyManagedPackageHost } from "../helpers/managed-package-host.mts";
 import { createPackageConsumerTiming } from "../helpers/package-consumer-timing.mts";
@@ -140,7 +140,7 @@ test("packed Foundry installs twice and runs only the public facade from a read-
   timing.checkpoint("build-first");
   const build = command(
     process.execPath,
-    [path.join(repoRoot, "scripts", "build-foundry-package.ts")],
+    [path.join(repoRoot, "devops", "build", "build-foundry-package.ts")],
     repoRoot,
     isolatedEnvironment(path.join(root, "build-home")),
   );
@@ -149,7 +149,7 @@ test("packed Foundry installs twice and runs only the public facade from a read-
   timing.checkpoint("build-second");
   const rebuilt = command(
     process.execPath,
-    [path.join(repoRoot, "scripts", "build-foundry-package.ts")],
+    [path.join(repoRoot, "devops", "build", "build-foundry-package.ts")],
     repoRoot,
     isolatedEnvironment(path.join(root, "rebuild-home")),
   );
@@ -195,14 +195,16 @@ test("packed Foundry installs twice and runs only the public facade from a read-
   timing.checkpoint("package-verify");
   const verified = command(
     process.execPath,
-    [path.join(repoRoot, "scripts/verify-foundry-package.ts")],
+    [path.join(repoRoot, "devops/build/verify-foundry-package.ts")],
     repoRoot,
     isolatedEnvironment(path.join(root, "verify-home")),
   );
   assert.equal(verified.status, 0, verified.stderr || verified.stdout);
   assert.equal(JSON.parse(verified.stdout).status, "passed");
   timing.checkpoint("archive-first");
-  const packDriver = pathToFileURL(path.join(repoRoot, "scripts/pack-foundry-package.ts")).href;
+  const packDriver = pathToFileURL(
+    path.join(repoRoot, "devops/build/pack-foundry-package.ts"),
+  ).href;
   const driverDestination = path.join(root, "pack driver 中文");
   const canonicalBytes = canonicalizeFoundryPackageArchive(fs.readFileSync(tarball));
   let publishedTarball = tarball;
@@ -227,7 +229,7 @@ test("packed Foundry installs twice and runs only the public facade from a read-
       (file) =>
         file.path.endsWith(".map") ||
         (file.path.endsWith(".ts") && !file.path.endsWith(".d.ts")) ||
-        /(?:^|\/)(?:test|\.github|\.agents|\.env|scripts\/cases)(?:\/|\.|$)/iu.test(file.path),
+        /(?:^|\/)(?:test|\.github|\.agents|\.env|src\/cases|devops)(?:\/|\.|$)/iu.test(file.path),
     ),
     false,
   );
@@ -263,7 +265,7 @@ test("packed Foundry installs twice and runs only the public facade from a read-
   ])
     assert.equal(Object.hasOwn(installedManifest, forbidden), false, forbidden);
   const api = (await import(
-    pathToFileURL(path.join(firstPackage, "package-dist/scripts/public-api.js")).href
+    pathToFileURL(path.join(firstPackage, "package-dist/src/public-api.js")).href
   )) as {
     assertFoundryPackage: (root: string) => {
       package: { name: string; version: string };
@@ -274,7 +276,7 @@ test("packed Foundry installs twice and runs only the public facade from a read-
   assert.equal(api.assertFoundryPackage(firstPackage).package.name, "@tiangong-lca/foundry");
   assert.equal(api.assertFoundryPackage(secondPackage).package.version, sourcePackageVersion);
   const installedResolver = (await import(
-    pathToFileURL(path.join(firstPackage, "package-dist/scripts/lib/foundry-runtime-utils.js")).href
+    pathToFileURL(path.join(firstPackage, "package-dist/src/lib/foundry-runtime-utils.js")).href
   )) as {
     resolveInstalledTiangongLcaCliPackage: () => { packageVersion: string; binPath: string };
   };
@@ -378,7 +380,7 @@ test("packed Foundry installs twice and runs only the public facade from a read-
   timing.checkpoint("readonly-facade");
   const before = packageFiles(firstPackage);
   setReadOnly(firstPackage);
-  const entry = path.join(firstPackage, "package-dist/scripts/package-entry.js");
+  const entry = path.join(firstPackage, "package-dist/src/package-entry.js");
   const cwd = path.join(root, "unrelated 中文 cwd");
   const workspace = path.join(root, "用户 workspace");
   fs.mkdirSync(cwd, { recursive: true });
@@ -611,7 +613,7 @@ test("packed Foundry installs twice and runs only the public facade from a read-
   timing.checkpoint("source-equivalence");
   const sourceWorkspace = path.join(root, "source workspace");
   const source = runFacade(
-    path.join(repoRoot, "scripts/package-entry.ts"),
+    path.join(repoRoot, "src/package-entry.ts"),
     cwd,
     ["workspace", "init", "--workspace", sourceWorkspace, "--json"],
     0,
@@ -713,7 +715,7 @@ test("packed Foundry installs twice and runs only the public facade from a read-
   const absentCli = command(
     process.execPath,
     [
-      path.join(orphan, "package-dist/scripts/package-entry.js"),
+      path.join(orphan, "package-dist/src/package-entry.js"),
       "workspace",
       "init",
       "--workspace",

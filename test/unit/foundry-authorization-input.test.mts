@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 import Ajv2020 from "ajv/dist/2020.js";
-import { parseFoundryAuthorizationInput } from "../../scripts/lib/foundry-authorization-input.ts";
+import { parseFoundryAuthorizationInput } from "../../src/lib/foundry-authorization-input.ts";
 
 const input = () => ({
   schema: "tiangong-foundry.authorization-input.v1",

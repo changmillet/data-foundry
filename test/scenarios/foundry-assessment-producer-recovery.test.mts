@@ -9,16 +9,16 @@ import { flowRow } from "../fixtures/row-builders.ts";
 import {
   createFoundryRuntimeContext,
   captureFoundryInput,
-} from "../../scripts/lib/foundry-runtime-context.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
 import {
   readVerifiedTaskSnapshot,
   runFoundryTaskOperation,
-} from "../../scripts/lib/foundry-task-store.ts";
-import { currentWorkflowState } from "../../scripts/lib/foundry-workflow-state.ts";
+} from "../../src/lib/foundry-task-store.ts";
+import { currentWorkflowState } from "../../src/lib/foundry-workflow-state.ts";
 import {
   verifyRegisteredAssessmentProducer,
   registeredAssessmentSetProducerBase,
-} from "../../scripts/lib/foundry-assessment-producer.ts";
+} from "../../src/lib/foundry-assessment-producer.ts";
 
 test("public same-task status preserves the registered assessment producer across runtime roots", async (t) => {
   const { root, workspace, facade } = workflowFixture(t);
@@ -48,7 +48,7 @@ test("public same-task status preserves the registered assessment producer acros
   const invocation = { taskId: started.task_id, actorId: "producer-actor" };
   for (let i = 0; i < 3; i++) await facade.resume(invocation);
   const options = {
-    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
     workspace,
     cacheBase: path.join(root, "cache"),
     ...invocation,

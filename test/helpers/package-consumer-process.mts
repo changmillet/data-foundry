@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { resolvePackageManagerCommand } from "../../scripts/lib/package-manager-command.ts";
+import { resolvePackageManagerCommand } from "../../src/lib/package-manager-command.ts";
 
 const secretKey = /(?:PASSWORD|PASSWD|TOKEN|SECRET|COOKIE|CREDENTIAL|API_?KEY|PRIVATE_?KEY)/iu;
 

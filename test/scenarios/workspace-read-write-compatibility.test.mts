@@ -3,15 +3,15 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import test from "node:test";
-import { createFoundryFacade } from "../../scripts/public-api.ts";
+import { createFoundryFacade } from "../../src/public-api.ts";
 import {
   captureFoundryInput,
   createFoundryRuntimeContext,
   writeFoundryArtifact,
-} from "../../scripts/lib/foundry-runtime-context.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
 import { workspaceManifestFixture } from "../helpers/foundry-runtime-manifest.mts";
 
-const moduleUrl = new URL("../../scripts/public-api.ts", import.meta.url).href;
+const moduleUrl = new URL("../../src/public-api.ts", import.meta.url).href;
 
 test("trusted read compatibility permits diagnostics and rejects every local mutation boundary", async (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-workspace-read-"));

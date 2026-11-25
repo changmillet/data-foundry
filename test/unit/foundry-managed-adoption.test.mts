@@ -13,8 +13,8 @@ import {
   FOUNDRY_MANAGED_ADOPTION_PATH,
   FOUNDRY_MANAGED_ADOPTION_SCHEMA,
   prepareFoundryManagedAdoption,
-} from "../../scripts/lib/foundry-managed-adoption.ts";
-import { assertTrustedQualification } from "../../scripts/lib/foundry-task-runtime-adoption.ts";
+} from "../../src/lib/foundry-managed-adoption.ts";
+import { assertTrustedQualification } from "../../src/lib/foundry-task-runtime-adoption.ts";
 import { workspaceManifestFixture } from "../helpers/foundry-runtime-manifest.mts";
 
 const hash = (value: Uint8Array | string) => createHash("sha256").update(value).digest("hex");

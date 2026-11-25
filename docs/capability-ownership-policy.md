@@ -15,84 +15,11 @@ checkPaths:
   - docs/capability-ownership-policy.md
   - docs/architecture.md
   - docs/workspace-project-map.md
-  - docs/foundry-ai-navigation.md
-  - docs/foundry-command-surface.md
-  - docs/final-delivery-promotion-contract.md
-  - test/README.md
   - specs/capability-ownership-rules.json
   - specs/automated-lca-capability-registry.json
   - specs/workspace-capability-adapters.md
-  - docs/safety-policy.md
-  - docs/incremental-change-set-contract.md
-  - scripts/foundry-golden-diff.ts
-  - scripts/check-tidas-cutover.ts
-  - scripts/check-lint-suppressions.ts
-  - scripts/clean-build-output.ts
-  - scripts/build-foundry-package.ts
-  - scripts/pack-foundry-package.ts
-  - scripts/verify-foundry-package.ts
-  - scripts/package-entry.ts
-  - scripts/public-api.ts
-  - scripts/lib/foundry-package-contract.ts
-  - docs/package-distribution-contract.md
-  - scripts/lib/foundry-runtime-environment.ts
-  - scripts/lib/foundry-runtime-paths.ts
-  - scripts/lib/tidas-adapter.ts
-  - scripts/lib/post-authoring-finalize-utils.ts
-  - scripts/commands/tasks.ts
-  - scripts/commands/import-completion.ts
-  - scripts/commands/commit-handoff.ts
-  - scripts/commands/identity-decision-task.ts
-  - scripts/commands/support-cache.ts
-  - scripts/commands/cli-wrappers.ts
-  - scripts/commands/execution-capsule.ts
-  - scripts/commands/post-write-closeout.ts
-  - scripts/commands/core.ts
-  - scripts/commands/identity-preflight-run.ts
-  - scripts/commands/post-authoring-finalize.ts
-  - scripts/commands/identity-decisions.ts
-  - scripts/commands/classification-decisions.ts
-  - scripts/commands/location-decisions.ts
-  - scripts/commands/library-scope-workflow.ts
-  - scripts/commands/bafu-leaf-classification-tasks.ts
-  - scripts/commands/bafu-auto-authoring.ts
-  - scripts/commands/bafu-process-scope-e2e.ts
-  - scripts/commands/bafu-batch-import-run.ts
-  - scripts/lib/import-curation.ts
-  - scripts/lib/import-curation/index.ts
-  - scripts/lib/import-curation/profiles.ts
-  - scripts/lib/import-curation/trace-summary.ts
-  - scripts/commands/authoring-plan.ts
-  - scripts/commands/bundle-sample-rows.ts
-  - scripts/commands/incremental-change-set.ts
-  - scripts/commands/topology-convergence.ts
-  - scripts/lib/import-curation/internal/workflow-queue-context.ts
-  - scripts/lib/import-curation/internal/full-context-proof.ts
-  - scripts/lib/import-curation/internal/workflow-decision-apply-context.ts
-  - scripts/lib/import-curation/internal/profiles-config.ts
-  - scripts/lib/import-curation/internal/workflow-patch-collect.ts
-  - scripts/lib/import-curation/internal/workflow-identity-decision-context.ts
-  - scripts/lib/import-curation/internal/workflow-patch-evidence-context.ts
-  - scripts/lib/import-curation/internal/workflow-row-transform-context.ts
-  - scripts/lib/import-curation/internal/workflow-dry-run-context.ts
-  - scripts/lib/import-curation/internal/workflow-evidence-scope.ts
-  - scripts/lib/import-curation/internal/workflow-decision-full-context.ts
-  - scripts/lib/import-curation/internal/workflow-authoring-tasks.ts
-  - scripts/lib/import-curation/internal/workflow-semantic-actions.ts
-  - scripts/lib/import-curation/internal/workflow-patch-evidence.ts
-  - scripts/lib/import-curation/internal/workflow-identity-preflight.ts
-  - scripts/lib/import-curation/internal/authoring-task-workflow.ts
-  - scripts/lib/import-curation/internal/authoring-patch-workflow.ts
-  - scripts/lib/import-curation/internal/curation-gate-workflow.ts
-  - scripts/lib/import-curation/authoring-packages.ts
-  - scripts/lib/import-curation/patch-collect.ts
-  - scripts/lib/import-curation/curation-gate.ts
-  - scripts/lib/import-curation/curation-cleanup.ts
-  - scripts/lib/import-curation/internal/workflow-reference-closure.ts
-  - scripts/lib/import-curation/internal/workflow-source-reference-context.ts
-  - scripts/lib/import-curation/internal/mutation-manifest-workflow.ts
-  - scripts/lib/import-curation/mutation-manifest.ts
-  - test/commands/*.test.mts
+  - src/commands/**
+  - src/lib/**
 lastReviewedAt: 2026-11-25
 lastReviewedCommit: a191bd3dbe633e60ef40ab5fb6fc5e00c015fd02
 lastReviewedNote: "Foundry #287: reviewed the four eligible development-tool updates and complete unchanged lock graph during formatting; native/source qualification, compiler and public-runtime closure, cache inputs, credential and publishing authority remain unchanged. Foundry #296: reviewed ordinary GitHub Windows shard host observations, source/plan/partition/run binding, null omissions and failed/cancelled/signalled evidence after the original elapsed snapshot. Test qualification, public runtime, task/skill ownership, credentials and publisher authority remain unchanged. Foundry #298: reviewed two exclusive Windows retained-suite partitions, source-bound dual timing inputs, conservative execution classes and dynamic class/file caps. Canonical weights, other platforms, original tests/deadlines, source/plan guards and ordinary qualification/publishing authority remain unchanged; modeled feasibility is not a passing Windows result."
@@ -106,7 +33,7 @@ Migration transfer planning is governed by [the workspace migration contract](wo
 
 The v2 task store persists registered job/source/profile identity, account intent, producer receipts and artifact lineage; deterministic local retries reuse verified results. Exact C1/TIDAS qualification, all-command disposition, derived authorization and child admission form the W04 authority boundary. The W05 hierarchical facade adds strict result/task schemas, deterministic request revisions, actor-bound status/resume, local preparation and read-only migration inventory. W06 owns its deterministic npm candidate closure; W08 owns F1 publication and components. See `docs/public-runtime-contract.md`, `docs/runtime-context-contract.md`, `docs/package-distribution-contract.md`, `docs/task-authorization-contract.md` and `docs/foundry-task-contracts.md`.
 
-The explicit workspace runtime is defined by `docs/runtime-context-contract.md`: package layout comes from `package.json.foundryRuntime`, emitted execution needs no source TypeScript or Git, and selected inputs/task outputs are bound to an immutable runtime context. `scripts/runtime-entry.ts` now implements workspace init/migration, consumer doctor and task start/status/resume as the separate hierarchical facade. All 63 flat owner commands retain explicit public/internal/excluded, path, child, qualification and authorization dispositions; the facade reaches them only through registered task state and never falls back to the developer runner.
+The explicit workspace runtime is defined by `docs/runtime-context-contract.md`: package layout comes from `package.json.foundryRuntime`, emitted execution needs no source TypeScript or Git, and selected inputs/task outputs are bound to an immutable runtime context. `src/runtime-entry.ts` now implements workspace init/migration, consumer doctor and task start/status/resume as the separate hierarchical facade. All 64 internal stage commands retain explicit public/internal/excluded, path, child, qualification and authorization dispositions; the facade reaches them only through registered task state and never falls back to the developer runner.
 
 Import profiles distribute source rules only. Historical BAFU/USLCI/Worldsteel account overrides, QA waivers and the Worldsteel full-context relaxation grant no permission to a new task. `docs/task-authorization-contract.md` owns the separate workspace/task/actor/account/profile/input binding and exact action evidence. Local candidate preparation and checked public-reference proofs remain available; current final-row hashes, task permissions and all content/closure/no-replay gates are required before a restricted write handoff.
 

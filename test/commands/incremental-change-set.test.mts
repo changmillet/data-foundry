@@ -44,7 +44,7 @@ function composeRaw(fixture: IncrementalFixture) {
   return spawnSync(
     process.execPath,
     [
-      "scripts/foundry.ts",
+      "src/dev-cli.ts",
       "dataset-incremental-change-set-compose",
       "--request",
       rel(fixture.requestPath),
@@ -780,7 +780,7 @@ test("account-local unitgroup/flowproperty actions require the explicit request 
 
 test("incremental composer has no network, database, subprocess, or dataset-specific literal", () => {
   const source = fs.readFileSync(
-    path.join(repoRoot, "scripts", "commands", "incremental-change-set.ts"),
+    path.join(repoRoot, "src", "commands", "incremental-change-set.ts"),
     "utf8",
   );
   for (const forbidden of [

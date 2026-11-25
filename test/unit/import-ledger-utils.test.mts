@@ -2,13 +2,13 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
-import { createImportLedgerUtils } from "../../scripts/lib/import-ledger.ts";
+import { createImportLedgerUtils } from "../../src/lib/import-ledger.ts";
 import type {
   BlockedScopeImportLedgerRow,
   JsonRecord,
   JsonValue,
   VerifiedImportLedgerRow,
-} from "../../scripts/lib/import-ledger.ts";
+} from "../../src/lib/import-ledger.ts";
 import {
   readJsonLines,
   rel,

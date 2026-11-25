@@ -4,8 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { createImportCompletionCommands } from "../../scripts/commands/import-completion.ts";
-import { createTaskCommands } from "../../scripts/commands/tasks.ts";
+import { createImportCompletionCommands } from "../../src/commands/import-completion.ts";
+import { createTaskCommands } from "../../src/commands/tasks.ts";
 
 type JsonObject = Record<string, unknown>;
 
@@ -180,7 +180,7 @@ test("task completion dry-run is non-mutating and completed execution moves exac
       status: "help",
       command: "task-complete",
       usage: [
-        "node scripts/foundry.ts task-complete --task <task-id|tasks/active/file.md> --completion-report <dataset-import-completion-report.json>",
+        "node src/dev-cli.ts task-complete --task <task-id|tasks/active/file.md> --completion-report <dataset-import-completion-report.json>",
       ],
       purpose:
         "Move one filesystem task from tasks/active to tasks/done only when the task-level import completion report is completed.",
@@ -374,7 +374,7 @@ test("completion factory preserves native JSON parse errors", () => {
 
 test("task and completion factories exist only as zero-escape native TypeScript", () => {
   for (const moduleName of ["tasks", "import-completion"]) {
-    const typedPath = path.join(repoRoot, `scripts/commands/${moduleName}.ts`);
+    const typedPath = path.join(repoRoot, `src/commands/${moduleName}.ts`);
     assert.equal(fs.existsSync(typedPath), true);
     assert.equal(fs.existsSync(typedPath.replace(/\.ts$/u, ".mjs")), false);
     const source = fs.readFileSync(typedPath, "utf8");
@@ -389,17 +389,17 @@ test("task and completion consumers target the typed command factories", () => {
     ["import-completion", "createImportCompletionCommands"],
   ] as const) {
     for (const consumer of [
-      "scripts/foundry.ts",
-      "scripts/lib/foundry-command-metadata.ts",
+      "src/dev-cli.ts",
+      "src/lib/foundry-command-metadata.ts",
       "test/unit/task-completion-command-factories.test.mts",
     ]) {
       const source = readRepoFile(consumer);
-      assert.match(source, new RegExp(`(?:commands/|scripts/commands/)${moduleName}\\.ts`, "u"));
+      assert.match(source, new RegExp(`(?:commands/|src/commands/)${moduleName}\\.ts`, "u"));
       assert.doesNotMatch(
         source,
-        new RegExp(`(?:commands/|scripts/commands/)${moduleName}\\.mjs`, "u"),
+        new RegExp(`(?:commands/|src/commands/)${moduleName}\\.mjs`, "u"),
       );
     }
-    assert.match(readRepoFile(`scripts/commands/${moduleName}.ts`), new RegExp(ownerExport, "u"));
+    assert.match(readRepoFile(`src/commands/${moduleName}.ts`), new RegExp(ownerExport, "u"));
   }
 });

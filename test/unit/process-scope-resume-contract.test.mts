@@ -4,8 +4,8 @@ import test from "node:test";
 import {
   createProcessScopeResumeContract,
   latestProcessScopeFinalizeCheckpoint,
-} from "../../scripts/lib/bafu-orchestration/process-scope-resume.ts";
-import { scopeResumeMismatchReason } from "../../scripts/lib/batch-orchestration/scope-resume-contract.ts";
+} from "../../src/lib/bafu-orchestration/process-scope-resume.ts";
+import { scopeResumeMismatchReason } from "../../src/lib/batch-orchestration/scope-resume-contract.ts";
 
 type JsonRecord = Record<string, unknown>;
 

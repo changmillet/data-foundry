@@ -232,7 +232,7 @@ function sealPath(fixture: Fixture): string {
 
 test("final delivery promotion command has no dispatch or execution-authority surface", () => {
   const source = fs.readFileSync(
-    path.join(repoRoot, "scripts", "commands", "final-delivery-promotion.ts"),
+    path.join(repoRoot, "src", "commands", "final-delivery-promotion.ts"),
     "utf8",
   );
   for (const forbidden of [
@@ -484,7 +484,7 @@ test("final delivery promotion refuses to overwrite immutable output", () => {
   const second = spawnSync(
     process.execPath,
     [
-      "scripts/foundry.ts",
+      "src/dev-cli.ts",
       "final-delivery-promote",
       "--manifest",
       rel(fixture.manifestPath),

@@ -5,14 +5,14 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { bafuProcessScopeE2eTestHooks } from "../../scripts/commands/bafu-process-scope-e2e.ts";
+import { bafuProcessScopeE2eTestHooks } from "../../src/commands/bafu-process-scope-e2e.ts";
 import {
   applyBafuProcessScopeHandoffSummary,
   compactCommandStage,
   projectBafuProcessScopeFinalizeReport,
   type BafuProcessScopeFinalizeReport,
   type BafuProcessScopeFinalizeReportInput,
-} from "../../scripts/lib/bafu-orchestration/process-scope-report.ts";
+} from "../../src/lib/bafu-orchestration/process-scope-report.ts";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -20,12 +20,12 @@ const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
 const modulePath = path.join(
   repoRoot,
-  "scripts",
+  "src",
   "lib",
   "bafu-orchestration",
   "process-scope-report.ts",
 );
-const ownerPath = path.join(repoRoot, "scripts", "commands", "bafu-process-scope-e2e.ts");
+const ownerPath = path.join(repoRoot, "src", "commands", "bafu-process-scope-e2e.ts");
 
 function sha256Text(value: string): string {
   return createHash("sha256").update(value).digest("hex");
@@ -51,9 +51,9 @@ function baseInput(): Omit<BafuProcessScopeFinalizeReportInput, "finalizeReport"
     },
     mode: "execute",
     finalizeCommand:
-      "node scripts/foundry.ts dataset-post-authoring-finalize --rows-file tmp/process.jsonl",
+      "node src/dev-cli.ts dataset-post-authoring-finalize --rows-file tmp/process.jsonl",
     rerunCommand:
-      "node scripts/foundry.ts dataset-bafu-process-scope-e2e --rows-file tmp/process.jsonl --execute",
+      "node src/dev-cli.ts dataset-bafu-process-scope-e2e --rows-file tmp/process.jsonl --execute",
     paths: {
       report: "tmp/run/bafu-process-scope-e2e-report.json",
       runLedger: "tmp/run/bafu-process-scope-e2e-ledger.jsonl",
@@ -184,8 +184,8 @@ test("ready finalize projects exact report bytes, key order, commands, and empty
     "resume",
   ]);
   assertFrozen("ready finalize report", report, {
-    bytes: 1780,
-    sha256: "1af8cbdc0484a1751b002ef0ef2063f2dad18d59732f34889bde94dae03e7055",
+    bytes: 1772,
+    sha256: "f2b6ff49bb7d84ceae791f0ad140fefd7be4cee61193f959b66ef94c8b38b87f",
   });
 });
 
@@ -205,8 +205,8 @@ test("blocked AI finalize keeps gate blockers before synthesized and original fi
     ],
   );
   assertFrozen("blocked AI finalize report", report, {
-    bytes: 2651,
-    sha256: "57796445216dc146294abf2cd98c3972c68e586ed3074dc07e684738e4f64e27",
+    bytes: 2643,
+    sha256: "ae4ff321958b671e8d6b93eb06713ac02ace347909e2665b9502667d1872210d",
   });
 });
 
@@ -249,8 +249,8 @@ test("handoff summary prepends execution blockers without disturbing report key 
     ],
   );
   assertFrozen("handoff summary report", report, {
-    bytes: 3150,
-    sha256: "11ea592220689f432142ab7320cd320c295a4ae3622fe5adf79a7451e49e94aa",
+    bytes: 3142,
+    sha256: "852da408392ae5c0b0f7b9a2b00fe404eda31e92b58733f8c572549fa7ea760f",
   });
 });
 

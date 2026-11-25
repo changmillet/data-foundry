@@ -3,8 +3,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import * as profilesConfig from "../../scripts/lib/import-curation/internal/profiles-config.ts";
-import { fallbackProfiles } from "../../scripts/lib/import-curation/internal/dataset-types.ts";
+import * as profilesConfig from "../../src/lib/import-curation/internal/profiles-config.ts";
+import { fallbackProfiles } from "../../src/lib/import-curation/internal/dataset-types.ts";
 
 function writeText(filePath: string, text: string): void {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });

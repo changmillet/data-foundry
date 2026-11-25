@@ -3,8 +3,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import * as sourceModule from "../../scripts/lib/import-curation/internal/workflow-source-reference-context.ts";
-import { referenceKey } from "../../scripts/lib/import-curation/internal/workflow-reference-closure.ts";
+import * as sourceModule from "../../src/lib/import-curation/internal/workflow-source-reference-context.ts";
+import { referenceKey } from "../../src/lib/import-curation/internal/workflow-reference-closure.ts";
 
 type JsonRecord = Record<string, unknown>;
 

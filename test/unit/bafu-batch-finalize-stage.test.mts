@@ -11,7 +11,7 @@ import {
   type BatchFinalizeJsonRecord,
   type BatchFinalizeStageAdapter,
   type BatchFinalizeStageResult,
-} from "../../scripts/lib/bafu-orchestration/batch-finalize-stage.ts";
+} from "../../src/lib/bafu-orchestration/batch-finalize-stage.ts";
 
 function sha256Text(value: string): string {
   return crypto.createHash("sha256").update(value).digest("hex");
@@ -25,7 +25,7 @@ function writeJson(filePath: string, value: unknown): void {
 function stageResult(overrides: Partial<BatchFinalizeStageResult> = {}): BatchFinalizeStageResult {
   return {
     stage: "process.finalize",
-    command: "/runtime/node scripts/foundry.ts dataset-post-authoring-finalize",
+    command: "/runtime/node src/dev-cli.ts dataset-post-authoring-finalize",
     exit_code: 0,
     signal: null,
     timed_out: false,
@@ -273,7 +273,7 @@ test("finalize executor selects the expected report and preserves exact result/r
     const service = createBatchFinalizeStageService(adapter);
     const result = await service.runFinalizeStage({
       stage: "process.finalize",
-      args: ["/runtime/node", "scripts/foundry.ts", "dataset-post-authoring-finalize"],
+      args: ["/runtime/node", "src/dev-cli.ts", "dataset-post-authoring-finalize"],
       reportPath,
       logDir: path.join(root, "logs"),
     });
@@ -281,7 +281,7 @@ test("finalize executor selects the expected report and preserves exact result/r
     assert.deepEqual(captured, [
       {
         stage: "process.finalize",
-        argv: ["/runtime/node", "scripts/foundry.ts", "dataset-post-authoring-finalize"],
+        argv: ["/runtime/node", "src/dev-cli.ts", "dataset-post-authoring-finalize"],
         logDir: path.join(root, "logs"),
       },
     ]);
@@ -312,7 +312,7 @@ test("finalize executor synthesizes the exact missing-report timeout blocker wit
         runArgvStage: async () =>
           stageResult({
             stage: "flow.pre_finalize",
-            command: "/runtime/node scripts/foundry.ts dataset-post-authoring-finalize --type flow",
+            command: "/runtime/node src/dev-cli.ts dataset-post-authoring-finalize --type flow",
             exit_code: 124,
             signal: "SIGTERM",
             timed_out: true,
@@ -329,7 +329,7 @@ test("finalize executor synthesizes the exact missing-report timeout blocker wit
     );
     const result = await service.runFinalizeStage({
       stage: "flow.pre_finalize",
-      args: ["/runtime/node", "scripts/foundry.ts", "dataset-post-authoring-finalize"],
+      args: ["/runtime/node", "src/dev-cli.ts", "dataset-post-authoring-finalize"],
       reportPath,
       logDir: path.join(root, "logs"),
     });

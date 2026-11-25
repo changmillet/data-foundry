@@ -4,14 +4,14 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import * as authoringPackagesOwner from "../../scripts/lib/import-curation/authoring-packages.ts";
-import * as cleanupOwner from "../../scripts/lib/import-curation/curation-cleanup.ts";
-import * as gateOwner from "../../scripts/lib/import-curation/curation-gate.ts";
-import * as mutationOwner from "../../scripts/lib/import-curation/mutation-manifest.ts";
-import * as patchCollectOwner from "../../scripts/lib/import-curation/patch-collect.ts";
-import * as profilesOwner from "../../scripts/lib/import-curation/profiles.ts";
-import * as traceOwner from "../../scripts/lib/import-curation/trace-summary.ts";
-import { commandMetadata } from "../../scripts/lib/foundry-command-metadata.ts";
+import * as authoringPackagesOwner from "../../src/lib/import-curation/authoring-packages.ts";
+import * as cleanupOwner from "../../src/lib/import-curation/curation-cleanup.ts";
+import * as gateOwner from "../../src/lib/import-curation/curation-gate.ts";
+import * as mutationOwner from "../../src/lib/import-curation/mutation-manifest.ts";
+import * as patchCollectOwner from "../../src/lib/import-curation/patch-collect.ts";
+import * as profilesOwner from "../../src/lib/import-curation/profiles.ts";
+import * as traceOwner from "../../src/lib/import-curation/trace-summary.ts";
+import { internalStageMetadata } from "../../src/lib/foundry-command-metadata.ts";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
@@ -62,7 +62,7 @@ function assertSourceOwnerIdentity(module: ImportCurationNamespace): void {
 }
 
 test("import-curation index and public entry exist atomically only as native TypeScript", () => {
-  for (const relativeStem of ["scripts/lib/import-curation/index", "scripts/lib/import-curation"]) {
+  for (const relativeStem of ["src/lib/import-curation/index", "src/lib/import-curation"]) {
     const typedPath = path.join(repoRoot, `${relativeStem}.ts`);
     assert.equal(fs.existsSync(typedPath), true, relativeStem);
     assert.equal(fs.existsSync(typedPath.replace(/\.ts$/u, ".mjs")), false, relativeStem);
@@ -73,8 +73,8 @@ test("import-curation index and public entry exist atomically only as native Typ
 });
 
 test("source index and public entry preserve the complete namespace and live references", async () => {
-  const indexModule = await loadCurrent("scripts/lib/import-curation/index");
-  const entryModule = await loadCurrent("scripts/lib/import-curation");
+  const indexModule = await loadCurrent("src/lib/import-curation/index");
+  const entryModule = await loadCurrent("src/lib/import-curation");
   assertExactNamespace(indexModule);
   assertExactNamespace(entryModule);
   assertSourceOwnerIdentity(indexModule);
@@ -82,11 +82,11 @@ test("source index and public entry preserve the complete namespace and live ref
 });
 
 test("entry consumers and command metadata retain the complete owner contract", () => {
-  const foundrySource = readRepoFile("scripts/foundry.ts");
+  const foundrySource = readRepoFile("src/dev-cli.ts");
   assert.match(foundrySource, /from "\.\/lib\/import-curation\.ts"/u);
   assert.doesNotMatch(foundrySource, /from "\.\/lib\/import-curation\.mjs"/u);
 
-  const cliSource = readRepoFile("scripts/lib/foundry-cli.ts");
+  const cliSource = readRepoFile("src/lib/foundry-cli.ts");
   for (const name of [
     "listImportProfiles",
     "runDatasetAuthoringPatchCollect",
@@ -107,33 +107,33 @@ test("entry consumers and command metadata retain the complete owner contract", 
       "dataset-mutation-manifest",
     ].map((command) => [
       command,
-      commandMetadata[command]?.ownerModule,
-      commandMetadata[command]?.ownerExport,
+      internalStageMetadata[command]?.ownerModule,
+      internalStageMetadata[command]?.ownerExport,
     ]),
     [
       [
         "dataset-authoring-task-build",
-        "scripts/lib/import-curation/authoring-packages.ts",
+        "src/lib/import-curation/authoring-packages.ts",
         "runDatasetAuthoringTaskBuild",
       ],
       [
         "dataset-authoring-patch-collect",
-        "scripts/lib/import-curation/patch-collect.ts",
+        "src/lib/import-curation/patch-collect.ts",
         "runDatasetAuthoringPatchCollect",
       ],
       [
         "dataset-curation-cleanup",
-        "scripts/lib/import-curation/curation-cleanup.ts",
+        "src/lib/import-curation/curation-cleanup.ts",
         "runDatasetCurationCleanup",
       ],
       [
         "dataset-curation-gate",
-        "scripts/lib/import-curation/curation-gate.ts",
+        "src/lib/import-curation/curation-gate.ts",
         "runDatasetCurationGate",
       ],
       [
         "dataset-mutation-manifest",
-        "scripts/lib/import-curation/mutation-manifest.ts",
+        "src/lib/import-curation/mutation-manifest.ts",
         "runDatasetMutationManifest",
       ],
     ],
@@ -161,11 +161,11 @@ test("Node 24 loads the emitted entry and index with the same complete live name
     );
 
     const manifest = JSON.parse(readRepoFile("package.json"));
-    manifest.foundryRuntime.emitted_entry = "scripts/foundry.js";
+    manifest.foundryRuntime.emitted_entry = "src/dev-cli.js";
     fs.writeFileSync(path.join(buildRoot, "package.json"), `${JSON.stringify(manifest)}\n`);
 
-    const entryPath = path.join(buildRoot, "scripts", "lib", "import-curation.js");
-    const indexPath = path.join(buildRoot, "scripts", "lib", "import-curation", "index.js");
+    const entryPath = path.join(buildRoot, "src", "lib", "import-curation.js");
+    const indexPath = path.join(buildRoot, "src", "lib", "import-curation", "index.js");
     assert.equal(fs.existsSync(entryPath), true);
     assert.equal(fs.existsSync(indexPath), true);
     const entryModule = (await import(pathToFileURL(entryPath).href)) as ImportCurationNamespace;

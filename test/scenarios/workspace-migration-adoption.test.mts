@@ -10,30 +10,30 @@ import {
   captureFoundryInput,
   writeFoundryArtifact,
   type FoundryRuntimeContext,
-} from "../../scripts/lib/foundry-runtime-context.ts";
-import { planFoundryWorkspaceMigration } from "../../scripts/lib/foundry-migration-plan.ts";
-import { stageFoundryMigration } from "../../scripts/lib/foundry-migration-transfer.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
+import { planFoundryWorkspaceMigration } from "../../src/lib/foundry-migration-plan.ts";
+import { stageFoundryMigration } from "../../src/lib/foundry-migration-transfer.ts";
 import {
   materializeMigrationTaskSpec,
   migrationTaskTemplate,
   planFoundryMigrationAdoption,
-} from "../../scripts/lib/foundry-migration-adoption-plan.ts";
-import { applyFoundryMigrationAdoption } from "../../scripts/lib/foundry-migration-adoption.ts";
+} from "../../src/lib/foundry-migration-adoption-plan.ts";
+import { applyFoundryMigrationAdoption } from "../../src/lib/foundry-migration-adoption.ts";
 import {
   createFoundryFacade,
   runFoundryPublicCommand,
   type FoundryOperationResult,
-} from "../../scripts/public-api.ts";
+} from "../../src/public-api.ts";
 import { workspaceManifestFixture } from "../helpers/foundry-runtime-manifest.mts";
-import { assertFoundryMigrationNoReplay } from "../../scripts/lib/foundry-migration-replay.ts";
-import { runFoundryTaskOperation } from "../../scripts/lib/foundry-task-store.ts";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
+import { assertFoundryMigrationNoReplay } from "../../src/lib/foundry-migration-replay.ts";
+import { runFoundryTaskOperation } from "../../src/lib/foundry-task-store.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
 import {
   parseFoundryTaskStartSpec,
   taskStartSpecFingerprint,
-} from "../../scripts/lib/foundry-task-start-spec.ts";
+} from "../../src/lib/foundry-task-start-spec.ts";
 
-const moduleUrl = new URL("../../scripts/public-api.ts", import.meta.url).href;
+const moduleUrl = new URL("../../src/public-api.ts", import.meta.url).href;
 function adoptionHost(options: Parameters<typeof createFoundryFacade>[0]) {
   return { createTaskFacade: () => createFoundryFacade(options) };
 }
@@ -942,8 +942,8 @@ test("a killed adoption process resumes its published local task without activat
     script,
     `import fs from 'node:fs';
 import {createFoundryFacade} from ${JSON.stringify(moduleUrl)};
-import {createFoundryRuntimeContext} from ${JSON.stringify(new URL("../../scripts/lib/foundry-runtime-context.ts", import.meta.url).href)};
-import {applyFoundryMigrationAdoption} from ${JSON.stringify(new URL("../../scripts/lib/foundry-migration-adoption.ts", import.meta.url).href)};
+import {createFoundryRuntimeContext} from ${JSON.stringify(new URL("../../src/lib/foundry-runtime-context.ts", import.meta.url).href)};
+import {applyFoundryMigrationAdoption} from ${JSON.stringify(new URL("../../src/lib/foundry-migration-adoption.ts", import.meta.url).href)};
 import {workspaceManifestFixture} from ${JSON.stringify(new URL("../helpers/foundry-runtime-manifest.mts", import.meta.url).href)};
 const data=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
 const manifest=workspaceManifestFixture({schemas:['tiangong-foundry.workspace.v1','tiangong-foundry.workspace.v2'],write:['migration-adoption-v1','registered-tasks-v2']});

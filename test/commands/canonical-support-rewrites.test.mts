@@ -1,5 +1,5 @@
 import test from "node:test";
-import { createCanonicalSupportRewriteUtils } from "../../scripts/lib/canonical-support-rewrites.ts";
+import { createCanonicalSupportRewriteUtils } from "../../src/lib/canonical-support-rewrites.ts";
 import { assert, fs, path, readJson, testTmpRoot, writeJson } from "../fixtures/foundry-core.ts";
 
 const fixtureRoot = testTmpRoot("canonical-support-rewrites-test");

@@ -4,15 +4,15 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { runFoundryRuntimeCommand } from "../../scripts/runtime-entry.ts";
+import { runFoundryRuntimeCommand } from "../../src/runtime-entry.ts";
 import {
   commandNextActionBindingSha256,
   exitCodeForFoundryOperationResult,
-} from "../../scripts/lib/foundry-operation-result.ts";
-import { createFoundryFacade } from "../../scripts/foundry-facade.ts";
+} from "../../src/lib/foundry-operation-result.ts";
+import { createFoundryFacade } from "../../src/foundry-facade.ts";
 
 const repoRoot = path.resolve(import.meta.dirname, "../..");
-const entry = path.join(repoRoot, "scripts/foundry.ts");
+const entry = path.join(repoRoot, "src/dev-cli.ts");
 
 function run(cwd: string, args: string[]) {
   const result = spawnSync(process.execPath, [entry, ...args], {
@@ -62,7 +62,7 @@ test("facade reports recognized system error codes without raw paths or error te
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-safe-system-error-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const facade = createFoundryFacade({
-    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
     workspace: path.join(root, "workspace"),
     cacheBase: path.join(root, "cache"),
   });
@@ -440,7 +440,7 @@ test("cooperative interruption after an atomic mutation reports exit 130 and ret
     },
   } as AbortSignal;
   const result = createFoundryFacade({
-    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
     workspace,
     signal,
   }).initialize();

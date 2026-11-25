@@ -9,8 +9,8 @@ import {
   runTidasHandshake,
   runTidasImport,
   runTidasRowsValidation,
-} from "../../scripts/lib/tidas-adapter.ts";
-import { createFoundryIsolatedChildEnvironment } from "../../scripts/lib/foundry-runtime-environment.ts";
+} from "../../src/lib/tidas-adapter.ts";
+import { createFoundryIsolatedChildEnvironment } from "../../src/lib/foundry-runtime-environment.ts";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 const fixture = path.join(repoRoot, "test", "fixtures", "fake-tidas.ts");

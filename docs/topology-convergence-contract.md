@@ -15,7 +15,7 @@ whenToUpdate:
 checkPaths:
   - docs/topology-convergence-contract.md
   - specs/schemas/topology-convergence.schema.json
-  - scripts/commands/topology-convergence.ts
+  - src/commands/topology-convergence.ts
   - test/unit/topology-command-migration.test.mts
   - test/fixtures/topology-convergence-fixtures.ts
   - test/unit/topology-convergence.test.mts
@@ -40,7 +40,7 @@ The command never connects to a network or database, invokes the CLI, performs D
 ## Invocation
 
 ```bash
-node scripts/foundry.ts dataset-topology-convergence-compose \
+node src/dev-cli.ts dataset-topology-convergence-compose \
   --request .foundry/workspaces/<task>/topology/request.json \
   --out-dir .foundry/workspaces/<task>/topology/composition-0001
 ```

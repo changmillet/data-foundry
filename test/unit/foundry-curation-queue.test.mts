@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { buildFoundryCurationQueue } from "../../scripts/lib/foundry-curation-queue.ts";
+import { buildFoundryCurationQueue } from "../../src/lib/foundry-curation-queue.ts";
 import { flowRow, processRowWithFlowRef } from "../fixtures/row-builders.ts";
 
 const flowId = "77777777-7777-4777-8777-777777777777";

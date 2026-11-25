@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import test from "node:test";
 
-import type { FoundryCommandSpec } from "../../scripts/lib/foundry-command-spec.ts";
+import type { FoundryCommandSpec } from "../../src/lib/foundry-command-spec.ts";
 import {
   createBatchPostWriteHandoffService,
   type BatchPostWriteHandoffAdapter,
   type BatchPostWriteHandoffJsonRecord,
-} from "../../scripts/lib/batch-orchestration/post-write-handoff.ts";
+} from "../../src/lib/batch-orchestration/post-write-handoff.ts";
 
 type JsonRecord = BatchPostWriteHandoffJsonRecord;
 
@@ -83,7 +83,7 @@ function createHarness(options: HarnessOptions = {}): {
   let verifyIndex = 0;
   const adapter: BatchPostWriteHandoffAdapter = {
     processExecutable: "/node",
-    foundryEntryPath: "scripts/foundry.ts",
+    foundryEntryPath: "src/dev-cli.ts",
     repoRoot: "/repo",
     environment: {},
     resolveRepoPath(value) {

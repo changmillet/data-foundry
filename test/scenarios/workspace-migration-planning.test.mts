@@ -14,9 +14,7 @@ test("a selected session named workspace.json is never opened as a workspace mar
   fs.mkdirSync(path.join(root, ".foundry"));
   const file = path.join(root, ".foundry/workspace.json");
   fs.writeFileSync(file, "synthetic private session");
-  const module = pathToFileURL(
-    path.join(repoRoot, "scripts/lib/foundry-migration-inventory.ts"),
-  ).href;
+  const module = pathToFileURL(path.join(repoRoot, "src/lib/foundry-migration-inventory.ts")).href;
   const result = spawnSync(
     process.execPath,
     [
@@ -39,7 +37,7 @@ test("a selected session named workspace.json is never opened as a workspace mar
 test("public migration rejects retired macOS Intel before reading legacy state", (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-migration-host-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const api = pathToFileURL(path.join(repoRoot, "scripts/public-api.ts")).href;
+  const api = pathToFileURL(path.join(repoRoot, "src/public-api.ts")).href;
   const result = spawnSync(
     process.execPath,
     [
@@ -100,7 +98,7 @@ test("migration inventory never reads credential or OAuth session contents", (t)
       };
     }
     syncBuiltinESMExports();
-    const { inventoryFoundryWorkspace } = await import(${JSON.stringify(pathToFileURL(path.join(repoRoot, "scripts/lib/foundry-migration-inventory.ts")).href)});
+    const { inventoryFoundryWorkspace } = await import(${JSON.stringify(pathToFileURL(path.join(repoRoot, "src/lib/foundry-migration-inventory.ts")).href)});
     const result = inventoryFoundryWorkspace(${JSON.stringify(root)}, {sessionReference:${JSON.stringify(path.join(root, ".foundry", "opaque.store"))}});
     for (const file of result.entries.filter((item) => item.kind === 'file')) {
       assert.equal(file.sha256, null);
@@ -141,7 +139,7 @@ test("public migration planning binds destination, actor, runtime and declared a
   );
   const before = fs.readFileSync(manifest);
   const args = [
-    path.join(repoRoot, "scripts/package-entry.ts"),
+    path.join(repoRoot, "src/package-entry.ts"),
     "workspace",
     "migrate",
     "--workspace",

@@ -9,13 +9,13 @@ import {
   createFoundryRuntimeContext,
   initializeFoundryWorkspace,
   captureFoundryInput,
-} from "../../scripts/lib/foundry-runtime-context.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
 import {
   FOUNDRY_TIDAS_EXPECTATION_SCHEMA,
   qualifyFoundryRuntime,
-} from "../../scripts/lib/foundry-runtime-qualification.ts";
-import { createFoundryRuntime } from "../../scripts/foundry-runtime.ts";
-import { applyFoundryIdentityDecisions } from "../../scripts/lib/foundry-workflow-identity-apply.ts";
+} from "../../src/lib/foundry-runtime-qualification.ts";
+import { createFoundryRuntime } from "../../src/foundry-runtime.ts";
+import { applyFoundryIdentityDecisions } from "../../src/lib/foundry-workflow-identity-apply.ts";
 import { flowRow, processRowWithFlowRef } from "../fixtures/row-builders.ts";
 
 test("identity reuse partitions local rows and rewrites dependent process references without losing metadata", (t) => {
@@ -46,7 +46,7 @@ test("identity reuse partitions local rows and rewrites dependent process refere
     JSON.stringify({ source_row: flow, fixture: "identity owner wiring" }),
   );
   const base = {
-    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
     workspace: path.join(root, "workspace"),
     cacheBase: path.join(root, "cache"),
   };

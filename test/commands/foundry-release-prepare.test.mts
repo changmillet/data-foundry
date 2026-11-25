@@ -12,7 +12,7 @@ test("OIDC diagnostic refuses ordinary processes and caller arguments without di
   for (const args of [[], ["--publish", "private-input"]]) {
     const result = spawnSync(
       process.execPath,
-      [path.join(source, "scripts/release-diagnose-npm-oidc.ts"), ...args],
+      [path.join(source, "devops/release/release-diagnose-npm-oidc.ts"), ...args],
       {
         cwd: os.tmpdir(),
         encoding: "utf8",
@@ -40,7 +40,8 @@ test("the diagnostic command returns failing exits for rejected exchanges and ne
     if (key.startsWith("GIT_") || key === "NODE_OPTIONS") delete env[key];
   try {
     fs.mkdirSync(root);
-    fs.cpSync(path.join(source, "scripts"), path.join(root, "scripts"), { recursive: true });
+    fs.cpSync(path.join(source, "src"), path.join(root, "src"), { recursive: true });
+    fs.cpSync(path.join(source, "devops"), path.join(root, "devops"), { recursive: true });
     fs.copyFileSync(path.join(source, "package.json"), path.join(root, "package.json"));
     fs.writeFileSync(path.join(root, ".gitignore"), "node_modules/\n");
     fs.symlinkSync(
@@ -87,7 +88,7 @@ test("the diagnostic command returns failing exits for rejected exchanges and ne
         [
           "--import",
           pathToFileURL(preload).href,
-          path.join(root, "scripts/release-diagnose-npm-oidc.ts"),
+          path.join(root, "devops/release/release-diagnose-npm-oidc.ts"),
         ],
         {
           cwd: temporary,
@@ -137,12 +138,16 @@ test("package preparation rejects other jobs and caller arguments before inspect
       ["release-qualification", []],
       ["npm-package", ["--version", "0.1.1"]],
     ] as const) {
-      const result = spawnSync(process.execPath, [path.join(source, "scripts", script), ...args], {
-        cwd: os.tmpdir(),
-        encoding: "utf8",
-        timeout: 30_000,
-        env: { ...process.env, GITHUB_JOB: job, GITHUB_EVENT_PATH: "missing-event.json" },
-      });
+      const result = spawnSync(
+        process.execPath,
+        [path.join(source, "devops", "release", script), ...args],
+        {
+          cwd: os.tmpdir(),
+          encoding: "utf8",
+          timeout: 30_000,
+          env: { ...process.env, GITHUB_JOB: job, GITHUB_EVENT_PATH: "missing-event.json" },
+        },
+      );
       assert.equal(result.status, 1, result.stderr);
       assert.match(result.stderr, /owning npm-package workflow job/u);
       assert.equal(result.stdout, "");
@@ -155,7 +160,7 @@ test("download verification has a read-only command with explicit source and ver
     const run = (args: string[]) =>
       spawnSync(
         process.execPath,
-        [path.join(source, "scripts/release-verify-prepared.ts"), ...args],
+        [path.join(source, "devops/release/release-verify-prepared.ts"), ...args],
         { cwd: root, encoding: "utf8", timeout: 30_000 },
       );
     const help = run(["--help"]);

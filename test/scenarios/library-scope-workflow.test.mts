@@ -9,11 +9,11 @@ import { createFileArtifactFact, createFoundryCommandSpec } from "@tiangong-lca/
 import {
   createFoundryRuntimeUtils,
   resolveInstalledTiangongLcaCliPackage,
-} from "../../scripts/lib/foundry-runtime-utils.ts";
+} from "../../src/lib/foundry-runtime-utils.ts";
 import {
   firstTidasSchemaDir,
   tidasSchemaPath,
-} from "../../scripts/lib/import-curation/internal/context-inputs.ts";
+} from "../../src/lib/import-curation/internal/context-inputs.ts";
 import type { FixtureRecord } from "../fixtures/foundry-core.ts";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -67,7 +67,7 @@ function runFoundry(
   expectedStatus = 0,
   env: NodeJS.ProcessEnv = {},
 ): FixtureRecord {
-  const result = spawnSync(process.execPath, ["scripts/foundry.ts", ...args], {
+  const result = spawnSync(process.execPath, ["test/fixtures/run-internal-stage.ts", ...args], {
     cwd: repoRoot,
     env: { ...process.env, ...env },
     encoding: "utf8",

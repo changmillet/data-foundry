@@ -7,17 +7,17 @@ import test from "node:test";
 import {
   captureFoundryInput,
   createFoundryRuntimeContext,
-} from "../../scripts/lib/foundry-runtime-context.ts";
-import { qualifyFoundryRuntime } from "../../scripts/lib/foundry-runtime-qualification.ts";
-import { runExplicitFoundryIdentityStage } from "../../scripts/lib/foundry-workflow-identity-stage.ts";
-import { selectFoundryIdentityStageInput } from "../../scripts/lib/foundry-identity-stage-input.ts";
-import { runFoundryTaskOperation } from "../../scripts/lib/foundry-task-store.ts";
-import { readRows } from "../../scripts/lib/import-curation/internal/runtime-io.ts";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
-import { runFoundryWorkflowIdentity } from "../../scripts/lib/foundry-workflow-identity.ts";
-import { createFoundryRuntime } from "../../scripts/foundry-runtime.ts";
-import { readIdentityPreflightContext } from "../../scripts/lib/import-curation/internal/workflow-identity-preflight.ts";
-import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
+import { qualifyFoundryRuntime } from "../../src/lib/foundry-runtime-qualification.ts";
+import { runExplicitFoundryIdentityStage } from "../../src/lib/foundry-workflow-identity-stage.ts";
+import { selectFoundryIdentityStageInput } from "../../src/lib/foundry-identity-stage-input.ts";
+import { runFoundryTaskOperation } from "../../src/lib/foundry-task-store.ts";
+import { readRows } from "../../src/lib/import-curation/internal/runtime-io.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
+import { runFoundryWorkflowIdentity } from "../../src/lib/foundry-workflow-identity.ts";
+import { createFoundryRuntime } from "../../src/foundry-runtime.ts";
+import { readIdentityPreflightContext } from "../../src/lib/import-curation/internal/workflow-identity-preflight.ts";
+import { resolveInstalledTiangongLcaCliPackage } from "../../src/lib/foundry-runtime-utils.ts";
 import { testAuthIdentityReceipt } from "../fixtures/auth-identity-receipt.ts";
 import { workflowFixture } from "../fixtures/foundry-public-workflow.ts";
 import { flowRow } from "../fixtures/row-builders.ts";
@@ -107,7 +107,7 @@ test("a CLI 0.4 task binds its existing Edge identity observations to the Foundr
   const started = await facade.start({ specFile });
   assert.ok(started.task_id);
   const options = {
-    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
     workspace,
     cacheBase: path.join(root, "cache"),
     taskId: started.task_id,

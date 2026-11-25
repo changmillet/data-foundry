@@ -4,7 +4,7 @@ import { performance } from "node:perf_hooks";
 import {
   readFoundryRepairCensus,
   type FoundryRepairCensusQuery,
-} from "../../scripts/lib/foundry-repair-census.ts";
+} from "../../src/lib/foundry-repair-census.ts";
 
 type Row = Record<string, unknown>;
 const actor = "22222222-2222-4222-8222-222222222222";

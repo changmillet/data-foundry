@@ -1962,6 +1962,6 @@
   },
   "windows_execution": {
     "file": "specs/ci/windows-test-observations.json",
-    "canonical_sha256": "2d89ef04edaf183006ede819747c5865793c6e69ed80b78d22dba989984d5505"
+    "canonical_sha256": "967a9f2b12474e173ef1917c72484c9296b914bc7d9297ba526c3b8b3720325f"
   }
 }

@@ -3,8 +3,8 @@ import test from "node:test";
 import {
   readBackWithBudget,
   TransientFoundryReadbackError,
-} from "../../scripts/lib/foundry-release-readback.ts";
-import { publishOnceAndReadBack } from "../../scripts/lib/foundry-release-publish.ts";
+} from "../../devops/release/foundry-release-readback.ts";
+import { publishOnceAndReadBack } from "../../devops/release/foundry-release-publish.ts";
 
 test("uncertain upload is sent once while temporary registry invisibility recovers", async () => {
   let uploads = 0,

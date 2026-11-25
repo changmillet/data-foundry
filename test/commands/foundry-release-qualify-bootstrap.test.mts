@@ -3,7 +3,10 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import test from "node:test";
 test("bootstrap qualification requires an independent digest and explicit bounded mode", () => {
-  const entry = path.resolve(import.meta.dirname, "../../scripts/release-qualify-bootstrap.ts");
+  const entry = path.resolve(
+    import.meta.dirname,
+    "../../devops/release/release-qualify-bootstrap.ts",
+  );
   const run = (args: string[]) =>
     spawnSync(process.execPath, [entry, ...args], { encoding: "utf8", timeout: 30_000 });
   assert.equal(run(["--help"]).status, 0);

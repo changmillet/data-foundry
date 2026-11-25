@@ -6,8 +6,8 @@ import { spawn, spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 import test from "node:test";
-import report, { foundryCiReporterUrl } from "../../scripts/ci-test-reporter.ts";
-import { loadFoundryTestPlan } from "../../scripts/lib/foundry-ci-plan.ts";
+import report, { foundryCiReporterUrl } from "../../devops/ci/ci-test-reporter.ts";
+import { loadFoundryTestPlan } from "../../devops/ci/foundry-ci-plan.ts";
 
 async function collect(items: unknown[]): Promise<unknown[]> {
   async function* events() {
@@ -117,14 +117,12 @@ test(
     });
     const sourceRoot = path.resolve(import.meta.dirname, "../..");
     const fixtureRoot = path.join(directory, "source");
-    const scripts = path.join(fixtureRoot, "scripts");
-    fs.mkdirSync(scripts, { recursive: true });
+    const devops = path.join(fixtureRoot, "devops");
+    fs.cpSync(path.join(sourceRoot, "devops"), devops, { recursive: true });
     fs.mkdirSync(path.join(fixtureRoot, "test"));
     fs.mkdirSync(path.join(fixtureRoot, "specs/ci"), { recursive: true });
     // Execute the real runner and reporter bytes. The other owners are reused unchanged;
     // only the external Git clean-check boundary is supplied by the synthetic source fixture.
-    for (const file of ["ci-test-shard.ts", "ci-test-reporter.ts"])
-      fs.copyFileSync(path.join(sourceRoot, "scripts", file), path.join(scripts, file));
     const diagnosticHelper = path.join(
       sourceRoot,
       "test/fixtures/managed-adoption-diagnostics.mts",
@@ -136,7 +134,13 @@ test(
         path.join(fixtureRoot, "test/fixtures/managed-adoption-diagnostics.mts"),
       );
     }
-    fs.symlinkSync(path.join(sourceRoot, "scripts/lib"), path.join(scripts, "lib"), "junction");
+    fs.copyFileSync(path.join(sourceRoot, "package.json"), path.join(fixtureRoot, "package.json"));
+    fs.symlinkSync(
+      path.join(sourceRoot, "node_modules"),
+      path.join(fixtureRoot, "node_modules"),
+      "junction",
+    );
+    fs.symlinkSync(path.join(sourceRoot, "src"), path.join(fixtureRoot, "src"), "junction");
     const source = "a".repeat(40);
     const gitFixture = path.join(directory, "git-fixture.mjs");
     fs.writeFileSync(
@@ -216,7 +220,7 @@ test("second file awaits explicit release", async () => {
       [
         "--import",
         pathToFileURL(gitFixture).href,
-        path.join(scripts, "ci-test-shard.ts"),
+        path.join(devops, "ci/ci-test-shard.ts"),
         "--index",
         "1",
         "--plan-sha256",
@@ -359,7 +363,7 @@ test("second file awaits explicit release", async () => {
       [
         "--import",
         pathToFileURL(gitFixture).href,
-        path.join(scripts, "ci-test-shard.ts"),
+        path.join(devops, "ci/ci-test-shard.ts"),
         "--index",
         "1",
         "--plan-sha256",
@@ -402,17 +406,21 @@ test("actual shard runner admits index ten only for its declared platform and pr
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   const sourceRoot = path.resolve(import.meta.dirname, "../..");
   const fixtureRoot = path.join(directory, "source");
-  const scripts = path.join(fixtureRoot, "scripts");
-  fs.mkdirSync(scripts, { recursive: true });
+  const devops = path.join(fixtureRoot, "devops");
+  fs.cpSync(path.join(sourceRoot, "devops"), devops, { recursive: true });
   fs.mkdirSync(path.join(fixtureRoot, "test/fixtures"), { recursive: true });
   fs.mkdirSync(path.join(fixtureRoot, "specs/ci"), { recursive: true });
-  for (const file of ["ci-test-shard.ts", "ci-test-reporter.ts"])
-    fs.copyFileSync(path.join(sourceRoot, "scripts", file), path.join(scripts, file));
   fs.copyFileSync(
     path.join(sourceRoot, "test/fixtures/managed-adoption-diagnostics.mts"),
     path.join(fixtureRoot, "test/fixtures/managed-adoption-diagnostics.mts"),
   );
-  fs.symlinkSync(path.join(sourceRoot, "scripts/lib"), path.join(scripts, "lib"), "junction");
+  fs.copyFileSync(path.join(sourceRoot, "package.json"), path.join(fixtureRoot, "package.json"));
+  fs.symlinkSync(
+    path.join(sourceRoot, "node_modules"),
+    path.join(fixtureRoot, "node_modules"),
+    "junction",
+  );
+  fs.symlinkSync(path.join(sourceRoot, "src"), path.join(fixtureRoot, "src"), "junction");
   for (let index = 0; index < 10; index++)
     fs.writeFileSync(
       path.join(fixtureRoot, `test/${index}.test.mts`),
@@ -463,7 +471,7 @@ syncBuiltinESMExports();
       [
         "--import",
         pathToFileURL(boundary).href,
-        path.join(scripts, "ci-test-shard.ts"),
+        path.join(devops, "ci/ci-test-shard.ts"),
         "--index",
         index,
         "--plan-sha256",

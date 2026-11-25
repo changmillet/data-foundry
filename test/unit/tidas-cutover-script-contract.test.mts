@@ -13,7 +13,7 @@ const isolatedGitEnv = Object.fromEntries(
 );
 
 function runAuditScript(cwd = repoRoot): { status: number | null; stdout: string; stderr: string } {
-  const result = spawnSync(process.execPath, ["scripts/check-tidas-cutover.ts"], {
+  const result = spawnSync(process.execPath, ["devops/ci/check-tidas-cutover.ts"], {
     cwd,
     encoding: "utf8",
     env: isolatedGitEnv,
@@ -23,14 +23,16 @@ function runAuditScript(cwd = repoRoot): { status: number | null; stdout: string
 
 function createNegativeFixtureRepository(): string {
   const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-tidas-cutover-"));
-  const fixtureScripts = path.join(fixtureRoot, "scripts");
-  fs.mkdirSync(fixtureScripts, { recursive: true });
+  const fixtureDevopsCi = path.join(fixtureRoot, "devops", "ci");
+  const fixtureSrc = path.join(fixtureRoot, "src");
+  fs.mkdirSync(fixtureDevopsCi, { recursive: true });
+  fs.mkdirSync(fixtureSrc, { recursive: true });
   fs.copyFileSync(
-    path.join(repoRoot, "scripts", "check-tidas-cutover.ts"),
-    path.join(fixtureScripts, "check-tidas-cutover.ts"),
+    path.join(repoRoot, "devops", "ci", "check-tidas-cutover.ts"),
+    path.join(fixtureDevopsCi, "check-tidas-cutover.ts"),
   );
   fs.writeFileSync(
-    path.join(fixtureScripts, "tidas-cutover-negative.ts"),
+    path.join(fixtureSrc, "tidas-cutover-negative.ts"),
     ["export const safe = true;", 'export const retired = "python -m tidas_tools";', ""].join("\n"),
   );
   const initialized = spawnSync("git", ["init", "--quiet", fixtureRoot], {
@@ -68,7 +70,7 @@ test("TIDAS cutover detects an untracked authoritative violation with stable lin
     assert.equal(report.active_files_scanned, 1);
     assert.deepEqual(report.findings, [
       {
-        file: "scripts/tidas-cutover-negative.ts",
+        file: "src/tidas-cutover-negative.ts",
         line: 2,
         pattern: "python(?:3)?\\s+-m\\s+tidas_tools",
       },
@@ -80,7 +82,7 @@ test("TIDAS cutover detects an untracked authoritative violation with stable lin
 });
 
 test("TIDAS cutover audit exists only as zero-escape native TypeScript", () => {
-  const typedPath = path.join(repoRoot, "scripts/check-tidas-cutover.ts");
+  const typedPath = path.join(repoRoot, "devops/ci/check-tidas-cutover.ts");
   assert.equal(fs.existsSync(typedPath), true);
   assert.equal(fs.existsSync(typedPath.replace(/\.ts$/u, ".mjs")), false);
   const source = fs.readFileSync(typedPath, "utf8");
@@ -92,16 +94,16 @@ test("TIDAS cutover audit exists only as zero-escape native TypeScript", () => {
 
 test("package, surface audit, and tests target the typed cutover entrypoint", () => {
   const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8"));
-  assert.equal(packageJson.scripts["tidas:cutover:audit"], "node scripts/check-tidas-cutover.ts");
+  assert.equal(packageJson.scripts["tidas:cutover:audit"], "node devops/ci/check-tidas-cutover.ts");
   for (const consumer of [
-    "scripts/lib/surface-audit.ts",
+    "src/lib/surface-audit.ts",
     "test/unit/tidas-cutover-audit.test.mts",
     "test/unit/tidas-cutover-script-contract.test.mts",
   ]) {
     const source = fs.readFileSync(path.join(repoRoot, consumer), "utf8");
     assert.match(
       source,
-      /scripts\/check-tidas-cutover\.ts|\.\.\/\.\.\/scripts\/check-tidas-cutover\.ts/u,
+      /devops\/ci\/check-tidas-cutover\.ts|\.\.\/\.\.\/devops\/ci\/check-tidas-cutover\.ts/u,
     );
     assert.doesNotMatch(source, /check-tidas-cutover\.mjs/u);
   }

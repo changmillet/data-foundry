@@ -9,7 +9,7 @@ import {
   foundryOperationPermissionStates,
   foundryOperationStatuses,
   foundryPublicOperations,
-} from "../../scripts/lib/foundry-operation-result.ts";
+} from "../../src/lib/foundry-operation-result.ts";
 
 test("public operation results have one exact immutable envelope and exit table", () => {
   assert.deepEqual(foundryOperationStatuses, [

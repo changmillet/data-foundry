@@ -8,29 +8,23 @@ import { fileURLToPath } from "node:url";
 import type {
   FoundryArtifactFact,
   FoundryCommandSpec,
-} from "../../scripts/lib/foundry-command-spec.ts";
-import { closeoutCommand } from "../../scripts/lib/bafu-orchestration/process-handoff-closeout.ts";
-import { readHandoffPlan } from "../../scripts/lib/bafu-orchestration/process-handoff-plan.ts";
+} from "../../src/lib/foundry-command-spec.ts";
+import { closeoutCommand } from "../../src/lib/bafu-orchestration/process-handoff-closeout.ts";
+import { readHandoffPlan } from "../../src/lib/bafu-orchestration/process-handoff-plan.ts";
 import {
   commitReportForHandoffPlan,
   executeHandoff,
   verifyReportForHandoffPlan,
   type ProcessHandoffAdapter,
   type ProcessHandoffCommandResult,
-} from "../../scripts/lib/bafu-orchestration/process-handoff.ts";
+} from "../../src/lib/bafu-orchestration/process-handoff.ts";
 
 type JsonRecord = Record<string, unknown>;
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
-const ownerPath = path.join(repoRoot, "scripts", "commands", "bafu-process-scope-e2e.ts");
-const modulePath = path.join(
-  repoRoot,
-  "scripts",
-  "lib",
-  "bafu-orchestration",
-  "process-handoff.ts",
-);
+const ownerPath = path.join(repoRoot, "src", "commands", "bafu-process-scope-e2e.ts");
+const modulePath = path.join(repoRoot, "src", "lib", "bafu-orchestration", "process-handoff.ts");
 const artifactSha = "0123456789abcdef".repeat(4);
 
 type VerifyAttempt = {
@@ -130,7 +124,7 @@ function createHarness(options: HarnessOptions = {}): {
   let verifyIndex = 0;
   const adapter: ProcessHandoffAdapter = {
     processExecutable: "/node",
-    foundryEntryPath: "scripts/foundry.ts",
+    foundryEntryPath: "src/dev-cli.ts",
     repoRoot: "/repo",
     environment: {},
     resolveRepoPath(value) {
@@ -335,7 +329,7 @@ test("ready handoff commits once, verifies exact rows, closes out, and preserves
   );
   assert.equal(
     createHash("sha256").update(JSON.stringify(result)).digest("hex"),
-    "a5fefa9a392c02f6258bd024ff1150ad13f7a6e5a4802cb786cb693bbcf7a331",
+    "cd5aeadc513556767e7115abd5fc6deb163b5cbf08b42f07f6b44517697b6d1f",
   );
 });
 
@@ -604,7 +598,7 @@ test("trace-hash-only accepted difference remains SHA-bound before closeout", ()
   });
   assert.equal(
     createHash("sha256").update(JSON.stringify(result)).digest("hex"),
-    "87f6297b871326fdc0fec384b06359dc82fa2fb333ea197b5bba467da8ef47e1",
+    "7b2f93f551e14bb34a41f80ff3a1b009945a92bd842f7c091468b96819c1523b",
   );
 });
 
@@ -640,7 +634,7 @@ test("closeout failure preserves the exact report, blockers, argv, and stage ord
     ),
     [
       "/node",
-      "scripts/foundry.ts",
+      "src/dev-cli.ts",
       "dataset-post-write-closeout",
       "--handoff-plan",
       "handoff/dataset-commit-handoff-plan.json",

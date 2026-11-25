@@ -9,9 +9,9 @@ import { fileURLToPath } from "node:url";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
-const typedPath = path.join(repoRoot, "scripts/commands/post-authoring-finalize.ts");
-const ownerPath = path.join(repoRoot, "scripts/lib/finalize-owners/post-authoring.ts");
-const legacyPath = path.join(repoRoot, "scripts/commands/post-authoring-finalize.mjs");
+const typedPath = path.join(repoRoot, "src/commands/post-authoring-finalize.ts");
+const ownerPath = path.join(repoRoot, "src/lib/finalize-owners/post-authoring.ts");
+const legacyPath = path.join(repoRoot, "src/commands/post-authoring-finalize.mjs");
 
 function implementationSource(): string {
   return fs.readFileSync(ownerPath, "utf8");
@@ -24,15 +24,15 @@ function readRepoFile(relativePath: string): string {
 test("post-authoring finalize help retains exact stage, type, and byte contract", () => {
   const result = spawnSync(
     process.execPath,
-    ["scripts/foundry.ts", "dataset-post-authoring-finalize", "--help"],
+    ["test/fixtures/run-internal-stage.ts", "dataset-post-authoring-finalize", "--help"],
     { cwd: repoRoot, encoding: null },
   );
   assert.equal(result.status, 0);
   assert.equal(result.stderr.length, 0);
-  assert.equal(result.stdout.length, 5666);
+  assert.equal(result.stdout.length, 5662);
   assert.equal(
     createHash("sha256").update(result.stdout).digest("hex"),
-    "0147ef71f028d79fc44f0d1c88e93fd1e9354c5b30297b19f030a9c129d3c11e",
+    "c7b46b053b067f808847dcb138533de5355699fa983b2b276a64bd2960064369",
   );
   const help = JSON.parse(result.stdout.toString()) as Record<string, unknown>;
   assert.deepEqual(help.supported_types, [
@@ -133,7 +133,7 @@ test("post-authoring finalize owner exists only as zero-escape native TypeScript
 });
 
 test("post-authoring finalize consumers and metadata target the typed owner", () => {
-  for (const consumer of ["scripts/foundry.ts", "scripts/lib/foundry-command-metadata.ts"]) {
+  for (const consumer of ["src/dev-cli.ts", "src/lib/foundry-command-metadata.ts"]) {
     const source = readRepoFile(consumer);
     assert.match(
       source,

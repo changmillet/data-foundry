@@ -5,27 +5,27 @@ import os from "node:os";
 import path from "node:path";
 import type { TestContext } from "node:test";
 import { CLI_RUNTIME_EXPECTATION_SCHEMA, describeCliRuntime } from "@tiangong-lca/cli/runtime";
-import { createFoundryFacade, runFoundryPublicCommand } from "../../scripts/public-api.ts";
-import { FOUNDRY_TIDAS_EXPECTATION_SCHEMA } from "../../scripts/lib/foundry-runtime-qualification.ts";
-import { flowRow, sourceRow } from "../fixtures/row-builders.ts";
-import { datasetIdentity } from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
-import { bundleRowTypes, type BundleRowType } from "../../scripts/lib/bundle-row-types.ts";
-import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
+import { createFoundryFacade, runFoundryPublicCommand } from "../../src/public-api.ts";
+import { FOUNDRY_TIDAS_EXPECTATION_SCHEMA } from "../../src/lib/foundry-runtime-qualification.ts";
+import { flowRow, sourceRow } from "./row-builders.ts";
+import { datasetIdentity } from "../../src/lib/import-curation/internal/dataset-payload.ts";
+import { bundleRowTypes, type BundleRowType } from "../../src/lib/bundle-row-types.ts";
+import { resolveInstalledTiangongLcaCliPackage } from "../../src/lib/foundry-runtime-utils.ts";
 import childProcess from "node:child_process";
 import { syncBuiltinESMExports } from "node:module";
-import { testAuthIdentityReceipt } from "../fixtures/auth-identity-receipt.ts";
-import { canonicalPayloadSha256 } from "../../scripts/lib/post-write-root-proof.ts";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
+import { testAuthIdentityReceipt } from "./auth-identity-receipt.ts";
+import { canonicalPayloadSha256 } from "../../src/lib/post-write-root-proof.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
 import { publishLegacyIdentityFailure } from "./legacy-identity-producer.ts";
-import { validateIdentityPreflightRecoveryEvidence } from "../../scripts/lib/identity-preflight-recovery-proof.ts";
-import { readRows } from "../../scripts/lib/import-curation/internal/runtime-io.ts";
+import { validateIdentityPreflightRecoveryEvidence } from "../../src/lib/identity-preflight-recovery-proof.ts";
+import { readRows } from "../../src/lib/import-curation/internal/runtime-io.ts";
 import { installEdgeDraftFixture } from "./foundry-edge-support.ts";
-import { unwrapDatasetPayload } from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
+import { unwrapDatasetPayload } from "../../src/lib/import-curation/internal/dataset-payload.ts";
 import {
   supportUnitGroupRow,
   supportFlowPropertyRow,
   supportFixtureReferences,
-} from "../fixtures/support-row-builders.ts";
+} from "./support-row-builders.ts";
 
 export const digestFile = (file: string) =>
   createHash("sha256").update(fs.readFileSync(file)).digest("hex");
@@ -1831,7 +1831,7 @@ childProcess.spawnSync = (command, args, options) => {
   throw new Error("Completed recap replay attempted an unexpected subprocess");
 };
 syncBuiltinESMExports();
-const { createFoundryFacade } = await import(${JSON.stringify(new URL("../../scripts/public-api.ts", import.meta.url).href)});
+const { createFoundryFacade } = await import(${JSON.stringify(new URL("../../src/public-api.ts", import.meta.url).href)});
 const facade = createFoundryFacade(${JSON.stringify({ workspace, cacheBase: path.join(root, "cache"), runtimeSelection })});
 const invocation = ${JSON.stringify(invocation)};
 process.stdout.write(JSON.stringify([await facade.status(invocation), await facade.resume(invocation)]));

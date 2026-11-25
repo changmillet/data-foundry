@@ -9,7 +9,7 @@ const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
 
 test("import-ledger contains no explicit any escape hatch", () => {
-  const source = fs.readFileSync(path.join(repoRoot, "scripts", "lib", "import-ledger.ts"), "utf8");
+  const source = fs.readFileSync(path.join(repoRoot, "src", "lib", "import-ledger.ts"), "utf8");
   assert.doesNotMatch(source, /\bany\b/u);
 });
 
@@ -18,7 +18,7 @@ test("import-ledger publishes a strict compile-time dependency, report, row, and
   fs.mkdirSync(tempParent, { recursive: true });
   const tempRoot = fs.mkdtempSync(path.join(tempParent, "import-ledger-types-"));
   try {
-    const sourceModule = path.join(repoRoot, "scripts", "lib", "import-ledger.ts");
+    const sourceModule = path.join(repoRoot, "src", "lib", "import-ledger.ts");
     let moduleSpecifier = path.relative(tempRoot, sourceModule).replaceAll("\\", "/");
     if (!moduleSpecifier.startsWith(".")) moduleSpecifier = `./${moduleSpecifier}`;
     const template = fs.readFileSync(

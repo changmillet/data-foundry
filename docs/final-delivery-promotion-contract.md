@@ -14,15 +14,15 @@ whenToUpdate:
 checkPaths:
   - docs/final-delivery-promotion-contract.md
   - specs/schemas/final-delivery-manifest.schema.json
-  - scripts/commands/final-delivery-promotion.ts
-  - scripts/lib/final-delivery-manifest.ts
-  - scripts/lib/final-delivery-workbook.ts
-  - scripts/lib/final-delivery-rows.ts
-  - scripts/lib/final-delivery-algebra.ts
-  - scripts/lib/final-delivery-redaction.ts
-  - scripts/lib/final-delivery-review.ts
-  - scripts/lib/final-delivery-xml.ts
-  - scripts/lib/final-delivery-schema.ts
+  - src/commands/final-delivery-promotion.ts
+  - src/lib/final-delivery-manifest.ts
+  - src/lib/final-delivery-workbook.ts
+  - src/lib/final-delivery-rows.ts
+  - src/lib/final-delivery-algebra.ts
+  - src/lib/final-delivery-redaction.ts
+  - src/lib/final-delivery-review.ts
+  - src/lib/final-delivery-xml.ts
+  - src/lib/final-delivery-schema.ts
   - test/commands/final-delivery-promotion.test.mts
   - test/unit/final-delivery-workbook.test.mts
   - test/unit/final-delivery-algebra.test.mts
@@ -43,18 +43,18 @@ The gate is split by owner so no single module carries the whole contract:
 
 | Module | Owns |
 | --- | --- |
-| `scripts/commands/final-delivery-promotion.ts` | the `workflow-internal` command, check orchestration, exclusive snapshot/ledger/report/seal emission |
-| `scripts/lib/final-delivery-manifest.ts` | schema/ledger/report/seal identifiers, stable hashing, path confinement, exclusive writes, the PASS/FAIL check collector |
-| `scripts/lib/final-delivery-workbook.ts` | the bounded ZIP reader and OOXML workbook/sheet/cell interpretation |
-| `scripts/lib/final-delivery-rows.ts` | the declared row contracts (JSON object / object-with-rows / array / JSONL / CSV / XLSX / none) and JSON Pointer resolution |
-| `scripts/lib/final-delivery-algebra.ts` | declarative cross-artifact numeric evaluation |
-| `scripts/lib/final-delivery-redaction.ts` | credential, user-absolute-path, and forbidden-literal scanning plus coverage closure |
-| `scripts/lib/final-delivery-review.ts` | independent-reviewer identity, PASS disposition, and content-bound coverage |
-| `scripts/lib/final-delivery-xml.ts` | the bounded, namespace-aware XML reader used for every OOXML part |
-| `scripts/lib/final-delivery-schema.ts` | real Ajv validation of the manifest against its published schema |
-| `scripts/lib/stage-contract.ts` | the shared read-only stage contract reused by every offline gate |
+| `src/commands/final-delivery-promotion.ts` | the `workflow-internal` command, check orchestration, exclusive snapshot/ledger/report/seal emission |
+| `src/lib/final-delivery-manifest.ts` | schema/ledger/report/seal identifiers, stable hashing, path confinement, exclusive writes, the PASS/FAIL check collector |
+| `src/lib/final-delivery-workbook.ts` | the bounded ZIP reader and OOXML workbook/sheet/cell interpretation |
+| `src/lib/final-delivery-rows.ts` | the declared row contracts (JSON object / object-with-rows / array / JSONL / CSV / XLSX / none) and JSON Pointer resolution |
+| `src/lib/final-delivery-algebra.ts` | declarative cross-artifact numeric evaluation |
+| `src/lib/final-delivery-redaction.ts` | credential, user-absolute-path, and forbidden-literal scanning plus coverage closure |
+| `src/lib/final-delivery-review.ts` | independent-reviewer identity, PASS disposition, and content-bound coverage |
+| `src/lib/final-delivery-xml.ts` | the bounded, namespace-aware XML reader used for every OOXML part |
+| `src/lib/final-delivery-schema.ts` | real Ajv validation of the manifest against its published schema |
+| `src/lib/stage-contract.ts` | the shared read-only stage contract reused by every offline gate |
 
-`scripts/lib/final-delivery-*` never imports a command owner, so the library stays below the command layer and adds no cycle.
+`src/lib/final-delivery-*` never imports a command owner, so the library stays below the command layer and adds no cycle.
 
 ## Relationship to execution authorization
 
@@ -63,14 +63,14 @@ A final-delivery seal and an execution-authorization capsule are different objec
 - `execution-capsule-admit` (see `docs/execution-capsule-contract.md`) packages staged evidence, models an unconsumed attempt, and binds a producer/consumer boundary that a later owner may execute.
 - `final-delivery-promote` validates already-produced delivery artifacts and seals the _validation result_. It declares no consumer, no argv, no attempt, and no dispatchable boundary, and it never marks a workbook or any other artifact as an executable input.
 
-They share hashing, file-safety, and independent-reviewer expectations because those are general evidence rules. `final-delivery-promote` reuses `scripts/lib/stage-contract.ts` for its stage pipeline and adds no task ledger, attempt model, or second authority surface of its own.
+They share hashing, file-safety, and independent-reviewer expectations because those are general evidence rules. `final-delivery-promote` reuses `src/lib/stage-contract.ts` for its stage pipeline and adds no task ledger, attempt model, or second authority surface of its own.
 
 ## Fast path
 
 Prepare a `foundry-final-delivery-manifest.v1` file and run:
 
 ```bash
-node scripts/foundry.ts final-delivery-promote \
+node src/dev-cli.ts final-delivery-promote \
   --manifest .foundry/workspaces/<task-id>/final-delivery/final-delivery-manifest.json \
   --out-dir .foundry/workspaces/<task-id>/final-delivery-promotion/revision-0001
 ```

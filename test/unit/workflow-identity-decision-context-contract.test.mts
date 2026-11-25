@@ -3,8 +3,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import * as identityContext from "../../scripts/lib/import-curation/internal/workflow-identity-decision-context.ts";
-import { sha256Json, sha256Text } from "../../scripts/lib/import-curation/internal/hash-utils.ts";
+import * as identityContext from "../../src/lib/import-curation/internal/workflow-identity-decision-context.ts";
+import { sha256Json, sha256Text } from "../../src/lib/import-curation/internal/hash-utils.ts";
 
 type JsonRecord = Record<string, unknown>;
 

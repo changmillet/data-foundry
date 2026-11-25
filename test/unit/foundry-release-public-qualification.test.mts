@@ -7,7 +7,7 @@ import {
   type RuntimeManifest,
 } from "@tiangong-lca/cli/runtime";
 import inputs from "../../specs/release/runtime-inputs.json" with { type: "json" };
-import { verifyFoundryPublicBootstrapReports } from "../../scripts/lib/foundry-release-public-qualification.ts";
+import { verifyFoundryPublicBootstrapReports } from "../../devops/release/foundry-release-public-qualification.ts";
 
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 const source = {

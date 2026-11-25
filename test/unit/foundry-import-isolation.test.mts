@@ -66,7 +66,7 @@ test("importing the Foundry entry never discovers operator state, writes files o
     // default import is safe, while refusing any actual read of operator .env/state.
     const result = spawnSync(
       process.execPath,
-      ["--input-type=module", "-e", probe, path.join(repoRoot, "scripts/foundry.ts")],
+      ["--input-type=module", "-e", probe, path.join(repoRoot, "src/dev-cli.ts")],
       { cwd: workspace, env, encoding: "utf8", timeout: 15_000, maxBuffer: 512 * 1024 },
     );
     assert.equal(result.status, 0, "Import probe must complete without terminating the host.");

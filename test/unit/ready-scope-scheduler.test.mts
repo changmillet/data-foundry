@@ -7,7 +7,7 @@ import test from "node:test";
 import {
   scheduleReadyScopes,
   type ReadyScopeScheduleItem,
-} from "../../scripts/lib/library-orchestration/ready-scope-scheduler.ts";
+} from "../../src/lib/library-orchestration/ready-scope-scheduler.ts";
 
 function item(id: string, index: number): ReadyScopeScheduleItem {
   return {

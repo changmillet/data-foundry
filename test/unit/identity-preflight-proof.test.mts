@@ -8,7 +8,7 @@ import {
   validateBoundExecutionManifest,
   validateIdentityPreflightEvidence,
   validateIdentityPreflightExecution,
-} from "../../scripts/lib/identity-preflight-proof.ts";
+} from "../../src/lib/identity-preflight-proof.ts";
 import { testAuthIdentityReceipt } from "../fixtures/auth-identity-receipt.ts";
 
 const PROJECT_REF = "qgzvkongdjqiiamzbbts";

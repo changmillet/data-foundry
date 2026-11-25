@@ -22,21 +22,22 @@ checkPaths:
   - docs/architecture.md
   - docs/foundry-ai-navigation.md
   - docs/capability-ownership-policy.md
-  - scripts/commands/library-scope-workflow.ts
-  - scripts/commands/bafu-leaf-classification-tasks.ts
-  - scripts/commands/bafu-auto-authoring.ts
-  - scripts/commands/bafu-process-scope-e2e.ts
-  - scripts/commands/bafu-batch-import-run.ts
-  - scripts/commands/uslci-batch-import-run.ts
-  - scripts/commands/worldsteel-batch-import-run.ts
-  - scripts/lib/bafu-authoring/**
-  - scripts/lib/bafu-classification/**
-  - scripts/lib/bafu-orchestration/**
-  - scripts/lib/batch-orchestration/**
-  - scripts/lib/library-orchestration/**
-  - scripts/lib/foundry-command-spec.ts
-  - scripts/lib/foundry-command-metadata.ts
-  - specs/orchestration-module-budgets.json
+  - src/commands/library-scope-workflow.ts
+  - src/commands/bafu-leaf-classification-tasks.ts
+  - src/commands/bafu-auto-authoring.ts
+  - src/commands/bafu-process-scope-e2e.ts
+  - src/commands/bafu-batch-import-run.ts
+  - src/commands/uslci-batch-import-run.ts
+  - src/commands/worldsteel-batch-import-run.ts
+  - src/commands/library-batch-import.ts
+  - src/lib/bafu-authoring/**
+  - src/lib/bafu-classification/**
+  - src/lib/bafu-orchestration/**
+  - src/lib/batch-orchestration/**
+  - src/lib/library-orchestration/**
+  - src/lib/foundry-command-spec.ts
+  - src/lib/foundry-command-metadata.ts
+  - specs/module-budgets.json
   - test/unit/*orchestration*.test.mts
   - test/unit/bafu-*-contract.test.mts
   - test/unit/library-*.test.mts
@@ -53,12 +54,12 @@ related:
   - https://github.com/tiangong-lca/data-foundry/issues/75
   - https://github.com/tiangong-lca/data-foundry/issues/76
   - https://github.com/tiangong-lca/data-foundry/issues/77
-  - specs/orchestration-module-budgets.json
+  - specs/module-budgets.json
 ---
 
 # Foundry Orchestration Module Contract
 
-Task exception validation is owned by `scripts/lib/task-authorization.ts` and `docs/task-authorization-contract.md`. Library projection checks elementary, Flow Property and Unit Group actions separately, keeping FP-before-UG blocker order. Local canonical candidate preparation and public reference proof grant no write permission. Mutation manifests bind current profile rules; handoff rechecks final-row bytes, account and any used QA exception. Existing attempt/no-replay ownership and line ceilings remain unchanged.
+Task exception validation is owned by `src/lib/task-authorization.ts` and `docs/task-authorization-contract.md`. Library projection checks elementary, Flow Property and Unit Group actions separately, keeping FP-before-UG blocker order. Local canonical candidate preparation and public reference proof grant no write permission. Mutation manifests bind current profile rules; handoff rechecks final-row bytes, account and any used QA exception. Existing attempt/no-replay ownership and line ceilings remain unchanged.
 
 ## 1. Outcome and ownership
 
@@ -80,9 +81,9 @@ Issue #70 started from five owners totaling 16,680 lines:
 | `bafu-process-scope-e2e.ts`         |         2,204 |                     at most 500 |
 | `bafu-batch-import-run.ts`          |         6,295 | at most 500 after CLI migration |
 
-The executable ceilings are machine-owned by `specs/orchestration-module-budgets.json` and may only decrease. Ordinary semantic stages target at most 800 lines. A pure ordered-rule module may temporarily use the 1,200-line target only when rule precedence is one contract; a larger migration ceiling is debt, not permission to grow. Split by artifact, policy, or stage meaning rather than `part-N` filenames.
+The executable ceilings are machine-owned repo-wide across `src/**/*.ts` and `devops/**/*.ts` by `specs/module-budgets.json` (`default_max_lines: 800`, shrink-only `debt_ceiling_lines`, `owner_ceiling_lines`, and `semantic_module_ceiling_lines`, plus `0` `src/ -> devops/` cross-imports) and may only decrease. Ordinary semantic stages target at most 800 lines. A pure ordered-rule module may temporarily use the 1,200-line target only when rule precedence is one contract; a larger migration ceiling is debt, not permission to grow. Split by artifact, policy, or stage meaning rather than `part-N` filenames.
 
-The same ratchet enforces dependency direction and SCC stability. `scripts/lib/**` does not import command owners except the explicitly recorded dispatcher edge. The characterized authoring three-module SCC remains the only cycle; no orchestration extraction may add another.
+The same ratchet enforces dependency direction and SCC stability. `src/lib/**` does not import command owners except the explicitly recorded dispatcher edge. The characterized authoring three-module SCC remains the only cycle; no orchestration extraction may add another.
 
 ## 3. Semantic stage map
 
@@ -90,31 +91,31 @@ Navigate directly to the narrowest owner:
 
 | Concern | Semantic owner | Command responsibility left above it |
 | --- | --- | --- |
-| BAFU structured name parsing and functional-unit cleanup | `scripts/lib/bafu-authoring/name-plan.ts` | task loading and patch/report projection |
-| BAFU flow/process identity equivalence | `scripts/lib/bafu-authoring/identity-equivalence.ts` | decision batch I/O and command envelope |
-| BAFU patch and source-trace projection | `scripts/lib/bafu-authoring/patch-projection.ts` | input/output files and report emission |
-| BAFU process/product leaf repair | `scripts/lib/bafu-classification/leaf-repair.ts` | schema loading, sharding, task/report files |
-| BAFU category-map closure-wide status and blocker report | `scripts/lib/bafu-classification/category-map-report.ts` | decision/task file I/O and artifact writes |
-| Canonical description JSON validation and cloning | `scripts/lib/canonical-description.ts` | canonical selection, file I/O, stage orchestration, or remote authority |
-| Library entity index and process-bundle scope projection | `scripts/lib/library-orchestration/entity-projection.ts` | directory enumeration and artifact writes |
-| Ready process-scope input-order report/checkpoint projection | `scripts/lib/library-orchestration/ready-process-scope-runner.ts` | CommandSpec execution, generic scheduling, and CLI contract semantics |
-| Artifact-bound ready-scope command execution and logs | `scripts/lib/library-orchestration/ready-scope-command.ts` | scope readiness, ordering, batch claims, and report aggregation |
-| Ready-scope content/policy/CLI contract and scheduling adapter | `scripts/lib/library-orchestration/ready-scope-scheduler.ts` | LCA readiness, blockers, command results, and artifacts |
-| Ready-scope filtering, classification preflight, family ordering, and preflight rows | `scripts/lib/batch-orchestration/scope-selection.ts` | ledger reads, profile adapters, worker execution |
-| Location task-queue path/bytes/SHA binding and post-suggest verification | `scripts/lib/batch-orchestration/location-task-queue.ts` | task build, semantic suggestion/apply, taxonomy choice, and report aggregation |
-| Universe and ledger coverage | `scripts/lib/batch-orchestration/universe-coverage.ts` | command help/options and report destination |
-| Finalize blocker/recovery eligibility | `scripts/lib/bafu-orchestration/finalize-recovery-policy.ts` | subprocess, CommandSpec, retries, file reads |
-| Post-finalize recovery dispatch and exact argv projection | `scripts/lib/bafu-orchestration/post-finalize-recovery.ts` | stage selection, report interpretation, and downstream retry policy |
-| Same-id/version lost-success eligibility | `scripts/lib/same-identity-commit-recovery.ts` | commit dispatch, report discovery, verification, or closeout |
-| Process verify and closeout argv planning | `scripts/lib/bafu-orchestration/process-handoff-plan.ts`, `scripts/lib/bafu-orchestration/process-handoff-closeout.ts` | stage execution, report parsing, retry, and semantic acceptance |
-| Batch commit, post-write verify/retry, and closeout | `scripts/lib/batch-orchestration/post-write-handoff.ts` | stage runner, timeouts, profile/scope labels, and report aggregation |
-| Per-dataset finalize, support reuse/commit, recovery, and handoff | `scripts/lib/batch-orchestration/scope-finalize-commit.ts` | injected finalize/identity/handoff services, paths, and profile context |
-| Scope content/policy/executable resume authority and source-byte facts | `scripts/lib/batch-orchestration/scope-resume-contract.ts`, `scope-source-content.ts` | profile options, input discovery, and report aggregation |
-| Verified/blocked contract matching and blocker re-admission | `scripts/lib/batch-orchestration/scope-resume-ledger.ts`, `scope-resume-projection.ts` | ledger locations and selected-scope policy |
-| Durable consumed-attempt state and CLI event compaction | `scripts/lib/batch-orchestration/scope-attempt-ledger.ts` | command-owned files and reader counts |
-| Exact flow payload carry-forward and verified-row writing | `scripts/lib/batch-orchestration/flow-resume-ledger.ts`, `verified-flow-write.ts` | flow finalize/commit and identity semantics |
-| Process finalize checkpoint and report-byte authority | `scripts/lib/bafu-orchestration/process-scope-resume.ts` | process workflow options, execution, and report projection |
-| Immutable control blob identity and hardlink/copy/reuse | `scripts/lib/batch-orchestration/control-artifact-store.ts` | scope reference choice and reader reports |
+| BAFU structured name parsing and functional-unit cleanup | `src/lib/bafu-authoring/name-plan.ts` | task loading and patch/report projection |
+| BAFU flow/process identity equivalence | `src/lib/bafu-authoring/identity-equivalence.ts` | decision batch I/O and command envelope |
+| BAFU patch and source-trace projection | `src/lib/bafu-authoring/patch-projection.ts` | input/output files and report emission |
+| BAFU process/product leaf repair | `src/lib/bafu-classification/leaf-repair.ts` | schema loading, sharding, task/report files |
+| BAFU category-map closure-wide status and blocker report | `src/lib/bafu-classification/category-map-report.ts` | decision/task file I/O and artifact writes |
+| Canonical description JSON validation and cloning | `src/lib/canonical-description.ts` | canonical selection, file I/O, stage orchestration, or remote authority |
+| Library entity index and process-bundle scope projection | `src/lib/library-orchestration/entity-projection.ts` | directory enumeration and artifact writes |
+| Ready process-scope input-order report/checkpoint projection | `src/lib/library-orchestration/ready-process-scope-runner.ts` | CommandSpec execution, generic scheduling, and CLI contract semantics |
+| Artifact-bound ready-scope command execution and logs | `src/lib/library-orchestration/ready-scope-command.ts` | scope readiness, ordering, batch claims, and report aggregation |
+| Ready-scope content/policy/CLI contract and scheduling adapter | `src/lib/library-orchestration/ready-scope-scheduler.ts` | LCA readiness, blockers, command results, and artifacts |
+| Ready-scope filtering, classification preflight, family ordering, and preflight rows | `src/lib/batch-orchestration/scope-selection.ts` | ledger reads, profile adapters, worker execution |
+| Location task-queue path/bytes/SHA binding and post-suggest verification | `src/lib/batch-orchestration/location-task-queue.ts` | task build, semantic suggestion/apply, taxonomy choice, and report aggregation |
+| Universe and ledger coverage | `src/lib/batch-orchestration/universe-coverage.ts` | command help/options and report destination |
+| Finalize blocker/recovery eligibility | `src/lib/bafu-orchestration/finalize-recovery-policy.ts` | subprocess, CommandSpec, retries, file reads |
+| Post-finalize recovery dispatch and exact argv projection | `src/lib/bafu-orchestration/post-finalize-recovery.ts` | stage selection, report interpretation, and downstream retry policy |
+| Same-id/version lost-success eligibility | `src/lib/same-identity-commit-recovery.ts` | commit dispatch, report discovery, verification, or closeout |
+| Process verify and closeout argv planning | `src/lib/bafu-orchestration/process-handoff-plan.ts`, `src/lib/bafu-orchestration/process-handoff-closeout.ts` | stage execution, report parsing, retry, and semantic acceptance |
+| Batch commit, post-write verify/retry, and closeout | `src/lib/batch-orchestration/post-write-handoff.ts` | stage runner, timeouts, profile/scope labels, and report aggregation |
+| Per-dataset finalize, support reuse/commit, recovery, and handoff | `src/lib/batch-orchestration/scope-finalize-commit.ts` | injected finalize/identity/handoff services, paths, and profile context |
+| Scope content/policy/executable resume authority and source-byte facts | `src/lib/batch-orchestration/scope-resume-contract.ts`, `scope-source-content.ts` | profile options, input discovery, and report aggregation |
+| Verified/blocked contract matching and blocker re-admission | `src/lib/batch-orchestration/scope-resume-ledger.ts`, `scope-resume-projection.ts` | ledger locations and selected-scope policy |
+| Durable consumed-attempt state and CLI event compaction | `src/lib/batch-orchestration/scope-attempt-ledger.ts` | command-owned files and reader counts |
+| Exact flow payload carry-forward and verified-row writing | `src/lib/batch-orchestration/flow-resume-ledger.ts`, `verified-flow-write.ts` | flow finalize/commit and identity semantics |
+| Process finalize checkpoint and report-byte authority | `src/lib/bafu-orchestration/process-scope-resume.ts` | process workflow options, execution, and report projection |
+| Immutable control blob identity and hardlink/copy/reuse | `src/lib/batch-orchestration/control-artifact-store.ts` | scope reference choice and reader reports |
 | Receipt schema, locator projection, and post-prune verification | `control-receipt-contract.ts`, `control-reference-projection.ts`, `control-receipt-verification.ts` | profile execution and payload semantics |
 | Receipt-before-prune orchestration and ownership-safe deletion | `scope-control-retention.ts`, `scope-safe-prune.ts`, `scope-scratch-policy.ts` | verified-state admission and run/store locations |
 | Recomputable shared-context cache eviction | `shared-context-cache-prune.ts` | cache cap and keep-scratch option |

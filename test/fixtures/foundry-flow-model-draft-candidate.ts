@@ -4,14 +4,14 @@ import fs from "node:fs";
 import { syncBuiltinESMExports } from "node:module";
 import path from "node:path";
 import type { TestContext } from "node:test";
-import { createFoundryFacade } from "../../scripts/public-api.ts";
-import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
+import { createFoundryFacade } from "../../src/public-api.ts";
+import { resolveInstalledTiangongLcaCliPackage } from "../../src/lib/foundry-runtime-utils.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
 import {
   datasetIdentity,
   unwrapDatasetPayload,
-} from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
-import { readRows } from "../../scripts/lib/import-curation/internal/runtime-io.ts";
+} from "../../src/lib/import-curation/internal/dataset-payload.ts";
+import { readRows } from "../../src/lib/import-curation/internal/runtime-io.ts";
 import { digestFile, workflowFixture } from "./foundry-public-workflow.ts";
 import {
   finalizationProcessAccount as account,

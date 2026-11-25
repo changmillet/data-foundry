@@ -8,13 +8,13 @@ import {
   advanceFoundryInteractionState,
   foundryInteractionObjectProofKey,
   parseFoundryInteractionInput,
-} from "../../scripts/lib/foundry-interaction-input.ts";
-import { foundryInteractionObjectKey } from "../../scripts/lib/foundry-interaction-scope.ts";
-import type { ArtifactEntry } from "../../scripts/lib/foundry-task-types.ts";
+} from "../../src/lib/foundry-interaction-input.ts";
+import { foundryInteractionObjectKey } from "../../src/lib/foundry-interaction-scope.ts";
+import type { ArtifactEntry } from "../../src/lib/foundry-task-types.ts";
 import {
   createFoundryRuntimeContext,
   initializeFoundryWorkspace,
-} from "../../scripts/lib/foundry-runtime-context.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
 import {
   currentFoundryObjectDecisionReassessments,
   currentFoundryObjectScopeIsBound,
@@ -22,7 +22,7 @@ import {
   indexedFoundryRowAdoptions,
   requireCurrentFoundryObjectScope,
   type CurrentFoundryObject,
-} from "../../scripts/lib/foundry-workflow-object-scope.ts";
+} from "../../src/lib/foundry-workflow-object-scope.ts";
 
 const firstId = "66666666-6666-4666-8666-666666666666";
 const secondId = "77777777-7777-4777-8777-777777777777";
@@ -57,7 +57,7 @@ test("an independent P1 row change cannot carry an old decision while unchanged 
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-object-scope-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const options = {
-    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
     workspace: path.join(root, "workspace"),
     cacheBase: path.join(root, "cache"),
   };
@@ -447,7 +447,7 @@ test("an object assumption requires explicit same-object re-review after its reg
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-assumption-scope-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const options = {
-    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
     workspace: path.join(root, "workspace"),
     cacheBase: path.join(root, "cache"),
   };

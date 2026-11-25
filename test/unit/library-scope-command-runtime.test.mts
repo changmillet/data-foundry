@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { readyScopeFileValue } from "../../scripts/lib/library-orchestration/command-runtime.ts";
+import { readyScopeFileValue } from "../../src/lib/library-orchestration/command-runtime.ts";
 
 test("library command runtime preserves explicit scope-file precedence and safe resolution fallback", () => {
   assert.equal(

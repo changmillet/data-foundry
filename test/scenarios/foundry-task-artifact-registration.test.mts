@@ -7,13 +7,13 @@ import {
   captureFoundryInput,
   createFoundryRuntimeContext,
   initializeFoundryWorkspace,
-} from "../../scripts/lib/foundry-runtime-context.ts";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
-import { runFoundryTaskOperation } from "../../scripts/lib/foundry-task-store.ts";
-import { registerWorkflowStageFiles } from "../../scripts/lib/foundry-workflow-io.ts";
-import type { FoundryTaskOperation, JsonRecord } from "../../scripts/lib/foundry-task-types.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
+import { runFoundryTaskOperation } from "../../src/lib/foundry-task-store.ts";
+import { registerWorkflowStageFiles } from "../../src/lib/foundry-workflow-io.ts";
+import type { FoundryTaskOperation, JsonRecord } from "../../src/lib/foundry-task-types.ts";
 
-const moduleUrl = new URL("../../scripts/runtime-entry.ts", import.meta.url).href;
+const moduleUrl = new URL("../../src/runtime-entry.ts", import.meta.url).href;
 const hasCode = (expected: string) => (error: unknown) =>
   Boolean(error && typeof error === "object" && "code" in error && error.code === expected);
 

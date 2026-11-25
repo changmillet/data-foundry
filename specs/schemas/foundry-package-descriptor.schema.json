@@ -34,13 +34,13 @@
           }
         },
         "bin": {
-          "const": "package-dist/scripts/package-entry.js"
+          "const": "package-dist/src/package-entry.js"
         },
         "public_api": {
-          "const": "package-dist/scripts/public-api.js"
+          "const": "package-dist/src/public-api.js"
         },
         "types": {
-          "const": "package-dist/scripts/public-api.d.ts"
+          "const": "package-dist/src/public-api.d.ts"
         }
       }
     },
