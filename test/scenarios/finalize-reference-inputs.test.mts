@@ -3,10 +3,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { createFoundryApplication } from "../../scripts/foundry.ts";
-import { createFoundryRuntimeUtils } from "../../scripts/lib/foundry-runtime-utils.ts";
-import { parseScalar } from "../../scripts/lib/foundry-args.ts";
-import { selectFinalizeReferenceInputs } from "../../scripts/lib/finalize-owners/finalize-reference-inputs.ts";
+import { createFoundryApplication } from "../../src/dev-cli.ts";
+import { createFoundryRuntimeUtils } from "../../src/lib/foundry-runtime-utils.ts";
+import { parseScalar } from "../../src/lib/foundry-args.ts";
+import { selectFinalizeReferenceInputs } from "../../src/lib/finalize-owners/finalize-reference-inputs.ts";
 
 const repoRoot = path.resolve(import.meta.dirname, "../..");
 

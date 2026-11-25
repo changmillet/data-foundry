@@ -6,7 +6,7 @@ import {
   parseFoundryRepairRemoteReport,
   parseFoundryRepairValidateReport,
   type FoundryRepairExpectation,
-} from "../../scripts/lib/foundry-repair-preflight.ts";
+} from "../../src/lib/foundry-repair-preflight.ts";
 
 const contractSha = "a".repeat(64);
 const beforeSha = "b".repeat(64);

@@ -5,7 +5,7 @@ import {
   accountModeForVerifiedIdentity,
   assertReceiptBoundHandoffAccount,
   traceHashNormalizationAllowed,
-} from "../../scripts/lib/production-case-policy.ts";
+} from "../../src/lib/production-case-policy.ts";
 
 test("verified test accounts disable traceHash normalization", () => {
   assert.equal(

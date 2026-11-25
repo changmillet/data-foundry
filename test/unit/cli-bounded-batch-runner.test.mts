@@ -6,17 +6,17 @@ import test from "node:test";
 
 import { batchRunLockPath } from "@tiangong-lca/cli/batch";
 
-import { runLockedCliBatch } from "../../scripts/lib/batch-orchestration/cli-bounded-batch-runner.ts";
-import { runFoundryScopeBatch } from "../../scripts/lib/batch-orchestration/foundry-scope-batch-runner.ts";
-import { createScopeResumeContract } from "../../scripts/lib/batch-orchestration/scope-resume-contract.ts";
+import { runLockedCliBatch } from "../../src/lib/batch-orchestration/cli-bounded-batch-runner.ts";
+import { runFoundryScopeBatch } from "../../src/lib/batch-orchestration/foundry-scope-batch-runner.ts";
+import { createScopeResumeContract } from "../../src/lib/batch-orchestration/scope-resume-contract.ts";
 
 test("BAFU command delegates claims to the locked CLI batch boundary", () => {
   const facadeSource = fs.readFileSync(
-    path.resolve("scripts/commands/bafu-batch-import-run.ts"),
+    path.resolve("src/commands/bafu-batch-import-run.ts"),
     "utf8",
   );
   const runtimeSource = fs.readFileSync(
-    path.resolve("scripts/lib/batch-orchestration/bafu-batch-command-runtime.ts"),
+    path.resolve("src/lib/batch-orchestration/bafu-batch-command-runtime.ts"),
     "utf8",
   );
   assert.match(facadeSource, /bafu-batch-command-runtime\.ts/u);

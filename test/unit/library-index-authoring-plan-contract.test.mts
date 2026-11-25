@@ -5,12 +5,12 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { createLibraryScopeWorkflowCommands } from "../../scripts/commands/library-scope-workflow.ts";
+import { createLibraryScopeWorkflowCommands } from "../../src/commands/library-scope-workflow.ts";
 import {
   createLibraryEntityProjection,
   type JsonRecord,
   type LibraryEntityProjection,
-} from "../../scripts/lib/library-orchestration/entity-projection.ts";
+} from "../../src/lib/library-orchestration/entity-projection.ts";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const fixtureRoot = path.join(repoRoot, "tmp", "library-index-plan-contract");
@@ -681,10 +681,10 @@ test("library index and authoring plan modules preserve exact realistic bundle a
 
   fs.rmSync(runRoot, { recursive: true, force: true });
   const indexModule = (await import(
-    new URL("../../scripts/lib/library-orchestration/index-build.ts", import.meta.url).href
+    new URL("../../src/lib/library-orchestration/index-build.ts", import.meta.url).href
   )) as IndexBuildModule;
   const authoringModule = (await import(
-    new URL("../../scripts/lib/library-orchestration/authoring-plan.ts", import.meta.url).href
+    new URL("../../src/lib/library-orchestration/authoring-plan.ts", import.meta.url).href
   )) as AuthoringPlanModule;
   const indexBuild = indexModule.createLibraryIndexBuild({
     asText,

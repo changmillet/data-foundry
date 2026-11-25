@@ -28,7 +28,7 @@ test("core ledger and support command tests exist only as native TypeScript", ()
 test("metadata and migration consumers target the typed command tests", () => {
   const consumers: Array<[string, string[]]> = [
     [
-      "scripts/lib/foundry-command-metadata.ts",
+      "src/lib/foundry-command-metadata.ts",
       ["bundle-sample-rows", "import-ledger", "support-cache"],
     ],
     [

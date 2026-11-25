@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createScopeMutationRecoveryService } from "../../scripts/lib/batch-orchestration/scope-mutation-recovery.ts";
-import { createScopeResumeContract } from "../../scripts/lib/batch-orchestration/scope-resume-contract.ts";
+import { createScopeMutationRecoveryService } from "../../src/lib/batch-orchestration/scope-mutation-recovery.ts";
+import { createScopeResumeContract } from "../../src/lib/batch-orchestration/scope-resume-contract.ts";
 
 type JsonRecord = Record<string, unknown>;
 

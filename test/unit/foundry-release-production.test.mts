@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { parseDocument, stringify } from "yaml";
-import { projectFoundryProductionLock } from "../../scripts/lib/foundry-release-production.ts";
+import { projectFoundryProductionLock } from "../../devops/release/foundry-release-production.ts";
 
 const root = path.resolve(import.meta.dirname, "../..");
 const lockBytes = fs.readFileSync(path.join(root, "pnpm-lock.yaml"));

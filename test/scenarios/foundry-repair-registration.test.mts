@@ -4,15 +4,15 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { createFoundryRuntime } from "../../scripts/foundry-runtime.ts";
+import { createFoundryRuntime } from "../../src/foundry-runtime.ts";
 import {
   captureFoundryInput,
   createFoundryRuntimeContext,
   initializeFoundryWorkspace,
-} from "../../scripts/lib/foundry-runtime-context.ts";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
 
-const moduleUrl = new URL("../../scripts/runtime-entry.ts", import.meta.url).href;
+const moduleUrl = new URL("../../src/runtime-entry.ts", import.meta.url).href;
 const ownerId = "11111111-1111-4111-8111-111111111111";
 const projectRef = "abcdefghijklmnopqrst";
 const processId = "22222222-2222-4222-8222-222222222222";

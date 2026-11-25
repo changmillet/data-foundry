@@ -6,15 +6,12 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import {
-  runWithLcaAccount,
-  type WithLcaAccountDependencies,
-} from "../../scripts/with-lca-account.ts";
+import { runWithLcaAccount, type WithLcaAccountDependencies } from "../../src/with-lca-account.ts";
 import {
   testAuthIdentityReceipt,
   testAuthIdentityReceiptOutput,
 } from "../fixtures/auth-identity-receipt.ts";
-import { tiangongLcaCliPackageVersion } from "../../scripts/lib/foundry-runtime-utils.ts";
+import { tiangongLcaCliPackageVersion } from "../../src/lib/foundry-runtime-utils.ts";
 
 const PROJECT_REF = "exampleprojectref";
 const USER_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
@@ -203,17 +200,17 @@ test("account wrapper package and surface metadata point only at the typed entry
     fs.readFileSync(path.join(repositoryRoot, "package.json"), "utf8"),
   );
   const surfaceAudit = fs.readFileSync(
-    path.join(repositoryRoot, "scripts", "lib", "surface-audit.ts"),
+    path.join(repositoryRoot, "src", "lib", "surface-audit.ts"),
     "utf8",
   );
   const wrapperSource = fs.readFileSync(
-    path.join(repositoryRoot, "scripts", "with-lca-account.ts"),
+    path.join(repositoryRoot, "src", "with-lca-account.ts"),
     "utf8",
   );
-  assert.equal(packageJson.scripts?.["account:run"], "node scripts/with-lca-account.ts");
-  assert.match(surfaceAudit, /scripts\/with-lca-account\.ts/u);
-  assert.doesNotMatch(surfaceAudit, /scripts\/with-lca-account\.mjs/u);
-  assert.equal(fs.existsSync(path.join(repositoryRoot, "scripts", "with-lca-account.mjs")), false);
+  assert.equal(packageJson.scripts?.["account:run"], "node src/with-lca-account.ts");
+  assert.match(surfaceAudit, /src\/with-lca-account\.ts/u);
+  assert.doesNotMatch(surfaceAudit, /with-lca-account\.mjs/u);
+  assert.equal(fs.existsSync(path.join(repositoryRoot, "src", "with-lca-account.mjs")), false);
   assert.doesNotMatch(wrapperSource, /\bfetch\s*\(/u);
   assert.doesNotMatch(wrapperSource, /base64/iu);
   assert.doesNotMatch(wrapperSource, /shell:\s*true/u);
@@ -222,7 +219,7 @@ test("account wrapper package and surface metadata point only at the typed entry
 
 test("account wrapper executes when invoked through a symlinked entrypoint", (context) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-account-symlink-"));
-  const wrapperPath = path.join(repositoryRoot, "scripts", "with-lca-account.ts");
+  const wrapperPath = path.join(repositoryRoot, "src", "with-lca-account.ts");
   const symlinkPath = path.join(root, "with-lca-account.ts");
   try {
     try {

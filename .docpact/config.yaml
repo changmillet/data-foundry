@@ -58,13 +58,14 @@ ownership:
           - pnpm-lock.yaml
           - pnpm-workspace.yaml
           - prettier.config.ts
-          - scripts/**
+          - src/**
+          - devops/**
           - specs/automated-lca-capability-registry.json
           - specs/canonical-support/**
           - specs/capability-ownership-rules.json
           - specs/data-foundry-service.md
           - specs/prewrite-content-policy.json
-          - specs/orchestration-module-budgets.json
+          - specs/module-budgets.json
           - specs/schemas/**
           - test/unit/zero-javascript-ratchet.test.mts
           - specs/workspace-capability-adapters.md
@@ -100,6 +101,10 @@ coverage:
     - WORKFLOW.md
     - .docpact/config.yaml
     - .gitignore
+    - .gitattributes
+    - .codex/hooks/**
+    - .codex/hooks.json
+    - .env.example
     - .github/workflows/**
     - .github/dependabot.yml
     - .husky/**
@@ -110,7 +115,8 @@ coverage:
     - pnpm-lock.yaml
     - pnpm-workspace.yaml
     - prettier.config.ts
-    - scripts/**
+    - src/**
+    - devops/**
     - test/**
     - specs/**
     - tsconfig*.json
@@ -151,13 +157,14 @@ routing:
         - pnpm-lock.yaml
         - pnpm-workspace.yaml
         - prettier.config.ts
-        - scripts/**
+        - src/**
+        - devops/**
         - specs/automated-lca-capability-registry.json
         - specs/canonical-support/**
         - specs/capability-ownership-rules.json
         - specs/data-foundry-service.md
         - specs/prewrite-content-policy.json
-        - specs/orchestration-module-budgets.json
+        - specs/module-budgets.json
         - specs/schemas/**
         - test/unit/zero-javascript-ratchet.test.mts
         - specs/workspace-capability-adapters.md
@@ -178,7 +185,7 @@ routing:
         - docs/foundry-task-contracts.md
     proof:
       paths:
-        - scripts/foundry.ts
+        - src/dev-cli.ts
         - package.json
         - README.md
         - WORKFLOW.md
@@ -282,8 +289,12 @@ rules:
         kind: package-workspace-contract
       - path: prettier.config.ts
         kind: formatter-contract
-      - path: scripts/**
+      - path: src/**
         kind: local-runtime
+      - path: devops/**
+        kind: devops-tooling
+      - path: scripts/**
+        kind: retired-legacy-scripts-layout
       - path: specs/automated-lca-capability-registry.json
         kind: capability-registry
       - path: specs/canonical-support/**
@@ -296,8 +307,6 @@ rules:
         kind: prewrite-content-policy
       - path: specs/schemas/**
         kind: artifact-schema-contract
-      - path: specs/typescript-migration-*.json
-        kind: retired-typescript-migration-artifact
       - path: test/unit/zero-javascript-ratchet.test.mts
         kind: zero-javascript-ratchet
       - path: specs/workspace-capability-adapters.md
@@ -344,7 +353,7 @@ rules:
         kind: bafu-import-runbook
     requiredDocs:
       - path: specs/import-profiles.json
-        mode: review_or_update
+        mode: must_exist
       - path: docs/architecture.md
         mode: review_or_update
     reason: Import profile constraints must remain generic profile contracts, not Foundry code paths.
@@ -352,7 +361,7 @@ rules:
     scope: repo
     repo: data-foundry
     triggers:
-      - path: scripts/commands/worldsteel-batch-import-run.ts
+      - path: src/commands/worldsteel-batch-import-run.ts
         kind: worldsteel-frozen-runner-policy
       - path: test/unit/worldsteel-support-mint-truth.test.mts
         kind: worldsteel-policy-contract-test
@@ -360,7 +369,7 @@ rules:
         kind: worldsteel-profile-doc
     requiredDocs:
       - path: specs/import-profiles.json
-        mode: review_or_update
+        mode: must_exist
       - path: docs/import-profiles/worldsteel/profile.md
         mode: review_or_update
       - path: docs/import-profiles/worldsteel/constraints.md
@@ -376,19 +385,19 @@ rules:
     triggers:
       - path: docs/task-authorization-contract.md
         kind: task-authorization-contract
-      - path: scripts/lib/task-authorization.ts
+      - path: src/lib/task-authorization.ts
         kind: task-authorization-validator
-      - path: scripts/lib/foundry-task-authorization.ts
+      - path: src/lib/foundry-task-authorization.ts
         kind: persisted-task-authorization
-      - path: scripts/lib/foundry-execution-admission.ts
+      - path: src/lib/foundry-execution-admission.ts
         kind: final-child-execution-admission
-      - path: scripts/lib/import-curation/internal/profiles-config.ts
+      - path: src/lib/import-curation/internal/profiles-config.ts
         kind: rule-and-authorization-admission
-      - path: scripts/lib/import-curation/mutation-manifest.ts
+      - path: src/lib/import-curation/mutation-manifest.ts
         kind: task-write-admission
-      - path: scripts/commands/commit-handoff.ts
+      - path: src/commands/commit-handoff.ts
         kind: final-row-task-admission
-      - path: scripts/commands/identity-decisions.ts
+      - path: src/commands/identity-decisions.ts
         kind: elementary-action-admission
       - path: specs/schemas/task-authorization.schema.json
         kind: task-authorization-schema
@@ -410,29 +419,29 @@ rules:
     scope: repo
     repo: data-foundry
     triggers:
-      - path: scripts/lib/foundry-runtime-context.ts
+      - path: src/lib/foundry-runtime-context.ts
         kind: explicit-runtime-roots
-      - path: scripts/lib/foundry-runtime-paths.ts
+      - path: src/lib/foundry-runtime-paths.ts
         kind: package-layout-resolution
-      - path: scripts/foundry-runtime.ts
+      - path: src/foundry-runtime.ts
         kind: consumer-command-adapter
-      - path: scripts/foundry-facade.ts
+      - path: src/foundry-facade.ts
         kind: public-facade-composition
-      - path: scripts/lib/foundry-facade-store.ts
+      - path: src/lib/foundry-facade-store.ts
         kind: facade-request-revision-state
-      - path: scripts/lib/foundry-migration-inventory.ts
+      - path: src/lib/foundry-migration-inventory.ts
         kind: read-only-migration-inventory
-      - path: scripts/lib/foundry-runtime-command-policy.ts
+      - path: src/lib/foundry-runtime-command-policy.ts
         kind: all-command-runtime-disposition
-      - path: scripts/lib/foundry-runtime-qualification.ts
+      - path: src/lib/foundry-runtime-qualification.ts
         kind: component-runtime-qualification
-      - path: scripts/lib/foundry-execution-admission.ts
+      - path: src/lib/foundry-execution-admission.ts
         kind: qualified-child-execution
-      - path: scripts/lib/tidas-adapter.ts
+      - path: src/lib/tidas-adapter.ts
         kind: explicit-native-child-environment
-      - path: scripts/lib/import-curation/internal/runtime-io.ts
+      - path: src/lib/import-curation/internal/runtime-io.ts
         kind: scoped-runtime-io
-      - path: scripts/lib/import-curation/curation-cleanup.ts
+      - path: src/lib/import-curation/curation-cleanup.ts
         kind: context-aware-command-owner
       - path: test/unit/runtime-layout.test.mts
         kind: runtime-layout-contract-test
@@ -470,21 +479,21 @@ rules:
         kind: public-package-manifest
       - path: tsconfig.package.json
         kind: public-package-compiler
-      - path: scripts/package-entry.ts
+      - path: src/package-entry.ts
         kind: public-package-bin
-      - path: scripts/public-api.ts
+      - path: src/public-api.ts
         kind: public-package-api
-      - path: scripts/build-foundry-package.ts
+      - path: devops/build/build-foundry-package.ts
         kind: package-stage-builder
-      - path: scripts/pack-foundry-package.ts
+      - path: devops/build/pack-foundry-package.ts
         kind: package-archive-builder
-      - path: scripts/verify-foundry-package.ts
+      - path: devops/build/verify-foundry-package.ts
         kind: package-stage-verifier
-      - path: scripts/release-*.ts
+      - path: devops/release/release-*.ts
         kind: source-release-command
-      - path: scripts/ci-*.ts
+      - path: devops/ci/ci-*.ts
         kind: source-ci-command
-      - path: scripts/lib/foundry-ci-*.ts
+      - path: devops/ci/foundry-ci-*.ts
         kind: source-ci-integrity-policy
       - path: specs/ci/**
         kind: source-ci-test-partition
@@ -494,7 +503,7 @@ rules:
         kind: source-release-workflow
       - path: .github/workflows/quality-gate.yml
         kind: release-platform-qualification
-      - path: scripts/lib/foundry-release-*.ts
+      - path: devops/release/foundry-release-*.ts
         kind: source-release-integrity-policy
       - path: specs/release/**
         kind: source-release-upstream-asset
@@ -502,9 +511,9 @@ rules:
         kind: source-release-policy-test
       - path: test/commands/foundry-release-*.test.mts
         kind: source-release-command-test
-      - path: scripts/lib/foundry-package-contract.ts
+      - path: src/lib/foundry-package-contract.ts
         kind: installed-package-integrity
-      - path: scripts/lib/foundry-runtime-paths.ts
+      - path: src/lib/foundry-runtime-paths.ts
         kind: package-layout-resolution
       - path: specs/schemas/foundry-package-descriptor.schema.json
         kind: package-descriptor-schema
@@ -532,17 +541,17 @@ rules:
     scope: repo
     repo: data-foundry
     triggers:
-      - path: scripts/runtime-entry.ts
+      - path: src/runtime-entry.ts
         kind: runtime-entry-adapter
-      - path: scripts/foundry-facade.ts
+      - path: src/foundry-facade.ts
         kind: public-facade-composition
-      - path: scripts/lib/foundry-operation-result.ts
+      - path: src/lib/foundry-operation-result.ts
         kind: public-result-envelope
-      - path: scripts/lib/foundry-task-start-spec.ts
+      - path: src/lib/foundry-task-start-spec.ts
         kind: public-task-intent
-      - path: scripts/lib/foundry-facade-store.ts
+      - path: src/lib/foundry-facade-store.ts
         kind: public-request-revision-store
-      - path: scripts/lib/foundry-migration-inventory.ts
+      - path: src/lib/foundry-migration-inventory.ts
         kind: public-migration-dry-run
       - path: specs/schemas/foundry-operation-result.schema.json
         kind: public-result-schema
@@ -574,17 +583,17 @@ rules:
     scope: repo
     repo: data-foundry
     triggers:
-      - path: scripts/lib/foundry-task-*.ts
+      - path: src/lib/foundry-task-*.ts
         kind: registered-task-state
-      - path: scripts/lib/foundry-runtime-identity.ts
+      - path: src/lib/foundry-runtime-identity.ts
         kind: task-identity-verification
-      - path: scripts/lib/foundry-runtime-qualification.ts
+      - path: src/lib/foundry-runtime-qualification.ts
         kind: task-runtime-qualification
-      - path: scripts/lib/foundry-execution-admission.ts
+      - path: src/lib/foundry-execution-admission.ts
         kind: task-child-execution-admission
-      - path: scripts/lib/foundry-facade-store.ts
+      - path: src/lib/foundry-facade-store.ts
         kind: facade-task-pointer-and-revisions
-      - path: scripts/lib/foundry-task-start-spec.ts
+      - path: src/lib/foundry-task-start-spec.ts
         kind: facade-task-intent
       - path: test/scenarios/task-runtime-binding.test.mts
         kind: task-recovery-contract-test
@@ -608,15 +617,15 @@ rules:
     scope: repo
     repo: data-foundry
     triggers:
-      - path: scripts/lib/import-curation/internal/prewrite-cleanup.ts
+      - path: src/lib/import-curation/internal/prewrite-cleanup.ts
         kind: strict-prewrite-datetime-owner
-      - path: scripts/lib/import-curation/curation-cleanup.ts
+      - path: src/lib/import-curation/curation-cleanup.ts
         kind: cleanup-blocker-runner
-      - path: scripts/lib/bundle-sample-utils.ts
+      - path: src/lib/bundle-sample-utils.ts
         kind: bundle-datetime-preservation
-      - path: scripts/commands/post-authoring-finalize.ts
+      - path: src/commands/post-authoring-finalize.ts
         kind: finalize-cleanup-short-circuit
-      - path: scripts/lib/foundry-command-registry.ts
+      - path: src/lib/foundry-command-registry.ts
         kind: cleanup-cli-exit-contract
       - path: test/unit/prewrite-cleanup-contract.test.mts
         kind: strict-datetime-unit-contract
@@ -652,9 +661,9 @@ rules:
         kind: execution-capsule-contract
       - path: specs/schemas/execution-capsule-stage.schema.json
         kind: execution-capsule-schema
-      - path: scripts/lib/foundry-execution-attempt.ts
+      - path: src/lib/foundry-execution-attempt.ts
         kind: shared-attempt-evidence-model
-      - path: scripts/commands/execution-capsule.ts
+      - path: src/commands/execution-capsule.ts
         kind: execution-capsule-command
       - path: test/commands/execution-capsule.test.mts
         kind: execution-capsule-command-test
@@ -672,7 +681,7 @@ rules:
         kind: incremental-change-set-contract
       - path: specs/schemas/incremental-change-set.schema.json
         kind: incremental-change-set-schema
-      - path: scripts/commands/incremental-change-set.ts
+      - path: src/commands/incremental-change-set.ts
         kind: incremental-change-set-command
       - path: test/unit/incremental-change-set.test.mts
         kind: incremental-change-set-unit-test
@@ -696,7 +705,7 @@ rules:
         kind: topology-convergence-contract
       - path: specs/schemas/topology-convergence.schema.json
         kind: topology-convergence-schema
-      - path: scripts/commands/topology-convergence.ts
+      - path: src/commands/topology-convergence.ts
         kind: topology-convergence-command
       - path: test/fixtures/topology-convergence-fixtures.ts
         kind: topology-convergence-fixture
@@ -738,32 +747,36 @@ rules:
     triggers:
       - path: docs/orchestration-module-contract.md
         kind: orchestration-module-contract
-      - path: scripts/commands/library-scope-workflow.ts
+      - path: src/commands/library-scope-workflow.ts
         kind: library-command-owner
-      - path: scripts/commands/bafu-leaf-classification-tasks.ts
+      - path: src/commands/bafu-leaf-classification-tasks.ts
         kind: classification-command-owner
-      - path: scripts/commands/bafu-auto-authoring.ts
+      - path: src/commands/bafu-auto-authoring.ts
         kind: authoring-command-owner
-      - path: scripts/commands/bafu-process-scope-e2e.ts
+      - path: src/commands/bafu-process-scope-e2e.ts
         kind: process-scope-command-owner
-      - path: scripts/commands/bafu-batch-import-run.ts
+      - path: src/commands/bafu-batch-import-run.ts
         kind: batch-command-owner
-      - path: scripts/commands/uslci-batch-import-run.ts
+      - path: src/commands/uslci-batch-import-run.ts
         kind: uslci-batch-adapter
-      - path: scripts/commands/worldsteel-batch-import-run.ts
+      - path: src/commands/worldsteel-batch-import-run.ts
         kind: worldsteel-batch-adapter
-      - path: scripts/lib/bafu-authoring/**
+      - path: src/commands/library-batch-import.ts
+        kind: unified-library-batch-entry
+      - path: src/lib/bafu-authoring/**
         kind: bafu-authoring-stage
-      - path: scripts/lib/bafu-classification/**
+      - path: src/lib/bafu-classification/**
         kind: bafu-classification-stage
-      - path: scripts/lib/bafu-orchestration/**
+      - path: src/lib/bafu-orchestration/**
         kind: bafu-orchestration-stage
-      - path: scripts/lib/batch-orchestration/**
+      - path: src/lib/batch-orchestration/**
         kind: generic-batch-semantic-stage
-      - path: scripts/lib/library-orchestration/**
+      - path: src/lib/library-orchestration/**
         kind: library-semantic-stage
-      - path: specs/orchestration-module-budgets.json
+      - path: specs/module-budgets.json
         kind: module-budget-contract
+      - path: specs/orchestration-module-budgets.json
+        kind: retired-orchestration-budget-spec
       - path: test/unit/orchestration-module-budget.test.mts
         kind: architecture-ratchet-test
       - path: test/unit/bafu-*-contract.test.mts
@@ -905,19 +918,19 @@ rules:
     scope: repo
     repo: data-foundry
     triggers:
-      - path: scripts/lib/foundry-migration-*.ts
+      - path: src/lib/foundry-migration-*.ts
         kind: workspace-migration-evidence
-      - path: scripts/lib/foundry-runtime-selection*.ts
+      - path: src/lib/foundry-runtime-selection*.ts
         kind: workspace-runtime-selection
-      - path: scripts/lib/foundry-private-path.ts
+      - path: src/lib/foundry-private-path.ts
         kind: private-storage-boundary
-      - path: scripts/lib/foundry-runtime-error.ts
+      - path: src/lib/foundry-runtime-error.ts
         kind: shared-runtime-error-boundary
-      - path: scripts/lib/foundry-runtime-context-types.ts
+      - path: src/lib/foundry-runtime-context-types.ts
         kind: shared-runtime-context-types
-      - path: scripts/lib/foundry-execution-context-format.ts
+      - path: src/lib/foundry-execution-context-format.ts
         kind: shared-execution-context-format
-      - path: scripts/lib/foundry-execution-attempt.ts
+      - path: src/lib/foundry-execution-attempt.ts
         kind: migration-attempt-interpretation
       - path: specs/schemas/foundry-*migration*.schema.json
         kind: workspace-migration-transfer-schema
@@ -956,19 +969,19 @@ rules:
         kind: final-delivery-promotion-contract
       - path: specs/schemas/final-delivery-manifest.schema.json
         kind: final-delivery-manifest-schema
-      - path: scripts/commands/final-delivery-promotion.ts
+      - path: src/commands/final-delivery-promotion.ts
         kind: final-delivery-promotion-command
-      - path: scripts/lib/final-delivery-manifest.ts
+      - path: src/lib/final-delivery-manifest.ts
         kind: final-delivery-manifest-primitives
-      - path: scripts/lib/final-delivery-workbook.ts
+      - path: src/lib/final-delivery-workbook.ts
         kind: final-delivery-workbook-reader
-      - path: scripts/lib/final-delivery-rows.ts
+      - path: src/lib/final-delivery-rows.ts
         kind: final-delivery-row-contracts
-      - path: scripts/lib/final-delivery-algebra.ts
+      - path: src/lib/final-delivery-algebra.ts
         kind: final-delivery-algebra
-      - path: scripts/lib/final-delivery-redaction.ts
+      - path: src/lib/final-delivery-redaction.ts
         kind: final-delivery-redaction
-      - path: scripts/lib/final-delivery-review.ts
+      - path: src/lib/final-delivery-review.ts
         kind: final-delivery-independent-review
       - path: test/commands/final-delivery-promotion.test.mts
         kind: final-delivery-promotion-command-test

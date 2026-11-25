@@ -7,16 +7,16 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { createDecisionTaskUtils } from "../../scripts/lib/decision-task-utils.ts";
-import { createFullContextProofUtils } from "../../scripts/lib/full-context-proof.ts";
-import { createIdentityPreflightArtifactUtils } from "../../scripts/lib/identity-preflight-artifacts.ts";
-import { createIdentityReferenceRewriteUtils } from "../../scripts/lib/identity-reference-rewrite-utils.ts";
+import { createDecisionTaskUtils } from "../../src/lib/decision-task-utils.ts";
+import { createFullContextProofUtils } from "../../src/lib/full-context-proof.ts";
+import { createIdentityPreflightArtifactUtils } from "../../src/lib/identity-preflight-artifacts.ts";
+import { createIdentityReferenceRewriteUtils } from "../../src/lib/identity-reference-rewrite-utils.ts";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
 const zeroAnyPaths = [
-  "scripts/lib/decision-task-utils.ts",
-  "scripts/lib/identity-preflight-artifacts.ts",
+  "src/lib/decision-task-utils.ts",
+  "src/lib/identity-preflight-artifacts.ts",
   "test/unit/evidence-decision-leaves.test.mts",
 ] as const;
 

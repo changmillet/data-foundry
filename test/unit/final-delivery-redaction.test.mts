@@ -3,11 +3,8 @@ import test from "node:test";
 import {
   redactableArtifactIds,
   secretFindingCodes,
-} from "../../scripts/lib/final-delivery-redaction.ts";
-import {
-  type ArtifactDescriptor,
-  parseArtifactRows,
-} from "../../scripts/lib/final-delivery-rows.ts";
+} from "../../src/lib/final-delivery-redaction.ts";
+import { type ArtifactDescriptor, parseArtifactRows } from "../../src/lib/final-delivery-rows.ts";
 import { storedZip } from "../fixtures/final-delivery-fixtures.ts";
 
 function descriptor(artifactId: string, kind: string): ArtifactDescriptor {

@@ -6,16 +6,16 @@ import test from "node:test";
 import {
   applyFoundryReleaseVersion,
   planFoundryReleaseVersion,
-} from "../../scripts/lib/foundry-release-version.ts";
+} from "../../devops/release/foundry-release-version.ts";
 import {
   validateFoundryReleaseChange,
   type ReleaseFileChange,
-} from "../../scripts/lib/foundry-release-contract.ts";
+} from "../../devops/release/foundry-release-contract.ts";
 
 const root = path.resolve(import.meta.dirname, "../..");
 const versionFiles = [
   "package.json",
-  "scripts/lib/foundry-package-contract.ts",
+  "src/lib/foundry-package-contract.ts",
   "specs/schemas/foundry-package-descriptor.schema.json",
 ];
 
@@ -74,7 +74,7 @@ test("release guard refuses partial projections, runtime edits, lock changes and
   const delta = changes();
   assert.throws(() => validateFoundryReleaseChange(delta.slice(0, 2)), /projection/iu);
   for (const extra of [
-    { path: "scripts/foundry.ts", before: "before", after: "after" },
+    { path: "src/dev-cli.ts", before: "before", after: "after" },
     { path: "pnpm-lock.yaml", before: "old", after: "new" },
     { path: "README.md", before: null, after: "new file" },
   ])

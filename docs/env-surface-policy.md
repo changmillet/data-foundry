@@ -16,22 +16,22 @@ checkPaths:
   - .env.example
   - .codex/hooks/run-foundry-acceptance-check.sh
   - docs/env-surface-policy.md
-  - scripts/foundry.ts
-  - scripts/foundry-golden-diff.ts
-  - scripts/commands/core.ts
-  - scripts/with-lca-account.ts
-  - scripts/lib/foundry-runtime-environment.ts
-  - scripts/lib/foundry-runtime-qualification.ts
-  - scripts/lib/foundry-execution-admission.ts
-  - scripts/foundry-facade.ts
-  - scripts/runtime-entry.ts
-  - scripts/lib/tidas-adapter.ts
-  - scripts/lib/foundry-runtime-utils.ts
-  - scripts/build-foundry-package.ts
-  - scripts/pack-foundry-package.ts
-  - scripts/verify-foundry-package.ts
-  - scripts/package-entry.ts
-  - scripts/public-api.ts
+  - src/dev-cli.ts
+  - devops/ci/foundry-golden-diff.ts
+  - src/commands/core.ts
+  - src/with-lca-account.ts
+  - src/lib/foundry-runtime-environment.ts
+  - src/lib/foundry-runtime-qualification.ts
+  - src/lib/foundry-execution-admission.ts
+  - src/foundry-facade.ts
+  - src/runtime-entry.ts
+  - src/lib/tidas-adapter.ts
+  - src/lib/foundry-runtime-utils.ts
+  - devops/build/build-foundry-package.ts
+  - devops/build/pack-foundry-package.ts
+  - devops/build/verify-foundry-package.ts
+  - src/package-entry.ts
+  - src/public-api.ts
   - test/scenarios/foundry-package-consumer.test.mts
   - test/unit/foundry-runtime-environment.test.mts
 lastReviewedAt: 2026-11-25
@@ -55,7 +55,7 @@ Release inspection similarly binds its own Git root and ignores inherited Git re
 
 The source-only workflow context command additionally reads GitHub's event file and repository/ref/source/workflow bindings. Its `GITHUB_TOKEN` is used only for the bounded merged-PR lookup. The separate `release-tag` job receives contents-write permission after all native qualification jobs pass, revalidates that same context and uses its token only for bounded canonical-repository tag reads and create-only refs. No project dependencies are installed in that job. The token is not forwarded to native tests or public npm verification, and no token, event-file contents or environment map is included in output. Source qualification remains read-only, and checkout credentials are not persisted. These CI variables stay out of `.env.example` and the installed runtime.
 
-Repository pack/verification tools and consumer tests share `scripts/lib/package-manager-command.ts`. On Windows, it selects a native `pnpm.exe` from an absolute `PNPM_HOME` or `PATH` entry. npm requires one complete PATH installation containing `npm.cmd`, `node.exe` and `node_modules/npm/bin/npm-cli.js`; the colocated Node executes the script. These tooling selectors never execute `.cmd` or a shell, never reinterpret argv, and never become public Foundry environment variables or shipped runtime code. The clean package-consumer scenario uses an owned `COREPACK_HOME` shared only by its temporary tool homes, verifies the declared pnpm version once, and disables Corepack network and latest-version lookup for subsequent packing. Its application dependency cache and online/offline consumer checks stay separate; no operator home or cache is inherited.
+Repository pack/verification tools and consumer tests share `src/lib/package-manager-command.ts`. On Windows, it selects a native `pnpm.exe` from an absolute `PNPM_HOME` or `PATH` entry. npm requires one complete PATH installation containing `npm.cmd`, `node.exe` and `node_modules/npm/bin/npm-cli.js`; the colocated Node executes the script. These tooling selectors never execute `.cmd` or a shell, never reinterpret argv, and never become public Foundry environment variables or shipped runtime code. The clean package-consumer scenario uses an owned `COREPACK_HOME` shared only by its temporary tool homes, verifies the declared pnpm version once, and disables Corepack network and latest-version lookup for subsequent packing. Its application dependency cache and online/offline consumer checks stay separate; no operator home or cache is inherited.
 
 The `npm-package` job receives read permissions for GitHub contents/PR evidence and `id-token: write` for signing and npm authentication. It binds the exact hosted job, event, source/workflow SHA/ref and numeric repository/run/attempt identities. `ACTIONS_ID_TOKEN_REQUEST_URL` and `ACTIONS_ID_TOKEN_REQUEST_TOKEN` are used only for bounded authenticated HTTPS requests to GitHub Actions with the fixed audience `sigstore` or `npm:registry.npmjs.org`; redirects, alternate origins, malformed/oversized responses and static `SIGSTORE_ID_TOKEN` input are rejected. The signing identity is supplied directly to Sigstore. The npm identity must be exchanged at the fixed package-specific registry endpoint for a fresh short-lived OIDC credential before invoking pnpm. No identity or registry credential is saved or printed.
 
@@ -139,7 +139,7 @@ The public finalize composition injects explicit environments into queue, handof
 
 ## Automatic Check
 
-`pnpm env:check` validates `.env.example` against the allowlist and forbidden-key list in `scripts/foundry.ts`.
+`pnpm env:check` validates `.env.example` against the allowlist and forbidden-key list in `src/dev-cli.ts`.
 
 The same env-surface check is included in `pnpm acceptance:check`, so the Codex Stop hook can block future automatic runs when an internal variable is accidentally promoted into Foundry's public env example. The clean arbitrary-worktree toolchain gate is offline and must not read `.env`, account profiles, or `.foundry` runtime state.
 

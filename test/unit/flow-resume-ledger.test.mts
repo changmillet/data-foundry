@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createFlowResumeLedgerService } from "../../scripts/lib/batch-orchestration/flow-resume-ledger.ts";
-import { createVerifiedFlowWriteService } from "../../scripts/lib/batch-orchestration/verified-flow-write.ts";
+import { createFlowResumeLedgerService } from "../../src/lib/batch-orchestration/flow-resume-ledger.ts";
+import { createVerifiedFlowWriteService } from "../../src/lib/batch-orchestration/verified-flow-write.ts";
 
 type JsonRecord = Record<string, unknown>;
 

@@ -6,7 +6,7 @@ import test from "node:test";
 import {
   readFoundryReleaseArtifact,
   verifyPreparedFoundryNpm,
-} from "../../scripts/lib/foundry-release-prepared.ts";
+} from "../../devops/release/foundry-release-prepared.ts";
 
 test("prepared artifact reads retain exact bounded regular bytes", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-prepared-"));

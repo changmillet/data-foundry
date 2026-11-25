@@ -4,14 +4,14 @@ import {
   bafuBatchImportRunTestHooks,
   createBafuBatchImportRunCommands,
   filterAuthoringTaskManifestToRows,
-} from "../../scripts/commands/bafu-batch-import-run.ts";
+} from "../../src/commands/bafu-batch-import-run.ts";
 import {
   createFileArtifactFact,
   createFoundryCommandSpec,
-} from "../../scripts/lib/foundry-command-spec.ts";
-import { createBafuScopeResumeContract } from "../../scripts/lib/batch-orchestration/scope-resume-contract.ts";
-import { createBafuScopeSourceContent } from "../../scripts/lib/batch-orchestration/scope-source-content.ts";
-import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
+} from "../../src/lib/foundry-command-spec.ts";
+import { createBafuScopeResumeContract } from "../../src/lib/batch-orchestration/scope-resume-contract.ts";
+import { createBafuScopeSourceContent } from "../../src/lib/batch-orchestration/scope-source-content.ts";
+import { resolveInstalledTiangongLcaCliPackage } from "../../src/lib/foundry-runtime-utils.ts";
 import {
   fs,
   path,

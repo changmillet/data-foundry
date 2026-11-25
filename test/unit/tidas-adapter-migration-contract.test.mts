@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { resolveTidasProcessCommand, runTidasHandshake } from "../../scripts/lib/tidas-adapter.ts";
+import { resolveTidasProcessCommand, runTidasHandshake } from "../../src/lib/tidas-adapter.ts";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
@@ -35,7 +35,7 @@ test("TIDAS adapter preserves script executable plus argv dispatch without shell
     command: process.execPath,
     prefixArgs: [script],
   });
-  const source = readRepoFile("scripts/lib/tidas-adapter.ts");
+  const source = readRepoFile("src/lib/tidas-adapter.ts");
   assert.match(
     source,
     /spawnSync\(processCommand\.command,\s*\[\.\.\.processCommand\.prefixArgs,\s*\.\.\.args\]/u,
@@ -91,7 +91,7 @@ test("TIDAS adapter preserves invalid JSON stdout and stderr diagnostics", () =>
 });
 
 test("TIDAS adapter exists only as zero-escape native TypeScript", () => {
-  const typedPath = path.join(repoRoot, "scripts/lib/tidas-adapter.ts");
+  const typedPath = path.join(repoRoot, "src/lib/tidas-adapter.ts");
   assert.equal(fs.existsSync(typedPath), true);
   assert.equal(fs.existsSync(typedPath.replace(/\.ts$/u, ".mjs")), false);
   const source = fs.readFileSync(typedPath, "utf8");
@@ -101,7 +101,7 @@ test("TIDAS adapter exists only as zero-escape native TypeScript", () => {
 
 test("TIDAS adapter consumers target the typed owner", () => {
   for (const consumer of [
-    "scripts/foundry.ts",
+    "src/dev-cli.ts",
     "test/unit/tidas-adapter.test.mts",
     "test/unit/tidas-adapter-migration-contract.test.mts",
   ]) {

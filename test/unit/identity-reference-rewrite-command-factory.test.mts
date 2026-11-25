@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { createIdentityReferenceRewriteCommands } from "../../scripts/commands/identity-reference-rewrites.ts";
+import { createIdentityReferenceRewriteCommands } from "../../src/commands/identity-reference-rewrites.ts";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
@@ -63,7 +63,7 @@ test("identity rewrite help is exact and factory construction has no effects", (
     status: "help",
     command: "dataset-identity-reference-rewrites-apply",
     usage: [
-      "node scripts/foundry.ts dataset-identity-reference-rewrites-apply --type process --rows-file <processes.jsonl> --identity-preflight-index <identity-preflight-requests.jsonl> --out <rewritten-processes.jsonl>",
+      "node src/dev-cli.ts dataset-identity-reference-rewrites-apply --type process --rows-file <processes.jsonl> --identity-preflight-index <identity-preflight-requests.jsonl> --out <rewritten-processes.jsonl>",
     ],
     purpose:
       "Apply completed identity-preflight block_duplicate flow decisions to local process exchange references before validation and write planning.",
@@ -142,10 +142,10 @@ test("identity rewrite rejects a missing rows file before apply or report write"
 });
 
 test("identity rewrite command factory exists only as zero-any native TypeScript", () => {
-  const typedPath = path.join(repoRoot, "scripts/commands/identity-reference-rewrites.ts");
+  const typedPath = path.join(repoRoot, "src/commands/identity-reference-rewrites.ts");
   assert.equal(fs.existsSync(typedPath), true);
   assert.equal(fs.existsSync(typedPath.replace(/\.ts$/u, ".mjs")), false);
-  const source = readRepoFile("scripts/commands/identity-reference-rewrites.ts");
+  const source = readRepoFile("src/commands/identity-reference-rewrites.ts");
   assert.doesNotMatch(source, /\bany\b/u);
   assert.deepEqual(
     [...source.matchAll(/export function\s+([A-Za-z0-9_]+)/gu)].map((match) => match[1]),
@@ -155,8 +155,8 @@ test("identity rewrite command factory exists only as zero-any native TypeScript
 
 test("all active identity rewrite owner consumers target the typed command factory", () => {
   for (const consumer of [
-    "scripts/foundry.ts",
-    "scripts/lib/foundry-command-metadata.ts",
+    "src/dev-cli.ts",
+    "src/lib/foundry-command-metadata.ts",
     "test/unit/identity-reference-rewrite-command-factory.test.mts",
   ]) {
     const source = readRepoFile(consumer);

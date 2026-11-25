@@ -14,7 +14,7 @@ import {
 import { createManagedComponentFixture } from "../helpers/managed-package-cache.mts";
 import { workspaceManifestFixture } from "../helpers/foundry-runtime-manifest.mts";
 
-const entry = path.resolve(import.meta.dirname, "../../scripts/package-entry.ts");
+const entry = path.resolve(import.meta.dirname, "../../src/package-entry.ts");
 const variables = [
   "TIANGONG_FOUNDRY_MANIFEST",
   "TIANGONG_FOUNDRY_MANIFEST_SHA256",
@@ -65,11 +65,11 @@ test(
     const configurations = [];
     for (const version of ["1.0.0", "1.0.1"]) {
       const source = path.join(root, version);
-      fs.mkdirSync(path.join(source, "package-dist", "scripts"), { recursive: true });
+      fs.mkdirSync(path.join(source, "package-dist", "src"), { recursive: true });
       fs.mkdirSync(path.join(source, "package-dist", "assets"));
       const node = process.platform === "win32" ? "node.exe" : "node";
       fs.copyFileSync(process.execPath, path.join(source, node));
-      const script = "package-dist/scripts/package-entry.js";
+      const script = "package-dist/src/package-entry.js";
       fs.writeFileSync(
         path.join(source, script),
         `import { receiveRuntimeHostContext } from ${JSON.stringify(cliRuntime)};\nconst context = await receiveRuntimeHostContext();\nprocess.stdout.write(JSON.stringify({version: context.manifest.manifest.product.version, argv: process.argv.slice(2), default_manifest: process.env.TIANGONG_FOUNDRY_MANIFEST ?? null}));\nprocess.stderr.write('native diagnostic\\n');\nprocess.exitCode = 7;\n`,

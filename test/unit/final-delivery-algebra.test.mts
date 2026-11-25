@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { evaluateAssertion, evaluateOperand } from "../../scripts/lib/final-delivery-algebra.ts";
-import type { ArtifactRuntime } from "../../scripts/lib/final-delivery-rows.ts";
+import { evaluateAssertion, evaluateOperand } from "../../src/lib/final-delivery-algebra.ts";
+import type { ArtifactRuntime } from "../../src/lib/final-delivery-rows.ts";
 
 function runtime(artifactId: string, actualRows: number | null, json?: unknown): ArtifactRuntime {
   return {

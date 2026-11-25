@@ -1,6 +1,6 @@
 ---
-lastReviewedAt: 2026-10-02
-lastReviewedCommit: 56307ddc74565f85cf2e1315231d4f841a800f9b
+lastReviewedAt: 2026-11-25
+lastReviewedCommit: 64b03b3e96b6cbebba7151a0d24368f2fc1dce8d
 lastReviewedNote: "Reviewed Foundry #222 adoption of verified public CLI 0.1.24 source 89c71772: runtime/dependency pins advance with CLI-only lock change; scientific profiles, task permission and no-replay boundaries stay fixed. Foundry source version stays 0.1.14 pending a separate release."
 title: worldsteel EF3.1 ILCD Import Plan
 docType: plan
@@ -18,7 +18,7 @@ whenToUpdate:
   - when a historical implementation path gains or loses current executable authority
 checkPaths:
   - specs/import-profiles.json
-  - scripts/commands/worldsteel-batch-import-run.ts
+  - src/commands/worldsteel-batch-import-run.ts
   - docs/import-profiles/worldsteel/profile.md
   - docs/import-profiles/worldsteel/constraints.md
   - docs/import-profiles/worldsteel/import-plan.md

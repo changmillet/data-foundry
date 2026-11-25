@@ -2,12 +2,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
-import {
-  cellParts,
-  columnNumber,
-  parseWorkbook,
-} from "../../scripts/lib/final-delivery-workbook.ts";
-import { parseXmlDocument } from "../../scripts/lib/final-delivery-xml.ts";
+import { cellParts, columnNumber, parseWorkbook } from "../../src/lib/final-delivery-workbook.ts";
+import { parseXmlDocument } from "../../src/lib/final-delivery-xml.ts";
 import { sheetXml, storedZip, workbookBuffer } from "../fixtures/final-delivery-fixtures.ts";
 
 // An unmodified workbook written by openpyxl 3.1.5 -- the shape every standard spreadsheet library

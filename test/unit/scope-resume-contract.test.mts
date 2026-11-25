@@ -7,9 +7,9 @@ import test from "node:test";
 import {
   createBafuScopeResumeContract,
   scopeResumeMismatchReason,
-} from "../../scripts/lib/batch-orchestration/scope-resume-contract.ts";
-import { loadMatchingVerifiedScopes } from "../../scripts/lib/batch-orchestration/scope-resume-ledger.ts";
-import { createBafuScopeSourceContent } from "../../scripts/lib/batch-orchestration/scope-source-content.ts";
+} from "../../src/lib/batch-orchestration/scope-resume-contract.ts";
+import { loadMatchingVerifiedScopes } from "../../src/lib/batch-orchestration/scope-resume-ledger.ts";
+import { createBafuScopeSourceContent } from "../../src/lib/batch-orchestration/scope-source-content.ts";
 
 const scope = {
   schema_version: 1,

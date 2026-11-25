@@ -1,5 +1,5 @@
-import { createFoundryFacade, type FoundryOperationResult } from "../../scripts/public-api.ts";
-import { collectDatasetReferences } from "../../scripts/lib/import-curation/internal/workflow-reference-closure.ts";
+import { createFoundryFacade, type FoundryOperationResult } from "../../src/public-api.ts";
+import { collectDatasetReferences } from "../../src/lib/import-curation/internal/workflow-reference-closure.ts";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -16,18 +16,18 @@ import {
 import {
   datasetIdentity,
   unwrapDatasetPayload,
-} from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
-import { readRows } from "../../scripts/lib/import-curation/internal/runtime-io.ts";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
-import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
+} from "../../src/lib/import-curation/internal/dataset-payload.ts";
+import { readRows } from "../../src/lib/import-curation/internal/runtime-io.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
+import { resolveInstalledTiangongLcaCliPackage } from "../../src/lib/foundry-runtime-utils.ts";
 
-import { runFoundryTypedDatasetQa } from "../../scripts/lib/foundry-typed-flow-qa.ts";
+import { runFoundryTypedDatasetQa } from "../../src/lib/foundry-typed-flow-qa.ts";
 import {
   captureFoundryInput,
   createFoundryRuntimeContext,
   writeFoundryArtifact,
-} from "../../scripts/lib/foundry-runtime-context.ts";
-import { qualifyFoundryRuntime } from "../../scripts/lib/foundry-runtime-qualification.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
+import { qualifyFoundryRuntime } from "../../src/lib/foundry-runtime-qualification.ts";
 
 type Json = Record<string, unknown>;
 const object = (value: unknown) => value as Json;
@@ -148,7 +148,7 @@ test("CLI 0.4 validates the exact allocated Process and Foundry keeps its mass b
   const started = await facade.start({ specFile: spec });
   assert.ok(started.task_id);
   const context = createFoundryRuntimeContext({
-    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
     workspace,
     cacheBase: path.join(root, "cache"),
     taskId: started.task_id,

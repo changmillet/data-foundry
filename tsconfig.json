@@ -17,9 +17,12 @@
   },
   "include": [
     "prettier.config.ts",
-    "scripts/**/*.ts",
-    "scripts/**/*.mts",
-    "scripts/**/*.cts",
+    "src/**/*.ts",
+    "src/**/*.mts",
+    "src/**/*.cts",
+    "devops/**/*.ts",
+    "devops/**/*.mts",
+    "devops/**/*.cts",
     "test/**/*.ts",
     "test/**/*.mts",
     "test/**/*.cts"

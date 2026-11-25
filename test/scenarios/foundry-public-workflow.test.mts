@@ -4,24 +4,24 @@ import fs from "node:fs";
 import { syncBuiltinESMExports } from "node:module";
 import path from "node:path";
 import test from "node:test";
-import { qualifyFoundryRuntime } from "../../scripts/lib/foundry-runtime-qualification.ts";
-import { createFoundryRuntime } from "../../scripts/foundry-runtime.ts";
-import { createFoundryFacade } from "../../scripts/foundry-facade.ts";
-import { assessFoundryWorkflowRows } from "../../scripts/lib/foundry-workflow-assessment.ts";
-import { currentWorkflowState } from "../../scripts/lib/foundry-workflow-state.ts";
-import { finalizeFoundryWorkflow } from "../../scripts/lib/foundry-workflow-finalize.ts";
-import { selectFoundryInteractionInput } from "../../scripts/lib/foundry-interaction-input.ts";
-import { recordFoundryInteractionInput } from "../../scripts/lib/foundry-workflow-interaction.ts";
+import { qualifyFoundryRuntime } from "../../src/lib/foundry-runtime-qualification.ts";
+import { createFoundryRuntime } from "../../src/foundry-runtime.ts";
+import { createFoundryFacade } from "../../src/foundry-facade.ts";
+import { assessFoundryWorkflowRows } from "../../src/lib/foundry-workflow-assessment.ts";
+import { currentWorkflowState } from "../../src/lib/foundry-workflow-state.ts";
+import { finalizeFoundryWorkflow } from "../../src/lib/foundry-workflow-finalize.ts";
+import { selectFoundryInteractionInput } from "../../src/lib/foundry-interaction-input.ts";
+import { recordFoundryInteractionInput } from "../../src/lib/foundry-workflow-interaction.ts";
 import {
   createFoundryRuntimeContext,
   captureFoundryInput,
-} from "../../scripts/lib/foundry-runtime-context.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
 import {
   flowRow,
   processRowWithFlowRef,
   processRowWithInvalidLocation,
 } from "../fixtures/row-builders.ts";
-import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
+import { resolveInstalledTiangongLcaCliPackage } from "../../src/lib/foundry-runtime-utils.ts";
 import { digestFile, workflowFixture } from "../fixtures/foundry-public-workflow.ts";
 import { runRetainedFoundryTests } from "../helpers/retained-foundry-runtime.mts";
 
@@ -52,7 +52,7 @@ test("qualified context owner accepts the registered Unicode task path directly"
   const taskId = started.task_id;
   assert.ok(taskId);
   const context = createFoundryRuntimeContext({
-    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
     workspace,
     cacheBase: path.join(root, "cache"),
     taskId,
@@ -70,7 +70,7 @@ test("qualified context owner accepts the registered Unicode task path directly"
   assert.ok(contract);
   assert.ok(rows);
   const assessmentContext = createFoundryRuntimeContext({
-    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
     workspace,
     cacheBase: path.join(root, "cache"),
     taskId: started.task_id,
@@ -394,7 +394,7 @@ for (const variant of localQueue ? [] : legacyQueueVariants) {
       ),
     );
     const reloaded = createFoundryFacade({
-      moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+      moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
       workspace,
       cacheBase: path.join(root, "cache"),
       runtimeSelection,
@@ -570,7 +570,7 @@ test("assessment records one row set at a time and cannot finalize partial cover
     >["artifacts"],
   ) =>
     createFoundryRuntimeContext({
-      moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+      moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
       workspace,
       cacheBase: path.join(root, "cache"),
       taskId,
@@ -581,7 +581,7 @@ test("assessment records one row set at a time and cannot finalize partial cover
       ],
     });
   const context = createFoundryRuntimeContext({
-    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
     workspace,
     cacheBase: path.join(root, "cache"),
     taskId,

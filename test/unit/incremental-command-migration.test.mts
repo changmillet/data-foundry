@@ -8,8 +8,8 @@ import { fileURLToPath } from "node:url";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
-const typedPath = path.join(repoRoot, "scripts/commands/incremental-change-set.ts");
-const legacyPath = path.join(repoRoot, "scripts/commands/incremental-change-set.mjs");
+const typedPath = path.join(repoRoot, "src/commands/incremental-change-set.ts");
+const legacyPath = path.join(repoRoot, "src/commands/incremental-change-set.mjs");
 
 function readRepoFile(relativePath: string): string {
   return fs.readFileSync(path.join(repoRoot, relativePath), "utf8");
@@ -37,7 +37,7 @@ test("incremental command exists only as native TypeScript", () => {
 });
 
 test("incremental consumers and metadata target the typed module", () => {
-  for (const consumer of ["scripts/foundry.ts", "scripts/lib/foundry-command-metadata.ts"]) {
+  for (const consumer of ["src/dev-cli.ts", "src/lib/foundry-command-metadata.ts"]) {
     const source = readRepoFile(consumer);
     assert.match(source, /incremental-change-set\.ts/u, consumer);
     assert.doesNotMatch(source, /incremental-change-set\.mjs/u, consumer);
@@ -49,12 +49,12 @@ test("incremental consumers and metadata target the typed module", () => {
 test("incremental help report retains exact bytes", () => {
   const output = execFileSync(
     process.execPath,
-    ["scripts/foundry.ts", "dataset-incremental-change-set-compose", "--help"],
+    ["src/dev-cli.ts", "dataset-incremental-change-set-compose", "--help"],
     { cwd: repoRoot, encoding: "utf8" },
   );
-  assert.equal(Buffer.byteLength(output, "utf8"), 3555);
+  assert.equal(Buffer.byteLength(output, "utf8"), 3551);
   assert.equal(
     createHash("sha256").update(output).digest("hex"),
-    "783e6215a103d7e4c489ebbc54a8bb5384ffbeac1da2a6981da2ce14435045a8",
+    "e006ac6dc756f9a87ffcf06e0d9721e2aa725edf6c853b9644a11f75e8496d64",
   );
 });

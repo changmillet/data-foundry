@@ -13,9 +13,9 @@ import {
   currentFoundryQuestionsForObject,
   foundryInteractionObjectProofKey,
   parseFoundryInteractionInput,
-} from "../../scripts/lib/foundry-interaction-input.ts";
-import { verifyFoundrySemanticInteraction } from "../../scripts/lib/foundry-semantic-interaction.ts";
-import type { FoundrySemanticInput } from "../../scripts/lib/foundry-semantic-input.ts";
+} from "../../src/lib/foundry-interaction-input.ts";
+import { verifyFoundrySemanticInteraction } from "../../src/lib/foundry-semantic-interaction.ts";
+import type { FoundrySemanticInput } from "../../src/lib/foundry-semantic-input.ts";
 
 const taskId = `task-${"a".repeat(64)}-r0001`;
 const actorId = "agent/session-001";

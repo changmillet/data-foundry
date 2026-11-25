@@ -4,8 +4,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import * as bundleSampleModule from "../../scripts/lib/bundle-sample-utils.ts";
-import { normalizeUtcDateTimeString } from "../../scripts/lib/import-curation/internal/prewrite-cleanup.ts";
+import * as bundleSampleModule from "../../src/lib/bundle-sample-utils.ts";
+import { normalizeUtcDateTimeString } from "../../src/lib/import-curation/internal/prewrite-cleanup.ts";
 
 type JsonObject = Record<string, unknown>;
 

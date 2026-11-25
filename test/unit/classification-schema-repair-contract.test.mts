@@ -39,7 +39,7 @@ test("classification schema repair freezes valid-child selection, parent fallbac
   ]);
   const writes = new Map<string, JsonRecord[]>();
   const { createClassificationSchemaRepairService } =
-    await import("../../scripts/lib/bafu-classification/schema-repair.ts");
+    await import("../../src/lib/bafu-classification/schema-repair.ts");
   const service = createClassificationSchemaRepairService({
     fileExists: (filePath) => files.has(filePath),
     readJson: (filePath) => files.get(filePath) ?? {},
@@ -109,7 +109,7 @@ test("classification schema repair freezes valid-child selection, parent fallbac
 test("classification schema repair keeps native rows when schemas or codes are already valid", async () => {
   const writes: JsonRecord[][] = [];
   const { createClassificationSchemaRepairService } =
-    await import("../../scripts/lib/bafu-classification/schema-repair.ts");
+    await import("../../src/lib/bafu-classification/schema-repair.ts");
   const service = createClassificationSchemaRepairService({
     fileExists: () => false,
     readJson: () => ({}),

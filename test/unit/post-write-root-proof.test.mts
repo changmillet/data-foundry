@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { validateUniqueRootReadbacks } from "../../scripts/lib/post-write-root-proof.ts";
+import { validateUniqueRootReadbacks } from "../../src/lib/post-write-root-proof.ts";
 
 const intended = [
   {

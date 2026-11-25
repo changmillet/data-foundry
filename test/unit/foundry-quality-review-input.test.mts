@@ -9,11 +9,11 @@ import {
   assertSelectedFoundryQualityReviewInput,
   parseFoundryQualityReviewInput,
   selectFoundryQualityReviewInput,
-} from "../../scripts/lib/foundry-quality-review-input.ts";
+} from "../../src/lib/foundry-quality-review-input.ts";
 import {
   createFoundryRuntimeContext,
   initializeFoundryWorkspace,
-} from "../../scripts/lib/foundry-runtime-context.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
 
 const hash = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
 const sample = () => ({
@@ -206,7 +206,7 @@ test("quality review selection bounds the entire evidence batch independently of
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-quality-review-limit-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const options = {
-    moduleUrl: new URL("../../scripts/foundry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/dev-cli.ts", import.meta.url).href,
     workspace: path.join(root, "workspace"),
     cacheBase: path.join(root, "cache"),
   };
@@ -240,7 +240,7 @@ test("quality review selection binds local host, scope, UTF-8 and exact unchange
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-quality-review-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const options = {
-    moduleUrl: new URL("../../scripts/foundry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/dev-cli.ts", import.meta.url).href,
     workspace: path.join(root, "workspace"),
     cacheBase: path.join(root, "cache"),
   };

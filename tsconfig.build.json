@@ -8,6 +8,13 @@
     "sourceMap": true,
     "inlineSources": true
   },
-  "include": ["scripts/**/*.ts", "scripts/**/*.mts", "scripts/**/*.cts"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.mts",
+    "src/**/*.cts",
+    "devops/**/*.ts",
+    "devops/**/*.mts",
+    "devops/**/*.cts"
+  ],
   "exclude": ["test", "node_modules", "dist", ".foundry", "tmp", "outputs", "reports"]
 }

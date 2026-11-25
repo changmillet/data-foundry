@@ -3,8 +3,8 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { profileFor } from "../../scripts/lib/import-curation/internal/profiles-config.ts";
-import { prewriteContentQualityBlockers } from "../../scripts/lib/import-curation/internal/workflow-identity-preflight.ts";
+import { profileFor } from "../../src/lib/import-curation/internal/profiles-config.ts";
+import { prewriteContentQualityBlockers } from "../../src/lib/import-curation/internal/workflow-identity-preflight.ts";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 

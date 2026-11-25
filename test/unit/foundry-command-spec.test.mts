@@ -13,7 +13,7 @@ import {
   createFoundryCommandSpec,
   executeFoundryCommandSpecSync,
   parseFoundryCommandSpec,
-} from "../../scripts/lib/foundry-command-spec.ts";
+} from "../../src/lib/foundry-command-spec.ts";
 
 test("CommandSpec binds executable argv and exact artifact facts while display stays non-authoritative", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-command-spec-"));
@@ -184,8 +184,8 @@ test("CommandSpec blocks same-path artifact byte drift before spawn and never ex
 
 test("handoff runners contain no shell-string parser or shell:true execution path", () => {
   for (const file of [
-    "scripts/lib/batch-orchestration/bafu-batch-command-runtime.ts",
-    "scripts/commands/bafu-process-scope-e2e.ts",
+    "src/lib/batch-orchestration/bafu-batch-command-runtime.ts",
+    "src/commands/bafu-process-scope-e2e.ts",
   ]) {
     const source = fs.readFileSync(path.resolve(file), "utf8");
     assert.doesNotMatch(source, /function shellTokens\s*\(/u, file);
@@ -196,7 +196,7 @@ test("handoff runners contain no shell-string parser or shell:true execution pat
 });
 
 test("Foundry CommandSpec facade is the published CLI subpath without a local implementation", async () => {
-  const facadePath = path.resolve("scripts/lib/foundry-command-spec.ts");
+  const facadePath = path.resolve("src/lib/foundry-command-spec.ts");
   const source = fs.readFileSync(facadePath, "utf8");
   assert.match(source, /from\s+["']@tiangong-lca\/cli\/command-spec["']/u);
   assert.doesNotMatch(source, /node:(?:child_process|crypto|fs)/u);

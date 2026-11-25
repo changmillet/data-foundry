@@ -1,21 +1,21 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import * as facadeModule from "../../scripts/lib/import-curation/internal/mutation-manifest-workflow.ts";
-import * as contextInputs from "../../scripts/lib/import-curation/internal/context-inputs.ts";
-import * as datasetPayload from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
-import * as datasetTypes from "../../scripts/lib/import-curation/internal/dataset-types.ts";
-import * as profilesConfig from "../../scripts/lib/import-curation/internal/profiles-config.ts";
-import * as runtimeIo from "../../scripts/lib/import-curation/internal/runtime-io.ts";
-import * as decisionApply from "../../scripts/lib/import-curation/internal/workflow-decision-apply-context.ts";
-import * as decisionFullContext from "../../scripts/lib/import-curation/internal/workflow-decision-full-context.ts";
-import * as dryRunContext from "../../scripts/lib/import-curation/internal/workflow-dry-run-context.ts";
-import * as evidenceScope from "../../scripts/lib/import-curation/internal/workflow-evidence-scope.ts";
-import * as identityDecision from "../../scripts/lib/import-curation/internal/workflow-identity-decision-context.ts";
-import * as patchCollect from "../../scripts/lib/import-curation/internal/workflow-patch-collect.ts";
-import * as patchEvidence from "../../scripts/lib/import-curation/internal/workflow-patch-evidence-context.ts";
-import * as referenceClosure from "../../scripts/lib/import-curation/internal/workflow-reference-closure.ts";
-import * as rowTransform from "../../scripts/lib/import-curation/internal/workflow-row-transform-context.ts";
-import * as sourceReference from "../../scripts/lib/import-curation/internal/workflow-source-reference-context.ts";
+import * as facadeModule from "../../src/lib/import-curation/internal/mutation-manifest-workflow.ts";
+import * as contextInputs from "../../src/lib/import-curation/internal/context-inputs.ts";
+import * as datasetPayload from "../../src/lib/import-curation/internal/dataset-payload.ts";
+import * as datasetTypes from "../../src/lib/import-curation/internal/dataset-types.ts";
+import * as profilesConfig from "../../src/lib/import-curation/internal/profiles-config.ts";
+import * as runtimeIo from "../../src/lib/import-curation/internal/runtime-io.ts";
+import * as decisionApply from "../../src/lib/import-curation/internal/workflow-decision-apply-context.ts";
+import * as decisionFullContext from "../../src/lib/import-curation/internal/workflow-decision-full-context.ts";
+import * as dryRunContext from "../../src/lib/import-curation/internal/workflow-dry-run-context.ts";
+import * as evidenceScope from "../../src/lib/import-curation/internal/workflow-evidence-scope.ts";
+import * as identityDecision from "../../src/lib/import-curation/internal/workflow-identity-decision-context.ts";
+import * as patchCollect from "../../src/lib/import-curation/internal/workflow-patch-collect.ts";
+import * as patchEvidence from "../../src/lib/import-curation/internal/workflow-patch-evidence-context.ts";
+import * as referenceClosure from "../../src/lib/import-curation/internal/workflow-reference-closure.ts";
+import * as rowTransform from "../../src/lib/import-curation/internal/workflow-row-transform-context.ts";
+import * as sourceReference from "../../src/lib/import-curation/internal/workflow-source-reference-context.ts";
 
 type ModuleNamespace = Record<string, unknown>;
 

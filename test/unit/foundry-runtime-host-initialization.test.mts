@@ -3,10 +3,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { runFoundryPublicCommand } from "../../scripts/runtime-entry.ts";
-import { FoundryContextError } from "../../scripts/lib/foundry-runtime-error.ts";
-import { assertFoundryOperationResult } from "../../scripts/lib/foundry-operation-result.ts";
-import { createFoundryFacade } from "../../scripts/public-api.ts";
+import { runFoundryPublicCommand } from "../../src/runtime-entry.ts";
+import { FoundryContextError } from "../../src/lib/foundry-runtime-error.ts";
+import { assertFoundryOperationResult } from "../../src/lib/foundry-operation-result.ts";
+import { createFoundryFacade } from "../../src/public-api.ts";
 
 function fixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-host-init-"));

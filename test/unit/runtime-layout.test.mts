@@ -4,11 +4,11 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
-import { resolveFoundryRuntimePaths } from "../../scripts/lib/foundry-runtime-paths.ts";
+import { resolveFoundryRuntimePaths } from "../../src/lib/foundry-runtime-paths.ts";
 
 function fixture(root: string) {
-  const entry = path.join(root, "dist/scripts/foundry.js");
-  const module = path.join(root, "dist/scripts/lib/runtime.js");
+  const entry = path.join(root, "dist/src/dev-cli.js");
+  const module = path.join(root, "dist/src/lib/runtime.js");
   fs.mkdirSync(path.dirname(module), { recursive: true });
   fs.writeFileSync(entry, "export {};\n");
   fs.writeFileSync(module, "export {};\n");
@@ -19,8 +19,8 @@ function fixture(root: string) {
     foundryRuntime: {
       schema: "tiangong-foundry.runtime-layout.v1",
       asset_root: ".",
-      source_entry: "scripts/foundry.ts",
-      emitted_entry: "dist/scripts/foundry.js",
+      source_entry: "src/dev-cli.ts",
+      emitted_entry: "dist/src/dev-cli.js",
     },
   };
   fs.writeFileSync(path.join(root, "package.json"), JSON.stringify(manifest));
@@ -34,8 +34,8 @@ test("emitted runtime layout resolves without source TypeScript, Git, or a works
   const resolved = resolveFoundryRuntimePaths(pathToFileURL(module).href);
   assert.equal(resolved.repoRoot, fs.realpathSync(root));
   assert.equal(resolved.entryPath, fs.realpathSync(entry));
-  assert.equal(resolved.entryRepoRelativePath, "dist/scripts/foundry.js");
-  assert.equal(fs.existsSync(path.join(root, "scripts/foundry.ts")), false);
+  assert.equal(resolved.entryRepoRelativePath, "dist/src/dev-cli.js");
+  assert.equal(fs.existsSync(path.join(root, "src/dev-cli.ts")), false);
   assert.equal(fs.existsSync(path.join(root, ".git")), false);
   assert.deepEqual(fs.readdirSync(root).sort(), ["dist", "package.json"]);
 });
@@ -61,10 +61,10 @@ test("layout identity cannot redirect code outside the declared runtime tree", (
 test("v2 layout preserves the developer entry and refuses an unverified package tree", (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-layout-v2-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const sourceEntry = path.join(root, "scripts/foundry.ts");
-  const emittedEntry = path.join(root, "dist/scripts/foundry.js");
-  const packageEntry = path.join(root, "package-dist/scripts/package-entry.js");
-  const packageModule = path.join(root, "package-dist/scripts/lib/runtime.js");
+  const sourceEntry = path.join(root, "src/dev-cli.ts");
+  const emittedEntry = path.join(root, "dist/src/dev-cli.js");
+  const packageEntry = path.join(root, "package-dist/src/package-entry.js");
+  const packageModule = path.join(root, "package-dist/src/lib/runtime.js");
   for (const file of [sourceEntry, emittedEntry, packageEntry, packageModule]) {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, "export {};\n");
@@ -78,9 +78,9 @@ test("v2 layout preserves the developer entry and refuses an unverified package 
       foundryRuntime: {
         schema: "tiangong-foundry.runtime-layout.v2",
         asset_root: ".",
-        source_entry: "scripts/foundry.ts",
-        emitted_entry: "dist/scripts/foundry.js",
-        package_entry: "package-dist/scripts/package-entry.js",
+        source_entry: "src/dev-cli.ts",
+        emitted_entry: "dist/src/dev-cli.js",
+        package_entry: "package-dist/src/package-entry.js",
         package_descriptor: "package-dist/assets/foundry-package-descriptor.json",
       },
     }),

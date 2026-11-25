@@ -9,8 +9,8 @@ import {
   LEGACY_OWNER_ID,
   cliDependencyIdentity,
   foundryRepositoryIdentity,
-} from "../../scripts/lib/foundry-repository-identity.ts";
-import { npmReleasePolicy } from "../../scripts/lib/foundry-release-provenance.ts";
+} from "../../src/lib/foundry-repository-identity.ts";
+import { npmReleasePolicy } from "../../devops/release/foundry-release-provenance.ts";
 
 test("the verified numeric anchors are the frozen historical facts", () => {
   assert.equal(FOUNDRY_REPOSITORY_ID, "1260957221");

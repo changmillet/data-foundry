@@ -15,7 +15,7 @@ import {
   readJsonLinesIfExists,
   readQaFindings,
   resolveArtifactPath,
-} from "../../scripts/lib/import-curation/internal/artifact-inputs.ts";
+} from "../../src/lib/import-curation/internal/artifact-inputs.ts";
 
 function withFixture<T>(callback: (root: string) => T): T {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-artifact-inputs-"));

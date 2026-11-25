@@ -7,11 +7,15 @@ import test from "node:test";
 const root = path.resolve(import.meta.dirname, "../..");
 test("native input command accepts only a fresh output and cannot override target or source", () => {
   const run = (args: string[]) =>
-    spawnSync(process.execPath, [path.join(root, "scripts/release-prepare-native.ts"), ...args], {
-      cwd: os.tmpdir(),
-      encoding: "utf8",
-      timeout: 30000,
-    });
+    spawnSync(
+      process.execPath,
+      [path.join(root, "devops/release/release-prepare-native.ts"), ...args],
+      {
+        cwd: os.tmpdir(),
+        encoding: "utf8",
+        timeout: 30000,
+      },
+    );
   assert.equal(run(["--help"]).status, 0);
   for (const args of [
     [],

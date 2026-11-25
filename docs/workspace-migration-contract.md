@@ -13,21 +13,21 @@ whenToUse:
 whenToUpdate:
   - when migration planning, state preservation, application, audit or rollback behavior changes
 checkPaths:
-  - scripts/lib/foundry-migration-inventory.ts
-  - scripts/lib/foundry-migration-plan.ts
-  - scripts/lib/foundry-migration-stage.ts
-  - scripts/lib/foundry-migration-transfer.ts
-  - scripts/lib/foundry-migration-transfer-io.ts
-  - scripts/lib/foundry-migration-adoption-plan.ts
-  - scripts/lib/foundry-migration-adoption.ts
-  - scripts/lib/foundry-migration-authority.ts
-  - scripts/lib/foundry-migration-replay.ts
-  - scripts/lib/foundry-runtime-selection.ts
-  - scripts/lib/foundry-runtime-selection-record.ts
-  - scripts/lib/foundry-private-path.ts
-  - scripts/lib/foundry-execution-attempt.ts
-  - scripts/foundry-facade.ts
-  - scripts/runtime-entry.ts
+  - src/lib/foundry-migration-inventory.ts
+  - src/lib/foundry-migration-plan.ts
+  - src/lib/foundry-migration-stage.ts
+  - src/lib/foundry-migration-transfer.ts
+  - src/lib/foundry-migration-transfer-io.ts
+  - src/lib/foundry-migration-adoption-plan.ts
+  - src/lib/foundry-migration-adoption.ts
+  - src/lib/foundry-migration-authority.ts
+  - src/lib/foundry-migration-replay.ts
+  - src/lib/foundry-runtime-selection.ts
+  - src/lib/foundry-runtime-selection-record.ts
+  - src/lib/foundry-private-path.ts
+  - src/lib/foundry-execution-attempt.ts
+  - src/foundry-facade.ts
+  - src/runtime-entry.ts
   - specs/schemas/foundry-workspace-migration-transfer-plan.schema.json
   - specs/schemas/foundry-migration-transfer-receipt.schema.json
   - specs/schemas/foundry-workspace-migration-pending.schema.json

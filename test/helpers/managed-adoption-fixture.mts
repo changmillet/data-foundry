@@ -19,14 +19,14 @@ import {
 import {
   assertFoundryOperationResult,
   type FoundryOperationResult,
-} from "../../scripts/lib/foundry-operation-result.ts";
+} from "../../src/lib/foundry-operation-result.ts";
 import {
   createFoundryPackageDescriptor,
   captureFoundryPackageFile,
-} from "../../scripts/lib/foundry-package-contract.ts";
-import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
-import { captureImmutableComponentFile } from "../../scripts/lib/immutable-digest-cache.ts";
+} from "../../src/lib/foundry-package-contract.ts";
+import { resolveInstalledTiangongLcaCliPackage } from "../../src/lib/foundry-runtime-utils.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
+import { captureImmutableComponentFile } from "../../src/lib/immutable-digest-cache.ts";
 import { flowRow, processRowWithFlowRef } from "../fixtures/row-builders.ts";
 import {
   startManagedDiagnostics,
@@ -36,7 +36,7 @@ import {
 import { writeOrCopyCachedComponentArchive } from "./shared-installed-package-template.mts";
 
 const repo = path.resolve(import.meta.dirname, "../..");
-const entryRelative = "node_modules/@tiangong-lca/foundry/package-dist/scripts/package-entry.js";
+const entryRelative = "node_modules/@tiangong-lca/foundry/package-dist/src/package-entry.js";
 const managed = "tiangong-foundry.managed-runtime.v1";
 const adoption = "tiangong-foundry.managed-adoption.v1";
 const platform = `${process.platform}-${process.arch}` as RuntimeComponent["platform"];
@@ -169,7 +169,6 @@ export function managedAdoptionPackage() {
     fs.mkdtempSync(path.join(os.tmpdir(), "foundry-managed-adoption-build-")),
   );
   for (const item of [
-    "scripts",
     "src",
     "devops",
     "specs",
@@ -192,7 +191,7 @@ export function managedAdoptionPackage() {
   );
   const buildScript = fs.existsSync(path.join(root, "devops/build/build-foundry-package.ts"))
     ? path.join(root, "devops/build/build-foundry-package.ts")
-    : path.join(root, "scripts/build-foundry-package.ts");
+    : path.join(root, "devops/build/build-foundry-package.ts");
   const result = spawnSync(process.execPath, [buildScript], { cwd: root, encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr || result.stdout);
   return (build = { root, stage: path.join(root, "package-stage") });
@@ -390,7 +389,7 @@ export async function managedAdoptionFixture(t: TestContext, syntheticTransport 
     fs.chmodSync(path.join(bin, "tiangong-lca.js"), 0o755);
     if (cliVersion === "0.4.0") {
       const foundry = path.join(app, "node_modules/@tiangong-lca/foundry");
-      const entry = path.join(foundry, "package-dist/scripts/package-entry.js");
+      const entry = path.join(foundry, "package-dist/src/package-entry.js");
       const descriptor = path.join(foundry, "package-dist/assets/foundry-package-descriptor.json");
       const origin = `https://${managedFixtureAccount.projectRef}.supabase.co`;
       const source = fs.readFileSync(entry, "utf8");
@@ -436,7 +435,7 @@ globalThis.fetch = async (url, request) => {
   }
   const previousPackage = path.join(previous, "node_modules/@tiangong-lca/foundry");
   fs.appendFileSync(
-    path.join(previousPackage, "package-dist/scripts/package-entry.js"),
+    path.join(previousPackage, "package-dist/src/package-entry.js"),
     "\n// synthetic immutable predecessor package\n",
   );
   const oldDescriptor = path.join(
@@ -891,7 +890,7 @@ globalThis.fetch = async (url, request) => {
     package_name: "@tiangong-lca/foundry",
     package_version: version,
     manifest_sha256: managedFileFact(path.join(newPackage, "package.json")).sha256,
-    entry_sha256: managedFileFact(path.join(newPackage, "package-dist/scripts/package-entry.js"))
+    entry_sha256: managedFileFact(path.join(newPackage, "package-dist/src/package-entry.js"))
       .sha256,
   };
   const review = path.join(root, "synthetic-review.json"),
@@ -925,7 +924,7 @@ globalThis.fetch = async (url, request) => {
   const selection = {
     schema: "tiangong-foundry.task-runtime-compatibility-selection.v1",
     scope: [{ task_id: taskId, registration_sha256: managedFileFact(registration).sha256 }],
-    original_entry: managedFileFact(path.join(oldPackage, "package-dist/scripts/package-entry.js")),
+    original_entry: managedFileFact(path.join(oldPackage, "package-dist/src/package-entry.js")),
     original_descriptor: managedFileFact(
       path.join(oldPackage, "package-dist/assets/foundry-package-descriptor.json"),
     ),
@@ -1117,18 +1116,17 @@ export async function seedManagedIdentityHistory(
   f: Awaited<ReturnType<typeof managedAdoptionFixture>>,
 ) {
   const contextModule = (await import(
-    pathToFileURL(path.join(f.oldPackage, "package-dist/scripts/lib/foundry-runtime-context.js"))
-      .href
-  )) as typeof import("../../scripts/lib/foundry-runtime-context.ts");
+    pathToFileURL(path.join(f.oldPackage, "package-dist/src/lib/foundry-runtime-context.js")).href
+  )) as typeof import("../../src/lib/foundry-runtime-context.ts");
   const store = (await import(
-    pathToFileURL(path.join(f.oldPackage, "package-dist/scripts/lib/foundry-task-store.js")).href
-  )) as typeof import("../../scripts/lib/foundry-task-store.ts");
+    pathToFileURL(path.join(f.oldPackage, "package-dist/src/lib/foundry-task-store.js")).href
+  )) as typeof import("../../src/lib/foundry-task-store.ts");
   const seed = path.join(f.root, "seed.json");
   const values = (
     JSON.parse(fs.readFileSync(seed, "utf8")) as { rows: Array<Record<string, unknown>> }
   ).rows;
   const base = contextModule.createFoundryRuntimeContext({
-    moduleUrl: pathToFileURL(path.join(f.oldPackage, "package-dist/scripts/runtime-entry.js")).href,
+    moduleUrl: pathToFileURL(path.join(f.oldPackage, "package-dist/src/runtime-entry.js")).href,
     workspace: f.workspace,
     cacheBase: path.join(f.root, "setup-cache"),
     taskId: f.taskId,

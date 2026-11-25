@@ -5,7 +5,7 @@ import Ajv2020 from "ajv/dist/2020.js";
 import {
   FOUNDRY_AUTHORIZATION_INPUT_SCHEMA,
   parseFoundryAuthorizationInput,
-} from "../../scripts/lib/foundry-authorization-input.ts";
+} from "../../src/lib/foundry-authorization-input.ts";
 
 const taskId = `task-${"a".repeat(64)}-r0001`;
 const sha = (seed: string) => seed.repeat(64).slice(0, 64);

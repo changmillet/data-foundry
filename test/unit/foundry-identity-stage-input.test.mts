@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseFoundryIdentityStageInput } from "../../scripts/lib/foundry-identity-stage-input.ts";
+import { parseFoundryIdentityStageInput } from "../../src/lib/foundry-identity-stage-input.ts";
 
 const valid = {
   schema: "tiangong-foundry.identity-stage-input.v1",

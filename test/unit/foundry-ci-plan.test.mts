@@ -8,7 +8,7 @@ import { spawnSync } from "node:child_process";
 import {
   loadFoundryWindowsExecutionInput,
   foundryRetainedTestFiles,
-} from "../../scripts/lib/foundry-ci-windows.ts";
+} from "../../devops/ci/foundry-ci-windows.ts";
 import {
   foundryCiTestConcurrency,
   loadFoundryTestPlan,
@@ -16,7 +16,7 @@ import {
   foundryCiTestMatrix,
   planFoundryTestShards,
   selectFoundryCiMode,
-} from "../../scripts/lib/foundry-ci-plan.ts";
+} from "../../devops/ci/foundry-ci-plan.ts";
 
 const files = [
   "test/unit/a.test.mts",
@@ -273,11 +273,11 @@ test("hosted Windows timings keep heavy object, native and repair scenarios with
 import {
   validateFoundryReleaseChange,
   type ReleaseFileChange,
-} from "../../scripts/lib/foundry-release-contract.ts";
+} from "../../devops/release/foundry-release-contract.ts";
 import {
   foundryReleaseVersionPaths,
   projectFoundryReleaseVersion,
-} from "../../scripts/lib/foundry-release-version.ts";
+} from "../../devops/release/foundry-release-version.ts";
 
 function versionChanges(): ReleaseFileChange[] {
   const root = path.resolve(import.meta.dirname, "../..");
@@ -309,7 +309,7 @@ test("only strictly inspected version PRs receive the bounded gate", () => {
   assert.equal(
     selectFoundryCiMode("pull_request", undefined, {
       release: false,
-      changedPaths: ["scripts/runtime-entry.ts"],
+      changedPaths: ["src/runtime-entry.ts"],
     }),
     "full",
   );
@@ -320,7 +320,7 @@ test("version gate never admits dependency changes, mixed source or changed docu
     selectFoundryCiMode("pull_request", undefined, validateFoundryReleaseChange(changes));
   for (const extra of [
     { path: "pnpm-lock.yaml", before: "old", after: "new" },
-    { path: "scripts/runtime-entry.ts", before: "old", after: "new" },
+    { path: "src/runtime-entry.ts", before: "old", after: "new" },
     {
       path: "README.md",
       before: "---\nlastReviewedAt: old\n---\nOld body\n",

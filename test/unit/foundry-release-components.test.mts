@@ -3,8 +3,8 @@ import test from "node:test";
 import {
   preparedFoundryRuntimeAuthority,
   type PreparedFoundryRuntimeComponents,
-} from "../../scripts/lib/foundry-release-components.ts";
-import { qualifyFoundryRuntimeComponents } from "../../scripts/lib/foundry-release-runtime-qualification.ts";
+} from "../../devops/release/foundry-release-components.ts";
+import { qualifyFoundryRuntimeComponents } from "../../devops/release/foundry-release-runtime-qualification.ts";
 import inputs from "../../specs/release/runtime-inputs.json" with { type: "json" };
 
 test("a copied component receipt cannot start runtime qualification", async () => {

@@ -3,13 +3,13 @@ import test from "node:test";
 import {
   migrationTaskTemplate,
   materializeMigrationTaskSpec,
-} from "../../scripts/lib/foundry-migration-adoption-plan.ts";
+} from "../../src/lib/foundry-migration-adoption-plan.ts";
 import {
   FOUNDRY_TASK_START_SPEC_SCHEMA,
   parseFoundryTaskStartSpec,
   taskStartSpecFingerprint,
-} from "../../scripts/lib/foundry-task-start-spec.ts";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
+} from "../../src/lib/foundry-task-start-spec.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
 
 const base = {
   schema: FOUNDRY_TASK_START_SPEC_SCHEMA,
@@ -264,7 +264,7 @@ test("repair selections must be independently selected sources with exact identi
 
 test("the repair lane registers through the same facade wiring without a temporary block", async () => {
   const source = await import("node:fs").then((fs) =>
-    fs.readFileSync("scripts/lib/foundry-task-registration.ts", "utf8"),
+    fs.readFileSync("src/lib/foundry-task-registration.ts", "utf8"),
   );
   assert.equal(/repair_entry_enforcement_pending/u.test(source), false);
   assert.match(source, /readFoundryRepairScope/u);

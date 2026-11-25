@@ -13,7 +13,7 @@ import {
   createFoundryBootstrapIntegrity,
   createFoundryBootstrapLock,
   FOUNDRY_BOOTSTRAP_CLI,
-} from "../../scripts/lib/foundry-release-bootstrap.ts";
+} from "../../devops/release/foundry-release-bootstrap.ts";
 import inputs from "../../specs/release/runtime-inputs.json" with { type: "json" };
 
 const sha = (text: string) => createHash("sha256").update(text).digest("hex");

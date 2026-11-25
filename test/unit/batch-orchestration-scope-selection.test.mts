@@ -16,17 +16,11 @@ import {
   type ScopeFamilyAdapter,
   type ScopeSelectionInput,
   type ScopeSelectionResult,
-} from "../../scripts/lib/batch-orchestration/scope-selection.ts";
+} from "../../src/lib/batch-orchestration/scope-selection.ts";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
-const modulePath = path.join(
-  repoRoot,
-  "scripts",
-  "lib",
-  "batch-orchestration",
-  "scope-selection.ts",
-);
+const modulePath = path.join(repoRoot, "src", "lib", "batch-orchestration", "scope-selection.ts");
 
 const version = "00.00.001";
 

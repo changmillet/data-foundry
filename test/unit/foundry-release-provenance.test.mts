@@ -7,7 +7,7 @@ import {
   validateNpmProvenanceStatement,
   verifyNpmReleaseEvidence,
   type NpmReleaseExpectation,
-} from "../../scripts/lib/foundry-release-provenance.ts";
+} from "../../devops/release/foundry-release-provenance.ts";
 
 const cli: NpmReleaseExpectation = {
   package: "cli",

@@ -9,9 +9,9 @@ import {
   assertFoundryComponentFiles,
   copyFoundryComponentPayload,
   writeFoundryComponentFile,
-} from "../../scripts/lib/foundry-release-component-io.ts";
-import { assertPreparedFoundryProductionInput } from "../../scripts/release-prepare-production.ts";
-import { assertPreparedFoundryNativeInput } from "../../scripts/release-prepare-native.ts";
+} from "../../devops/release/foundry-release-component-io.ts";
+import { assertPreparedFoundryProductionInput } from "../../devops/release/release-prepare-production.ts";
+import { assertPreparedFoundryNativeInput } from "../../devops/release/release-prepare-native.ts";
 
 const platform = `${process.platform}-${process.arch}` as RuntimePlatform;
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");

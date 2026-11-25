@@ -5,7 +5,7 @@ import test from "node:test";
 import {
   assertFoundryPackageDescriptor,
   createFoundryPackageDescriptor,
-} from "../../scripts/lib/foundry-package-contract.ts";
+} from "../../src/lib/foundry-package-contract.ts";
 
 const repoRoot = path.resolve(import.meta.dirname, "../..");
 const readJson = (relative: string) =>
@@ -83,17 +83,17 @@ test("Foundry package metadata exposes only the reviewed public closure", () => 
     registry: "https://registry.npmjs.org/",
   });
   assert.deepEqual(manifest.bin, {
-    "tiangong-foundry": "./package-dist/scripts/package-entry.js",
+    "tiangong-foundry": "./package-dist/src/package-entry.js",
   });
-  assert.equal(manifest.types, "./package-dist/scripts/public-api.d.ts");
+  assert.equal(manifest.types, "./package-dist/src/public-api.d.ts");
   assert.deepEqual(manifest.exports, {
     ".": {
-      types: "./package-dist/scripts/public-api.d.ts",
-      import: "./package-dist/scripts/public-api.js",
+      types: "./package-dist/src/public-api.d.ts",
+      import: "./package-dist/src/public-api.js",
     },
     "./runtime": {
-      types: "./package-dist/scripts/public-api.d.ts",
-      import: "./package-dist/scripts/public-api.js",
+      types: "./package-dist/src/public-api.d.ts",
+      import: "./package-dist/src/public-api.js",
     },
   });
   assert.deepEqual(manifest.files, packageFiles);
@@ -105,29 +105,29 @@ test("Foundry package metadata exposes only the reviewed public closure", () => 
   assert.equal((manifest.scripts as Record<string, string>)["dev:hooks"], "pnpm exec husky");
   assert.equal(
     (manifest.scripts as Record<string, string>)["package:build"],
-    "node scripts/build-foundry-package.ts",
+    "node devops/build/build-foundry-package.ts",
   );
   assert.equal(
     (manifest.scripts as Record<string, string>)["package:check"],
-    "node scripts/verify-foundry-package.ts",
+    "node devops/build/verify-foundry-package.ts",
   );
   assert.equal(
     (manifest.scripts as Record<string, string>)["package:pack"],
-    "node scripts/pack-foundry-package.ts",
+    "node devops/build/pack-foundry-package.ts",
   );
   assert.deepEqual(manifest.foundryRuntime, {
     schema: "tiangong-foundry.runtime-layout.v2",
     asset_root: ".",
-    source_entry: "scripts/foundry.ts",
-    emitted_entry: "dist/scripts/foundry.js",
-    package_entry: "package-dist/scripts/package-entry.js",
+    source_entry: "src/dev-cli.ts",
+    emitted_entry: "dist/src/dev-cli.js",
+    package_entry: "package-dist/src/package-entry.js",
     package_descriptor: "package-dist/assets/foundry-package-descriptor.json",
   });
 });
 
 test("package compiler and public entries are explicit and source maps stay disabled", () => {
   const config = readJson("tsconfig.package.json");
-  assert.deepEqual(config.files, ["scripts/package-entry.ts", "scripts/public-api.ts"]);
+  assert.deepEqual(config.files, ["src/package-entry.ts", "src/public-api.ts"]);
   assert.deepEqual(config.include, []);
   assert.deepEqual(config.exclude, []);
   assert.deepEqual(config.compilerOptions, {
@@ -141,19 +141,19 @@ test("package compiler and public entries are explicit and source maps stay disa
     inlineSources: false,
     newLine: "lf",
   });
-  for (const entry of ["scripts/package-entry.ts", "scripts/public-api.ts"]) {
+  for (const entry of ["src/package-entry.ts", "src/public-api.ts"]) {
     assert.equal(fs.existsSync(path.join(repoRoot, entry)), true, entry);
   }
-  const packageEntry = fs.readFileSync(path.join(repoRoot, "scripts/package-entry.ts"), "utf8");
+  const packageEntry = fs.readFileSync(path.join(repoRoot, "src/package-entry.ts"), "utf8");
   assert.match(packageEntry, /^#!\/usr\/bin\/env node\n/u);
   assert.match(packageEntry, /runFoundryInstalledCommand/u);
   const installedEntry = fs.readFileSync(
-    path.join(repoRoot, "scripts/lib/foundry-installed-entry.ts"),
+    path.join(repoRoot, "src/lib/foundry-installed-entry.ts"),
     "utf8",
   );
   assert.match(installedEntry, /runFoundryPublicCommand/u);
   assert.doesNotMatch(packageEntry, /runFoundryCli|runFoundryRuntimeCommand/u);
-  const api = fs.readFileSync(path.join(repoRoot, "scripts/public-api.ts"), "utf8");
+  const api = fs.readFileSync(path.join(repoRoot, "src/public-api.ts"), "utf8");
   assert.doesNotMatch(api, /foundry-cli|commands\/|production-contact-draft/u);
 });
 
@@ -170,9 +170,9 @@ test("package descriptor rejects platform, path, order and digest drift", () => 
     [
       "README.md",
       "LICENSE",
-      "package-dist/scripts/package-entry.js",
-      "package-dist/scripts/public-api.js",
-      "package-dist/scripts/public-api.d.ts",
+      "package-dist/src/package-entry.js",
+      "package-dist/src/public-api.js",
+      "package-dist/src/public-api.d.ts",
     ].map((selectedPath) => ({ path: selectedPath, bytes: 1, sha256 })),
   );
   for (const name of [

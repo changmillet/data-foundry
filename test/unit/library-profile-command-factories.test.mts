@@ -3,8 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { createUslciBatchImportRunCommands } from "../../scripts/commands/uslci-batch-import-run.ts";
-import { createWorldsteelBatchImportRunCommands } from "../../scripts/commands/worldsteel-batch-import-run.ts";
+import { createUslciBatchImportRunCommands } from "../../src/commands/uslci-batch-import-run.ts";
+import { createWorldsteelBatchImportRunCommands } from "../../src/commands/worldsteel-batch-import-run.ts";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
@@ -14,7 +14,7 @@ function readRepoFile(relativePath: string): string {
 }
 
 function typedPath(profile: "uslci" | "worldsteel"): string {
-  return path.join(repoRoot, `scripts/commands/${profile}-batch-import-run.ts`);
+  return path.join(repoRoot, `src/commands/${profile}-batch-import-run.ts`);
 }
 
 test("USLCI wrapper delegates once with the exact frozen profile and never invokes the runner", () => {
@@ -127,8 +127,8 @@ test("all active library profile wrapper consumers target native TypeScript", ()
     ["worldsteel-batch-import-run", "createWorldsteelBatchImportRunCommands"],
   ] as const;
   const consumers = [
-    "scripts/foundry.ts",
-    "scripts/lib/foundry-command-metadata.ts",
+    "src/dev-cli.ts",
+    "src/lib/foundry-command-metadata.ts",
     "docs/uslci-import-plan.md",
     "docs/import-profiles/worldsteel/profile.md",
     "docs/import-profiles/worldsteel/import-plan.md",

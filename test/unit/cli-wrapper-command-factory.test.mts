@@ -5,7 +5,7 @@ import path from "node:path";
 import process from "node:process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { createCliWrapperCommands } from "../../scripts/commands/cli-wrappers.ts";
+import { createCliWrapperCommands } from "../../src/commands/cli-wrappers.ts";
 
 type JsonObject = Record<string, unknown>;
 
@@ -275,12 +275,12 @@ test("CLI wrapper help is exact and never resolves or spawns the CLI", () => {
 });
 
 test("CLI wrapper exists only as zero-escape native TypeScript with no shell-string authority", () => {
-  const typedPath = path.join(repoRoot, "scripts/commands/cli-wrappers.ts");
+  const typedPath = path.join(repoRoot, "src/commands/cli-wrappers.ts");
   assert.equal(fs.existsSync(typedPath), true);
   assert.equal(fs.existsSync(typedPath.replace(/\.ts$/u, ".mjs")), false);
   assert.match(fs.readFileSync(typedPath, "utf8"), /finalize-owners\/cli-wrappers\.ts/u);
   const source = fs.readFileSync(
-    path.join(repoRoot, "scripts/lib/finalize-owners/cli-wrappers.ts"),
+    path.join(repoRoot, "src/lib/finalize-owners/cli-wrappers.ts"),
     "utf8",
   );
   assert.doesNotMatch(source, /\bas\s+any\b|:\s*any\b|\bany\s*\[\]|<\s*any\b|,\s*any\s*>/u);
@@ -291,8 +291,8 @@ test("CLI wrapper exists only as zero-escape native TypeScript with no shell-str
 
 test("CLI wrapper consumers target the typed command factory", () => {
   for (const consumer of [
-    "scripts/foundry.ts",
-    "scripts/lib/foundry-command-metadata.ts",
+    "src/dev-cli.ts",
+    "src/lib/foundry-command-metadata.ts",
     "test/unit/cli-wrapper-command-factory.test.mts",
   ]) {
     const source = readRepoFile(consumer);

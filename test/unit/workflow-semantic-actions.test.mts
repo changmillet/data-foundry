@@ -3,7 +3,7 @@ import test from "node:test";
 import {
   collectNamePlanQualitySemanticActions,
   namePlanQualityFindings,
-} from "../../scripts/lib/import-curation/internal/workflow-semantic-actions.ts";
+} from "../../src/lib/import-curation/internal/workflow-semantic-actions.ts";
 
 interface TestNameFinding {
   code: string;

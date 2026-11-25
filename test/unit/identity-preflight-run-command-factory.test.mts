@@ -8,28 +8,28 @@ import path from "node:path";
 import process from "node:process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { createIdentityPreflightRunCommands } from "../../scripts/commands/identity-preflight-run.ts";
+import { createIdentityPreflightRunCommands } from "../../src/commands/identity-preflight-run.ts";
 import {
   createFoundryRuntimeUtils,
   resolveTiangongLcaCliRuntimeCommand,
-} from "../../scripts/lib/foundry-runtime-utils.ts";
-import { parseScalar } from "../../scripts/lib/foundry-args.ts";
-import { createTidasRowUtils } from "../../scripts/lib/tidas-row-utils.ts";
-import { bundleRowTypes } from "../../scripts/lib/bundle-row-types.ts";
-import { createBundleSourceContextUtils } from "../../scripts/lib/bundle-source-context.ts";
-import { createDecisionTaskUtils } from "../../scripts/lib/decision-task-utils.ts";
-import { createIdentityPreflightArtifactUtils } from "../../scripts/lib/identity-preflight-artifacts.ts";
-import { datasetIdentity } from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
-import { ensureArray } from "../../scripts/lib/import-curation/internal/runtime-io.ts";
-import { workflowObject } from "../../scripts/lib/foundry-workflow-state.ts";
+} from "../../src/lib/foundry-runtime-utils.ts";
+import { parseScalar } from "../../src/lib/foundry-args.ts";
+import { createTidasRowUtils } from "../../src/lib/tidas-row-utils.ts";
+import { bundleRowTypes } from "../../src/lib/bundle-row-types.ts";
+import { createBundleSourceContextUtils } from "../../src/lib/bundle-source-context.ts";
+import { createDecisionTaskUtils } from "../../src/lib/decision-task-utils.ts";
+import { createIdentityPreflightArtifactUtils } from "../../src/lib/identity-preflight-artifacts.ts";
+import { datasetIdentity } from "../../src/lib/import-curation/internal/dataset-payload.ts";
+import { ensureArray } from "../../src/lib/import-curation/internal/runtime-io.ts";
+import { workflowObject } from "../../src/lib/foundry-workflow-state.ts";
 import { parseFoundryCommandSpec } from "@tiangong-lca/cli/command-spec";
 import { testAuthIdentityReceipt } from "../fixtures/auth-identity-receipt.ts";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
-const typedPath = path.join(repoRoot, "scripts/commands/identity-preflight-run.ts");
-const ownerPath = path.join(repoRoot, "scripts/lib/decision-owners/identity-preflight.ts");
-const legacyPath = path.join(repoRoot, "scripts/commands/identity-preflight-run.mjs");
+const typedPath = path.join(repoRoot, "src/commands/identity-preflight-run.ts");
+const ownerPath = path.join(repoRoot, "src/lib/decision-owners/identity-preflight.ts");
+const legacyPath = path.join(repoRoot, "src/commands/identity-preflight-run.mjs");
 
 function readRepoFile(relativePath: string): string {
   return fs.readFileSync(path.join(repoRoot, relativePath), "utf8");
@@ -39,30 +39,34 @@ test("identity-preflight command help bytes remain exact for all four exports", 
   const expected = [
     {
       command: "dataset-identity-preflight-requests-build",
-      bytes: 890,
-      sha256: "918dcb2f34a0a54fab5684fa722348c1291b93f8d86c882c4c79e146e8875012",
+      bytes: 878,
+      sha256: "221d7ec10fcb99de08504ba87c60a3d5e6e46892b142cb149f87b8181d919db8",
     },
     {
       command: "dataset-identity-preflight-query-audit",
-      bytes: 457,
-      sha256: "0a22ecb83e482ceac6fc84b17f4ffa4b6ef56d323cfb865bb0faf9f8d9b15b27",
+      bytes: 453,
+      sha256: "85b47a2b712180b038303c84b29441bc025bd995364c95c61b61241ca48c1ae1",
     },
     {
       command: "dataset-identity-preflight-run",
-      bytes: 4531,
-      sha256: "918bd3aff37a471a01ce9ec9715ef93fc5f6de05b3643d139b8ce1f23542a685",
+      bytes: 4519,
+      sha256: "727705d97af360928127ea9b15b8dfb61e178abf7f113f9cdcbfcc90350a0bdb",
     },
     {
       command: "dataset-identity-preflight-index-merge",
-      bytes: 747,
-      sha256: "8b60ceb7d6a69f5cc87a4da5ecf0b52afadc8bade3c74c4174926b474ea294e7",
+      bytes: 739,
+      sha256: "3fc2961480f6d80b026a249265febdb48f2b5a6881a12453b75ae2d07b9aeb6a",
     },
   ];
   for (const contract of expected) {
-    const result = spawnSync(process.execPath, ["scripts/foundry.ts", contract.command, "--help"], {
-      cwd: repoRoot,
-      encoding: null,
-    });
+    const result = spawnSync(
+      process.execPath,
+      ["test/fixtures/run-internal-stage.ts", contract.command, "--help"],
+      {
+        cwd: repoRoot,
+        encoding: null,
+      },
+    );
     assert.equal(result.status, 0, contract.command);
     assert.equal(result.stderr.length, 0, contract.command);
     assert.equal(result.stdout.length, contract.bytes, contract.command);
@@ -126,9 +130,9 @@ test("identity-preflight command owner exists only as zero-escape native TypeScr
 
 test("identity-preflight consumers and metadata target the typed owner", () => {
   for (const consumer of [
-    "scripts/foundry.ts",
-    "scripts/lib/foundry-command-metadata.ts",
-    "scripts/lib/batch-orchestration/bafu-batch-command-runtime.ts",
+    "src/dev-cli.ts",
+    "src/lib/foundry-command-metadata.ts",
+    "src/lib/batch-orchestration/bafu-batch-command-runtime.ts",
   ]) {
     const source = readRepoFile(consumer);
     assert.match(source, /(?:commands\/|scripts\/commands\/)identity-preflight-run\.ts/u, consumer);

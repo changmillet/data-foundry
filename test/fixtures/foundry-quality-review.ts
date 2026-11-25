@@ -4,8 +4,8 @@ import path from "node:path";
 import type { TestContext } from "node:test";
 import { workflowFixture, digestFile } from "./foundry-public-workflow.ts";
 import { supportUnitGroupRow, supportFlowPropertyRow } from "./support-row-builders.ts";
-import type { FoundryQualityReviewInput } from "../../scripts/lib/foundry-quality-review-input.ts";
-import type { foundryQualityReviewScope } from "../../scripts/lib/foundry-quality-review.ts";
+import type { FoundryQualityReviewInput } from "../../src/lib/foundry-quality-review-input.ts";
+import type { foundryQualityReviewScope } from "../../src/lib/foundry-quality-review.ts";
 
 const ids = {
   a: "66666666-6666-4666-8666-666666666666",

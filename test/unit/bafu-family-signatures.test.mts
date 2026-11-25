@@ -8,7 +8,7 @@ import {
   buildBafuFamilySignatureIndex,
   compactBafuFamilySignature,
   normalizeBafuFamilyName,
-} from "../../scripts/lib/bafu-family-signatures.ts";
+} from "../../src/lib/bafu-family-signatures.ts";
 
 function processRow({
   id,

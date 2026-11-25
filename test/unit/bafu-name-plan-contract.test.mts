@@ -5,19 +5,19 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { bafuAutoAuthoringTestHooks } from "../../scripts/commands/bafu-auto-authoring.ts";
+import { bafuAutoAuthoringTestHooks } from "../../src/commands/bafu-auto-authoring.ts";
 import {
   cleanProcessFunctionalUnitText,
   englishText,
   removeTrailingLocationToken,
   splitBafuNamePlan,
   splitBafuNamePlanFromNameParts,
-} from "../../scripts/lib/bafu-authoring/name-plan.ts";
+} from "../../src/lib/bafu-authoring/name-plan.ts";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
-const modulePath = path.join(repoRoot, "scripts/lib/bafu-authoring/name-plan.ts");
-const ownerPath = path.join(repoRoot, "scripts/commands/bafu-auto-authoring.ts");
+const modulePath = path.join(repoRoot, "src/lib/bafu-authoring/name-plan.ts");
+const ownerPath = path.join(repoRoot, "src/commands/bafu-auto-authoring.ts");
 
 interface FrozenCase {
   name: string;

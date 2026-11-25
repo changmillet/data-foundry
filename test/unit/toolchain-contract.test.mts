@@ -7,7 +7,7 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { cleanBuildOutput } from "../../scripts/clean-build-output.ts";
+import { cleanBuildOutput } from "../../devops/build/clean-build-output.ts";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
@@ -137,14 +137,14 @@ test("Foundry publishes one canonical pnpm TypeScript TDD gate", () => {
   ]) {
     assert.equal(typeof scripts[required], "string", `missing scripts.${required}`);
   }
-  assert.equal(scripts["lint:suppressions"], "node scripts/check-lint-suppressions.ts");
+  assert.equal(scripts["lint:suppressions"], "node devops/ci/check-lint-suppressions.ts");
   assert.equal(
     scripts.lint,
     "pnpm lint:suppressions && pnpm lint:oxlint && pnpm lint:prettier && pnpm typecheck",
   );
   assert.match(scripts["lint:oxlint"], /--disable-nested-config/u);
   assert.deepEqual(packageJson["lint-staged"]?.["*.{ts,mts,cts,tsx}"], [
-    "node scripts/check-lint-suppressions.ts",
+    "node devops/ci/check-lint-suppressions.ts",
     "oxlint --disable-nested-config --type-aware --format=stylish --deny-warnings",
   ]);
   assert.match(scripts.typecheck, /tsc/u);
@@ -164,13 +164,15 @@ test("build removes seeded stale output through a cross-platform Node cleaner", 
     path.join(fixtureRoot, "dist", "scripts", "foundry.mjs.map"),
   ];
   try {
-    const fixtureScripts = path.join(fixtureRoot, "scripts");
-    mkdirSync(fixtureScripts, { recursive: true });
+    const fixtureBuild = path.join(fixtureRoot, "devops", "build");
+    const fixtureSrc = path.join(fixtureRoot, "src");
+    mkdirSync(fixtureBuild, { recursive: true });
+    mkdirSync(fixtureSrc, { recursive: true });
     writeFileSync(
-      path.join(fixtureScripts, "clean-build-output.ts"),
-      readText("scripts/clean-build-output.ts"),
+      path.join(fixtureBuild, "clean-build-output.ts"),
+      readText("devops/build/clean-build-output.ts"),
     );
-    writeFileSync(path.join(fixtureScripts, "foundry.ts"), "export const current = true;\n");
+    writeFileSync(path.join(fixtureSrc, "dev-cli.ts"), "export const current = true;\n");
     writeFileSync(
       path.join(fixtureRoot, "tsconfig.build.json"),
       `${JSON.stringify(
@@ -184,7 +186,7 @@ test("build removes seeded stale output through a cross-platform Node cleaner", 
             rootDir: ".",
             skipLibCheck: true,
           },
-          include: ["scripts/foundry.ts"],
+          include: ["src/dev-cli.ts"],
         },
         null,
         2,
@@ -196,7 +198,7 @@ test("build removes seeded stale output through a cross-platform Node cleaner", 
 
     const cleanResult = spawnSync(
       process.execPath,
-      [path.join(fixtureScripts, "clean-build-output.ts")],
+      [path.join(fixtureBuild, "clean-build-output.ts")],
       { ...commandOptions(), cwd: fixtureRoot },
     );
     assert.equal(cleanResult.status, 0, cleanResult.stderr || cleanResult.stdout);
@@ -215,16 +217,16 @@ test("build removes seeded stale output through a cross-platform Node cleaner", 
       [],
       "build must remove retired entrypoint and source-map output",
     );
-    assert.equal(existsSync(path.join(fixtureRoot, "dist", "scripts", "foundry.js")), true);
+    assert.equal(existsSync(path.join(fixtureRoot, "dist", "src", "dev-cli.js")), true);
   } finally {
     rmSync(fixtureRoot, { recursive: true, force: true });
   }
 
   assert.equal(
     packageJson.scripts?.build,
-    "node scripts/clean-build-output.ts && pnpm exec tsc -p tsconfig.build.json",
+    "node devops/build/clean-build-output.ts && pnpm exec tsc -p tsconfig.build.json",
   );
-  const cleaner = readText("scripts/clean-build-output.ts");
+  const cleaner = readText("devops/build/clean-build-output.ts");
   assert.match(cleaner, /rmSync/u);
   assert.doesNotMatch(cleaner, /node:child_process|\brm\s+-rf\b|\brmdir\b/u);
 });
@@ -334,7 +336,7 @@ test("tracked first-party JavaScript remains permanently at zero", () => {
 
 test("Foundry pins the published CLI runtime and high-risk audit closure", () => {
   assert.equal(packageJson.dependencies?.["@tiangong-lca/cli"], "0.4.0");
-  const runtimeSource = readText("scripts/lib/foundry-runtime-utils.ts");
+  const runtimeSource = readText("src/lib/foundry-runtime-utils.ts");
   assert.match(runtimeSource, /tiangongLcaCliPackageVersion\s*=\s*"0\.4\.0"/u);
   assert.doesNotMatch(runtimeSource, /tiangongLcaCliPackageVersion\s*=\s*"0\.1\.[0-2]"/u);
   assert.equal(packageJson.dependencies?.ajv, undefined);
@@ -362,16 +364,16 @@ test("four-platform CI installs only from the frozen pnpm contract", () => {
     "fetch-depth: 0",
     "pnpm install --frozen-lockfile",
     "pnpm ci:platform-checks",
-    "node scripts/ci-test-shard.ts",
-    "node scripts/ci-verify-tests.ts",
-    "node scripts/ci-build-package.ts",
+    "node devops/ci/ci-test-shard.ts",
+    "node devops/ci/ci-verify-tests.ts",
+    "node devops/ci/ci-build-package.ts",
   ]) {
     assert.match(workflow, new RegExp(escapeRegExp(expected), "u"));
   }
 });
 
 test("golden comparison is portable and cannot collapse into HEAD self-comparison", () => {
-  const source = readText("scripts/foundry-golden-diff.ts");
+  const source = readText("devops/ci/foundry-golden-diff.ts");
   assert.match(source, /merge-base/u);
   assert.match(source, /FOUNDRY_GOLDEN_BASE/u);
   assert.match(

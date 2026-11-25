@@ -30,7 +30,7 @@ interface StageHelp {
 }
 
 function runFoundryJson(args: string[]): StageHelp {
-  const result = spawnSync(process.execPath, ["scripts/foundry.ts", ...args], {
+  const result = spawnSync(process.execPath, ["test/fixtures/run-internal-stage.ts", ...args], {
     cwd: repoRoot,
     encoding: "utf8",
   });

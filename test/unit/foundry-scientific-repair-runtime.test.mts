@@ -4,11 +4,11 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { captureFoundryInput } from "../../scripts/lib/foundry-runtime-context.ts";
+import { captureFoundryInput } from "../../src/lib/foundry-runtime-context.ts";
 import {
   runScientificRepairDiagnostic,
   type ScientificRepairEvidence,
-} from "../../scripts/lib/foundry-scientific-repair.ts";
+} from "../../src/lib/foundry-scientific-repair.ts";
 
 // This exercises the native producer contract and refusal paths. Scientific schema/QA/curation
 // qualification is exercised separately with explicitly deployed native Worker and TIDAS binaries.

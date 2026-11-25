@@ -1,5 +1,5 @@
 import test from "node:test";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
 import { createFixture } from "../fixtures/full-context-fixtures.ts";
 import {
   assert,

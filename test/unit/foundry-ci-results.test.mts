@@ -5,11 +5,8 @@ import {
   loadFoundryTestPlan,
   foundryPlatformTestShards,
   planFoundryTestShards,
-} from "../../scripts/lib/foundry-ci-plan.ts";
-import {
-  foundryCiPlatforms,
-  verifyFoundryTestShards,
-} from "../../scripts/lib/foundry-ci-results.ts";
+} from "../../devops/ci/foundry-ci-plan.ts";
+import { foundryCiPlatforms, verifyFoundryTestShards } from "../../devops/ci/foundry-ci-results.ts";
 const source = "a".repeat(40);
 const plan = planFoundryTestShards(["test/unit/a.test.mts", "test/unit/b.test.mts"], {}, 2);
 function receipts(): Record<string, unknown>[] {

@@ -16,15 +16,15 @@ import {
 import {
   createFoundryRuntimeContext,
   initializeFoundryWorkspace,
-} from "../../scripts/lib/foundry-runtime-context.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
 import {
   leaseFoundryRuntime,
   selectFoundryWorkspaceRuntime,
-} from "../../scripts/lib/foundry-runtime-selection.ts";
-import { createFoundryFacade } from "../../scripts/public-api.ts";
+} from "../../src/lib/foundry-runtime-selection.ts";
+import { createFoundryFacade } from "../../src/public-api.ts";
 import { workspaceManifestFixture } from "../helpers/foundry-runtime-manifest.mts";
 
-const moduleUrl = new URL("../../scripts/public-api.ts", import.meta.url).href;
+const moduleUrl = new URL("../../src/public-api.ts", import.meta.url).href;
 const hash = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
 
 test("managed cache ownership never admits source or developer-emitted roots or excluded migration roots", async (t) => {
@@ -56,7 +56,7 @@ test("managed cache ownership never admits source or developer-emitted roots or 
 
   const developerCache = path.join(root, "developer-cache");
   const checkout = path.join(developerCache, "checkout");
-  const entry = path.join(checkout, "dist/scripts/foundry.js");
+  const entry = path.join(checkout, "dist/src/dev-cli.js");
   fs.mkdirSync(path.dirname(entry), { recursive: true });
   fs.writeFileSync(entry, "// Developer-emitted fixture, not an installed package.\n");
   fs.writeFileSync(
@@ -67,8 +67,8 @@ test("managed cache ownership never admits source or developer-emitted roots or 
       foundryRuntime: {
         schema: "tiangong-foundry.runtime-layout.v1",
         asset_root: ".",
-        source_entry: "scripts/foundry.ts",
-        emitted_entry: "dist/scripts/foundry.js",
+        source_entry: "src/dev-cli.ts",
+        emitted_entry: "dist/src/dev-cli.js",
       },
     }),
   );

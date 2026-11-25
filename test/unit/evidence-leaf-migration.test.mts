@@ -3,10 +3,10 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
-import * as decisionTask from "../../scripts/lib/decision-task-utils.ts";
-import * as fullContext from "../../scripts/lib/full-context-proof.ts";
-import * as preflightArtifacts from "../../scripts/lib/identity-preflight-artifacts.ts";
-import * as identityRewrite from "../../scripts/lib/identity-reference-rewrite-utils.ts";
+import * as decisionTask from "../../src/lib/decision-task-utils.ts";
+import * as fullContext from "../../src/lib/full-context-proof.ts";
+import * as preflightArtifacts from "../../src/lib/identity-preflight-artifacts.ts";
+import * as identityRewrite from "../../src/lib/identity-reference-rewrite-utils.ts";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 
@@ -24,11 +24,11 @@ test("four evidence leaves are native TypeScript with updated Foundry consumers"
     "full-context-proof",
     "identity-preflight-artifacts",
   ]) {
-    const typedPath = path.join(repoRoot, `scripts/lib/${stem}.ts`);
+    const typedPath = path.join(repoRoot, `src/lib/${stem}.ts`);
     assert.equal(fs.existsSync(typedPath), true, `${stem}.ts must exist`);
     assert.equal(fs.existsSync(typedPath.replace(/\.ts$/u, ".mjs")), false);
   }
-  const foundrySource = fs.readFileSync(path.join(repoRoot, "scripts/foundry.ts"), "utf8");
+  const foundrySource = fs.readFileSync(path.join(repoRoot, "src/dev-cli.ts"), "utf8");
   for (const specifier of [
     "./lib/decision-task-utils.ts",
     "./lib/identity-reference-rewrite-utils.ts",

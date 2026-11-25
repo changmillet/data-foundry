@@ -3,15 +3,15 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import * as profilesOwner from "../../scripts/lib/import-curation/internal/profiles-config.ts";
-import * as traceOwner from "../../scripts/lib/import-curation/internal/trace-summary.ts";
+import * as profilesOwner from "../../src/lib/import-curation/internal/profiles-config.ts";
+import * as traceOwner from "../../src/lib/import-curation/internal/trace-summary.ts";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
 
 async function loadCurrentBarrel(stem: string): Promise<Record<string, unknown>> {
-  const typedPath = path.join(repoRoot, `scripts/lib/import-curation/${stem}.ts`);
-  const legacyPath = path.join(repoRoot, `scripts/lib/import-curation/${stem}.mjs`);
+  const typedPath = path.join(repoRoot, `src/lib/import-curation/${stem}.ts`);
+  const legacyPath = path.join(repoRoot, `src/lib/import-curation/${stem}.mjs`);
   return import(pathToFileURL(fs.existsSync(typedPath) ? typedPath : legacyPath).href) as Promise<
     Record<string, unknown>
   >;
@@ -23,7 +23,7 @@ function readRepoFile(relativePath: string): string {
 
 test("profile and trace barrels exist only as native TypeScript", () => {
   for (const stem of ["profiles", "trace-summary"]) {
-    const typedPath = path.join(repoRoot, `scripts/lib/import-curation/${stem}.ts`);
+    const typedPath = path.join(repoRoot, `src/lib/import-curation/${stem}.ts`);
     assert.equal(fs.existsSync(typedPath), true, stem);
     assert.equal(fs.existsSync(typedPath.replace(/\.ts$/u, ".mjs")), false, stem);
     const source = fs.readFileSync(typedPath, "utf8");
@@ -46,7 +46,7 @@ test("trace barrel preserves the exact namespace and live owner reference", asyn
 });
 
 test("every active leaf-barrel consumer targets the typed module", () => {
-  const indexSource = readRepoFile("scripts/lib/import-curation/index.ts");
+  const indexSource = readRepoFile("src/lib/import-curation/index.ts");
   assert.match(indexSource, /from "\.\/profiles\.ts"/u);
   assert.match(indexSource, /from "\.\/trace-summary\.ts"/u);
   assert.doesNotMatch(indexSource, /from "\.\/(?:profiles|trace-summary)\.mjs"/u);

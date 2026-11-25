@@ -21,7 +21,7 @@ test("offline planner command tests exist only as zero-escape TypeScript", () =>
 
 test("contracts metadata registry and migration tests target typed planner tests", () => {
   const consumers = [
-    "scripts/lib/foundry-command-metadata.ts",
+    "src/lib/foundry-command-metadata.ts",
     "docs/execution-capsule-contract.md",
     "docs/incremental-change-set-contract.md",
     "docs/topology-convergence-contract.md",

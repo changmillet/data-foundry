@@ -1,27 +1,27 @@
 import assert from "node:assert/strict";
 import childProcess from "node:child_process";
 import fs from "node:fs";
-import { FOUNDRY_TIDAS_EXPECTATION_SCHEMA } from "../../scripts/lib/foundry-runtime-qualification.ts";
-import { captureFoundryInput } from "../../scripts/lib/foundry-runtime-context.ts";
+import { FOUNDRY_TIDAS_EXPECTATION_SCHEMA } from "../../src/lib/foundry-runtime-qualification.ts";
+import { captureFoundryInput } from "../../src/lib/foundry-runtime-context.ts";
 import {
   readScientificRepairRuntime,
   scientificRepairChanges,
-} from "../../scripts/lib/foundry-scientific-repair.ts";
+} from "../../src/lib/foundry-scientific-repair.ts";
 import { syncBuiltinESMExports } from "node:module";
 import path from "node:path";
 import type { TestContext } from "node:test";
-import { createFoundryFacade } from "../../scripts/public-api.ts";
-import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
-import { collectDatasetReferences } from "../../scripts/lib/import-curation/internal/workflow-reference-closure.ts";
-import { datasetIdentity } from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
-import { bundleRowTypes } from "../../scripts/lib/bundle-row-types.ts";
-import { digestFile, workflowFixture } from "../fixtures/foundry-public-workflow.ts";
+import { createFoundryFacade } from "../../src/public-api.ts";
+import { resolveInstalledTiangongLcaCliPackage } from "../../src/lib/foundry-runtime-utils.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
+import { collectDatasetReferences } from "../../src/lib/import-curation/internal/workflow-reference-closure.ts";
+import { datasetIdentity } from "../../src/lib/import-curation/internal/dataset-payload.ts";
+import { bundleRowTypes } from "../../src/lib/bundle-row-types.ts";
+import { digestFile, workflowFixture } from "./foundry-public-workflow.ts";
 import {
   finalizationProcessAccount,
   typedFinalizationProcessFixture,
-} from "../fixtures/finalization-process.ts";
-import { testAuthIdentityReceipt } from "../fixtures/auth-identity-receipt.ts";
+} from "./finalization-process.ts";
+import { testAuthIdentityReceipt } from "./auth-identity-receipt.ts";
 
 type Json = Record<string, unknown>;
 const object = (value: unknown) => value as Json;

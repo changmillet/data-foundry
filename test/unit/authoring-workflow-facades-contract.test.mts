@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import * as patchFacade from "../../scripts/lib/import-curation/internal/authoring-patch-workflow.ts";
-import * as taskFacade from "../../scripts/lib/import-curation/internal/authoring-task-workflow.ts";
-import * as authoringTasks from "../../scripts/lib/import-curation/internal/workflow-authoring-tasks.ts";
-import * as patchCollect from "../../scripts/lib/import-curation/internal/workflow-patch-collect.ts";
-import * as semanticActions from "../../scripts/lib/import-curation/internal/workflow-semantic-actions.ts";
+import * as patchFacade from "../../src/lib/import-curation/internal/authoring-patch-workflow.ts";
+import * as taskFacade from "../../src/lib/import-curation/internal/authoring-task-workflow.ts";
+import * as authoringTasks from "../../src/lib/import-curation/internal/workflow-authoring-tasks.ts";
+import * as patchCollect from "../../src/lib/import-curation/internal/workflow-patch-collect.ts";
+import * as semanticActions from "../../src/lib/import-curation/internal/workflow-semantic-actions.ts";
 
 test("authoring task facade preserves its exact namespace and live references", () => {
   assert.deepEqual(Object.keys(taskFacade), [

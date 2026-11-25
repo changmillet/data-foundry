@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { projectFlowValidation } from "../../scripts/lib/foundry-typed-flow-qa.ts";
-import { canonicalPayloadSha256 } from "../../scripts/lib/post-write-root-proof.ts";
+import { projectFlowValidation } from "../../src/lib/foundry-typed-flow-qa.ts";
+import { canonicalPayloadSha256 } from "../../src/lib/post-write-root-proof.ts";
 
 const flow = {
   id: "77777777-7777-4777-8777-777777777777",

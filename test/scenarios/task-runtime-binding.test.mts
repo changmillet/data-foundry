@@ -3,15 +3,15 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { createFoundryRuntime } from "../../scripts/foundry-runtime.ts";
+import { createFoundryRuntime } from "../../src/foundry-runtime.ts";
 import {
   captureFoundryInput,
   createFoundryRuntimeContext,
   initializeFoundryWorkspace,
-} from "../../scripts/lib/foundry-runtime-context.ts";
-import { assertFoundryTaskInputLineage } from "../../scripts/lib/foundry-task-store.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
+import { assertFoundryTaskInputLineage } from "../../src/lib/foundry-task-store.ts";
 
-const moduleUrl = new URL("../../scripts/runtime-entry.ts", import.meta.url).href;
+const moduleUrl = new URL("../../src/runtime-entry.ts", import.meta.url).href;
 const hasCode = (code: string) => (error: unknown) =>
   Boolean(error && typeof error === "object" && "code" in error && error.code === code);
 

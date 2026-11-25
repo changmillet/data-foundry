@@ -4,9 +4,9 @@ import { createHash } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { createServer } from "node:net";
 import type { TestContext } from "node:test";
-import { datasetIdentity } from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
-import { bundleRowTypes } from "../../scripts/lib/bundle-row-types.ts";
+import { datasetIdentity } from "../../src/lib/import-curation/internal/dataset-payload.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
+import { bundleRowTypes } from "../../src/lib/bundle-row-types.ts";
 import { supportFixtureReferences } from "./support-row-builders.ts";
 
 type RemoteRow = {

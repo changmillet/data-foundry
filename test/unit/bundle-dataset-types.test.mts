@@ -3,12 +3,12 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
-import { bundleRowTypeOrder, bundleRowTypes } from "../../scripts/lib/bundle-row-types.ts";
+import { bundleRowTypeOrder, bundleRowTypes } from "../../src/lib/bundle-row-types.ts";
 import {
   datasetRoot,
   detectDatasetType,
   detectSupportDatasetType,
-} from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
+} from "../../src/lib/import-curation/internal/dataset-payload.ts";
 import {
   datasetTypeFromOptions,
   datasetTypePlural,
@@ -16,7 +16,7 @@ import {
   referenceOnlySupportDatasetTypes,
   supportedDatasetTypes,
   supportDatasetTypes,
-} from "../../scripts/lib/import-curation/internal/dataset-types.ts";
+} from "../../src/lib/import-curation/internal/dataset-types.ts";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 const datasetTypeFromAliases = datasetTypeFromOptions as unknown as (
@@ -169,10 +169,10 @@ test("dataset root detection preserves direct roots, lifecycle aliases, support 
 
 test("four low-level leaves are native TypeScript with representative static consumers", () => {
   const migrations = [
-    "scripts/lib/bundle-row-types",
-    "scripts/lib/tidas-language-utils",
-    "scripts/lib/import-curation/internal/hash-utils",
-    "scripts/lib/import-curation/internal/dataset-types",
+    "src/lib/bundle-row-types",
+    "src/lib/tidas-language-utils",
+    "src/lib/import-curation/internal/hash-utils",
+    "src/lib/import-curation/internal/dataset-types",
   ];
   for (const stem of migrations) {
     assert.equal(fs.existsSync(path.join(repoRoot, `${stem}.ts`)), true, `${stem}.ts must exist`);
@@ -183,14 +183,14 @@ test("four low-level leaves are native TypeScript with representative static con
     );
   }
   const expectedConsumers = [
-    ["scripts/foundry.ts", "./lib/bundle-row-types.ts"],
-    ["scripts/lib/tidas-row-utils.ts", "./tidas-language-utils.ts"],
-    ["scripts/lib/import-curation/internal/full-context-proof.ts", "./hash-utils.ts"],
-    ["scripts/lib/import-curation/internal/profiles-config.ts", "./dataset-types.ts"],
-    ["test/unit/tidas-language-utils.test.mts", "../../scripts/lib/tidas-language-utils.ts"],
+    ["src/dev-cli.ts", "./lib/bundle-row-types.ts"],
+    ["src/lib/tidas-row-utils.ts", "./tidas-language-utils.ts"],
+    ["src/lib/import-curation/internal/full-context-proof.ts", "./hash-utils.ts"],
+    ["src/lib/import-curation/internal/profiles-config.ts", "./dataset-types.ts"],
+    ["test/unit/tidas-language-utils.test.mts", "../../src/lib/tidas-language-utils.ts"],
     [
       "test/scenarios/mutation-lineage-helpers.test.mts",
-      "../../scripts/lib/import-curation/internal/hash-utils.ts",
+      "../../src/lib/import-curation/internal/hash-utils.ts",
     ],
   ] as const;
   for (const [consumer, specifier] of expectedConsumers) {

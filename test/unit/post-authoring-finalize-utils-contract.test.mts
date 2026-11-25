@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { createPostAuthoringFinalizeUtils } from "../../scripts/lib/post-authoring-finalize-utils.ts";
+import { createPostAuthoringFinalizeUtils } from "../../src/lib/post-authoring-finalize-utils.ts";
 
 type JsonObject = Record<string, unknown>;
 
@@ -266,7 +266,7 @@ test("finalize identity preflight stays no-op unless requested and fails closed 
 });
 
 test("post-authoring finalize utils exist only as zero-escape native TypeScript", () => {
-  const typedPath = path.join(repoRoot, "scripts/lib/post-authoring-finalize-utils.ts");
+  const typedPath = path.join(repoRoot, "src/lib/post-authoring-finalize-utils.ts");
   assert.equal(fs.existsSync(typedPath), true);
   assert.equal(fs.existsSync(typedPath.replace(/\.ts$/u, ".mjs")), false);
   const source = fs.readFileSync(typedPath, "utf8");
@@ -276,7 +276,7 @@ test("post-authoring finalize utils exist only as zero-escape native TypeScript"
 
 test("post-authoring finalize utils consumers target the typed owner", () => {
   for (const consumer of [
-    "scripts/foundry.ts",
+    "src/dev-cli.ts",
     "test/unit/finalize-resolution-reuse-seed.test.mts",
     "test/unit/post-authoring-finalize-utils-contract.test.mts",
   ]) {

@@ -66,7 +66,7 @@ test("support identity cache preserves exact carry-forward, invalidation, discov
   const appended: JsonRecord[] = [];
   const verified = new Set<string>();
   const { createSupportIdentityCacheService } =
-    await import("../../scripts/lib/batch-orchestration/support-identity-cache.ts");
+    await import("../../src/lib/batch-orchestration/support-identity-cache.ts");
   const service = createSupportIdentityCacheService(
     {
       nowIso: () => fixedNow,
@@ -134,7 +134,7 @@ test("support identity cache preserves exact carry-forward, invalidation, discov
 
 test("support identity parsing and stale selection preserve profile types and blocker order", async () => {
   const { createSupportIdentityCacheService } =
-    await import("../../scripts/lib/batch-orchestration/support-identity-cache.ts");
+    await import("../../src/lib/batch-orchestration/support-identity-cache.ts");
   const service = createSupportIdentityCacheService(minimalAdapter(), new Set<string>());
   assert.deepEqual(service.splitIdentityKey("flowproperty:fp@01.00.000"), {
     dataset_type: "flowproperty",

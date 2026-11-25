@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { bafuAutoAuthoringTestHooks } from "../../scripts/commands/bafu-auto-authoring.ts";
+import { bafuAutoAuthoringTestHooks } from "../../src/commands/bafu-auto-authoring.ts";
 import {
   fs,
   path,

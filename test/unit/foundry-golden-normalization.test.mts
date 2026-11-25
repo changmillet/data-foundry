@@ -2,29 +2,33 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
-import { commandMetadataEntries } from "../../scripts/lib/foundry-command-metadata.ts";
+import {
+  commandMetadataEntries,
+  internalStageMetadataEntries,
+} from "../../src/lib/foundry-command-metadata.ts";
 import {
   datasetPolicyCommands,
+  internalStageCommands,
   publicCommands,
-} from "../../scripts/lib/foundry-command-registry.ts";
+} from "../../src/lib/foundry-command-registry.ts";
 import {
   goldenProjectionDigest,
   normalizeGoldenCapabilityRegistry,
   normalizeGoldenCommandSurface,
   normalizeGoldenReviewedProjection,
   normalizeGoldenSurfaceAuditCounts,
-} from "../../scripts/lib/foundry-golden-normalization.ts";
+} from "../../devops/ci/foundry-golden-normalization.ts";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
-const NEW_COMMAND = "final-delivery-promote";
 const NEW_CAPABILITY_ID = "foundry.final-delivery.promote";
 
 // Projections are derived from the repository's own sources, so these exercise the real contract
 // rather than a copied fixture.
 const commandList = [...publicCommands, ...datasetPolicyCommands];
-const commandsBefore = commandList.filter((command) => command !== NEW_COMMAND);
+const commandsBefore = [...internalStageCommands];
+const publicBefore = internalStageCommands.slice(0, 15);
+const policyBefore = internalStageCommands.slice(15);
 const policyList = [...datasetPolicyCommands];
-const policyBefore = policyList.filter((command) => command !== NEW_COMMAND);
 
 const capabilityRegistry = (
   JSON.parse(
@@ -35,21 +39,22 @@ const capabilitiesBefore = capabilityRegistry.filter(
   (capability) => capability.id !== NEW_CAPABILITY_ID,
 );
 
-const metadataEntries = commandMetadataEntries();
 const categoryCounts = (entries: Array<{ category: string }>): Record<string, number> => {
   const counts: Record<string, number> = {};
   for (const entry of entries) counts[entry.category] = (counts[entry.category] ?? 0) + 1;
   return counts;
 };
-const countsAfter = categoryCounts(metadataEntries);
-const countsBefore = categoryCounts(
-  metadataEntries.filter((entry) => entry.command !== NEW_COMMAND),
-);
+const countsBefore = categoryCounts(internalStageMetadataEntries());
+const countsAfter = categoryCounts(commandMetadataEntries());
 
-const helpSurface = (commands: string[], policies: string[]) => ({
-  commands,
-  dataset_policy_commands: policies,
-  public_commands: [...publicCommands],
+const helpSurface = (
+  commands: readonly string[],
+  policies: readonly string[],
+  publics: readonly string[] = publicCommands,
+) => ({
+  commands: [...commands],
+  dataset_policy_commands: [...policies],
+  public_commands: [...publics],
   ownership_note: "note",
 });
 const capabilitySurface = (capabilities: Array<Record<string, unknown>>) => ({
@@ -60,14 +65,16 @@ const capabilitySurface = (capabilities: Array<Record<string, unknown>>) => ({
 });
 
 test("the reviewed command surface normalizes both states to one value", () => {
-  const before = normalizeGoldenCommandSurface(helpSurface(commandsBefore, policyBefore));
-  const after = normalizeGoldenCommandSurface(helpSurface(commandList, policyList));
+  const before = normalizeGoldenCommandSurface(
+    helpSurface(commandsBefore, policyBefore, publicBefore),
+  );
+  const after = normalizeGoldenCommandSurface(helpSurface(commandList, policyList, publicCommands));
   assert.ok(before, "the reviewed pre-change surface must normalize");
   assert.ok(after, "the reviewed post-change surface must normalize");
   assert.deepEqual(before, after, "the reviewed pair must compare equal");
   assert.deepEqual(after.commands, ["<golden-reviewed-command-surface>"]);
   assert.deepEqual(after.dataset_policy_commands, ["<golden-reviewed-command-surface>"]);
-  assert.deepEqual(after.public_commands, [...publicCommands]);
+  assert.deepEqual(after.public_commands, ["<golden-reviewed-command-surface>"]);
 });
 
 test("the reviewed capability registry normalizes both states to one value", () => {
@@ -80,8 +87,18 @@ test("the reviewed capability registry normalizes both states to one value", () 
 });
 
 test("mixed before and after command partitions are not a reviewed surface", () => {
-  assert.equal(normalizeGoldenCommandSurface(helpSurface(commandList, policyBefore)), null);
-  assert.equal(normalizeGoldenCommandSurface(helpSurface(commandsBefore, policyList)), null);
+  assert.equal(
+    normalizeGoldenCommandSurface(helpSurface(commandList, policyBefore, publicCommands)),
+    null,
+  );
+  assert.equal(
+    normalizeGoldenCommandSurface(helpSurface(commandsBefore, policyList, publicBefore)),
+    null,
+  );
+  assert.equal(
+    normalizeGoldenCommandSurface(helpSurface(commandList, policyList, publicBefore)),
+    null,
+  );
 });
 
 test("the reviewed surface-audit category tally normalizes both states to one value", () => {
@@ -90,7 +107,7 @@ test("the reviewed surface-audit category tally normalizes both states to one va
   assert.ok(before, "the reviewed pre-change tally must normalize");
   assert.ok(after, "the reviewed post-change tally must normalize");
   assert.deepEqual(before, after, "the reviewed pair must compare equal");
-  assert.equal(countsAfter["workflow-internal"], (countsBefore["workflow-internal"] ?? 0) + 1);
+  assert.deepEqual(countsAfter, { public: 9, "workflow-internal": 6 });
 });
 
 test("the dispatcher routes only the three reviewed shapes", () => {
@@ -122,6 +139,7 @@ test("a command removed or reordered beyond the reviewed change is not normalize
       helpSurface(
         commandsBefore.filter((command) => command !== "doctor"),
         policyBefore,
+        publicBefore,
       ),
     ),
     null,
@@ -138,9 +156,7 @@ test("a command removed or reordered beyond the reviewed change is not normalize
 
 test("a changed public partition is not normalized away", () => {
   const changed = { ...helpSurface(commandList, policyList), public_commands: [] };
-  const normalized = normalizeGoldenCommandSurface(changed);
-  assert.ok(normalized, "the command list itself is still reviewed");
-  assert.deepEqual(normalized.public_commands, [], "the untouched partition is compared verbatim");
+  assert.equal(normalizeGoldenCommandSurface(changed), null);
 });
 
 test("a modified or extra capability is not normalized", () => {
@@ -185,12 +201,11 @@ test("a capability count that disagrees with the registry is not normalized", ()
 });
 
 test("a wrong category tally is not normalized", () => {
-  // Neither reviewed state carries an extra increment, so any count beyond the reviewed pair fails.
   for (const wrong of [
     { ...countsAfter, "workflow-internal": countsAfter["workflow-internal"] + 2 },
     { ...countsAfter, "workflow-internal": countsAfter["workflow-internal"] - 2 },
     { ...countsAfter, public: countsAfter.public + 1 },
-    { ...countsAfter, "cli-wrapper": countsAfter["cli-wrapper"] + 1 },
+    { ...countsAfter, "cli-wrapper": 1 },
     { ...countsAfter, "extra-category": 1 },
   ]) {
     assert.equal(
@@ -200,7 +215,7 @@ test("a wrong category tally is not normalized", () => {
     );
   }
   assert.equal(
-    normalizeGoldenSurfaceAuditCounts({ category_counts: { public: 15 } }),
+    normalizeGoldenSurfaceAuditCounts({ category_counts: { public: 9 } }),
     null,
     "a tally missing the workflow-internal entry is not the reviewed contract",
   );

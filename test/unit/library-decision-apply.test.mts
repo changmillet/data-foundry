@@ -8,19 +8,19 @@ import { fileURLToPath } from "node:url";
 import {
   createLibraryDecisionApply,
   type ScopeRewriteResult,
-} from "../../scripts/lib/library-orchestration/decision-apply.ts";
+} from "../../src/lib/library-orchestration/decision-apply.ts";
 import type {
   EntityMaps,
   EntityRow,
   JsonRecord,
   ScopeProjection,
-} from "../../scripts/lib/library-orchestration/entity-projection.ts";
+} from "../../src/lib/library-orchestration/entity-projection.ts";
 
 const version = "00.00.001";
 const generatedAt = "2026-08-26T12:34:56.000Z";
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const rerunCommand =
-  "node scripts/foundry.ts dataset-library-decisions-apply --library-index <library-index> --decisions-dir <decisions-dir> --out-dir <library-resolution>";
+  "node src/dev-cli.ts dataset-library-decisions-apply --library-index <library-index> --decisions-dir <decisions-dir> --out-dir <library-resolution>";
 
 function record(value: unknown): JsonRecord {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as JsonRecord) : {};
@@ -300,7 +300,7 @@ const application = createLibraryDecisionApply({
 });
 
 test("library decision apply remains a bounded semantic leaf with owner-injected I/O", () => {
-  const modulePath = path.join(repoRoot, "scripts/lib/library-orchestration/decision-apply.ts");
+  const modulePath = path.join(repoRoot, "src/lib/library-orchestration/decision-apply.ts");
   const source = fs.readFileSync(modulePath, "utf8");
   assert.ok(source.split(/\r?\n/u).length <= 800, "semantic stage must remain within 800 LOC");
   assert.doesNotMatch(source, /from\s+["']node:(?:child_process|fs|os|path)["']/u);
@@ -309,7 +309,7 @@ test("library decision apply remains a bounded semantic leaf with owner-injected
   assert.doesNotMatch(source, /\bresolveRepoPath\b/u);
 
   const owner = fs.readFileSync(
-    path.join(repoRoot, "scripts/commands/library-scope-workflow.ts"),
+    path.join(repoRoot, "src/commands/library-scope-workflow.ts"),
     "utf8",
   );
   assert.match(owner, /createLibraryDecisionApply/u);
@@ -595,7 +595,7 @@ test("library decision apply preserves blocker order, deferred projection and ex
   ]);
   assert.equal(
     jsonSha256(blockedReport),
-    "ed4c582a35599a1a3a90ec703b6e59d4a5b4c8660fbbb150daa6799736650e7c",
+    "34758259611c8262bbf10f69ba7b2e4834452fbcb7c807e2a8081060bf0552b2",
   );
 
   const resolution = application.buildLibraryResolution({

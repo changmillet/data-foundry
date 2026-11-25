@@ -119,10 +119,14 @@ function processPayload({
 }
 
 function runFoundry(command: string, args: string[], expectedStatus = 0) {
-  const result = spawnSync(process.execPath, ["scripts/foundry.ts", command, ...args], {
-    cwd: repoRoot,
-    encoding: "utf8",
-  });
+  const result = spawnSync(
+    process.execPath,
+    ["test/fixtures/run-internal-stage.ts", command, ...args],
+    {
+      cwd: repoRoot,
+      encoding: "utf8",
+    },
+  );
   assert.equal(result.status, expectedStatus, result.stderr || result.stdout);
   return JSON.parse(result.stdout);
 }
@@ -253,7 +257,7 @@ test("BAFU leaf classification helper prepares sharded process authoring tasks",
       reason: "process_classification_requires_leaf_authoring",
       message: "Process classification decision is only a broad section.",
       required_human_action: "Run semantic classification authoring.",
-      rerun_command: "node scripts/foundry.ts dataset-library-decisions-apply ...",
+      rerun_command: "node src/dev-cli.ts dataset-library-decisions-apply ...",
     },
     {
       schema_version: 1,
@@ -263,7 +267,7 @@ test("BAFU leaf classification helper prepares sharded process authoring tasks",
       reason: "process_classification_requires_leaf_authoring",
       message: "Process classification decision is only a broad section.",
       required_human_action: "Run semantic classification authoring.",
-      rerun_command: "node scripts/foundry.ts dataset-library-decisions-apply ...",
+      rerun_command: "node src/dev-cli.ts dataset-library-decisions-apply ...",
     },
     {
       schema_version: 1,

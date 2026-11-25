@@ -13,24 +13,24 @@ whenToUpdate:
   - when runtime layout, root ownership, input facts or workspace initialization changes
 checkPaths:
   - package.json
-  - scripts/foundry-runtime.ts
-  - scripts/foundry-facade.ts
-  - scripts/runtime-entry.ts
-  - scripts/lib/foundry-runtime-context.ts
-  - scripts/lib/foundry-runtime-command-policy.ts
-  - scripts/lib/foundry-runtime-qualification.ts
-  - scripts/lib/foundry-execution-admission.ts
-  - scripts/lib/foundry-facade-store.ts
-  - scripts/lib/foundry-migration-inventory.ts
-  - scripts/lib/foundry-runtime-paths.ts
-  - scripts/lib/foundry-package-contract.ts
-  - scripts/package-entry.ts
-  - scripts/public-api.ts
+  - src/foundry-runtime.ts
+  - src/foundry-facade.ts
+  - src/runtime-entry.ts
+  - src/lib/foundry-runtime-context.ts
+  - src/lib/foundry-runtime-command-policy.ts
+  - src/lib/foundry-runtime-qualification.ts
+  - src/lib/foundry-execution-admission.ts
+  - src/lib/foundry-facade-store.ts
+  - src/lib/foundry-migration-inventory.ts
+  - src/lib/foundry-runtime-paths.ts
+  - src/lib/foundry-package-contract.ts
+  - src/package-entry.ts
+  - src/public-api.ts
   - tsconfig.package.json
   - specs/schemas/foundry-package-descriptor.schema.json
-  - scripts/lib/tidas-adapter.ts
-  - scripts/lib/import-curation/internal/runtime-io.ts
-  - scripts/lib/import-curation/curation-cleanup.ts
+  - src/lib/tidas-adapter.ts
+  - src/lib/import-curation/internal/runtime-io.ts
+  - src/lib/import-curation/curation-cleanup.ts
   - test/unit/runtime-layout.test.mts
   - test/unit/foundry-package-contract.test.mts
   - test/unit/foundry-runtime-context.test.mts

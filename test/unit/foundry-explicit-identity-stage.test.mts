@@ -8,13 +8,13 @@ import test from "node:test";
 import {
   readFoundryTaskArtifactIndex,
   runFoundryTaskOperation,
-} from "../../scripts/lib/foundry-task-store.ts";
-import { runExplicitFoundryIdentityStage } from "../../scripts/lib/foundry-workflow-identity-stage.ts";
-import { selectFoundryIdentityStageInput } from "../../scripts/lib/foundry-identity-stage-input.ts";
-import type { FoundryAuthentication } from "../../scripts/lib/foundry-runtime-identity.ts";
+} from "../../src/lib/foundry-task-store.ts";
+import { runExplicitFoundryIdentityStage } from "../../src/lib/foundry-workflow-identity-stage.ts";
+import { selectFoundryIdentityStageInput } from "../../src/lib/foundry-identity-stage-input.ts";
+import type { FoundryAuthentication } from "../../src/lib/foundry-runtime-identity.ts";
 import { explicitIdentityStageFixture } from "../fixtures/explicit-identity-stage.ts";
 import { runRetainedFoundryTests } from "../helpers/retained-foundry-runtime.mts";
-import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
+import { resolveInstalledTiangongLcaCliPackage } from "../../src/lib/foundry-runtime-utils.ts";
 
 const typed = resolveInstalledTiangongLcaCliPackage().packageVersion === "0.4.0";
 const originalSuite = ["test/unit/foundry-explicit-identity-stage.test.mts"];

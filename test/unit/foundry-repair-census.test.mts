@@ -4,7 +4,7 @@ import {
   readFoundryRepairCensus,
   type FoundryRepairCensusQuery,
   type FoundryRepairCensusPage,
-} from "../../scripts/lib/foundry-repair-census.ts";
+} from "../../src/lib/foundry-repair-census.ts";
 
 const actor = "22222222-2222-4222-8222-222222222222";
 const publicOwner = "33333333-3333-4333-8333-333333333333";

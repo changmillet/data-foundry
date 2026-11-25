@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { foundryInteractionObjectKey } from "../../scripts/lib/foundry-interaction-scope.ts";
-import { indexedFoundryAdoptionRows } from "../../scripts/lib/foundry-workflow-semantic.ts";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
+import { foundryInteractionObjectKey } from "../../src/lib/foundry-interaction-scope.ts";
+import { indexedFoundryAdoptionRows } from "../../src/lib/foundry-workflow-semantic.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
 
 const version = "00.00.001";
 

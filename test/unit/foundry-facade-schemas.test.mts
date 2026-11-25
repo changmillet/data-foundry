@@ -4,11 +4,11 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import Ajv2020 from "ajv/dist/2020.js";
-import { createFoundryOperationResult } from "../../scripts/lib/foundry-operation-result.ts";
-import { inventoryFoundryWorkspace } from "../../scripts/lib/foundry-migration-inventory.ts";
-import { createFoundryPackageDescriptor } from "../../scripts/lib/foundry-package-contract.ts";
-import { createFoundryRuntimeContext } from "../../scripts/lib/foundry-runtime-context.ts";
-import { planFoundryWorkspaceMigration } from "../../scripts/lib/foundry-migration-plan.ts";
+import { createFoundryOperationResult } from "../../src/lib/foundry-operation-result.ts";
+import { inventoryFoundryWorkspace } from "../../src/lib/foundry-migration-inventory.ts";
+import { createFoundryPackageDescriptor } from "../../src/lib/foundry-package-contract.ts";
+import { createFoundryRuntimeContext } from "../../src/lib/foundry-runtime-context.ts";
+import { planFoundryWorkspaceMigration } from "../../src/lib/foundry-migration-plan.ts";
 import { pathToFileURL } from "node:url";
 
 type Validator = ((value: unknown) => boolean) & { errors?: unknown };
@@ -137,7 +137,7 @@ test("facade task, result, request and migration schemas compile and reject unsa
   assert.equal(validateMigration({ ...plan, write_allowed: true }), false);
   fs.mkdirSync(path.join(root, ".foundry"));
   const transferContext = createFoundryRuntimeContext({
-    moduleUrl: pathToFileURL(path.resolve(schemaRoot, "../../scripts/public-api.ts")).href,
+    moduleUrl: pathToFileURL(path.resolve(schemaRoot, "../../src/public-api.ts")).href,
     workspace: path.join(os.tmpdir(), `transfer-${path.basename(root)}`),
     cacheBase: path.join(root, "cache"),
   });
@@ -201,9 +201,9 @@ test("facade task, result, request and migration schemas compile and reject unsa
     [
       "README.md",
       "LICENSE",
-      "package-dist/scripts/package-entry.js",
-      "package-dist/scripts/public-api.js",
-      "package-dist/scripts/public-api.d.ts",
+      "package-dist/src/package-entry.js",
+      "package-dist/src/public-api.js",
+      "package-dist/src/public-api.d.ts",
     ].map((selectedPath) => ({ path: selectedPath, bytes: 1, sha256: digest })),
   );
   assert.equal(validatePackage(packageDescriptor), true, JSON.stringify(validatePackage.errors));

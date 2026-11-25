@@ -5,8 +5,8 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import * as acceptedDiffModule from "../../scripts/lib/remote-verification-accepted-diff.ts";
-import { canonicalPayloadSha256 } from "../../scripts/lib/post-write-root-proof.ts";
+import * as acceptedDiffModule from "../../src/lib/remote-verification-accepted-diff.ts";
+import { canonicalPayloadSha256 } from "../../src/lib/post-write-root-proof.ts";
 
 const { acceptTraceHashOnlyRemoteVerificationMismatch } = acceptedDiffModule;
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -221,11 +221,11 @@ test("foreign or RLS-hidden state-0 missing_dataset cannot be accepted by any ca
   assert.equal("acceptTrustedExternalReferenceMissingDataset" in acceptedDiffModule, false);
 
   const batchSource = fs.readFileSync(
-    path.join(repoRoot, "scripts/commands/bafu-batch-import-run.ts"),
+    path.join(repoRoot, "src/commands/bafu-batch-import-run.ts"),
     "utf8",
   );
   const worldsteelSource = fs.readFileSync(
-    path.join(repoRoot, "scripts/commands/worldsteel-batch-import-run.ts"),
+    path.join(repoRoot, "src/commands/worldsteel-batch-import-run.ts"),
     "utf8",
   );
   for (const source of [batchSource, worldsteelSource]) {

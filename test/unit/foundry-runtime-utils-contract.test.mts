@@ -5,13 +5,13 @@ import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import test from "node:test";
-import { parseScalar } from "../../scripts/lib/foundry-args.ts";
-import { resolveTiangongLcaCliTidasSource } from "../../scripts/lib/foundry-tidas-source.ts";
+import { parseScalar } from "../../src/lib/foundry-args.ts";
+import { resolveTiangongLcaCliTidasSource } from "../../src/lib/foundry-tidas-source.ts";
 import {
   createFoundryRuntimeUtils,
   resolveInstalledTiangongLcaCliPackage,
   resolveTiangongLcaCliRuntimeCommand,
-} from "../../scripts/lib/foundry-runtime-utils.ts";
+} from "../../src/lib/foundry-runtime-utils.ts";
 
 type JsonObject = Record<string, unknown>;
 const { dependencies } = JSON.parse(

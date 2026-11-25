@@ -20,8 +20,8 @@ import {
   parseRuntimeManifest,
   pruneRuntimeComponents,
 } from "@tiangong-lca/cli/runtime";
-import { createFoundryIsolatedChildEnvironment } from "../../scripts/lib/foundry-runtime-environment.ts";
-import { tiangongLcaCliPackageVersion } from "../../scripts/lib/foundry-runtime-utils.ts";
+import { createFoundryIsolatedChildEnvironment } from "../../src/lib/foundry-runtime-environment.ts";
+import { tiangongLcaCliPackageVersion } from "../../src/lib/foundry-runtime-utils.ts";
 
 test("Foundry consumes the exact published CLI C1 runtime boundary", async () => {
   const descriptor = describeCliRuntime();

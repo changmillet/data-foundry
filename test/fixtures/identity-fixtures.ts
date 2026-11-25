@@ -2,7 +2,7 @@ import {
   createIdentityPreflightBinding,
   sha256Text,
   validateIdentityPreflightExecution,
-} from "../../scripts/lib/identity-preflight-proof.ts";
+} from "../../src/lib/identity-preflight-proof.ts";
 import { testAuthIdentityReceipt } from "./auth-identity-receipt.ts";
 import { fs, path, rel, writeJson, writeJsonLines } from "./foundry-core.ts";
 

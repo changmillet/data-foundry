@@ -12,10 +12,10 @@ import {
 import {
   createFoundryRuntimeContext,
   captureFoundryInput,
-} from "../../scripts/lib/foundry-runtime-context.ts";
-import { qualifyFoundryRuntime } from "../../scripts/lib/foundry-runtime-qualification.ts";
-import { verifyFoundryRepairCensus } from "../../scripts/lib/foundry-repair-census.ts";
-import { createFoundryEdgeActor } from "../../scripts/lib/foundry-edge-session.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
+import { qualifyFoundryRuntime } from "../../src/lib/foundry-runtime-qualification.ts";
+import { verifyFoundryRepairCensus } from "../../src/lib/foundry-repair-census.ts";
+import { createFoundryEdgeActor } from "../../src/lib/foundry-edge-session.ts";
 
 const actor = "22222222-2222-4222-8222-222222222222";
 const id = "11111111-1111-4111-8111-111111111111";
@@ -74,7 +74,7 @@ test("repair census uses the qualified authenticated read interface and retains 
   const started = await facade.start({ specFile });
   assert.ok(started.task_id, JSON.stringify(started));
   const context = createFoundryRuntimeContext({
-    moduleUrl: new URL("../../scripts/foundry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/dev-cli.ts", import.meta.url).href,
     workspace,
     taskId: started.task_id,
     actorId: "census-agent",

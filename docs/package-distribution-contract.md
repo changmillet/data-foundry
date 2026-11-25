@@ -16,17 +16,17 @@ checkPaths:
   - package.json
   - pnpm-lock.yaml
   - tsconfig.package.json
-  - scripts/package-entry.ts
-  - scripts/public-api.ts
-  - scripts/build-foundry-package.ts
-  - scripts/pack-foundry-package.ts
-  - scripts/verify-foundry-package.ts
-  - scripts/release-*.ts
-  - scripts/lib/foundry-release-*.ts
+  - src/package-entry.ts
+  - src/public-api.ts
+  - devops/build/build-foundry-package.ts
+  - devops/build/pack-foundry-package.ts
+  - devops/build/verify-foundry-package.ts
+  - devops/release/release-*.ts
+  - devops/release/foundry-release-*.ts
   - .github/workflows/publish.yml
   - .github/workflows/quality-gate.yml
-  - scripts/lib/foundry-package-contract.ts
-  - scripts/lib/foundry-runtime-paths.ts
+  - src/lib/foundry-package-contract.ts
+  - src/lib/foundry-runtime-paths.ts
   - specs/schemas/foundry-package-descriptor.schema.json
   - specs/release/**
   - test/unit/foundry-package-contract.test.mts
@@ -62,11 +62,11 @@ Historically, the source adoption of CLI 0.1.27 kept Foundry's package version a
 
 The descriptor inventory includes `foundry-quality-review-input.schema.json`, `foundry-quality-review-draft.schema.json` and their `tiangong-foundry.quality-review-input.v1` / `tiangong-foundry.quality-review-draft.v1` protocols. Its sole consumer entry is the existing `task.resume` operation's `--quality-review-input` selector. The source/compiler graph includes the review admission and lineage verifier; task stores and curation owner factories remain internal. A new local candidate must be rebuilt and independently qualified; adding the schema never changes an installed package or grants data authority.
 
-`scripts/package-entry.ts` is the only bin source. It calls `runFoundryPublicCommand`, which routes the six operations in `public-runtime-contract.md` and converts every other name into the stable unknown-operation envelope. It never falls back to `scripts/foundry.ts`, the repository doctor, 63-command dispatcher, production case runner or maintenance owners.
+`src/package-entry.ts` is the only bin source. It calls `runFoundryPublicCommand`, which routes the six operations in `public-runtime-contract.md` and converts every other name into the stable unknown-operation envelope. It never falls back to `src/dev-cli.ts`, the repository doctor, flat developer dispatcher, production case runner or maintenance owners.
 
-`scripts/public-api.ts` binds the facade's module identity internally. A consumer supplies workspace, optional runtime selection/account intent and host controls; it cannot redirect package discovery through its own `moduleUrl`. The root and `./runtime` exports expose only the facade, public command host, result/task/migration protocol types and validators, next-action binding verifier, and package descriptor verifier. Internal command factories, mutation dispatch and raw runtime/task stores are not package exports.
+`src/public-api.ts` binds the facade's module identity internally. A consumer supplies workspace, optional runtime selection/account intent and host controls; it cannot redirect package discovery through its own `moduleUrl`. The root and `./runtime` exports expose only the facade, public command host, result/task/migration protocol types and validators, next-action binding verifier, and package descriptor verifier. Internal command factories, mutation dispatch and raw runtime/task stores are not package exports.
 
-The public package includes `foundry-interaction-input.schema.json` and advertises `tiangong-foundry.interaction-input.v1` beside the existing task-start and semantic protocols. Its source graph exposes only the strict interaction input/state types through `scripts/public-api.ts`; the task-local store and assessment implementation remain internal. Package validation checks the schema, descriptor protocol list and sanitized file inventory together.
+The public package includes `foundry-interaction-input.schema.json` and advertises `tiangong-foundry.interaction-input.v1` beside the existing task-start and semantic protocols. Its source graph exposes only the strict interaction input/state types through `src/public-api.ts`; the task-local store and assessment implementation remain internal. Package validation checks the schema, descriptor protocol list and sanitized file inventory together.
 
 The explicit new read-only identity stage ships `foundry-identity-stage-input.schema.json` and the matching `tiangong-foundry.identity-stage-input.v1` descriptor protocol. It uses the existing public resume option; its strict input selection, native admission/claim projection and published identity-owner adapter remain internal to the emitted graph. Source, packed and installed qualification must preserve original evidence and validate duplicate/interrupted intents without retrying queries. Exact candidate CLI bytes and dependency closure require separate evidence from equal version labels; local candidate tests do not establish managed publication or original-consumer acceptance.
 
@@ -128,7 +128,7 @@ Three roots have distinct ownership:
 | `package-stage/` | Ignored exact publish tree with a generated public manifest and copied reviewed payload. |
 | `package-artifacts/` | Ignored local tarball destination; no task, credential or source data belongs here. |
 
-The package compiler sets LF output and disables source maps, declaration maps and inline sources. The admitted closure contains no `scripts/commands/**`, `scripts/cases/**`, source `.ts`, tests, CI/agent/Git state or developer tools. Generated `.d.ts` declarations are public types, not source implementation.
+The package compiler sets LF output and disables source maps, declaration maps and inline sources. The admitted closure contains no `src/commands/**`, `src/cases/**`, source `.ts`, tests, CI/agent/Git state or developer tools. Generated `.d.ts` declarations are public types, not source implementation.
 
 The public compiler closure includes the native-import and contract-context adapters reached through the facade. They reuse qualified TIDAS and the exact CLI, persist only user-workspace stage artifacts, and add no public flat command or source-checkout requirement. Package installation and these local stages do not establish complete task or release acceptance.
 
@@ -372,7 +372,7 @@ The managed adoption extension ships `foundry-managed-adoption.schema.json` and 
 
 ## Stable installed selection and upgrade ownership
 
-The existing public bin now also hosts installation-owned default selection and local `runtime describe`. `scripts/lib/foundry-installed-entry.ts` delegates manifest verification, component inspection and managed execution to the published CLI runtime API. Its input is the deployment-selected manifest/digest and optional cache/launch settings. Its compiler graph remains rooted at `scripts/package-entry.ts`. The selected runtime may have a different product version from the launcher package; each managed child validates its own package against its own complete manifest.
+The existing public bin now also hosts installation-owned default selection and local `runtime describe`. `src/lib/foundry-installed-entry.ts` delegates manifest verification, component inspection and managed execution to the published CLI runtime API. Its input is the deployment-selected manifest/digest and optional cache/launch settings. Its compiler graph remains rooted at `src/package-entry.ts`. The selected runtime may have a different product version from the launcher package; each managed child validates its own package against its own complete manifest.
 
 Skill instructions depend on the installed entry and public protocols. Deployment can change the selected complete release without changing skill files. The exact package dependency graph, runtime assets and task/attempt records remain version-bound. Historical standalone bootstrap locks remain reproducible release assets and have no precedence over an explicit deployment selection.
 

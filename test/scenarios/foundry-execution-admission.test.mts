@@ -7,30 +7,30 @@ import path from "node:path";
 import test from "node:test";
 import { CLI_RUNTIME_EXPECTATION_SCHEMA, describeCliRuntime } from "@tiangong-lca/cli/runtime";
 import { createFileArtifactFact, createFoundryCommandSpec } from "@tiangong-lca/cli/command-spec";
-import { runFoundryTaskOperation } from "../../scripts/lib/foundry-task-store.ts";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
-import { createFoundryRuntime } from "../../scripts/foundry-runtime.ts";
+import { runFoundryTaskOperation } from "../../src/lib/foundry-task-store.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
+import { createFoundryRuntime } from "../../src/foundry-runtime.ts";
 import {
   FOUNDRY_TIDAS_EXPECTATION_SCHEMA,
   qualifyFoundryRuntime,
-} from "../../scripts/lib/foundry-runtime-qualification.ts";
+} from "../../src/lib/foundry-runtime-qualification.ts";
 import {
   captureFoundryInput,
   createFoundryRuntimeContext,
   initializeFoundryWorkspace,
-} from "../../scripts/lib/foundry-runtime-context.ts";
-import { verifyFoundryRuntimeIdentity } from "../../scripts/lib/foundry-runtime-identity.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
+import { verifyFoundryRuntimeIdentity } from "../../src/lib/foundry-runtime-identity.ts";
 import {
   assertFoundryExecutionAdmission,
   rehydrateFoundryExecutionAdmission,
-} from "../../scripts/lib/foundry-execution-admission.ts";
-import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
+} from "../../src/lib/foundry-execution-admission.ts";
+import { resolveInstalledTiangongLcaCliPackage } from "../../src/lib/foundry-runtime-utils.ts";
 import {
   testAuthIdentityReceipt,
   testAuthIdentityReceiptOutput,
 } from "../fixtures/auth-identity-receipt.ts";
 
-const moduleUrl = new URL("../../scripts/runtime-entry.ts", import.meta.url).href;
+const moduleUrl = new URL("../../src/runtime-entry.ts", import.meta.url).href;
 const accountIntent = {
   projectRef: "aaaaaaaaaaaaaaaaaaaa",
   userId: "11111111-1111-4111-8111-111111111111",

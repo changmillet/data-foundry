@@ -221,7 +221,7 @@ function admit(fixture: CapsuleFixture, predecessorManifestPath: string | null =
 
 test("execution capsule command has no network, database, or subprocess dispatch surface", () => {
   const source = fs.readFileSync(
-    path.join(repoRoot, "scripts", "commands", "execution-capsule.ts"),
+    path.join(repoRoot, "src", "commands", "execution-capsule.ts"),
     "utf8",
   );
   for (const forbidden of [
@@ -423,7 +423,7 @@ test("execution capsule admission refuses to overwrite immutable evidence", () =
   const second = spawnSync(
     process.execPath,
     [
-      "scripts/foundry.ts",
+      "src/dev-cli.ts",
       "execution-capsule-admit",
       "--stage-manifest",
       rel(fixture.manifestPath),

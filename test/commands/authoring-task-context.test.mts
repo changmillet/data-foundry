@@ -19,7 +19,7 @@ function writeJson(filePath: string, value: unknown): void {
 }
 
 function runFoundry(args: string[], expectedStatus = 0) {
-  const result = spawnSync(process.execPath, ["scripts/foundry.ts", ...args], {
+  const result = spawnSync(process.execPath, ["test/fixtures/run-internal-stage.ts", ...args], {
     cwd: repoRoot,
     encoding: "utf8",
   });

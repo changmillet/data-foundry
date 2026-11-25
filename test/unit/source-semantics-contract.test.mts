@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createSourceSemanticUtils } from "../../scripts/lib/source-semantics.ts";
+import { createSourceSemanticUtils } from "../../src/lib/source-semantics.ts";
 
 type UnknownRecord = Record<string, unknown>;
 

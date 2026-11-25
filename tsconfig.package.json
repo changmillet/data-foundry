@@ -11,7 +11,7 @@
     "inlineSources": false,
     "newLine": "lf"
   },
-  "files": ["scripts/package-entry.ts", "scripts/public-api.ts"],
+  "files": ["src/package-entry.ts", "src/public-api.ts"],
   "include": [],
   "exclude": []
 }

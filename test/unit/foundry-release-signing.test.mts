@@ -3,10 +3,10 @@ import test from "node:test";
 import {
   buildFoundryNpmProvenance,
   signFoundryNpmArtifact,
-} from "../../scripts/lib/foundry-release-signing.ts";
-import { requestFoundryGitHubOidcToken } from "../../scripts/lib/foundry-release-oidc.ts";
-import { validateNpmProvenanceStatement } from "../../scripts/lib/foundry-release-provenance.ts";
-import type { FoundryReleaseWorkflowContext } from "../../scripts/lib/foundry-release-workflow.ts";
+} from "../../devops/release/foundry-release-signing.ts";
+import { requestFoundryGitHubOidcToken } from "../../devops/release/foundry-release-oidc.ts";
+import { validateNpmProvenanceStatement } from "../../devops/release/foundry-release-provenance.ts";
+import type { FoundryReleaseWorkflowContext } from "../../devops/release/foundry-release-workflow.ts";
 
 const head = "a".repeat(40),
   sha512 = "b".repeat(128);

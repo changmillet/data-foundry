@@ -6,23 +6,23 @@ import test, { type TestContext } from "node:test";
 import childProcess from "node:child_process";
 import { syncBuiltinESMExports } from "node:module";
 import { fileURLToPath } from "node:url";
-import * as failures from "../../scripts/lib/foundry-workflow-child-failure.ts";
-import { bytes, digest } from "../../scripts/lib/foundry-task-io.ts";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
+import * as failures from "../../src/lib/foundry-workflow-child-failure.ts";
+import { bytes, digest } from "../../src/lib/foundry-task-io.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
 import {
   captureFoundryInput,
   createFoundryRuntimeContext,
   initializeFoundryWorkspace,
   type FoundryRuntimeContext,
-} from "../../scripts/lib/foundry-runtime-context.ts";
-import type { QualifiedFoundryRuntime } from "../../scripts/lib/foundry-runtime-qualification.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
+import type { QualifiedFoundryRuntime } from "../../src/lib/foundry-runtime-qualification.ts";
 import {
   runFoundryTaskOperation,
   readVerifiedTaskSnapshot,
   verifyFoundryTaskArtifactLineage,
-} from "../../scripts/lib/foundry-task-store.ts";
-import { registerWorkflowStageFiles } from "../../scripts/lib/foundry-workflow-io.ts";
-const cli = fileURLToPath(new URL("../../scripts/runtime-entry.ts", import.meta.url));
+} from "../../src/lib/foundry-task-store.ts";
+import { registerWorkflowStageFiles } from "../../src/lib/foundry-workflow-io.ts";
+const cli = fileURLToPath(new URL("../../src/runtime-entry.ts", import.meta.url));
 const qualification = { qualification_sha256: "f".repeat(64) } as QualifiedFoundryRuntime;
 function failure(
   argv: readonly string[],
@@ -119,7 +119,7 @@ test("the actual metadata writer's capped record is readable without child calls
   const source = path.join(root, "source.json");
   fs.writeFileSync(source, "{}");
   const options = {
-    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
     workspace: path.join(root, "workspace"),
     cacheBase: path.join(root, "cache"),
   };
@@ -238,7 +238,7 @@ async function captureFixture(t: TestContext) {
   const source = path.join(root, "source.json");
   fs.writeFileSync(source, "{}\n");
   const options = {
-    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
     workspace: path.join(root, "workspace"),
     cacheBase: path.join(root, "cache"),
   };

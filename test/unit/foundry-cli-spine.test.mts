@@ -3,86 +3,37 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { parseArgs, parseScalar } from "../../scripts/lib/foundry-args.ts";
+import { parseArgs, parseScalar } from "../../src/lib/foundry-args.ts";
 import {
   datasetPolicyCommands,
   exitCodeForCommand,
   knownCommands,
   publicCommands,
   usage,
-} from "../../scripts/lib/foundry-command-registry.ts";
+} from "../../src/lib/foundry-command-registry.ts";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
 
 const expectedPublicCommands = [
-  "init",
   "doctor",
   "env-check",
   "workflow-check",
   "storage-check",
   "surface-audit",
-  "acceptance-check",
   "workspace-map",
   "capabilities-list",
   "profiles-list",
-  "route-task",
-  "tasks-list",
-  "tasks-check",
-  "task-complete",
   "tidas-handshake",
 ];
 
 const expectedDatasetPolicyCommands = [
-  "dataset-tidas-import",
-  "dataset-tidas-validate",
   "execution-capsule-admit",
   "dataset-incremental-change-set-compose",
   "dataset-topology-convergence-compose",
   "final-delivery-promote",
-  "dataset-curation-queue-build",
-  "dataset-curation-gate",
-  "dataset-authoring-plan",
-  "dataset-authoring-task-build",
-  "dataset-authoring-patch-collect",
-  "dataset-identity-decision-task-build",
-  "dataset-classification-decision-task-build",
-  "dataset-library-classification-decisions-project",
-  "dataset-bafu-leaf-classification-tasks-prepare",
-  "dataset-bafu-leaf-classification-category-map-project",
-  "dataset-bafu-identity-decisions-autofill",
-  "dataset-bafu-authoring-patches-autofill",
-  "dataset-classification-decisions-apply",
-  "dataset-location-decision-task-build",
-  "dataset-location-decisions-suggest",
-  "dataset-location-decisions-apply",
-  "dataset-curation-cleanup",
-  "dataset-patch-apply",
-  "dataset-support-cache-refresh",
-  "dataset-canonical-support-mappings-autofill",
-  "dataset-bundle-sample-rows",
-  "dataset-identity-preflight-requests-build",
-  "dataset-identity-preflight-query-audit",
-  "dataset-identity-preflight-run",
-  "dataset-identity-preflight-index-merge",
-  "dataset-library-index-build",
-  "dataset-library-authoring-plan",
-  "dataset-library-identity-decisions-from-preflight",
-  "dataset-library-decisions-apply",
-  "dataset-process-scope-run",
-  "dataset-bafu-process-scope-e2e",
-  "dataset-bafu-batch-import-run",
-  "dataset-uslci-batch-import-run",
-  "dataset-worldsteel-batch-import-run",
-  "dataset-bafu-universe-coverage-report",
-  "dataset-identity-reference-rewrites-apply",
-  "dataset-identity-decisions-apply",
-  "dataset-post-authoring-finalize",
-  "dataset-commit-handoff-plan",
-  "dataset-post-write-closeout",
-  "dataset-import-completion-report",
   "dataset-import-ledger-report",
-  "dataset-mutation-manifest",
+  "library-batch-import",
 ];
 
 const ownershipNote =
@@ -257,6 +208,14 @@ test("exit mapping preserves adapter, aggregate, wrapper, status-family, and def
   );
   assert.equal(exitCodeForCommand("dataset-bafu-batch-import-run", { status: "failed" }), 1);
   assert.equal(
+    exitCodeForCommand("library-batch-import", {
+      status: "paused_with_retryable_failures",
+    }),
+    0,
+  );
+  assert.equal(exitCodeForCommand("library-batch-import", { status: "blocked" }), 1);
+  assert.equal(exitCodeForCommand("library-batch-import", { status: "help" }), 0);
+  assert.equal(
     exitCodeForCommand("dataset-identity-preflight-run", {
       status: "completed_with_identity_findings",
     }),
@@ -280,7 +239,7 @@ test("exit mapping preserves adapter, aggregate, wrapper, status-family, and def
 test("CLI spine leaves are native TypeScript and every static consumer targets them", () => {
   for (const stem of ["foundry-args", "foundry-command-registry"]) {
     assert.equal(
-      fs.existsSync(path.join(repoRoot, `scripts/lib/${stem}.ts`)),
+      fs.existsSync(path.join(repoRoot, `src/lib/${stem}.ts`)),
       true,
       `${stem}.ts must exist`,
     );
@@ -292,13 +251,10 @@ test("CLI spine leaves are native TypeScript and every static consumer targets t
   }
 
   const expectedImports = [
-    ["scripts/foundry.ts", "./lib/foundry-args.ts"],
-    ["scripts/foundry.ts", "./lib/foundry-command-registry.ts"],
-    ["scripts/lib/surface-audit.ts", "./foundry-command-registry.ts"],
-    [
-      "test/unit/foundry-command-metadata.test.mts",
-      "../../scripts/lib/foundry-command-registry.ts",
-    ],
+    ["src/dev-cli.ts", "./lib/foundry-args.ts"],
+    ["src/dev-cli.ts", "./lib/foundry-command-registry.ts"],
+    ["src/lib/surface-audit.ts", "./foundry-command-registry.ts"],
+    ["test/unit/foundry-command-metadata.test.mts", "../../src/lib/foundry-command-registry.ts"],
   ] as const;
   for (const [consumer, specifier] of expectedImports) {
     assert.match(
@@ -399,7 +355,8 @@ test("active documentation and source contain no references to removed CLI spine
     "README.md",
     "WORKFLOW.md",
     ...walkFiles("docs", (relativePath) => relativePath.endsWith(".md")),
-    ...walkFiles("scripts", (relativePath) => /\.(?:[cm]?[jt]s)$/u.test(relativePath)),
+    ...walkFiles("src", (relativePath) => /\.(?:[cm]?[jt]s)$/u.test(relativePath)),
+    ...walkFiles("devops", (relativePath) => /\.(?:[cm]?[jt]s)$/u.test(relativePath)),
   ].filter((relativePath) => !isHistoricalDocument(relativePath));
   const findings = files.flatMap((relativePath) => {
     const text = readRepoFile(relativePath);

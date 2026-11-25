@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import {
   createLibraryEntityProjection,
   type JsonRecord,
-} from "../../scripts/lib/library-orchestration/entity-projection.ts";
+} from "../../src/lib/library-orchestration/entity-projection.ts";
 
 const version = "00.00.001";
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -403,19 +403,19 @@ test("entity projection preserves native malformed manifest failures", (t) => {
 
 test("library projection stages are injected semantic leaves while the command owns physical I/O", () => {
   const moduleSource = fs.readFileSync(
-    path.join(repoRoot, "scripts/lib/library-orchestration/entity-projection.ts"),
+    path.join(repoRoot, "src/lib/library-orchestration/entity-projection.ts"),
     "utf8",
   );
   const indexBuildSource = fs.readFileSync(
-    path.join(repoRoot, "scripts/lib/library-orchestration/index-build.ts"),
+    path.join(repoRoot, "src/lib/library-orchestration/index-build.ts"),
     "utf8",
   );
   const authoringPlanSource = fs.readFileSync(
-    path.join(repoRoot, "scripts/lib/library-orchestration/authoring-plan.ts"),
+    path.join(repoRoot, "src/lib/library-orchestration/authoring-plan.ts"),
     "utf8",
   );
   const ownerSource = fs.readFileSync(
-    path.join(repoRoot, "scripts/commands/library-scope-workflow.ts"),
+    path.join(repoRoot, "src/commands/library-scope-workflow.ts"),
     "utf8",
   );
   assert.doesNotMatch(moduleSource, /node:(?:child_process|fs|http|https|net)/u);

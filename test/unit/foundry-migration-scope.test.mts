@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { migrationDatasetScope } from "../../scripts/lib/foundry-migration-authority.ts";
+import { migrationDatasetScope } from "../../src/lib/foundry-migration-authority.ts";
 
 test("migration scope recognizes the official CLI typed-row envelope without losing dataset identity", () => {
   const id = "11111111-1111-4111-8111-111111111111";

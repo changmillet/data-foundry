@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
-import { normalizeGoldenSkillOwnership } from "../../scripts/lib/golden-skill-ownership.ts";
+import { normalizeGoldenSkillOwnership } from "../../devops/ci/golden-skill-ownership.ts";
 
 const registry = JSON.parse(
   fs.readFileSync(

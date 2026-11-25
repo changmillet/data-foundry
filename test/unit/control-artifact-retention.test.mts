@@ -4,8 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { createControlArtifactStore } from "../../scripts/lib/batch-orchestration/control-artifact-store.ts";
-import { createScopeControlRetentionService } from "../../scripts/lib/batch-orchestration/scope-control-retention.ts";
+import { createControlArtifactStore } from "../../src/lib/batch-orchestration/control-artifact-store.ts";
+import { createScopeControlRetentionService } from "../../src/lib/batch-orchestration/scope-control-retention.ts";
 
 type JsonRecord = Record<string, unknown>;
 

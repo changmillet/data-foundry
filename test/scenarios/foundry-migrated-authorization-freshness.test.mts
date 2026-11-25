@@ -5,20 +5,20 @@ import os from "node:os";
 import path from "node:path";
 import test, { type TestContext } from "node:test";
 import { batchRunLockPath } from "@tiangong-lca/cli/batch";
-import { createFoundryFacade } from "../../scripts/public-api.ts";
+import { createFoundryFacade } from "../../src/public-api.ts";
 import {
   captureFoundryInput,
   createFoundryRuntimeContext,
-} from "../../scripts/lib/foundry-runtime-context.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
 import {
   assertVerifiedFoundryIdentity,
   verifyFoundryRuntimeIdentity,
-} from "../../scripts/lib/foundry-runtime-identity.ts";
+} from "../../src/lib/foundry-runtime-identity.ts";
 import {
   registerFoundryTaskAuthorization,
   loadFoundryTaskAuthorization,
-} from "../../scripts/lib/foundry-task-authorization.ts";
-import { taskAuthorizationAllows } from "../../scripts/lib/task-authorization.ts";
+} from "../../src/lib/foundry-task-authorization.ts";
+import { taskAuthorizationAllows } from "../../src/lib/task-authorization.ts";
 import { workspaceManifestFixture } from "../helpers/foundry-runtime-manifest.mts";
 import {
   testAuthIdentityReceipt,
@@ -146,7 +146,7 @@ async function migratedFixture(t: TestContext) {
   const inputFile = row.target_spec.sources[0].path;
   const context = createFoundryRuntimeContext({
     ...options,
-    moduleUrl: new URL("../../scripts/public-api.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/public-api.ts", import.meta.url).href,
     workspace: destination,
     taskId: row.authority.task_id,
     actorId: "actor",
@@ -325,7 +325,7 @@ test("an identity from a different account intent cannot enter migrated authoriz
   const f = await migratedFixture(t);
   const identity = verifyFoundryRuntimeIdentity(f.context, { mode: "oauth" }, {});
   const differentAccount = createFoundryRuntimeContext({
-    moduleUrl: new URL("../../scripts/public-api.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/public-api.ts", import.meta.url).href,
     workspace: f.context.workspaceRoot,
     cacheBase: f.context.cacheBase,
     workspaceAccess: {

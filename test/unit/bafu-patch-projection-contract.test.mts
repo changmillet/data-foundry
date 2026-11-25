@@ -7,18 +7,12 @@ import { fileURLToPath } from "node:url";
 import {
   buildNamePatchOperations,
   type JsonRecord,
-} from "../../scripts/lib/bafu-authoring/patch-projection.ts";
+} from "../../src/lib/bafu-authoring/patch-projection.ts";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
-const projectionPath = path.join(
-  repoRoot,
-  "scripts",
-  "lib",
-  "bafu-authoring",
-  "patch-projection.ts",
-);
-const ownerPath = path.join(repoRoot, "scripts", "commands", "bafu-auto-authoring.ts");
+const projectionPath = path.join(repoRoot, "src", "lib", "bafu-authoring", "patch-projection.ts");
+const ownerPath = path.join(repoRoot, "src", "commands", "bafu-auto-authoring.ts");
 
 const flowId = "11111111-2222-4333-8444-555555555555";
 const processId = "22222222-3333-4444-8555-666666666666";

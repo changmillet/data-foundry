@@ -8,12 +8,12 @@ import {
   assertFoundryRetainedConsumerCache,
   discardFoundryRetainedConsumerCache,
   type FoundryRetainedConsumerCache,
-} from "../../scripts/lib/foundry-release-consumer-cache.ts";
+} from "../../devops/release/foundry-release-consumer-cache.ts";
 import {
   createFoundryRuntimeCandidateEntry,
   type qualifyFoundryRuntimeComponents,
-} from "../../scripts/lib/foundry-release-runtime-qualification.ts";
-import type { PreparedFoundryRuntimeComponents } from "../../scripts/lib/foundry-release-components.ts";
+} from "../../devops/release/foundry-release-runtime-qualification.ts";
+import type { PreparedFoundryRuntimeComponents } from "../../devops/release/foundry-release-components.ts";
 
 test("candidate cache is exclusive and cannot be rebound through a copied receipt or changed directory", () => {
   const output = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "foundry-retained-cache-")));

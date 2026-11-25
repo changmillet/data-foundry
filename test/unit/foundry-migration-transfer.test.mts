@@ -9,14 +9,14 @@ import {
   createFoundryRuntimeContext,
   initializeFoundryWorkspace,
   FoundryContextError,
-} from "../../scripts/lib/foundry-runtime-context.ts";
-import { planFoundryWorkspaceMigration } from "../../scripts/lib/foundry-migration-plan.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
+import { planFoundryWorkspaceMigration } from "../../src/lib/foundry-migration-plan.ts";
 import {
   stageFoundryMigration,
   auditFoundryMigration,
-} from "../../scripts/lib/foundry-migration-transfer.ts";
-import { transferFileFact } from "../../scripts/lib/foundry-migration-transfer-io.ts";
-import * as transferIo from "../../scripts/lib/foundry-migration-transfer-io.ts";
+} from "../../src/lib/foundry-migration-transfer.ts";
+import { transferFileFact } from "../../src/lib/foundry-migration-transfer-io.ts";
+import * as transferIo from "../../src/lib/foundry-migration-transfer-io.ts";
 
 function setup(t: TestContext) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "transfer-unit-"));
@@ -32,7 +32,7 @@ function setup(t: TestContext) {
   fs.writeFileSync(queue, "# Completed historical task\n");
   fs.writeFileSync(input, '{"flowDataSet":{}}\n');
   const ctxOptions = {
-    moduleUrl: pathToFileURL(path.resolve(import.meta.dirname, "../../scripts/public-api.ts")).href,
+    moduleUrl: pathToFileURL(path.resolve(import.meta.dirname, "../../src/public-api.ts")).href,
     workspace: dest,
     cacheBase: path.join(root, "cache"),
   };

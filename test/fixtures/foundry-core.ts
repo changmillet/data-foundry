@@ -5,7 +5,8 @@ import type { BinaryLike } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
+import { knownCommands } from "../../src/lib/foundry-command-registry.ts";
+import { resolveInstalledTiangongLcaCliPackage } from "../../src/lib/foundry-runtime-utils.ts";
 
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const testRunId = process.env.FOUNDRY_FULL_CONTEXT_TEST_RUN_ID || process.pid;
@@ -386,11 +387,26 @@ export function readJsonLines(filePath: string): FixtureJsonLineList {
   ) as FixtureJsonLineList;
 }
 
+const directDevCliTokens = new Set<string>([
+  "help",
+  "--help",
+  "-h",
+  "workspace",
+  "task",
+  ...knownCommands,
+]);
+
 export function runFoundry(
   args: readonly string[],
   options: RunFoundryOptions = {},
 ): { code: number | null; json: FixtureFoundryReport } {
-  const result = spawnSync(process.execPath, ["scripts/foundry.ts", ...args], {
+  const firstArg = args[0] ?? "help";
+  const usesDirectCli =
+    args.length === 0 ||
+    directDevCliTokens.has(firstArg) ||
+    args.some((arg) => arg === "--workspace" || arg.startsWith("--workspace="));
+  const entry = usesDirectCli ? "src/dev-cli.ts" : "test/fixtures/run-internal-stage.ts";
+  const result = spawnSync(process.execPath, [entry, ...args], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {

@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
-import type { FoundryProductionLock } from "../../scripts/lib/foundry-release-production.ts";
+import type { FoundryProductionLock } from "../../devops/release/foundry-release-production.ts";
 import { createFoundryProductionFixture as fixture } from "../fixtures/foundry-release-production.ts";
-import { materializeFoundryProductionPackages } from "../../scripts/lib/foundry-release-production-materialize.ts";
+import { materializeFoundryProductionPackages } from "../../devops/release/foundry-release-production-materialize.ts";
 
 test("materialization downloads exact locked bytes and records every installed dependency file", async () => {
   const f = fixture();

@@ -3,13 +3,13 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { createFoundryRuntime } from "../../scripts/foundry-runtime.ts";
-import { createFoundryFacade } from "../../scripts/foundry-facade.ts";
+import { createFoundryRuntime } from "../../src/foundry-runtime.ts";
+import { createFoundryFacade } from "../../src/foundry-facade.ts";
 import {
   captureFoundryInput,
   createFoundryRuntimeContext,
   initializeFoundryWorkspace,
-} from "../../scripts/lib/foundry-runtime-context.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
 
 test("registered production verification intent cannot be downgraded or replaced by ambient mode", async (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-account-mode-"));
@@ -17,7 +17,7 @@ test("registered production verification intent cannot be downgraded or replaced
   const input = path.join(root, "source.json");
   fs.writeFileSync(input, '{"flowDataSet":{}}');
   const base = {
-    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
     workspace: path.join(root, "workspace"),
     cacheBase: path.join(root, "cache"),
   };

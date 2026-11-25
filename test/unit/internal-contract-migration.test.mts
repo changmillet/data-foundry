@@ -3,10 +3,10 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
-import * as artifactInputs from "../../scripts/lib/import-curation/internal/artifact-inputs.ts";
-import * as contextInputs from "../../scripts/lib/import-curation/internal/context-inputs.ts";
-import * as datasetPayload from "../../scripts/lib/import-curation/internal/dataset-payload.ts";
-import * as traceSummary from "../../scripts/lib/import-curation/internal/trace-summary.ts";
+import * as artifactInputs from "../../src/lib/import-curation/internal/artifact-inputs.ts";
+import * as contextInputs from "../../src/lib/import-curation/internal/context-inputs.ts";
+import * as datasetPayload from "../../src/lib/import-curation/internal/dataset-payload.ts";
+import * as traceSummary from "../../src/lib/import-curation/internal/trace-summary.ts";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 
@@ -61,18 +61,18 @@ test("four internal contracts preserve their complete export surfaces", () => {
 
 test("four internal contracts are native TypeScript with updated static consumers", () => {
   for (const stem of ["artifact-inputs", "context-inputs", "dataset-payload", "trace-summary"]) {
-    const typedPath = path.join(repoRoot, `scripts/lib/import-curation/internal/${stem}.ts`);
+    const typedPath = path.join(repoRoot, `src/lib/import-curation/internal/${stem}.ts`);
     assert.equal(fs.existsSync(typedPath), true, `${stem}.ts must exist`);
     assert.equal(fs.existsSync(typedPath.replace(/\.ts$/u, ".mjs")), false);
   }
   const expectedConsumers = [
-    ["scripts/lib/import-curation/internal/curation-gate-workflow.ts", "./artifact-inputs.ts"],
-    ["scripts/lib/import-curation/internal/prewrite-cleanup.ts", "./dataset-payload.ts"],
-    ["scripts/lib/import-curation/internal/workflow-reference-closure.ts", "./trace-summary.ts"],
-    ["scripts/lib/import-curation/internal/full-context-proof.ts", "./context-inputs.ts"],
+    ["src/lib/import-curation/internal/curation-gate-workflow.ts", "./artifact-inputs.ts"],
+    ["src/lib/import-curation/internal/prewrite-cleanup.ts", "./dataset-payload.ts"],
+    ["src/lib/import-curation/internal/workflow-reference-closure.ts", "./trace-summary.ts"],
+    ["src/lib/import-curation/internal/full-context-proof.ts", "./context-inputs.ts"],
     [
       "test/scenarios/library-scope-workflow.test.mts",
-      "../../scripts/lib/import-curation/internal/context-inputs.ts",
+      "../../src/lib/import-curation/internal/context-inputs.ts",
     ],
   ] as const;
   for (const [consumer, specifier] of expectedConsumers) {

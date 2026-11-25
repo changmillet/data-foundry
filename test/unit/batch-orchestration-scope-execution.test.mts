@@ -5,11 +5,11 @@ import path from "node:path";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
 
-import { createBafuBatchImportRunCommands } from "../../scripts/commands/bafu-batch-import-run.ts";
-import { createBatchScopePreparationService } from "../../scripts/lib/batch-orchestration/scope-preparation.ts";
-import { createBafuScopeResumeContract } from "../../scripts/lib/batch-orchestration/scope-resume-contract.ts";
-import { createBafuScopeSourceContent } from "../../scripts/lib/batch-orchestration/scope-source-content.ts";
-import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
+import { createBafuBatchImportRunCommands } from "../../src/commands/bafu-batch-import-run.ts";
+import { createBatchScopePreparationService } from "../../src/lib/batch-orchestration/scope-preparation.ts";
+import { createBafuScopeResumeContract } from "../../src/lib/batch-orchestration/scope-resume-contract.ts";
+import { createBafuScopeSourceContent } from "../../src/lib/batch-orchestration/scope-source-content.ts";
+import { resolveInstalledTiangongLcaCliPackage } from "../../src/lib/foundry-runtime-utils.ts";
 import {
   readJson,
   readJsonLines,
@@ -22,11 +22,11 @@ import {
 type JsonRecord = Record<string, unknown>;
 type DatasetIdentity = { id: string | null; version: string };
 
-const ownerRelativePath = "scripts/commands/bafu-batch-import-run.ts";
-const runtimeRelativePath = "scripts/lib/batch-orchestration/bafu-batch-command-runtime.ts";
-const contractRelativePath = "scripts/lib/batch-orchestration/scope-execution-contract.ts";
-const executionRelativePath = "scripts/lib/batch-orchestration/scope-execution.ts";
-const preparationRelativePath = "scripts/lib/batch-orchestration/scope-preparation.ts";
+const ownerRelativePath = "src/commands/bafu-batch-import-run.ts";
+const runtimeRelativePath = "src/lib/batch-orchestration/bafu-batch-command-runtime.ts";
+const contractRelativePath = "src/lib/batch-orchestration/scope-execution-contract.ts";
+const executionRelativePath = "src/lib/batch-orchestration/scope-execution.ts";
+const preparationRelativePath = "src/lib/batch-orchestration/scope-preparation.ts";
 const baselineOwnerLines = 4086;
 const processId = "11111111-2222-4333-8444-555555555555";
 
@@ -195,7 +195,7 @@ test("scope preparation resolves one location task queue for both suggest and ap
   const service = createBatchScopePreparationService({
     io: {
       processExecPath: "/node",
-      foundryEntryPath: "scripts/foundry.ts",
+      foundryEntryPath: "src/dev-cli.ts",
       joinPath: (...parts) => path.posix.join(...parts),
       repoRelative: (filePath) => filePath ?? "",
       resolveRepoPath: (value) => (typeof value === "string" ? value : null),
@@ -211,7 +211,7 @@ test("scope preparation resolves one location task queue for both suggest and ap
         return { stage: input.stage, json: stageReports[input.stage] ?? null };
       },
       foundryCommand: (command, options = {}) => {
-        const argv = ["/node", "scripts/foundry.ts", command];
+        const argv = ["/node", "src/dev-cli.ts", command];
         for (const [key, value] of Object.entries(options)) {
           argv.push(`--${key.replace(/[A-Z]/gu, (letter) => `-${letter.toLowerCase()}`)}`);
           argv.push(String(value));
@@ -300,7 +300,7 @@ test("scope preparation blocks missing replaced and path-drifted queues before l
     const locationTaskQueueLookups: string[] = [];
     const io = {
       processExecPath: "/node",
-      foundryEntryPath: "scripts/foundry.ts",
+      foundryEntryPath: "src/dev-cli.ts",
       joinPath: (...parts: string[]) => path.posix.join(...parts),
       repoRelative: (filePath: string | null | undefined) =>
         filePath === taskQueue ? relativePath : (filePath ?? ""),
@@ -352,7 +352,7 @@ test("scope preparation blocks missing replaced and path-drifted queues before l
           return { stage: input.stage, json: stageReports[input.stage] ?? null };
         },
         foundryCommand: (command, options = {}) => {
-          const argv = ["/node", "scripts/foundry.ts", command];
+          const argv = ["/node", "src/dev-cli.ts", command];
           for (const [key, value] of Object.entries(options)) {
             argv.push(`--${key.replace(/[A-Z]/gu, (letter) => `-${letter.toLowerCase()}`)}`);
             argv.push(String(value));

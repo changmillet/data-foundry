@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
-import * as cleanup from "../../scripts/lib/import-curation/internal/prewrite-cleanup.ts";
+import * as cleanup from "../../src/lib/import-curation/internal/prewrite-cleanup.ts";
 
 type JsonObject = Record<string, unknown>;
 

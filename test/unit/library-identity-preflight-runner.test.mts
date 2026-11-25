@@ -4,8 +4,8 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
-import { createLibraryIdentityPreflightRunner } from "../../scripts/lib/library-orchestration/identity-preflight-runner.ts";
-import type { JsonRecord } from "../../scripts/lib/library-orchestration/entity-projection.ts";
+import { createLibraryIdentityPreflightRunner } from "../../src/lib/library-orchestration/identity-preflight-runner.ts";
+import type { JsonRecord } from "../../src/lib/library-orchestration/entity-projection.ts";
 import { testTmpRoot } from "../fixtures/foundry-core.ts";
 
 const fixtureRoot = testTmpRoot("library-identity-preflight-runner-test");

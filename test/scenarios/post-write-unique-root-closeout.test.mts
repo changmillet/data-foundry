@@ -1,5 +1,5 @@
 import test from "node:test";
-import { canonicalPayloadSha256 } from "../../scripts/lib/post-write-root-proof.ts";
+import { canonicalPayloadSha256 } from "../../src/lib/post-write-root-proof.ts";
 
 import { createFixture } from "../fixtures/full-context-fixtures.ts";
 import {

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import * as authoring from "../../scripts/lib/import-curation/internal/workflow-authoring-tasks.ts";
-import * as evidence from "../../scripts/lib/import-curation/internal/workflow-patch-evidence.ts";
-import * as semantic from "../../scripts/lib/import-curation/internal/workflow-semantic-actions.ts";
+import * as authoring from "../../src/lib/import-curation/internal/workflow-authoring-tasks.ts";
+import * as evidence from "../../src/lib/import-curation/internal/workflow-patch-evidence.ts";
+import * as semantic from "../../src/lib/import-curation/internal/workflow-semantic-actions.ts";
 
 test("authoring patch-set and operation helpers preserve aliases, evidence, resolution, context, and native cycle errors", () => {
   const operations = [{ op: "replace", path: "/field" }];

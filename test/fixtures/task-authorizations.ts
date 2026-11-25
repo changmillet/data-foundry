@@ -1,12 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
 import {
   type TaskAuthorizationAction,
   type TaskAuthorizationBinding,
   taskAuthorizationActions,
   validateTaskAuthorization,
-} from "../../scripts/lib/task-authorization.ts";
+} from "../../src/lib/task-authorization.ts";
 
 export function taskAuthorizationFixture(profileId = "bafu", profile: unknown = {}) {
   const binding: TaskAuthorizationBinding = {

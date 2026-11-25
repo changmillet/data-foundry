@@ -8,7 +8,7 @@ import {
   copyFoundryIsolatedExecutable,
   createFoundryIsolatedChildEnvironment,
   withFoundryIsolatedLocalCliEnvironment,
-} from "../../scripts/lib/foundry-runtime-environment.ts";
+} from "../../src/lib/foundry-runtime-environment.ts";
 
 function withTempRoot(body: (root: string) => void): void {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-runtime-environment-"));

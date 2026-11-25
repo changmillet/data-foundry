@@ -25,7 +25,7 @@ test("authoring and decision command tests exist only as zero-escape TypeScript"
 });
 
 test("metadata and test layout target typed authoring and decision tests", () => {
-  for (const consumer of ["scripts/lib/foundry-command-metadata.ts", "test/README.md"]) {
+  for (const consumer of ["src/lib/foundry-command-metadata.ts", "test/README.md"]) {
     const source = fs.readFileSync(path.join(repoRoot, consumer), "utf8");
     for (const name of commandTests.filter((candidate) => source.includes(`${candidate}.test.`))) {
       assert.match(source, new RegExp(`test/commands/${name}\\.test\\.mts`, "u"), consumer);

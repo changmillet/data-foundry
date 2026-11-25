@@ -4,10 +4,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { createFoundryFacade } from "../../scripts/foundry-facade.ts";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
+import { createFoundryFacade } from "../../src/foundry-facade.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
 
-const moduleUrl = new URL("../../scripts/runtime-entry.ts", import.meta.url).href;
+const moduleUrl = new URL("../../src/runtime-entry.ts", import.meta.url).href;
 
 function writeSpec(file: string, input: string, brief?: Record<string, unknown>) {
   fs.writeFileSync(

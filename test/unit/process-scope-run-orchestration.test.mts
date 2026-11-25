@@ -10,14 +10,14 @@ import {
   type BafuProcessScopeRunAdapter,
   type ProcessScopeFinalizeStageResult,
   type ProcessScopeHandoffRunResult,
-} from "../../scripts/lib/bafu-orchestration/process-scope-run.ts";
+} from "../../src/lib/bafu-orchestration/process-scope-run.ts";
 import {
   applyBafuProcessScopeHandoffSummary,
   compactCommandStage,
   projectBafuProcessScopeFinalizeReport,
-} from "../../scripts/lib/bafu-orchestration/process-scope-report.ts";
-import { createProcessScopeResumeContract } from "../../scripts/lib/bafu-orchestration/process-scope-resume.ts";
-import type { JsonRecord } from "../../scripts/lib/bafu-orchestration/finalize-recovery-policy.ts";
+} from "../../src/lib/bafu-orchestration/process-scope-report.ts";
+import { createProcessScopeResumeContract } from "../../src/lib/bafu-orchestration/process-scope-resume.ts";
+import type { JsonRecord } from "../../src/lib/bafu-orchestration/finalize-recovery-policy.ts";
 
 const fixedNow = "2026-08-26T12:00:00.000Z";
 const fixtureRoot = "/fixture";
@@ -178,7 +178,7 @@ function makeFixture(): {
   }): string => {
     const argv = [
       "node",
-      "scripts/foundry.ts",
+      "src/dev-cli.ts",
       "dataset-bafu-process-scope-e2e",
       "--rows-file",
       relative(currentRowsFile)!,
@@ -265,7 +265,7 @@ function makeFixture(): {
         const finalizeDir = path.posix.join(currentOutDir, "finalize");
         const argv = [
           "/usr/bin/node",
-          "scripts/foundry.ts",
+          "src/dev-cli.ts",
           "dataset-post-authoring-finalize",
           "--type",
           "process",
@@ -392,7 +392,7 @@ test("new scope plan freezes all input hashes, finalize argv, report and ledger 
   const report = run(commonOptions());
   const finalizeCommand = [
     "/usr/bin/node",
-    "scripts/foundry.ts",
+    "src/dev-cli.ts",
     "dataset-post-authoring-finalize",
     "--type",
     "process",
@@ -439,7 +439,7 @@ test("new scope plan freezes all input hashes, finalize argv, report and ledger 
     },
     resume: {
       rerun_command:
-        "node scripts/foundry.ts dataset-bafu-process-scope-e2e --rows-file input/process.jsonl --out-dir run --execute --source-support-rows-file input/support.jsonl --source-rows-file input/source-process.jsonl",
+        "node src/dev-cli.ts dataset-bafu-process-scope-e2e --rows-file input/process.jsonl --out-dir run --execute --source-support-rows-file input/support.jsonl --source-rows-file input/source-process.jsonl",
     },
   };
   const expectedLedger = [
@@ -463,7 +463,7 @@ test("new scope plan freezes all input hashes, finalize argv, report and ledger 
     state,
     reportPath,
     expectedReport,
-    "c6672b34e2b2ce1203b60a289a3debc425a0cad60d2ea6dc149f3ee24128c585",
+    "d4cb76d49cace1597eafbf8fcd6ac64e24d4c4b9646d2f8bc7e291f3d67fedff",
   );
   expectLedgerArtifact(
     state,
@@ -553,13 +553,13 @@ test("matching ledger checkpoint wins over a newer mismatched row and explicit f
     state,
     reportPath,
     report,
-    "5d4110b721288f2f44b8d0cca17971e08407a712f84433afaa3d3856d5dcd2a8",
+    "64f6de666b95d036794cea76976cc034ad6015691f3ae224df763a306026a583",
   );
   expectLedgerArtifact(
     state,
     ledgerPath,
     appended,
-    "01a011848bb26cbe29d20558c6c4b40a8c81da7d6e2b7d92ce86da8dd40cc4f7",
+    "c5dee394aaf14fee80197d933a30a609f063dcb671749b4c997148be749a9bd9",
   );
 });
 
@@ -591,7 +591,7 @@ test("execute blocks with exact failure artifact when finalize exits without a r
     ],
     commands: {
       post_authoring_finalize:
-        "/usr/bin/node scripts/foundry.ts dataset-post-authoring-finalize --type process --profile bafu --rows-file input/process.jsonl --out-dir run/finalize --ledger-dir run/import-ledger --source-support-rows-file input/support.jsonl --source-rows-file input/source-process.jsonl",
+        "/usr/bin/node src/dev-cli.ts dataset-post-authoring-finalize --type process --profile bafu --rows-file input/process.jsonl --out-dir run/finalize --ledger-dir run/import-ledger --source-support-rows-file input/support.jsonl --source-rows-file input/source-process.jsonl",
     },
     files: {
       report: "run/bafu-process-scope-e2e-report.json",
@@ -623,7 +623,7 @@ test("execute blocks with exact failure artifact when finalize exits without a r
     state,
     reportPath,
     expectedReport,
-    "49b8526b8881d7c0eb56d13e305b64487ff603e22e94e1dd1bb60bac2172c447",
+    "386f5a41b49a284e4395f763b5126a3ddca8123eec32a73e2caa84d21d2b73a0",
   );
   expectLedgerArtifact(
     state,
@@ -662,13 +662,13 @@ test("finalize-ready execute with commit=false keeps the exact handoff ready rep
     state,
     reportPath,
     report,
-    "8ec4ad9d5146e68ecfc051a54e8985db239ebf4a8369315dce60b245f50a27bd",
+    "76f3e7bead007b8e9dc71e4ceb4bd7eb6a9c411711180825faaeecb425758a1b",
   );
   expectLedgerArtifact(
     state,
     ledgerPath,
     ledgerRows,
-    "41ba08bff664f2eb4ce4fb19738e67229be11b4cfd245515ec1cfc6aaa3ec8e4",
+    "3b2993a645decd8e0f3de11bf12aafacb6068c10019b72834ad2cf1e5d26e3ee",
   );
 });
 
@@ -708,7 +708,7 @@ test("handoff-ready commit preserves finalize then handoff stage order and termi
   assert.deepEqual(
     state.events.filter((event) => event.startsWith("stage:") || event.startsWith("handoff:")),
     [
-      "stage:post-authoring-finalize:/usr/bin/node scripts/foundry.ts dataset-post-authoring-finalize --type process --profile bafu --rows-file input/process.jsonl --out-dir run/finalize --ledger-dir run/import-ledger --source-support-rows-file input/support.jsonl --source-rows-file input/source-process.jsonl",
+      "stage:post-authoring-finalize:/usr/bin/node src/dev-cli.ts dataset-post-authoring-finalize --type process --profile bafu --rows-file input/process.jsonl --out-dir run/finalize --ledger-dir run/import-ledger --source-support-rows-file input/support.jsonl --source-rows-file input/source-process.jsonl",
       "handoff:process:run/finalize/dataset-commit-handoff-plan.json",
     ],
   );
@@ -729,13 +729,13 @@ test("handoff-ready commit preserves finalize then handoff stage order and termi
     state,
     reportPath,
     report,
-    "a09bd9731fa4eae973043139406b2b85a0eacc68d77922c0154e724679b504d0",
+    "19763d2a6eeba67b2701bb328f9211537723cffd3264da9e9addaddfe340f5f0",
   );
   expectLedgerArtifact(
     state,
     ledgerPath,
     ledgerRows,
-    "b5d243985aabd1ffd96e25d682b494148f6eb45c97bda8da444350f6b3ee56eb",
+    "606475a9b7e4d3586018078f4984c554f7df7136bf6d1ffe767ca9eef86cf1c1",
   );
 });
 
@@ -743,10 +743,10 @@ test("process owner and extracted semantic modules stay within their architectur
   // The static module-budget suite owns the shared ratchet. This focused contract makes the
   // process-scope extraction's terminal target explicit at the behavior boundary.
   const ownerSource = fileURLToPath(
-    new URL("../../scripts/commands/bafu-process-scope-e2e.ts", import.meta.url),
+    new URL("../../src/commands/bafu-process-scope-e2e.ts", import.meta.url),
   );
   const runSource = fileURLToPath(
-    new URL("../../scripts/lib/bafu-orchestration/process-scope-run.ts", import.meta.url),
+    new URL("../../src/lib/bafu-orchestration/process-scope-run.ts", import.meta.url),
   );
   const lineCount = (filePath: string): number =>
     fs.readFileSync(filePath, "utf8").trimEnd().split(/\r?\n/u).length;

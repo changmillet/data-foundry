@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { verifyFoundrySemanticInteraction } from "../../scripts/lib/foundry-semantic-interaction.ts";
-import { indexedFoundryDecisionWorkObjects } from "../../scripts/lib/foundry-workflow-semantic.ts";
-import type { FoundryInteractionState } from "../../scripts/lib/foundry-interaction-types.ts";
-import type { FoundrySemanticInput } from "../../scripts/lib/foundry-semantic-input.ts";
+import { verifyFoundrySemanticInteraction } from "../../src/lib/foundry-semantic-interaction.ts";
+import { indexedFoundryDecisionWorkObjects } from "../../src/lib/foundry-workflow-semantic.ts";
+import type { FoundryInteractionState } from "../../src/lib/foundry-interaction-types.ts";
+import type { FoundrySemanticInput } from "../../src/lib/foundry-semantic-input.ts";
 
 const workItem = "a".repeat(64);
 const first = { dataset_type: "process", entity_id: "p1", version: "01.00.000" };

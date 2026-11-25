@@ -6,7 +6,7 @@ import test from "node:test";
 
 import { parseAuthIdentityReceipt } from "@tiangong-lca/cli/auth-identity-receipt";
 
-import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
+import { resolveInstalledTiangongLcaCliPackage } from "../../src/lib/foundry-runtime-utils.ts";
 import { testAuthIdentityReceipt } from "../fixtures/auth-identity-receipt.ts";
 
 test("Foundry consumes the published CLI 0.4.0 batch, run-lock, and auth parser exports", async () => {

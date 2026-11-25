@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import test from "node:test";
-import { FoundryContextError } from "../../scripts/lib/foundry-runtime-context.ts";
-import { ownerExecutionScopeFiles } from "../../scripts/lib/foundry-owner-execution-store.ts";
+import { FoundryContextError } from "../../src/lib/foundry-runtime-context.ts";
+import { ownerExecutionScopeFiles } from "../../src/lib/foundry-owner-execution-store.ts";
 
 const assetRoot = path.resolve(import.meta.dirname, "..", "..");
 const authorization = (inputKind: string) => ({ input_kind: inputKind });

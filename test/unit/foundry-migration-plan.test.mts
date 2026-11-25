@@ -7,14 +7,14 @@ import { pathToFileURL } from "node:url";
 import {
   createFoundryRuntimeContext,
   FoundryContextError,
-} from "../../scripts/lib/foundry-runtime-context.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
 import {
   planFoundryWorkspaceMigration,
   revalidateFoundryMigrationPlan,
-} from "../../scripts/lib/foundry-migration-plan.ts";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
-import { modelExecutionAttemptDisposition } from "../../scripts/lib/foundry-execution-attempt.ts";
-import { modelExecutionAttemptDisposition as originalOwner } from "../../scripts/commands/execution-capsule.ts";
+} from "../../src/lib/foundry-migration-plan.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
+import { modelExecutionAttemptDisposition } from "../../src/lib/foundry-execution-attempt.ts";
+import { modelExecutionAttemptDisposition as originalOwner } from "../../src/commands/execution-capsule.ts";
 
 function fixture(t: TestContext) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "migration-plan-unit-"));
@@ -28,7 +28,7 @@ function fixture(t: TestContext) {
     stageManifests: ["stages/one.json"],
   };
   const contextOptions = {
-    moduleUrl: pathToFileURL(path.resolve(import.meta.dirname, "../../scripts/public-api.ts")).href,
+    moduleUrl: pathToFileURL(path.resolve(import.meta.dirname, "../../src/public-api.ts")).href,
     workspace: path.join(root, "destination"),
     cacheBase: path.join(root, "cache"),
   };
@@ -288,8 +288,8 @@ test("serialized migration plans cannot invoke accessors or hide unknown non-JSO
 test("migration revalidation observes runtime files again instead of trusting a stale context", (t) => {
   const f = fixture(t);
   const runtime = path.join(f.root, "runtime");
-  fs.mkdirSync(path.join(runtime, "scripts"), { recursive: true });
-  const entry = path.join(runtime, "scripts/foundry.ts");
+  fs.mkdirSync(path.join(runtime, "src"), { recursive: true });
+  const entry = path.join(runtime, "src/dev-cli.ts");
   fs.writeFileSync(entry, "export const fixture = 1;\n");
   fs.writeFileSync(
     path.join(runtime, "package.json"),
@@ -299,8 +299,8 @@ test("migration revalidation observes runtime files again instead of trusting a 
       foundryRuntime: {
         schema: "tiangong-foundry.runtime-layout.v1",
         asset_root: ".",
-        source_entry: "scripts/foundry.ts",
-        emitted_entry: "dist/scripts/foundry.js",
+        source_entry: "src/dev-cli.ts",
+        emitted_entry: "dist/src/dev-cli.js",
       },
     }),
   );

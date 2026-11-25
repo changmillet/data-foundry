@@ -38,7 +38,7 @@ function composeRaw(fixture: TopologyFixture) {
   return spawnSync(
     process.execPath,
     [
-      "scripts/foundry.ts",
+      "src/dev-cli.ts",
       "dataset-topology-convergence-compose",
       "--request",
       rel(fixture.requestPath),

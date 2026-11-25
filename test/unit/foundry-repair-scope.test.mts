@@ -10,8 +10,8 @@ import {
   collectRepairChangedPaths,
   parseFoundryRepairSelection,
   readFoundryRepairScope,
-} from "../../scripts/lib/foundry-repair-scope.ts";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
+} from "../../src/lib/foundry-repair-scope.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
 
 const ownerId = "11111111-1111-4111-8111-111111111111";
 const projectRef = "abcdefghijklmnopqrst";

@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { create } from "tar";
-import { extractFoundryNpmTarball } from "../../scripts/lib/foundry-release-extract.ts";
+import { extractFoundryNpmTarball } from "../../devops/release/foundry-release-extract.ts";
 
 function fixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-npm-extract-"));

@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import * as runtimeIo from "../../scripts/lib/import-curation/internal/runtime-io.ts";
+import * as runtimeIo from "../../src/lib/import-curation/internal/runtime-io.ts";
 
 function withFixture<T>(callback: (root: string) => T): T {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-runtime-io-"));
@@ -196,17 +196,17 @@ test("missing inputs retain null probes and native filesystem error envelopes", 
 test("runtime I/O is native TypeScript and representative consumers target it", () => {
   const typedPath = path.join(
     path.resolve(import.meta.dirname, "..", ".."),
-    "scripts/lib/import-curation/internal/runtime-io.ts",
+    "src/lib/import-curation/internal/runtime-io.ts",
   );
   assert.equal(fs.existsSync(typedPath), true);
   assert.equal(fs.existsSync(typedPath.replace(/\.ts$/u, ".mjs")), false);
 
   const repoRoot = path.resolve(import.meta.dirname, "..", "..");
   const expectedConsumers = [
-    ["scripts/lib/import-curation/curation-cleanup.ts", "./internal/runtime-io.ts"],
-    ["scripts/lib/import-curation/internal/dataset-payload.ts", "./runtime-io.ts"],
-    ["scripts/lib/import-curation/internal/workflow-semantic-actions.ts", "./runtime-io.ts"],
-    ["test/unit/runtime-io.test.mts", "../../scripts/lib/import-curation/internal/runtime-io.ts"],
+    ["src/lib/import-curation/curation-cleanup.ts", "./internal/runtime-io.ts"],
+    ["src/lib/import-curation/internal/dataset-payload.ts", "./runtime-io.ts"],
+    ["src/lib/import-curation/internal/workflow-semantic-actions.ts", "./runtime-io.ts"],
+    ["test/unit/runtime-io.test.mts", "../../src/lib/import-curation/internal/runtime-io.ts"],
   ] as const;
   for (const [consumer, specifier] of expectedConsumers) {
     assert.match(

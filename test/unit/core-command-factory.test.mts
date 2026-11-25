@@ -25,8 +25,8 @@ type CoreFactory = (dependencies: JsonObject) => {
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
-const typedPath = path.join(repoRoot, "scripts/commands/core.ts");
-const legacyPath = path.join(repoRoot, "scripts/commands/core.mjs");
+const typedPath = path.join(repoRoot, "src/commands/core.ts");
+const legacyPath = path.join(repoRoot, "src/commands/core.mjs");
 
 async function loadFactory(): Promise<CoreFactory> {
   const implementation = fs.existsSync(typedPath) ? typedPath : legacyPath;
@@ -287,16 +287,16 @@ test("core diagnostics retain surface/doctor envelopes and native filesystem or 
 });
 
 test("core migration preserves exact Foundry help bytes", () => {
-  const result = spawnSync(process.execPath, ["scripts/foundry.ts", "help"], {
+  const result = spawnSync(process.execPath, ["src/dev-cli.ts", "help"], {
     cwd: repoRoot,
     encoding: null,
   });
   assert.equal(result.status, 0);
   assert.equal(result.stderr.length, 0);
-  assert.equal(result.stdout.length, 5021);
+  assert.equal(result.stdout.length, 1265);
   assert.equal(
     createHash("sha256").update(result.stdout).digest("hex"),
-    "f7b775337c71691cd9c44ee460de6c77723e8caded9152a100e58a2bb407b638",
+    "d22281401aa94f32816b0fc419eb90970649e9554fc85430802f41c7ace8835a",
   );
 });
 
@@ -313,7 +313,7 @@ test("core command owner exists only as zero-escape native TypeScript", () => {
 });
 
 test("core command consumers and metadata target the typed owner", () => {
-  for (const consumer of ["scripts/foundry.ts", "scripts/lib/foundry-command-metadata.ts"]) {
+  for (const consumer of ["src/dev-cli.ts", "src/lib/foundry-command-metadata.ts"]) {
     const source = fs.readFileSync(path.join(repoRoot, consumer), "utf8");
     assert.match(source, /(?:commands\/|scripts\/commands\/)core\.ts/u, consumer);
     assert.doesNotMatch(source, /(?:commands\/|scripts\/commands\/)core\.mjs/u, consumer);

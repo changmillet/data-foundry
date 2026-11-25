@@ -8,12 +8,12 @@ const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
 
 test("BAFU name-plan facade delegates bounded acyclic helper modules", async () => {
-  const facade = await import("../../scripts/lib/bafu-authoring/name-plan.ts");
-  const text = await import("../../scripts/lib/bafu-authoring/name-plan-text.ts");
-  const overrides = await import("../../scripts/lib/bafu-authoring/name-plan-overrides.ts");
-  const rules = await import("../../scripts/lib/bafu-authoring/name-plan-rules.ts");
-  const fromParts = await import("../../scripts/lib/bafu-authoring/name-plan-from-parts.ts");
-  const contract = await import("../../scripts/lib/bafu-authoring/name-plan-contract.ts");
+  const facade = await import("../../src/lib/bafu-authoring/name-plan.ts");
+  const text = await import("../../src/lib/bafu-authoring/name-plan-text.ts");
+  const overrides = await import("../../src/lib/bafu-authoring/name-plan-overrides.ts");
+  const rules = await import("../../src/lib/bafu-authoring/name-plan-rules.ts");
+  const fromParts = await import("../../src/lib/bafu-authoring/name-plan-from-parts.ts");
+  const contract = await import("../../src/lib/bafu-authoring/name-plan-contract.ts");
 
   assert.equal(typeof contract, "object");
   for (const name of [
@@ -38,12 +38,12 @@ test("BAFU name-plan facade delegates bounded acyclic helper modules", async () 
   );
 
   const ceilings = new Map([
-    ["scripts/lib/bafu-authoring/name-plan.ts", 1200],
-    ["scripts/lib/bafu-authoring/name-plan-text.ts", 800],
-    ["scripts/lib/bafu-authoring/name-plan-overrides.ts", 800],
-    ["scripts/lib/bafu-authoring/name-plan-contract.ts", 800],
-    ["scripts/lib/bafu-authoring/name-plan-rules.ts", 1200],
-    ["scripts/lib/bafu-authoring/name-plan-from-parts.ts", 800],
+    ["src/lib/bafu-authoring/name-plan.ts", 1200],
+    ["src/lib/bafu-authoring/name-plan-text.ts", 800],
+    ["src/lib/bafu-authoring/name-plan-overrides.ts", 800],
+    ["src/lib/bafu-authoring/name-plan-contract.ts", 800],
+    ["src/lib/bafu-authoring/name-plan-rules.ts", 1200],
+    ["src/lib/bafu-authoring/name-plan-from-parts.ts", 800],
   ]);
   for (const [relativePath, ceiling] of ceilings) {
     const source = fs.readFileSync(path.join(repoRoot, relativePath), "utf8");
@@ -53,7 +53,7 @@ test("BAFU name-plan facade delegates bounded acyclic helper modules", async () 
     assert.doesNotMatch(source, /node:(?:fs|child_process|process)/u);
   }
   assert.doesNotMatch(
-    fs.readFileSync(path.join(repoRoot, "scripts/lib/bafu-authoring/name-plan-text.ts"), "utf8"),
+    fs.readFileSync(path.join(repoRoot, "src/lib/bafu-authoring/name-plan-text.ts"), "utf8"),
     /from\s+["'].\/name-plan\.ts["']/u,
     "helper modules must not create a cycle back to the facade",
   );

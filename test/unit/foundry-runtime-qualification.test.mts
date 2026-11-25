@@ -5,21 +5,21 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { CLI_RUNTIME_EXPECTATION_SCHEMA, describeCliRuntime } from "@tiangong-lca/cli/runtime";
-import { createFoundryRuntime } from "../../scripts/foundry-runtime.ts";
-import { createFoundryFacade } from "../../scripts/foundry-facade.ts";
+import { createFoundryRuntime } from "../../src/foundry-runtime.ts";
+import { createFoundryFacade } from "../../src/foundry-facade.ts";
 import {
   createFoundryRuntimeContext,
   initializeFoundryWorkspace,
-} from "../../scripts/lib/foundry-runtime-context.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
 import {
   FOUNDRY_TIDAS_EXPECTATION_SCHEMA,
   assertQualifiedFoundryRuntime,
   foundryRuntimeQualificationIdentity,
   qualifyFoundryRuntime,
   parseFoundryTidasRuntimeExpectation,
-} from "../../scripts/lib/foundry-runtime-qualification.ts";
+} from "../../src/lib/foundry-runtime-qualification.ts";
 
-const moduleUrl = new URL("../../scripts/runtime-entry.ts", import.meta.url).href;
+const moduleUrl = new URL("../../src/runtime-entry.ts", import.meta.url).href;
 const sha = (file: string) => createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 const hasCode = (code: string) => (error: unknown) =>
   Boolean(error && typeof error === "object" && "code" in error && error.code === code);

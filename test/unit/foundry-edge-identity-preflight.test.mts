@@ -3,9 +3,9 @@ import test from "node:test";
 import {
   edgeIdentityCandidates,
   validateEdgeIdentityQuery,
-} from "../../scripts/lib/foundry-edge-identity-preflight.ts";
-import { foundryEdgeProjectOrigin } from "../../scripts/lib/foundry-edge-session.ts";
-import { sha256Text } from "../../scripts/lib/identity-preflight-proof.ts";
+} from "../../src/lib/foundry-edge-identity-preflight.ts";
+import { foundryEdgeProjectOrigin } from "../../src/lib/foundry-edge-session.ts";
+import { sha256Text } from "../../src/lib/identity-preflight-proof.ts";
 import { flowRow } from "../fixtures/row-builders.ts";
 
 test("Foundry Edge identity query must retain every audited search option", () => {

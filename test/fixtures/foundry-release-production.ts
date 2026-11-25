@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { create } from "tar";
 import { stringify } from "yaml";
-import { projectFoundryProductionLock } from "../../scripts/lib/foundry-release-production.ts";
+import { projectFoundryProductionLock } from "../../devops/release/foundry-release-production.ts";
 
 export function createFoundryProductionFixture(wrongManifest = false, optionalPeer = false) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-production-fixture-"));

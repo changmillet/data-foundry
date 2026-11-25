@@ -4,7 +4,7 @@ import {
   proveRetainedRepairReferences,
   type FoundryRepairExpectedReference,
   type FoundryRepairExpectedRoot,
-} from "../../scripts/lib/foundry-repair-reference-proof.ts";
+} from "../../src/lib/foundry-repair-reference-proof.ts";
 import {
   RETAINED_REFERENCE_BINDINGS,
   RETAINED_REFERENCE_OWNER,

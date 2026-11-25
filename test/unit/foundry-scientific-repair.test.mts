@@ -8,9 +8,9 @@ import {
   readScientificRepairRuntime,
   scientificRepairChanges,
   assertScientificRepairDiagnosticReport,
-} from "../../scripts/lib/foundry-scientific-repair.ts";
-import { captureFoundryInput } from "../../scripts/lib/foundry-runtime-context.ts";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
+} from "../../src/lib/foundry-scientific-repair.ts";
+import { captureFoundryInput } from "../../src/lib/foundry-runtime-context.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
 
 type Json = Record<string, unknown>;
 const actor = "agent/scientific-author";

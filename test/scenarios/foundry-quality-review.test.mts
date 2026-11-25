@@ -5,25 +5,25 @@ import test from "node:test";
 import { workflowFixture } from "../fixtures/foundry-public-workflow.ts";
 import { flowRow, processRowWithFlowRef } from "../fixtures/row-builders.ts";
 import { qualityReviewFixture } from "../fixtures/foundry-quality-review.ts";
-import { createFoundryFacade } from "../../scripts/foundry-facade.ts";
-import { runFoundryPublicCommand } from "../../scripts/runtime-entry.ts";
+import { createFoundryFacade } from "../../src/foundry-facade.ts";
+import { runFoundryPublicCommand } from "../../src/runtime-entry.ts";
 import {
   captureFoundryInput,
   createFoundryRuntimeContext,
   writeFoundryArtifact,
-} from "../../scripts/lib/foundry-runtime-context.ts";
-import { readVerifiedTaskSnapshot } from "../../scripts/lib/foundry-task-store.ts";
-import { qualifyFoundryRuntime } from "../../scripts/lib/foundry-runtime-qualification.ts";
+} from "../../src/lib/foundry-runtime-context.ts";
+import { readVerifiedTaskSnapshot } from "../../src/lib/foundry-task-store.ts";
+import { qualifyFoundryRuntime } from "../../src/lib/foundry-runtime-qualification.ts";
 import {
   foundryQualityReviewScope,
   loadFoundryQualityReview,
   reviewedFoundryQualityFindings,
-} from "../../scripts/lib/foundry-quality-review.ts";
-import { currentWorkflowState } from "../../scripts/lib/foundry-workflow-state.ts";
-import { readQaFindings } from "../../scripts/lib/import-curation/internal/artifact-inputs.ts";
-import { runWorkflowLocalCli } from "../../scripts/lib/foundry-workflow-io.ts";
-import { sha256Json } from "../../scripts/lib/identity-preflight-proof.ts";
-import { runFoundryTypedDatasetQa } from "../../scripts/lib/foundry-typed-flow-qa.ts";
+} from "../../src/lib/foundry-quality-review.ts";
+import { currentWorkflowState } from "../../src/lib/foundry-workflow-state.ts";
+import { readQaFindings } from "../../src/lib/import-curation/internal/artifact-inputs.ts";
+import { runWorkflowLocalCli } from "../../src/lib/foundry-workflow-io.ts";
+import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
+import { runFoundryTypedDatasetQa } from "../../src/lib/foundry-typed-flow-qa.ts";
 
 test("non-Process quality projection reuses its verified workflow snapshot without reading artifacts again", async (t) => {
   const f = workflowFixture(t);
@@ -59,7 +59,7 @@ test("non-Process quality projection reuses its verified workflow snapshot witho
   await f.facade.resume(invocation);
   await f.facade.resume(invocation);
   const options = {
-    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
     workspace: f.workspace,
     cacheBase: path.join(f.root, "cache"),
     ...invocation,
@@ -215,7 +215,7 @@ test("one exact preparation review survives reload and reassessment without acce
   );
   assert.equal(accepted.permissions.state, "not_required");
   const reloaded = createFoundryFacade({
-    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
     workspace: f.workspace,
     cacheBase: path.join(f.root, "cache"),
     runtimeSelection: f.runtimeSelection,
@@ -260,7 +260,7 @@ test("one exact preparation review survives reload and reassessment without acce
   assert.deepEqual(fs.readFileSync(index), before);
 
   const contextOptions = {
-    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
     workspace: f.workspace,
     cacheBase: path.join(f.root, "cache"),
     ...f.invocation,
@@ -514,7 +514,7 @@ test("reviewed finalization repeats the exact QA reference scope of a mixed loca
   const f = await qualityReviewFixture(t);
   await f.facade.resume({ ...f.invocation, qualityReviewInputFile: f.descriptorFile });
   const options = {
-    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
     workspace: f.workspace,
     cacheBase: path.join(f.root, "cache"),
     ...f.invocation,

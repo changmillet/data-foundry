@@ -11,8 +11,8 @@ import {
   type FoundryCommandSpec,
 } from "@tiangong-lca/cli/command-spec";
 
-import { createReadyProcessScopeRunner } from "../../scripts/lib/library-orchestration/ready-process-scope-runner.ts";
-import type { JsonRecord } from "../../scripts/lib/library-orchestration/entity-projection.ts";
+import { createReadyProcessScopeRunner } from "../../src/lib/library-orchestration/ready-process-scope-runner.ts";
+import type { JsonRecord } from "../../src/lib/library-orchestration/entity-projection.ts";
 import { testTmpRoot } from "../fixtures/foundry-core.ts";
 
 const fixtureRoot = testTmpRoot("ready-process-scope-runner-test");
@@ -146,7 +146,7 @@ test("ready process runner executes artifact-bound specs concurrently with input
       message,
       required_human_action: requiredHumanAction,
       rerun_command:
-        "node scripts/foundry.ts dataset-library-decisions-apply --library-index <library-index> --decisions-dir <decisions-dir> --out-dir <library-resolution>",
+        "node src/dev-cli.ts dataset-library-decisions-apply --library-index <library-index> --decisions-dir <decisions-dir> --out-dir <library-resolution>",
     }),
     buildBlockedScopeReport: ({ command, blockedRows, blockedLedgerPath, reportPath }) => ({
       schema_version: 1,
@@ -240,7 +240,7 @@ test("ready process runner executes artifact-bound specs concurrently with input
   );
   assert.equal(
     sha256(fs.readFileSync(blockedPath, "utf8")),
-    "c66733256f9825b34eb9e1585e5bb6f86d0191979986ef41083ccffd4d385ae6",
+    "e49f086ab49e20d4c81ed0098153ce03f7b54fb294f7c79d67de5e172a63d58c",
   );
   assert.equal(
     sha256(fs.readFileSync(blockedReportPath, "utf8")),

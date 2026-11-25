@@ -8,8 +8,8 @@ import { fileURLToPath } from "node:url";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
-const typedPath = path.join(repoRoot, "scripts/commands/authoring-plan.ts");
-const legacyPath = path.join(repoRoot, "scripts/commands/authoring-plan.mjs");
+const typedPath = path.join(repoRoot, "src/commands/authoring-plan.ts");
+const legacyPath = path.join(repoRoot, "src/commands/authoring-plan.mjs");
 
 function readRepoFile(relativePath: string): string {
   return fs.readFileSync(path.join(repoRoot, relativePath), "utf8");
@@ -28,7 +28,7 @@ test("authoring-plan command exists only as native TypeScript", () => {
 });
 
 test("authoring-plan consumers and metadata target the typed factory", () => {
-  for (const consumer of ["scripts/foundry.ts", "scripts/lib/foundry-command-metadata.ts"]) {
+  for (const consumer of ["src/dev-cli.ts", "src/lib/foundry-command-metadata.ts"]) {
     const source = readRepoFile(consumer);
     assert.match(source, /authoring-plan\.ts/u, consumer);
     assert.doesNotMatch(source, /authoring-plan\.mjs/u, consumer);
@@ -38,12 +38,12 @@ test("authoring-plan consumers and metadata target the typed factory", () => {
 test("authoring-plan help report retains exact bytes", () => {
   const output = execFileSync(
     process.execPath,
-    ["scripts/foundry.ts", "dataset-authoring-plan", "--help"],
+    ["test/fixtures/run-internal-stage.ts", "dataset-authoring-plan", "--help"],
     { cwd: repoRoot, encoding: "utf8" },
   );
-  assert.equal(Buffer.byteLength(output, "utf8"), 3157);
+  assert.equal(Buffer.byteLength(output, "utf8"), 3153);
   assert.equal(
     createHash("sha256").update(output).digest("hex"),
-    "9abf3422859cc0db29e7dd6e84bfed4eae37682b48e396156a7af4759fd33db7",
+    "80072b2fe3bd3b2718a60186e2e2105ceb122ea29270acafb55550286d08b0da",
   );
 });

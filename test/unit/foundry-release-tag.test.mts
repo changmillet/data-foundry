@@ -4,7 +4,7 @@ import {
   createGitHubFoundryTagStore,
   ensureFoundryReleaseTag,
   type FoundryReleaseTagStore,
-} from "../../scripts/lib/foundry-release-tag.ts";
+} from "../../devops/release/foundry-release-tag.ts";
 
 const head = "a".repeat(40);
 const request = { version: "0.1.9", head };

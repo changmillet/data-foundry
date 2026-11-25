@@ -3,7 +3,7 @@ import test from "node:test";
 import {
   parseFoundryReleaseWorkflowEvent,
   validateMergedFoundryReleasePr,
-} from "../../scripts/lib/foundry-release-workflow.ts";
+} from "../../devops/release/foundry-release-workflow.ts";
 
 const head = "a".repeat(40),
   base = "b".repeat(40);

@@ -1,5 +1,5 @@
 import test from "node:test";
-import { resolveInstalledTiangongLcaCliPackage } from "../../scripts/lib/foundry-runtime-utils.ts";
+import { resolveInstalledTiangongLcaCliPackage } from "../../src/lib/foundry-runtime-utils.ts";
 import { runRetainedFoundryTests } from "../helpers/retained-foundry-runtime.mts";
 import {
   publicIdentityCases,

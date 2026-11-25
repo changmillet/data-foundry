@@ -5,7 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { bafuProcessScopeE2eTestHooks } from "../../scripts/commands/bafu-process-scope-e2e.ts";
+import { bafuProcessScopeE2eTestHooks } from "../../src/commands/bafu-process-scope-e2e.ts";
 import {
   canRunPostFinalizeIdentityRecovery,
   canRunPostFinalizeSemanticRecovery,
@@ -13,7 +13,7 @@ import {
   finalizeBlockers,
   postWriteVerifyRetryReasonFromReport,
   reportCodes,
-} from "../../scripts/lib/bafu-orchestration/finalize-recovery-policy.ts";
+} from "../../src/lib/bafu-orchestration/finalize-recovery-policy.ts";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -21,12 +21,12 @@ const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
 const modulePath = path.join(
   repoRoot,
-  "scripts",
+  "src",
   "lib",
   "bafu-orchestration",
   "finalize-recovery-policy.ts",
 );
-const ownerPath = path.join(repoRoot, "scripts", "commands", "bafu-process-scope-e2e.ts");
+const ownerPath = path.join(repoRoot, "src", "commands", "bafu-process-scope-e2e.ts");
 
 function sha256Text(value: string): string {
   return createHash("sha256").update(value).digest("hex");

@@ -7,11 +7,15 @@ import test from "node:test";
 const root = path.resolve(import.meta.dirname, "../..");
 test("runtime assembly exposes only fresh output and verified publication input selection", () => {
   const run = (args: string[]) =>
-    spawnSync(process.execPath, [path.join(root, "scripts/release-prepare-runtime.ts"), ...args], {
-      cwd: os.tmpdir(),
-      encoding: "utf8",
-      timeout: 30_000,
-    });
+    spawnSync(
+      process.execPath,
+      [path.join(root, "devops/release/release-prepare-runtime.ts"), ...args],
+      {
+        cwd: os.tmpdir(),
+        encoding: "utf8",
+        timeout: 30_000,
+      },
+    );
   const help = run(["--help"]);
   assert.equal(help.status, 0, help.stderr);
   assert.match(help.stdout, /--output.*--published/u);

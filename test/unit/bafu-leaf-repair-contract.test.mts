@@ -18,15 +18,15 @@ import {
   taskReferenceUnit,
   type JsonRecord,
   type LeafCategorySchema,
-} from "../../scripts/lib/bafu-classification/leaf-repair.ts";
+} from "../../src/lib/bafu-classification/leaf-repair.ts";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const leafPath = path.join(repoRoot, "scripts/lib/bafu-classification/leaf-repair.ts");
+const leafPath = path.join(repoRoot, "src/lib/bafu-classification/leaf-repair.ts");
 const categoryProjectionPath = path.join(
   repoRoot,
-  "scripts/lib/bafu-classification/category-map-projection.ts",
+  "src/lib/bafu-classification/category-map-projection.ts",
 );
-const ownerPath = path.join(repoRoot, "scripts/commands/bafu-leaf-classification-tasks.ts");
+const ownerPath = path.join(repoRoot, "src/commands/bafu-leaf-classification-tasks.ts");
 
 function isJsonRecord(value: unknown): value is JsonRecord {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);

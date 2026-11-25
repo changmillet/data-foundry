@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
-import { resolvePackageManagerCommand } from "../../scripts/lib/package-manager-command.ts";
+import { resolvePackageManagerCommand } from "../../src/lib/package-manager-command.ts";
 
 test("Windows pnpm resolution prefers the native PNPM_HOME and preserves literal arguments", () => {
   const argv = ["pack", "--pack-destination", "C:\\用户 & files\\(artifacts)"];
@@ -85,7 +85,7 @@ test("POSIX package tools preserve executable lookup and argv without Windows pr
 
 test("package verification launches native pnpm on Windows without a command shell", () => {
   const verifier = pathToFileURL(
-    path.resolve(import.meta.dirname, "../../scripts/verify-foundry-package.ts"),
+    path.resolve(import.meta.dirname, "../../devops/build/verify-foundry-package.ts"),
   ).href;
   const result = spawnSync(
     process.execPath,

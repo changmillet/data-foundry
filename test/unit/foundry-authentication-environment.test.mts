@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createFoundryAuthenticationEnvironment } from "../../scripts/lib/foundry-authentication-environment.ts";
+import { createFoundryAuthenticationEnvironment } from "../../src/lib/foundry-authentication-environment.ts";
 
 test("authentication environment retains only explicit credentials and required system keys", () => {
   const inherited = {

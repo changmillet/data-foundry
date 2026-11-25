@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import * as identity from "../../scripts/lib/import-curation/internal/workflow-identity-preflight.ts";
+import * as identity from "../../src/lib/import-curation/internal/workflow-identity-preflight.ts";
 
 function writeJson(filePath: string, value: unknown): void {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });

@@ -1,16 +1,16 @@
 import test from "node:test";
-import { sha256Json } from "../../scripts/lib/import-curation/internal/hash-utils.ts";
+import { sha256Json } from "../../src/lib/import-curation/internal/hash-utils.ts";
 import {
   decisionApplyContextCoversExpectedRowsIdentity,
   decisionApplyContextRelevantToRowsFile,
-} from "../../scripts/lib/import-curation/internal/workflow-decision-full-context.ts";
-import { attachIdentityPreflightFreshness } from "../../scripts/lib/import-curation/internal/workflow-identity-preflight.ts";
+} from "../../src/lib/import-curation/internal/workflow-decision-full-context.ts";
+import { attachIdentityPreflightFreshness } from "../../src/lib/import-curation/internal/workflow-identity-preflight.ts";
 import {
   decisionApplyOutputRowsReachableThroughDeterministicTransforms,
   readRowsFileTransformContext,
   rowsFileReachableThroughTransformChain,
   sameRowsArtifact,
-} from "../../scripts/lib/import-curation/internal/workflow-row-transform-context.ts";
+} from "../../src/lib/import-curation/internal/workflow-row-transform-context.ts";
 import { fixtureRoot } from "../fixtures/fixture-roots.ts";
 import {
   assert,

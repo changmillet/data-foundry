@@ -92,7 +92,7 @@ function readJsonLines(filePath: string) {
 }
 
 function runFoundry(args: string[], expectedStatus = 0, env: NodeJS.ProcessEnv = {}) {
-  const result = spawnSync(process.execPath, ["scripts/foundry.ts", ...args], {
+  const result = spawnSync(process.execPath, ["test/fixtures/run-internal-stage.ts", ...args], {
     cwd: repoRoot,
     env: { ...process.env, ...env },
     encoding: "utf8",
@@ -581,7 +581,7 @@ test("dataset-bundle-sample-rows retains and blocks canonical amount scaling req
   const result = spawnSync(
     process.execPath,
     [
-      "scripts/foundry.ts",
+      "test/fixtures/run-internal-stage.ts",
       "dataset-bundle-sample-rows",
       "--bundles-dir",
       path.join(fixtureRoot, "process-bundles"),
@@ -645,7 +645,7 @@ test("dataset-bundle-sample-rows retains and blocks canonical amount scaling req
   const unresolvedResult = spawnSync(
     process.execPath,
     [
-      "scripts/foundry.ts",
+      "test/fixtures/run-internal-stage.ts",
       "dataset-bundle-sample-rows",
       "--bundles-dir",
       path.join(fixtureRoot, "process-bundles"),

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
-import type { FoundryOperationResult } from "../../scripts/lib/foundry-operation-result.ts";
+import type { FoundryOperationResult } from "../../src/lib/foundry-operation-result.ts";
 import { supportFlowPropertyRow, supportUnitGroupRow } from "../fixtures/support-row-builders.ts";
 type Json = Record<string, unknown>;
 const object = (value: unknown) => value as Json;

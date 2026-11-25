@@ -6,7 +6,7 @@ import {
   occurrenceKeyedExchanges,
   sha256Json,
   stableJson,
-} from "../../scripts/commands/topology-convergence.ts";
+} from "../../src/commands/topology-convergence.ts";
 import { assert } from "../fixtures/foundry-core.ts";
 
 function exchange(number: string, flow: string) {
@@ -92,7 +92,7 @@ test("topology composer has no network, database, subprocess, or production disp
   const source = fs.readFileSync(
     path.resolve(
       path.dirname(fileURLToPath(import.meta.url)),
-      "../../scripts/commands/topology-convergence.ts",
+      "../../src/commands/topology-convergence.ts",
     ),
     "utf8",
   );

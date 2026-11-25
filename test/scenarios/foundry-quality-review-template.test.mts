@@ -4,12 +4,12 @@ import test from "node:test";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { qualityReviewFixture } from "../fixtures/foundry-quality-review.ts";
 import { digestFile } from "../fixtures/foundry-public-workflow.ts";
-import { createFoundryFacade } from "../../scripts/foundry-facade.ts";
+import { createFoundryFacade } from "../../src/foundry-facade.ts";
 import type {
   FoundryQualityReviewInput,
   FoundryQualityReview,
   FoundryQualityReviewEvidence,
-} from "../../scripts/lib/foundry-quality-review-input.ts";
+} from "../../src/lib/foundry-quality-review-input.ts";
 
 type Draft = Omit<FoundryQualityReviewInput, "schema" | "reviews" | "evidence"> & {
   schema: string;
@@ -110,7 +110,7 @@ test("public quality template binds the assessed scope and hashes selected evide
   // Reload verifies retained selected bytes even after the original external evidence disappears.
   complete.evidence.forEach((item) => fs.unlinkSync(item.file));
   const reloaded = await createFoundryFacade({
-    moduleUrl: new URL("../../scripts/runtime-entry.ts", import.meta.url).href,
+    moduleUrl: new URL("../../src/runtime-entry.ts", import.meta.url).href,
     workspace: f.workspace,
     cacheBase: f.root + "/cache",
     runtimeSelection: f.runtimeSelection,

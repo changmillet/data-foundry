@@ -7,7 +7,7 @@ import {
   compactFoundryTraceEntry,
   foundryTraceSummary,
   traceSummaryCount,
-} from "../../scripts/lib/import-curation/internal/trace-summary.ts";
+} from "../../src/lib/import-curation/internal/trace-summary.ts";
 
 test("trace summary count traverses objects and arrays while counting scalar and array summaries", () => {
   const row = {

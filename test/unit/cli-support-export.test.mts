@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
-import { readCliSupportExport } from "../../scripts/lib/cli-support-export.ts";
-import { sha256Text } from "../../scripts/lib/identity-preflight-proof.ts";
+import { readCliSupportExport } from "../../src/lib/cli-support-export.ts";
+import { sha256Text } from "../../src/lib/identity-preflight-proof.ts";
 import { testAuthIdentityReceipt } from "../fixtures/auth-identity-receipt.ts";
 
 const project = "exampleprojectref";

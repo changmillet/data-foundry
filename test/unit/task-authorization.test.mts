@@ -6,7 +6,7 @@ import {
   taskAuthorizationMatches,
   taskAuthorizationWaivesQa,
   validateTaskAuthorization,
-} from "../../scripts/lib/task-authorization.ts";
+} from "../../src/lib/task-authorization.ts";
 import { taskAuthorizationFixture } from "../fixtures/task-authorizations.ts";
 
 test("only exact task intent yields immutable, action-specific draft exceptions", () => {

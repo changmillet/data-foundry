@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-const entry = path.resolve(import.meta.dirname, "../../scripts/package-entry.ts");
+const entry = path.resolve(import.meta.dirname, "../../src/package-entry.ts");
 
 test("a killed staging process leaves an inactive recoverable transfer", async (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "transfer-killed-"));

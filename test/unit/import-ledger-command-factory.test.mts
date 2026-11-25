@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { createImportLedgerCommands } from "../../scripts/commands/import-ledger.ts";
+import { createImportLedgerCommands } from "../../src/commands/import-ledger.ts";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
@@ -31,10 +31,10 @@ test("import-ledger command factory preserves the injected runner without invoki
 });
 
 test("import-ledger command factory exists only as zero-any native TypeScript", () => {
-  const typedPath = path.join(repoRoot, "scripts/commands/import-ledger.ts");
+  const typedPath = path.join(repoRoot, "src/commands/import-ledger.ts");
   assert.equal(fs.existsSync(typedPath), true);
   assert.equal(fs.existsSync(typedPath.replace(/\.ts$/u, ".mjs")), false);
-  const source = readRepoFile("scripts/commands/import-ledger.ts");
+  const source = readRepoFile("src/commands/import-ledger.ts");
   assert.doesNotMatch(source, /\bany\b/u);
   assert.deepEqual(
     [...source.matchAll(/export function\s+([A-Za-z0-9_]+)/gu)].map((match) => match[1]),
@@ -44,8 +44,8 @@ test("import-ledger command factory exists only as zero-any native TypeScript", 
 
 test("all active import-ledger owner consumers target the typed command factory", () => {
   for (const consumer of [
-    "scripts/foundry.ts",
-    "scripts/lib/foundry-command-metadata.ts",
+    "src/dev-cli.ts",
+    "src/lib/foundry-command-metadata.ts",
     "test/unit/import-ledger-command-factory.test.mts",
   ]) {
     const source = readRepoFile(consumer);

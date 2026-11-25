@@ -7,12 +7,12 @@ import test from "node:test";
 import {
   applyFoundryReleaseVersion,
   planFoundryReleaseVersion,
-} from "../../scripts/lib/foundry-release-version.ts";
+} from "../../devops/release/foundry-release-version.ts";
 
 const repoRoot = path.resolve(import.meta.dirname, "../..");
 const files = [
   "package.json",
-  "scripts/lib/foundry-package-contract.ts",
+  "src/lib/foundry-package-contract.ts",
   "specs/schemas/foundry-package-descriptor.schema.json",
 ] as const;
 
@@ -163,7 +163,7 @@ test("version planning refuses metadata reached through an external directory li
   const { root, original, next } = fixture();
   const outside = fs.mkdtempSync(path.join(os.tmpdir(), "foundry-release-outside-"));
   try {
-    const parent = path.join(root, "scripts/lib");
+    const parent = path.join(root, "src/lib");
     fs.writeFileSync(path.join(outside, "foundry-package-contract.ts"), original.get(files[1])!);
     fs.rmSync(parent, { recursive: true });
     fs.symlinkSync(outside, parent, "junction");
@@ -187,10 +187,11 @@ test("the source CLI binds its own clean Git root and ignores inherited reposito
   }
   try {
     for (const file of [
-      "scripts/release-version.ts",
-      "scripts/lib/foundry-release-version.ts",
-      "scripts/lib/foundry-release-root.ts",
+      "devops/release/release-version.ts",
+      "devops/release/foundry-release-version.ts",
+      "devops/release/foundry-release-root.ts",
     ]) {
+      fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
       fs.copyFileSync(path.join(repoRoot, file), path.join(root, file));
     }
     for (const argv of [
@@ -210,7 +211,7 @@ test("the source CLI binds its own clean Git root and ignores inherited reposito
       const result = spawnSync("git", argv, { cwd: root, env: environment, encoding: "utf8" });
       assert.equal(result.status, 0, result.stderr);
     }
-    const script = path.join(root, "scripts/release-version.ts");
+    const script = path.join(root, "devops/release/release-version.ts");
     const result = spawnSync(process.execPath, [script, "--version", next, "--apply"], {
       cwd: os.tmpdir(),
       env: { ...environment, GIT_DIR: path.join(root, "foreign-git"), GIT_WORK_TREE: os.tmpdir() },

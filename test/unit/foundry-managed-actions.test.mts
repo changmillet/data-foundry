@@ -8,11 +8,11 @@ import {
   describeCliRuntime,
   type RuntimeHostContext,
 } from "@tiangong-lca/cli/runtime";
-import { createManagedFoundryActionProjector } from "../../scripts/lib/foundry-managed-actions.ts";
+import { createManagedFoundryActionProjector } from "../../src/lib/foundry-managed-actions.ts";
 import {
   commandNextActionBindingSha256,
   createFoundryOperationResult,
-} from "../../scripts/lib/foundry-operation-result.ts";
+} from "../../src/lib/foundry-operation-result.ts";
 import { workspaceManifestFixture } from "../helpers/foundry-runtime-manifest.mts";
 
 function fixture(t: TestContext) {

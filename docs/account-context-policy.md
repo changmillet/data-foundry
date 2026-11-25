@@ -16,8 +16,8 @@ checkPaths:
   - AGENTS.md
   - WORKFLOW.md
   - package.json
-  - scripts/with-lca-account.ts
-  - scripts/commands/commit-handoff.ts
+  - src/with-lca-account.ts
+  - src/commands/commit-handoff.ts
 lastReviewedAt: 2026-08-29
 lastReviewedCommit: 05fdeaf22520efb2325ffcde44f86b925e0a7b8a
 lastReviewedNote: "Reviewed for Issue #70: exact CLI 0.1.3 account receipts are parsed through the supported public subpath; private runtime/test internals remain closed and production authority is unchanged."
@@ -103,11 +103,11 @@ Minimum shape:
   "profile": "<profile>",
   "expected_project_ref": "<expected-project-ref>",
   "expected_user_id": "<resolved-user-id>",
-  "required_command_prefix": "node scripts/with-lca-account.ts <profile> --"
+  "required_command_prefix": "node src/with-lca-account.ts <profile> --"
 }
 ```
 
-`scripts/with-lca-account.ts` requires this file whenever `CODEX_THREAD_ID` is present. It rejects a missing guard and any thread, profile, expected-project, or expected-user mismatch before invoking the CLI receipt command. This makes account selection survive context compaction and prevents cross-talk between two active Codex threads in the same repository.
+`src/with-lca-account.ts` requires this file whenever `CODEX_THREAD_ID` is present. It rejects a missing guard and any thread, profile, expected-project, or expected-user mismatch before invoking the CLI receipt command. This makes account selection survive context compaction and prevents cross-talk between two active Codex threads in the same repository.
 
 ## Private vs Public Surfaces
 

@@ -5,7 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { runSurfaceAudit } from "../../scripts/lib/surface-audit.ts";
+import { runSurfaceAudit } from "../../src/lib/surface-audit.ts";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -92,9 +92,13 @@ test("surface audit includes TypeScript modules and explicit TypeScript imports"
     | undefined;
   assert.ok(inbound);
   assert.equal(inbound.ok, true, JSON.stringify(inbound));
-  assert.equal(inbound.scanned, scriptModules(path.join(repoRoot, "scripts")).length);
   assert.equal(
-    inbound.errors.some((error) => error.path === "scripts/lib/production-case-policy.ts"),
+    inbound.scanned,
+    scriptModules(path.join(repoRoot, "src")).length +
+      scriptModules(path.join(repoRoot, "devops")).length,
+  );
+  assert.equal(
+    inbound.errors.some((error) => error.path === "src/lib/production-case-policy.ts"),
     false,
   );
 });
@@ -139,13 +143,13 @@ test("deprecated package-script warnings use package-manager-neutral wording", (
 
 test("surface audit resolves explicit TypeScript and dynamic imports", () => {
   const report = auditFixture({
-    "scripts/foundry.ts": [
+    "src/dev-cli.ts": [
       'import { explicit } from "./lib/explicit.ts";',
       'const dynamic = await import("./lib/dynamic.ts");',
       "void [explicit, dynamic];",
     ].join("\n"),
-    "scripts/lib/explicit.ts": "export const explicit = true;\n",
-    "scripts/lib/dynamic.ts": "export const dynamic = true;\n",
+    "src/lib/explicit.ts": "export const explicit = true;\n",
+    "src/lib/dynamic.ts": "export const dynamic = true;\n",
   });
   const inbound = reportCheck(report, "inbound_modules");
   assert.equal(inbound.scanned, 3);
@@ -154,11 +158,11 @@ test("surface audit resolves explicit TypeScript and dynamic imports", () => {
 
 test("surface audit derives package script and compiler entrypoints from their manifests", () => {
   const report = auditFixture({
-    "package.json": '{"scripts":{"package:pack":"node scripts/pack-entry.ts"}}\n',
-    "tsconfig.package.json": '{"files":["scripts/package-entry.ts","scripts/public-api.ts"]}\n',
-    "scripts/pack-entry.ts": "export {};\n",
-    "scripts/package-entry.ts": "export {};\n",
-    "scripts/public-api.ts": "export {};\n",
+    "package.json": '{"scripts":{"package:pack":"node devops/build/pack-entry.ts"}}\n',
+    "tsconfig.package.json": '{"files":["src/package-entry.ts","src/public-api.ts"]}\n',
+    "devops/build/pack-entry.ts": "export {};\n",
+    "src/package-entry.ts": "export {};\n",
+    "src/public-api.ts": "export {};\n",
   });
   const inbound = reportCheck(report, "inbound_modules");
   assert.equal(inbound.scanned, 3);
@@ -167,16 +171,16 @@ test("surface audit derives package script and compiler entrypoints from their m
 
 test("surface audit emits portable POSIX paths and ignores test-only inbound imports", () => {
   const report = auditFixture({
-    "scripts/foundry.ts": 'import { run } from "./lib/foundry-cli.ts";\nvoid run;\n',
-    "scripts/lib/foundry-cli.ts": "export const run = true;\n",
-    "scripts/lib/only-from-test.ts": "export const testOnly = true;\n",
+    "src/dev-cli.ts": 'import { run } from "./lib/foundry-cli.ts";\nvoid run;\n',
+    "src/lib/foundry-cli.ts": "export const run = true;\n",
+    "src/lib/only-from-test.ts": "export const testOnly = true;\n",
     "test/unit/consumer.test.mts":
-      'import { testOnly } from "../../scripts/lib/only-from-test.ts";\nvoid testOnly;\n',
+      'import { testOnly } from "../../src/lib/only-from-test.ts";\nvoid testOnly;\n',
   });
   const inbound = reportCheck(report, "inbound_modules");
   assert.deepEqual(
     inbound.errors.map((error) => error.path),
-    ["scripts/lib/only-from-test.ts"],
+    ["src/lib/only-from-test.ts"],
   );
   assert.ok(inbound.errors.every((error) => !error.path?.includes("\\")));
 });
@@ -197,29 +201,29 @@ test("surface audit keeps registered and profile docs while reporting true orpha
 
 test("surface audit exempts declared entrypoints but detects hidden handlers and random scripts", () => {
   const entrypointReport = auditFixture({
-    "scripts/check-lint-suppressions.ts": "export {};\n",
-    "scripts/check-tidas-cutover.ts": "export {};\n",
-    "scripts/clean-build-output.ts": "export {};\n",
-    "scripts/foundry.ts": "export {};\n",
-    "scripts/foundry-golden-diff.ts": "export {};\n",
-    "scripts/cases/production-contact-draft.ts": "export {};\n",
-    "scripts/with-lca-account.ts": "export {};\n",
+    "devops/ci/check-lint-suppressions.ts": "export {};\n",
+    "devops/ci/check-tidas-cutover.ts": "export {};\n",
+    "devops/build/clean-build-output.ts": "export {};\n",
+    "src/dev-cli.ts": "export {};\n",
+    "devops/ci/foundry-golden-diff.ts": "export {};\n",
+    "src/cases/production-contact-draft.ts": "export {};\n",
+    "src/with-lca-account.ts": "export {};\n",
   });
   const entrypointInbound = reportCheck(entrypointReport, "inbound_modules");
   assert.equal(entrypointInbound.scanned, 7);
   assert.deepEqual(entrypointInbound.errors, []);
 
   const guardedReport = auditFixture({
-    "scripts/foundry.ts":
+    "src/dev-cli.ts":
       'import { commandHandlers } from "./lib/foundry-cli.ts";\nvoid commandHandlers;\n',
-    "scripts/lib/foundry-cli.ts": [
+    "src/lib/foundry-cli.ts": [
       "const commandHandlers = {",
       "    help: () => null,",
       '    "hidden-command": () => null,',
       "  };",
       "export { commandHandlers };",
     ].join("\n"),
-    "scripts/random.ts": "export const random = true;\n",
+    "src/random.ts": "export const random = true;\n",
   });
   assert.deepEqual(
     reportCheck(guardedReport, "legacy_aliases").errors.map((error) => ({
@@ -230,23 +234,20 @@ test("surface audit exempts declared entrypoints but detects hidden handlers and
   );
   assert.deepEqual(
     reportCheck(guardedReport, "inbound_modules").errors.map((error) => error.path),
-    ["scripts/random.ts"],
+    ["src/random.ts"],
   );
 });
 
 test("metadata and surface audit leaves are native TypeScript with updated consumers", () => {
   for (const stem of ["foundry-command-metadata", "surface-audit"]) {
-    assert.equal(fs.existsSync(path.join(repoRoot, `scripts/lib/${stem}.ts`)), true);
+    assert.equal(fs.existsSync(path.join(repoRoot, `src/lib/${stem}.ts`)), true);
     assert.equal(fs.existsSync(path.join(repoRoot, `scripts/lib/${stem}.mjs`)), false);
   }
   const expectedImports = [
-    ["scripts/commands/core.ts", "../lib/surface-audit.ts"],
-    ["scripts/lib/surface-audit.ts", "./foundry-command-metadata.ts"],
-    [
-      "test/unit/foundry-command-metadata.test.mts",
-      "../../scripts/lib/foundry-command-metadata.ts",
-    ],
-    ["test/unit/surface-audit-typescript.test.mts", "../../scripts/lib/surface-audit.ts"],
+    ["src/commands/core.ts", "../lib/surface-audit.ts"],
+    ["src/lib/surface-audit.ts", "./foundry-command-metadata.ts"],
+    ["test/unit/foundry-command-metadata.test.mts", "../../src/lib/foundry-command-metadata.ts"],
+    ["test/unit/surface-audit-typescript.test.mts", "../../src/lib/surface-audit.ts"],
   ] as const;
   for (const [consumer, specifier] of expectedImports) {
     assert.match(

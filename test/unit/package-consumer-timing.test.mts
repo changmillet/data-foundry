@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { foundryCiReporterUrl } from "../../scripts/ci-test-reporter.ts";
+import { foundryCiReporterUrl } from "../../devops/ci/ci-test-reporter.ts";
 import {
   createPackageConsumerTiming,
   packageConsumerPhases,

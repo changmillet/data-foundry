@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
 import { zipSync } from "fflate";
-import { selectFoundryTidasDistribution } from "../../scripts/lib/foundry-release-tidas.ts";
+import { selectFoundryTidasDistribution } from "../../devops/release/foundry-release-tidas.ts";
 
 const sha = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 const json = (value: unknown) => Buffer.from(`${JSON.stringify(value)}\n`);
