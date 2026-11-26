@@ -5,7 +5,6 @@ import path from "node:path";
 import test from "node:test";
 import {
   createImportLedgerUtils as createImportLedgerUtilsSource,
-  type CloseoutReport,
   type JsonRecord,
   type JsonValue,
 } from "../../src/lib/import-ledger.ts";
@@ -326,7 +325,7 @@ test("blocked closeout emits the remote-write envelope and preserves duplicate e
     };
     const result = createHarness(root).writeCloseoutImportLedger({
       ledgerDir,
-      report: report as unknown as CloseoutReport,
+      report,
       reportPath,
     });
 
@@ -469,7 +468,7 @@ test("ledger skip and error envelopes remain exact for absent inputs, ready repo
     const utils = createHarness(root);
     assert.deepEqual(
       utils.writeCloseoutImportLedger({
-        report: {} as unknown as CloseoutReport,
+        report: {},
         reportPath: "report.json",
         ledgerDir: null,
       }),

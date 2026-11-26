@@ -4,7 +4,7 @@ import { taskAuthorizationAllows } from "../task-authorization.ts";
 import { canonicalDescriptionPair, type CanonicalDescription } from "../canonical-description.ts";
 
 interface LooseRecord {
-  [key: string]: LooseRecord | undefined;
+  [key: string]: unknown;
 }
 
 interface IdentityCanonical {
@@ -20,7 +20,10 @@ interface IdentityProfile {
 
 interface IdentityDecisionDependencies {
   asText: (value: unknown) => string;
-  datasetIdentity: (row: LooseRecord, datasetType: string) => { id: string; version: string };
+  datasetIdentity: (
+    row: LooseRecord,
+    datasetType: string,
+  ) => { id: string | null; version: string | null };
   datasetRowsFileStem: (datasetType: string) => string;
   fileExists: (filePath: string | null | undefined) => boolean;
   flowTypeOfDataSet: (row: LooseRecord) => string;
@@ -53,6 +56,10 @@ interface IdentityDecisionValidation {
 
 interface AppliedIdentityDecision extends IdentityDecisionValidation {
   raw: LooseRecord;
+}
+
+function asRecord(value: unknown): LooseRecord {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as LooseRecord) : {};
 }
 
 export function createIdentityDecisionCommands({
@@ -109,12 +116,13 @@ export function createIdentityDecisionCommands({
   }
 
   function normalizeIdentityDecisionValue(decision: LooseRecord): string {
+    const resolution = asRecord(decision?.resolution);
     const raw = asText(
       decision?.identity_decision ??
         decision?.identityDecision ??
         decision?.decision ??
-        decision?.resolution?.identity_decision ??
-        decision?.resolution?.decision,
+        resolution.identity_decision ??
+        resolution.decision,
     );
     if (["reuse", "reuse_existing", "reference_reuse"].includes(raw)) {
       return "reuse_existing_reference";
@@ -131,20 +139,24 @@ export function createIdentityDecisionCommands({
   function identityDecisionUsedContextKinds(decision: LooseRecord): string[] {
     return unique([
       ...normalizedList(decision?.used_context_kinds ?? decision?.usedContextKinds),
-      ...normalizedList(decision?.resolution?.used_context_kinds),
-      ...normalizedList(decision?.evidence?.used_context_kinds),
+      ...normalizedList(asRecord(decision?.resolution).used_context_kinds),
+      ...normalizedList(asRecord(decision?.evidence).used_context_kinds),
     ]);
   }
 
   function identityDecisionCanonical(decision: LooseRecord): IdentityCanonical | null {
-    const canonical =
+    const resolution = asRecord(decision?.resolution);
+    const canonicalValue =
       decision?.canonical ??
       decision?.selected_reference ??
       decision?.selectedReference ??
-      decision?.resolution?.canonical ??
-      decision?.resolution?.selected_reference ??
+      resolution.canonical ??
+      resolution.selected_reference ??
       null;
-    if (!canonical || typeof canonical !== "object") return null;
+    if (!canonicalValue || typeof canonicalValue !== "object" || Array.isArray(canonicalValue)) {
+      return null;
+    }
+    const canonical = canonicalValue as LooseRecord;
     const id = asText(
       canonical.ref_object_id ?? canonical.refObjectId ?? canonical.id ?? canonical["@refObjectId"],
     );
@@ -159,7 +171,9 @@ export function createIdentityDecisionCommands({
       version:
         asText(canonical.version ?? canonical.ref_version ?? canonical["@version"]) || "00.00.001",
       short_description:
-        explicitDescription || asText(canonical["common:shortDescription"]?.["#text"]) || id,
+        explicitDescription ||
+        asText(asRecord(canonical["common:shortDescription"])["#text"]) ||
+        id,
     };
   }
 
@@ -167,8 +181,8 @@ export function createIdentityDecisionCommands({
     return asText(
       decision?.authoring_package ??
         decision?.authoringPackage ??
-        decision?.authoring_context?.authoring_package ??
-        decision?.authoringContext?.authoringPackage,
+        asRecord(decision?.authoring_context).authoring_package ??
+        asRecord(decision?.authoringContext).authoringPackage,
     );
   }
 
@@ -176,8 +190,8 @@ export function createIdentityDecisionCommands({
     return asText(
       decision?.authoring_package_sha256 ??
         decision?.authoringPackageSha256 ??
-        decision?.authoring_context?.authoring_package_sha256 ??
-        decision?.authoringContext?.authoringPackageSha256,
+        asRecord(decision?.authoring_context).authoring_package_sha256 ??
+        asRecord(decision?.authoringContext).authoringPackageSha256,
     );
   }
 
@@ -205,7 +219,7 @@ export function createIdentityDecisionCommands({
     return normalizedList(
       decision?.closes_action_items ??
         decision?.closesActionItems ??
-        decision?.resolution?.closes_action_items,
+        asRecord(decision?.resolution).closes_action_items,
     ).includes(code);
   }
 
@@ -265,7 +279,7 @@ export function createIdentityDecisionCommands({
         message: "reuse_existing_reference decisions must include canonical ref_object_id/version.",
       });
     }
-    if (!asText(decision?.basis ?? decision?.reason ?? decision?.resolution?.basis)) {
+    if (!asText(decision?.basis ?? decision?.reason ?? asRecord(decision?.resolution).basis)) {
       blockers.push({
         code: "identity_decision_basis_missing",
         dataset_id: id || null,
@@ -434,6 +448,7 @@ export function createIdentityDecisionCommands({
             "Elementary flow identity decisions cannot create new account-local flows. Select a canonical existing flow reference or block unresolved with search evidence.",
         });
       }
+      const rawResolution = asRecord(decision.raw?.resolution);
       decisionEvidenceRows.push({
         dataset_type: datasetType,
         dataset_id: identity.id,
@@ -441,15 +456,13 @@ export function createIdentityDecisionCommands({
         decision_status: identityDecisionCompletionStatus(decision.raw),
         identity_decision: decision.decision,
         canonical: decision.canonical,
-        basis:
-          asText(decision.raw?.basis ?? decision.raw?.reason) ||
-          asText(decision.raw?.resolution?.basis),
+        basis: asText(decision.raw?.basis ?? decision.raw?.reason) || asText(rawResolution.basis),
         evidence: decision.raw?.evidence ?? null,
         used_context_kinds: identityDecisionUsedContextKinds(decision.raw),
         closes_action_items: normalizedList(
           decision.raw?.closes_action_items ??
             decision.raw?.closesActionItems ??
-            decision.raw?.resolution?.closes_action_items,
+            rawResolution.closes_action_items,
         ),
         authoring_package: decision.package_path ? repoRelativePath(decision.package_path) : null,
         authoring_package_sha256: decision.package_path
@@ -476,8 +489,7 @@ export function createIdentityDecisionCommands({
             source: "dataset-identity-decisions-apply",
             decision: decision.decision,
             basis:
-              asText(decision.raw?.basis ?? decision.raw?.reason) ||
-              asText(decision.raw?.resolution?.basis),
+              asText(decision.raw?.basis ?? decision.raw?.reason) || asText(rawResolution.basis),
             evidence: decision.raw?.evidence ?? null,
           },
           reason:
@@ -489,6 +501,7 @@ export function createIdentityDecisionCommands({
         isElementaryFlowIdentityRow(row)
       ) {
         unresolvedRows.push(row);
+        const flowInfo = asRecord(asRecord(row?.flowDataSet).flowInformation);
         unresolvedReferenceRows.push({
           relation: "elementary_flow_identity_ai_decision_unresolved",
           action: "preserve_dependent_process_reference_with_trace",
@@ -502,16 +515,13 @@ export function createIdentityDecisionCommands({
             ref_object_id: identity.id,
             version: identity.version || "00.00.001",
             short_description:
-              referenceShortDescription(
-                row?.flowDataSet?.flowInformation?.dataSetInformation?.name,
-              ) || identity.id,
+              referenceShortDescription(asRecord(flowInfo.dataSetInformation).name) || identity.id,
           },
           identity_decision: {
             source: "dataset-identity-decisions-apply",
             decision: decision.decision,
             basis:
-              asText(decision.raw?.basis ?? decision.raw?.reason) ||
-              asText(decision.raw?.resolution?.basis),
+              asText(decision.raw?.basis ?? decision.raw?.reason) || asText(rawResolution.basis),
             evidence: decision.raw?.evidence ?? null,
           },
           evidence: decision.raw?.evidence ?? null,

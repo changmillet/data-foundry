@@ -49,7 +49,7 @@ type BundleSampleDependencies = {
   flowClassificationSchemaType: (payload: JsonRecord) => string;
   flowTypeOfDataSet: (payload: JsonRecord) => string;
   isConvertedDefaultClassification: (classification: unknown) => boolean;
-  isObjectEmpty: (value: unknown) => boolean;
+  isObjectEmpty: (value: unknown) => unknown;
   jsonSha256: (value: unknown) => string;
   languageForText: (value: unknown) => string;
   multiLang: (text: string, language?: string) => JsonRecord;
@@ -427,7 +427,7 @@ export function createBundleSampleUtils({
       }
     }
 
-    return pathSegments.at(-1) === "common:other" && isObjectEmpty(record);
+    return pathSegments.at(-1) === "common:other" && Boolean(isObjectEmpty(record));
   }
 
   function sanitizeBundlePayload(

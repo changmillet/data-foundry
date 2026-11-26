@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import type { ProcessSourceReferenceRow } from "../source-semantics.ts";
 import { readOnlyStageContract } from "../stage-contract.ts";
 
 export type JsonRecord = Record<string, unknown>;
@@ -100,13 +101,13 @@ export interface FileMap extends JsonRecord {
 
 export interface FinalizeStage extends JsonRecord {
   stage?: string;
-  status?: string;
+  status?: string | null;
   command?: string;
   executable?: string;
   args?: string[];
   exit_code?: number;
   stderr?: string;
-  report?: FinalizeStage;
+  report?: FinalizeStage | null;
   report_file?: string | null;
   cli_validation?: { report: string; exit: number };
   rust_report?: unknown;
@@ -132,7 +133,7 @@ export interface FinalizeStage extends JsonRecord {
   merge_report?: FinalizeStage;
   merge_report_file?: string | null;
   queue_dir?: string | null;
-  cli_package?: JsonRecord;
+  cli_package?: string | JsonRecord | null;
   evidence?: {
     scope_blockers?: JsonRecord[];
     patch_evidence_file?: string | null;
@@ -145,20 +146,14 @@ export interface FinalizeStage extends JsonRecord {
   }>;
   profile?: string;
   commands?: { commit?: unknown; post_write_verify?: unknown };
-  commit_handoff?: { status?: string; blockers?: JsonRecord[] };
+  commit_handoff?: { status?: string | null; blockers?: JsonRecord[] };
   foundry_wrapper?: { stderr?: string };
 }
 
-export interface SourceReferenceRow extends JsonRecord {
-  relation?: string;
-  referenced_source_kind?: string;
-  ref_object_id?: string;
-  version?: string;
-  path?: string;
-}
+export type SourceReferenceRow = ProcessSourceReferenceRow;
 
 export interface SourceSummary extends JsonRecord {
-  dataset_id: string;
+  dataset_id: string | null;
   kind: string;
 }
 
@@ -174,8 +169,21 @@ export type FinalizeIdentityRequest = {
 
 export interface FinalizeDependencies {
   appendOption: (args: string[], name: string, value: unknown) => void;
-  applyCanonicalSupportRewrites: (input: JsonRecord) => FinalizeStage;
-  applyIdentityReferenceRewrites: (input: JsonRecord) => FinalizeStage;
+  applyCanonicalSupportRewrites: (input: {
+    datasetType: string;
+    rowsFile: string;
+    outFile?: string | null;
+    outDir?: string | null;
+    options?: FinalizeOptions;
+  }) => FinalizeStage;
+  applyIdentityReferenceRewrites: (input: {
+    datasetType: string;
+    rowsFile: string;
+    outFile?: string | null;
+    outDir?: string | null;
+    options?: FinalizeOptions;
+    allowMissingIndex?: boolean;
+  }) => FinalizeStage;
   asText: (value: unknown) => string;
   profileFor?: (
     repoRoot: string,
@@ -185,21 +193,38 @@ export interface FinalizeDependencies {
   blockersFromLocationAuditStage: (stage: FinalizeStage) => JsonRecord[];
   buildLibraryContactPayload: (
     options: FinalizeOptions,
-    seed: unknown,
-    context: JsonRecord,
+    seed: JsonRecord | null,
+    context: { rewriteRows?: JsonRecord[]; stats?: Record<string, number> },
   ) => DatasetRow;
   booleanOption: (value: unknown) => boolean;
   compactStageReport: (stage: FinalizeStage) => FinalizeStage;
   cloneJson: <T>(value: T) => T;
   contactGlobalReference: (input: JsonRecord) => JsonRecord;
-  datasetIdentity: (row: DatasetRow, datasetType: string) => { id: string; version: string };
+  datasetIdentity: (
+    row: DatasetRow,
+    datasetType: string,
+  ) => { id: string | null; version: string | null };
   datasetRowsFileStem: (datasetType: string) => string;
   ensureArray: (value: unknown) => JsonRecord[];
-  externalizeUnresolvedProcessFlowExchanges: (input: JsonRecord) => FinalizeStage;
+  externalizeUnresolvedProcessFlowExchanges: (input: {
+    datasetType: string;
+    rowsFile: string;
+    outFile: string;
+    outDir: string;
+    options?: FinalizeOptions;
+  }) => FinalizeStage;
   fileExists: (filePath: string | null | undefined) => boolean;
   normalizedList: (value: unknown) => string[];
   nowIso: () => string;
-  postAuthoringPrewriteGateBlockers: (input: JsonRecord) => JsonRecord[];
+  postAuthoringPrewriteGateBlockers: (input: {
+    schemaStage: FinalizeStage;
+    qaStage: FinalizeStage;
+    locationAuditBlockers: JsonRecord[];
+    curationGate: JsonRecord | null;
+    curationGateReportFile: string | null;
+    requireDeterministicQa?: boolean;
+    requireCurationGate?: boolean;
+  }) => JsonRecord[];
   processSourceReferenceRows: (
     row: DatasetRow,
     sourceLookup: Map<string, SourceSummary>,
@@ -222,20 +247,75 @@ export interface FinalizeDependencies {
   ) => string | null;
   readRowsFile: (filePath: string) => DatasetRow[];
   readReferenceBytes?: (filePath: string) => Buffer;
-  repairTrueSourceClassification: (row: DatasetRow, context: JsonRecord) => void;
-  repairTrueSourceDescription: (row: DatasetRow, context: JsonRecord) => void;
-  repairTrueSourceIdentity: (row: DatasetRow, context: JsonRecord) => void;
+  repairTrueSourceClassification: (
+    row: DatasetRow,
+    context: { sourceFile: unknown; stats: Record<string, number>; repairRows: JsonRecord[] },
+  ) => void;
+  repairTrueSourceDescription: (
+    row: DatasetRow,
+    context: { sourceFile: unknown; stats: Record<string, number>; repairRows: JsonRecord[] },
+  ) => void;
+  repairTrueSourceIdentity: (
+    row: DatasetRow,
+    context: { sourceFile: unknown; stats: Record<string, number>; repairRows: JsonRecord[] },
+  ) => void;
   resolveRepoPath: (filePath: unknown) => string | null;
-  rewriteCanonicalSourceReferences: (row: DatasetRow, context: JsonRecord) => void;
-  rewriteContactReferences: (row: DatasetRow, reference: JsonRecord, stats: JsonRecord) => void;
-  rewriteTrueSourceReferenceDescriptions: (row: JsonRecord, context: JsonRecord) => void;
+  rewriteCanonicalSourceReferences: (
+    row: DatasetRow,
+    context: {
+      datasetType: string;
+      sourceFile: unknown;
+      stats: Record<string, number>;
+      rewriteRows: JsonRecord[];
+      datasetIdentityCache?: { id: string | null; version: string | null } | null;
+      sourceLookup?: Map<string, SourceSummary> | null;
+    },
+  ) => void;
+  rewriteContactReferences: (
+    row: DatasetRow,
+    reference: JsonRecord,
+    stats: {
+      rewritten: number;
+      previous_ids: Set<string>;
+      previous_descriptions: Set<string>;
+    },
+  ) => void;
+  rewriteTrueSourceReferenceDescriptions: (
+    row: JsonRecord,
+    context: {
+      sourceLookup: Map<string, SourceSummary>;
+      sourceFile: unknown;
+      stats: Record<string, number>;
+      rewriteRows: JsonRecord[];
+      datasetIdentityCache?: { id: string | null; version: string | null } | null;
+    },
+  ) => void;
   runDatasetCommitHandoffPlan: (options: JsonRecord) => FinalizeStage;
-  runDatasetCurationCleanup: (input: JsonRecord) => FinalizeStage;
-  runDatasetCurationGate: (input: JsonRecord) => FinalizeStage;
-  runDatasetMutationManifest: (input: JsonRecord) => FinalizeStage;
-  runFinalizeAutoCurationQueue: (input: JsonRecord) => FinalizeStage;
-  runFinalizeIdentityPreflightStage: (input: JsonRecord) => FinalizeStage;
-  runTidasRowsValidation: (input: JsonRecord) => FinalizeStage;
+  runDatasetCurationCleanup: (input: {
+    repoRoot?: string;
+    options?: JsonRecord;
+    processValidationReferences?: {
+      rows: readonly unknown[];
+      files: readonly { path: string; bytes: number; sha256: string }[];
+    };
+  }) => FinalizeStage;
+  runDatasetCurationGate: (input: {
+    repoRoot?: string;
+    cliValidation?: { report: string; exit: number };
+    options?: JsonRecord;
+  }) => FinalizeStage;
+  runDatasetMutationManifest: (input: { repoRoot?: string; options?: JsonRecord }) => FinalizeStage;
+  runFinalizeAutoCurationQueue: (input: {
+    datasetType: string;
+    rowsFile: string;
+    cleanedRowsFile: string;
+    outDir: string;
+    options: FinalizeOptions;
+    fullContextRequirement: unknown;
+    identityReferenceRewriteStage: FinalizeStage | null;
+  }) => FinalizeStage;
+  runFinalizeIdentityPreflightStage: (input: FinalizeIdentityRequest) => FinalizeStage;
+  runTidasRowsValidation: (input: JsonRecord) => JsonRecord;
   runTiangongJsonStage: (stage: string, args: string[]) => FinalizeStage;
   skippedPrewriteStage: (stage: string, reason: string) => FinalizeStage;
   sourceReferenceSemanticBlockers?: (rows: SourceReferenceRow[]) => JsonRecord[];
@@ -245,7 +325,11 @@ export interface FinalizeDependencies {
   ) => string | null;
   sourceSemanticSummary: (row: DatasetRow, sourceFile: string) => SourceSummary;
   unique: <T>(values: T[]) => T[];
-  writeFinalizeImportLedger?: (input: JsonRecord) => FinalizeStage;
+  writeFinalizeImportLedger?: (input: {
+    report: JsonRecord;
+    reportPath: string;
+    ledgerDir: string | null;
+  }) => FinalizeStage;
   writeJson: (filePath: string, value: unknown) => void;
   writeJsonLines: (filePath: string, rows: readonly unknown[]) => void;
 }

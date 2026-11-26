@@ -117,10 +117,8 @@ function statusIs(result: CommandResult | null | undefined, allowed: readonly st
   return allowed.includes(result?.status as string);
 }
 
-export function exitCodeForCommand(
-  command: string,
-  result: CommandResult | null | undefined,
-): number {
+export function exitCodeForCommand(command: string, rawResult: unknown): number {
+  const result = rawResult && typeof rawResult === "object" ? (rawResult as CommandResult) : null;
   switch (command) {
     case "tidas-handshake":
       return result?.foundry_adapter?.exit_code ?? (result?.status === "help" ? 0 : 1);

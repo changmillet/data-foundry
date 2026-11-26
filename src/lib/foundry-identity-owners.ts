@@ -52,24 +52,18 @@ export function createFoundryIdentityOwners(
     resolveTiangongLcaCliCommand: () => cli,
     resolveTiangongLcaCliCommandPrefix: () => [cli.command, ...cli.args],
     resolveTiangongLcaCliBin: () => cli.display,
-    ensureArray,
     readRowsFile: (file: string) =>
       runtime.readRowsFile(file).map((row) => workflowObject(unwrapDatasetPayload(row, type))),
     datasetIdentity: (row: unknown, datasetType: string) => datasetIdentity(row, 0, datasetType),
   };
-  const artifacts = createIdentityPreflightArtifactUtils(
-    dependencies satisfies Record<
-      keyof Parameters<typeof createIdentityPreflightArtifactUtils>[0],
-      unknown
-    > as unknown as Parameters<typeof createIdentityPreflightArtifactUtils>[0],
-  );
+  const artifacts = createIdentityPreflightArtifactUtils(dependencies);
   const preflight = createIdentityPreflightRunCommands({
     ...dependencies,
     ...artifacts,
     executionEnvironment: execution.environment,
     executionCwd: execution.cwd,
     repoRoot: context.assetRoot,
-  } as unknown as Parameters<typeof createIdentityPreflightRunCommands>[0]);
+  });
   return {
     preflight,
     invoke<T>(action: () => T): T {

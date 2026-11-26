@@ -89,7 +89,6 @@
     "src/cases/production-contact-draft.ts": 1688,
     "src/commands/execution-capsule.ts": 1032,
     "src/commands/final-delivery-promotion.ts": 807,
-    "src/dev-cli.ts": 1043,
     "src/lib/decision-owners/classification.ts": 1085,
     "src/lib/decision-owners/identity-preflight.ts": 1719,
     "src/lib/decision-owners/location.ts": 985,

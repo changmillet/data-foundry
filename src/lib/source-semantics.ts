@@ -16,7 +16,7 @@ type PathSegment = string | number;
 type DatasetIdentity = { id: string | null; version: string | null };
 type MutableStats = Record<string, number>;
 
-type SourceMetadata = {
+export type SourceMetadata = {
   shortName: string;
   citation: string;
   description?: string;
@@ -71,7 +71,7 @@ type SourceReferenceRow = {
   short_description: string | null;
 };
 
-type ProcessSourceReferenceRow = SourceReferenceRow & {
+export type ProcessSourceReferenceRow = SourceReferenceRow & {
   dataset_type: "process";
   dataset_id: string | null;
   dataset_version: string | null;

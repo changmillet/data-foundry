@@ -6,6 +6,7 @@ import {
 } from "./handoff-reference-intent.ts";
 import process from "node:process";
 import { createFileArtifactFact, createFoundryCommandSpec } from "../foundry-command-spec.ts";
+import type { TraceQueueCoverageValidator } from "../trace-coverage.ts";
 import {
   taskAuthorizationAllows,
   taskAuthorizationMatches,
@@ -110,7 +111,7 @@ export type CommitHandoffFactoryDependencies = {
   resolveTiangongLcaCliCommand?: () => CliCommand;
   resolveTiangongLcaCliBin: () => string;
   shellQuote: (value: unknown) => string;
-  validateTraceQueueCoverageForRows: (input: JsonRecord) => unknown;
+  validateTraceQueueCoverageForRows: TraceQueueCoverageValidator;
   writeJson: (filePath: string, value: unknown) => unknown;
 };
 

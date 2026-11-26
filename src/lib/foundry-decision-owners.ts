@@ -73,18 +73,10 @@ export function createFoundryDecisionOwners(
       });
     },
   };
-  const classification = createClassificationDecisionCommands(
-    dependencies as unknown as Parameters<typeof createClassificationDecisionCommands>[0],
-  );
-  const location = createLocationDecisionCommands(
-    dependencies as unknown as Parameters<typeof createLocationDecisionCommands>[0],
-  );
-  const identityTask = createIdentityDecisionTaskCommands(
-    dependencies as unknown as Parameters<typeof createIdentityDecisionTaskCommands>[0],
-  );
-  const identity = createIdentityDecisionCommands(
-    dependencies as unknown as Parameters<typeof createIdentityDecisionCommands>[0],
-  );
+  const classification = createClassificationDecisionCommands(dependencies);
+  const location = createLocationDecisionCommands(dependencies);
+  const identityTask = createIdentityDecisionTaskCommands(dependencies);
+  const identity = createIdentityDecisionCommands(dependencies);
   const invoke = <T>(action: () => T): T => {
     const exitCode = process.exitCode;
     try {

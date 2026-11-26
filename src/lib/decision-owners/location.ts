@@ -1,32 +1,35 @@
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import type { DecisionTaskProof, DecisionTaskUtils } from "../decision-task-utils.ts";
 
 interface LooseRecord {
-  [key: string]: LooseRecord | undefined;
+  [key: string]: unknown;
 }
 
 interface ContextFile {
-  kind?: string;
-  path: string;
-  sha256?: string;
-  bytes?: number;
+  kind?: unknown;
+  path?: unknown;
+  sha256?: unknown;
+  bytes?: unknown;
+  [key: string]: unknown;
 }
 
 interface ContractContext {
   files: ContextFile[];
-  missing: Array<Record<string, unknown>>;
+  missing: Array<{ kind: string; path: string; [key: string]: unknown }>;
 }
 
 interface ProvenanceFile {
   file: string | null;
+  [key: string]: unknown;
 }
 
 interface ProvenanceContext {
   source_semantics: ProvenanceFile;
   process_source_references: ProvenanceFile;
   source_reference_rewrites: ProvenanceFile;
-  [key: string]: unknown;
+  [key: string]: ProvenanceFile;
 }
 
 interface DecisionContextBundle {
@@ -34,12 +37,6 @@ interface DecisionContextBundle {
   sha256: string;
   contract_context_files?: ContextFile[];
   shared_context_bundle: { path: string; [key: string]: unknown };
-  [key: string]: unknown;
-}
-
-interface DecisionTaskProof {
-  path: string;
-  blockers: Array<Record<string, unknown>>;
   [key: string]: unknown;
 }
 
@@ -53,11 +50,6 @@ interface QueueSelection {
   [key: string]: unknown;
 }
 
-interface SelectedQueueRow {
-  row: LooseRecord;
-  sourceIndex: number;
-}
-
 interface AttachedInputRow {
   index: number;
   row_type: string;
@@ -65,6 +57,7 @@ interface AttachedInputRow {
   dataset_version: string;
   input_rows: string;
   payload: LooseRecord;
+  [key: string]: unknown;
 }
 
 interface DecisionTemplateRow {
@@ -92,23 +85,22 @@ interface LocationDecisionDependencies {
   asText: (value: unknown) => string;
   buildClassificationDecisionTaskContextFiles: (options: LooseRecord) => ContractContext;
   buildClassificationTaskProvenanceContext: (queuePath: string) => ProvenanceContext;
-  buildDecisionTaskContextBundle: (options: Record<string, unknown>) => DecisionContextBundle;
+  buildDecisionTaskContextBundle: DecisionTaskUtils["buildDecisionTaskContextBundle"];
   classificationDecisionCode: (decision: LooseRecord | undefined) => string;
   classificationDecisionSchemaType: (decision: LooseRecord) => string;
   classificationDecisionUsedContextKinds: (decision: LooseRecord) => string[];
   compactStageReport: (stage: RuntimeStage) => StageSummary;
-  datasetIdentity: (row: LooseRecord, datasetType: string) => { id: string; version: string };
+  datasetIdentity: (
+    row: LooseRecord,
+    type: string,
+  ) => { id: string | null; version: string | null };
   decisionAuthoringContext: (contextBundle: DecisionContextBundle) => Record<string, unknown>;
   decisionCompletionStatus: (decision: LooseRecord | undefined) => string;
   decisionContextBundleSha256: (decision: LooseRecord) => string;
-  decisionTaskBuildStatus: (options: Record<string, unknown>) => string;
-  decisionTaskChunkLabel: (
-    options: LooseRecord,
-    selection: QueueSelection,
-    fallback: string,
-  ) => string;
-  decisionTaskContextBlockers: (options: Record<string, unknown>) => Array<Record<string, unknown>>;
-  decisionTaskContextBundleHashes: (proofs: DecisionTaskProof[]) => string[];
+  decisionTaskBuildStatus: DecisionTaskUtils["decisionTaskBuildStatus"];
+  decisionTaskChunkLabel: DecisionTaskUtils["decisionTaskChunkLabel"];
+  decisionTaskContextBlockers: DecisionTaskUtils["decisionTaskContextBlockers"];
+  decisionTaskContextBundleHashes: (proofs: DecisionTaskProof[]) => Array<string | null>;
   decisionTaskContextFileSummary: (file: ContextFile) => unknown;
   decisionTaskInputRowsOverride: (options: LooseRecord) => string | null;
   decisionTaskProofList: (proof: unknown) => DecisionTaskProof[];
@@ -118,27 +110,23 @@ interface LocationDecisionDependencies {
   hasQueueSelectionOptions: (options: LooseRecord) => boolean;
   hasUnresolvedAiPlaceholder: (value: unknown) => boolean;
   nowIso: () => string;
-  readDecisionTaskProofs: (
-    options: LooseRecord,
-    kind: string,
-    queuePath: string,
-  ) => DecisionTaskProof[];
+  readDecisionTaskProofs: DecisionTaskUtils["readDecisionTaskProofs"];
   readJsonOrJsonLines: (filePath: string) => LooseRecord[];
   repoRelativeMaybe: (filePath: string | null | undefined) => string | null;
   repoRelativePath: (filePath: string) => string;
   repoRoot: string;
   resolveRepoPath: (filePath: unknown) => string | null;
-  rewriteDecisionTaskQueueRowsForChunk: (options: Record<string, unknown>) => LooseRecord[];
+  rewriteDecisionTaskQueueRowsForChunk: DecisionTaskUtils["rewriteDecisionTaskQueueRowsForChunk"];
   runTiangongJsonStage: (stage: string, argv: string[]) => RuntimeStage;
-  selectDecisionTaskQueueRows: (
-    queueRows: LooseRecord[],
-    options: LooseRecord,
-    schemaTypeForRow: (row: LooseRecord) => string,
-  ) => { selection: QueueSelection; selected: SelectedQueueRow[] };
+  selectDecisionTaskQueueRows: DecisionTaskUtils["selectDecisionTaskQueueRows"];
   shellQuote: (value: string) => string;
   unique: <T>(values: T[]) => T[];
   writeJson: (filePath: string, value: unknown) => void;
   writeJsonLines: (filePath: string, rows: readonly unknown[]) => void;
+}
+
+function asRecord(value: unknown): LooseRecord {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as LooseRecord) : {};
 }
 
 function recordArray(value: unknown): LooseRecord[] {
@@ -192,11 +180,11 @@ export function createLocationDecisionCommands({
   writeJsonLines,
 }: LocationDecisionDependencies) {
   function locationQueueInputRows(row: LooseRecord): string {
-    return asText(row?.location_workflow?.commands?.input_rows);
+    return asText(asRecord(asRecord(row?.location_workflow).commands).input_rows);
   }
 
   function locationQueueOutputRows(row: LooseRecord): string {
-    return asText(row?.location_workflow?.commands?.output_rows);
+    return asText(asRecord(asRecord(row?.location_workflow).commands).output_rows);
   }
 
   function locationQueueTargetKey(row: LooseRecord): string {
@@ -634,11 +622,11 @@ export function createLocationDecisionCommands({
   }
 
   function locationDecisionTaskAuthoringContext(task: LooseRecord, taskPath: string) {
-    const contextBundle = task?.context_bundle ?? task?.contextBundle;
-    const contractFiles = recordArray(contextBundle?.contract_context_files);
+    const contextBundle = asRecord(task?.context_bundle ?? task?.contextBundle);
+    const contractFiles = recordArray(contextBundle.contract_context_files);
     return {
-      task: contextBundle?.task ?? repoRelativePath(taskPath),
-      context_bundle_sha256: asText(contextBundle?.sha256),
+      task: contextBundle.task ?? repoRelativePath(taskPath),
+      context_bundle_sha256: asText(contextBundle.sha256),
       required_context_kinds: unique(
         contractFiles.map((file) => asText(file?.kind)).filter(Boolean),
       ),
@@ -660,15 +648,16 @@ export function createLocationDecisionCommands({
   }
 
   function collectSuggestedLocationCodes(queueRow: LooseRecord): string[] {
+    const evidence = asRecord(queueRow?.evidence);
     const values = [
       queueRow?.suggested_location_code,
       queueRow?.suggestedLocationCode,
       queueRow?.suggested_code,
       queueRow?.suggestedCode,
-      queueRow?.evidence?.suggested_value,
-      queueRow?.evidence?.suggestedValue,
+      evidence.suggested_value,
+      evidence.suggestedValue,
     ];
-    for (const candidate of ensureArray(queueRow?.evidence?.candidates)) {
+    for (const candidate of ensureArray(evidence.candidates)) {
       values.push(candidate?.code);
       values.push(candidate?.suggested_value);
     }
@@ -930,7 +919,7 @@ export function createLocationDecisionCommands({
           path.join(outDir, "classification", "location"),
           "--json",
         ]);
-        stage.report_file = resolveRepoPath(stage.report?.files?.report);
+        stage.report_file = resolveRepoPath(asRecord(asRecord(stage.report).files).report);
         stages.push(stage);
         if (stage.exit_code !== 0) {
           blockers.push({
@@ -959,7 +948,7 @@ export function createLocationDecisionCommands({
         decisions: decisions.length,
         stages: stages.length,
         applied: stages.reduce(
-          (total, stage) => total + Number(stage.report?.counts?.applied ?? 0),
+          (total, stage) => total + Number(asRecord(asRecord(stage.report).counts).applied ?? 0),
           0,
         ),
         blockers: blockers.length,

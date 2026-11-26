@@ -140,10 +140,10 @@ export function createTraceCoverageUtils({
     traceQueue: string;
     traceKind: string;
     expectedRows: TraceCoverageRow[];
-    queuePath: string | null | undefined;
+    queuePath: unknown;
     blockers: TraceCoverageBlocker[];
   }): void {
-    const resolved = resolveRepoPath(queuePath);
+    const resolved = resolveRepoPath(typeof queuePath === "string" ? queuePath : null);
     if (!resolved || !fileExists(resolved)) return;
     const actualRows = readJsonLines(resolved).map(asTraceCoverageRow);
     if (actualRows.length !== expectedRows.length) {
@@ -213,12 +213,13 @@ export function createTraceCoverageUtils({
     datasetType: string;
     finalRowsFile: string;
     traceQueues: {
-      unresolved_traces?: string | null;
-      source_exchange_completeness_traces?: string | null;
+      unresolved_traces?: unknown;
+      source_exchange_completeness_traces?: unknown;
     };
     counts: {
-      unresolved_trace_entries: number;
-      source_exchange_completeness_entries: number;
+      unresolved_trace_entries?: unknown;
+      source_exchange_completeness_entries?: unknown;
+      [key: string]: unknown;
     };
     blockers: TraceCoverageBlocker[];
   }): void {
@@ -268,3 +269,7 @@ export function createTraceCoverageUtils({
 
   return { validateTraceQueueCoverageForRows };
 }
+
+export type TraceQueueCoverageValidator = ReturnType<
+  typeof createTraceCoverageUtils
+>["validateTraceQueueCoverageForRows"];

@@ -162,10 +162,10 @@ export interface FlowMapping extends JsonObject {
   evidence_sha256: string;
 }
 
-export interface ComposeOptions extends JsonObject {
-  help?: boolean;
-  request?: string;
-  outDir?: string;
+export interface ComposeOptions extends Record<string, unknown> {
+  help?: unknown;
+  request?: unknown;
+  outDir?: unknown;
 }
 
 export interface AdmissionReceipt extends JsonObject {

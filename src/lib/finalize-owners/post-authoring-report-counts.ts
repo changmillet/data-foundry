@@ -84,7 +84,7 @@ export function buildFinalizeReportCountsAndFiles({
   unresolvedExchangeExternalizeStage: FinalizeStage;
   sourceContactRewriteStage: FinalizeStage;
   sourceContactSupportFinalize: FinalizeStage;
-  sourceContactSupportFinalizeStatus: string | undefined;
+  sourceContactSupportFinalizeStatus: string | null | undefined;
   sourceContactSupportFinalizeAdvisory: boolean;
   sourceContactSupportFinalizeBlockers: number;
   sourceContactSupportFinalizeRawBlockers: number;
@@ -624,18 +624,19 @@ export function attachHandoffAndLedgerToFinalizeReport({
 }
 
 /** Normalizes raw `runTidasRowsValidation` output into the `schema_validate` stage shape. */
-export function normalizeSchemaValidateStage(stage: FinalizeStage): FinalizeStage {
+export function normalizeSchemaValidateStage(stage: Record<string, unknown>): FinalizeStage {
+  const record = stage as FinalizeStage;
   return {
     stage: "schema_validate",
-    command: stage.executable,
-    executable: stage.executable,
-    args: stage.args,
-    exit_code: stage.exit_code,
-    stderr: stage.stderr,
-    report: stage.report,
-    report_file: stage.report_file,
-    rust_report: stage.rust_report,
-    binary_version: stage.binary_version,
+    command: record.executable,
+    executable: record.executable,
+    args: record.args,
+    exit_code: record.exit_code,
+    stderr: record.stderr,
+    report: record.report,
+    report_file: record.report_file,
+    rust_report: record.rust_report,
+    binary_version: record.binary_version,
   };
 }
 

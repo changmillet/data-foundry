@@ -10,6 +10,10 @@ import {
   type MutablePhase,
 } from "./types-and-status.ts";
 
+function asRecord(value: unknown): LooseRecord {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as LooseRecord) : {};
+}
+
 /** Creates the dataset-authoring-plan command implementation backed by modular planning helpers. */
 export function createAuthoringPlanRunner(deps: AuthoringPlanDependencies) {
   const {
@@ -24,6 +28,10 @@ export function createAuthoringPlanRunner(deps: AuthoringPlanDependencies) {
   } = deps;
   const helpers = createAuthoringPlanStatusHelpers(deps);
   const rowsChainHelpers = createAuthoringPlanRowsChainHelpers(deps, helpers);
+
+  function requireRepoPath(value: unknown, fallback: string): string {
+    return resolveRepoPath(value) ?? resolveRepoPath(fallback) ?? fallback;
+  }
 
   function runDatasetAuthoringPlan(options: LooseRecord) {
     if (options.help) {
@@ -51,22 +59,22 @@ export function createAuthoringPlanRunner(deps: AuthoringPlanDependencies) {
     const curationGateReport = readJson(curationGateReportPath);
     const workspaceDir = helpers.authoringPlanWorkspaceDir(curationGateReportPath, options);
     const defaults = helpers.authoringPlanDefaultPaths(workspaceDir);
-    const outDir = resolveRepoPath(options.outDir || path.join(workspaceDir, "authoring-plan"));
-    const contextPaths = helpers.authoringPlanContextPaths(curationGateReport);
-    const classificationQueue = asText(
-      curationGateReport?.context?.classification_queue?.queue_file,
+    const outDir = requireRepoPath(
+      options.outDir || path.join(workspaceDir, "authoring-plan"),
+      path.join(workspaceDir, "authoring-plan"),
     );
-    const locationQueue = asText(curationGateReport?.context?.location_queue?.queue_file);
-    const counts = curationGateReport.counts ?? {};
+    const contextPaths = helpers.authoringPlanContextPaths(curationGateReport);
+    const gateContext = asRecord(curationGateReport?.context);
+    const classificationQueueInfo = asRecord(gateContext.classification_queue);
+    const locationQueueInfo = asRecord(gateContext.location_queue);
+    const classificationQueue = asText(classificationQueueInfo.queue_file);
+    const locationQueue = asText(locationQueueInfo.queue_file);
+    const counts = asRecord(curationGateReport.counts);
     const gateScope = helpers.authoringPlanGateScope(curationGateReport);
     const classificationRows = Number(
-      counts.classification_queue_action_items ??
-        curationGateReport?.context?.classification_queue?.rows ??
-        0,
+      counts.classification_queue_action_items ?? classificationQueueInfo.rows ?? 0,
     );
-    const locationRows = Number(
-      counts.location_queue_action_items ?? curationGateReport?.context?.location_queue?.rows ?? 0,
-    );
+    const locationRows = Number(counts.location_queue_action_items ?? locationQueueInfo.rows ?? 0);
     const identityActionItems = Number(counts.identity_action_items ?? 0);
     const fieldActionItems = Math.max(
       0,
@@ -76,47 +84,58 @@ export function createAuthoringPlanRunner(deps: AuthoringPlanDependencies) {
         Number(counts.location_queue_action_items ?? 0),
     );
 
-    const identityTaskPath = resolveRepoPath(
+    const identityTaskPath = requireRepoPath(
       options.identityDecisionTask || options.identityTask || defaults.identityTask,
+      defaults.identityTask,
     );
-    const identityDecisionsPath = resolveRepoPath(
+    const identityDecisionsPath = requireRepoPath(
       options.identityDecisions || defaults.identityDecisions,
+      defaults.identityDecisions,
     );
     const explicitIdentityApplyReportPath = resolveRepoPath(
       options.identityDecisionApplyReport || options.identityApplyReport,
     );
-    const classificationTaskPath = resolveRepoPath(
+    const classificationTaskPath = requireRepoPath(
       options.classificationDecisionTask ||
         options.classificationTask ||
         defaults.classificationTask,
+      defaults.classificationTask,
     );
-    const classificationDecisionsPath = resolveRepoPath(
+    const classificationDecisionsPath = requireRepoPath(
       options.classificationDecisions || defaults.classificationDecisions,
+      defaults.classificationDecisions,
     );
-    const classificationApplyReportPath = resolveRepoPath(
+    const classificationApplyReportPath = requireRepoPath(
       options.classificationDecisionApplyReport ||
         options.classificationApplyReport ||
         defaults.classificationApplyReport,
+      defaults.classificationApplyReport,
     );
-    const locationTaskPath = resolveRepoPath(
+    const locationTaskPath = requireRepoPath(
       options.locationDecisionTask || options.locationTask || defaults.locationTask,
+      defaults.locationTask,
     );
-    const locationDecisionsPath = resolveRepoPath(
+    const locationDecisionsPath = requireRepoPath(
       options.locationDecisions || defaults.locationDecisions,
+      defaults.locationDecisions,
     );
-    const locationApplyReportPath = resolveRepoPath(
+    const locationApplyReportPath = requireRepoPath(
       options.locationDecisionApplyReport ||
         options.locationApplyReport ||
         defaults.locationApplyReport,
+      defaults.locationApplyReport,
     );
-    const authoringTaskManifestPath = resolveRepoPath(
+    const authoringTaskManifestPath = requireRepoPath(
       options.authoringTaskManifest || options.taskManifest || defaults.authoringTaskManifest,
+      defaults.authoringTaskManifest,
     );
-    const patchCollectReportPath = resolveRepoPath(
+    const patchCollectReportPath = requireRepoPath(
       options.patchCollectReport || defaults.patchCollectReport,
+      defaults.patchCollectReport,
     );
-    const patchApplyReportPath = resolveRepoPath(
+    const patchApplyReportPath = requireRepoPath(
       options.patchApplyReport || defaults.patchApplyReport,
+      defaults.patchApplyReport,
     );
     const identityDatasetTypes = rowsChainHelpers.authoringPlanIdentityDatasetTypes(
       identityTaskPath,
@@ -140,10 +159,11 @@ export function createAuthoringPlanRunner(deps: AuthoringPlanDependencies) {
     const identityChunkSize = helpers.authoringPlanChunkSize(options, "identity");
     const classificationChunkSize = helpers.authoringPlanChunkSize(options, "classification");
     const locationChunkSize = helpers.authoringPlanChunkSize(options, "location");
-    const sharedContextCacheDir = resolveRepoPath(
+    const sharedContextCacheDir = requireRepoPath(
       options.sharedContextCacheDir ||
         options.contextCacheDir ||
         path.join(workspaceDir, "shared-context-cache"),
+      path.join(workspaceDir, "shared-context-cache"),
     );
     const sharedContextCacheDirRef = repoRelativePath(sharedContextCacheDir);
 
@@ -265,9 +285,9 @@ export function createAuthoringPlanRunner(deps: AuthoringPlanDependencies) {
             "--dataset-type",
             datasetType,
             "--limit",
-            limit,
+            String(limit),
             "--offset",
-            offset,
+            String(offset),
             "--chunk-label",
             chunkLabel,
           ];
@@ -319,9 +339,9 @@ export function createAuthoringPlanRunner(deps: AuthoringPlanDependencies) {
             "--dataset-type",
             datasetType,
             "--limit",
-            limit,
+            String(limit),
             "--offset",
-            offset,
+            String(offset),
             "--chunk-label",
             chunkLabel,
           ];
@@ -372,8 +392,8 @@ export function createAuthoringPlanRunner(deps: AuthoringPlanDependencies) {
           authoringTaskManifestPath,
         ]),
         apply_patches:
-          helpers.existingArtifact(authoringTaskManifestPath)?.value?.commands?.apply_all_patches ??
-          null,
+          asRecord(helpers.existingArtifact(authoringTaskManifestPath)?.value?.commands)
+            .apply_all_patches ?? null,
       },
     };
     const phases = [identityPhase, classificationPhase, locationPhase, patchPhase];

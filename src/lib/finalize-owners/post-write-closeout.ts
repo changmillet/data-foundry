@@ -1,6 +1,6 @@
 import path from "node:path";
-import { createFileArtifactFact } from "../foundry-command-spec.ts";
-import type { FoundryArtifactFact } from "../foundry-command-spec.ts";
+import { createFileArtifactFact, type FoundryArtifactFact } from "../foundry-command-spec.ts";
+import type { TraceQueueCoverageValidator } from "../trace-coverage.ts";
 import { normalizeAllowedTraceHashDifference } from "../remote-verification-accepted-diff.ts";
 import { canonicalPayloadSha256, validateUniqueRootReadbacks } from "../post-write-root-proof.ts";
 import type { IntendedRoot, RootReadbackCheck } from "../post-write-root-proof.ts";
@@ -120,7 +120,7 @@ export type PostWriteCloseoutFactoryDependencies = {
   asText: (value: unknown) => string;
   countJsonLinesFile: (filePath: string) => number;
   countRowsFile: (filePath: string) => number;
-  datasetIdentity: (row: JsonRecord, datasetType: string) => { id: string; version: string };
+  datasetIdentity: (row: JsonRecord, type: string) => { id: string | null; version: string | null };
   ensureArray: <T>(value: T | T[] | null | undefined) => T[];
   fileExists: (filePath: string) => boolean;
   fullContextProofCheck: (input: JsonRecord) => FullContextResult;
@@ -133,7 +133,7 @@ export type PostWriteCloseoutFactoryDependencies = {
   reportInputPath: (report: ReportValue) => unknown;
   resolveRepoPath: (value: unknown) => string | null;
   sameResolvedPath: (left: string, right: string) => boolean;
-  validateTraceQueueCoverageForRows: (input: JsonRecord) => unknown;
+  validateTraceQueueCoverageForRows: TraceQueueCoverageValidator;
   writeCloseoutImportLedger?: (input: {
     report: JsonRecord;
     reportPath: string;

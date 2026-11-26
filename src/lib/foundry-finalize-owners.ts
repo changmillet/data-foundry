@@ -36,7 +36,6 @@ import { runDatasetCurationGate } from "./import-curation/curation-gate.ts";
 import { runDatasetMutationManifest } from "./import-curation/mutation-manifest.ts";
 import { normalizeUtcDateTimeString } from "./import-curation/internal/prewrite-cleanup.ts";
 import { runTidasRowsValidation } from "./tidas-adapter.ts";
-import { ensureArray } from "./import-curation/internal/runtime-io.ts";
 import {
   datasetIdentity,
   unwrapDatasetPayload,
@@ -55,13 +54,7 @@ import {
   assertQualifiedFoundryRuntime,
   type QualifiedFoundryRuntime,
 } from "./foundry-runtime-qualification.ts";
-
-function bind<Factory extends (input: never) => unknown>(
-  factory: Factory,
-  dependencies: Record<keyof Parameters<Factory>[0], unknown>,
-): ReturnType<Factory> {
-  return factory(dependencies as never) as ReturnType<Factory>;
-}
+import { isTypedV4CliRuntime } from "./cli-compatibility-capabilities.ts";
 
 interface FoundryFinalizeOwners {
   finalize: ReturnType<typeof createPostAuthoringFinalizeCommands>;
@@ -110,7 +103,6 @@ export function createFoundryFinalizeOwners(
     ...runtime,
     ...rows,
     repoRoot: context.assetRoot,
-    ensureArray,
     datasetIdentity: (row: unknown, type: string) => datasetIdentity(row, 0, type),
     flowTypeOfDataSet: (row: unknown) => rows.flowTypeOfDataSet(unwrapDatasetPayload(row, "flow")),
     flowClassificationSchemaType: (row: unknown) =>
@@ -121,12 +113,12 @@ export function createFoundryFinalizeOwners(
     resolveTiangongLcaCliBin: () => cli.display,
     resolveTiangongLcaCliCommandPrefix: () => [cli.command, ...cli.args],
   };
-  const decisions = bind(createDecisionTaskUtils, base);
-  const proofs = bind(createFullContextProofUtils, { ...base, ...decisions, listImportProfiles });
-  const trace = bind(createTraceCoverageUtils, { ...base, foundryTraceSummary });
-  const canonical = bind(createCanonicalSupportRewriteUtils, base);
-  const source = bind(createSourceSemanticUtils, base);
-  const bundle = bind(createBundleSampleUtils, { ...base, ...source, normalizeUtcDateTimeString });
+  const decisions = createDecisionTaskUtils(base);
+  const proofs = createFullContextProofUtils({ ...base, ...decisions, listImportProfiles });
+  const trace = createTraceCoverageUtils({ ...base, foundryTraceSummary });
+  const canonical = createCanonicalSupportRewriteUtils(base);
+  const source = createSourceSemanticUtils(base);
+  const bundle = createBundleSampleUtils({ ...base, ...source, normalizeUtcDateTimeString });
   const identity = createFoundryIdentityOwners(context, qualified, "flow", {
     environment: execution.environment,
     cwd: temporary,
@@ -144,62 +136,61 @@ export function createFoundryFinalizeOwners(
         expectedUserId: context.accountIntent?.userId,
       }),
   };
-  const references = bind(createIdentityReferenceRewriteUtils, {
+  const references = createIdentityReferenceRewriteUtils({
     ...base,
     ...canonical,
     foundryTraceNamespace: "https://tiangong-lca.dev/foundry/import-curation/1",
     identityPreflightCommands: identityCommands,
   });
-  const cliWrappers = bind(createCliWrapperCommands, {
+  const cliWrappers = createCliWrapperCommands({
     ...base,
     executionEnvironment: localEnvironment,
     executionCwd: temporary,
   });
-  const finalizeUtils = bind(createPostAuthoringFinalizeUtils, {
+  const finalizeUtils = createPostAuthoringFinalizeUtils({
     ...base,
     ...references,
-    cliWrapperCommands:
-      qualified.cli.expectation.package_version === "0.4.0"
-        ? {
-            ...cliWrappers,
-            runDatasetCurationQueueBuild: (options: Record<string, unknown>) => {
-              const file = (value: unknown) => resolveFoundryOutput(context, String(value));
-              const processes = file(options.processes);
-              return buildFoundryCurationQueue({
-                processes,
-                flows: options.flows ? runtime.resolveRepoPath(options.flows) : null,
-                support: runtime
-                  .normalizedList(options.support)
-                  .map((name) => runtime.resolveRepoPath(name)!),
-                external: runtime
-                  .normalizedList(options.externalFlowRef)
-                  .map((name) => runtime.resolveRepoPath(name)!),
-                outDir: file(options.outDir),
-                readInput: readStageRows,
-              });
-            },
-          }
-        : cliWrappers,
+    cliWrapperCommands: isTypedV4CliRuntime(qualified.cli.expectation.package_version)
+      ? {
+          ...cliWrappers,
+          runDatasetCurationQueueBuild: (options: Record<string, unknown>) => {
+            const file = (value: unknown) => resolveFoundryOutput(context, String(value));
+            const processes = file(options.processes);
+            return buildFoundryCurationQueue({
+              processes,
+              flows: options.flows ? runtime.resolveRepoPath(options.flows) : null,
+              support: runtime
+                .normalizedList(options.support)
+                .map((name) => runtime.resolveRepoPath(name)!),
+              external: runtime
+                .normalizedList(options.externalFlowRef)
+                .map((name) => runtime.resolveRepoPath(name)!),
+              outDir: file(options.outDir),
+              readInput: readStageRows,
+            });
+          },
+        }
+      : cliWrappers,
     identityPreflightCommands: identityCommands,
     executionEnvironment: execution.environment,
-    readRowsFile: (file: string) =>
-      runtime.readRowsFile(file).map((row) => unwrapDatasetPayload(row, "")),
+    readRowsFile: (file: string | null | undefined) =>
+      runtime.readRowsFile(file).map((row) => workflowObject(unwrapDatasetPayload(row, ""))),
   });
-  const handoff = bind(createCommitHandoffCommands, {
+  const handoff = createCommitHandoffCommands({
     ...base,
     ...proofs,
     ...trace,
     profileFor,
     executionEnvironment: execution.environment,
   });
-  const closeout = bind(createPostWriteCloseoutCommands, {
+  const closeout = createPostWriteCloseoutCommands({
     ...base,
     ...proofs,
     ...trace,
     executionEnvironment: execution.environment,
     writeCloseoutImportLedger: undefined,
-    readRowsFile: (file: string) =>
-      runtime.readRowsFile(file).map((row) => unwrapDatasetPayload(row, "")),
+    readRowsFile: (file: string | null | undefined) =>
+      runtime.readRowsFile(file).map((row) => workflowObject(unwrapDatasetPayload(row, ""))),
   });
   const readOnlyReports = new WeakMap<
     object,
@@ -223,7 +214,7 @@ export function createFoundryFinalizeOwners(
       );
     const supportType = execution.datasetType;
     if (
-      qualified.cli.expectation.package_version === "0.4.0" &&
+      isTypedV4CliRuntime(qualified.cli.expectation.package_version) &&
       isFoundryEdgeDraftType(supportType) &&
       (dryRun || remoteRead)
     ) {
@@ -240,7 +231,7 @@ export function createFoundryFinalizeOwners(
     }
     const qaType = argv[0] === "qa" ? argv[1] : null;
     if (
-      qualified.cli.expectation.package_version === "0.4.0" &&
+      isTypedV4CliRuntime(qualified.cli.expectation.package_version) &&
       (qaType === "flow" || qaType === "process" || qaType === "lifecyclemodel")
     ) {
       const rowsFile = argv[argv.indexOf("--rows-file") + 1];
@@ -363,7 +354,7 @@ export function createFoundryFinalizeOwners(
     });
     return ownerStage;
   };
-  const finalize = bind(createPostAuthoringFinalizeCommands, {
+  const finalize = createPostAuthoringFinalizeCommands({
     ...base,
     ...canonical,
     ...source,

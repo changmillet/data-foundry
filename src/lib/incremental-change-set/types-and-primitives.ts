@@ -91,10 +91,10 @@ export interface ComparisonRow extends JsonObject {
   new_payload_sha256: string | null;
 }
 
-export interface ComposeOptions extends JsonObject {
-  help?: boolean;
-  request?: string;
-  outDir?: string;
+export interface ComposeOptions extends Record<string, unknown> {
+  help?: unknown;
+  request?: unknown;
+  outDir?: unknown;
 }
 
 export interface OwnerRow extends JsonObject {

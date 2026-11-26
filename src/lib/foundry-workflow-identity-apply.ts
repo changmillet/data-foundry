@@ -124,7 +124,7 @@ export function applyFoundryIdentityDecisions(
             context.assetRoot,
             String(workflowObject(task.files).authoring_package_snapshots_dir),
           ),
-        } as never),
+        }),
       ),
     );
     const files = workflowObject(result.files);
@@ -165,7 +165,7 @@ export function applyFoundryIdentityDecisions(
       const support = createCanonicalSupportRewriteUtils({
         ...runtime,
         ...rows,
-      } as unknown as Parameters<typeof createCanonicalSupportRewriteUtils>[0]);
+      });
       const preflight = createFoundryIdentityOwners(context, qualified, "flow", {
         environment: {},
         cwd: temporary,
@@ -179,12 +179,7 @@ export function applyFoundryIdentityDecisions(
         identityPreflightCommands: preflight,
         datasetIdentity: (row: unknown, type: string) => datasetIdentity(row, 0, type),
       };
-      const rewrites = createIdentityReferenceRewriteUtils(
-        dependencies satisfies Record<
-          keyof Parameters<typeof createIdentityReferenceRewriteUtils>[0],
-          unknown
-        > as unknown as Parameters<typeof createIdentityReferenceRewriteUtils>[0],
-      );
+      const rewrites = createIdentityReferenceRewriteUtils(dependencies);
       const set = next.get("process")!,
         outDir = path.join(request.output, "process-references");
       const result = workflowObject(

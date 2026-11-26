@@ -25,7 +25,7 @@ type ContactRewriteStats = {
 };
 
 type PlaceholderTextStats = {
-  placeholder_text_replacements: number;
+  placeholder_text_replacements?: number;
 };
 
 export function createTidasRowUtils({
@@ -78,10 +78,11 @@ export function createTidasRowUtils({
     shortDescription,
     language = "en",
   }: {
-    id: unknown;
-    version: unknown;
-    shortDescription: unknown;
+    id?: unknown;
+    version?: unknown;
+    shortDescription?: unknown;
     language?: unknown;
+    [key: string]: unknown;
   }) {
     return {
       "@type": "contact data set",
@@ -209,7 +210,7 @@ export function createTidasRowUtils({
       next = cleanEcoSpoldNameText(next);
     }
     if (next !== original) {
-      stats.placeholder_text_replacements += 1;
+      stats.placeholder_text_replacements = (stats.placeholder_text_replacements ?? 0) + 1;
     }
     return next;
   }
@@ -243,9 +244,9 @@ export function createTidasRowUtils({
       .join(" > ");
   }
 
-  function isConvertedDefaultClassification(classificationPath: string) {
+  function isConvertedDefaultClassification(classificationPath: unknown) {
     return /Other service activities\s*>\s*Activities of membership organizations\s*>\s*Activities of other membership organizations\s*>\s*Activities of other membership organizations n\.e\.c\.|Community,\s*social and personal services\s*>\s*Sewage and waste collection,\s*treatment and disposal and other environmental protection services\s*>\s*Other environmental protection services n\.e\.c\./iu.test(
-      classificationPath,
+      asText(classificationPath),
     );
   }
 
@@ -280,7 +281,7 @@ export function createTidasRowUtils({
     return "";
   }
 
-  function writeJsonLines(filePath: string, rows: unknown[]) {
+  function writeJsonLines(filePath: string, rows: readonly unknown[]) {
     writeText(
       filePath,
       rows.map((row) => JSON.stringify(row)).join("\n") + (rows.length ? "\n" : ""),

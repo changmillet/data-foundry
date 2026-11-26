@@ -1,9 +1,11 @@
 import type { DatasetIdentity, JsonRecord } from "./entity-projection.ts";
 
+type ProfileAuth = { authorization?: unknown };
+
 export interface LibraryScopeWorkflowDependencies {
   asText: (value: unknown) => string;
   booleanOption: (value: unknown, fallback?: boolean) => boolean;
-  profileFor: (repoRoot: string, profileId: string, options?: JsonRecord) => JsonRecord;
+  profileFor: (repoRoot: string, profileId: string, options?: JsonRecord) => ProfileAuth;
   repoRoot: string;
   bundleClassificationPath: (payload: unknown, datasetType: string) => unknown;
   cloneJson: <T>(value: T) => T;
@@ -14,7 +16,7 @@ export interface LibraryScopeWorkflowDependencies {
   flowTypeOfDataSet: (payload: unknown) => string;
   jsonSha256: (value: unknown) => string;
   nowIso: () => string;
-  positiveIntegerOption: (value: unknown, fallback: number) => number;
+  positiveIntegerOption: (value: unknown, fallback?: number | null) => number | null | undefined;
   readJson: (filePath: string) => JsonRecord;
   readJsonLines: (filePath: string) => JsonRecord[];
   repoRelativeMaybe: (filePath: string | null | undefined) => string | null;
@@ -26,11 +28,8 @@ export interface LibraryScopeWorkflowDependencies {
   writeJsonLines: (filePath: string, rows: readonly unknown[]) => void;
 }
 
-function isJsonRecord(value: unknown): value is JsonRecord {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
 export function readyScopeFileValue(options: JsonRecord, resolution: JsonRecord): unknown {
-  const files = isJsonRecord(resolution.files) ? resolution.files : {};
+  const raw = resolution.files;
+  const files = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as JsonRecord) : {};
   return options.scopeFile || files.ready_scopes;
 }
