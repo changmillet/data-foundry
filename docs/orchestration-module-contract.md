@@ -45,7 +45,7 @@ checkPaths:
   - package.json
   - pnpm-lock.yaml
 lastReviewedAt: 2026-11-26
-lastReviewedCommit: 5fafc75655a3673ae3758b429063075567557477
+lastReviewedCommit: 20f4fcbd5aa1d51d1ac55f2195e2d7f0a404b090
 lastReviewedNote: "Reviewed final existing-output capture verification on the working delta based on baaa384e. Current writer/runtime/job/profile and source/input checks run before, between and after two fresh output reads; an independent P2 report-before-capture late-drift repro is fixed, including a caught error returning previously written JSON. New receipt publication reloads current writer/Task/runtime and preserves final input verification; ordinary bytewriters, cached replay, sorted depth-first roster, index CAS and authority/science remain unchanged. Focused59/59 and wholeadoption23/23 pass; latejob2RED->2GREEN and retainedCLI first/second/caught negatives are recorded. No cross-operation hash cache or filesystem-wide atomicity claim. baaa preparation remained unused,87bd Native19/20 failed history remains preserved; new full Source/emitted/installed/native qualification is pending. No originalDATA requery/default034/science/release change."
 related:
   - https://github.com/tiangong-lca/data-foundry/issues/70
@@ -119,6 +119,11 @@ Navigate directly to the narrowest owner:
 | Receipt schema, locator projection, and post-prune verification | `control-receipt-contract.ts`, `control-reference-projection.ts`, `control-receipt-verification.ts` | profile execution and payload semantics |
 | Receipt-before-prune orchestration and ownership-safe deletion | `scope-control-retention.ts`, `scope-safe-prune.ts`, `scope-scratch-policy.ts` | verified-state admission and run/store locations |
 | Recomputable shared-context cache eviction | `shared-context-cache-prune.ts` | cache cap and keep-scratch option |
+| Authoring plan types, dependency chain, and runner (R2.2) | `src/lib/authoring-plan/{types-and-status,rows-chain,runner}.ts` | `src/commands/authoring-plan.ts` thin command wrapper |
+| Representative row sampling evidence, ledger, and runner (R2.2) | `src/lib/bundle-sample-rows/{types,flow-location-evidence,process-scope-ledger,commands-and-report,runner}.ts` | `src/commands/bundle-sample-rows.ts` thin command wrapper |
+| Incremental three-way merge, schema/closure, and runner (R2.2) | `src/lib/incremental-change-set/{types-and-primitives,three-way-merge,artifacts-and-schemas,dependencies-and-closure,validation-and-algebra,materialize-and-runner}.ts` | `src/commands/incremental-change-set.ts` pure re-export facade |
+| Topology occurrence convergence, overlay, audit, and compose (R2.2) | `src/lib/topology-convergence/{types-and-io,exchange-and-overlay,admission-and-audit,stage-compose,runner}.ts` | `src/commands/topology-convergence.ts` pure re-export facade |
+| Post-authoring finalize stage helpers, reports, and support rewrites (R2.2) | `src/lib/finalize-owners/post-authoring-{types,support-rewrites,reports,report-counts}.ts` | `src/lib/finalize-owners/post-authoring.ts` ordered prewrite orchestrator |
 
 Some paths may be introduced later in the same Issue #70 branch. A path named here is not executable authority until its code, tests, metadata, and review evidence are merged.
 

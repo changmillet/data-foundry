@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..", "..");
@@ -15,23 +15,33 @@ function readRepoFile(relativePath: string): string {
   return fs.readFileSync(path.join(repoRoot, relativePath), "utf8");
 }
 
-test("topology command exists only as native TypeScript", () => {
+test("topology command exists only as native TypeScript", async () => {
   assert.equal(fs.existsSync(typedPath), true);
   assert.equal(fs.existsSync(legacyPath), false);
-  const source = fs.readFileSync(typedPath, "utf8");
-  assert.doesNotMatch(source, /(?:[:<>,(|]\s*any\b|\bas\s+any\b)/u);
-  assert.doesNotMatch(source, /@ts-(?:ignore|nocheck|expect-error)/u);
-  assert.deepEqual(
-    [...source.matchAll(/export function\s+([A-Za-z0-9_]+)/gu)].map((match) => match[1]),
-    [
-      "stableValue",
-      "stableJson",
-      "sha256Json",
-      "occurrenceKeyedExchanges",
-      "admissionRequestBinding",
-      "createTopologyConvergenceCommands",
-    ],
-  );
+  const libDir = path.join(repoRoot, "src/lib/topology-convergence");
+  const sourceFiles = [
+    typedPath,
+    ...fs
+      .readdirSync(libDir)
+      .filter((entry) => entry.endsWith(".ts"))
+      .map((entry) => path.join(libDir, entry)),
+  ];
+  for (const file of sourceFiles) {
+    const source = fs.readFileSync(file, "utf8");
+    assert.doesNotMatch(source, /(?:[:<>,(|]\s*any\b|\bas\s+any\b)/u);
+    assert.doesNotMatch(source, /@ts-(?:ignore|nocheck|expect-error)/u);
+  }
+  const mod = (await import(pathToFileURL(typedPath).href)) as Record<string, unknown>;
+  for (const exportName of [
+    "stableValue",
+    "stableJson",
+    "sha256Json",
+    "occurrenceKeyedExchanges",
+    "admissionRequestBinding",
+    "createTopologyConvergenceCommands",
+  ]) {
+    assert.equal(typeof mod[exportName], "function");
+  }
 });
 
 test("topology consumers and metadata target the typed module", () => {

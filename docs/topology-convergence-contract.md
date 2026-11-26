@@ -22,8 +22,8 @@ checkPaths:
   - test/commands/topology-convergence.test.mts
   - test/scenarios/topology-convergence-handoff.test.mts
   - docs/execution-capsule-contract.md
-lastReviewedAt: 2026-08-26
-lastReviewedCommit: af5573acf9d8731fc5d7445433f3f3caf633fa8e
+lastReviewedAt: 2026-11-26
+lastReviewedCommit: 20f4fcbd5aa1d51d1ac55f2195e2d7f0a404b090
 lastReviewedNote: "Reviewed for Issue #67 final cutover: native TS7 command, fixture, unit and handoff suites preserve occurrence identity, graph/F-P-D order, admission/activation, artifacts, native errors and zero dispatch."
 ---
 
