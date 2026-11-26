@@ -2,13 +2,12 @@ import path from "node:path";
 import { loadTidasSchema } from "./context-inputs.ts";
 import { asText, ensureArray, resolveRepoPath } from "./runtime-io.ts";
 import {
-  evidenceEntries,
-  evidenceSourceKeys,
-  evidenceTraceKeys,
-  firstNonEmptyEvidenceValue,
   hasNonEmptyTraceEvidence,
-} from "./workflow-authoring-tasks.ts";
+  hasStructuredTraceEvidence,
+} from "./workflow-evidence-primitives.ts";
 import { isAnnualSupplyTarget } from "./workflow-queue-context.ts";
+
+export { hasStructuredTraceEvidence };
 
 interface JsonRecord {
   [key: string]: unknown;
@@ -82,17 +81,6 @@ function asTask(value: unknown): AuthoringTask {
 
 function asActionItem(value: unknown): ActionItem {
   return isRecord(value) ? value : {};
-}
-
-// part-04.mjs
-export function hasStructuredTraceEvidence(value: unknown): boolean {
-  return evidenceEntries(value)
-    .filter((entry) => entry && typeof entry === "object" && !Array.isArray(entry))
-    .some(
-      (entry) =>
-        firstNonEmptyEvidenceValue(entry, evidenceSourceKeys) &&
-        firstNonEmptyEvidenceValue(entry, evidenceTraceKeys),
-    );
 }
 
 export function objectTraceEntries(value: unknown, traceKey: string): unknown[] {

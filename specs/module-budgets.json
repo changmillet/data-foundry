@@ -93,6 +93,7 @@
     "src/commands/final-delivery-promotion.ts": 807,
     "src/commands/incremental-change-set.ts": 2346,
     "src/commands/topology-convergence.ts": 1861,
+    "src/dev-cli.ts": 1043,
     "src/lib/decision-owners/classification.ts": 1085,
     "src/lib/decision-owners/identity-preflight.ts": 1719,
     "src/lib/decision-owners/location.ts": 985,
@@ -111,12 +112,10 @@
     "src/lib/identity-reference-rewrite-utils.ts": 1117,
     "src/lib/import-curation/curation-gate.ts": 839,
     "src/lib/import-curation/internal/full-context-proof.ts": 832,
-    "src/lib/import-curation/internal/workflow-authoring-tasks.ts": 1138,
     "src/lib/import-curation/internal/workflow-decision-full-context.ts": 1237,
     "src/lib/import-curation/internal/workflow-identity-preflight.ts": 1565,
     "src/lib/import-curation/internal/workflow-reference-closure.ts": 1214,
     "src/lib/import-curation/internal/workflow-row-transform-context.ts": 954,
-    "src/lib/import-curation/internal/workflow-semantic-actions.ts": 1771,
     "src/lib/import-curation/mutation-manifest.ts": 854,
     "src/lib/import-ledger.ts": 1134,
     "src/lib/source-semantics.ts": 1198
@@ -127,13 +126,7 @@
       "src/commands/location-decisions.ts"
     ]
   },
-  "allowed_cycles": [
-    [
-      "src/lib/import-curation/internal/workflow-authoring-tasks.ts",
-      "src/lib/import-curation/internal/workflow-patch-evidence.ts",
-      "src/lib/import-curation/internal/workflow-semantic-actions.ts"
-    ]
-  ],
+  "allowed_cycles": [],
   "forbidden_cross_imports": [
     {
       "from": "src/",

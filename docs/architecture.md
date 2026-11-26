@@ -22,8 +22,8 @@ checkPaths:
   - docs/orchestration-module-contract.md
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
-lastReviewedAt: 2026-11-25
-lastReviewedCommit: a191bd3dbe633e60ef40ab5fb6fc5e00c015fd02
+lastReviewedAt: 2026-11-26
+lastReviewedCommit: 5fafc75655a3673ae3758b429063075567557477
 lastReviewedNote: "Foundry #306: retired completed historical JS-to-TS wave migration scaffolding tests in favor of zero-javascript-ratchet and toolchain-contract, and introduced stat-guarded immutable component digest caching; runtime architecture, qualification, authorization and release boundaries remain unchanged."
 ---
 
@@ -65,7 +65,7 @@ The local descriptor preparer in `foundry-task-input-preparation.ts` derives dig
 
 Preparation quality review is a Foundry-owned local policy decision over retained CLI QA evidence. `foundry-quality-review-input.ts` selects strict descriptors; `foundry-quality-review.ts` registers and rehydrates task-indexed evidence; `foundry-quality-review-lineage.ts` verifies the existing cleanup producer's exact validation-context derivation. Assessment, curation, finalization and execution admission consume the same narrow receipt. The CLI continues to own numerical QA, existing reference owners continue to own closure, and ordinary task authorization continues to own write permission. No separate task/state store or dataset writer is introduced.
 
-`foundry-facade.ts` is the public orchestration boundary. `foundry-operation-result.ts` owns the strict single-result envelope and exits; `foundry-task-start-spec.ts` owns bounded user intent; `foundry-facade-store.ts` owns deterministic request/revision indexes and task pointers; `foundry-migration-inventory.ts` owns the read-only W10 input plan. The facade calls `createFoundryRuntime` for task creation, inspection, deterministic cleanup, qualified native conversion and CLI contract-context preparation. Each local stage uses the existing task transaction. It does not instantiate the legacy command graph for public requests.
+`src/foundry-facade.ts` is the public orchestration composition entrypoint (`<= 500` lines), delegating support helpers, queue/scope/assessment projection, migration handlers, and explicit/automatic resume stages to `src/lib/foundry-facade/{facade-support,facade-queue-and-scope,facade-task-projection,facade-migration-handlers,facade-resume-inputs,facade-resume-stages}.ts`. `foundry-operation-result.ts` owns the strict single-result envelope and exits; `foundry-task-start-spec.ts` owns bounded user intent; `foundry-facade-store.ts` owns deterministic request/revision indexes and task pointers; `foundry-migration-inventory.ts` owns the read-only W10 input plan. The facade calls `createFoundryRuntime` for task creation, inspection, deterministic cleanup, qualified native conversion and CLI contract-context preparation. Each local stage uses the existing task transaction. It does not instantiate the legacy command graph for public requests.
 
 `foundry-workflow-decisions.ts` prepares classification/location work through the reusable factories in `lib/decision-owners/`; the original flat command modules remain thin adapters. `foundry-decision-owners.ts` composes these factories with installed CLI schemas, canonical row helpers and isolated local CLI execution. Semantic submission dispatches the selected owner against its exact current task context, publishes successful rows and requires reassessment before another owner consumes them.
 
@@ -128,7 +128,7 @@ entrypoint + args
   -> scenario and real-case fixtures
 ```
 
-Physical source ownership is split into `src/` (public package/runtime facade, the 15-command `src/dev-cli.ts` diagnostic/offline-planner CLI, and the 64 consumer-policy internal stages) and `devops/{build,ci,release}/` (package staging, CI sharding/Golden/lint gates, and four-platform release orchestration). `specs/module-budgets.json` enforces an 800-line default module ceiling, shrink-only debt/owner/semantic ceilings across 100% of `src/` and `devops/`, `src/lib/` below `src/commands/`, and zero `src/ -> devops/` imports.
+Physical source ownership is split into `src/` (public package/runtime facade, the 15-command `src/dev-cli.ts` diagnostic/offline-planner CLI, and the 64 consumer-policy internal stages) and `devops/{build,ci,release}/` (package staging, CI sharding/Golden/lint gates, and four-platform release orchestration). `specs/module-budgets.json` enforces an 800-line default module ceiling across all top-level and nested files in `src/` and `devops/` (`src/*.ts`, `src/**/*.ts`, `devops/*.ts`, `devops/**/*.ts`), shrink-only debt/owner/semantic ceilings, `src/lib/` below `src/commands/`, zero circular dependencies (`allowed_cycles: []`), and zero `src/ -> devops/` imports.
 
 The shared BAFU/USLCI/Worldsteel batch path splits resume by evidence. `cli-bounded-batch-runner.ts` owns only the generic run contract/lock; `foundry-scope-batch-runner.ts` owns item projections and CLI event/recovery adaptation. `scope-resume-contract.ts` plus `scope-source-content.ts` bind source/shared bytes, options, stage/CommandSpec and CLI identity. `scope-resume-ledger.ts` plus `scope-resume-projection.ts` admit only exact verified/blocked rows and re-admit repaired contracts. `scope-attempt-ledger.ts` compacts consumed incomplete attempts, while `scope-mutation-recovery.ts` accepts only exact process closeout readback. `process-scope-resume.ts` binds finalize checkpoint and current report bytes; `flow-resume-ledger.ts` plus `verified-flow-write.ts` bind canonical Flow payload SHA. These local contracts can prevent replay or require reprocessing, but they cannot authorize a new remote mutation.
 

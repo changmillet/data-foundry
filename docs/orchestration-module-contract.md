@@ -44,8 +44,8 @@ checkPaths:
   - test/commands/bafu-*.test.mts
   - package.json
   - pnpm-lock.yaml
-lastReviewedAt: 2026-10-10
-lastReviewedCommit: baaa384e1db47fb53eb29f7b3764e448510aeff1
+lastReviewedAt: 2026-11-26
+lastReviewedCommit: 5fafc75655a3673ae3758b429063075567557477
 lastReviewedNote: "Reviewed final existing-output capture verification on the working delta based on baaa384e. Current writer/runtime/job/profile and source/input checks run before, between and after two fresh output reads; an independent P2 report-before-capture late-drift repro is fixed, including a caught error returning previously written JSON. New receipt publication reloads current writer/Task/runtime and preserves final input verification; ordinary bytewriters, cached replay, sorted depth-first roster, index CAS and authority/science remain unchanged. Focused59/59 and wholeadoption23/23 pass; latejob2RED->2GREEN and retainedCLI first/second/caught negatives are recorded. No cross-operation hash cache or filesystem-wide atomicity claim. baaa preparation remained unused,87bd Native19/20 failed history remains preserved; new full Source/emitted/installed/native qualification is pending. No originalDATA requery/default034/science/release change."
 related:
   - https://github.com/tiangong-lca/data-foundry/issues/70
@@ -81,9 +81,9 @@ Issue #70 started from five owners totaling 16,680 lines:
 | `bafu-process-scope-e2e.ts`         |         2,204 |                     at most 500 |
 | `bafu-batch-import-run.ts`          |         6,295 | at most 500 after CLI migration |
 
-The executable ceilings are machine-owned repo-wide across `src/**/*.ts` and `devops/**/*.ts` by `specs/module-budgets.json` (`default_max_lines: 800`, shrink-only `debt_ceiling_lines`, `owner_ceiling_lines`, and `semantic_module_ceiling_lines`, plus `0` `src/ -> devops/` cross-imports) and may only decrease. Ordinary semantic stages target at most 800 lines. A pure ordered-rule module may temporarily use the 1,200-line target only when rule precedence is one contract; a larger migration ceiling is debt, not permission to grow. Split by artifact, policy, or stage meaning rather than `part-N` filenames.
+The executable ceilings are machine-owned repo-wide across `src/*.ts`, `src/**/*.ts`, `devops/*.ts`, and `devops/**/*.ts` by `specs/module-budgets.json` (`default_max_lines: 800`, shrink-only `debt_ceiling_lines`, `owner_ceiling_lines`, and `semantic_module_ceiling_lines`, plus `0` `src/ -> devops/` cross-imports) and may only decrease. Ordinary semantic stages target at most 800 lines. A pure ordered-rule module may temporarily use the 1,200-line target only when rule precedence is one contract; a larger migration ceiling is debt, not permission to grow. Split by artifact, policy, or stage meaning rather than `part-N` filenames.
 
-The same ratchet enforces dependency direction and SCC stability. `src/lib/**` does not import command owners except the explicitly recorded dispatcher edge. The characterized authoring three-module SCC remains the only cycle; no orchestration extraction may add another.
+The same ratchet enforces dependency direction and zero circular dependencies (`allowed_cycles: []`). `src/lib/**` does not import command owners except the explicitly recorded dispatcher edge. The former three-module authoring SCC has been eliminated into acyclic submodules (`workflow-evidence-primitives.ts`, `workflow-authoring-template-helpers.ts`, `workflow-semantic-text-rules.ts`, `workflow-semantic-content-saturation.ts`, `workflow-authoring-patch-validation.ts`, and `workflow-authoring-context-bundle.ts`), and no change may reintroduce a cycle.
 
 ## 3. Semantic stage map
 
