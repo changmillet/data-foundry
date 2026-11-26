@@ -19,6 +19,12 @@ import {
   resolveRepoPath,
 } from "./runtime-io.ts";
 import {
+  type DecisionApplyContextLike,
+  type ProfileLike,
+  type RowsTransformContextLike,
+  type UnresolvedExchangeExternalizationContextLike,
+} from "./workflow-context-types.ts";
+import {
   type IdentityDecisionApplyContext,
   identityDecisionApplyContextClosesAction,
 } from "./workflow-identity-decision-context.ts";
@@ -92,31 +98,9 @@ interface IdentityPreflightContext {
   pending: number;
 }
 
-interface TransformContextLike extends JsonRecord {
-  status?: unknown;
-  inputRowsFile?: string | null;
-  outputRowsFile?: string | null;
-  inputRows?: string[];
-  outputRows?: string[];
-  inputPayloadSha256ByIdentity?: Map<string, string>;
-  outputPayloadSha256ByIdentity?: Map<string, string>;
-}
-
-interface DecisionApplyContext extends TransformContextLike {
-  reportPath?: string | null;
-  inputRows: string[];
-  outputRows: string[];
-}
-
-interface ExternalizationContext extends TransformContextLike {
-  affectedKeys: Set<string>;
-  externalizedExchangeCountByIdentity: Map<string, number>;
-  outputPayloadSha256ByIdentity: Map<string, string>;
-  reportPathRelative: string | null;
-  inputRowsFileRelative: string | null;
-  outputRowsFileRelative: string | null;
-  tracesFileRelative: string | null;
-}
+type TransformContextLike = RowsTransformContextLike;
+type DecisionApplyContext = DecisionApplyContextLike;
+type ExternalizationContext = UnresolvedExchangeExternalizationContextLike;
 
 interface TransformOptions {
   patchApplyContext?: TransformContextLike | null;
@@ -159,7 +143,7 @@ interface AttachFreshnessOptions extends TransformOptions {
 }
 
 interface SourceContextOptions {
-  profile?: JsonRecord | null;
+  profile?: ProfileLike | null;
   datasetType: string;
   curationQueueContext?: JsonRecord | null;
   context?: { rows?: unknown } | null;
@@ -196,7 +180,7 @@ interface IdentityGateOptions {
   datasetType: string;
   identity: DatasetIdentity;
   curationQueueContext?: JsonRecord | null;
-  profile?: JsonRecord | null;
+  profile?: ProfileLike | null;
 }
 
 interface AiDecisionActionOptions {
@@ -239,12 +223,12 @@ interface ContentQualityOptions {
   repoRoot: string | null;
   payload: unknown;
   datasetType: string;
-  profile?: JsonRecord | null;
+  profile?: ProfileLike | null;
 }
 
 interface PrewriteIdentityOptions {
   allowAccountLocalSupportAndElementary?: boolean;
-  profile?: JsonRecord | null;
+  profile?: ProfileLike | null;
 }
 
 interface QueueAuthoringOptions {
@@ -497,15 +481,14 @@ export function classificationFreshnessAllowance({
   if (!requestMatchesClassificationInput || !currentMatchesClassificationOutput) {
     return null;
   }
+  const reportPath = asText(classificationDecisionApplyContext.reportPath);
   return {
     reason: "classification_decision_apply",
-    report: classificationDecisionApplyContext.reportPath
-      ? repoRelativePath(repoRoot, classificationDecisionApplyContext.reportPath)
-      : null,
-    input_rows_files: classificationDecisionApplyContext.inputRows.map((file) =>
+    report: reportPath ? repoRelativePath(repoRoot, reportPath) : null,
+    input_rows_files: (classificationDecisionApplyContext.inputRows ?? []).map((file) =>
       repoRelativePath(repoRoot, file),
     ),
-    output_rows_files: classificationDecisionApplyContext.outputRows.map((file) =>
+    output_rows_files: (classificationDecisionApplyContext.outputRows ?? []).map((file) =>
       repoRelativePath(repoRoot, file),
     ),
     request_payload_matches_classification_input: requestMatchesClassificationInput,

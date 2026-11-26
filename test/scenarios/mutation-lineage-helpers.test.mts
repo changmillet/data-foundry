@@ -297,7 +297,7 @@ test("full-context lineage accepts deterministic location patch source contact s
       sourceContactRewriteContext,
       canonicalSupportRewriteContext,
       cleanupContext,
-    } as unknown as NonNullable<Parameters<typeof attachIdentityPreflightFreshness>[2]>,
+    },
   );
   assert.ok(attachedFreshness?.freshness);
   const freshness = attachedFreshness.freshness as unknown as {

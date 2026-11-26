@@ -1,6 +1,7 @@
 import { dataSetInformation, datasetRoot } from "./dataset-payload.ts";
 import { asText, ensureArray } from "./runtime-io.ts";
 import { collectCommonOtherTraceEntries } from "./trace-summary.ts";
+import { type ProfileLike } from "./workflow-context-types.ts";
 import {
   hasNonEmptyTraceEvidence,
   hasStructuredTraceEvidence,
@@ -26,7 +27,7 @@ import {
 } from "./workflow-semantic-text-rules.ts";
 
 interface ProfileOptions {
-  profile?: JsonRecord | null;
+  profile?: ProfileLike | null;
 }
 
 export interface ClassificationOptions extends ProfileOptions {

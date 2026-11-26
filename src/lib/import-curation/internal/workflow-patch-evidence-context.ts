@@ -11,6 +11,7 @@ import {
   resolveRepoPath,
   unique,
 } from "./runtime-io.ts";
+import { type RowsTransformContextLike } from "./workflow-context-types.ts";
 import { identityDecisionApplyContextHasDecision } from "./workflow-identity-decision-context.ts";
 import { readFileArtifactIfOption, readJsonLines } from "./workflow-patch-collect.ts";
 import { isAnnualSupplyTarget } from "./workflow-queue-context.ts";
@@ -99,10 +100,7 @@ interface ReadIndex<TKey, TValue> {
   get(key: TKey): TValue[] | undefined;
 }
 
-interface CleanupContext extends JsonRecord {
-  status?: unknown;
-  sourceExchangeCompletenessProofs?: unknown;
-}
+type CleanupContext = RowsTransformContextLike;
 
 interface DeterministicSourceCleanupOptions {
   trace: unknown;
@@ -118,7 +116,7 @@ interface TraceSummary extends JsonRecord {
 
 interface TracePatchEvidenceOptions {
   traceSummary?: TraceSummary | null;
-  aiPatchEvidence: PatchEvidenceEntry[];
+  aiPatchEvidence: readonly unknown[];
   identityDecisionApplyContext?: unknown;
   cleanupContext?: CleanupContext | null;
   identity?: DatasetIdentity | null;

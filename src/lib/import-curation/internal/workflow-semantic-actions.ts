@@ -1,5 +1,6 @@
 import { fullContextAiCompletionRequirement } from "./context-inputs.ts";
 import { asText } from "./runtime-io.ts";
+import { type ProfileLike } from "./workflow-context-types.ts";
 import {
   collectNamePlanQualitySemanticActions,
   collectTextEntries,
@@ -22,7 +23,6 @@ import {
   textValue,
   traceAttributeMap,
   traceObjectsNamed,
-  type JsonRecord,
   type SemanticAction,
 } from "./workflow-semantic-text-rules.ts";
 import {
@@ -77,7 +77,7 @@ import {
 interface ProfileActionOptions {
   datasetType: string;
   payload: unknown;
-  profile: JsonRecord | null | undefined;
+  profile: ProfileLike | null | undefined;
   hasClassificationQueueContext?: boolean;
 }
 
