@@ -20,7 +20,7 @@ checkPaths:
   - specs/module-budgets.json
   - test/**
 lastReviewedAt: 2026-11-27
-lastReviewedCommit: 10feea4149832907c71166582cec23199e022427
+lastReviewedCommit: 029c33c276ed633a36163813df5e53ff5782f779
 lastReviewedNote: "Foundry #306: retired 41 completed JS-to-TS wave/test-migration scaffolding suites covered by zero-javascript-ratchet and toolchain-contract, shared snapshot/archive/store helpers across heavy installed-package and adoption scenarios, and added test:fast / test:smoke:public scripts."
 ---
 
