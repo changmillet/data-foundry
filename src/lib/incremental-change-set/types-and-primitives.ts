@@ -512,7 +512,8 @@ function replacePointer<T>(value: T, pointer: string, replacement: unknown): T {
     .slice(1)
     .split("/")
     .map((segment) => segment.replaceAll("~1", "/").replaceAll("~0", "~"));
-  let current = output as unknown as Record<string, unknown>;
+  const root: unknown = output;
+  let current = root as Record<string, unknown>;
   for (const segment of segments.slice(0, -1)) {
     current = current[segment] as Record<string, unknown>;
   }

@@ -186,6 +186,124 @@ export async function prepareFoundryOwnerExecution(
   );
 }
 
+function parseStoredInputFact(value: unknown) {
+  const fact = workflowObject(value);
+  if (
+    typeof fact.path !== "string" ||
+    typeof fact.bytes !== "number" ||
+    !Number.isSafeInteger(fact.bytes) ||
+    fact.bytes < 0 ||
+    typeof fact.sha256 !== "string"
+  ) {
+    throw new FoundryContextError(
+      "execution_request_invalid",
+      "Execution request input fact is invalid.",
+    );
+  }
+  return { path: fact.path, bytes: fact.bytes, sha256: fact.sha256 };
+}
+
+function parseOwnerExecutionRequest(
+  context: FoundryRuntimeContext,
+  rawValue: Record<string, unknown>,
+): OwnerExecutionRequest {
+  const rawPolicy = workflowObject(rawValue.policy);
+  const rawContent = workflowObject(rawValue.content);
+  if (
+    rawValue.schema !== "tiangong-foundry.owner-execution-request.v1" ||
+    typeof rawPolicy.task_id !== "string" ||
+    typeof rawPolicy.actor_id !== "string" ||
+    rawPolicy.task_id !== context.taskId ||
+    rawPolicy.actor_id !== context.actorId ||
+    typeof rawValue.scope_id !== "string" ||
+    typeof rawValue.handoff_file !== "string" ||
+    typeof rawContent.authorization !== "string" ||
+    typeof rawPolicy.dataset_type !== "string" ||
+    typeof rawPolicy.project_ref !== "string" ||
+    typeof rawPolicy.user_id !== "string" ||
+    typeof rawPolicy.account_mode !== "string" ||
+    typeof rawPolicy.state_code !== "number" ||
+    (rawValue.finalize_file !== null && typeof rawValue.finalize_file !== "string") ||
+    (rawValue.mutation_file !== null && typeof rawValue.mutation_file !== "string")
+  )
+    throw new FoundryContextError(
+      "execution_request_invalid",
+      "Execution request does not belong to this task.",
+    );
+  const inputFact = parseStoredInputFact(rawContent.input);
+  const capsuleFact = parseStoredInputFact(rawContent.capsule);
+  const commit = isEdgeSupportPlan(rawContent.commit)
+    ? rawContent.commit
+    : parseFoundryCommandSpec(rawContent.commit);
+  const verify = isEdgeSupportPlan(commit) ? null : parseFoundryCommandSpec(rawContent.verify);
+  if (isEdgeSupportPlan(commit)) {
+    if (
+      rawContent.verify !== null ||
+      commit.dataset_type !== rawPolicy.dataset_type ||
+      commit.user_id !== rawPolicy.user_id ||
+      commit.project_ref !== rawPolicy.project_ref ||
+      sha256Json(commit.input) !== sha256Json(inputFact)
+    )
+      throw new FoundryContextError(
+        "execution_request_invalid",
+        "The Edge draft request differs from the sealed scope.",
+      );
+  }
+  const parsedItemContract = parseBatchItemContract(rawValue.item_contract);
+  const policy = {
+    task_id: rawPolicy.task_id,
+    actor_id: rawPolicy.actor_id,
+    project_ref: rawPolicy.project_ref,
+    user_id: rawPolicy.user_id,
+    state_code: rawPolicy.state_code,
+    dataset_type: rawPolicy.dataset_type,
+    account_mode: rawPolicy.account_mode,
+    ...(rawPolicy.repair_scope === true ? { repair_scope: true as const } : {}),
+  };
+  const requestContent = {
+    authorization: rawContent.authorization,
+    input: inputFact,
+    capsule: capsuleFact,
+    commit,
+    verify,
+  };
+  const content = JSON.parse(JSON.stringify(requestContent)) as BatchJsonValue;
+  const expectedContract = createBatchContract({
+    identity: { task: policy.task_id, scope: rawValue.scope_id },
+    content,
+    policy,
+  });
+  const expectedItemContract = createBatchItemContract({
+    item_id: rawValue.scope_id,
+    content,
+    policy,
+  });
+  if (
+    rawValue.scope_id !== sha256Json({ task: context.taskId, type: policy.dataset_type }) ||
+    policy.project_ref !== context.accountIntent?.projectRef ||
+    policy.user_id !== context.accountIntent?.userId ||
+    policy.account_mode !== (context.accountIntent?.accountMode ?? "ordinary") ||
+    policy.state_code !== 0 ||
+    sha256Json(rawValue.contract) !== sha256Json(expectedContract) ||
+    sha256Json(rawValue.item_contract) !== sha256Json(expectedItemContract)
+  )
+    throw new FoundryContextError(
+      "execution_request_invalid",
+      "Owner request scope, account or batch projection changed.",
+    );
+  return {
+    schema: "tiangong-foundry.owner-execution-request.v1",
+    scope_id: rawValue.scope_id,
+    content: requestContent,
+    policy,
+    contract: expectedContract,
+    item_contract: parsedItemContract,
+    handoff_file: rawValue.handoff_file,
+    finalize_file: rawValue.finalize_file,
+    mutation_file: rawValue.mutation_file,
+  };
+}
+
 export function readOwnerExecutionRequests(
   context: FoundryRuntimeContext,
   entries: readonly ArtifactEntry[],
@@ -198,58 +316,7 @@ export function readOwnerExecutionRequests(
     )
     .map((entry) => {
       const artifact = readWorkflowArtifact(context, entry);
-      const request = artifact.value as unknown as OwnerExecutionRequest;
-      if (
-        request.schema !== "tiangong-foundry.owner-execution-request.v1" ||
-        request.policy.task_id !== context.taskId ||
-        request.policy.actor_id !== context.actorId
-      )
-        throw new FoundryContextError(
-          "execution_request_invalid",
-          "Execution request does not belong to this task.",
-        );
-      parseBatchItemContract(request.item_contract);
-      if (isEdgeSupportPlan(request.content.commit)) {
-        if (
-          request.content.verify !== null ||
-          request.content.commit.dataset_type !== request.policy.dataset_type ||
-          request.content.commit.user_id !== request.policy.user_id ||
-          request.content.commit.project_ref !== request.policy.project_ref ||
-          sha256Json(request.content.commit.input) !== sha256Json(request.content.input)
-        )
-          throw new FoundryContextError(
-            "execution_request_invalid",
-            "The Edge draft request differs from the sealed scope.",
-          );
-      } else {
-        parseFoundryCommandSpec(request.content.commit);
-        parseFoundryCommandSpec(request.content.verify);
-      }
-      const content = JSON.parse(JSON.stringify(request.content)) as BatchJsonValue;
-      if (
-        request.scope_id !==
-          sha256Json({ task: context.taskId, type: request.policy.dataset_type }) ||
-        request.policy.project_ref !== context.accountIntent?.projectRef ||
-        request.policy.user_id !== context.accountIntent?.userId ||
-        request.policy.account_mode !== (context.accountIntent?.accountMode ?? "ordinary") ||
-        request.policy.state_code !== 0 ||
-        sha256Json(request.contract) !==
-          sha256Json(
-            createBatchContract({
-              identity: { task: context.taskId, scope: request.scope_id },
-              content,
-              policy: request.policy,
-            }),
-          ) ||
-        sha256Json(request.item_contract) !==
-          sha256Json(
-            createBatchItemContract({ item_id: request.scope_id, content, policy: request.policy }),
-          )
-      )
-        throw new FoundryContextError(
-          "execution_request_invalid",
-          "Owner request scope, account or batch projection changed.",
-        );
+      const request = parseOwnerExecutionRequest(context, artifact.value);
       return { ...artifact, request };
     });
 }

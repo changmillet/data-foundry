@@ -82,8 +82,13 @@ export function proveFoundryRepairRemoteIntegrity(input: {
   const selected = input.content === "before" ? before : candidate;
   const expectation = { ...input.expectation, actions: selected.map((row) => row.action) };
   if (input.report.status === "passed_remote_verification") {
-    const key = (value: FoundryRepairExpectedReference) =>
-      JSON.stringify([value.row_index, value.path, value.table, value.id, value.version]);
+    const key = (value: {
+      readonly row_index?: unknown;
+      readonly path?: unknown;
+      readonly table?: unknown;
+      readonly id?: unknown;
+      readonly version?: unknown;
+    }) => JSON.stringify([value.row_index, value.path, value.table, value.id, value.version]);
     const wanted = selected
       .flatMap((row) => row.references)
       .map(key)
@@ -99,7 +104,7 @@ export function proveFoundryRepairRemoteIntegrity(input: {
           (item.exact_version !== undefined && item.exact_version !== item.version)
         )
           return fail();
-        return key(item as unknown as FoundryRepairExpectedReference);
+        return key(item);
       })
       .sort();
     const roots = input.checks.filter(

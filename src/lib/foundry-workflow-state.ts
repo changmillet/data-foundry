@@ -20,7 +20,10 @@ import {
   readFoundryTaskRuntimeAdoption,
   readFoundryTaskRuntimeAdoptionChain,
 } from "./foundry-task-runtime-adoption.ts";
-import { verifyRegisteredAssessmentProducer } from "./foundry-assessment-producer.ts";
+import {
+  parseWorkflowAssessment,
+  verifyRegisteredAssessmentProducer,
+} from "./foundry-assessment-producer.ts";
 
 /**
  * The repair producer's registration of the preparation report. These two values are repeated here
@@ -252,7 +255,16 @@ export function currentWorkflowState(
       "workflow_interaction_invalid",
       "Registered task decisions are invalid.",
     );
-  const interaction = interactionValue as unknown as FoundryInteractionState | null;
+  const interaction: FoundryInteractionState | null = interactionValue
+    ? {
+        schema: "tiangong-foundry.interaction-state.v1",
+        task_id: String(interactionValue.task_id),
+        actor_id: String(interactionValue.actor_id),
+        events: (interactionValue.events as unknown[]).map(
+          (e) => e as Readonly<Record<string, unknown>>,
+        ),
+      }
+    : null;
   const contextShaByType = new Map<string, string>();
   const contextFilesByType = new Map<string, string>();
   const originalContextFacts = new Map(
@@ -468,7 +480,7 @@ export function currentWorkflowState(
             rows.value.sets.some((row) => row.type === set.type && row.file === set.rows),
           )
         )
-          retainedAssessment = { ...found, value: value as unknown as WorkflowAssessment };
+          retainedAssessment = { ...found, value: parseWorkflowAssessment(value, sets) };
         continue;
       }
       const identityMatches =

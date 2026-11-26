@@ -1,8 +1,8 @@
-import Ajv2020 from "ajv/dist/2020.js";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import type { ErrorObject, ValidateFunction } from "ajv";
+import { createAjv2020 } from "../ajv2020-factory.ts";
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonObject | JsonValue[];
@@ -427,12 +427,10 @@ export function createSchemaRuntime(repoRoot: string): SchemaRuntime {
   const schema = JSON.parse(
     fs.readFileSync(
       path.join(repoRoot, "specs", "schemas", "topology-convergence.schema.json"),
-    ) as unknown as string,
+      "utf8",
+    ),
   );
-  const Ajv2020Constructor = Ajv2020 as unknown as new (
-    options: Record<string, unknown>,
-  ) => AjvRuntime;
-  const ajv = new Ajv2020Constructor({ allErrors: true, strict: true, formats: { email: true } });
+  const ajv = createAjv2020({ allErrors: true, strict: true, formats: { email: true } });
   ajv.addSchema(schema);
   return {
     request: ajv.compile({ $ref: `${schema.$id}#/$defs/request` }),

@@ -35,8 +35,8 @@ checkPaths:
   - test/scenarios/workspace-migration-planning.test.mts
   - test/unit/foundry-migration-transfer.test.mts
   - test/scenarios/workspace-migration-transfer.test.mts
-lastReviewedAt: 2026-10-10
-lastReviewedCommit: baaa384e1db47fb53eb29f7b3764e448510aeff1
+lastReviewedAt: 2026-11-26
+lastReviewedCommit: d09d95d525a8f650afcf00ec91a4319fbb902d41
 lastReviewedNote: "Reviewed final existing-output capture verification on the working delta based on baaa384e. Current writer/runtime/job/profile and source/input checks run before, between and after two fresh output reads; an independent P2 report-before-capture late-drift repro is fixed, including a caught error returning previously written JSON. New receipt publication reloads current writer/Task/runtime and preserves final input verification; ordinary bytewriters, cached replay, sorted depth-first roster, index CAS and authority/science remain unchanged. Focused59/59 and wholeadoption23/23 pass; latejob2RED->2GREEN and retainedCLI first/second/caught negatives are recorded. No cross-operation hash cache or filesystem-wide atomicity claim. baaa preparation remained unused,87bd Native19/20 failed history remains preserved; new full Source/emitted/installed/native qualification is pending. No originalDATA requery/default034/science/release change."
 related:
   - docs/public-runtime-contract.md

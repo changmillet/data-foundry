@@ -31,7 +31,11 @@ function objectScope(item: Item): FoundryInteractionObjectScope | null {
   if (!scope || typeof scope !== "object" || Array.isArray(scope)) return null;
   const candidate = scope as Record<string, unknown>;
   if (typeof candidate.entity_id !== "string" || typeof candidate.version !== "string") return null;
-  return candidate as unknown as FoundryInteractionObjectScope;
+  return {
+    entity_id: candidate.entity_id,
+    version: candidate.version,
+    row_sha256: typeof candidate.row_sha256 === "string" ? candidate.row_sha256 : "",
+  };
 }
 
 export function foundryInteractionEventAppliesToObject(

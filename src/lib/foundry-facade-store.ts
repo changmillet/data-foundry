@@ -349,19 +349,28 @@ function pointer(value: unknown, context: FoundryRuntimeContext): FacadeTaskPoin
   ]);
   if (
     item.schema !== FOUNDRY_FACADE_TASK_POINTER_SCHEMA ||
+    typeof item.workspace_id !== "string" ||
     item.workspace_id !== context.workspaceId ||
     typeof item.task_id !== "string" ||
     !taskIdPattern.test(item.task_id) ||
     typeof item.request_sha256 !== "string" ||
     !shaPattern.test(item.request_sha256) ||
+    typeof item.revision !== "number" ||
     !Number.isSafeInteger(item.revision) ||
-    Number(item.revision) < 1 ||
-    Number(item.revision) > maxRevisions ||
+    item.revision < 1 ||
+    item.revision > maxRevisions ||
     typeof item.revision_sha256 !== "string" ||
     !shaPattern.test(item.revision_sha256)
   )
     fail("facade_task_pointer_invalid", "Facade task pointer is malformed.");
-  return item as unknown as FacadeTaskPointer;
+  return {
+    schema: FOUNDRY_FACADE_TASK_POINTER_SCHEMA,
+    workspace_id: item.workspace_id,
+    task_id: item.task_id,
+    request_sha256: item.request_sha256,
+    revision: item.revision,
+    revision_sha256: item.revision_sha256,
+  };
 }
 
 /**

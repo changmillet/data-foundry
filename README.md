@@ -29,7 +29,7 @@ checkPaths:
   - specs/import-profiles.json
   - test/unit/zero-javascript-ratchet.test.mts
 lastReviewedAt: 2026-11-26
-lastReviewedCommit: 617a322225d28a40e193190a40869ab89874a794
+lastReviewedCommit: d09d95d525a8f650afcf00ec91a4319fbb902d41
 lastReviewedNote: "Foundry #306: retired completed historical JS-to-TS wave migration scaffolding tests in favor of zero-javascript-ratchet and toolchain-contract, added fast local unit/command and public smoke scripts, and introduced stat-guarded immutable component digest caching; public runtime, qualification, authorization and release boundaries remain unchanged."
 ---
 

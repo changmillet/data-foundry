@@ -34,6 +34,8 @@ import {
   facts,
   sameFact,
   maxDocumentBytes,
+  parseTaskJob,
+  parseTaskRegistration,
 } from "./foundry-task-io.ts";
 import type {
   JsonRecord,
@@ -125,7 +127,7 @@ function readRegistration(context: FoundryRuntimeContext): TaskRegistration | nu
       !bytes(value.profile_lock).equals(bytes(profileLock(context, job.target_profile))))
   )
     fail("task_profile_changed", "Registered profile does not match current package rules.");
-  return value as unknown as TaskRegistration;
+  return parseTaskRegistration(value);
 }
 
 function writeStateOnce(
@@ -279,7 +281,7 @@ export function loadTask(context: FoundryRuntimeContext, options: FoundryTaskOpt
     writeStateOnce(context, `task-publications/${context.taskId}.json`, publication);
   }
   return {
-    job: raw as unknown as FoundryTaskJob,
+    job: parseTaskJob(raw),
     jobSha256: digest(readTaskBytes(context, "foundry-job.json")),
     sources: sourceFacts,
   };
