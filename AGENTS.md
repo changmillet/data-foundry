@@ -33,7 +33,7 @@ checkPaths:
   - prettier.config.ts
   - tsconfig*.json
 lastReviewedAt: 2026-11-27
-lastReviewedCommit: 029c33c276ed633a36163813df5e53ff5782f779
+lastReviewedCommit: 921ac4898dc62873e5abf84e6435aa32ce907bff
 lastReviewedNote: "Foundry #306: added stat-guarded immutable component digest caching across package/runtime qualification, shared snapshot/archive/store test helpers, retired 41 completed JS-to-TS wave migration scaffolding tests covered by zero-javascript-ratchet and toolchain-contract, and added test:fast / test:smoke:public scripts; public runtime, qualification, authorization and release boundaries remain unchanged."
 ---
 
@@ -87,7 +87,7 @@ Preparation quality review follows `docs/public-runtime-contract.md`: use the ex
 - Executable handoffs use `tiangong-foundry.command-spec.v1`. The `executable` and `argv` array, exact input artifact facts, and SHA-256 are authoritative; `display` is derived and never executed. Ambiguous writes resolve through fresh readback and are never replayed blindly.
 - Keep import profiles as source rules and task authorization as a separate current-owner binding. Final-row, account, actor, runtime, profile, input, and write gates must remain independent of historical task artifacts and profile overrides.
 - Keep source and emitted execution bound to the same trusted package root, current CLI identity, and immutable runtime context. The Golden gate compares a non-`HEAD` merge base with full history and isolated child environments; clean-worktree validation must not rely on another checkout, ignored state, or credentials.
-- Run focused characterization for touched owners, then the repository's full validation and four-platform qualification where required. Use [the architecture map](docs/architecture.md) for module ownership and [the workflow guide](WORKFLOW.md) for stage order and commands.
+- Run focused characterization for touched owners, then the repository's full validation and four-platform qualification where required. Use [the architecture map](docs/architecture.md) for module ownership, [the workflow guide](WORKFLOW.md) for stage order and commands, and [the delivery-review archive](docs/archive/delivery-review-history.md) for historical PR/wave narratives.
 
 ## Default Operating Order
 
