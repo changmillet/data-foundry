@@ -1,7 +1,7 @@
 version: 1
 layout: repo
-lastReviewedAt: "2026-11-15"
-lastReviewedCommit: "c30a1f516553282f7c82c82c5733689557078b5c"
+lastReviewedAt: "2026-11-27"
+lastReviewedCommit: "921ac4898dc62873e5abf84e6435aa32ce907bff"
 lastReviewedNote: "Foundry #278: reviewed version-only 0.1.18 projections and unchanged native release, ownership and documentation requirements."
 
 catalog:
@@ -223,6 +223,7 @@ docInventory:
     - docs/agent-harness-cli-comparison.md
     - docs/data-governance-loop.md
     - docs/symphony-adaptation.md
+    - docs/archive/delivery-review-history.md
     - specs/data-foundry-service.md
     - specs/workspace-capability-adapters.md
 
@@ -289,10 +290,40 @@ rules:
         kind: package-workspace-contract
       - path: prettier.config.ts
         kind: formatter-contract
-      - path: src/**
-        kind: local-runtime
-      - path: devops/**
-        kind: devops-tooling
+      - path: src/dev-cli.ts
+        kind: developer-cli-entry
+      - path: src/package-entry.ts
+        kind: public-package-entry
+      - path: src/public-api.ts
+        kind: public-api-entry
+      - path: src/runtime-entry.ts
+        kind: runtime-entry-adapter
+      - path: src/with-lca-account.ts
+        kind: account-context-wrapper
+      - path: src/lib/foundry-cli.ts
+        kind: cli-dispatcher
+      - path: src/lib/foundry-args.ts
+        kind: cli-arg-parser
+      - path: src/lib/foundry-command-registry.ts
+        kind: command-registry
+      - path: src/lib/foundry-command-metadata.ts
+        kind: command-metadata
+      - path: src/lib/foundry-command-metadata-*.ts
+        kind: command-metadata-shard
+      - path: src/lib/surface-audit.ts
+        kind: surface-audit
+      - path: src/commands/core.ts
+        kind: core-diagnostic-commands
+      - path: devops/build/clean-build-output.ts
+        kind: build-clean-helper
+      - path: devops/ci/check-*.ts
+        kind: ci-static-audit
+      - path: devops/ci/foundry-golden-*.ts
+        kind: golden-diff-harness
+      - path: devops/ci/golden-*.ts
+        kind: golden-ownership-policy
+      - path: devops/ci/pre-push-*.sh
+        kind: pre-push-helper
       - path: scripts/**
         kind: retired-legacy-scripts-layout
       - path: specs/automated-lca-capability-registry.json
@@ -665,6 +696,8 @@ rules:
         kind: shared-attempt-evidence-model
       - path: src/commands/execution-capsule.ts
         kind: execution-capsule-command
+      - path: src/lib/execution-capsule-*.ts
+        kind: execution-capsule-validation
       - path: test/commands/execution-capsule.test.mts
         kind: execution-capsule-command-test
       - path: test/unit/execution-capsule-attempt-state.test.mts
@@ -683,6 +716,8 @@ rules:
         kind: incremental-change-set-schema
       - path: src/commands/incremental-change-set.ts
         kind: incremental-change-set-command
+      - path: src/lib/incremental-change-set/**
+        kind: incremental-change-set-modules
       - path: test/unit/incremental-change-set.test.mts
         kind: incremental-change-set-unit-test
       - path: test/commands/incremental-change-set.test.mts
@@ -707,6 +742,8 @@ rules:
         kind: topology-convergence-schema
       - path: src/commands/topology-convergence.ts
         kind: topology-convergence-command
+      - path: src/lib/topology-convergence/**
+        kind: topology-convergence-modules
       - path: test/fixtures/topology-convergence-fixtures.ts
         kind: topology-convergence-fixture
       - path: test/unit/topology-convergence.test.mts
@@ -786,19 +823,19 @@ rules:
     requiredDocs:
       - path: docs/orchestration-module-contract.md
         mode: review_or_update
-      - path: AGENTS.md
-        mode: review_or_update
-      - path: README.md
-        mode: review_or_update
-      - path: WORKFLOW.md
-        mode: review_or_update
-      - path: docs/architecture.md
-        mode: review_or_update
       - path: docs/foundry-ai-navigation.md
         mode: review_or_update
+      - path: AGENTS.md
+        mode: must_exist
+      - path: README.md
+        mode: must_exist
+      - path: WORKFLOW.md
+        mode: must_exist
+      - path: docs/architecture.md
+        mode: must_exist
       - path: test/README.md
-        mode: review_or_update
-    reason: High-level orchestration owners, semantic stages, size/cycle ratchets, AI navigation, and CLI execution ownership must move together without hidden behavior drift.
+        mode: must_exist
+    reason: High-level orchestration owners, semantic stages, size/cycle ratchets, AI navigation, and CLI execution ownership must move together without broad root-doc churn.
   - id: foundry-skill-orchestration-contract
     scope: repo
     repo: data-foundry
@@ -983,6 +1020,12 @@ rules:
         kind: final-delivery-redaction
       - path: src/lib/final-delivery-review.ts
         kind: final-delivery-independent-review
+      - path: src/lib/final-delivery-schema.ts
+        kind: final-delivery-schema-loader
+      - path: src/lib/final-delivery-validation.ts
+        kind: final-delivery-validation
+      - path: src/lib/final-delivery-xml.ts
+        kind: final-delivery-xml-reader
       - path: test/commands/final-delivery-promotion.test.mts
         kind: final-delivery-promotion-command-test
       - path: test/unit/final-delivery-workbook.test.mts
@@ -1026,3 +1069,223 @@ rules:
       - path: docs/dependency-maintenance.md
         mode: review_or_update
     reason: Monitoring scope and traffic use a focused guide; source qualification, privilege and runtime changes retain their existing semantic governance.
+  - id: foundry-import-curation-domain
+    scope: repo
+    repo: data-foundry
+    triggers:
+      - path: src/lib/import-curation.ts
+        kind: import-curation-barrel
+      - path: src/lib/import-curation/**
+        kind: import-curation-modules
+      - path: src/lib/full-context-proof*.ts
+        kind: full-context-proof
+      - path: src/lib/import-ledger*.ts
+        kind: import-ledger
+      - path: src/lib/source-semantics*.ts
+        kind: source-semantics
+      - path: src/lib/canonical-support-*.ts
+        kind: canonical-support
+      - path: src/lib/canonical-description.ts
+        kind: canonical-description
+      - path: src/lib/trace-coverage.ts
+        kind: trace-coverage
+      - path: src/lib/tidas-*.ts
+        kind: tidas-adapter-and-utils
+      - path: src/lib/reference-description-text.ts
+        kind: reference-description-text
+      - path: src/lib/bundle-*.ts
+        kind: bundle-sampling-helpers
+      - path: src/lib/bundle-sample-rows/**
+        kind: bundle-sample-rows-modules
+      - path: src/lib/authoring-plan/**
+        kind: authoring-plan-modules
+      - path: src/lib/cli-support-export.ts
+        kind: cli-support-export
+      - path: src/commands/authoring-plan.ts
+        kind: authoring-plan-command
+      - path: src/commands/bundle-sample-rows.ts
+        kind: bundle-sample-rows-command
+      - path: src/commands/import-completion.ts
+        kind: import-completion-command
+      - path: src/commands/import-ledger.ts
+        kind: import-ledger-command
+      - path: src/commands/support-cache.ts
+        kind: support-cache-command
+      - path: src/commands/tasks.ts
+        kind: task-queue-command
+      - path: src/commands/tidas-workflow.ts
+        kind: tidas-workflow-command
+      - path: src/commands/cli-wrappers.ts
+        kind: cli-wrapper-command
+    requiredDocs:
+      - path: docs/foundry-ai-navigation.md
+        mode: review_or_update
+      - path: docs/orchestration-module-contract.md
+        mode: must_exist
+    reason: Import-curation, ledger, source-semantics, authoring-plan, and sampling domain changes route directly to AI navigation without broad root-doc churn.
+  - id: foundry-decision-and-finalize-domain
+    scope: repo
+    repo: data-foundry
+    triggers:
+      - path: src/lib/decision-owners/**
+        kind: decision-owner-modules
+      - path: src/lib/finalize-owners/**
+        kind: finalize-owner-modules
+      - path: src/lib/decision-task-*.ts
+        kind: decision-task-helpers
+      - path: src/lib/identity-*.ts
+        kind: identity-preflight-and-rewrite
+      - path: src/lib/location-quality-utils.ts
+        kind: location-quality-utils
+      - path: src/lib/post-authoring-finalize-utils.ts
+        kind: post-authoring-finalize-utils
+      - path: src/lib/post-write-root-proof.ts
+        kind: post-write-root-proof
+      - path: src/lib/remote-verification-accepted-diff.ts
+        kind: remote-verification-accepted-diff
+      - path: src/lib/same-identity-commit-recovery.ts
+        kind: same-identity-commit-recovery
+      - path: src/commands/classification-decisions.ts
+        kind: classification-decisions-command
+      - path: src/commands/location-decisions.ts
+        kind: location-decisions-command
+      - path: src/commands/identity-decision-task.ts
+        kind: identity-decision-task-command
+      - path: src/commands/identity-decisions.ts
+        kind: identity-decisions-command
+      - path: src/commands/identity-preflight-run.ts
+        kind: identity-preflight-run-command
+      - path: src/commands/identity-reference-rewrites.ts
+        kind: identity-reference-rewrites-command
+      - path: src/commands/commit-handoff.ts
+        kind: commit-handoff-command
+      - path: src/commands/post-authoring-finalize.ts
+        kind: post-authoring-finalize-command
+      - path: src/commands/post-write-closeout.ts
+        kind: post-write-closeout-command
+    requiredDocs:
+      - path: docs/foundry-ai-navigation.md
+        mode: review_or_update
+      - path: docs/orchestration-module-contract.md
+        mode: review_or_update
+    reason: Decision-owner, identity-preflight, rewrite, finalize, and closeout modules stay synchronized with AI navigation and orchestration contracts.
+  - id: foundry-public-workflow-domain
+    scope: repo
+    repo: data-foundry
+    triggers:
+      - path: src/lib/foundry-facade/**
+        kind: public-facade-modules
+      - path: src/lib/foundry-workflow-*.ts
+        kind: public-workflow-stage
+      - path: src/lib/foundry-edge-*.ts
+        kind: public-edge-adapter
+      - path: src/lib/foundry-managed-*.ts
+        kind: managed-runtime-host
+      - path: src/lib/foundry-installed-entry.ts
+        kind: installed-entry-adapter
+      - path: src/lib/foundry-interaction-*.ts
+        kind: task-interaction-protocol
+      - path: src/lib/foundry-semantic-*.ts
+        kind: semantic-input-protocol
+      - path: src/lib/foundry-quality-review*.ts
+        kind: quality-review-protocol
+      - path: src/lib/foundry-reference-input.ts
+        kind: reference-input-protocol
+      - path: src/lib/foundry-validation-reference-context.ts
+        kind: validation-reference-context
+      - path: src/lib/foundry-authorization-input.ts
+        kind: authorization-input-protocol
+      - path: src/lib/foundry-authentication-environment.ts
+        kind: authentication-environment
+      - path: src/lib/foundry-curation-queue.ts
+        kind: public-curation-queue
+      - path: src/lib/foundry-decision-owners.ts
+        kind: public-decision-owners
+      - path: src/lib/foundry-decision-routing.ts
+        kind: public-decision-routing
+      - path: src/lib/foundry-finalize-edge-identity.ts
+        kind: public-finalize-edge-identity
+      - path: src/lib/foundry-finalize-owners.ts
+        kind: public-finalize-owners
+      - path: src/lib/foundry-identity-owners.ts
+        kind: public-identity-owners
+      - path: src/lib/foundry-identity-stage-*.ts
+        kind: public-identity-stage
+      - path: src/lib/foundry-native-validation-failure.ts
+        kind: native-validation-failure
+      - path: src/lib/foundry-owner-*.ts
+        kind: owner-execution-and-readback
+      - path: src/lib/foundry-preparation-*.ts
+        kind: preparation-cli-validation
+      - path: src/lib/foundry-process-*.ts
+        kind: process-qa-and-mass-balance
+      - path: src/lib/foundry-repair-*.ts
+        kind: scientific-repair-stage
+      - path: src/lib/foundry-scientific-repair.ts
+        kind: scientific-repair-owner
+      - path: src/lib/foundry-assessment-producer.ts
+        kind: assessment-producer-provenance
+      - path: src/lib/foundry-successor-predecessor.ts
+        kind: successor-predecessor-lineage
+      - path: src/lib/foundry-stage-invocation.ts
+        kind: stage-invocation-helper
+      - path: src/lib/foundry-tidas-source.ts
+        kind: tidas-source-selection
+      - path: src/lib/foundry-typed-*.ts
+        kind: typed-cli-v4-adapters
+    requiredDocs:
+      - path: docs/public-runtime-contract.md
+        mode: review_or_update
+      - path: docs/foundry-ai-navigation.md
+        mode: review_or_update
+    reason: Public facade, workflow stages, managed-runtime, interaction, quality-review, and repair modules route directly to the public runtime contract and AI navigation.
+  - id: foundry-runtime-primitives-domain
+    scope: repo
+    repo: data-foundry
+    triggers:
+      - path: src/lib/ajv2020-factory.ts
+        kind: schema-validator-factory
+      - path: src/lib/bafu-family-signatures.ts
+        kind: bafu-family-signatures
+      - path: src/lib/cli-compatibility-capabilities.ts
+        kind: cli-compatibility-capabilities
+      - path: src/lib/foundry-command-spec.ts
+        kind: command-spec-reexport
+      - path: src/lib/foundry-repository-identity.ts
+        kind: repository-identity
+      - path: src/lib/foundry-runtime-cache.ts
+        kind: runtime-cache-guard
+      - path: src/lib/foundry-runtime-context-fs.ts
+        kind: runtime-context-fs
+      - path: src/lib/foundry-runtime-environment.ts
+        kind: runtime-environment
+      - path: src/lib/foundry-runtime-utils.ts
+        kind: runtime-utils
+      - path: src/lib/immutable-digest-cache.ts
+        kind: immutable-digest-cache
+      - path: src/lib/oauth-session-reference.ts
+        kind: oauth-session-reference
+      - path: src/lib/package-manager-command.ts
+        kind: package-manager-command
+      - path: src/lib/production-case-policy.ts
+        kind: production-case-policy
+      - path: src/lib/stage-contract.ts
+        kind: stage-contract
+      - path: src/cases/**
+        kind: guarded-production-cases
+    requiredDocs:
+      - path: docs/foundry-ai-navigation.md
+        mode: review_or_update
+      - path: docs/architecture.md
+        mode: must_exist
+    reason: Shared typed runtime primitives and guarded case runners stay synchronized with AI navigation without broad root-doc review fan-out.
+  - id: foundry-delivery-review-history
+    scope: repo
+    repo: data-foundry
+    triggers:
+      - path: docs/archive/delivery-review-history.md
+        kind: historical-delivery-archive
+    requiredDocs:
+      - path: docs/archive/delivery-review-history.md
+        mode: review_or_update
+    reason: Archived Issue/PR/Wave delivery narratives stay explicitly historical and self-governed outside active state-of-the-world contracts.
