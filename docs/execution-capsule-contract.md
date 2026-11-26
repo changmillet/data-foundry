@@ -20,8 +20,8 @@ checkPaths:
   - test/unit/execution-capsule-command-factory.test.mts
   - specs/schemas/execution-context.schema.json
   - src/lib/foundry-execution-admission.ts
-lastReviewedAt: 2026-11-26
-lastReviewedCommit: 20f4fcbd5aa1d51d1ac55f2195e2d7f0a404b090
+lastReviewedAt: 2026-11-27
+lastReviewedCommit: 029c33c276ed633a36163813df5e53ff5782f779
 lastReviewedNote: "Reviewed for Foundry #30 / PR #41 at 1a6a3ea: the final-delivery workbook reader now resolves OPC relationship targets from the package root for absolute targets, retains legal docProps parts and still scans them, and keeps traversal, external, encrypted, compression, CRC, UTF-8, namespace and relationship-type boundaries unchanged. That is local offline parsing of a declared delivery artifact; it still grants no execution-capsule or public-runtime authority, and the capsule and delivery seal remain deliberately un-unified."
 ---
 

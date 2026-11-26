@@ -90,18 +90,7 @@
     "src/lib/library-orchestration/ready-scope-scheduler.ts": 140,
     "src/lib/same-identity-commit-recovery.ts": 100
   },
-  "debt_ceiling_lines": {
-    "devops/ci/foundry-golden-diff.ts": 1206,
-    "src/cases/production-contact-draft.ts": 1688,
-    "src/commands/execution-capsule.ts": 1032,
-    "src/commands/final-delivery-promotion.ts": 807,
-    "src/lib/foundry-command-metadata.ts": 1448,
-    "src/lib/foundry-runtime-context.ts": 962,
-    "src/lib/foundry-task-runtime-adoption.ts": 858,
-    "src/lib/foundry-workflow-assessment.ts": 921,
-    "src/lib/foundry-workflow-identity-stage.ts": 937,
-    "src/lib/foundry-workflow-semantic.ts": 866
-  },
+  "debt_ceiling_lines": {},
   "allowed_upward_imports": {
     "src/lib/foundry-cli.ts": [
       "src/commands/classification-decisions.ts",

@@ -11,12 +11,10 @@ import {
   mkdtempSync,
   readFileSync,
   readlinkSync,
-  readdirSync,
   rmSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
-import { normalizeGoldenReviewedProjection } from "./foundry-golden-normalization.ts";
 import os from "node:os";
 import path from "node:path";
 import process from "node:process";
@@ -26,9 +24,23 @@ import {
   createFoundryIsolatedChildEnvironment,
 } from "../../src/lib/foundry-runtime-environment.ts";
 import { resolvePackageManagerCommand } from "../../src/lib/package-manager-command.ts";
+import {
+  listRelativeFiles,
+  normalizeGoldenLegacyContracts,
+  normalizeGoldenResidualContracts,
+  summarizeJsonDifferences,
+} from "./foundry-golden-diff-helpers.ts";
+import {
+  GOLDEN_CONTACT_ID as contactId,
+  GOLDEN_PROCESS_ID as processId,
+  prepareGoldenFixtures,
+  writeGoldenStubCliScript,
+  writeJson,
+  type FixturePaths,
+  type JsonRecord,
+} from "./foundry-golden-fixtures.ts";
+import { normalizeGoldenReviewedProjection } from "./foundry-golden-normalization.ts";
 import { normalizeGoldenSkillOwnership } from "./golden-skill-ownership.ts";
-
-type JsonRecord = Record<string, unknown>;
 
 type RunOptions = {
   cwd?: string;
@@ -41,15 +53,6 @@ type GoldenBase = {
   comparisonRef: string;
 };
 
-type FixturePaths = {
-  processRows: string;
-  supportRows: string;
-  processSchemaReport: string;
-  processQaReport: string;
-  bundlesDir: string;
-  authoringPackage: string;
-};
-
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const keepArtifacts = process.argv.includes("--keep");
 const tempRoot = mkdtempSync(path.join(os.tmpdir(), "foundry-golden-diff-"));
@@ -60,9 +63,6 @@ const afterOut = path.join(tempRoot, "after-output");
 const normalizedRoot = path.join(tempRoot, "normalized");
 const fixtureRoot = path.join(tempRoot, "fixtures");
 const goldenProcessEnvironment = createFoundryIsolatedChildEnvironment({ tempRoot });
-const processId = "22222222-3333-5444-8555-666666666666";
-const sourceId = "33333333-4444-5555-8666-777777777777";
-const contactId = "11111111-2222-5333-8444-555555555555";
 const legacyPackageRunner = ["n", "px"].join("");
 const skillsPackageCommandPattern = new RegExp(
   `(?:${legacyPackageRunner} --yes|pnpm dlx) skills@latest`,
@@ -196,320 +196,6 @@ function run(command: string, args: string[], options: RunOptions = {}): SpawnSy
     );
   }
   return result;
-}
-
-function writeJson(filePath: string, value: unknown): void {
-  mkdirSync(path.dirname(filePath), { recursive: true });
-  writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
-}
-
-function writeJsonLines(filePath: string, rows: unknown[]): void {
-  mkdirSync(path.dirname(filePath), { recursive: true });
-  writeFileSync(
-    filePath,
-    rows.map((row) => JSON.stringify(row)).join("\n") + (rows.length ? "\n" : ""),
-  );
-}
-
-function ml(text: string): { "@xml:lang": "en"; "#text": string } {
-  return { "@xml:lang": "en", "#text": text };
-}
-
-function contactRef(id = contactId, text = "Fixture Data Steward"): JsonRecord {
-  return {
-    "@type": "contact data set",
-    "@refObjectId": id,
-    "@version": "00.00.001",
-    "@uri": `../contacts/${id}.json`,
-    "common:shortDescription": ml(text),
-  };
-}
-
-function sourceRef(id = sourceId, text = "Fixture source report"): JsonRecord {
-  return {
-    "@type": "source data set",
-    "@refObjectId": id,
-    "@version": "00.00.001",
-    "@uri": `../sources/${id}.json`,
-    "common:shortDescription": ml(text),
-  };
-}
-
-function supportRows(): JsonRecord[] {
-  return [
-    {
-      contactDataSet: {
-        contactInformation: {
-          dataSetInformation: {
-            "common:UUID": contactId,
-            "common:name": ml("Fixture Data Steward"),
-            "common:shortName": ml("Fixture Data Steward"),
-          },
-        },
-        administrativeInformation: {
-          publicationAndOwnership: {
-            "common:dataSetVersion": "00.00.001",
-            "common:referenceToOwnershipOfDataSet": contactRef(),
-          },
-        },
-      },
-    },
-    {
-      sourceDataSet: {
-        sourceInformation: {
-          dataSetInformation: {
-            "common:UUID": sourceId,
-            "common:shortName": ml("Fixture source report"),
-            sourceCitation: "Fixture source report, 2026",
-            classificationInformation: {
-              "common:classification": {
-                "common:class": {
-                  "@level": "0",
-                  "@classId": "6",
-                  "#text": "Publications and communications",
-                },
-              },
-            },
-          },
-        },
-        administrativeInformation: {
-          publicationAndOwnership: {
-            "common:dataSetVersion": "00.00.001",
-            "common:referenceToOwnershipOfDataSet": contactRef(),
-          },
-        },
-      },
-    },
-  ];
-}
-
-function processRow(): JsonRecord {
-  return {
-    processDataSet: {
-      processInformation: {
-        dataSetInformation: {
-          "common:UUID": processId,
-          name: { baseName: ml("Fixture process") },
-          classificationInformation: {
-            "common:classification": {
-              "common:class": [{ "@level": "0", "@classId": "1", "#text": "Agriculture" }],
-            },
-          },
-        },
-      },
-      administrativeInformation: {
-        dataEntryBy: {
-          "common:referenceToPersonOrEntityEnteringTheData": contactRef(),
-        },
-        publicationAndOwnership: {
-          "common:dataSetVersion": "00.00.001",
-          "common:referenceToOwnershipOfDataSet": contactRef(),
-        },
-      },
-      modellingAndValidation: {
-        dataSourcesTreatmentAndRepresentativeness: {
-          referenceToDataSource: sourceRef(),
-        },
-      },
-    },
-  };
-}
-
-function authoringPackage(root: string): string {
-  const contextDir = path.join(root, "context");
-  const contextFiles = [
-    ["schema", "schema.json", "{}"],
-    ["methodology_yaml", "methodology.yaml", "process:\n  required: true\n"],
-    ["ruleset", "runtime-ruleset.json", '{"rules":[]}'],
-    ["classification_schema", "tidas_processes_category.json", '{"oneOf":[]}'],
-    ["location_schema", "tidas_locations_category.json", '{"oneOf":[]}'],
-  ].map(([kind, fileName, text]) => {
-    const filePath = path.join(contextDir, fileName);
-    mkdirSync(path.dirname(filePath), { recursive: true });
-    writeFileSync(filePath, text);
-    return { kind, path: filePath, text };
-  });
-  const packagePath = path.join(root, "authoring", "process.authoring-package.json");
-  writeJson(packagePath, {
-    schema_version: 2,
-    profile: "bafu",
-    dataset_type: "process",
-    entity_id: processId,
-    version: "00.00.001",
-    source_rows_file: "tmp/source/processes.jsonl",
-    contract_context_files: contextFiles,
-    full_context_ai_completion: {
-      required: true,
-      required_context_kinds: [
-        "schema",
-        "methodology_yaml",
-        "ruleset",
-        "classification_schema",
-        "location_schema",
-      ],
-      required_context_file_patterns: [
-        "schema.json",
-        "methodology.yaml",
-        "runtime-ruleset.json",
-        "tidas_processes_category.json",
-        "tidas_locations_category.json",
-      ],
-    },
-    missing_context_files: [],
-    action_items: [
-      {
-        code: "process_placeholder_content",
-        path: "processDataSet.processInformation.quantitativeReference.functionalUnitOrOther",
-        message: "Functional unit placeholder requires evidence-backed completion.",
-        allowed_resolution_modes: ["evidence_backed_completion", "deferred_to_common_other"],
-      },
-    ],
-    source_row: processRow(),
-    entity_payload: processRow(),
-  });
-  return packagePath;
-}
-
-function prepareFixtures(): FixturePaths {
-  const rowsDir = path.join(fixtureRoot, "rows");
-  const reportsDir = path.join(fixtureRoot, "reports");
-  writeJsonLines(path.join(rowsDir, "processes.jsonl"), [processRow()]);
-  writeJsonLines(path.join(rowsDir, "support.jsonl"), supportRows());
-  writeJson(path.join(reportsDir, "schema-process.json"), {
-    schema_version: 1,
-    status: "completed",
-    rows: [{ id: processId, version: "00.00.001", status: "valid", issues: [] }],
-  });
-  writeJson(path.join(reportsDir, "qa-process.json"), {
-    schema_version: 1,
-    status: "passed",
-    findings: [],
-  });
-  const bundleDir = path.join(fixtureRoot, "process-bundles", processId);
-  writeJson(path.join(bundleDir, "tidas", "contacts", `${contactId}.json`), supportRows()[0]);
-  writeJson(path.join(bundleDir, "tidas", "sources", `${sourceId}.json`), supportRows()[1]);
-  writeJson(path.join(bundleDir, "tidas", "processes", `${processId}.json`), processRow());
-  writeJson(path.join(bundleDir, "manifest.json"), {
-    schema_version: 1,
-    process_id: processId,
-    files: {
-      contacts: [`tidas/contacts/${contactId}.json`],
-      sources: [`tidas/sources/${sourceId}.json`],
-      unitgroups: [],
-      flowproperties: [],
-      flows: [],
-      processes: [`tidas/processes/${processId}.json`],
-    },
-    unresolved_references: [],
-  });
-  return {
-    processRows: path.join(rowsDir, "processes.jsonl"),
-    supportRows: path.join(rowsDir, "support.jsonl"),
-    processSchemaReport: path.join(reportsDir, "schema-process.json"),
-    processQaReport: path.join(reportsDir, "qa-process.json"),
-    bundlesDir: path.join(fixtureRoot, "process-bundles"),
-    authoringPackage: authoringPackage(fixtureRoot),
-  };
-}
-
-function stubCliScript(): string {
-  const cliPath = path.join(tempRoot, "stub-tiangong-lca.mjs");
-  writeFileSync(
-    cliPath,
-    `#!/usr/bin/env node
-import fs from "node:fs";
-import path from "node:path";
-
-function option(flag) {
-  const index = process.argv.indexOf(flag);
-  return index >= 0 ? process.argv[index + 1] : null;
-}
-
-function writeJson(filePath, value) {
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, JSON.stringify(value, null, 2) + "\\n");
-}
-function readRows(filePath) {
-  const text = fs.readFileSync(filePath, "utf8").trim();
-  if (!text) return [];
-  return text.split(/\\r?\\n/u).filter(Boolean).map((line) => JSON.parse(line));
-}
-function text(value) {
-  if (value === undefined || value === null) return "";
-  if (typeof value === "string") return value.trim();
-  return "";
-}
-function identity(row, fallbackType = "process") {
-  const root = row.contactDataSet || row.sourceDataSet || row.processDataSet || row.flowDataSet || row.lifecycleModelDataSet || row;
-  const type = row.contactDataSet ? "contact" : row.sourceDataSet ? "source" : fallbackType;
-  const info = root.contactInformation || root.sourceInformation || root.processInformation || root.flowInformation || {};
-  const data = info.dataSetInformation || {};
-  const admin = root.administrativeInformation || {};
-  const publication = admin.publicationAndOwnership || {};
-  return {
-    id: text(data["common:UUID"] || row.id || row.dataset_id),
-    version: text(publication["common:dataSetVersion"] || row.version || row.dataset_version) || "00.00.001",
-    type,
-  };
-}
-
-const args = process.argv.slice(2);
-const outDir = option("--out-dir") || ".";
-const input = option("--input") || option("--input-file");
-
-if (args[0] === "dataset" && args[1] === "validate") {
-  const rows = readRows(input);
-  const report = {
-    schema_version: 1,
-    status: "completed",
-    input_path: input,
-    rows: rows.map((row) => {
-      const item = identity(row, option("--type") || "process");
-      return { id: item.id, version: item.version, status: "valid", issues: [] };
-    }),
-  };
-  const reportPath = path.join(outDir, "outputs", "validation-report.json");
-  writeJson(reportPath, report);
-  console.log(JSON.stringify({ ...report, files: { report: reportPath } }));
-} else if (args[0] === "dataset" && args[1] === "classification" && args[2] === "audit") {
-  const report = { schema_version: 1, status: "passed", blockers: [] };
-  const reportPath = path.join(outDir, "outputs", "location-audit-report.json");
-  writeJson(reportPath, report);
-  console.log(JSON.stringify({ ...report, files: { report: reportPath } }));
-} else if (args[0] === "dataset" && args[1] === "save-draft") {
-  const rows = readRows(input);
-  const progressPath = path.join(outDir, "outputs", "dataset-save-draft", "progress.jsonl");
-  const failuresPath = path.join(outDir, "outputs", "dataset-save-draft", "failures.jsonl");
-  fs.mkdirSync(path.dirname(progressPath), { recursive: true });
-  fs.writeFileSync(progressPath, rows.map((row) => {
-    const item = identity(row, option("--type") || "support");
-    return JSON.stringify({ id: item.id, version: item.version, type: item.type, status: "prepared", operation: "save_draft_prepared" });
-  }).join("\\n") + (rows.length ? "\\n" : ""));
-  fs.writeFileSync(failuresPath, "");
-  const summaryPath = path.join(outDir, "outputs", "dataset-save-draft", "summary.json");
-  const summary = {
-    schema_version: 1,
-    status: "completed",
-    mode: args.includes("--commit") ? "commit" : "dry-run",
-    input_path: input,
-    rows_file: input,
-    files: {
-      progress_jsonl: progressPath,
-      failures_jsonl: failuresPath,
-      summary_json: summaryPath
-    },
-    counts: { prepared: rows.length, failures: 0 },
-  };
-  writeJson(summaryPath, summary);
-  console.log(JSON.stringify(summary));
-} else {
-  console.error("Unhandled stub tiangong-lca command: " + args.join(" "));
-  process.exit(2);
-}
-`,
-  );
-  chmodSync(cliPath, 0o755);
-  return cliPath;
 }
 
 function isolatedFakeTidasScript(): string {
@@ -833,64 +519,8 @@ function normalizeKnownContractMigration(value: JsonRecord): JsonRecord {
       };
     }
   }
-  // #98 adds current profile-rule evidence to the fixed generic support fixture.
-  // Only this exact reviewed rule digest may be omitted for the old/new comparison.
-  if (
-    value.profile === "generic" &&
-    value.dataset_type === "support" &&
-    value.target_user_id === "00000000-0000-4000-8000-000000000000" &&
-    value.profile_rules_sha256 ===
-      "6f0186da749ee4be26717071c4294b2fc7adf8eada2d37013c326324497e4bf4"
-  ) {
-    const { profile_rules_sha256: _profileRules, ...priorEnvelope } = value;
-    return priorEnvelope;
-  }
-  // #98: exact reviewed rule-list transition from historical global exceptions to
-  // task-bound authority. Bind the entire four-profile public projection; any other
-  // rule, waiver, full-context, description, doc or default-profile change still fails.
-  if (value.profiles && value.default_profile) {
-    const projection = {
-      schema_version: value.schema_version,
-      default_profile: value.default_profile,
-      profiles: value.profiles,
-    };
-    const digest = createHash("sha256").update(JSON.stringify(projection)).digest("hex");
-    if (
-      [
-        "09a5eee67d148109fde4c93a9a6e50d729c803fd996a8c3f8f9cb8f5f587d210",
-        "c5e200e5f9f5926da41869ead3701655bb88eb6d13c5cacb6628e7bac461f539",
-      ].includes(digest)
-    ) {
-      return {
-        ...value,
-        schema_version: "<task-profile-rules-v2>",
-        profiles: "<task-profile-rules-v2>",
-      };
-    }
-  }
-  // #97 replaces the legacy API-key example with two additional OAuth public inputs.
-  // Bind the complete successful env-surface report; any new error or other change still fails.
-  if (value.file === ".env.example") {
-    const digest = createHash("sha256").update(JSON.stringify(value)).digest("hex");
-    if (
-      [
-        "0e3ad50419bf8947e7a7736b3d97dff76e42f73471ab2bcda8cfc3ee3f487b37",
-        "fcf4ade16b65a2cd77910d972062ea5e4522be52cfb487199545d0f6bb039642",
-      ].includes(digest)
-    )
-      return { ...value, variable_count: "<oauth-env-contract>" };
-  }
-  // #112 admits only the exact reviewed native-version wording transition.
-  // All other capability fields and every unreviewed gate text remain compared.
-  if (
-    value.id === "cli.dataset.contract-context" &&
-    typeof value.verification_gate === "string" &&
-    [
-      "a013b31338bc5ac996c1a0b95bf43003836e10181d8075c4e1372c7398e95714",
-      "8747c9ebb10457b9be9b7e4686d6466a469021aac1ecc74b0c0ce2c879b01533",
-    ].includes(createHash("sha256").update(value.verification_gate).digest("hex"))
-  )
-    return { ...value, verification_gate: "<reviewed-tidas-version-admission>" };
+  const legacyContract = normalizeGoldenLegacyContracts(value);
+  if (legacyContract) return legacyContract;
   const normalizedWorldsteelProfile = normalizeWorldsteelProfileContract(value);
   if (normalizedWorldsteelProfile) return normalizedWorldsteelProfile;
   const capabilityHashes = capabilityContractMigrationHashes.get(String(value.id ?? ""));
@@ -912,28 +542,7 @@ function normalizeKnownContractMigration(value: JsonRecord): JsonRecord {
       };
     }
   }
-  if (value.id === "foundry.dataset.commit-handoff-plan") {
-    return {
-      ...value,
-      output_contract: "<commit-handoff-command-spec-contract>",
-      verification_gate: "<commit-handoff-command-spec-verification>",
-      source_manifest_requirements: ["<commit-handoff-command-spec-requirements>"],
-    };
-  }
-  if (value.id === "foundry.dataset.post-write-closeout") {
-    return {
-      ...value,
-      input_contract: "<post-write-closeout-command-spec-input>",
-    };
-  }
-  if (
-    ["safety_policy", "profile_context"].includes(String(value.kind ?? "")) &&
-    typeof value.path === "string" &&
-    Object.hasOwn(value, "sha256")
-  ) {
-    return { ...value, sha256: "<policy_snapshot_sha256>" };
-  }
-  return value;
+  return normalizeGoldenResidualContracts(value);
 }
 
 function normalize(value: unknown): unknown {
@@ -1076,71 +685,10 @@ function compareNormalizedOutputs(): void {
   }
 }
 
-function summarizeJsonDifferences(baselinePath: string, currentPath: string): string[] {
-  try {
-    const baseline = JSON.parse(readFileSync(baselinePath, "utf8"));
-    const current = JSON.parse(readFileSync(currentPath, "utf8"));
-    const differences: string[] = [];
-    collectJsonDifferences(baseline, current, "", differences, 8);
-    return differences;
-  } catch {
-    return [];
-  }
-}
-
-function collectJsonDifferences(
-  baseline: unknown,
-  current: unknown,
-  pointer: string,
-  differences: string[],
-  limit: number,
-): void {
-  if (differences.length >= limit || Object.is(baseline, current)) return;
-  const baselineRecord = baseline && typeof baseline === "object";
-  const currentRecord = current && typeof current === "object";
-  if (!baselineRecord || !currentRecord || Array.isArray(baseline) !== Array.isArray(current)) {
-    differences.push(
-      `${pointer || "/"}: ${compactJsonValue(baseline)} -> ${compactJsonValue(current)}`,
-    );
-    return;
-  }
-  const keys = [...new Set([...Object.keys(baseline), ...Object.keys(current)])].sort();
-  const baselineValues = baseline as JsonRecord;
-  const currentValues = current as JsonRecord;
-  for (const key of keys) {
-    if (differences.length >= limit) return;
-    const escapedKey = key.replaceAll("~", "~0").replaceAll("/", "~1");
-    collectJsonDifferences(
-      baselineValues[key],
-      currentValues[key],
-      `${pointer}/${escapedKey}`,
-      differences,
-      limit,
-    );
-  }
-}
-
-function compactJsonValue(value: unknown): string {
-  const text = JSON.stringify(value);
-  if (text === undefined) return "<missing>";
-  return text.length <= 240 ? text : `${text.slice(0, 237)}...`;
-}
-
-function listRelativeFiles(root: string, relative = ""): string[] {
-  const files: string[] = [];
-  const directory = path.join(root, relative);
-  for (const entry of readdirSync(directory, { withFileTypes: true })) {
-    const child = relative ? path.join(relative, entry.name) : entry.name;
-    if (entry.isDirectory()) files.push(...listRelativeFiles(root, child));
-    else if (entry.isFile()) files.push(child);
-  }
-  return files.sort();
-}
-
 try {
   const goldenBase = resolveGoldenBase();
-  const fixture = prepareFixtures();
-  const cliPath = stubCliScript();
+  const fixture = prepareGoldenFixtures(fixtureRoot);
+  const cliPath = writeGoldenStubCliScript(tempRoot);
   run("git", ["worktree", "add", "--detach", "--quiet", beforeRoot, goldenBase.commit], {
     cwd: repoRoot,
   });

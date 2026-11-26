@@ -1,9 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { registeredAssessmentSetProducerBase } from "./foundry-assessment-producer.ts";
-import { createHash } from "node:crypto";
 import {
-  FoundryContextError,
   captureFoundryInput,
   readFoundryInput,
   resolveFoundryOutput,
@@ -20,7 +18,6 @@ import {
 } from "./foundry-semantic-input.ts";
 import {
   currentWorkflowState,
-  readWorkflowArtifact,
   workflowObject,
   type WorkflowRowSet,
 } from "./foundry-workflow-state.ts";
@@ -40,18 +37,14 @@ import { applyFoundryIdentityDecisions } from "./foundry-workflow-identity-apply
 import { currentFoundryInteractionState } from "./foundry-interaction-input.ts";
 import {
   verifyFoundrySemanticInteraction,
-  type SemanticObjectIdentity,
   type SemanticSelectedScope,
 } from "./foundry-semantic-interaction.ts";
 import {
   currentFoundryObjectScopes,
   currentFoundryNarrowObjects,
-  foundryExplicitObjectIdentity,
   requireCurrentFoundryObject,
   requireCurrentFoundryObjectScope,
 } from "./foundry-workflow-object-scope.ts";
-import { foundryInteractionObjectKey } from "./foundry-interaction-scope.ts";
-import { sha256Json } from "./identity-preflight-proof.ts";
 import {
   operationFullContextEvidenceBlockers,
   operationUsedContextKinds,
@@ -59,158 +52,17 @@ import {
   patchSetOperations,
   taskRequiredContextKinds,
 } from "./import-curation/internal/workflow-authoring-tasks.ts";
+import {
+  failSemantic as fail,
+  findPriorSemanticApplication,
+  indexedFoundryAdoptionRows,
+  indexedFoundryDecisionWorkObjects,
+  registeredDecisionWorkObjects,
+  semanticText as text,
+  verifySemanticNarrowObjectAdoptions,
+} from "./foundry-workflow-semantic-scope.ts";
 
-function fail(code: string, message: string): never {
-  throw new FoundryContextError(code, message);
-}
-function text(value: unknown, label: string): string {
-  if (typeof value !== "string" || !value) fail("semantic_work_invalid", `${label} is missing.`);
-  return value;
-}
-
-/** Index only selected identities while reading one row set once. Null marks an ambiguous match. */
-export function indexedFoundryAdoptionRows(
-  file: string,
-  type: string,
-  selectedKeys: ReadonlySet<string>,
-  reader?: (file: string) => string,
-): ReadonlyMap<string, string | null> {
-  const indexed = new Map<string, string | null>();
-  for (const row of readRows(file, reader)) {
-    const identity = foundryExplicitObjectIdentity(row, type);
-    if (!identity) continue;
-    const key = foundryInteractionObjectKey(type, identity.entity_id, identity.version);
-    if (!selectedKeys.has(key)) continue;
-    indexed.set(key, indexed.has(key) ? null : sha256Json(row));
-  }
-  return indexed;
-}
-
-function uniqueAdoptionRowSha(indexed: ReadonlyMap<string, string | null>, key: string): string {
-  const sha = indexed.get(key);
-  if (!sha)
-    fail(
-      "interaction_scope_invalid",
-      "Object scope is missing or duplicated in its registered row set.",
-    );
-  return sha;
-}
-
-/** Keep one target per object even when a decision queue has several paths or categories. */
-export function indexedFoundryDecisionWorkObjects(
-  kind: "classification" | "location" | "identity",
-  ownerType: string,
-  targets: readonly unknown[],
-): readonly SemanticObjectIdentity[] {
-  if (!targets.length)
-    fail("semantic_work_scope_invalid", "The registered decision task has no target objects.");
-  const objects = new Map<string, SemanticObjectIdentity>();
-  for (const raw of targets) {
-    const target = workflowObject(raw);
-    const type = text(target.dataset_type, "Decision target dataset type");
-    const entityId = text(target.dataset_id, "Decision target entity id");
-    const version = text(target.dataset_version, "Decision target version");
-    if (!type.trim() || !entityId.trim() || !version.trim())
-      fail("semantic_work_scope_invalid", "Decision target needs an explicit id and version.");
-    if (type !== ownerType)
-      fail(
-        "semantic_work_scope_invalid",
-        `${kind} decision task targets another row type; review the exact target and reassess it separately before applying scoped human decisions.`,
-      );
-    objects.set(foundryInteractionObjectKey(type, entityId, version), {
-      dataset_type: type,
-      entity_id: entityId,
-      version,
-    });
-    if (objects.size > 1_000)
-      fail(
-        "semantic_work_scope_invalid",
-        "Decision task spans more than 1,000 objects; split and reassess exact target batches.",
-      );
-  }
-  return [...objects.values()];
-}
-
-function registeredDecisionWorkObjects(
-  context: FoundryRuntimeContext,
-  entries: readonly ArtifactEntry[],
-  item: {
-    kind: "classification" | "location" | "identity";
-    type: string;
-    rows: string;
-    task: string;
-    queue: string | null;
-    sha: string;
-  },
-): readonly SemanticObjectIdentity[] {
-  const taskEntry = entries.find(
-    (entry) => resolveFoundryOutput(context, entry.path) === item.task,
-  );
-  if (!taskEntry || taskEntry.sha256 !== item.sha)
-    fail("semantic_work_unregistered", "Decision target task is not the registered work item.");
-  const task = readWorkflowArtifact(context, taskEntry).value;
-  if (task.task_kind !== `${item.kind}_decision_authoring`)
-    fail("semantic_work_scope_invalid", "Decision task kind differs from its assessed owner.");
-  if (item.kind === "identity") {
-    if (
-      !Array.isArray(task.identity_action_items) ||
-      Number(workflowObject(task.counts).selected_unique_identity_targets) !==
-        task.identity_action_items.length
-    )
-      fail("semantic_work_scope_invalid", "Identity task has no exact target roster.");
-    return indexedFoundryDecisionWorkObjects(item.kind, item.type, task.identity_action_items);
-  }
-  if (!item.queue)
-    fail("semantic_work_scope_invalid", "Decision task has no registered target queue.");
-  const queueEntry = entries.find(
-    (entry) => resolveFoundryOutput(context, entry.path) === item.queue,
-  );
-  if (!queueEntry)
-    fail("semantic_work_unregistered", "Decision target queue is not registered in this task.");
-  const declaredQueue = text(task[`${item.kind}_queue`], "Decision task queue");
-  if (path.resolve(context.assetRoot, declaredQueue) !== item.queue)
-    fail("semantic_work_scope_invalid", "Decision task and assessed queue differ.");
-  const bytes = readFoundryInput(context, item.queue);
-  if (
-    bytes.length !== queueEntry.bytes ||
-    createHash("sha256").update(bytes).digest("hex") !== queueEntry.sha256
-  )
-    fail("semantic_work_scope_invalid", "Registered decision queue bytes changed.");
-  const targets = ensureArray(readJsonOrJsonl(item.queue, () => bytes.toString("utf8")));
-  if (
-    !Array.isArray(task[`${item.kind}_queue_rows`]) ||
-    JSON.stringify(targets) !== JSON.stringify(task[`${item.kind}_queue_rows`]) ||
-    Number(workflowObject(task.counts).queue_rows) !== targets.length
-  )
-    fail("semantic_work_scope_invalid", "Decision task target queue is inconsistent.");
-  for (const raw of targets) {
-    const target = workflowObject(raw);
-    if (
-      typeof target.source_file !== "string" ||
-      path.resolve(context.assetRoot, target.source_file) !== item.rows
-    )
-      fail("semantic_work_scope_invalid", "Decision queue targets a different assessed row set.");
-  }
-  return indexedFoundryDecisionWorkObjects(item.kind, item.type, targets);
-}
-
-function priorApplication(
-  context: FoundryRuntimeContext,
-  entries: readonly ArtifactEntry[],
-  submission: SelectedSemanticInput,
-): Record<string, unknown> | null {
-  for (const entry of [...entries].reverse()) {
-    if (
-      entry.command !== "dataset-semantic-apply" ||
-      path.basename(entry.path) !== "semantic-result.json"
-    )
-      continue;
-    const value = readWorkflowArtifact(context, entry).value;
-    if (value.status === "completed" && value.submission_sha256 === submission.descriptor.sha256)
-      return value;
-  }
-  return null;
-}
+export { indexedFoundryAdoptionRows, indexedFoundryDecisionWorkObjects };
 
 export async function applyFoundrySemanticInput(
   context: FoundryRuntimeContext,
@@ -223,7 +75,7 @@ export async function applyFoundrySemanticInput(
   const interaction = currentFoundryInteractionState(context, entries);
   if ((submission.spec.interaction_sha256 ?? null) !== (interaction?.entry.sha256 ?? null))
     fail("semantic_interaction_changed", "Submit against the current registered task decisions.");
-  const prior = priorApplication(context, entries, submission);
+  const prior = findPriorSemanticApplication(context, entries, submission);
   if (prior) return prior;
   const state = currentWorkflowState(context, entries);
   if (
@@ -718,114 +570,16 @@ export async function applyFoundrySemanticInput(
         assertSelectedSemanticInput(submission);
         for (const input of context.inputs) readFoundryInput(context, input.path);
         assertQualifiedFoundryRuntime(context, qualified);
-        if (!blockers.length && decisionWork.length && narrowObjects.length) {
-          const decisionTargetKeys = new Set(
-            adoptedDecisions
-              .filter((adopted) =>
-                decisionWork.some((item) => item.sha === adopted.work_item_sha256),
-              )
-              .filter((adopted) => adopted.object_scope)
-              .map((adopted) =>
-                foundryInteractionObjectKey(
-                  adopted.dataset_type,
-                  adopted.object_scope!.entity_id,
-                  adopted.object_scope!.version,
-                ),
-              ),
-          );
-          const narrowByUpdatedType = new Map<string, Set<string>>();
-          for (const object of narrowObjects) {
-            if (!updated.has(object.dataset_type)) continue;
-            const selected = narrowByUpdatedType.get(object.dataset_type) ?? new Set<string>();
-            selected.add(
-              foundryInteractionObjectKey(object.dataset_type, object.entity_id, object.version),
-            );
-            narrowByUpdatedType.set(object.dataset_type, selected);
-          }
-          for (const [type, keys] of narrowByUpdatedType) {
-            const after = indexedFoundryAdoptionRows(updated.get(type)!.file, type, keys);
-            for (const key of keys) {
-              const before = currentObjects!.get(key);
-              if (!before)
-                fail(
-                  "semantic_work_scope_invalid",
-                  "A reviewed object is missing or ambiguous in the current row set; recheck that exact object before applying decisions to this row set.",
-                );
-              if (after.get(key) === before.row_sha256) continue;
-              if (decisionWork.some((item) => item.kind === "identity"))
-                fail(
-                  "semantic_identity_scope_unverifiable",
-                  "Identity decisions changed a reviewed object or its references without a stable row successor. Reassess that exact object before continuing.",
-                );
-              if (!decisionTargetKeys.has(key))
-                fail(
-                  "semantic_work_scope_invalid",
-                  "A decision task changed a reviewed object outside its registered target queue; reassess the affected object and decision task.",
-                );
-            }
-          }
-        }
-        const adoptionKeysByType = new Map<string, Set<string>>();
-        if (!blockers.length)
-          for (const adopted of adoptedDecisions) {
-            const object = adopted.object_scope;
-            if (!object) continue;
-            const keys = adoptionKeysByType.get(adopted.dataset_type) ?? new Set<string>();
-            keys.add(
-              foundryInteractionObjectKey(adopted.dataset_type, object.entity_id, object.version),
-            );
-            adoptionKeysByType.set(adopted.dataset_type, keys);
-          }
-        const adoptionRowsByType = new Map<
-          string,
-          { before: ReadonlyMap<string, string | null>; after: ReadonlyMap<string, string | null> }
-        >();
-        for (const [type, keys] of adoptionKeysByType) {
-          const before = rows.value.sets.find((set) => set.type === type);
-          const after = updated.get(type);
-          if (!before || !after)
-            fail("semantic_row_scope_changed", "Object adoption has no exact row successor.");
-          adoptionRowsByType.set(type, {
-            before: indexedFoundryAdoptionRows(before.file, type, keys, (file) =>
-              readFoundryInput(context, file).toString("utf8"),
-            ),
-            after: indexedFoundryAdoptionRows(after.file, type, keys),
-          });
-        }
-        const rowAdoptions = blockers.length
-          ? []
-          : adoptedDecisions.flatMap((adopted) => {
-              const object = adopted.object_scope;
-              if (!object) return [];
-              const key = foundryInteractionObjectKey(
-                adopted.dataset_type,
-                object.entity_id,
-                object.version,
-              );
-              const indexed = adoptionRowsByType.get(adopted.dataset_type);
-              if (!indexed)
-                fail("semantic_row_scope_changed", "Object adoption has no exact row successor.");
-              if (
-                !indexed.after.get(key) &&
-                decisionWork.some(
-                  (item) => item.sha === adopted.work_item_sha256 && item.kind === "identity",
-                )
-              )
-                fail(
-                  "semantic_identity_scope_unverifiable",
-                  "Identity decision removed or duplicated a target object, so its object-level adoption cannot be proven. Review that exact identity outcome before continuing.",
-                );
-              return [
-                {
-                  dataset_type: adopted.dataset_type,
-                  object_scope: object,
-                  work_item_sha256: adopted.work_item_sha256,
-                  before_row_sha256: uniqueAdoptionRowSha(indexed.before, key),
-                  after_row_sha256: uniqueAdoptionRowSha(indexed.after, key),
-                  decision_ids: adopted.decision_ids,
-                },
-              ];
-            });
+        const rowAdoptions = verifySemanticNarrowObjectAdoptions({
+          context,
+          blockers,
+          decisionWork,
+          narrowObjects,
+          currentObjects,
+          adoptedDecisions,
+          originalSets: rows.value.sets,
+          updated,
+        });
         registerWorkflowStageFiles(context, operation, output);
         if (!blockers.length)
           operation.writeJson(path.join(output, "foundry-rows.json"), {

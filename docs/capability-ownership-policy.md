@@ -21,7 +21,7 @@ checkPaths:
   - src/commands/**
   - src/lib/**
 lastReviewedAt: 2026-11-27
-lastReviewedCommit: 10feea4149832907c71166582cec23199e022427
+lastReviewedCommit: 029c33c276ed633a36163813df5e53ff5782f779
 lastReviewedNote: "Foundry #287: reviewed the four eligible development-tool updates and complete unchanged lock graph during formatting; native/source qualification, compiler and public-runtime closure, cache inputs, credential and publishing authority remain unchanged. Foundry #296: reviewed ordinary GitHub Windows shard host observations, source/plan/partition/run binding, null omissions and failed/cancelled/signalled evidence after the original elapsed snapshot. Test qualification, public runtime, task/skill ownership, credentials and publisher authority remain unchanged. Foundry #298: reviewed two exclusive Windows retained-suite partitions, source-bound dual timing inputs, conservative execution classes and dynamic class/file caps. Canonical weights, other platforms, original tests/deadlines, source/plan guards and ordinary qualification/publishing authority remain unchanged; modeled feasibility is not a passing Windows result."
 ---
 
