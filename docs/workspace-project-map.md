@@ -89,8 +89,8 @@ checkPaths:
   - src/lib/import-curation/internal/mutation-manifest-workflow.ts
   - src/lib/import-curation/mutation-manifest.ts
   - test/commands/*.test.mts
-lastReviewedAt: 2026-11-26
-lastReviewedCommit: d09d95d525a8f650afcf00ec91a4319fbb902d41
+lastReviewedAt: 2026-11-27
+lastReviewedCommit: b840ffe7c5921ef1185c7fca6d199942c288246f
 lastReviewedNote: "Foundry #287: reviewed the four eligible development-tool updates and complete unchanged lock graph during formatting; native/source qualification, compiler and public-runtime closure, cache inputs, credential and publishing authority remain unchanged. Foundry #296: reviewed ordinary GitHub Windows shard host observations, source/plan/partition/run binding, null omissions and failed/cancelled/signalled evidence after the original elapsed snapshot. Test qualification, public runtime, task/skill ownership, credentials and publisher authority remain unchanged. Foundry #298: reviewed two exclusive Windows retained-suite partitions, source-bound dual timing inputs, conservative execution classes and dynamic class/file caps. Canonical weights, other platforms, original tests/deadlines, source/plan guards and ordinary qualification/publishing authority remain unchanged; modeled feasibility is not a passing Windows result."
 ---
 
