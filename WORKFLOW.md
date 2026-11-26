@@ -46,8 +46,8 @@ policy:
   require_dry_run_before_remote_write: true
   required_multilang_english_before_write: true
   preserve_source_language_variants: true
-lastReviewedAt: 2026-11-25
-lastReviewedCommit: a191bd3dbe633e60ef40ab5fb6fc5e00c015fd02
+lastReviewedAt: 2026-11-26
+lastReviewedCommit: 5fafc75655a3673ae3758b429063075567557477
 lastReviewedNote: "Foundry #306: retired completed JS-to-TS wave migration scaffolding tests in favor of zero-javascript-ratchet and toolchain-contract, and added stat-guarded immutable component digest caching; task order, gate sequence and runtime skill policy remain unchanged."
 ---
 

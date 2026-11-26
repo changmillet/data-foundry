@@ -29,25 +29,30 @@ const repoRoot = path.resolve(testDir, "..", "..");
 const contractPath = path.join(repoRoot, "specs", "module-budgets.json");
 
 function trackedTypeScriptFiles(): string[] {
-  return execFileSync(
-    "git",
-    [
-      "ls-files",
-      "--cached",
-      "--others",
-      "--exclude-standard",
-      "-z",
-      "src/**/*.ts",
-      "devops/**/*.ts",
-    ],
-    {
-      cwd: repoRoot,
-      encoding: "utf8",
-    },
-  )
-    .split("\0")
-    .filter((file) => Boolean(file) && fs.existsSync(path.join(repoRoot, file)))
-    .sort();
+  return [
+    ...new Set(
+      execFileSync(
+        "git",
+        [
+          "ls-files",
+          "--cached",
+          "--others",
+          "--exclude-standard",
+          "-z",
+          "src/*.ts",
+          "src/**/*.ts",
+          "devops/*.ts",
+          "devops/**/*.ts",
+        ],
+        {
+          cwd: repoRoot,
+          encoding: "utf8",
+        },
+      )
+        .split("\0")
+        .filter((file) => Boolean(file) && fs.existsSync(path.join(repoRoot, file))),
+    ),
+  ].sort();
 }
 
 function sourceLineCount(relativePath: string): number {
@@ -172,6 +177,12 @@ test("repo-wide module budgets enforce shrink-only ceilings across src/ and devo
   const trackedFiles = trackedTypeScriptFiles();
   assert.ok(trackedFiles.some((file) => file.startsWith("src/")));
   assert.ok(trackedFiles.some((file) => file.startsWith("devops/")));
+  assert.ok(trackedFiles.includes("src/foundry-facade.ts"));
+  assert.ok(trackedFiles.includes("src/dev-cli.ts"));
+  assert.ok(
+    sourceLineCount("src/foundry-facade.ts") <= contract.owner_target_lines,
+    `src/foundry-facade.ts (${sourceLineCount("src/foundry-facade.ts")} lines) exceeds owner target ${contract.owner_target_lines}`,
+  );
   for (const relativePath of trackedFiles) {
     const ceiling =
       contract.owner_ceiling_lines[relativePath] ??
@@ -186,8 +197,9 @@ test("repo-wide module budgets enforce shrink-only ceilings across src/ and devo
   }
 });
 
-test("src/lib remains below command owners, src never imports devops, and authoring SCC is the only cycle", () => {
+test("src/lib remains below command owners, src never imports devops, and the graph has zero cycles", () => {
   const contract = JSON.parse(fs.readFileSync(contractPath, "utf8")) as BudgetContract;
+  assert.deepEqual(contract.allowed_cycles, []);
   assert.deepEqual(contract.forbidden_cross_imports, [{ from: "src/", to: "devops/" }]);
   const trackedFiles = trackedTypeScriptFiles();
   const tracked = new Set(trackedFiles);
@@ -219,9 +231,5 @@ test("src/lib remains below command owners, src never imports devops, and author
   }
 
   assert.deepEqual(crossBoundaryViolations, []);
-
-  const expectedCycles = contract.allowed_cycles
-    .map((component) => [...component].sort())
-    .sort((left, right) => left.join("\0").localeCompare(right.join("\0")));
-  assert.deepEqual(stronglyConnectedComponents(graph), expectedCycles);
+  assert.deepEqual(stronglyConnectedComponents(graph), []);
 });
