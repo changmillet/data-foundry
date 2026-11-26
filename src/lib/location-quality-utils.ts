@@ -58,9 +58,9 @@ interface LocationTargetValue {
 }
 
 interface LocationStats {
-  location_code_targets: number;
-  location_code_valid: number;
-  location_code_blockers: number;
+  location_code_targets?: number;
+  location_code_valid?: number;
+  location_code_blockers?: number;
 }
 
 interface LocationFindingOptions {
@@ -392,12 +392,12 @@ export function createLocationQualityUtils({
   }: LocationFindingOptions): void {
     const identity = datasetIdentity(payload, type);
     for (const target of collectLocationTargets(payload)) {
-      stats.location_code_targets += 1;
+      stats.location_code_targets = (stats.location_code_targets ?? 0) + 1;
       if (locationCodeMap.has(target.value)) {
-        stats.location_code_valid += 1;
+        stats.location_code_valid = (stats.location_code_valid ?? 0) + 1;
         continue;
       }
-      stats.location_code_blockers += 1;
+      stats.location_code_blockers = (stats.location_code_blockers ?? 0) + 1;
       const queueRow = {
         dataset_type: type,
         dataset_id: identity.id,

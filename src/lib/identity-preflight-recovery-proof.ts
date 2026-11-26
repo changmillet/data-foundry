@@ -3,6 +3,10 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { createFileArtifactFact, createFoundryCommandSpec } from "./foundry-command-spec.ts";
 import {
+  isRetainedIdentityPreflightCliVersion,
+  RETAINED_IDENTITY_PREFLIGHT_CLI_PACKAGE_NAME,
+} from "./cli-compatibility-capabilities.ts";
+import {
   sha256Json,
   sha256Text,
   stableJson,
@@ -199,8 +203,8 @@ export function validateIdentityPreflightRecoveryEvidence(
   if (
     binding_sha256 !== sha256Json(bindingScope) ||
     value.binding_sha256 !== binding_sha256 ||
-    binding.cli.package_name !== "@tiangong-lca/cli" ||
-    !["0.1.22", "0.1.27", "0.1.28"].includes(String(binding.cli.package_version)) ||
+    binding.cli.package_name !== RETAINED_IDENTITY_PREFLIGHT_CLI_PACKAGE_NAME ||
+    !isRetainedIdentityPreflightCliVersion(binding.cli.package_version) ||
     typeof binding.cli.package_integrity !== "string" ||
     !/^sha256-[0-9a-f]{64}$/u.test(binding.cli.package_integrity) ||
     binding.dataset.type !== input.datasetType ||

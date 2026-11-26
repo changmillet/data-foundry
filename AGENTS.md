@@ -33,7 +33,7 @@ checkPaths:
   - prettier.config.ts
   - tsconfig*.json
 lastReviewedAt: 2026-11-26
-lastReviewedCommit: 20f4fcbd5aa1d51d1ac55f2195e2d7f0a404b090
+lastReviewedCommit: a1debaae0acc5d44120c0abb659038fd781779a1
 lastReviewedNote: "Foundry #306: added stat-guarded immutable component digest caching across package/runtime qualification, shared snapshot/archive/store test helpers, retired 41 completed JS-to-TS wave migration scaffolding tests covered by zero-javascript-ratchet and toolchain-contract, and added test:fast / test:smoke:public scripts; public runtime, qualification, authorization and release boundaries remain unchanged."
 ---
 

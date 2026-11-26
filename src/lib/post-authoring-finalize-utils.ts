@@ -12,7 +12,7 @@ const { entryPath: foundryEntryPath, repoRoot } = resolveFoundryRuntimePaths(imp
 type FinalizeOptions = Record<string, unknown>;
 
 type StageReport = JsonRecord & {
-  status?: unknown;
+  status?: string | null;
   files?: JsonRecord;
   rewrite_rows?: unknown;
 };
@@ -32,7 +32,10 @@ type FinalizeFactoryDependencies = {
     runDatasetCurationQueueBuild: (options: FinalizeOptions) => StageReport;
   };
   countRowsFile: (filePath: string) => number;
-  datasetIdentity: (row: JsonRecord, datasetType: string) => { id: string; version: string };
+  datasetIdentity: (
+    row: JsonRecord,
+    datasetType: string,
+  ) => { id: string | null; version: string | null };
   ensureArray: <T>(value: T | T[] | null | undefined) => T[];
   fileExists: (filePath: string | null) => boolean;
   identityPreflightCommands: IdentityPreflightCommands;

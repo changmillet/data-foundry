@@ -1,4 +1,7 @@
 import type { BundleRowType } from "../bundle-row-types.ts";
+import type { CanonicalSupportCacheContext, RewriteStats } from "../canonical-support-rewrites.ts";
+import type { IdentityArtifactIndex } from "../identity-preflight-artifacts.ts";
+import type { ProcessSourceReferenceRow, SourceMetadata } from "../source-semantics.ts";
 import { readOnlyStageContract } from "../stage-contract.ts";
 
 export interface LooseRecord {
@@ -33,8 +36,8 @@ export interface BundleSelection {
 }
 
 export interface DatasetIdentity {
-  id: string;
-  version: string;
+  id: string | null;
+  version: string | null;
 }
 
 export interface LocationCandidate {
@@ -45,38 +48,29 @@ export interface LocationCandidate {
 export interface ProcessFlowEvidence {
   flow_id: string;
   flow_version: string;
-  process_id: string;
-  process_version: string;
+  process_id: string | null;
+  process_version: string | null;
   process_source_file: string | null;
   process_location: string | null;
   exchange_location: string | null;
 }
 
 export interface SemanticSummary {
-  dataset_id: string;
+  dataset_id: string | null;
   kind: string;
   materialized_as_source_row?: boolean;
   [key: string]: unknown;
 }
 
-export interface SourceReferenceRow {
-  relation: string;
-  referenced_source_kind: string;
-  ref_object_id: string;
-  short_description: unknown;
-  [key: string]: unknown;
-}
+export type SourceReferenceRow = ProcessSourceReferenceRow;
 
-export interface IdentityPreflightArtifacts {
+export interface IdentityPreflightArtifacts extends IdentityArtifactIndex {
   rows: unknown[];
   indexPath: string;
   [key: string]: unknown;
 }
 
-export interface CanonicalSupportCache {
-  cachePath: string | null;
-  [key: string]: unknown;
-}
+export type CanonicalSupportCache = CanonicalSupportCacheContext;
 
 export interface SelectedBundle {
   process_id: string;
@@ -85,73 +79,201 @@ export interface SelectedBundle {
 }
 
 export interface BundleSampleDependencies {
-  addDedupedBundleRow: (options: Record<string, unknown>) => void;
+  addDedupedBundleRow: (options: {
+    rowsByType: Record<string, Map<string, LooseRecord>>;
+    sourceByType: Record<string, Map<string, string>>;
+    blockers: LooseRecord[];
+    type: string;
+    payload: LooseRecord;
+    sourceFile: string;
+  }) => boolean;
   asText: (value: unknown) => string;
   attachIdentityPreflightRows: (
     rows: LooseRecord[],
     artifacts: IdentityPreflightArtifacts,
   ) => unknown;
   booleanOption: (value: unknown) => boolean;
-  profileFor: (repoRoot: string, profile: string, options: LooseRecord) => LooseRecord;
+  profileFor: (
+    repoRoot: string,
+    profile: string,
+    options: LooseRecord,
+  ) => { domainRules?: unknown; authorization?: unknown };
   repoRoot: string;
-  buildBafuFallbackSourcePayload: (options: Record<string, unknown>) => LooseRecord;
-  buildDatabaseFallbackSourcePayload: (options: Record<string, unknown>) => LooseRecord;
-  buildBafuProcessContextSourcePayload: (options: Record<string, unknown>) => LooseRecord | null;
-  buildIdentityPreflightArtifacts: (options: Record<string, unknown>) => IdentityPreflightArtifacts;
+  buildBafuFallbackSourcePayload: (options?: {
+    contactReference?: unknown;
+    id?: unknown;
+    version?: string;
+    language?: unknown;
+    timestamp?: unknown;
+  }) => LooseRecord;
+  buildDatabaseFallbackSourcePayload: (options?: {
+    profile?: unknown;
+    contactReference?: unknown;
+    id?: unknown;
+    version?: string;
+    language?: unknown;
+    timestamp?: unknown;
+  }) => LooseRecord;
+  buildBafuProcessContextSourcePayload: (options?: {
+    metadata?: SourceMetadata | null;
+    contactReference?: unknown;
+    id?: unknown;
+    version?: string;
+    language?: unknown;
+    timestamp?: unknown;
+  }) => LooseRecord | null;
+  buildIdentityPreflightArtifacts: (options: {
+    rowsByType: Record<"flow" | "process", Map<string, LooseRecord>>;
+    sourceByType: Record<"flow" | "process", Map<string, string | null | undefined>>;
+    outDir: string;
+    cliBin: string | string[];
+  }) => IdentityPreflightArtifacts;
   buildLibraryContactPayload: (
     options: LooseRecord,
-    template: unknown,
-    context: Record<string, unknown>,
+    template: LooseRecord | null,
+    context: { rewriteRows?: LooseRecord[]; stats?: Record<string, number> },
   ) => LooseRecord;
-  classificationAuthoringCommands: (options: Record<string, unknown>) => LooseRecord;
+  classificationAuthoringCommands: (options: {
+    cliBin: string | string[];
+    outDir: string;
+    rowsDir: string;
+    type: string;
+    rowType?: string;
+  }) => LooseRecord;
   cloneJson: (value: LooseRecord) => LooseRecord;
-  collectBundleQualityFindings: (options: Record<string, unknown>) => void;
-  collectElementaryFlowReuseFindings: (options: Record<string, unknown>) => void;
-  collectLocationQualityFindings: (options: Record<string, unknown>) => void;
+  collectBundleQualityFindings: (options: {
+    payload: LooseRecord;
+    type: string;
+    sourceFile: string;
+    sourceTraces: LooseRecord[];
+    blockers: LooseRecord[];
+    stats: Record<string, number>;
+    classificationQueueRows: LooseRecord[];
+    classificationCommandsByType: Record<string, unknown>;
+  }) => void;
+  collectElementaryFlowReuseFindings: (options: {
+    payload: LooseRecord;
+    type: string;
+    sourceFile: string;
+    sourceTraces: LooseRecord[];
+    blockers: LooseRecord[];
+    stats: Record<string, number>;
+    elementaryFlowReuseRows: LooseRecord[];
+    allowAccountLocalSupportAndElementary?: boolean;
+  }) => void;
+  collectLocationQualityFindings: (options: {
+    payload: LooseRecord;
+    type: string;
+    sourceFile: string;
+    blockers: LooseRecord[];
+    stats: Record<string, number>;
+    locationQueueRows: LooseRecord[];
+    locationCodeMap: Map<string, string>;
+    locationCommands: LooseRecord;
+  }) => void;
   collectSourceTracePayloads: (payload: LooseRecord) => LooseRecord[];
   contactGlobalReference: (options: Record<string, unknown>) => LooseRecord;
   datasetIdentity: (payload: LooseRecord, type: string) => DatasetIdentity;
   ensureArray: (value: unknown) => LooseRecord[];
   fileExists: (filePath: string | null | undefined) => boolean;
-  findFirstBundleContactTemplate: (bundleDirs: string[]) => unknown;
+  findFirstBundleContactTemplate: (bundleDirs: string[]) => LooseRecord | null;
   listProcessBundleDirs: (bundlesDir: unknown) => string[];
   loadCanonicalSupportCache: (options: LooseRecord) => CanonicalSupportCache;
-  loadTidasLocationCodeMap: () => Map<string, unknown>;
-  locationAuthoringCommands: (options: Record<string, unknown>) => LooseRecord;
+  loadTidasLocationCodeMap: () => Map<string, string>;
+  locationAuthoringCommands: (options: {
+    cliBin: string | string[];
+    outDir: string;
+    rowsDir: string;
+    type: string;
+  }) => LooseRecord;
   nowIso: () => string;
-  processOriginalSourceMetadata: (payload: LooseRecord) => LooseRecord | null;
+  processOriginalSourceMetadata: (payload: LooseRecord) => SourceMetadata | null;
   processSourceReferenceRows: (
     payload: LooseRecord,
     sourceLookup: Map<string, SemanticSummary>,
     sourceFile: unknown,
   ) => SourceReferenceRow[];
   readJson: (filePath: string) => LooseRecord;
-  repairTrueSourceClassification: (payload: LooseRecord, options: Record<string, unknown>) => void;
-  repairTrueSourceDescription: (payload: LooseRecord, options: Record<string, unknown>) => void;
-  repairTrueSourceIdentity: (payload: LooseRecord, options: Record<string, unknown>) => void;
+  repairTrueSourceClassification: (
+    payload: LooseRecord,
+    options: { sourceFile: unknown; stats: Record<string, number>; repairRows: LooseRecord[] },
+  ) => void;
+  repairTrueSourceDescription: (
+    payload: LooseRecord,
+    options: { sourceFile: unknown; stats: Record<string, number>; repairRows: LooseRecord[] },
+  ) => void;
+  repairTrueSourceIdentity: (
+    payload: LooseRecord,
+    options: { sourceFile: unknown; stats: Record<string, number>; repairRows: LooseRecord[] },
+  ) => void;
   repoRelativeMaybe: (filePath: unknown) => string | null;
   repoRelativePath: (filePath: string) => string;
-  resolveRepoPath: (filePath: unknown) => string;
+  resolveRepoPath: (filePath: unknown) => string | null;
   resolveTiangongLcaCliCommandPrefix?: () => string[];
   resolveTiangongLcaCliBin: () => string;
   rewriteCanonicalFlowPropertyReferences: (
     payload: LooseRecord,
-    options: Record<string, unknown>,
+    options: {
+      cacheContext: CanonicalSupportCache;
+      datasetType: string;
+      sourceFile: string;
+      stats: RewriteStats;
+      rewriteRows: LooseRecord[];
+      blockers: LooseRecord[];
+      scalingRequirements?: LooseRecord[];
+      blockOnUnscaled?: boolean;
+      datasetIdentityCache: DatasetIdentity;
+      rowIndex?: number | null;
+      language?: string;
+      pathSegments?: Array<string | number>;
+      allowAccountLocalSupportAndElementary?: boolean;
+    },
   ) => void;
   rewriteCanonicalSourceReferences: (
     payload: LooseRecord,
-    options: Record<string, unknown>,
+    options: {
+      datasetType: string;
+      sourceFile: unknown;
+      stats: Record<string, number>;
+      rewriteRows: LooseRecord[];
+      datasetIdentityCache?: DatasetIdentity | null;
+      sourceLookup?: Map<string, SemanticSummary> | null;
+    },
   ) => void;
   rewriteProcessDataSourceReferences: (
     payload: LooseRecord,
-    options: Record<string, unknown>,
+    options: {
+      sourceLookup: Map<string, SemanticSummary>;
+      replacementSource?: SemanticSummary | null;
+      forceReplacementSource?: boolean;
+      replacementRelation?: string | null;
+      replacementReason?: string | null;
+      sourceFile: unknown;
+      stats: Record<string, number>;
+      rewriteRows: LooseRecord[];
+      datasetIdentityCache?: DatasetIdentity | null;
+      language?: unknown;
+    },
   ) => void;
   rewriteContactReferences: (
     payload: LooseRecord,
     reference: LooseRecord,
-    stats: Record<string, unknown>,
+    stats: {
+      rewritten: number;
+      previous_ids: Set<string>;
+      previous_descriptions: Set<string>;
+    },
   ) => void;
-  rewriteTrueSourceReferenceDescriptions: (options: Record<string, unknown>) => void;
+  rewriteTrueSourceReferenceDescriptions: (
+    value: unknown,
+    options: {
+      sourceLookup: Map<string, SemanticSummary>;
+      sourceFile: unknown;
+      stats: Record<string, number>;
+      rewriteRows: LooseRecord[];
+      datasetIdentityCache?: DatasetIdentity | null;
+    },
+  ) => void;
   sanitizeBundlePayload: (
     payload: LooseRecord,
     type: BundleRowType,
@@ -165,7 +287,7 @@ export interface BundleSampleDependencies {
   sourceReferenceSemanticBlockers: (rows: SourceReferenceRow[]) => LooseRecord[];
   sourceSummaryMatchesOriginalMetadata: (
     summary: SemanticSummary | undefined,
-    metadata: LooseRecord,
+    metadata: SourceMetadata,
   ) => boolean;
   sourceSemanticSummary: (payload: LooseRecord, sourceFile: unknown) => SemanticSummary;
   textValue: (value: unknown) => string;

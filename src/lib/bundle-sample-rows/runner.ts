@@ -89,7 +89,7 @@ export function createBundleSampleRowsRunner(deps: BundleSampleDependencies) {
     const selection = selectProcessBundleDirs(allBundleDirs, options);
     const outDir = resolveRepoPath(
       options.outDir || `.foundry/workspaces/bafu-bundle-sample-rows/${Date.now()}`,
-    );
+    )!;
     const rowsDir = path.join(outDir, "rows");
     const cliBin = resolveTiangongLcaCliCommandPrefix
       ? resolveTiangongLcaCliCommandPrefix()
@@ -343,7 +343,7 @@ export function createBundleSampleRowsRunner(deps: BundleSampleDependencies) {
     );
     const sourceLookup = new Map<string, SemanticSummary>(
       sourceSemanticsRows
-        .filter((row) => row.dataset_id)
+        .filter((row): row is SemanticSummary & { dataset_id: string } => Boolean(row.dataset_id))
         .map((row) => [row.dataset_id, row] as const),
     );
     for (const [key, payload] of rowsByType.process.entries()) {
@@ -380,7 +380,7 @@ export function createBundleSampleRowsRunner(deps: BundleSampleDependencies) {
             source_context_process_id: processIdentity.id,
           };
           sourceSemanticsRows = [...sourceSemanticsRows, summary];
-          sourceLookup.set(summary.dataset_id, summary);
+          if (summary.dataset_id) sourceLookup.set(summary.dataset_id, summary);
           sourceClassificationRepairRows.push({
             dataset_id: sourceIdentity.id,
             dataset_version: sourceIdentity.version,
@@ -395,7 +395,9 @@ export function createBundleSampleRowsRunner(deps: BundleSampleDependencies) {
               "Process context contains an explicit Original source and DOI that is more specific than the converted process data source reference.",
           });
         }
-        const replacementSource = sourceLookup.get(sourceIdentity.id);
+        const replacementSource = sourceIdentity.id
+          ? sourceLookup.get(sourceIdentity.id)
+          : undefined;
         rewriteProcessDataSourceReferences(payload.processDataSet!, {
           sourceLookup,
           replacementSource,
@@ -439,7 +441,9 @@ export function createBundleSampleRowsRunner(deps: BundleSampleDependencies) {
         fallback_database_source: true,
       };
       sourceSemanticsRows = [...sourceSemanticsRows, fallbackSourceSummary];
-      sourceLookup.set(fallbackSourceSummary.dataset_id, fallbackSourceSummary);
+      if (fallbackSourceSummary.dataset_id) {
+        sourceLookup.set(fallbackSourceSummary.dataset_id, fallbackSourceSummary);
+      }
     }
     for (const [key, payload] of rowsByType.process.entries()) {
       rewriteProcessDataSourceReferences(payload.processDataSet!, {

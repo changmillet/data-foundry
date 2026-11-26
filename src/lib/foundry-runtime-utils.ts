@@ -55,7 +55,7 @@ interface JsonRecord {
 
 interface RuntimeStage extends JsonRecord {
   stage?: string;
-  status?: string;
+  status?: string | null;
   exit_code?: number;
   command?: string;
   args?: string[];
@@ -237,18 +237,18 @@ export function createFoundryRuntimeUtils({ parseScalar, repoRoot }: FoundryRunt
     };
   }
 
-  function readJson(filePath: string): unknown {
-    return JSON.parse(readText(filePath));
+  function readJson<T = unknown>(filePath: string): T {
+    return JSON.parse(readText(filePath)) as T;
   }
 
-  function readJsonLines(filePath: string): unknown[] {
+  function readJsonLines<T = unknown>(filePath: string): T[] {
     return readText(filePath)
       .split(/\r?\n/u)
       .map((line) => line.trim())
       .filter(Boolean)
       .map((line, index) => {
         try {
-          return JSON.parse(line);
+          return JSON.parse(line) as T;
         } catch (error) {
           throw new Error(`Invalid JSONL at ${repoRelativePath(filePath)}:${index + 1}: ${error}`);
         }
@@ -277,8 +277,8 @@ export function createFoundryRuntimeUtils({ parseScalar, repoRoot }: FoundryRunt
     return path.relative(repoRoot, filePath).split(path.sep).join(path.posix.sep);
   }
 
-  function repoRelativeMaybe(filePath: string | null | undefined): string | null {
-    return filePath ? repoRelativePath(filePath) : null;
+  function repoRelativeMaybe(filePath: unknown): string | null {
+    return typeof filePath === "string" && filePath ? repoRelativePath(filePath) : null;
   }
 
   function sha256Text(value: unknown): string {
@@ -318,16 +318,16 @@ export function createFoundryRuntimeUtils({ parseScalar, repoRoot }: FoundryRunt
       .filter((line) => line.trim()).length;
   }
 
-  function readRowsFile(filePath: string | null | undefined): unknown[] {
+  function readRowsFile<T = unknown>(filePath: string | null | undefined): T[] {
     if (!filePath || !fileExists(filePath)) return [];
     if (filePath.toLowerCase().endsWith(".jsonl")) {
-      return readJsonLines(filePath);
+      return readJsonLines<T>(filePath);
     }
     const value = readJson(filePath);
-    if (Array.isArray(value)) return value;
-    if (isRecord(value) && Array.isArray(value.rows)) return value.rows;
-    if (isRecord(value) && Array.isArray(value.items)) return value.items;
-    return [value];
+    if (Array.isArray(value)) return value as T[];
+    if (isRecord(value) && Array.isArray(value.rows)) return value.rows as T[];
+    if (isRecord(value) && Array.isArray(value.items)) return value.items as T[];
+    return [value as T];
   }
 
   function findFilesByName(startDir: unknown, fileName: string, maxDepth = 8): string[] {
@@ -434,10 +434,10 @@ export function createFoundryRuntimeUtils({ parseScalar, repoRoot }: FoundryRunt
     return process.env[key] !== undefined && !isPlaceholderEnvValue(process.env[key]);
   }
 
-  function ensureArray(value: unknown): unknown[] {
-    if (Array.isArray(value)) return value;
+  function ensureArray<T = unknown>(value: unknown): T[] {
+    if (Array.isArray(value)) return value as T[];
     if (value === undefined || value === null || value === "") return [];
-    return [value];
+    return [value as T];
   }
 
   function normalizedList(value: unknown): string[] {
@@ -484,9 +484,15 @@ export function createFoundryRuntimeUtils({ parseScalar, repoRoot }: FoundryRunt
   }
 
   function compactStageReport(stage: RuntimeStage) {
+    const status =
+      typeof stage.report?.status === "string"
+        ? stage.report.status
+        : typeof stage.status === "string"
+          ? stage.status
+          : null;
     return {
       stage: stage.stage,
-      status: stage.report?.status ?? stage.status ?? null,
+      status,
       exit_code: stage.exit_code,
       command: stage.command,
       args: stage.args,
@@ -607,9 +613,11 @@ export function createFoundryRuntimeUtils({ parseScalar, repoRoot }: FoundryRunt
     };
   }
 
-  function readJsonArtifactOption(value: unknown): { path: string; value: unknown } | null {
+  function readJsonArtifactOption<T = unknown>(value: unknown): { path: string; value: T } | null {
     const resolved = resolveRepoPath(value);
-    return resolved && fileExists(resolved) ? { path: resolved, value: readJson(resolved) } : null;
+    return resolved && fileExists(resolved)
+      ? { path: resolved, value: readJson<T>(resolved) }
+      : null;
   }
 
   function runTiangongJsonStage(stage: string, args: string[]) {
@@ -626,9 +634,9 @@ export function createFoundryRuntimeUtils({ parseScalar, repoRoot }: FoundryRunt
     if (result.error) {
       throw result.error;
     }
-    let report: unknown = null;
+    let report: JsonRecord = {};
     try {
-      report = JSON.parse(result.stdout || "{}");
+      report = JSON.parse(result.stdout || "{}") as JsonRecord;
     } catch {
       throw new Error(
         [
@@ -654,15 +662,15 @@ export function createFoundryRuntimeUtils({ parseScalar, repoRoot }: FoundryRunt
     };
   }
 
-  function readJsonOrJsonLines(filePath: unknown): unknown[] {
+  function readJsonOrJsonLines<T = unknown>(filePath: unknown): T[] {
     const resolved = resolveRepoPath(filePath);
     if (!resolved || !fileExists(resolved)) return [];
-    if (resolved.toLowerCase().endsWith(".jsonl")) return readJsonLines(resolved);
+    if (resolved.toLowerCase().endsWith(".jsonl")) return readJsonLines<T>(resolved);
     const value = readJson(resolved);
-    if (Array.isArray(value)) return value;
-    if (isRecord(value) && Array.isArray(value.decisions)) return value.decisions;
-    if (isRecord(value) && Array.isArray(value.rows)) return value.rows;
-    return value && typeof value === "object" ? [value] : [];
+    if (Array.isArray(value)) return value as T[];
+    if (isRecord(value) && Array.isArray(value.decisions)) return value.decisions as T[];
+    if (isRecord(value) && Array.isArray(value.rows)) return value.rows as T[];
+    return value && typeof value === "object" ? [value as T] : [];
   }
 
   function hasUnresolvedAiPlaceholder(value: unknown): boolean {

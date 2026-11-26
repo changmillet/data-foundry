@@ -102,8 +102,7 @@ export function prepareFoundryDecisionWork(
     fs.mkdirSync(outDir, { recursive: true });
     const queue = path.join(outDir, `${kind}-queue.jsonl`);
     fs.writeFileSync(queue, rows.map((row) => JSON.stringify(row)).join("\n") + "\n");
-    const options = {
-      [`${kind}Queue`]: queue,
+    const sharedOptions = {
       rowsFile: request.rows,
       outDir,
       schemaFile: request.contract.schema,
@@ -116,8 +115,14 @@ export function prepareFoundryDecisionWork(
     };
     const built = owners.invoke(() =>
       kind === "classification"
-        ? owners.classification.runDatasetClassificationDecisionTaskBuild(options as never)
-        : owners.location.runDatasetLocationDecisionTaskBuild(options as never),
+        ? owners.classification.runDatasetClassificationDecisionTaskBuild({
+            ...sharedOptions,
+            classificationQueue: queue,
+          })
+        : owners.location.runDatasetLocationDecisionTaskBuild({
+            ...sharedOptions,
+            locationQueue: queue,
+          }),
     );
     const task = workflowObject(built),
       files = workflowObject(task.files);

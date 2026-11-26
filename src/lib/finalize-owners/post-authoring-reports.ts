@@ -447,7 +447,7 @@ export function buildFinalizeStageReports({
   unresolvedExchangeExternalizeStage: FinalizeStage;
   sourceContactRewriteStage: FinalizeStage;
   sourceContactSupportFinalizeRequested: boolean;
-  sourceContactSupportFinalizeStatus: string | undefined;
+  sourceContactSupportFinalizeStatus: string | null | undefined;
   sourceContactSupportFinalizeBlockers: number;
   sourceContactSupportFinalize: FinalizeStage;
   canonicalSupportRewriteStage: FinalizeStage;

@@ -258,7 +258,7 @@ export function createLibraryScopeWorkflowCommands({
     const outDir = resolveRepoPath(
       options.outDir || path.join(path.dirname(indexDir), "authoring-plan"),
     )!;
-    const chunkSize = positiveIntegerOption(options.chunkSize, 200);
+    const chunkSize = positiveIntegerOption(options.chunkSize, 200) ?? 200;
     return libraryAuthoringPlan.run({ indexDir, outDir, chunkSize });
   }
 
@@ -454,10 +454,8 @@ export function createLibraryScopeWorkflowCommands({
     const outDir = resolveRepoPath(
       options.outDir || path.join(path.dirname(libraryResolutionPath), "process-scope-run"),
     )!;
-    const parallel = positiveIntegerOption(
-      options.parallel,
-      Math.min(12, Math.max(1, os.cpus().length - 1)),
-    );
+    const defaultParallel = Math.min(12, Math.max(1, os.cpus().length - 1));
+    const parallel = positiveIntegerOption(options.parallel, defaultParallel) ?? defaultParallel;
     const commit = booleanOption(options.commit);
     const dryRun = booleanOption(options.dryRun) || !commit;
     return readyProcessScopeRunner.run({

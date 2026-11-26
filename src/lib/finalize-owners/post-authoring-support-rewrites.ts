@@ -251,8 +251,8 @@ export function createSourceContactRewriteRunner(deps: FinalizeDependencies) {
     if (fileExists(sourceSupportRowsFile)) {
       const supportContactRewriteStats = {
         rewritten: 0,
-        previous_ids: new Set(),
-        previous_descriptions: new Set(),
+        previous_ids: new Set<string>(),
+        previous_descriptions: new Set<string>(),
       };
       for (const sourceRow of readRowsFile(sourceSupportRowsFile!)) {
         if (!sourceRow?.sourceDataSet) continue;
@@ -285,7 +285,7 @@ export function createSourceContactRewriteRunner(deps: FinalizeDependencies) {
         const repairedIdentity = datasetIdentity(payload, "source");
         const summary = sourceSemanticSummary(payload, sourceSupportRowsFile!);
         sourceSupportSemanticsRows.push(summary);
-        sourceLookup.set(summary.dataset_id, summary);
+        if (summary.dataset_id) sourceLookup.set(summary.dataset_id, summary);
         sourceSupportPayloads.set(
           `${repairedIdentity.id}::${repairedIdentity.version || "00.00.001"}`,
           payload,
@@ -294,8 +294,8 @@ export function createSourceContactRewriteRunner(deps: FinalizeDependencies) {
     }
     const contactRewriteStats = {
       rewritten: 0,
-      previous_ids: new Set(),
-      previous_descriptions: new Set(),
+      previous_ids: new Set<string>(),
+      previous_descriptions: new Set<string>(),
     };
     const rewrittenRows = rows.map((row) => {
       const payload = cloneJson(row);

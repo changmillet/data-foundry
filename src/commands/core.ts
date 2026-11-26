@@ -52,7 +52,7 @@ interface CoreCommandDependencies {
   readText: (filePath: string) => string;
   repoRelativePath: (filePath: string) => string;
   repoRoot: string;
-  resolveRepoPath: (filePath: unknown) => string;
+  resolveRepoPath: (filePath: unknown) => string | null;
   splitFrontmatter: (text: string) => { frontmatter: string; body: string };
   unique: <T>(values: T[]) => T[];
   writeJson: (filePath: string, value: unknown) => void;
@@ -312,11 +312,13 @@ export function createCoreCommands({
       }
       if (ids.has(entry.id)) errors.push(`duplicate file-location registry id: ${entry.id}`);
       ids.add(entry.id);
-      if (entry.status !== "retired" && !fileExists(resolveRepoPath(entry.current_path))) {
+      const currentPath = resolveRepoPath(entry.current_path);
+      if (entry.status !== "retired" && (!currentPath || !fileExists(currentPath))) {
         errors.push(`${entry.id}: current_path does not exist: ${entry.current_path}`);
       }
       for (const ref of entry.referenced_by ?? []) {
-        if (!fileExists(resolveRepoPath(ref)))
+        const refPath = resolveRepoPath(ref);
+        if (!refPath || !fileExists(refPath))
           warnings.push(`${entry.id}: referenced_by path does not exist: ${ref}`);
       }
     }
@@ -503,6 +505,7 @@ export function createCoreCommands({
   function writeRoutePlan(plan: JsonRecord, outDir?: string) {
     if (!outDir) return plan;
     const resolvedOutDir = resolveRepoPath(outDir);
+    if (!resolvedOutDir) return plan;
     writeJson(path.join(resolvedOutDir, "capability-route-plan.json"), plan);
     return {
       ...plan,

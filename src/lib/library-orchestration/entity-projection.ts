@@ -5,8 +5,8 @@ export interface JsonRecord {
 }
 
 export interface DatasetIdentity {
-  id: string;
-  version: string;
+  id: string | null;
+  version: string | null;
 }
 
 export interface EntityReference extends JsonRecord {

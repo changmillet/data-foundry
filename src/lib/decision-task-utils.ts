@@ -2,18 +2,18 @@ import path from "node:path";
 
 type UnknownRecord = Record<string, unknown>;
 
-interface WorkflowCommands extends UnknownRecord {
+export interface WorkflowCommands extends UnknownRecord {
   input_rows?: unknown;
   output_rows?: unknown;
 }
 
-interface DecisionWorkflow extends UnknownRecord {
+export interface DecisionWorkflow extends UnknownRecord {
   schema_type?: unknown;
   row_type?: unknown;
   commands?: WorkflowCommands;
 }
 
-interface DecisionQueueRow extends UnknownRecord {
+export interface DecisionQueueRow extends UnknownRecord {
   dataset_id?: unknown;
   dataset_version?: unknown;
   dataset_type?: unknown;
@@ -27,12 +27,12 @@ interface DecisionQueueRow extends UnknownRecord {
   foundry_selection?: UnknownRecord;
 }
 
-interface ContextKindEvidence extends UnknownRecord {
+export interface ContextKindEvidence extends UnknownRecord {
   used_context_kinds?: unknown;
   usedContextKinds?: unknown;
 }
 
-interface DecisionRecord extends UnknownRecord {
+export interface DecisionRecord extends UnknownRecord {
   category_type?: unknown;
   categoryType?: unknown;
   classification_type?: unknown;
@@ -66,7 +66,7 @@ interface DecisionRecord extends UnknownRecord {
   status?: unknown;
 }
 
-interface DecisionTaskOptions extends UnknownRecord {
+export interface DecisionTaskOptions extends UnknownRecord {
   datasetId?: unknown;
   datasetIds?: unknown;
   id?: unknown;
@@ -105,7 +105,7 @@ interface DecisionTaskOptions extends UnknownRecord {
   task?: unknown;
 }
 
-interface QueueSelection {
+export interface QueueSelection {
   dataset_ids: string[];
   dataset_types: string[];
   category_types: string[];
@@ -114,12 +114,12 @@ interface QueueSelection {
   limit: number | null;
 }
 
-interface SelectedQueueRow<Row extends DecisionQueueRow = DecisionQueueRow> {
+export interface SelectedQueueRow<Row extends DecisionQueueRow = DecisionQueueRow> {
   row: Row;
   sourceIndex: number;
 }
 
-interface ContextFileInput extends UnknownRecord {
+export interface ContextFileInput extends UnknownRecord {
   kind?: unknown;
   path?: unknown;
   sha256?: unknown;
@@ -127,7 +127,7 @@ interface ContextFileInput extends UnknownRecord {
   text?: unknown;
 }
 
-interface DecisionContextFile extends UnknownRecord {
+export interface DecisionContextFile extends UnknownRecord {
   kind: string;
   path: string | null;
   sha256: string;
@@ -135,23 +135,23 @@ interface DecisionContextFile extends UnknownRecord {
   text: string;
 }
 
-interface MissingContextFile {
+export interface MissingContextFile extends UnknownRecord {
   kind: string;
   path: string;
 }
 
-interface ContractContext {
+export interface ContractContext {
   files: ContextFileInput[];
   missing: MissingContextFile[];
 }
 
-interface ProvenanceEntry extends UnknownRecord {
+export interface ProvenanceEntry extends UnknownRecord {
   file?: unknown;
   total_rows?: unknown;
   truncated?: unknown;
 }
 
-interface AttachedInputRow extends UnknownRecord {
+export interface AttachedInputRow extends UnknownRecord {
   input_rows?: unknown;
   index?: unknown;
   row_type?: unknown;
@@ -159,19 +159,19 @@ interface AttachedInputRow extends UnknownRecord {
   dataset_version?: unknown;
 }
 
-interface SharedContextInput extends UnknownRecord {
+export interface SharedContextInput extends UnknownRecord {
   path?: unknown;
   sha256?: unknown;
   counts?: unknown;
 }
 
-interface TaskContextInput extends UnknownRecord {
+export interface TaskContextInput extends UnknownRecord {
   sha256?: unknown;
   context_bundle_sha256?: unknown;
   shared_context_bundle?: SharedContextInput;
 }
 
-interface DecisionTaskInput extends UnknownRecord {
+export interface DecisionTaskInput extends UnknownRecord {
   status?: unknown;
   task_kind?: unknown;
   context_bundle?: TaskContextInput;
@@ -186,7 +186,7 @@ interface DecisionTaskInput extends UnknownRecord {
   missing_context_files?: unknown;
 }
 
-interface SharedContextProof {
+export interface SharedContextProof {
   path: string | null;
   sha256: string | null;
   expected_sha256: string | null;
@@ -195,7 +195,7 @@ interface SharedContextProof {
   blockers: UnknownRecord[];
 }
 
-interface DecisionTaskProof {
+export interface DecisionTaskProof {
   path: string;
   sha256: string | null;
   status: string | null;
@@ -362,7 +362,7 @@ export function createDecisionTaskUtils({
 
   function decisionTaskChunkLabel(
     options: DecisionTaskOptions,
-    selection: QueueSelection,
+    selection: Partial<QueueSelection> & Record<string, unknown>,
     fallback: string,
   ) {
     if (options.chunkLabel || options.chunk || options.label) {
@@ -475,7 +475,7 @@ export function createDecisionTaskUtils({
     )}::${asText(row?.dataset_version)}`;
   }
 
-  function classificationDecisionCode(decision: DecisionRecord) {
+  function classificationDecisionCode(decision: DecisionRecord | undefined) {
     return asText(
       decision?.code ??
         decision?.class_id ??
@@ -487,14 +487,17 @@ export function createDecisionTaskUtils({
     );
   }
 
-  function classificationDecisionUsedContextKinds(decision: DecisionRecord) {
+  function asDecisionRecord(value: unknown): DecisionRecord | undefined {
+    return value && typeof value === "object" ? (value as DecisionRecord) : undefined;
+  }
+
+  function classificationDecisionUsedContextKinds(decision: unknown) {
+    const record = asDecisionRecord(decision);
     return unique([
-      ...normalizedList(decision?.used_context_kinds ?? decision?.usedContextKinds),
+      ...normalizedList(record?.used_context_kinds ?? record?.usedContextKinds),
+      ...normalizedList(record?.evidence?.used_context_kinds ?? record?.evidence?.usedContextKinds),
       ...normalizedList(
-        decision?.evidence?.used_context_kinds ?? decision?.evidence?.usedContextKinds,
-      ),
-      ...normalizedList(
-        decision?.resolution?.used_context_kinds ?? decision?.resolution?.usedContextKinds,
+        record?.resolution?.used_context_kinds ?? record?.resolution?.usedContextKinds,
       ),
     ]);
   }
@@ -556,8 +559,8 @@ export function createDecisionTaskUtils({
     };
   }
 
-  function decisionTaskContextFileSummary(file: ContextFileInput) {
-    const withText = decisionTaskContextFileWithText(file);
+  function decisionTaskContextFileSummary(file: unknown) {
+    const withText = decisionTaskContextFileWithText(asDecisionRecord(file) ?? {});
     return {
       kind: withText.kind,
       path: withText.path,
@@ -744,24 +747,17 @@ export function createDecisionTaskUtils({
     };
   }
 
-  function decisionAuthoringContext(contextBundle: {
-    task: string;
-    sha256: string;
-    contract_context_files: Array<{
-      kind: string;
-      path: string | null;
-      sha256: string;
-      bytes: number;
-    }>;
-  }) {
+  function decisionAuthoringContext(contextBundle: Record<string, unknown>) {
+    const rawFiles = contextBundle.contract_context_files;
+    const files = Array.isArray(rawFiles) ? (rawFiles as DecisionContextFile[]) : [];
     return {
-      task: contextBundle.task,
-      context_bundle_sha256: contextBundle.sha256,
-      required_context_kinds: unique(contextBundle.contract_context_files.map((file) => file.kind)),
-      context_files: contextBundle.contract_context_files.map((file) => ({
-        kind: file.kind,
-        path: file.path,
-        sha256: file.sha256,
+      task: typeof contextBundle.task === "string" ? contextBundle.task : "",
+      context_bundle_sha256: typeof contextBundle.sha256 === "string" ? contextBundle.sha256 : "",
+      required_context_kinds: unique(files.map((file) => file.kind)),
+      context_files: files.map(({ kind, path: filePath, sha256 }) => ({
+        kind,
+        path: filePath,
+        sha256,
       })),
     };
   }
@@ -1086,18 +1082,20 @@ export function createDecisionTaskUtils({
       .filter((proof): proof is DecisionTaskProof => proof !== null);
   }
 
-  function decisionContextBundleSha256(decision: DecisionRecord) {
+  function decisionContextBundleSha256(decision: unknown) {
+    const record = asDecisionRecord(decision);
     return asText(
-      decision?.authoring_context?.context_bundle_sha256 ??
-        decision?.authoringContext?.contextBundleSha256 ??
-        decision?.authoring_context_sha256 ??
-        decision?.context_bundle_sha256 ??
-        decision?.contextBundleSha256,
+      record?.authoring_context?.context_bundle_sha256 ??
+        record?.authoringContext?.contextBundleSha256 ??
+        record?.authoring_context_sha256 ??
+        record?.context_bundle_sha256 ??
+        record?.contextBundleSha256,
     );
   }
 
-  function decisionCompletionStatus(decision: DecisionRecord) {
-    return asText(decision?.decision_status ?? decision?.decisionStatus ?? decision?.status);
+  function decisionCompletionStatus(decision: unknown) {
+    const record = asDecisionRecord(decision);
+    return asText(record?.decision_status ?? record?.decisionStatus ?? record?.status);
   }
 
   function decisionTaskReportPayload(proof: DecisionTaskProof | null) {
@@ -1128,11 +1126,10 @@ export function createDecisionTaskUtils({
     };
   }
 
-  function decisionTaskProofList(
-    proofOrProofs: DecisionTaskProof | DecisionTaskProof[] | null | undefined,
-  ) {
+  function decisionTaskProofList(proofOrProofs: unknown): DecisionTaskProof[] {
     return ensureArray(proofOrProofs).filter(
-      (proof): proof is DecisionTaskProof => proof !== null && proof !== undefined,
+      (proof): proof is DecisionTaskProof =>
+        Boolean(proof) && typeof proof === "object" && !Array.isArray(proof),
     );
   }
 
@@ -1191,3 +1188,5 @@ export function createDecisionTaskUtils({
     decisionTaskContextBundleHashes,
   };
 }
+
+export type DecisionTaskUtils = ReturnType<typeof createDecisionTaskUtils>;

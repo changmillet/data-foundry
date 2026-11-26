@@ -236,13 +236,13 @@ export interface BlockedFinalizeReport extends ReportArtifactFields {
 export type FinalizeReport = ReadyFinalizeReport | BlockedFinalizeReport;
 
 export interface CloseoutLedgerWriteOptions {
-  report: CloseoutReport | null;
+  report: CloseoutReport | Record<string, unknown> | null;
   reportPath: string;
   ledgerDir: string | null;
 }
 
 export interface FinalizeLedgerWriteOptions {
-  report: FinalizeReport | null;
+  report: FinalizeReport | Record<string, unknown> | null;
   reportPath: string;
   ledgerDir: string | null;
 }
@@ -255,7 +255,7 @@ export interface LedgerWriteCounts extends JsonRecord {
   rows?: number;
 }
 
-export interface SkippedImportLedgerWriteResult {
+export interface SkippedImportLedgerWriteResult extends Record<string, unknown> {
   status: "skipped";
   reason:
     | "ledger_dir_missing"
@@ -267,7 +267,7 @@ export interface SkippedImportLedgerWriteResult {
   counts: { entries_written: 0 };
 }
 
-export interface CompletedImportLedgerWriteResult {
+export interface CompletedImportLedgerWriteResult extends Record<string, unknown> {
   status: "completed";
   files: Record<string, string>;
   counts: LedgerWriteCounts;
@@ -619,11 +619,9 @@ export function createImportLedgerUtils({
     return manifestPath;
   }
 
-  function writeCloseoutImportLedger({
-    report,
-    reportPath,
-    ledgerDir,
-  }: CloseoutLedgerWriteOptions): ImportLedgerWriteResult {
+  function writeCloseoutImportLedger(options: CloseoutLedgerWriteOptions): ImportLedgerWriteResult {
+    const { reportPath, ledgerDir } = options;
+    const report = options.report as CloseoutReport | null;
     if (!ledgerDir || !report) {
       return {
         status: "skipped",
@@ -824,11 +822,9 @@ export function createImportLedgerUtils({
     };
   }
 
-  function writeFinalizeImportLedger({
-    report,
-    reportPath,
-    ledgerDir,
-  }: FinalizeLedgerWriteOptions): ImportLedgerWriteResult {
+  function writeFinalizeImportLedger(options: FinalizeLedgerWriteOptions): ImportLedgerWriteResult {
+    const { reportPath, ledgerDir } = options;
+    const report = options.report as FinalizeReport | null;
     if (
       !ledgerDir ||
       !report ||

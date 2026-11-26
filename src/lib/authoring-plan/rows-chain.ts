@@ -7,6 +7,10 @@ import type {
 } from "./types-and-status.ts";
 import type { createAuthoringPlanStatusHelpers } from "./types-and-status.ts";
 
+function asRecord(value: unknown): LooseRecord {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as LooseRecord) : {};
+}
+
 /** Creates rows-chain resolution and apply-command builders for dataset-authoring-plan. */
 export function createAuthoringPlanRowsChainHelpers(
   deps: AuthoringPlanDependencies,
@@ -44,16 +48,17 @@ export function createAuthoringPlanRowsChainHelpers(
     const reportType = asText(curationGateReport?.dataset_type).toLowerCase();
     const normalizedType = asText(datasetType).toLowerCase();
     if (normalizedType && normalizedType === reportType && curationGateReport?.rows_file) {
-      return curationGateReport.rows_file as unknown as string;
+      return asText(curationGateReport.rows_file);
     }
     const queueManifest = existingArtifact(
-      curationGateReport?.context?.curation_queue?.manifest_file,
+      asRecord(asRecord(curationGateReport?.context).curation_queue).manifest_file,
     )?.value;
+    const queueInputs = asRecord(queueManifest?.inputs);
     const queueInput = asText(
       {
-        process: queueManifest?.inputs?.processes,
-        flow: queueManifest?.inputs?.flows,
-        support: ensureArray(queueManifest?.inputs?.support)[0],
+        process: queueInputs.processes,
+        flow: queueInputs.flows,
+        support: ensureArray(queueInputs.support)[0],
       }[normalizedType],
     );
     if (queueInput) {
@@ -170,17 +175,18 @@ export function createAuthoringPlanRowsChainHelpers(
 
   function authoringPlanCompletedOutputRows(reportPath: string, kind: string): string[] {
     const artifact = existingArtifact(reportPath);
-    if (!artifact || (artifact.value.status as unknown as string) !== "completed") return [];
+    if (!artifact || asText(artifact.value.status) !== "completed") return [];
     const report = artifact.value;
+    const files = asRecord(report.files);
     if (kind === "patch") {
       return authoringPlanRowsFiles([
-        report.files?.output_rows,
-        report.files?.patched_rows,
+        files.output_rows,
+        files.patched_rows,
         report.output_rows,
         report.out_path,
       ]);
     }
-    return authoringPlanRowsFiles([report.files?.output_rows, report.output_rows]);
+    return authoringPlanRowsFiles([files.output_rows, report.output_rows]);
   }
 
   function authoringPlanPlannedTransformOutputRows(
@@ -299,9 +305,10 @@ export function createAuthoringPlanRowsChainHelpers(
     outputRows: string | null;
   }): string | null {
     const manifest = existingArtifact(manifestPath)?.value;
+    const resolvedManifestPath = resolveRepoPath(manifestPath) ?? manifestPath;
     const patchFile = authoringPlanRowsFileRef(
-      manifest?.batch_patch_contract?.output_patch_file ||
-        path.join(path.dirname(resolveRepoPath(manifestPath)), "ai-patches.batch.json"),
+      asRecord(manifest?.batch_patch_contract).output_patch_file ||
+        path.join(path.dirname(resolvedManifestPath), "ai-patches.batch.json"),
     );
     if (!inputRows || !outputRows || !patchFile || !authoringPackageDir) return null;
     return foundryCommand([

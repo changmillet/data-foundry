@@ -5,6 +5,10 @@ import {
   parseAuthIdentityReceipt,
   type AuthIdentityReceipt as CliAuthIdentityReceipt,
 } from "@tiangong-lca/cli/auth-identity-receipt";
+import {
+  isRetainedIdentityPreflightCliVersion,
+  RETAINED_IDENTITY_PREFLIGHT_CLI_PACKAGE_NAME,
+} from "./cli-compatibility-capabilities.ts";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -264,8 +268,8 @@ function isPinnedManualReviewDiagnostic(
   const binding = input.binding;
   const argv = binding.command.semantic_argv;
   if (
-    binding.cli.package_name !== "@tiangong-lca/cli" ||
-    !["0.1.22", "0.1.27", "0.1.28"].includes(binding.cli.package_version) ||
+    binding.cli.package_name !== RETAINED_IDENTITY_PREFLIGHT_CLI_PACKAGE_NAME ||
+    !isRetainedIdentityPreflightCliVersion(binding.cli.package_version) ||
     !/^sha256-[0-9a-f]{64}$/u.test(binding.cli.package_integrity ?? "") ||
     binding.inputs.authReceipt?.cli.package_name !== binding.cli.package_name ||
     binding.inputs.authReceipt.cli.package_version !== binding.cli.package_version ||

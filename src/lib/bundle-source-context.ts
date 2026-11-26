@@ -73,7 +73,10 @@ export function createBundleSourceContextUtils({ asText }: { asText: (value: unk
     }
   }
 
-  function sourceTraceAttribute(sourceTraces: JsonRecord[], attributeName: string): string | null {
+  function sourceTraceAttribute(
+    sourceTraces: readonly unknown[],
+    attributeName: string,
+  ): string | null {
     for (const trace of sourceTraces) {
       let found: string | null = null;
       walkSourceTraceNode(trace, (node) => {
@@ -89,12 +92,15 @@ export function createBundleSourceContextUtils({ asText }: { asText: (value: unk
     return null;
   }
 
-  function sourceTraceLocationCode(sourceTraces: JsonRecord[]): string | null {
+  function sourceTraceLocationCode(sourceTraces: readonly unknown[]): string | null {
     const location = sourceTraceAttribute(sourceTraces, "location");
     return isLikelyLocationCodeText(location) ? location : null;
   }
 
-  function sourceTraceChildText(sourceTraces: JsonRecord[], childName: string): string | null {
+  function sourceTraceChildText(
+    sourceTraces: readonly unknown[],
+    childName: string,
+  ): string | null {
     for (const trace of sourceTraces) {
       let found: string | null = null;
       walkSourceTraceNode(trace, (node) => {
@@ -108,9 +114,9 @@ export function createBundleSourceContextUtils({ asText }: { asText: (value: unk
     return null;
   }
 
-  function processSourceClassificationSummary(sourceTraces: JsonRecord[]) {
+  function processSourceClassificationSummary(sourceTraces: readonly unknown[]) {
     for (const trace of sourceTraces) {
-      const sourceClassification = trace?.sourceClassification;
+      const sourceClassification = isJsonRecord(trace) ? trace.sourceClassification : null;
       if (isJsonRecord(sourceClassification)) {
         return {
           category: asText(sourceClassification.category),
@@ -128,7 +134,7 @@ export function createBundleSourceContextUtils({ asText }: { asText: (value: unk
     };
   }
 
-  function processAuthoringContextFromTrace(sourceTraces: JsonRecord[]) {
+  function processAuthoringContextFromTrace(sourceTraces: readonly unknown[]) {
     return {
       source_name: sourceTraceAttribute(sourceTraces, "name"),
       source_local_name: sourceTraceAttribute(sourceTraces, "localName"),

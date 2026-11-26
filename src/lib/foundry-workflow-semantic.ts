@@ -684,10 +684,8 @@ export async function applyFoundrySemanticInput(
           const applied = workflowObject(
             decisionOwners.invoke(() =>
               item.kind === "classification"
-                ? decisionOwners.classification.runDatasetClassificationDecisionsApply(
-                    options as never,
-                  )
-                : decisionOwners.location.runDatasetLocationDecisionsApply(options as never),
+                ? decisionOwners.classification.runDatasetClassificationDecisionsApply(options)
+                : decisionOwners.location.runDatasetLocationDecisionsApply(options),
             ),
           );
           if (

@@ -107,7 +107,7 @@ interface CliCommand {
   args: string[];
   display: string;
   package: string | null;
-  package_version?: string;
+  package_version?: string | null;
   bin_path?: string;
   source?: string;
 }
@@ -127,7 +127,7 @@ interface IdentityPreflightRunDependencies {
     outDir: string;
     cliBin: string[];
   }) => { rows: IdentityPreflightRow[]; indexPath: string; root: string };
-  datasetIdentity: (row: JsonRecord, datasetType: string) => { id: string; version: string };
+  datasetIdentity: (row: JsonRecord, type: string) => { id: string | null; version: string | null };
   ensureArray: (value: unknown) => JsonRecord[];
   fileExists: (filePath: string | null | undefined) => boolean;
   identityPreflightSourceIndexPaths: (options: IdentityPreflightOptions) => string[];

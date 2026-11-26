@@ -3,7 +3,7 @@ import process from "node:process";
 import { readOnlyStageContract } from "../stage-contract.ts";
 
 export interface LooseRecord {
-  [key: string]: LooseRecord | undefined;
+  [key: string]: unknown;
 }
 
 export interface ExistingArtifact {
@@ -64,8 +64,8 @@ export interface IdentityApplyCommand {
 }
 
 export interface AuthoringPlanDependencies {
-  appendOption: (args: unknown[], flag: string, value: unknown) => void;
-  appendRepeatedOptions: (args: unknown[], flag: string, values: unknown) => void;
+  appendOption: (args: string[], flag: string, value: unknown) => void;
+  appendRepeatedOptions: (args: string[], flag: string, values: unknown) => void;
   asText: (value: unknown) => string;
   datasetRowsFileStem: (datasetType: string) => string;
   decisionTaskChunkLabel: (
@@ -84,11 +84,15 @@ export interface AuthoringPlanDependencies {
   repoRelativeMaybe: (filePath: string | null | undefined) => string | null;
   repoRelativePath: (filePath: string) => string;
   repoRoot: string;
-  resolveRepoPath: (filePath: unknown) => string;
+  resolveRepoPath: (filePath: unknown) => string | null;
   safeFileToken: (value: unknown, fallback: string) => string;
   shellQuote: (value: unknown) => string;
   unique: <T>(values: T[]) => T[];
   writeJson: (filePath: string, value: unknown) => void;
+}
+
+function asRecord(value: unknown): LooseRecord {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as LooseRecord) : {};
 }
 
 export const authoringPlanStageContract = readOnlyStageContract([
@@ -179,11 +183,15 @@ export function createAuthoringPlanStatusHelpers(deps: AuthoringPlanDependencies
         status: "missing",
       };
     }
+    const counts = artifact.value?.counts;
     return {
       exists: true,
       path: repoRelativePath(artifact.path),
       status: asText(artifact.value?.status) || "present",
-      counts: artifact.value?.counts ?? null,
+      counts:
+        counts && typeof counts === "object" && !Array.isArray(counts)
+          ? (counts as LooseRecord)
+          : null,
     };
   }
 
@@ -223,7 +231,9 @@ export function createAuthoringPlanStatusHelpers(deps: AuthoringPlanDependencies
   }
 
   function authoringPlanContextPaths(curationGateReport: LooseRecord): ContextPaths {
-    const details = ensureArray(curationGateReport?.context?.contract_context_file_details);
+    const details = ensureArray(
+      asRecord(curationGateReport?.context).contract_context_file_details,
+    );
     const byKind = new Map<string, string[]>();
     for (const detail of details) {
       const kind = asText(detail?.kind);
@@ -242,7 +252,7 @@ export function createAuthoringPlanStatusHelpers(deps: AuthoringPlanDependencies
     };
   }
 
-  function appendContextOptions(args: unknown[], contextPaths: ContextPaths): void {
+  function appendContextOptions(args: string[], contextPaths: ContextPaths): void {
     appendOption(args, "--schema-file", contextPaths.schema);
     appendOption(args, "--yaml-file", contextPaths.methodology_yaml);
     appendOption(args, "--ruleset-file", contextPaths.ruleset);
@@ -272,7 +282,7 @@ export function createAuthoringPlanStatusHelpers(deps: AuthoringPlanDependencies
     };
   }
 
-  function appendAuthoringPlanGateScopeOptions(args: unknown[], scope: GateScope): void {
+  function appendAuthoringPlanGateScopeOptions(args: string[], scope: GateScope): void {
     appendOption(args, "--dataset-type", scope?.dataset_type);
     appendRepeatedOptions(args, "--dataset-id", scope?.dataset_ids ?? []);
   }
@@ -299,11 +309,9 @@ export function createAuthoringPlanStatusHelpers(deps: AuthoringPlanDependencies
         bundle_ids: [],
       };
       const label = decisionTaskChunkLabel({}, selection, `${kind}-scope`);
+      const resolvedTaskPath = resolveRepoPath(taskPath) ?? taskPath;
       return repoRelativePath(
-        path.join(
-          path.dirname(resolveRepoPath(taskPath)),
-          `${kind}-authoring-queue.${label}.jsonl`,
-        ),
+        path.join(path.dirname(resolvedTaskPath), `${kind}-authoring-queue.${label}.jsonl`),
       );
     }
     return originalQueue;

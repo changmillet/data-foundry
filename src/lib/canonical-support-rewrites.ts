@@ -34,19 +34,19 @@ type CanonicalSupportOptions = JsonRecord & {
   cacheFile?: unknown;
 };
 
-type CanonicalSupportIndex = {
+export type CanonicalSupportIndex = {
   flowPropertyById: Map<string, JsonRecord>;
   flowPropertyMappingByUnit: Map<string, JsonRecord & { canonicalId: string }>;
   unitGroupById: Map<string, JsonRecord>;
 };
 
-type CanonicalSupportCacheContext = {
+export type CanonicalSupportCacheContext = {
   cache: JsonRecord | null;
   cachePath: string | null;
   index: CanonicalSupportIndex;
 };
 
-type RewriteStats = {
+export type RewriteStats = {
   canonical_flow_property_reference_rewrites: number;
   canonical_unit_group_reference_proofs: number;
   amount_scaling_required_rewrites: number;

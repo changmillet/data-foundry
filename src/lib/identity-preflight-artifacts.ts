@@ -30,37 +30,32 @@ interface ExchangeRecord extends UnknownRecord {
 }
 
 interface ProcessDataSetRecord extends UnknownRecord {
-  processInformation?: {
+  processInformation?: UnknownRecord & {
     dataSetInformation?: UnknownRecord & {
-      name?: {
+      name?: UnknownRecord & {
         baseName?: unknown;
         treatmentStandardsRoutes?: unknown;
         mixAndLocationTypes?: unknown;
         functionalUnitFlowProperties?: unknown;
       };
     };
-    quantitativeReference?: { referenceToReferenceFlow?: unknown };
-    geography?: {
-      locationOfOperationSupplyOrProduction?: {
-        "@location"?: unknown;
-        location?: unknown;
-      };
-    };
+    quantitativeReference?: UnknownRecord & { referenceToReferenceFlow?: unknown };
+    geography?: UnknownRecord & { locationOfOperationSupplyOrProduction?: UnknownRecord };
   };
-  exchanges?: { exchange?: ExchangeRecord | ExchangeRecord[] };
+  exchanges?: UnknownRecord & { exchange?: ExchangeRecord | ExchangeRecord[] };
 }
 
 interface FlowDataSetRecord extends UnknownRecord {
-  flowInformation?: {
+  flowInformation?: UnknownRecord & {
     dataSetInformation?: UnknownRecord & {
-      classificationInformation?: {
-        "common:elementaryFlowCategorization"?: {
+      classificationInformation?: UnknownRecord & {
+        "common:elementaryFlowCategorization"?: UnknownRecord & {
           "common:category"?: unknown;
         };
       };
     };
   };
-  flowProperties?: { flowProperty?: FlowPropertyRecord | FlowPropertyRecord[] };
+  flowProperties?: UnknownRecord & { flowProperty?: FlowPropertyRecord | FlowPropertyRecord[] };
 }
 
 interface DatasetPayload extends UnknownRecord {
@@ -111,14 +106,14 @@ interface IdentityIndexRemoteSearch extends UnknownRecord {
   edge_request: EdgeSearchRequest;
 }
 
-interface IdentityIndexRow extends UnknownRecord {
+export interface IdentityIndexRow extends UnknownRecord {
   request_file: string;
   command: string;
   command_spec: FoundryCommandSpec;
   remote_search: IdentityIndexRemoteSearch;
 }
 
-interface IdentityArtifactIndex {
+export interface IdentityArtifactIndex {
   byIdentity: Map<string, IdentityIndexRow>;
 }
 
@@ -155,7 +150,7 @@ interface IdentityPreflightArtifactDependencies {
   bundleClassificationPath: (payload: DatasetPayload, type: string) => string;
   cleanEcoSpoldNameText: (value: unknown) => string;
   collectSourceTracePayloads: (value: unknown) => unknown[];
-  datasetIdentity: (payload: DatasetPayload, type: string) => { id: string; version: string };
+  datasetIdentity: (p: DatasetPayload, t: string) => { id: string | null; version: string | null };
   ensureArray: <Value>(value: Value | Value[] | null | undefined) => Value[];
   fileExists: (filePath: string | null) => boolean;
   flowNameParts: (payload: DatasetPayload) => NameParts;
@@ -902,13 +897,15 @@ export function createIdentityPreflightArtifactUtils({
     };
   }
 
-  function identityPreflightSourceIndexPaths(options: SourceIndexOptions) {
-    return normalizedList(
+  function identityPreflightSourceIndexPaths(options: SourceIndexOptions): string[] {
+    const raw =
       options.sourceIndex ||
-        options.sourceIndexes ||
-        options.sourceContextIndex ||
-        options.sourceContextIndexes,
-    ).map(resolveRepoPath);
+      options.sourceIndexes ||
+      options.sourceContextIndex ||
+      options.sourceContextIndexes;
+    return normalizedList(raw)
+      .map(resolveRepoPath)
+      .filter((f): f is string => Boolean(f));
   }
 
   function identityPreflightSourceIndexKey(row: SourceIndexRow) {
