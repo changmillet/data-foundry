@@ -1,539 +1,84 @@
-import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { bundleRowTypes } from "./bundle-row-types.ts";
+import {
+  appendJsonLinesDedup,
+  blockerBucket,
+  ensureDir,
+  humanActionForBlocker,
+  inferRowDatasetType,
+  isJsonRecord,
+  latestByKey,
+  normalizedBlockerInputs,
+  readJsonLinesIfExists,
+  rowPayload,
+  rowsFromValue,
+  sha256,
+  supportPluralForType,
+  writeJsonLinesFile,
+} from "./import-ledger-helpers.ts";
+import {
+  type AppendJsonLinesResult,
+  BLOCKER_BUCKETS,
+  type BlockedDependencyImportLedgerRow,
+  type BlockedScopeImportLedgerRow,
+  type CloseoutLedgerWriteOptions,
+  type CloseoutReport,
+  type DatasetImportLedgerHelpReport,
+  type DatasetImportLedgerReport,
+  type DatasetImportLedgerReportOptions,
+  type FinalizeArtifactFiles,
+  type FinalizeLedgerWriteOptions,
+  type FinalizeReport,
+  type ImportLedgerDependencies,
+  type ImportLedgerManifest,
+  type ImportLedgerUtils,
+  type ImportLedgerWriteResult,
+  type JsonValue,
+  LEDGER_FILES,
+  type ManifestUpdateOptions,
+  type ResumePendingImportLedgerRow,
+  type ResumeSkippedImportLedgerRow,
+  type RetryImportLedgerRow,
+  type RowIdentity,
+  type VerifiedImportLedgerRow,
+} from "./import-ledger-types.ts";
 
-export type JsonPrimitive = string | number | boolean | null;
-export type JsonValue = JsonPrimitive | JsonRecord | JsonValue[];
-export interface JsonRecord {
-  [key: string]: JsonValue | undefined;
-}
-
-export type LedgerDatasetType = keyof typeof bundleRowTypes | "support" | "unknown";
-export type BlockerBucket =
-  | "elementary-flow"
-  | "canonical-support"
-  | "classification"
-  | "content-saturation"
-  | "reference-closure"
-  | "identity"
-  | "remote-write"
-  | "other";
-
-export interface DatasetIdentity {
-  id?: string | null;
-  version?: string | null;
-}
-
-export interface BlockingDependency extends JsonRecord {
-  dataset_type?: string | null;
-  id?: string | null;
-  version?: string | null;
-  path?: string | null;
-}
-
-export interface ImportLedgerBlocker extends JsonRecord {
-  code?: string | null;
-  stage?: string | null;
-  message?: string | null;
-  dataset_type?: string | null;
-  blocking_dependency?: BlockingDependency;
-  reference_type?: string | null;
-  table?: string | null;
-  reference_id?: string | null;
-  entity_id?: string | null;
-  id?: string | null;
-  reference_version?: string | null;
-  version?: string | null;
-  path?: string | null;
-}
-
-export interface ImportLedgerDependencies {
-  asText: (value: unknown) => string;
-  datasetIdentity: (payload: JsonValue, datasetType: string) => DatasetIdentity;
-  fileExists: (filePath: string) => boolean;
-  nowIso: () => string;
-  readJson: (filePath: string) => JsonValue;
-  readJsonLines: (filePath: string) => JsonValue[];
-  repoRelativePath: (filePath: string) => string;
-  resolveRepoPath: (filePath: unknown) => string | null;
-  writeJson: (filePath: string, value: JsonValue) => void;
-}
-
-export interface ImportLedgerManifest extends JsonRecord {
-  schema_version: 1;
-  created_at_utc: string;
-  updated_at_utc: string;
-  ledger_dir: string;
-  event_kinds: string[];
-  latest_report: string | null;
-  files: Record<string, string>;
-  contract: {
-    ok_prefix: "ok.*.verified.jsonl";
-    blocked_prefix: "blocked.*.jsonl";
-    retry_prefix: "retry.*.jsonl";
-    resume_prefix: "resume.*.jsonl";
-    append_only: true;
-    dedup_key: "ledger_key";
-  };
-}
-
-interface ImportLedgerRowBase extends JsonRecord {
-  schema_version: 1;
-  ledger_kind: "ok" | "blocked" | "resume";
-  status: string;
-  ledger_key?: string;
-}
-
-export interface VerifiedImportLedgerRow extends ImportLedgerRowBase {
-  ledger_kind: "ok";
-  status: "verified";
-  verified_at_utc: string;
-  row_index: number;
-  row_dataset_type: string;
-  dataset_id: string | null;
-  version: string | null;
-  payload_hash: string;
-  dataset_key: string;
-  scope_key: string;
-  ledger_key: string;
-  scope_dataset_type?: string | null;
-  profile?: string | null;
-  target_user_id?: string | null;
-  expected_state_code?: number | null;
-  final_rows_file?: string | null;
-  finalize_report?: string | null;
-  mutation_manifest?: string | null;
-  commit_report?: string | null;
-  post_write_verify_report?: string | null;
-  closeout_report?: string | null;
-  root_payload_mismatches?: number;
-}
-
-export interface BlockedScopeImportLedgerRow extends ImportLedgerRowBase {
-  ledger_kind: "blocked";
-  status: "blocked_human_review";
-  blocked_at_utc: string;
-  scope_dataset_type: string | null;
-  scope_ids: string[];
-  scope_versions: string[];
-  scope_key: string;
-  blocker_codes: string[];
-  blocker_count: number;
-  required_human_action: string;
-  ledger_key: string;
-  profile?: string | null;
-  final_rows_file?: string | null;
-  finalize_report?: string | null;
-  mutation_manifest?: string | null;
-  closeout_report?: string | null;
-  curation_gate_report?: string | null;
-  commit_handoff_plan?: string | null;
-  rerun_command?: string | null;
-}
-
-export interface BlockedDependencyImportLedgerRow extends ImportLedgerRowBase {
-  ledger_kind: "blocked";
-  status: "blocked_human_review";
-  blocked_at_utc: string;
-  blocker_bucket: BlockerBucket;
-  reason_code: string;
-  message?: string | null;
-  blocking_stage?: string | null;
-  scope_dataset_type: string | null;
-  scope_ids: string[];
-  scope_key: string;
-  blocking_dependency: BlockingDependency;
-  required_human_action: string;
-  ledger_key: string;
-  final_rows_file?: string | null;
-  finalize_report?: string | null;
-  mutation_manifest?: string | null;
-  closeout_report?: string | null;
-  raw_blocker?: JsonValue;
-}
-
-export interface RetryImportLedgerRow extends BlockedDependencyImportLedgerRow {}
-
-export interface ResumePendingImportLedgerRow extends JsonRecord {
-  schema_version: 1;
-  ledger_kind: "resume";
-  status: "pending_human_review";
-  source_ledger_key: string | null;
-  scope_key: string | null;
-  scope_dataset_type: string | null;
-  scope_ids: string[];
-  blocker_codes: string[];
-  blocker_count?: number | null;
-  required_human_action?: string | null;
-  final_rows_file?: string | null;
-  finalize_report?: string | null;
-  rerun_command?: string | null;
-}
-
-export interface ResumeSkippedImportLedgerRow extends JsonRecord {
-  schema_version: 1;
-  ledger_kind: "resume";
-  status: "skipped_verified";
-  source_ledger_key: string | null;
-  dataset_key: string | null;
-  row_dataset_type: string | null;
-  dataset_id: string | null;
-  version: string | null;
-  verified_at_utc?: string | null;
-  closeout_report?: string | null;
-}
-
-export type ImportLedgerRow =
-  | VerifiedImportLedgerRow
-  | BlockedScopeImportLedgerRow
-  | BlockedDependencyImportLedgerRow
-  | RetryImportLedgerRow
-  | ResumePendingImportLedgerRow
-  | ResumeSkippedImportLedgerRow;
-
-interface ReportArtifactFields extends JsonRecord {
-  dataset_type?: string | null;
-  profile?: string | null;
-  final_rows_file?: string | null;
-  rows_file?: string | null;
-  finalize_report?: string | null;
-  mutation_manifest?: string | null;
-}
-
-export interface CompletedCloseoutReport extends ReportArtifactFields {
-  status: "completed";
-  target_user_id?: string | null;
-  expected_state_code?: number | null;
-  commit_report?: string | null;
-  post_write_verify_report?: string | null;
-  counts?: { root_payload_mismatches?: number };
-}
-
-export interface BlockedCloseoutReport extends ReportArtifactFields {
-  status: "blocked" | "failed";
-  blockers?: ImportLedgerBlocker[];
-}
-
-export type CloseoutReport = CompletedCloseoutReport | BlockedCloseoutReport;
-
-export interface FinalizeArtifactFiles extends JsonRecord {
-  curation_gate_report?: string | null;
-  mutation_manifest?: string | null;
-  commit_handoff_plan?: string | null;
-}
-
-export interface ReadyFinalizeReport extends ReportArtifactFields {
-  status: "ready_for_remote_write" | "ready_reference_only";
-}
-
-export interface BlockedFinalizeReport extends ReportArtifactFields {
-  status: "blocked" | "failed";
-  blockers?: ImportLedgerBlocker[];
-  files?: FinalizeArtifactFiles;
-}
-
-export type FinalizeReport = ReadyFinalizeReport | BlockedFinalizeReport;
-
-export interface CloseoutLedgerWriteOptions {
-  report: CloseoutReport | Record<string, unknown> | null;
-  reportPath: string;
-  ledgerDir: string | null;
-}
-
-export interface FinalizeLedgerWriteOptions {
-  report: FinalizeReport | Record<string, unknown> | null;
-  reportPath: string;
-  ledgerDir: string | null;
-}
-
-export interface LedgerWriteCounts extends JsonRecord {
-  entries_written: number;
-  entries_skipped_existing?: number;
-  blockers?: number;
-  blocked_scopes?: number;
-  rows?: number;
-}
-
-export interface SkippedImportLedgerWriteResult extends Record<string, unknown> {
-  status: "skipped";
-  reason:
-    | "ledger_dir_missing"
-    | "report_missing"
-    | "closeout_not_completed_without_blockers"
-    | "finalize_ready"
-    | "no_blockers";
-  files: Record<string, never>;
-  counts: { entries_written: 0 };
-}
-
-export interface CompletedImportLedgerWriteResult extends Record<string, unknown> {
-  status: "completed";
-  files: Record<string, string>;
-  counts: LedgerWriteCounts;
-}
-
-export type ImportLedgerWriteResult =
-  SkippedImportLedgerWriteResult | CompletedImportLedgerWriteResult;
-
-export interface DatasetImportLedgerReportOptions {
-  help?: boolean;
-  ledgerDir?: string;
-  importLedgerDir?: string;
-  outDir?: string;
-}
-
-export interface DatasetImportLedgerHelpReport {
-  schema_version: 1;
-  status: "help";
-  command: "dataset-import-ledger-report";
-  usage: string[];
-  purpose: string;
-  remote_write_mode: "read-only";
-}
-
-export interface DatasetImportLedgerReport extends JsonRecord {
-  schema_version: 1;
-  generated_at_utc: string;
-  status: "completed" | "completed_with_blocked_scopes";
-  ledger_dir: string;
-  remote_write_mode: "read-only";
-  policy: { resume_boundary: string };
-  counts: {
-    ok_rows: number;
-    blocked_rows: number;
-    retry_rows: number;
-    resume_rows: number;
-    skipped_verified_rows: number;
-  };
-  files: {
-    report: string;
-    resume_plan: string;
-    resume_skipped_verified: string;
-  };
-}
-
-export interface ImportLedgerUtils {
-  runDatasetImportLedgerReport: (
-    options: DatasetImportLedgerReportOptions,
-  ) => DatasetImportLedgerHelpReport | DatasetImportLedgerReport;
-  writeCloseoutImportLedger: (options: CloseoutLedgerWriteOptions) => ImportLedgerWriteResult;
-  writeFinalizeImportLedger: (options: FinalizeLedgerWriteOptions) => ImportLedgerWriteResult;
-}
-
-interface RowIdentity {
-  payload: JsonValue;
-  dataset_type: string;
-  dataset_id: string | null;
-  version: string | null;
-  payload_hash: string;
-}
-
-interface AppendJsonLinesResult {
-  file: string;
-  appended: number;
-  skipped_existing: number;
-}
-
-interface ManifestUpdateOptions {
-  ledgerDir: string;
-  eventKind: string;
-  files?: Record<string, string | null | undefined>;
-  reportPath?: string | null;
-}
-
-interface NormalizedBlockerInput {
-  raw: JsonValue;
-  blocker: ImportLedgerBlocker;
-}
-
-const LEDGER_FILES = {
-  manifest: "run-manifest.json",
-  okScopes: "ok.scopes.verified.jsonl",
-  blockedScopes: "blocked.scopes.human-review.jsonl",
-  resumePlan: "resume.plan.jsonl",
-  resumeSkipped: "resume.skipped-verified.jsonl",
-  report: "dataset-import-ledger-report.json",
-};
-
-const BLOCKER_BUCKETS = [
-  "elementary-flow",
-  "canonical-support",
-  "classification",
-  "content-saturation",
-  "reference-closure",
-  "identity",
-  "remote-write",
-  "other",
-];
-
-function sha256(value: unknown): string {
-  return createHash("sha256")
-    .update(String(value ?? ""))
-    .digest("hex");
-}
-
-function ensureDir(dir: string): void {
-  fs.mkdirSync(dir, { recursive: true });
-}
-
-function jsonLine(row: JsonRecord): string {
-  return `${JSON.stringify(row)}\n`;
-}
-
-function readJsonLinesIfExists<T extends JsonRecord = JsonRecord>(filePath: string | null): T[] {
-  if (!filePath || !fs.existsSync(filePath)) return [];
-  const text = fs.readFileSync(filePath, "utf8").trim();
-  return text ? text.split(/\r?\n/u).map((line) => JSON.parse(line) as T) : [];
-}
-
-function writeJsonLinesFile(filePath: string, rows: readonly JsonRecord[]): void {
-  ensureDir(path.dirname(filePath));
-  fs.writeFileSync(
-    filePath,
-    rows.map((row) => JSON.stringify(row)).join("\n") + (rows.length ? "\n" : ""),
-  );
-}
-
-function appendJsonLinesDedup<T extends JsonRecord & { ledger_key?: string }>(
-  filePath: string,
-  rows: readonly T[],
-): AppendJsonLinesResult {
-  ensureDir(path.dirname(filePath));
-  const seen = new Set(
-    readJsonLinesIfExists<T>(filePath)
-      .map((row) => String(row?.ledger_key ?? ""))
-      .filter(Boolean),
-  );
-  const pending: T[] = [];
-  for (const row of rows) {
-    const key = String(row?.ledger_key ?? "");
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
-    pending.push(row);
-  }
-  if (pending.length > 0) {
-    fs.appendFileSync(filePath, pending.map(jsonLine).join(""));
-  }
-  return {
-    file: filePath,
-    appended: pending.length,
-    skipped_existing: rows.length - pending.length,
-  };
-}
-
-function supportPluralForType(datasetType: string): string {
-  return (
-    (bundleRowTypes as Record<string, { plural: string }>)[datasetType]?.plural ??
-    `${datasetType || "unknown"}s`
-  );
-}
-
-function isJsonRecord(value: unknown): value is JsonRecord {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function normalizedBlockerInputs(value: unknown): NormalizedBlockerInput[] {
-  if (!Array.isArray(value)) return [];
-  return value.map((raw) => ({
-    raw: raw as JsonValue,
-    blocker: isJsonRecord(raw) ? (raw as ImportLedgerBlocker) : {},
-  }));
-}
-
-function rowPayload(row: JsonValue): JsonValue {
-  return isJsonRecord(row) && isJsonRecord(row.payload) ? row.payload : row;
-}
-
-function inferRowDatasetType(payload: JsonValue, fallbackType: unknown): string {
-  for (const [datasetType, config] of Object.entries(bundleRowTypes)) {
-    if (isJsonRecord(payload) && payload[config.rootKey]) return datasetType;
-  }
-  return fallbackType === "support"
-    ? "support"
-    : typeof fallbackType === "string" && fallbackType
-      ? fallbackType
-      : "unknown";
-}
-
-function rowsFromValue(value: JsonValue): JsonValue[] {
-  if (Array.isArray(value)) return value;
-  if (isJsonRecord(value) && Array.isArray(value.rows)) return value.rows;
-  if (isJsonRecord(value) && Array.isArray(value.items)) return value.items;
-  return value && typeof value === "object" ? [value] : [];
-}
-
-function blockerBucket(blocker: ImportLedgerBlocker): BlockerBucket {
-  const text = [
-    blocker?.code,
-    blocker?.stage,
-    blocker?.message,
-    blocker?.dataset_type,
-    blocker?.blocking_dependency?.dataset_type,
-    blocker?.reference_type,
-    blocker?.table,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-  if (/(elementary|flow_?elementary)/u.test(text)) return "elementary-flow";
-  if (
-    /(canonical_?support|flow_?property|flowproperty|unit_?group|unitgroup|reference_only_support)/u.test(
-      text,
-    )
-  ) {
-    return "canonical-support";
-  }
-  if (/classification/u.test(text)) return "classification";
-  if (/(identity|preflight|candidate)/u.test(text)) return "identity";
-  if (/(remote_write|commit|post_write|readback|write failure|save-draft|publish)/u.test(text)) {
-    return "remote-write";
-  }
-  if (
-    /(reference_closure|reference closure|remote_verify|verify_remote|unproven|source|contact)/u.test(
-      text,
-    )
-  ) {
-    return "reference-closure";
-  }
-  if (
-    /(saturation|full_context|semantic|curation|location|name_plan|synonym|placeholder|authoring)/u.test(
-      text,
-    )
-  ) {
-    return "content-saturation";
-  }
-  return "other";
-}
-
-function humanActionForBlocker(blocker: ImportLedgerBlocker): string {
-  const bucket = blockerBucket(blocker);
-  const code = String(blocker?.code ?? "").toLowerCase();
-  if (bucket === "classification") {
-    return "Produce full-context semantic classification decisions and apply them through the deterministic classification-decision command, then rerun finalize.";
-  }
-  if (bucket === "elementary-flow") {
-    return "Resolve physical-equivalence evidence against an existing canonical elementary flow, or keep the affected scope blocked for human review.";
-  }
-  if (bucket === "canonical-support") {
-    return "Map the generated flowproperty/unitgroup support reference to an existing canonical support row, or add database governance data before rerun.";
-  }
-  if (bucket === "reference-closure") {
-    return "Commit and verify the referenced writable source/contact/flow scope first, or replace placeholder references with true canonical provenance.";
-  }
-  if (bucket === "identity") {
-    return code.includes("timeout")
-      ? "Retry only the failed identity/preflight request rows, then merge the refreshed index and rerun finalize."
-      : "Produce or refresh exact-payload identity reuse decisions, then rerun finalize.";
-  }
-  if (bucket === "content-saturation") {
-    return "Patch provable schema fields from full context in one AI completion pass, apply deterministically, then rerun validation and finalize.";
-  }
-  if (bucket === "remote-write") {
-    return "Inspect the CLI commit/readback artifact, repair the write or account guard issue, then rerun closeout for the same final rows.";
-  }
-  return "Review the blocker evidence, repair the affected dependency or row content, and rerun only the affected scope.";
-}
+export type {
+  BlockedCloseoutReport,
+  BlockedDependencyImportLedgerRow,
+  BlockedFinalizeReport,
+  BlockedScopeImportLedgerRow,
+  BlockerBucket,
+  BlockingDependency,
+  CloseoutLedgerWriteOptions,
+  CloseoutReport,
+  CompletedCloseoutReport,
+  CompletedImportLedgerWriteResult,
+  DatasetIdentity,
+  DatasetImportLedgerHelpReport,
+  DatasetImportLedgerReport,
+  DatasetImportLedgerReportOptions,
+  FinalizeArtifactFiles,
+  FinalizeLedgerWriteOptions,
+  FinalizeReport,
+  ImportLedgerBlocker,
+  ImportLedgerDependencies,
+  ImportLedgerManifest,
+  ImportLedgerRow,
+  ImportLedgerUtils,
+  ImportLedgerWriteResult,
+  JsonPrimitive,
+  JsonRecord,
+  JsonValue,
+  LedgerDatasetType,
+  LedgerWriteCounts,
+  ReadyFinalizeReport,
+  ResumePendingImportLedgerRow,
+  ResumeSkippedImportLedgerRow,
+  RetryImportLedgerRow,
+  SkippedImportLedgerWriteResult,
+  VerifiedImportLedgerRow,
+} from "./import-ledger-types.ts";
 
 export function createImportLedgerUtils({
   asText,
@@ -985,14 +530,6 @@ export function createImportLedgerUtils({
         ),
       },
     };
-  }
-
-  function latestByKey<T, K>(rows: readonly T[], keyFn: (row: T) => K): T[] {
-    const latest = new Map<K, T>();
-    for (const row of rows) {
-      latest.set(keyFn(row), row);
-    }
-    return [...latest.values()];
   }
 
   function runDatasetImportLedgerReport(
