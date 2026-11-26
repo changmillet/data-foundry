@@ -27,7 +27,7 @@ checkPaths:
   - specs/import-profiles.json
   - test/README.md
 lastReviewedAt: 2026-11-27
-lastReviewedCommit: b840ffe7c5921ef1185c7fca6d199942c288246f
+lastReviewedCommit: 10feea4149832907c71166582cec23199e022427
 lastReviewedNote: "Foundry #306: retired completed historical JS-to-TS wave migration scaffolding tests in favor of zero-javascript-ratchet and toolchain-contract, and added stat-guarded immutable component digest caching; navigation owners and runtime boundaries remain unchanged."
 ---
 
