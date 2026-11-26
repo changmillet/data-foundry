@@ -14,7 +14,7 @@ import {
 const repoRoot = process.cwd();
 const srcRoot = path.join(repoRoot, "src");
 
-const MAX_AS_UNKNOWN_AS_CASTS = 76;
+const MAX_AS_UNKNOWN_AS_CASTS = 32;
 const ZERO_CAST_BOUNDARY_FILES = [
   "src/dev-cli.ts",
   "src/lib/foundry-cli.ts",
@@ -24,6 +24,15 @@ const ZERO_CAST_BOUNDARY_FILES = [
   "src/lib/foundry-workflow-decisions.ts",
   "src/lib/foundry-workflow-semantic.ts",
   "src/lib/foundry-workflow-identity-apply.ts",
+  "src/lib/foundry-workflow-repair.ts",
+  "src/lib/foundry-workflow-repair-preparation-read.ts",
+  "src/lib/import-curation/curation-gate.ts",
+  "src/lib/import-curation/mutation-manifest.ts",
+  "src/lib/import-curation/internal/curation-gate-report.ts",
+  "src/lib/import-curation/internal/mutation-manifest-report.ts",
+  "src/lib/import-curation/internal/workflow-context-types.ts",
+  "src/lib/import-curation/internal/workflow-full-context-blockers.ts",
+  "src/lib/import-curation/internal/workflow-reference-closure.ts",
 ] as const;
 
 function listTypeScriptSourceFiles(dir: string): string[] {

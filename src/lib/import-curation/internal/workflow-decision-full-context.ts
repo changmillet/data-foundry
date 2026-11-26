@@ -14,6 +14,10 @@ import {
   sameArtifactPath,
   unique,
 } from "./runtime-io.ts";
+import {
+  type DecisionApplyContextLike,
+  type IdentityReferenceRewriteContextLike,
+} from "./workflow-context-types.ts";
 import { readClassificationDecisionApplyContext } from "./workflow-decision-apply-context.ts";
 import {
   identityDecisionCanonical,
@@ -81,31 +85,8 @@ interface DecisionRecord extends JsonRecord {
   reason?: unknown;
 }
 
-interface DecisionContext {
-  status?: unknown;
-  decisions?: DecisionRecord[];
-  inputRows?: string[];
-  outputRows?: string[];
-  inputPayloadSha256ByIdentity?: Map<string, string>;
-  outputPayloadSha256ByIdentity?: Map<string, string>;
-  decisionTaskProofs?: unknown;
-  decisionTaskProof?: unknown;
-  authoringPackageProofs?: unknown[];
-  identityReferenceRewritesFiles?: unknown;
-  identityReferenceRewritesFile?: unknown;
-}
-
-interface TransformContext {
-  status?: unknown;
-  inputRowsFile?: string | null;
-  outputRowsFile?: string | null;
-  inputRows?: string[];
-  outputRows?: string[];
-  sourceFile?: string | null;
-  scopedRows?: JsonRecord[];
-  inputPayloadSha256ByIdentity?: Map<string, string>;
-  outputPayloadSha256ByIdentity?: Map<string, string>;
-}
+type DecisionContext = DecisionApplyContextLike;
+type TransformContext = IdentityReferenceRewriteContextLike;
 
 interface DecisionChainOptions {
   repoRoot: string;
@@ -215,7 +196,7 @@ function decisionDatasetType(decision: unknown): string | null {
 }
 
 function decisionTargetIdentityKeys(context: DecisionContext | null | undefined): string[] {
-  return ensureArray(context?.decisions)
+  return (ensureArray(context?.decisions) as DecisionRecord[])
     .map((decision) => {
       const datasetType = decisionDatasetType(decision);
       const id = asText(decision?.dataset_id ?? decision?.datasetId ?? decision?.id);
@@ -579,7 +560,8 @@ export function buildClassificationDecisionFullContextBlockers({
     });
     return blockers;
   }
-  const missingBasis = context.decisions.filter((decision) => !asText(decision?.basis));
+  const decisions = context.decisions as readonly DecisionRecord[];
+  const missingBasis = decisions.filter((decision) => !asText(decision?.basis));
   if (missingBasis.length > 0) {
     blockers.push({
       code: "full_context_ai_classification_basis_missing",
@@ -589,7 +571,7 @@ export function buildClassificationDecisionFullContextBlockers({
       artifact: repoRelativePath(repoRoot, classificationDecisionApplyArtifact.path),
     });
   }
-  const missingEvidence = context.decisions.filter(
+  const missingEvidence = decisions.filter(
     (decision) => !decision?.evidence || typeof decision.evidence !== "object",
   );
   if (missingEvidence.length > 0) {
@@ -615,7 +597,7 @@ export function buildClassificationDecisionFullContextBlockers({
     });
   }
   const missingContextKinds: Array<{ decision: DecisionRecord; requiredKind: string }> = [];
-  for (const decision of context.decisions) {
+  for (const decision of decisions) {
     const usedKinds = new Set(classificationDecisionContextKinds(decision));
     for (const requiredKind of requirement.requiredContextKinds) {
       if (!usedKinds.has(requiredKind)) {
@@ -860,7 +842,8 @@ export function buildLocationDecisionFullContextBlockers({
     });
     return blockers;
   }
-  const missingBasis = context.decisions.filter((decision) => !asText(decision?.basis));
+  const decisions = context.decisions as readonly DecisionRecord[];
+  const missingBasis = decisions.filter((decision) => !asText(decision?.basis));
   if (missingBasis.length > 0) {
     blockers.push({
       code: "full_context_ai_location_basis_missing",
@@ -870,7 +853,7 @@ export function buildLocationDecisionFullContextBlockers({
       artifact: repoRelativePath(repoRoot, locationDecisionApplyArtifact.path),
     });
   }
-  const missingEvidence = context.decisions.filter(
+  const missingEvidence = decisions.filter(
     (decision) => !decision?.evidence || typeof decision.evidence !== "object",
   );
   if (missingEvidence.length > 0) {
@@ -896,7 +879,7 @@ export function buildLocationDecisionFullContextBlockers({
     });
   }
   const missingContextKinds: Array<{ decision: DecisionRecord; requiredKind: string }> = [];
-  for (const decision of context.decisions) {
+  for (const decision of decisions) {
     const usedKinds = new Set(classificationDecisionContextKinds(decision));
     for (const requiredKind of requirement.requiredContextKinds) {
       if (!usedKinds.has(requiredKind)) {
@@ -1132,7 +1115,8 @@ export function buildIdentityDecisionFullContextBlockers({
       );
     }
   }
-  const missingPackageBinding = context.decisions.filter(
+  const decisions = context.decisions as readonly DecisionRecord[];
+  const missingPackageBinding = decisions.filter(
     (decision) =>
       !identityDecisionPackageReference(decision) || !identityDecisionPackageSha(decision),
   );
@@ -1146,9 +1130,7 @@ export function buildIdentityDecisionFullContextBlockers({
       artifact: repoRelativePath(repoRoot, identityDecisionApplyArtifact.path),
     });
   }
-  const missingBasis = context.decisions.filter(
-    (decision) => !asText(decision?.basis ?? decision?.reason),
-  );
+  const missingBasis = decisions.filter((decision) => !asText(decision?.basis ?? decision?.reason));
   if (missingBasis.length > 0) {
     blockers.push({
       code: "full_context_ai_identity_basis_missing",
@@ -1158,7 +1140,7 @@ export function buildIdentityDecisionFullContextBlockers({
       artifact: repoRelativePath(repoRoot, identityDecisionApplyArtifact.path),
     });
   }
-  const missingEvidence = context.decisions.filter(
+  const missingEvidence = decisions.filter(
     (decision) => !decision?.evidence || typeof decision.evidence !== "object",
   );
   if (missingEvidence.length > 0) {
@@ -1214,7 +1196,7 @@ export function buildIdentityDecisionFullContextBlockers({
     });
   }
   const missingContextKinds: Array<{ decision: DecisionRecord; requiredKind: string }> = [];
-  for (const decision of context.decisions) {
+  for (const decision of decisions) {
     const usedKinds = new Set(classificationDecisionContextKinds(decision));
     for (const requiredKind of requirement.requiredContextKinds) {
       if (!usedKinds.has(requiredKind)) {

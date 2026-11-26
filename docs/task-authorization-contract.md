@@ -29,8 +29,8 @@ checkPaths:
   - test/unit/task-authorization.test.mts
   - test/unit/task-profile-authority.test.mts
   - test/scenarios/foundry-execution-admission.test.mts
-lastReviewedAt: 2026-11-25
-lastReviewedCommit: a191bd3dbe633e60ef40ab5fb6fc5e00c015fd02
+lastReviewedAt: 2026-11-26
+lastReviewedCommit: 617a322225d28a40e193190a40869ab89874a794
 related:
   - docs/architecture.md
   - docs/safety-policy.md

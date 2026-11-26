@@ -80,7 +80,7 @@ test("Worldsteel geography/year naming does not exempt citations or other name f
     return prewriteContentQualityBlockers({
       repoRoot,
       datasetType: "process",
-      profile: profile as unknown as Record<string, unknown>,
+      profile,
       payload: {
         processDataSet: {
           processInformation: {
