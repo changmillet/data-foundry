@@ -442,7 +442,7 @@ export function createIncrementalChangeSetRunner({ repoRoot }: { repoRoot: strin
     const schemaRuntime = createSchemaValidators(repoRoot);
     const requestPath = resolveInputInside(repoRoot, options.request, "--request");
     const outDir = resolveFreshOutputInside(repoRoot, options.outDir, "--out-dir");
-    const request = readJson(requestPath) as unknown as IncrementalRequest;
+    const request = readJson<IncrementalRequest>(requestPath);
     assertSchema(schemaRuntime, "request", request, "incremental change-set request");
     validateRequest(request);
     const comparisonsRef = verifyArtifactRef(
@@ -477,10 +477,10 @@ export function createIncrementalChangeSetRunner({ repoRoot }: { repoRoot: strin
           true,
         )
       : null;
-    const policy = readJson(policyRef.filePath) as unknown as PreservationPolicy;
+    const policy = readJson<PreservationPolicy>(policyRef.filePath);
     assertSchema(schemaRuntime, "preservationPolicy", policy, "preservation policy");
     validatePolicy(policy, request);
-    const ownerReceipt = readJson(ownerReceiptRef.filePath) as unknown as OwnerSnapshotReceipt;
+    const ownerReceipt = readJson<OwnerSnapshotReceipt>(ownerReceiptRef.filePath);
     assertSchema(schemaRuntime, "ownerSnapshotReceipt", ownerReceipt, "owner snapshot receipt");
     const comparisonRows = readJsonLinesWithMeta<ComparisonRow>(comparisonsRef.filePath).map(
       ({ value, line, raw_sha256: rawSha256 }) => {

@@ -83,7 +83,11 @@ function reject(reason: string): never {
     `Explicit read-only identity stage cannot be admitted (${reason}).`,
   );
 }
-function key(target: FoundryIdentityStageTarget): string {
+function key(target: {
+  readonly dataset_type?: unknown;
+  readonly dataset_id?: unknown;
+  readonly dataset_version?: unknown;
+}): string {
   return JSON.stringify([target.dataset_type, target.dataset_id, target.dataset_version]);
 }
 function readJson(file: string): JsonRecord {
@@ -393,10 +397,7 @@ async function runLocked(
                 `request-query-audit:${JSON.stringify({ prepare: built.blockers, audit: audited.blockers })}`,
               );
             const indexRows = jsonLines(indexFile);
-            if (
-              indexRows.length !== 1 ||
-              key(indexRows[0] as unknown as FoundryIdentityStageTarget) !== key(target)
-            )
+            if (indexRows.length !== 1 || key(indexRows[0]) !== key(target))
               reject("prepared-roster-count");
             const admittedRow = {
               ...indexRows[0],
@@ -811,8 +812,7 @@ function acceptRetainedTarget(
     auth.user_id !== receipt.identity.user_id
   )
     reject("retained-owner-runtime-account-attempt");
-  if (key(result as unknown as FoundryIdentityStageTarget) !== key(target))
-    reject("retained-target-identity");
+  if (key(result) !== key(target)) reject("retained-target-identity");
   if (stableJson(jsonLines(resolve(workflowObject(run.files).results))) !== stableJson(run.results))
     reject("retained-results-bytes");
   const requestFile = resolve(target.row.request_file),

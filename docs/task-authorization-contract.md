@@ -30,7 +30,7 @@ checkPaths:
   - test/unit/task-profile-authority.test.mts
   - test/scenarios/foundry-execution-admission.test.mts
 lastReviewedAt: 2026-11-26
-lastReviewedCommit: 617a322225d28a40e193190a40869ab89874a794
+lastReviewedCommit: d09d95d525a8f650afcf00ec91a4319fbb902d41
 related:
   - docs/architecture.md
   - docs/safety-policy.md

@@ -15,7 +15,6 @@ import {
 } from "./foundry-task-store.ts";
 import { readOwnerExecutionRequests } from "./foundry-owner-execution-store.ts";
 import type { FoundryFacadeTaskRecord } from "./foundry-facade-store.ts";
-import type { FoundryTaskJob } from "./foundry-task-types.ts";
 import {
   TASK_RUNTIME_ADOPTION_SCHEMA,
   assertTrustedQualification,
@@ -163,7 +162,6 @@ function witness(context: FoundryRuntimeContext) {
   verifyFoundryTaskArtifactLineage(
     context,
     {
-      job: registered.job as unknown as FoundryTaskJob,
       jobSha256: digest(bytes(registered.job)),
       sources: facts(object(registered.value.source_manifest).source_paths),
     },

@@ -8,6 +8,49 @@ import {
 } from "./foundry-runtime-context.ts";
 import { readTaskBytes } from "./foundry-task-io.ts";
 import type { ArtifactEntry } from "./foundry-task-types.ts";
+
+export interface WorkflowAssessmentRecord {
+  schema: "tiangong-foundry.assessment-stage.v1";
+  status: "in_progress" | "completed";
+  owner_base: string;
+  rows_report?: string;
+  identity_report?: string | null;
+  previous_assessment?: string | null;
+  previous_assessment_sha256?: string | null;
+  interaction_sha256?: string;
+  assessed_type?: string;
+  sets: Array<Record<string, unknown>>;
+}
+
+export function parseWorkflowAssessment(
+  value: Record<string, unknown>,
+  sets: Array<Record<string, unknown>>,
+): WorkflowAssessmentRecord {
+  const optStr = (v: unknown) => (typeof v === "string" ? v : undefined);
+  const optNullableStr = (v: unknown) => (v === null || typeof v === "string" ? v : undefined);
+  return {
+    schema: "tiangong-foundry.assessment-stage.v1",
+    status: value.status === "completed" ? "completed" : "in_progress",
+    owner_base: String(value.owner_base),
+    ...(optStr(value.rows_report) !== undefined ? { rows_report: optStr(value.rows_report) } : {}),
+    ...(optNullableStr(value.identity_report) !== undefined
+      ? { identity_report: optNullableStr(value.identity_report) }
+      : {}),
+    ...(optNullableStr(value.previous_assessment) !== undefined
+      ? { previous_assessment: optNullableStr(value.previous_assessment) }
+      : {}),
+    ...(optNullableStr(value.previous_assessment_sha256) !== undefined
+      ? { previous_assessment_sha256: optNullableStr(value.previous_assessment_sha256) }
+      : {}),
+    ...(optStr(value.interaction_sha256) !== undefined
+      ? { interaction_sha256: optStr(value.interaction_sha256) }
+      : {}),
+    ...(optStr(value.assessed_type) !== undefined
+      ? { assessed_type: optStr(value.assessed_type) }
+      : {}),
+    sets,
+  };
+}
 import { sha256Json } from "./identity-preflight-proof.ts";
 import { readFoundryTaskRuntimeAdoptionChain } from "./foundry-task-runtime-adoption.ts";
 

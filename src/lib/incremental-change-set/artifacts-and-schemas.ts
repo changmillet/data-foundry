@@ -1,16 +1,14 @@
-import Ajv2020 from "ajv/dist/2020.js";
 import fs from "node:fs";
 import path from "node:path";
 import type { ErrorObject } from "ajv";
+import { createAjv2020 } from "../ajv2020-factory.ts";
 import {
   SHA256_PATTERN,
   TERMINAL_SUCCESS_RECEIPT_SCHEMA,
   asToken,
   isObject,
   sha256Bytes,
-  type AjvRuntime,
   type ArtifactFacts,
-  type ArtifactReference,
   type JsonLineMeta,
   type JsonObject,
   type SchemaRuntime,
@@ -55,17 +53,14 @@ export function resolveFreshOutputInside(repoRoot: string, value: unknown, label
   return path.join(parent, path.basename(resolved));
 }
 
-export function readJson(filePath: string): JsonObject {
-  return JSON.parse(fs.readFileSync(filePath, "utf8"));
+export function readJson<T = JsonObject>(filePath: string): T {
+  return JSON.parse(fs.readFileSync(filePath, "utf8")) as T;
 }
 
 export function createSchemaValidators(repoRoot: string): SchemaRuntime {
   const schemaPath = path.join(repoRoot, "specs", "schemas", "incremental-change-set.schema.json");
   const schema = readJson(schemaPath);
-  const Ajv2020Constructor = Ajv2020 as unknown as new (
-    options: Record<string, unknown>,
-  ) => AjvRuntime;
-  const ajv = new Ajv2020Constructor({ allErrors: true, strict: true });
+  const ajv = createAjv2020({ allErrors: true, strict: true });
   ajv.addSchema(schema);
   const names = [
     "request",
@@ -149,16 +144,28 @@ export function verifyArtifactRef(
   jsonLines: boolean,
 ): { filePath: string; facts: ArtifactFacts } {
   if (!isObject(reference)) throw new Error(`${label} artifact reference is required.`);
-  const typedReference = reference as unknown as ArtifactReference;
-  const filePath = resolveInputInside(repoRoot, typedReference.path, `${label}.path`);
+  const filePath = resolveInputInside(repoRoot, reference.path, `${label}.path`);
   const facts = artifactFacts(filePath, jsonLines ? readJsonLinesWithMeta(filePath).length : null);
-  if (!SHA256_PATTERN.test(typedReference.sha256) || typedReference.sha256 !== facts.sha256) {
+  if (
+    typeof reference.sha256 !== "string" ||
+    !SHA256_PATTERN.test(reference.sha256) ||
+    reference.sha256 !== facts.sha256
+  ) {
     throw new Error(`${label} SHA-256 mismatch.`);
   }
-  if (!Number.isInteger(typedReference.bytes) || typedReference.bytes !== facts.bytes) {
+  if (
+    typeof reference.bytes !== "number" ||
+    !Number.isInteger(reference.bytes) ||
+    reference.bytes !== facts.bytes
+  ) {
     throw new Error(`${label} byte count mismatch.`);
   }
-  if (jsonLines && (!Number.isInteger(typedReference.rows) || typedReference.rows !== facts.rows)) {
+  if (
+    jsonLines &&
+    (typeof reference.rows !== "number" ||
+      !Number.isInteger(reference.rows) ||
+      reference.rows !== facts.rows)
+  ) {
     throw new Error(`${label} row count mismatch.`);
   }
   return { filePath, facts };

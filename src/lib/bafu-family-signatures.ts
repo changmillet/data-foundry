@@ -53,6 +53,26 @@ export interface BafuFamilySignatureIndex {
   summary: ReturnType<typeof summarizeBafuFamilySignatures>;
 }
 
+export interface EmptyBafuFamilySignatureIndex {
+  schema_version: 1;
+  entries: BafuFamilyEntry[];
+  missing: MissingBafuFamilyEntry[];
+  byScopeKey: Map<string, BafuFamilyEntry>;
+  summary: Record<string, never>;
+}
+
+export type BafuFamilySignatureIndexLike = BafuFamilySignatureIndex | EmptyBafuFamilySignatureIndex;
+
+export function emptyBafuFamilySignatureIndex(): EmptyBafuFamilySignatureIndex {
+  return {
+    schema_version: 1,
+    entries: [],
+    missing: [],
+    byScopeKey: new Map(),
+    summary: {},
+  };
+}
+
 interface BafuFamilyEntryOptions {
   filePath?: string | null;
   processId?: string | null;
@@ -597,7 +617,7 @@ export function buildBafuFamilySignatureIndex({
 }
 
 export function bafuFamilySignatureForScope(
-  index: BafuFamilySignatureIndex | null | undefined,
+  index: BafuFamilySignatureIndexLike | null | undefined,
   scope: unknown,
 ): BafuFamilyEntry | null {
   const key = bafuScopeKey(scope);
@@ -670,7 +690,7 @@ export function bafuFamilySelectionRank(entry: BafuFamilyEntry | null | undefine
 
 export function summarizeBafuFamilyScopes(
   scopes: unknown,
-  index: BafuFamilySignatureIndex | null | undefined,
+  index: BafuFamilySignatureIndexLike | null | undefined,
 ) {
   const entries = ensureArray(scopes)
     .map((scope) => bafuFamilySignatureForScope(index, scope))

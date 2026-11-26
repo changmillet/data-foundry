@@ -450,13 +450,24 @@ export function currentFoundryInteractionState(
     const value = readWorkflowArtifact(context, entry).value;
     if (
       value.schema !== FOUNDRY_INTERACTION_STATE_SCHEMA ||
+      typeof value.task_id !== "string" ||
+      typeof value.actor_id !== "string" ||
       value.task_id !== context.taskId ||
       value.actor_id !== context.actorId ||
       !Array.isArray(value.events) ||
       value.events.length > 1_000
     )
       invalid("Registered interaction state is invalid.");
-    return { entry, state: value as unknown as FoundryInteractionState };
+    const rawEvents: readonly unknown[] = value.events;
+    return {
+      entry,
+      state: {
+        schema: FOUNDRY_INTERACTION_STATE_SCHEMA,
+        task_id: value.task_id,
+        actor_id: value.actor_id,
+        events: rawEvents.map((event) => event as Readonly<Record<string, unknown>>),
+      },
+    };
   }
   return null;
 }

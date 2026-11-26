@@ -30,6 +30,7 @@ export function readFoundryRuntimeSelection(
     transferFail("runtime_selection_invalid", "Runtime selection must remain a complete record.");
   const item = value as Record<string, unknown>;
   const { record_sha256: digest, ...body } = item;
+  const access = item.access;
   if (
     Object.keys(item).length !== 9 ||
     item.schema !== FOUNDRY_RUNTIME_SELECTION_SCHEMA ||
@@ -38,15 +39,32 @@ export function readFoundryRuntimeSelection(
     !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/u.test(item.request_id) ||
     typeof item.actor_id !== "string" ||
     !/^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,255}$/u.test(item.actor_id) ||
-    ![item.previous_manifest_sha256, item.selected_manifest_sha256, digest].every(
-      (value) => typeof value === "string" && /^[0-9a-f]{64}$/u.test(value),
+    typeof item.previous_manifest_sha256 !== "string" ||
+    typeof item.selected_manifest_sha256 !== "string" ||
+    typeof digest !== "string" ||
+    ![item.previous_manifest_sha256, item.selected_manifest_sha256, digest].every((entry) =>
+      /^[0-9a-f]{64}$/u.test(entry),
     ) ||
-    !["read", "write"].includes(String(item.access)) ||
+    (access !== "read" && access !== "write") ||
     !Array.isArray(item.lease_ids) ||
     item.lease_ids.length !== 2 ||
     item.lease_ids.some((id) => typeof id !== "string" || id.length > 256) ||
     digest !== sha256Json(body)
   )
     transferFail("runtime_selection_invalid", "Runtime selection identity or digest changed.");
-  return { value: item as unknown as FoundryRuntimeSelectionRecord, bytes };
+  const leaseIds = item.lease_ids.filter((id): id is string => typeof id === "string");
+  return {
+    value: {
+      schema: FOUNDRY_RUNTIME_SELECTION_SCHEMA,
+      workspace_id: workspaceId,
+      request_id: item.request_id,
+      actor_id: item.actor_id,
+      previous_manifest_sha256: item.previous_manifest_sha256,
+      selected_manifest_sha256: item.selected_manifest_sha256,
+      access,
+      lease_ids: leaseIds,
+      record_sha256: digest,
+    },
+    bytes,
+  };
 }

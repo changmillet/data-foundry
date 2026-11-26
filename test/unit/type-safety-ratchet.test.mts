@@ -14,7 +14,7 @@ import {
 const repoRoot = process.cwd();
 const srcRoot = path.join(repoRoot, "src");
 
-const MAX_AS_UNKNOWN_AS_CASTS = 32;
+const MAX_AS_UNKNOWN_AS_CASTS = 0;
 const ZERO_CAST_BOUNDARY_FILES = [
   "src/dev-cli.ts",
   "src/lib/foundry-cli.ts",

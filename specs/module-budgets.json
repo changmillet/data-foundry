@@ -38,7 +38,7 @@
     "src/lib/bafu-orchestration/process-scope-runtime.ts": 382,
     "src/lib/bafu-orchestration/process-scope-report.ts": 232,
     "src/lib/batch-orchestration/authoring-task-filter.ts": 140,
-    "src/lib/batch-orchestration/bafu-batch-command-runtime.ts": 1702,
+    "src/lib/batch-orchestration/bafu-batch-command-runtime.ts": 650,
     "src/lib/batch-orchestration/cli-bounded-batch-runner.ts": 180,
     "src/lib/batch-orchestration/control-artifact-store.ts": 160,
     "src/lib/batch-orchestration/control-receipt-contract.ts": 100,
@@ -46,6 +46,12 @@
     "src/lib/batch-orchestration/control-receipt-verification.ts": 100,
     "src/lib/batch-orchestration/foundry-scope-batch-runner.ts": 220,
     "src/lib/batch-orchestration/flow-resume-ledger.ts": 120,
+    "src/lib/batch-orchestration/library-batch-command-runtime.ts": 40,
+    "src/lib/batch-orchestration/library-batch-paths-and-resume.ts": 300,
+    "src/lib/batch-orchestration/library-batch-profile-strategy.ts": 260,
+    "src/lib/batch-orchestration/library-batch-reporting.ts": 550,
+    "src/lib/batch-orchestration/library-batch-runtime-helpers.ts": 520,
+    "src/lib/batch-orchestration/library-batch-stage-wiring.ts": 320,
     "src/lib/batch-orchestration/verified-flow-write.ts": 110,
     "src/lib/batch-orchestration/identity-patch-stage.ts": 618,
     "src/lib/batch-orchestration/location-task-queue.ts": 120,
@@ -107,8 +113,7 @@
     "src/lib/import-curation/internal/workflow-decision-full-context.ts": 1237,
     "src/lib/import-curation/internal/workflow-identity-preflight.ts": 1565,
     "src/lib/import-curation/internal/workflow-row-transform-context.ts": 954,
-    "src/lib/import-ledger.ts": 1134,
-    "src/lib/source-semantics.ts": 1198
+    "src/lib/import-ledger.ts": 1134
   },
   "allowed_upward_imports": {
     "src/lib/foundry-cli.ts": [

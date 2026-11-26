@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { withBatchRunLock } from "@tiangong-lca/cli/batch";
 import {
@@ -26,8 +25,10 @@ import {
   reference,
   facts,
   sameFact,
-  shaPattern,
   maxIndexBytes,
+  parseArtifactIndexEntry,
+  buildOperationPlan,
+  buildOperationReceipt,
 } from "./foundry-task-io.ts";
 import {
   requiredTask,
@@ -228,49 +229,9 @@ export function readFoundryTaskArtifactIndex(context: FoundryRuntimeContext): Ar
     .split("\n")
     .filter(Boolean)
     .map((line, index) => {
-      let entry: JsonRecord;
-      try {
-        entry = object(JSON.parse(line));
-      } catch {
-        fail("task_index_invalid", "Artifact index contains incomplete JSON.");
-      }
-      exact(entry, [
-        "schema",
-        "sequence",
-        "previous_sha256",
-        "operation_id",
-        "command",
-        "input_scope_sha256",
-        "receipt",
-        "path",
-        "bytes",
-        "sha256",
-        "record_sha256",
-      ]);
-      const { record_sha256: recorded, ...unsigned } = entry;
-      if (
-        entry.schema !== "tiangong-foundry.artifact-index.v2" ||
-        entry.sequence !== index + 1 ||
-        entry.previous_sha256 !== previous ||
-        recorded !== sha256Json(unsigned) ||
-        typeof entry.operation_id !== "string" ||
-        !shaPattern.test(entry.operation_id) ||
-        typeof entry.command !== "string" ||
-        typeof entry.input_scope_sha256 !== "string" ||
-        !shaPattern.test(entry.input_scope_sha256)
-      )
-        fail("task_index_invalid", "Artifact index sequence or content binding changed.");
-      const fact = facts([{ path: entry.path, bytes: entry.bytes, sha256: entry.sha256 }])[0];
-      if (
-        path.isAbsolute(fact.path) ||
-        fact.path.includes("\\") ||
-        fact.path.split("/").some((part) => part === ".." || part === "." || !part)
-      )
-        fail("task_index_invalid", "Artifact index paths must be task-relative.");
-      taskPath(context, fact.path);
-      reference(entry.receipt);
-      previous = recorded;
-      return entry as unknown as ArtifactEntry;
+      const parsed = parseArtifactIndexEntry(context, line, index + 1, previous);
+      previous = parsed.record_sha256;
+      return parsed;
     });
 }
 
@@ -285,7 +246,7 @@ function verifyRecordedArtifact(context: FoundryRuntimeContext, fact: ArtifactFa
 
 function verifyInputs(
   context: FoundryRuntimeContext,
-  task: LoadedTask,
+  task: Pick<LoadedTask, "jobSha256" | "sources">,
   index: ArtifactEntry[],
   inputs: readonly FoundryInputFact[] = context.inputs,
 ): void {
@@ -389,7 +350,7 @@ function verifyInputs(
 /** Reuse the producer/source verifier for every indexed artifact without selecting a new runtime. */
 export function verifyFoundryTaskArtifactLineage(
   context: FoundryRuntimeContext,
-  task: LoadedTask,
+  task: Pick<LoadedTask, "jobSha256" | "sources">,
   index: ArtifactEntry[],
 ): void {
   verifyInputs(
@@ -527,7 +488,15 @@ export async function runFoundryTaskOperation(
           !timestamp(old.created_at_utc)
         )
           fail("task_operation_changed", "Existing operation plan does not match current inputs.");
-        plan = old as unknown as OperationPlan;
+        plan = buildOperationPlan({
+          operationId,
+          jobSha256: task.jobSha256,
+          command: input.command,
+          optionsSha256,
+          inputScopeSha256,
+          inputs: facts(old.inputs),
+          createdAtUtc: old.created_at_utc,
+        });
       } else {
         plan = {
           schema: "tiangong-foundry.operation-plan.v1",
@@ -584,7 +553,12 @@ export async function runFoundryTaskOperation(
         )
           fail("task_receipt_invalid", "Cached result is not a current operation artifact.");
         result = object(JSON.parse(data.toString("utf8")));
-        receipt = old as unknown as OperationReceipt;
+        receipt = buildOperationReceipt({
+          plan: reference(old.plan),
+          jobSha256: task.jobSha256,
+          outputs,
+          result: resultRef,
+        });
       } else {
         const outputs = new Map<string, ArtifactFact>();
         const jsonObjects = new Map<string, FileReference>();

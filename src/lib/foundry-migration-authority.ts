@@ -145,6 +145,7 @@ export function readFoundryMigrationAuthority(
     value.plan_sha256 !== migration.plan_sha256 ||
     typeof value.adoption_sha256 !== "string" ||
     !sha.test(value.adoption_sha256) ||
+    typeof digest !== "string" ||
     digest !== sha256Json(unsigned) ||
     value.remote_write_allowed !== false ||
     typeof value.created_at_utc !== "string" ||
@@ -161,6 +162,7 @@ export function readFoundryMigrationAuthority(
     );
   const ids = new Set<string>(),
     origins = new Set<string>();
+  const tasks: MigrationTaskAuthority[] = [];
   for (const entry of value.tasks) {
     const item = object(entry);
     exact(item, [
@@ -174,6 +176,7 @@ export function readFoundryMigrationAuthority(
       "scope_keys",
       "scope_complete",
     ]);
+    const disposition = item.disposition;
     if (
       typeof item.source_task !== "string" ||
       !item.source_task ||
@@ -182,12 +185,10 @@ export function readFoundryMigrationAuthority(
       origins.has(item.origin_sha256) ||
       typeof item.actor_id !== "string" ||
       !/^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,255}$/u.test(item.actor_id) ||
-      ![
-        "local-unattempted",
-        "terminal-retained",
-        "owner-readback-only",
-        "blocked-evidence",
-      ].includes(String(item.disposition))
+      (disposition !== "local-unattempted" &&
+        disposition !== "terminal-retained" &&
+        disposition !== "owner-readback-only" &&
+        disposition !== "blocked-evidence")
     )
       transferFail(
         "migration_authority_invalid",
@@ -202,8 +203,9 @@ export function readFoundryMigrationAuthority(
       (item.scope_complete && item.scope_keys.length === 0)
     )
       transferFail("migration_authority_invalid", "Migration dataset scope is invalid.");
+    const scopeKeys = item.scope_keys.filter((key): key is string => typeof key === "string");
     origins.add(item.origin_sha256);
-    if (item.disposition === "local-unattempted") {
+    if (disposition === "local-unattempted") {
       if (
         typeof item.task_id !== "string" ||
         !taskId.test(item.task_id) ||
@@ -215,17 +217,42 @@ export function readFoundryMigrationAuthority(
       )
         transferFail("migration_authority_invalid", "Adopted preparation identity is invalid.");
       ids.add(item.task_id);
+      tasks.push({
+        source_task: item.source_task,
+        origin_sha256: item.origin_sha256,
+        disposition,
+        task_id: item.task_id,
+        request_id: item.request_id,
+        actor_id: item.actor_id,
+        spec_fingerprint_sha256: item.spec_fingerprint_sha256,
+        scope_keys: scopeKeys,
+        scope_complete: item.scope_complete,
+      });
     } else if (
       item.task_id !== null ||
       item.request_id !== null ||
       item.spec_fingerprint_sha256 !== null
-    )
+    ) {
       transferFail(
         "migration_authority_invalid",
         "Retained attempted work cannot become a new executable task.",
       );
+    } else {
+      tasks.push({
+        source_task: item.source_task,
+        origin_sha256: item.origin_sha256,
+        disposition,
+        task_id: null,
+        request_id: null,
+        actor_id: item.actor_id,
+        spec_fingerprint_sha256: null,
+        scope_keys: scopeKeys,
+        scope_complete: item.scope_complete,
+      });
+    }
   }
   const names = new Set<string>();
+  const protectedFiles: MigrationProtectedFile[] = [];
   let total = 0;
   for (const entry of value.protected_files) {
     const file = object(entry);
@@ -241,6 +268,7 @@ export function readFoundryMigrationAuthority(
     )
       transferFail("migration_authority_invalid", "Protected migration evidence is invalid.");
     names.add(file.path);
+    protectedFiles.push({ path: file.path, bytes: file.bytes, sha256: file.sha256 });
     total += file.bytes;
     if (total > 512 * 1024 * 1024)
       transferFail(
@@ -294,9 +322,7 @@ export function readFoundryMigrationAuthority(
       "migration_authority_invalid",
       "Activation, adoption and transfer evidence do not describe the same migration.",
     );
-  const protectedByPath = new Map(
-    (value.protected_files as MigrationProtectedFile[]).map((file) => [file.path, file]),
-  );
+  const protectedByPath = new Map(protectedFiles.map((file) => [file.path, file]));
   for (const file of receipt.files as Record<string, unknown>[]) {
     const protectedFile = protectedByPath.get(String(file.destination));
     if (
@@ -397,7 +423,17 @@ export function readFoundryMigrationAuthority(
         );
     }
   }
-  return value as unknown as Readonly<FoundryMigrationActivation>;
+  return {
+    schema: FOUNDRY_MIGRATION_ACTIVATION_SCHEMA,
+    workspace_id: workspaceId,
+    plan_sha256: migration.plan_sha256,
+    adoption_sha256: value.adoption_sha256,
+    created_at_utc: value.created_at_utc,
+    tasks,
+    protected_files: protectedFiles,
+    remote_write_allowed: false,
+    activation_sha256: digest,
+  };
 }
 
 export function assertMigrationTaskIntent(

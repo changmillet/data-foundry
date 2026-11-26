@@ -305,6 +305,7 @@ export function validateIdentityPreflightRecoveryEvidence(
       if (
         !object(fact) ||
         typeof fact.path !== "string" ||
+        typeof fact.bytes !== "number" ||
         !Number.isSafeInteger(fact.bytes) ||
         typeof fact.sha256 !== "string" ||
         !hash.test(fact.sha256)
@@ -312,7 +313,11 @@ export function validateIdentityPreflightRecoveryEvidence(
         return fail();
       texts.set(
         key,
-        readIdentityRecoveryFact(fact as unknown as IdentityRecoveryFact).toString("utf8"),
+        readIdentityRecoveryFact({
+          path: fact.path,
+          bytes: fact.bytes,
+          sha256: fact.sha256,
+        }).toString("utf8"),
       );
     }
     if (
@@ -392,17 +397,15 @@ export function validateIdentityPreflightRecoveryEvidence(
     )
       return fail();
     const executable = observeRetainedIdentityExecutable(String(observed.original_executable.path));
+    const cliInventory = parseRetainedIdentityCliInventory(value.current_retained_cli_inventory);
     if (
-      !object(value.current_retained_cli_inventory) ||
-      value.current_retained_cli_inventory.package_version !== binding.cli.package_version ||
+      !cliInventory ||
+      cliInventory.package_version !== binding.cli.package_version ||
       !Array.isArray(options.cli.args_prefix) ||
       typeof options.cli.args_prefix[0] !== "string"
     )
       return fail();
-    verifyRetainedIdentityCliInventory(
-      value.current_retained_cli_inventory as unknown as RetainedIdentityCliInventory,
-      options.cli.args_prefix[0],
-    );
+    verifyRetainedIdentityCliInventory(cliInventory, options.cli.args_prefix[0]);
     if (
       !executable ||
       executable.bytes !== observed.original_executable.bytes ||
@@ -576,8 +579,109 @@ export function validateIdentityPreflightRecoveryEvidence(
       )
         return fail();
     }
-    return { ok: true, binding: binding as unknown as IdentityPreflightBindingEvidence };
+    const typedBinding = parseIdentityPreflightBindingEvidence(binding);
+    if (!typedBinding) return fail();
+    return { ok: true, binding: typedBinding };
   } catch {
     return fail();
   }
+}
+
+function parseRetainedIdentityCliInventory(raw: unknown): RetainedIdentityCliInventory | null {
+  if (
+    !object(raw) ||
+    raw.role !== "current_retained_cli_inventory" ||
+    typeof raw.root !== "string" ||
+    typeof raw.package_version !== "string" ||
+    typeof raw.content_sha256 !== "string" ||
+    !Array.isArray(raw.files)
+  )
+    return null;
+  const files: Array<{ path: string; bytes: number; sha256: string }> = [];
+  for (const item of raw.files) {
+    if (
+      !object(item) ||
+      typeof item.path !== "string" ||
+      typeof item.bytes !== "number" ||
+      typeof item.sha256 !== "string"
+    )
+      return null;
+    files.push({ path: item.path, bytes: item.bytes, sha256: item.sha256 });
+  }
+  return {
+    role: "current_retained_cli_inventory",
+    root: raw.root,
+    package_version: raw.package_version,
+    content_sha256: raw.content_sha256,
+    files,
+  };
+}
+
+function parseIdentityPreflightBindingEvidence(
+  binding: JsonRecord,
+): IdentityPreflightBindingEvidence | null {
+  if (
+    binding.schema !== "tiangong-foundry.identity-preflight-binding.v1" ||
+    typeof binding.binding_sha256 !== "string" ||
+    !object(binding.dataset) ||
+    typeof binding.dataset.type !== "string" ||
+    typeof binding.dataset.id !== "string" ||
+    typeof binding.dataset.version !== "string" ||
+    typeof binding.dataset.target_sha256 !== "string" ||
+    !object(binding.request) ||
+    typeof binding.request.bytes_sha256 !== "string" ||
+    typeof binding.request.canonical_sha256 !== "string" ||
+    !object(binding.command) ||
+    !Array.isArray(binding.command.semantic_argv) ||
+    binding.command.semantic_argv.some((item) => typeof item !== "string") ||
+    typeof binding.command.argv_sha256 !== "string" ||
+    !object(binding.cli) ||
+    typeof binding.cli.package_name !== "string" ||
+    typeof binding.cli.package_version !== "string" ||
+    (binding.cli.package_integrity !== null && typeof binding.cli.package_integrity !== "string") ||
+    !object(binding.relevant_input_hashes)
+  )
+    return null;
+  let account: { project_ref: string; user_id: string } | null = null;
+  if (binding.account !== null) {
+    if (
+      !object(binding.account) ||
+      typeof binding.account.project_ref !== "string" ||
+      typeof binding.account.user_id !== "string"
+    )
+      return null;
+    account = { project_ref: binding.account.project_ref, user_id: binding.account.user_id };
+  }
+  const relevantInputHashes: Record<string, string> = {};
+  for (const [k, v] of Object.entries(binding.relevant_input_hashes)) {
+    if (typeof v !== "string") return null;
+    relevantInputHashes[k] = v;
+  }
+  return {
+    schema: "tiangong-foundry.identity-preflight-binding.v1",
+    dataset: {
+      type: binding.dataset.type,
+      id: binding.dataset.id,
+      version: binding.dataset.version,
+      target_sha256: binding.dataset.target_sha256,
+    },
+    request: {
+      bytes_sha256: binding.request.bytes_sha256,
+      canonical_sha256: binding.request.canonical_sha256,
+    },
+    command: {
+      semantic_argv: binding.command.semantic_argv.filter(
+        (item): item is string => typeof item === "string",
+      ),
+      argv_sha256: binding.command.argv_sha256,
+    },
+    cli: {
+      package_name: binding.cli.package_name,
+      package_version: binding.cli.package_version,
+      package_integrity: binding.cli.package_integrity,
+    },
+    account,
+    relevant_input_hashes: relevantInputHashes,
+    binding_sha256: binding.binding_sha256,
+  };
 }

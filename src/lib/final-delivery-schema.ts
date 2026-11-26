@@ -1,17 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
-import Ajv2020 from "ajv/dist/2020.js";
 import type { ErrorObject, ValidateFunction } from "ajv";
+import { createAjv2020 } from "./ajv2020-factory.ts";
 
 export const MANIFEST_SCHEMA_PATH = "specs/schemas/final-delivery-manifest.schema.json";
 export const MANIFEST_SCHEMA_URL =
   "https://tiangong-lca.dev/schemas/foundry-final-delivery-manifest.v1.json";
 export const MAX_REPORTED_SCHEMA_ERRORS = 50;
-
-interface AjvRuntime {
-  validateSchema: (schema: object) => boolean;
-  compile: (schema: object) => ValidateFunction;
-}
 
 export type ManifestSchemaFinding = {
   // The Ajv keyword and the instance location only. Values, messages and parameters are never
@@ -34,18 +29,16 @@ function compileManifestSchema(repoRoot: string): ValidateFunction {
   const schemaPath = path.join(repoRoot, MANIFEST_SCHEMA_PATH);
   if (cachedValidator && cachedSchemaPath === schemaPath) return cachedValidator;
   const schema = JSON.parse(fs.readFileSync(schemaPath, "utf8")) as object;
-  const Ajv2020Constructor = Ajv2020 as unknown as new (
-    options: Record<string, unknown>,
-  ) => AjvRuntime;
   // `allowUnionTypes` is required because a required workbook control cell is deliberately
   // declared as `type: ["string", "number", "boolean"]`. It only permits the union `type`
   // keyword; every other strict-mode rule stays on, so vocabulary, formats, unknown keywords and
   // additional properties are still rejected.
-  const ajv = new Ajv2020Constructor({ allErrors: true, strict: true, allowUnionTypes: true });
+  const ajv = createAjv2020({ allErrors: true, strict: true, allowUnionTypes: true });
   if (!ajv.validateSchema(schema)) throw new Error("Final-delivery manifest schema is not valid.");
-  cachedValidator = ajv.compile(schema);
+  const compiled = ajv.compile(schema);
+  cachedValidator = compiled;
   cachedSchemaPath = schemaPath;
-  return cachedValidator;
+  return compiled;
 }
 
 function findingFrom(error: ErrorObject): ManifestSchemaFinding {
