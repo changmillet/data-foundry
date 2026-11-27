@@ -22,8 +22,8 @@ checkPaths:
   - docs/orchestration-module-contract.md
   - docs/foundry-ai-navigation.md
   - docs/foundry-command-surface.md
-lastReviewedAt: 2026-11-27
-lastReviewedCommit: 4ac3ee89f1180a3c2374ff1dab1fa09a02d136ea
+lastReviewedAt: 2026-11-28
+lastReviewedCommit: 553994e1125690ff9dc95158efd0a4cb2e768b4b
 lastReviewedNote: "Foundry #306: retired completed historical JS-to-TS wave migration scaffolding tests in favor of zero-javascript-ratchet and toolchain-contract, and introduced stat-guarded immutable component digest caching; runtime architecture, qualification, authorization and release boundaries remain unchanged."
 ---
 
