@@ -218,7 +218,7 @@ test("full CI runs all platforms with independent tests and native qualification
     native = object(jobs["quality-gate"]);
   assert.equal(object(tests.strategy).matrix, "${{ fromJSON(needs.plan.outputs.test_matrix) }}");
   assert.equal(tests["timeout-minutes"], 40);
-  assert.equal(object(tests.strategy)["max-parallel"], 30);
+  assert.equal(object(tests.strategy)["max-parallel"], 32);
   const testMatrix = foundryCiTestMatrix(loadFoundryTestPlan(root)),
     nativeMatrix = object(object(native.strategy).matrix);
   assert.ok(Array.isArray(testMatrix.include) && Array.isArray(nativeMatrix.include));
@@ -229,7 +229,7 @@ test("full CI runs all platforms with independent tests and native qualification
     [...foundryCiPlatforms].sort(),
   );
   assert.deepEqual(nativeHosts.map((host) => host.platform).sort(), [...foundryCiPlatforms].sort());
-  assert.equal(testHosts.length, 30);
+  assert.equal(testHosts.length, 32);
   assert.match(String(native.if), /mode == 'full'/u);
   assert.match(String(native.if), /needs\.build-package\.result == 'success'/u);
   assert.ok(Array.isArray(native.needs));

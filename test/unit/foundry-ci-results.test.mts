@@ -86,7 +86,7 @@ test("CI aggregation requires all host-specific receipts and rejects cross-platf
       },
     })),
   );
-  assert.equal(rows.length, 30);
+  assert.equal(rows.length, 32);
   assert.equal(rows.at(-1)?.platform, "win32-x64");
   assert.equal(rows.at(-1)?.index, 14);
   verifyFoundryTestShards(rows, source, plan);

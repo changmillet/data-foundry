@@ -148,7 +148,11 @@ export async function verifyManagedProcessPreparation(
         ["task", "resume", "--task", taskId, "--actor", "preparation-actor", "--json"],
         name,
       );
-      assert.equal(result.task_id, taskId);
+      assert.equal(
+        result.task_id,
+        taskId,
+        JSON.stringify({ name, status: result.status, blockers: result.blockers }),
+      );
       if (result.blockers.some((item) => item.code === "workflow_child_failed")) break;
       const artifact = result.artifacts.findLast(
         (item) => item.kind === "file" && path.basename(item.path) === "foundry-assessment.json",
@@ -406,7 +410,7 @@ export async function verifyManagedProcessPreparation(
       remote_authority: "not_required",
     };
   };
-  const concurrency = Math.min(selectedCases.length, process.platform === "win32" ? 2 : 4);
+  const concurrency = Math.min(selectedCases.length, 2);
   let nextIndex = 0;
   const worker = async () => {
     while (nextIndex < selectedCases.length) {

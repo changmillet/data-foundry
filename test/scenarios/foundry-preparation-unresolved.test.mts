@@ -6,7 +6,7 @@ import {
 } from "../helpers/registered-process-preparation.mts";
 
 const selected: readonly string[] = registeredPreparationGroups.unresolved;
-const concurrency = process.platform === "win32" ? 2 : 4;
+const concurrency = 2;
 test("registered Process preparation unresolved evidence group", { concurrency }, async (t) => {
   await Promise.all(
     registeredPreparationCases
