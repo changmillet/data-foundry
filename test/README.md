@@ -20,7 +20,7 @@ checkPaths:
   - specs/module-budgets.json
   - test/**
 lastReviewedAt: 2026-11-27
-lastReviewedCommit: 2329fee109d46b48c14098f670dec3b640200e48
+lastReviewedCommit: 4ac3ee89f1180a3c2374ff1dab1fa09a02d136ea
 lastReviewedNote: "R4.5: dehydrated historical per-PR/wave changelog narratives into docs/archive/delivery-review-history.md while retaining authoritative test directory layout, naming, commands, permanent ratchets, CI partition contract, and native scientific repair qualification."
 ---
 
