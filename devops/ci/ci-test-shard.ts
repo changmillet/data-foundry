@@ -18,7 +18,7 @@ import {
 
 const root = path.resolve(import.meta.dirname, "../..");
 const usage =
-  "Usage: ci-test-shard --index <1-10> --plan-sha256 <sha256> --source-sha <commit> --output <new-absolute-directory>";
+  "Usage: ci-test-shard --index <1-16> --plan-sha256 <sha256> --source-sha <commit> --output <new-absolute-directory>";
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("Invalid test report record.");
@@ -37,7 +37,7 @@ async function main(args: readonly string[]): Promise<void> {
     expectedPlan = args[3],
     source = args[5];
   if (
-    !/^(?:[1-9]|10)$/u.test(args[1]) ||
+    !/^(?:[1-9]|1[0-6])$/u.test(args[1]) ||
     !/^[0-9a-f]{64}$/u.test(expectedPlan) ||
     !/^[0-9a-f]{40}$/u.test(source)
   )

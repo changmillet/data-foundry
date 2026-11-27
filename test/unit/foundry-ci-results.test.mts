@@ -86,9 +86,9 @@ test("CI aggregation requires all host-specific receipts and rejects cross-platf
       },
     })),
   );
-  assert.equal(rows.length, 26);
+  assert.equal(rows.length, 34);
   assert.equal(rows.at(-1)?.platform, "win32-x64");
-  assert.equal(rows.at(-1)?.index, 10);
+  assert.equal(rows.at(-1)?.index, 14);
   verifyFoundryTestShards(rows, source, plan);
   assert.throws(() => verifyFoundryTestShards(rows.slice(0, -1), source, plan), /Incomplete/);
   const duplicate = structuredClone(rows);
