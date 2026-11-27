@@ -6,7 +6,7 @@ import path from "node:path";
 import test, { before, after, type TestContext } from "node:test";
 import { pathToFileURL } from "node:url";
 import { copyTrustedRuntimeManifestBytes, describeCliRuntime } from "@tiangong-lca/cli/runtime";
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { createFoundryFacade } from "../../src/foundry-facade.ts";
 import { createFoundryRuntimeAdoptionQualification } from "../../src/public-api.ts";
 import {
@@ -29,39 +29,24 @@ import { sha256Json } from "../../src/lib/identity-preflight-proof.ts";
 import { workflowFixture } from "../fixtures/foundry-public-workflow.ts";
 import { runFoundryPublicCommand } from "../../src/runtime-entry.ts";
 import { copyCliProductionClosure } from "../helpers/managed-adoption-fixture.mts";
+import {
+  copyRegularPackageTreeSync,
+  ensureSharedInstalledPreparationTemplate,
+} from "../helpers/shared-installed-package-template.mts";
 import { runFoundryTaskOperation } from "../../src/lib/foundry-task-store.ts";
 
-// Build once in a test-owned root: the package-consumer scenario rebuilds the repo's stage concurrently.
+// Materialize from the shared content-hashed snapshot template to avoid redundant tsc/package builds.
 let buildRoot: string;
 let packageRoot: string;
 let moduleUrl: string;
 before(async () => {
   buildRoot = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "foundry-adoption-build-")));
-  const repo = path.resolve(import.meta.dirname, "../..");
-  for (const selected of [
-    "src",
-    "devops",
-    "specs",
-    "docs",
-    "package.json",
-    "tsconfig.json",
-    "tsconfig.package.json",
-    "README.md",
-    "LICENSE",
-  ])
-    fs.cpSync(path.join(repo, selected), path.join(buildRoot, selected), { recursive: true });
-  fs.symlinkSync(
-    path.join(repo, "node_modules"),
-    path.join(buildRoot, "node_modules"),
-    process.platform === "win32" ? "junction" : "dir",
-  );
-  const built = spawnSync(
-    process.execPath,
-    [path.join(buildRoot, "devops/build/build-foundry-package.ts")],
-    { cwd: buildRoot, encoding: "utf8" },
-  );
-  assert.equal(built.status, 0, built.stderr || built.stdout);
+  const template = ensureSharedInstalledPreparationTemplate();
   packageRoot = path.join(buildRoot, "package-stage");
+  copyRegularPackageTreeSync(
+    path.join(template.templateRoot, "project/node_modules/@tiangong-lca/foundry"),
+    packageRoot,
+  );
   const cli = describeCliRuntime();
   const ownedCli = path.join(packageRoot, "node_modules/@tiangong-lca/cli");
   await copyCliProductionClosure(cli.package.root, path.join(packageRoot, "node_modules"));

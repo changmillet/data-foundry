@@ -33,7 +33,10 @@ import {
   managedChildEnvironment,
   managedDiagnosticsEnvironment,
 } from "../fixtures/managed-adoption-diagnostics.mts";
-import { writeOrCopyCachedComponentArchive } from "./shared-installed-package-template.mts";
+import {
+  ensureSharedInstalledPreparationTemplate,
+  writeOrCopyCachedComponentArchive,
+} from "./shared-installed-package-template.mts";
 
 const repo = path.resolve(import.meta.dirname, "../..");
 const entryRelative = "node_modules/@tiangong-lca/foundry/package-dist/src/package-entry.js";
@@ -159,45 +162,25 @@ export async function copyCliProductionClosure(cliRoot: string, destination: str
   for (const pkg of closure(cliRoot))
     await physicalPackage(pkg.root, path.join(destination, pkg.name));
 }
-let build: { root: string; stage: string } | undefined;
+let build: { root: string; stage: string; shared: boolean } | undefined;
 export function managedAdoptionPackage() {
   if (build) return build;
   const supplied = process.env.FOUNDRY_MANAGED_TEST_PACKAGE_ROOT;
   if (supplied)
-    return (build = { root: fs.realpathSync(supplied), stage: fs.realpathSync(supplied) });
-  const root = fs.realpathSync(
-    fs.mkdtempSync(path.join(os.tmpdir(), "foundry-managed-adoption-build-")),
-  );
-  for (const item of [
-    "src",
-    "devops",
-    "specs",
-    "docs",
-    "package.json",
-    "tsconfig.json",
-    "tsconfig.package.json",
-    "README.md",
-    "LICENSE",
-  ]) {
-    const sourceItem = path.join(repo, item);
-    if (fs.existsSync(sourceItem)) {
-      fs.cpSync(sourceItem, path.join(root, item), { recursive: true });
-    }
-  }
-  fs.symlinkSync(
-    path.join(repo, "node_modules"),
-    path.join(root, "node_modules"),
-    process.platform === "win32" ? "junction" : "dir",
-  );
-  const buildScript = fs.existsSync(path.join(root, "devops/build/build-foundry-package.ts"))
-    ? path.join(root, "devops/build/build-foundry-package.ts")
-    : path.join(root, "devops/build/build-foundry-package.ts");
-  const result = spawnSync(process.execPath, [buildScript], { cwd: root, encoding: "utf8" });
-  assert.equal(result.status, 0, result.stderr || result.stdout);
-  return (build = { root, stage: path.join(root, "package-stage") });
+    return (build = {
+      root: fs.realpathSync(supplied),
+      stage: fs.realpathSync(supplied),
+      shared: true,
+    });
+  const template = ensureSharedInstalledPreparationTemplate();
+  return (build = {
+    root: template.templateRoot,
+    stage: path.join(template.templateRoot, "project/node_modules/@tiangong-lca/foundry"),
+    shared: true,
+  });
 }
 export function cleanManagedAdoptionPackage() {
-  if (build && !process.env.FOUNDRY_MANAGED_TEST_PACKAGE_ROOT)
+  if (build && !build.shared && !process.env.FOUNDRY_MANAGED_TEST_PACKAGE_ROOT)
     fs.rmSync(build.root, { recursive: true, force: true });
   build = undefined;
 }
