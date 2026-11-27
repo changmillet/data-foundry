@@ -192,40 +192,40 @@ jobs:
     needs:
       - plan
       - build-package
-    if: ${{ !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.mode == 'pr-fast' && needs.build-package.result == 'success' }}
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.plan.result == 'success' && needs.plan.outputs.mode == 'pr-fast' && needs.build-package.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          ref: ${{ needs.plan.outputs.source_sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
       - uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4
         with:
           runtime: node@24.19.0
           install: false
-          cache: true
+          cache: false
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Run canonical platform and toolchain checks
         run: pnpm ci:platform-checks && pnpm test:toolchain
   docs-pr:
     name: Verify the bounded docs-only PR
     needs: plan
-    if: ${{ !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.mode == 'docs-only' }}
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.plan.result == 'success' && needs.plan.outputs.mode == 'docs-only' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          ref: ${{ needs.plan.outputs.source_sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
       - uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4
         with:
           runtime: node@24.19.0
           install: false
-          cache: true
+          cache: false
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Revalidate docs-only diff, lint, surface audit and package contracts
         env:
