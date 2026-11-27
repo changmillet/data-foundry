@@ -125,11 +125,11 @@ test("measured deadline envelope rejects eight/nine shards and keeps all files w
     planFoundryTestShards(
       inventory,
       activeDurations,
-      10,
+      14,
       loadFoundryWindowsExecutionInput(root, inventory, profile.windows_execution),
     ).shards,
   );
-  assert.equal(windows.length, 10);
+  assert.equal(windows.length, 14);
   assert.ok(windows.every((shard) => fitsWindowsBudget(shard.estimatedWallSeconds)));
   assert.deepEqual(windows.flatMap((shard) => shard.files).sort(), inventory);
   assert.equal(new Set(windows.flatMap((shard) => shard.files)).size, inventory.length);
@@ -420,15 +420,15 @@ test("version gate never admits dependency changes, mixed source or changed docu
 test("host-specific shard matrix covers every file once on each supported platform", () => {
   const plan = loadFoundryTestPlan(path.resolve(import.meta.dirname, "../.."));
   const matrix = foundryCiTestMatrix(plan).include;
-  const counts = { "linux-x64": 8, "linux-arm64": 4, "darwin-arm64": 4, "win32-x64": 10 };
-  assert.equal(matrix.length, 26);
+  const counts = { "linux-x64": 8, "linux-arm64": 4, "darwin-arm64": 8, "win32-x64": 14 };
+  assert.equal(matrix.length, 34);
   assert.deepEqual(
-    matrix.slice(0, 10).map(({ platform }) => platform),
-    Array(10).fill("win32-x64"),
+    matrix.slice(0, 14).map(({ platform }) => platform),
+    Array(14).fill("win32-x64"),
   );
   assert.deepEqual(
-    matrix.slice(10, 14).map(({ platform }) => platform),
-    Array(4).fill("darwin-arm64"),
+    matrix.slice(14, 22).map(({ platform }) => platform),
+    Array(8).fill("darwin-arm64"),
   );
   const fastMatrix = foundryCiTestMatrix(plan, ["linux-x64"]).include;
   assert.equal(fastMatrix.length, 8);
@@ -486,7 +486,7 @@ test("global CI digest binds all platform counts and rejects malformed mappings"
     { "linux-x64": 4 },
     { ...counts, "darwin-x64": 4 },
     { ...counts, "win32-x64": "10" },
-    { ...counts, "win32-x64": 11 },
+    { ...counts, "win32-x64": 17 },
     { ...counts, "linux-x64": 9 },
     { ...counts, "win32-x64": 0 },
     { ...counts, "win32-x64": 7.5 },
@@ -519,9 +519,11 @@ test("Windows isolates both retained deadline suites and balances the remaining 
   const reserved = execution.exclusiveFiles.filter((x) => inventory.includes(x.file));
   const cap = Math.ceil(
     execution.retainedFiles.filter((f) => !reserved.some((x) => x.file === f)).length /
-      (10 - reserved.length),
+      (windows.length - reserved.length),
   );
-  const fileCap = Math.ceil((inventory.length - reserved.length) / (10 - reserved.length));
+  const fileCap = Math.ceil(
+    (inventory.length - reserved.length) / (windows.length - reserved.length),
+  );
   for (const shard of windows.filter((s) => !reserved.some((r) => r.index === s.index)))
     assert.ok(shard.files.length <= fileCap);
   for (const shard of windows) {
@@ -547,7 +549,7 @@ test("Windows isolates both retained deadline suites and balances the remaining 
   for (const [platform, count] of [
     ["linux-x64", 8],
     ["linux-arm64", 4],
-    ["darwin-arm64", 4],
+    ["darwin-arm64", 8],
   ] as const)
     assert.deepEqual(
       foundryPlatformTestShards(plan, platform),
@@ -777,12 +779,12 @@ test("only an explicit ten-shard Windows opt-in requires observation evidence", 
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, "test"));
   fs.mkdirSync(path.join(root, "specs/ci"), { recursive: true });
-  for (let i = 0; i < 12; i++) fs.writeFileSync(path.join(root, `test/${i}.test.mts`), "");
+  for (let i = 0; i < 16; i++) fs.writeFileSync(path.join(root, `test/${i}.test.mts`), "");
   const reference = {
     file: "specs/ci/windows-test-observations.json",
     canonical_sha256: "a".repeat(64),
   };
-  for (const count of [1, 4, 10]) {
+  for (const count of [1, 4, 10, 14]) {
     const config = {
       schema: "tiangong-foundry.ci-test-durations.v1",
       weights_seconds: { "test/removed.test.mts": 3 },
@@ -795,7 +797,7 @@ test("only an explicit ten-shard Windows opt-in requires observation evidence", 
       windows_execution: reference,
     };
     fs.writeFileSync(path.join(root, "specs/ci/test-durations.json"), JSON.stringify(config));
-    if (count === 10) assert.throws(() => loadFoundryTestPlan(root), /observation/);
+    if (count >= 10) assert.throws(() => loadFoundryTestPlan(root), /observation/);
     else
       assert.equal(foundryPlatformTestShards(loadFoundryTestPlan(root), "win32-x64").length, count);
     delete (config as { windows_execution?: unknown }).windows_execution;

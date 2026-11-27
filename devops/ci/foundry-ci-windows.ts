@@ -194,7 +194,13 @@ export function planFoundryWindowsShards(
 ) {
   const files = weighted.map((x) => x.file),
     observed = execution.observedSeconds;
-  if (count !== 10 || concurrency !== 2 || !/^[a-f0-9]{64}$/u.test(execution.observationsSha256))
+  if (
+    !Number.isInteger(count) ||
+    count < 10 ||
+    count > 16 ||
+    concurrency !== 2 ||
+    !/^[a-f0-9]{64}$/u.test(execution.observationsSha256)
+  )
     throw new Error("Invalid Windows execution policy.");
   for (const [file, time] of Object.entries(observed))
     if (!isFoundryCiTestPath(file) || !Number.isFinite(time) || time <= 0)

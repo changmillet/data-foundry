@@ -84,7 +84,7 @@ export function planFoundryTestShards(
       throw new Error(`Invalid CI test duration: ${file}`);
   }
   const weighted = files.map((file) => ({ file, seconds: durations[file] ?? 1 }));
-  if (execution && count === 10) {
+  if (execution && count >= 10) {
     const shards = planFoundryWindowsShards(weighted, durations, count, execution, concurrency);
     const boundExecution = {
       exclusiveFiles: [...execution.exclusiveFiles].sort(
@@ -268,7 +268,7 @@ export function loadFoundryTestPlan(root: string, count = 4): FoundryTestPlan {
       typeof size !== "number" ||
       !Number.isInteger(size) ||
       size < 1 ||
-      size > (platform === "win32-x64" ? 10 : 8)
+      size > (platform === "win32-x64" ? 16 : 8)
     )
       throw new Error("Invalid platform CI shard count.");
     return [
@@ -277,7 +277,7 @@ export function loadFoundryTestPlan(root: string, count = 4): FoundryTestPlan {
         files,
         selectedDurations,
         size,
-        platform === "win32-x64" && size === 10 && input.windows_execution !== undefined
+        platform === "win32-x64" && size >= 10 && input.windows_execution !== undefined
           ? loadFoundryWindowsExecutionInput(root, files, input.windows_execution)
           : undefined,
         foundryCiTestConcurrencyForPlatform(platform),

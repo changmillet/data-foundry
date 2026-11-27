@@ -504,7 +504,7 @@ syncBuiltinESMExports();
   const undeclared = path.join(directory, "undeclared-ten");
   assert.match(run("linux", "10", undeclared).stderr, /shard must not be empty/u);
   assert.equal(fs.existsSync(undeclared), false);
-  for (const index of ["0", "00", "01", "1.0", "11", "-1"])
+  for (const index of ["0", "00", "01", "1.0", "17", "-1"])
     assert.match(run("win32", index, path.join(directory, `invalid-${index}`)).stderr, /Usage:/u);
   assert.match(
     run("win32", "10", path.join(directory, "foreign-source"), "b".repeat(40)).stderr,
