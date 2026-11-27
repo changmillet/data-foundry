@@ -65,6 +65,7 @@ jobs:
         env:
           FOUNDRY_CI_SOURCE_SHA: ${{ inputs.source_sha }}
           FOUNDRY_CI_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          FOUNDRY_CI_FORCE_FULL: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'ci:full') }}
           GH_TOKEN: ${{ github.token }}
           FOUNDRY_RESUME_RUN: ${{ inputs.resume_run_id || '' }}
           FOUNDRY_CI_CAN_SEAL: ${{ github.repository == 'tiangong-lca/foundry' && github.repository_id == '1260957221' && github.repository_owner_id == '327771381' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login != 'dependabot[bot]')) }}
@@ -106,16 +107,16 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
-    if: ${{ needs.plan.outputs.mode != 'reused' }}
+    if: ${{ needs.plan.outputs.mode == 'full' || needs.plan.outputs.mode == 'pr-fast' || needs.plan.outputs.mode == 'version-only' }}
   test-shards:
     name: Tests (${{ matrix.platform }} / ${{ matrix.shard }})
     needs: plan
-    if: needs.plan.outputs.mode == 'full'
+    if: ${{ needs.plan.outputs.mode == 'full' || needs.plan.outputs.mode == 'pr-fast' }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
-      max-parallel: 16
+      max-parallel: 26
       matrix: ${{ fromJSON(needs.plan.outputs.test_matrix) }}
     steps:
       - uses: actions/checkout@v7
@@ -145,11 +146,11 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
   verify-tests:
-    name: Verify every test shard on every platform
+    name: Verify every test shard on selected platforms
     needs:
       - plan
       - test-shards
-    if: always() && needs.plan.outputs.mode == 'full'
+    if: ${{ always() && (needs.plan.outputs.mode == 'full' || needs.plan.outputs.mode == 'pr-fast') }}
     runs-on: ubuntu-latest
     steps:
       - name: Require every test job to succeed
@@ -175,14 +176,62 @@ jobs:
         env:
           CI_TEST_PLAN: ${{ needs.plan.outputs.test_plan_sha256 }}
           CI_TEST_SOURCE: ${{ needs.plan.outputs.source_sha }}
-        run: node devops/ci/ci-verify-tests.ts --input "$RUNNER_TEMP/foundry-test-shards" --plan-sha256 "$CI_TEST_PLAN" --source-sha "$CI_TEST_SOURCE" --output "$RUNNER_TEMP/foundry-tests.json"
+          CI_TEST_MODE: ${{ needs.plan.outputs.mode }}
+          FOUNDRY_CI_SOURCE_SHA: ${{ inputs.source_sha }}
+        run: node devops/ci/ci-verify-tests.ts --input "$RUNNER_TEMP/foundry-test-shards" --plan-sha256 "$CI_TEST_PLAN" --source-sha "$CI_TEST_SOURCE" --output "$RUNNER_TEMP/foundry-tests.json" --mode "$CI_TEST_MODE"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ needs.plan.outputs.mode == 'full' }}
         with:
           name: foundry-tests-complete
           overwrite: true
           path: ${{ runner.temp }}/foundry-tests.json
           if-no-files-found: error
           retention-days: 7
+  pr-checks:
+    name: Run Linux PR static, golden and build checks
+    needs:
+      - plan
+      - build-package
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.plan.result == 'success' && needs.plan.outputs.mode == 'pr-fast' && needs.build-package.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4
+        with:
+          runtime: node@24.19.0
+          install: false
+          cache: false
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Run canonical platform and toolchain checks
+        run: pnpm ci:platform-checks && pnpm test:toolchain
+  docs-pr:
+    name: Verify the bounded docs-only PR
+    needs: plan
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.plan.result == 'success' && needs.plan.outputs.mode == 'docs-only' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4
+        with:
+          runtime: node@24.19.0
+          install: false
+          cache: false
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Revalidate docs-only diff, lint, surface audit and package contracts
+        env:
+          FOUNDRY_CI_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          FOUNDRY_CI_FORCE_FULL: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'ci:full') }}
+        run: node devops/ci/ci-docs-gate.ts
   version-pr:
     name: Verify the bounded version-only PR
     needs:
@@ -212,8 +261,7 @@ jobs:
     needs:
       - plan
       - build-package
-      - version-pr
-    if: always()
+    if: ${{ !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.mode == 'full' && needs.build-package.result == 'success' }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
@@ -233,54 +281,30 @@ jobs:
             arch: arm64
             platform: linux-arm64
     steps:
-      - name: Require the selected complete qualification lane
-        shell: bash
-        env:
-          PLAN_RESULT: ${{ needs.plan.result }}
-          BUILD_RESULT: ${{ needs.build-package.result }}
-          MODE: ${{ needs.plan.outputs.mode }}
-          VERSION_RESULT: ${{ needs.version-pr.result }}
-          REUSE_VERIFIED: ${{ needs.plan.outputs.reuse_verified }}
-        run: |
-          set -euo pipefail
-          test "$PLAN_RESULT" = success
-          case "$MODE" in
-            full) test "$BUILD_RESULT" = success ;;
-            version-only) test "$BUILD_RESULT" = success; test "$VERSION_RESULT" = success ;;
-            reused) test "$REUSE_VERIFIED" = true ;;
-            *) exit 1 ;;
-          esac
       - uses: actions/checkout@v7
-        if: needs.plan.outputs.mode == 'full'
         with:
           fetch-depth: 0
           ref: ${{ needs.plan.outputs.source_sha }}
           persist-credentials: false
       - uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4
-        if: needs.plan.outputs.mode == 'full'
         with:
           runtime: node@24.19.0
           install: false
           cache: true
       - run: pnpm install --frozen-lockfile --ignore-scripts
-        if: needs.plan.outputs.mode == 'full'
       - name: Run remaining canonical platform checks
-        if: needs.plan.outputs.mode == 'full'
         run: pnpm ci:platform-checks
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        if: needs.plan.outputs.mode == 'full'
         with:
           name: foundry-ci-package
           path: ${{ runner.temp }}/foundry-ci-package
       - name: Qualify native runtime with the same verified package
-        if: needs.plan.outputs.mode == 'full'
         env:
           FOUNDRY_CI_PACKAGE_DIR: ${{ runner.temp }}/foundry-ci-package
           FOUNDRY_CI_PACKAGE_MANIFEST_SHA256: ${{ needs.build-package.outputs.package_manifest_sha256 }}
           FOUNDRY_CI_PACKAGE_SHA256: ${{ needs.build-package.outputs.package_sha256 }}
         run: pnpm release:prepare-runtime --output "${{ runner.temp }}/foundry-runtime-candidate"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: needs.plan.outputs.mode == 'full'
         with:
           name: foundry-runtime-${{ matrix.platform }}
           overwrite: true
@@ -412,6 +436,8 @@ jobs:
       - plan
       - build-package
       - verify-tests
+      - pr-checks
+      - docs-pr
       - version-pr
       - quality-gate
       - aggregate-runtime
@@ -425,6 +451,8 @@ jobs:
           PLAN_RESULT: ${{ needs.plan.result }}
           BUILD_RESULT: ${{ needs.build-package.result }}
           TEST_RESULT: ${{ needs.verify-tests.result }}
+          PR_CHECKS_RESULT: ${{ needs.pr-checks.result }}
+          DOCS_RESULT: ${{ needs.docs-pr.result }}
           VERSION_RESULT: ${{ needs.version-pr.result }}
           NATIVE_RESULT: ${{ needs.quality-gate.result }}
           AGGREGATE_RESULT: ${{ needs.aggregate-runtime.result }}
@@ -433,16 +461,29 @@ jobs:
         run: |
           set -euo pipefail
           test "$PLAN_RESULT" = success
-          test "$NATIVE_RESULT" = success
           case "$MODE" in
             full)
               test "$BUILD_RESULT" = success
               test "$TEST_RESULT" = success
+              test "$NATIVE_RESULT" = success
               test "$AGGREGATE_RESULT" = success
               test "$BOOTSTRAP_RESULT" = success
               ;;
-            version-only) test "$BUILD_RESULT" = success; test "$VERSION_RESULT" = success ;;
-            reused) test "$REUSE_VERIFIED" = true ;;
+            pr-fast)
+              test "$BUILD_RESULT" = success
+              test "$TEST_RESULT" = success
+              test "$PR_CHECKS_RESULT" = success
+              ;;
+            docs-only)
+              test "$DOCS_RESULT" = success
+              ;;
+            version-only)
+              test "$BUILD_RESULT" = success
+              test "$VERSION_RESULT" = success
+              ;;
+            reused)
+              test "$REUSE_VERIFIED" = true
+              ;;
             *) exit 1 ;;
           esac
   seal-qualification:
@@ -539,6 +580,6 @@ jobs:
           case "$MODE" in
             full) if [ "$SEALABLE" = true ]; then test "$SEAL_RESULT" = success; fi ;;
             reused) test "$REUSE_VERIFIED" = true ;;
-            version-only) ;;
+            pr-fast|docs-only|version-only) test "$SEAL_RESULT" = skipped ;;
             *) exit 1 ;;
           esac

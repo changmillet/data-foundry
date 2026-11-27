@@ -10,7 +10,11 @@ import {
   foundryRetainedTestFiles,
 } from "../../devops/ci/foundry-ci-windows.ts";
 import {
+  foundryCiPlatformTestConcurrency,
   foundryCiTestConcurrency,
+  foundryCiTestConcurrencyForPlatform,
+  isFoundryDocsOnlyPath,
+  isFoundryFullQualificationPath,
   loadFoundryTestPlan,
   foundryPlatformTestShards,
   foundryCiTestMatrix,
@@ -300,19 +304,84 @@ function versionChanges(): ReleaseFileChange[] {
   }));
 }
 
-test("only strictly inspected version PRs receive the bounded gate", () => {
+test("PR CI selects docs-only, pr-fast, version-only, and full modes fail-closed", () => {
   const inspection = validateFoundryReleaseChange(versionChanges());
   assert.equal(selectFoundryCiMode("pull_request", undefined, inspection), "version-only");
+  assert.equal(
+    selectFoundryCiMode("pull_request", undefined, inspection, { forceFull: true }),
+    "full",
+  );
   for (const event of ["push", "workflow_dispatch", "workflow_call", "unknown"])
     assert.equal(selectFoundryCiMode(event, undefined, inspection), "full");
   assert.equal(selectFoundryCiMode("pull_request", "a".repeat(40), inspection), "full");
   assert.equal(
-    selectFoundryCiMode("pull_request", undefined, {
-      release: false,
-      changedPaths: ["src/runtime-entry.ts"],
-    }),
+    selectFoundryCiMode("pull_request", undefined, { release: false, changedPaths: [] }),
     "full",
   );
+  assert.equal(
+    selectFoundryCiMode("pull_request", undefined, {
+      release: false,
+      changedPaths: ["README.md", "docs/architecture.md", ".docpact/config.yaml", "test/README.md"],
+    }),
+    "docs-only",
+  );
+  assert.equal(
+    selectFoundryCiMode("pull_request", undefined, {
+      release: false,
+      changedPaths: ["README.md", "src/runtime-entry.ts"],
+    }),
+    "pr-fast",
+  );
+  assert.equal(
+    selectFoundryCiMode("pull_request", undefined, {
+      release: false,
+      changedPaths: ["src/runtime-entry.ts", "test/unit/foundry-cli-spine.test.mts"],
+    }),
+    "pr-fast",
+  );
+  assert.equal(
+    selectFoundryCiMode(
+      "pull_request",
+      undefined,
+      { release: false, changedPaths: ["src/runtime-entry.ts"] },
+      { forceFull: true },
+    ),
+    "full",
+  );
+  for (const fullPath of [
+    ".github/workflows/quality-gate.yml",
+    "devops/ci/ci-plan.ts",
+    "devops/release/release-prepare-runtime.ts",
+    "devops/build/build-foundry-package.ts",
+    "specs/release/runtime-inputs.json",
+    "specs/ci/test-durations.json",
+    "package.json",
+    "pnpm-lock.yaml",
+    "tsconfig.package.json",
+    "src/package-entry.ts",
+    "src/public-api.ts",
+    "src/lib/foundry-package-contract.ts",
+    "src/lib/foundry-managed-runtime.ts",
+    "../escape.md",
+  ]) {
+    assert.equal(isFoundryFullQualificationPath(fullPath), true, fullPath);
+    assert.equal(isFoundryDocsOnlyPath(fullPath), false, fullPath);
+    assert.equal(
+      selectFoundryCiMode("pull_request", undefined, {
+        release: false,
+        changedPaths: ["README.md", fullPath],
+      }),
+      "full",
+      fullPath,
+    );
+  }
+  for (const nonDocs of [
+    "specs/import-profiles.json",
+    "test/unit/a.test.mts",
+    ".husky/pre-push",
+    "docs/../src/dev-cli.ts",
+  ])
+    assert.equal(isFoundryDocsOnlyPath(nonDocs), false, nonDocs);
 });
 
 test("version gate never admits dependency changes, mixed source or changed document bodies", () => {
@@ -351,12 +420,30 @@ test("version gate never admits dependency changes, mixed source or changed docu
 test("host-specific shard matrix covers every file once on each supported platform", () => {
   const plan = loadFoundryTestPlan(path.resolve(import.meta.dirname, "../.."));
   const matrix = foundryCiTestMatrix(plan).include;
-  const counts = { "linux-x64": 4, "linux-arm64": 4, "darwin-arm64": 8, "win32-x64": 10 };
+  const counts = { "linux-x64": 8, "linux-arm64": 4, "darwin-arm64": 4, "win32-x64": 10 };
   assert.equal(matrix.length, 26);
   assert.deepEqual(
     matrix.slice(0, 10).map(({ platform }) => platform),
     Array(10).fill("win32-x64"),
   );
+  assert.deepEqual(
+    matrix.slice(10, 14).map(({ platform }) => platform),
+    Array(4).fill("darwin-arm64"),
+  );
+  const fastMatrix = foundryCiTestMatrix(plan, ["linux-x64"]).include;
+  assert.equal(fastMatrix.length, 8);
+  assert.ok(fastMatrix.every((row) => row.platform === "linux-x64" && row.os === "ubuntu-latest"));
+  assert.throws(() => foundryCiTestMatrix(plan, []), /at least one platform/);
+  assert.throws(() => foundryCiTestMatrix(plan, ["darwin-x64"]), /Unsupported/);
+  assert.deepEqual(foundryCiPlatformTestConcurrency, {
+    "linux-x64": 4,
+    "linux-arm64": 4,
+    "darwin-arm64": 3,
+    "win32-x64": 2,
+  });
+  for (const [platform, workers] of Object.entries(foundryCiPlatformTestConcurrency))
+    assert.equal(foundryCiTestConcurrencyForPlatform(platform), workers);
+  assert.throws(() => foundryCiTestConcurrencyForPlatform("darwin-x64"), /Unsupported/);
   const inventory = plan.shards.flatMap(({ files }) => files).sort();
   for (const [platform, count] of Object.entries(counts)) {
     const shards = foundryPlatformTestShards(plan, platform);
@@ -458,13 +545,19 @@ test("Windows isolates both retained deadline suites and balances the remaining 
       .map((file) => [file, allDurations[file]]),
   );
   for (const [platform, count] of [
-    ["linux-x64", 4],
+    ["linux-x64", 8],
     ["linux-arm64", 4],
-    ["darwin-arm64", 8],
+    ["darwin-arm64", 4],
   ] as const)
     assert.deepEqual(
       foundryPlatformTestShards(plan, platform),
-      planFoundryTestShards(inventory, durations, count).shards,
+      planFoundryTestShards(
+        inventory,
+        durations,
+        count,
+        undefined,
+        foundryCiTestConcurrencyForPlatform(platform),
+      ).shards,
     );
 });
 

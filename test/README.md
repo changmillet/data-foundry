@@ -20,7 +20,7 @@ checkPaths:
   - specs/module-budgets.json
   - test/**
 lastReviewedAt: 2026-11-27
-lastReviewedCommit: 921ac4898dc62873e5abf84e6435aa32ce907bff
+lastReviewedCommit: 2329fee109d46b48c14098f670dec3b640200e48
 lastReviewedNote: "R4.5: dehydrated historical per-PR/wave changelog narratives into docs/archive/delivery-review-history.md while retaining authoritative test directory layout, naming, commands, permanent ratchets, CI partition contract, and native scientific repair qualification."
 ---
 
@@ -34,7 +34,7 @@ Foundry tests are organized strictly by behavior responsibility rather than chro
 - `test/commands/`: single-command contract tests asserting stable reports, artifacts, blockers, and exit codes. Flat developer CLI commands run `node src/dev-cli.ts ...`; internal pipeline stages run through `test/fixtures/run-internal-stage.ts` (or `test/fixtures/foundry-core.ts`), including `test/commands/authoring-plan.test.mts`, `test/commands/authoring-task-context.test.mts`, `test/commands/classification-decisions.test.mts`, and `test/commands/location-decisions.test.mts`.
 - `test/scenarios/`: multi-command workflow, public facade, package consumer, runtime migration, and managed-adoption scenarios using isolated workspaces, fake/synthetic remote transports, or real installed packages.
 - `test/fixtures/`: shared row builders, report builders, command runners, file helpers, and process-boundary fakes (`foundry-core.ts`, `fixture-roots.ts`, `row-builders.ts`, `identity-fixtures.ts`, `finalize-fixtures.ts`, `full-context-fixtures.ts`, `mutation-fixtures.ts`, `auth-identity-receipt.ts`, `fake-tidas.ts`). Fakes model published protocol reports/exits/cancellation only and never reimplement TIDAS schema or CLI business logic.
-- `test/helpers/`: shared runtime-manifest, managed-adoption, and installed-package test staging helpers (`foundry-runtime-manifest.mts`, `managed-adoption-fixture.mts`, `shared-installed-package-template.mts`).
+- `test/helpers/`: shared runtime-manifest, retained-runtime, managed-adoption, and installed-package test staging helpers (`foundry-runtime-manifest.mts`, `retained-foundry-runtime.mts`, `managed-adoption-fixture.mts`, `shared-installed-package-template.mts`). Shared host-temp caches materialize the immutable `b57ae116` retained workspace and current-source `package-stage` snapshot template once per host across concurrent test processes while keeping per-test `HOME`/`TMPDIR` and checkout-mutating cases isolated.
 
 ## Naming And Authorship Rules
 
@@ -55,7 +55,8 @@ Foundry tests are organized strictly by behavior responsibility rather than chro
 | `pnpm test:smoke:public` | Public facade & installed-entry smoke verification |
 | `pnpm test` | Complete local behavior suite (`unit` + `commands` + `scenarios`) |
 | `pnpm golden:diff` | Isolated non-`HEAD` normalized output diff against merge-base |
-| `pnpm prepush:gate` | Full local pre-push gate (lint, typecheck, build, surface audit, package check, Golden, full test suite) |
+| `pnpm prepush:gate` | Fast local pre-push gate (lint, toolchain, `test:fast` unit + commands, Golden, surface audit, build, package build/check, audit) |
+| `pnpm prepush:gate:full` | Complete local pre-push gate including all scenario suites (`pnpm test`) |
 
 ## Permanent Whole-Repository Ratchets
 
@@ -77,10 +78,10 @@ Foundry tests are organized strictly by behavior responsibility rather than chro
 
 ## CI Test Partitioning And Release Lanes
 
-- Full four-platform source CI partitions the complete test inventory into 4 shards on `linux-x64`, 4 on `linux-arm64`, 8 on `darwin-arm64`, and 10 on `win32-x64` (26 receipts total, 40-minute job limit, 2 workers per shard, isolated Node processes per file).
-- `devops/ci/ci-plan.ts` binds the global plan hash over every platform mapping using `specs/ci/test-durations.json` and the digest-bound `specs/ci/windows-test-observations.json` dual timing scenario; Windows reserves dedicated partitions for the native-draft and repair-successor suites and bounds remaining partitions under `estimatedWallSeconds * 1.2 + 90 < 2400`.
+- Full four-platform source CI partitions the complete test inventory into 8 shards on `linux-x64` (`--test-concurrency=4`), 4 on `linux-arm64` (`--test-concurrency=4`), 4 on `darwin-arm64` (`--test-concurrency=3`), and 10 on `win32-x64` (`--test-concurrency=2`), using `max-parallel: 26` with Windows and macOS shards admitted first (26 receipts total, 40-minute job limit, isolated Node processes per file).
+- `devops/ci/ci-plan.ts` binds the global plan hash over every platform shard and concurrency mapping using `specs/ci/test-durations.json` and the digest-bound `specs/ci/windows-test-observations.json` dual timing scenario; Windows reserves dedicated partitions for the native-draft and repair-successor suites and bounds remaining partitions under `estimatedWallSeconds * 1.2 + 90 < 2400`.
 - `devops/ci/ci-test-reporter.ts` loads by `file:` URL for Windows drive-letter portability and writes a separate native TAP diagnostic file alongside the machine event report; hosted Windows shard receipts attach diagnostic-only `host_observation` (`tiangong-foundry.ci-test-host.v1`) without affecting pass/fail qualification.
-- Strict version-only PRs run bounded version/package/consumer checks; final release workflows always require complete four-platform tests, native qualification, aggregation, and copied bootstrap.
+- Pull requests select fail-closed lanes: `docs-only` (`ci-docs-gate.ts` on `ubuntu-latest`), `pr-fast` (all test files across 8 `linux-x64` shards + `pr-checks` + `build-package` on `ubuntu-latest`), `version-only` (`ci-version-gate.ts`), or `full` (automatic for release/CI/build/packaging/toolchain/managed-runtime paths or `ci:full` label). Final release `workflow_call` workflows always require complete four-platform tests, native qualification, aggregation, and copied bootstrap.
 
 ## Native Scientific Repair Qualification
 

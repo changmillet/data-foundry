@@ -97,7 +97,7 @@ test("CI aggregation requires all host-specific receipts and rejects cross-platf
   const foreign = structuredClone(rows);
   foreign[foreign.length - 1].platform = "linux-x64";
   foreign[foreign.length - 1].index = 1;
-  foreign[foreign.length - 1].total = 4;
+  foreign[foreign.length - 1].total = 8;
   assert.throws(() => verifyFoundryTestShards(foreign, source, plan), /differs/);
   const undeclared = structuredClone(rows);
   undeclared[0].index = 10;
@@ -105,4 +105,18 @@ test("CI aggregation requires all host-specific receipts and rejects cross-platf
   const stale = structuredClone(rows);
   stale[0].plan_sha256 = "f".repeat(64);
   assert.throws(() => verifyFoundryTestShards(stale, source, plan), /differs/);
+  const linuxOnly = rows.filter((row) => row.platform === "linux-x64");
+  assert.equal(linuxOnly.length, 8);
+  const fastSummary = verifyFoundryTestShards(linuxOnly, source, plan, ["linux-x64"]);
+  assert.deepEqual(Object.keys(fastSummary.platforms), ["linux-x64"]);
+  assert.throws(
+    () => verifyFoundryTestShards(linuxOnly, source, plan),
+    /Incomplete/,
+    "Four-platform verification must never accept a linux-only pr-fast shard set.",
+  );
+  assert.throws(
+    () => verifyFoundryTestShards(linuxOnly.slice(1), source, plan, ["linux-x64"]),
+    /Incomplete/,
+  );
+  assert.throws(() => verifyFoundryTestShards(rows, source, plan, ["linux-x64"]), /Incomplete/);
 });

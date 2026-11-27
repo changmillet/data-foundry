@@ -29,7 +29,7 @@ checkPaths:
   - specs/import-profiles.json
   - test/unit/zero-javascript-ratchet.test.mts
 lastReviewedAt: 2026-11-27
-lastReviewedCommit: 921ac4898dc62873e5abf84e6435aa32ce907bff
+lastReviewedCommit: 2329fee109d46b48c14098f670dec3b640200e48
 lastReviewedNote: "Foundry #306: retired completed historical JS-to-TS wave migration scaffolding tests in favor of zero-javascript-ratchet and toolchain-contract, added fast local unit/command and public smoke scripts, and introduced stat-guarded immutable component digest caching; public runtime, qualification, authorization and release boundaries remain unchanged."
 ---
 
@@ -92,7 +92,7 @@ Artifact paths recorded by fixtures must accept both platform separators. Durabl
 
 Remote handoff commands are machine contracts, not shell snippets. `dataset-commit-handoff-plan` emits `tiangong-foundry.command-spec.v1` objects whose `executable` and `argv` are authoritative. `display` is derived for readers and is excluded from the command hash. Both commit and post-write verify specs bind the exact final rows path, bytes, and SHA-256; batch runners verify the binding immediately before `shell=false` execution.
 
-CI runs the full test inventory in isolated groups on all four supported platforms and verifies complete execution evidence before native qualification. Strict version-only PRs use bounded version/package checks; final releases always run the complete four-platform gate. A source-bound, digest-verified package artifact is reused for native assembly and signing, while fresh-install and cold-bootstrap tests remain. The local `pnpm prepush:gate` stays complete. Details are in `docs/package-distribution-contract.md`.
+CI uses fail-closed tiered PR lanes (`docs-only`, `pr-fast` across 8 parallel `linux-x64` shards covering the full test inventory, `version-only`, and `full` four-platform qualification on release/CI/packaging/managed-runtime paths or the `ci:full` label), while final releases always run the complete four-platform gate (`max-parallel: 26`, per-platform test concurrency, verified package reuse, native assembly, aggregation, copied bootstrap, and signed capsules). Local `pnpm prepush:gate` runs the fast pre-push gate (`test:fast` + lint/toolchain/golden/surface/build/package/audit), with `pnpm prepush:gate:full` and `pnpm test` retaining the complete local scenario suite. Details are in `docs/package-distribution-contract.md`.
 
 ## Production Case TDD
 

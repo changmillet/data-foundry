@@ -218,7 +218,7 @@ test("full CI runs all platforms with independent tests and native qualification
     native = object(jobs["quality-gate"]);
   assert.equal(object(tests.strategy).matrix, "${{ fromJSON(needs.plan.outputs.test_matrix) }}");
   assert.equal(tests["timeout-minutes"], 40);
-  assert.equal(object(tests.strategy)["max-parallel"], 16);
+  assert.equal(object(tests.strategy)["max-parallel"], 26);
   const testMatrix = foundryCiTestMatrix(loadFoundryTestPlan(root)),
     nativeMatrix = object(object(native.strategy).matrix);
   assert.ok(Array.isArray(testMatrix.include) && Array.isArray(nativeMatrix.include));
@@ -230,25 +230,17 @@ test("full CI runs all platforms with independent tests and native qualification
   );
   assert.deepEqual(nativeHosts.map((host) => host.platform).sort(), [...foundryCiPlatforms].sort());
   assert.equal(testHosts.length, 26);
-  assert.equal(native.if, "always()");
+  assert.match(String(native.if), /mode == 'full'/u);
+  assert.match(String(native.if), /needs\.build-package\.result == 'success'/u);
   assert.ok(Array.isArray(native.needs));
-  for (const requirement of ["plan", "build-package", "version-pr"])
+  for (const requirement of ["plan", "build-package"])
     assert.ok(native.needs.includes(requirement));
   assert.ok(!native.needs.includes("verify-tests"));
   assert.ok(!(object(jobs["aggregate-runtime"]).needs as string[]).includes("verify-tests"));
   assert.ok((object(jobs["qualification-gate"]).needs as string[]).includes("verify-tests"));
-  const guard = steps(native)[0];
-  assert.equal(guard.shell, "bash");
-  const script = String(guard.run);
-  for (const required of [
-    'test "$PLAN_RESULT" = success',
-    'test "$BUILD_RESULT" = success',
-    'full) test "$BUILD_RESULT" = success',
-    'test "$VERSION_RESULT" = success',
-    "*) exit 1",
-  ])
-    assert.ok(script.includes(required));
   assert.match(String(object(jobs["aggregate-runtime"]).if), /mode == 'full'/u);
+  assert.match(String(object(jobs["pr-checks"]).if), /mode == 'pr-fast'/u);
+  assert.match(String(object(jobs["docs-pr"]).if), /mode == 'docs-only'/u);
 });
 
 test("publication consumes signed complete source qualification and retains every release dependency", () => {
@@ -293,6 +285,8 @@ test("full qualification cannot succeed when aggregation or copied bootstrap was
     "plan",
     "build-package",
     "verify-tests",
+    "pr-checks",
+    "docs-pr",
     "version-pr",
     "quality-gate",
     "aggregate-runtime",
@@ -304,6 +298,8 @@ test("full qualification cannot succeed when aggregation or copied bootstrap was
     "PLAN_RESULT",
     "BUILD_RESULT",
     "TEST_RESULT",
+    "PR_CHECKS_RESULT",
+    "DOCS_RESULT",
     "NATIVE_RESULT",
     "AGGREGATE_RESULT",
     "BOOTSTRAP_RESULT",
@@ -318,13 +314,15 @@ function executeGuard(job: Record<string, unknown>, env: Record<string, string>)
     encoding: "utf8",
   }).status;
 }
-test("real shell qualification guards reject each failed, cancelled or skipped full requirement", () => {
+test("real shell qualification guards reject each failed, cancelled or skipped requirement across all lanes", () => {
   const jobs = object(workflow("quality-gate.yml").jobs);
   const valid = {
     MODE: "full",
     PLAN_RESULT: "success",
     BUILD_RESULT: "success",
     TEST_RESULT: "success",
+    PR_CHECKS_RESULT: "skipped",
+    DOCS_RESULT: "skipped",
     VERSION_RESULT: "skipped",
     NATIVE_RESULT: "success",
     AGGREGATE_RESULT: "success",
@@ -347,6 +345,42 @@ test("real shell qualification guards reject each failed, cancelled or skipped f
         `${key}=${result}`,
       );
   }
+  const validPrFast = {
+    ...valid,
+    MODE: "pr-fast",
+    PR_CHECKS_RESULT: "success",
+    NATIVE_RESULT: "skipped",
+    AGGREGATE_RESULT: "skipped",
+    BOOTSTRAP_RESULT: "skipped",
+  };
+  assert.equal(executeGuard(object(jobs["qualification-gate"]), validPrFast), 0);
+  for (const key of ["PLAN_RESULT", "BUILD_RESULT", "TEST_RESULT", "PR_CHECKS_RESULT"]) {
+    for (const result of ["failure", "cancelled", "skipped", ""])
+      assert.notEqual(
+        executeGuard(object(jobs["qualification-gate"]), { ...validPrFast, [key]: result }),
+        0,
+        `pr-fast ${key}=${result}`,
+      );
+  }
+  const validDocs = {
+    ...valid,
+    MODE: "docs-only",
+    BUILD_RESULT: "skipped",
+    TEST_RESULT: "skipped",
+    DOCS_RESULT: "success",
+    NATIVE_RESULT: "skipped",
+    AGGREGATE_RESULT: "skipped",
+    BOOTSTRAP_RESULT: "skipped",
+  };
+  assert.equal(executeGuard(object(jobs["qualification-gate"]), validDocs), 0);
+  for (const key of ["PLAN_RESULT", "DOCS_RESULT"]) {
+    for (const result of ["failure", "cancelled", "skipped", ""])
+      assert.notEqual(
+        executeGuard(object(jobs["qualification-gate"]), { ...validDocs, [key]: result }),
+        0,
+        `docs-only ${key}=${result}`,
+      );
+  }
   const final = object(jobs["complete-qualification"]);
   const complete = {
     MODE: "full",
@@ -362,6 +396,18 @@ test("real shell qualification guards reject each failed, cancelled or skipped f
     0,
     "A bot PR retains complete validation without running a privileged seal.",
   );
+  for (const mode of ["pr-fast", "docs-only", "version-only"]) {
+    assert.equal(
+      executeGuard(final, { ...complete, MODE: mode, SEALABLE: "false", SEAL_RESULT: "skipped" }),
+      0,
+      `${mode} passes only when sealing is skipped`,
+    );
+    assert.notEqual(
+      executeGuard(final, { ...complete, MODE: mode, SEALABLE: "true", SEAL_RESULT: "success" }),
+      0,
+      `${mode} must never seal qualification`,
+    );
+  }
   for (const key of ["PLAN_RESULT", "GATE_RESULT"]) {
     for (const result of ["failure", "cancelled", "skipped", ""])
       assert.notEqual(
@@ -386,6 +432,49 @@ test("real shell qualification guards reject each failed, cancelled or skipped f
     }),
     0,
   );
+});
+
+test("bounded docs-only and pr-fast verifiers fail closed outside ordinary pull requests", () => {
+  const docsNonPr = spawnSync(process.execPath, [path.join(root, "devops/ci/ci-docs-gate.ts")], {
+    cwd: root,
+    env: {
+      ...process.env,
+      GITHUB_ACTIONS: "true",
+      GITHUB_EVENT_NAME: "workflow_call",
+      FOUNDRY_CI_SOURCE_SHA: "a".repeat(40),
+    },
+    encoding: "utf8",
+  });
+  assert.notEqual(docsNonPr.status, 0);
+  assert.match(docsNonPr.stderr, /inspected pull request/u);
+
+  const verifyNonPr = spawnSync(
+    process.execPath,
+    [
+      path.join(root, "devops/ci/ci-verify-tests.ts"),
+      "--input",
+      path.join(os.tmpdir(), "missing-shards"),
+      "--plan-sha256",
+      "a".repeat(64),
+      "--source-sha",
+      "a".repeat(40),
+      "--output",
+      path.join(os.tmpdir(), "missing-out.json"),
+      "--mode",
+      "pr-fast",
+    ],
+    {
+      cwd: root,
+      env: {
+        ...process.env,
+        GITHUB_EVENT_NAME: "workflow_call",
+        FOUNDRY_CI_SOURCE_SHA: "a".repeat(40),
+      },
+      encoding: "utf8",
+    },
+  );
+  assert.notEqual(verifyNonPr.status, 0);
+  assert.match(verifyNonPr.stderr, /ordinary pull requests/u);
 });
 test("publication stages restore required proofs and diagnostics have no publication credentials", () => {
   const jobs = object(workflow("publish.yml").jobs);

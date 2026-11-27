@@ -28,7 +28,8 @@ function main(args: readonly string[]): void {
     event === "pull_request" && reusable === undefined
       ? inspectFoundryRelease(root, process.env.FOUNDRY_CI_BASE_SHA ?? "", source)
       : { release: false, changedPaths: [] };
-  let mode: string = selectFoundryCiMode(event, reusable, inspection);
+  const forceFull = process.env.FOUNDRY_CI_FORCE_FULL === "true";
+  let mode: string = selectFoundryCiMode(event, reusable, inspection, { forceFull });
   const tests = loadFoundryTestPlan(root);
   let reuse: Record<string, unknown> = {};
   let capsuleName = "";
@@ -49,6 +50,13 @@ function main(args: readonly string[]): void {
     );
     if (reuse.reused === true) mode = "reused";
   }
+  const testMatrix =
+    mode === "full"
+      ? foundryCiTestMatrix(tests)
+      : mode === "pr-fast"
+        ? foundryCiTestMatrix(tests, ["linux-x64"])
+        : { include: [] };
+  const sealable = mode === "full" && process.env.FOUNDRY_CI_CAN_SEAL === "true";
   const result = { schema: "tiangong-foundry.ci-plan.v1", mode, source, inspection, tests, reuse };
   if (args.length) {
     const output = process.env.GITHUB_OUTPUT;
@@ -56,7 +64,7 @@ function main(args: readonly string[]): void {
       throw new Error("CI outputs require the owning GitHub job.");
     fs.appendFileSync(
       output,
-      `mode=${mode}\nsource_sha=${source}\ntest_plan_sha256=${tests.planSha256}\nshards=${JSON.stringify(tests.shards.map((shard) => shard.index))}\ntest_matrix=${JSON.stringify(foundryCiTestMatrix(tests))}\ncapsule_name=${capsuleName}\nrun_id=${process.env.GITHUB_RUN_ID ?? ""}\nreuse_verified=${reuse.reused === true}\npackage_sha256=${String(reuse.package_sha256 ?? "")}\npackage_manifest_sha256=${String(reuse.package_manifest_sha256 ?? "")}\nsealable=${process.env.FOUNDRY_CI_CAN_SEAL === "true"}\n`,
+      `mode=${mode}\nsource_sha=${source}\ntest_plan_sha256=${tests.planSha256}\nshards=${JSON.stringify(tests.shards.map((shard) => shard.index))}\ntest_matrix=${JSON.stringify(testMatrix)}\ncapsule_name=${capsuleName}\nrun_id=${process.env.GITHUB_RUN_ID ?? ""}\nreuse_verified=${reuse.reused === true}\npackage_sha256=${String(reuse.package_sha256 ?? "")}\npackage_manifest_sha256=${String(reuse.package_manifest_sha256 ?? "")}\nsealable=${sealable}\n`,
       "utf8",
     );
   }

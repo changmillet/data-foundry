@@ -18,26 +18,31 @@ export function verifyFoundryTestShards(
   records: readonly unknown[],
   source: string,
   plan: FoundryTestPlan,
+  selectedPlatforms: readonly (typeof foundryCiPlatforms)[number][] = foundryCiPlatforms,
 ) {
+  const platforms = [...new Set(selectedPlatforms)];
+  if (
+    !platforms.length ||
+    platforms.length !== selectedPlatforms.length ||
+    platforms.some((platform) => !foundryCiPlatforms.includes(platform))
+  )
+    throw new Error("Invalid CI platform selection.");
   if (
     !/^[0-9a-f]{40}$/u.test(source) ||
     records.length !==
-      foundryCiPlatforms.reduce(
-        (n, platform) => n + foundryPlatformTestShards(plan, platform).length,
-        0,
-      )
+      platforms.reduce((n, platform) => n + foundryPlatformTestShards(plan, platform).length, 0)
   )
     throw new Error("Incomplete CI shard set.");
   const seen = new Set<string>();
   const totals = Object.fromEntries(
-    foundryCiPlatforms.map((platform) => [
+    platforms.map((platform) => [
       platform,
       Object.fromEntries(countKeys.map((key) => [key, 0])) as Counts,
     ]),
-  ) as Record<(typeof foundryCiPlatforms)[number], Counts>;
+  ) as Partial<Record<(typeof foundryCiPlatforms)[number], Counts>>;
   for (const item of records) {
     const row = object(item);
-    const platform = foundryCiPlatforms.find((value) => value === row.platform);
+    const platform = platforms.find((value) => value === row.platform);
     const selectedShards = platform ? foundryPlatformTestShards(plan, platform) : [];
     const shard = selectedShards.find((value) => value.index === row.index);
     if (
@@ -57,11 +62,13 @@ export function verifyFoundryTestShards(
     if (seen.has(identity)) throw new Error("Duplicate CI shard evidence.");
     seen.add(identity);
     const counts = object(row.counts);
+    const platformTotals = totals[platform];
+    if (!platformTotals) throw new Error("Invalid CI platform selection.");
     for (const key of countKeys) {
       const value = counts[key];
       if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0)
         throw new Error("Invalid CI test counts.");
-      totals[platform][key] += value;
+      platformTotals[key] += value;
     }
     if (counts.failed !== 0 || counts.cancelled !== 0 || counts.tests === 0)
       throw new Error("CI shard did not finish its tests.");
@@ -71,6 +78,6 @@ export function verifyFoundryTestShards(
     source,
     plan_sha256: plan.planSha256,
     files_per_platform: plan.shards.reduce((total, shard) => total + shard.files.length, 0),
-    platforms: totals,
+    platforms: totals as Record<(typeof foundryCiPlatforms)[number], Counts>,
   });
 }

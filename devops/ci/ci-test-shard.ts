@@ -5,7 +5,7 @@ import path from "node:path";
 import {
   loadFoundryTestPlan,
   foundryPlatformTestShards,
-  foundryCiTestConcurrency,
+  foundryCiTestConcurrencyForPlatform,
 } from "./foundry-ci-plan.ts";
 import { foundryCiReporterUrl } from "./ci-test-reporter.ts";
 import { readFoundryReleaseGit as git } from "../release/foundry-release-contract.ts";
@@ -53,7 +53,9 @@ async function main(args: readonly string[]): Promise<void> {
   const plan = loadFoundryTestPlan(root);
   if (plan.planSha256 !== expectedPlan)
     throw new Error("CI test plan does not match its independently selected digest.");
-  const platformShards = foundryPlatformTestShards(plan, `${process.platform}-${process.arch}`);
+  const platformId = `${process.platform}-${process.arch}`;
+  const platformShards = foundryPlatformTestShards(plan, platformId);
+  const shardConcurrency = foundryCiTestConcurrencyForPlatform(platformId);
   const shard = platformShards.find((candidate) => candidate.index === index);
   if (!shard?.files.length) throw new Error("CI test shard must not be empty.");
   if (!path.isAbsolute(args[7])) throw new Error(usage);
@@ -85,7 +87,7 @@ async function main(args: readonly string[]): Promise<void> {
       process.execPath,
       [
         "--test",
-        `--test-concurrency=${foundryCiTestConcurrency}`,
+        `--test-concurrency=${shardConcurrency}`,
         "--test-reporter=spec",
         "--test-reporter-destination=stdout",
         `--test-reporter=${foundryCiReporterUrl}`,
