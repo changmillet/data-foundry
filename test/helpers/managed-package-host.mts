@@ -231,13 +231,14 @@ export async function verifyManagedPackageHost(
     argv: string[],
     exit: number | undefined,
     selected = manifest,
+    envOverride = environment,
   ) => {
     const result = await executeRuntimeLaunch(selected, {
       ...manager,
       entry,
       cwd: root,
       argv,
-      env: environment,
+      env: envOverride,
       timeoutMs: 90_000,
     });
     if (exit !== undefined) assert.equal(result.status, exit, result.stderr || result.stdout);
@@ -262,9 +263,48 @@ export async function verifyManagedPackageHost(
     "ready",
   );
   if (preparationCases) {
+    const caseContexts = new Map<string, { workspace: string; env: NodeJS.ProcessEnv }>();
+    const extraContexts: Array<{ workspace: string; env: NodeJS.ProcessEnv }> = [];
+    for (const [index, caseName] of preparationCases.entries()) {
+      if (index === 0) {
+        caseContexts.set(caseName, { workspace, env: environment });
+      } else {
+        const isolatedWorkspace = path.join(root, `workspace-${caseName}`);
+        const isolatedHome = path.join(root, `home-${caseName}`);
+        fs.mkdirSync(isolatedHome, { recursive: true });
+        const isolatedEnv: NodeJS.ProcessEnv = {
+          ...environment,
+          HOME: isolatedHome,
+          USERPROFILE: isolatedHome,
+        };
+        const context = { workspace: isolatedWorkspace, env: isolatedEnv };
+        caseContexts.set(caseName, context);
+        extraContexts.push(context);
+      }
+    }
+    await Promise.all(
+      extraContexts.map(async (context) => {
+        assert.equal(
+          (await run("foundry", init(context.workspace), 0, manifest, context.env)).status,
+          "ready",
+        );
+      }),
+    );
     await verifyManagedProcessPreparation(
       root,
-      (argv) => run("foundry", [...argv, "--workspace", workspace], undefined),
+      (argv, caseName) => {
+        const context = (caseName && caseContexts.get(caseName)) || {
+          workspace,
+          env: environment,
+        };
+        return run(
+          "foundry",
+          [...argv, "--workspace", context.workspace],
+          undefined,
+          manifest,
+          context.env,
+        );
+      },
       preparationCases,
     );
     return;

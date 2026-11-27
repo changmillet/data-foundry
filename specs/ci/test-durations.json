@@ -1707,7 +1707,7 @@
   "shards_by_platform": {
     "linux-x64": 8,
     "linux-arm64": 4,
-    "darwin-arm64": 8,
+    "darwin-arm64": 6,
     "win32-x64": 14
   },
   "deadline_refresh": {

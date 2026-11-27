@@ -19,8 +19,8 @@ checkPaths:
   - specs/ci/**
   - specs/module-budgets.json
   - test/**
-lastReviewedAt: 2026-11-27
-lastReviewedCommit: 4ac3ee89f1180a3c2374ff1dab1fa09a02d136ea
+lastReviewedAt: 2026-11-28
+lastReviewedCommit: 553994e1125690ff9dc95158efd0a4cb2e768b4b
 lastReviewedNote: "R4.5: dehydrated historical per-PR/wave changelog narratives into docs/archive/delivery-review-history.md while retaining authoritative test directory layout, naming, commands, permanent ratchets, CI partition contract, and native scientific repair qualification."
 ---
 
