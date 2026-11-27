@@ -6,8 +6,18 @@ import {
 } from "../helpers/registered-process-preparation.mts";
 
 const selected: readonly string[] = registeredPreparationGroups.targets;
-for (const entry of registeredPreparationCases.filter(([name]) => selected.includes(name))) {
-  test(`registered Process preparation consumes actual owner CLI ${entry[0]} annual evidence`, async (t) => {
-    await verifyRegisteredProcessPreparation(t, entry);
-  });
-}
+const concurrency = process.platform === "win32" ? 2 : 4;
+test("registered Process preparation targets evidence group", { concurrency }, async (t) => {
+  await Promise.all(
+    registeredPreparationCases
+      .filter(([name]) => selected.includes(name))
+      .map((entry) =>
+        t.test(
+          `registered Process preparation consumes actual owner CLI ${entry[0]} annual evidence`,
+          async (subtest) => {
+            await verifyRegisteredProcessPreparation(subtest, entry);
+          },
+        ),
+      ),
+  );
+});

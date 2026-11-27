@@ -420,15 +420,15 @@ test("version gate never admits dependency changes, mixed source or changed docu
 test("host-specific shard matrix covers every file once on each supported platform", () => {
   const plan = loadFoundryTestPlan(path.resolve(import.meta.dirname, "../.."));
   const matrix = foundryCiTestMatrix(plan).include;
-  const counts = { "linux-x64": 8, "linux-arm64": 4, "darwin-arm64": 8, "win32-x64": 14 };
-  assert.equal(matrix.length, 34);
+  const counts = { "linux-x64": 8, "linux-arm64": 4, "darwin-arm64": 4, "win32-x64": 14 };
+  assert.equal(matrix.length, 30);
   assert.deepEqual(
     matrix.slice(0, 14).map(({ platform }) => platform),
     Array(14).fill("win32-x64"),
   );
   assert.deepEqual(
-    matrix.slice(14, 22).map(({ platform }) => platform),
-    Array(8).fill("darwin-arm64"),
+    matrix.slice(14, 18).map(({ platform }) => platform),
+    Array(4).fill("darwin-arm64"),
   );
   const fastMatrix = foundryCiTestMatrix(plan, ["linux-x64"]).include;
   assert.equal(fastMatrix.length, 8);
@@ -549,7 +549,7 @@ test("Windows isolates both retained deadline suites and balances the remaining 
   for (const [platform, count] of [
     ["linux-x64", 8],
     ["linux-arm64", 4],
-    ["darwin-arm64", 8],
+    ["darwin-arm64", 4],
   ] as const)
     assert.deepEqual(
       foundryPlatformTestShards(plan, platform),

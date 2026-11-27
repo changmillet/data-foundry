@@ -44,25 +44,23 @@ export const managedPreparationGroups = {
 /** Actual packaged Foundry operations over the managed host; no validator reconstruction. */
 export async function verifyManagedProcessPreparation(
   root: string,
-  run: (argv: string[]) => Promise<FoundryOperationResult>,
+  run: (argv: string[], caseName?: string) => Promise<FoundryOperationResult>,
   names?: readonly string[],
 ) {
   const original = JSON.parse(
     fs.readFileSync(new URL("../fixtures/managed-allocation-input.json", import.meta.url), "utf8"),
   );
-  const receipts: Json[] = [];
   const selectedNames = new Set(names ?? managedPreparationCases.map(([name]) => name));
   assert.equal(selectedNames.size, names?.length ?? managedPreparationCases.length);
   assert.ok(
     [...selectedNames].every((name) => managedPreparationCases.some(([id]) => id === name)),
   );
-  for (const [
-    name,
-    direction,
-    flowType,
-    expectedSemantic,
-    annual,
-  ] of managedPreparationCases.filter(([name]) => selectedNames.has(name))) {
+  const selectedCases = managedPreparationCases.filter(([name]) => selectedNames.has(name));
+  const receipts: Json[] = new Array(selectedCases.length);
+  const runCase = async (
+    index: number,
+    [name, direction, flowType, expectedSemantic, annual]: (typeof managedPreparationCases)[number],
+  ) => {
     const selected = structuredClone(original);
     const process = selected.payload.processDataSet;
     process.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.annualSupplyOrProductionVolume =
@@ -132,7 +130,7 @@ export async function verifyManagedProcessPreparation(
         preparation: null,
       }),
     );
-    let result = await run(["task", "start", "--spec", spec, "--json"]);
+    let result = await run(["task", "start", "--spec", spec, "--json"], name);
     const taskId = result.task_id;
     assert.ok(taskId);
     const jobArtifact = result.artifacts.find(
@@ -146,15 +144,10 @@ export async function verifyManagedProcessPreparation(
 
     let evidence: { file: string; value: Json } | undefined;
     for (let i = 0; i < 10; i++) {
-      result = await run([
-        "task",
-        "resume",
-        "--task",
-        taskId,
-        "--actor",
-        "preparation-actor",
-        "--json",
-      ]);
+      result = await run(
+        ["task", "resume", "--task", taskId, "--actor", "preparation-actor", "--json"],
+        name,
+      );
       assert.equal(result.task_id, taskId);
       if (result.blockers.some((item) => item.code === "workflow_child_failed")) break;
       const artifact = result.artifacts.findLast(
@@ -314,17 +307,20 @@ export async function verifyManagedProcessPreparation(
           ],
         }),
       );
-      result = await run([
-        "task",
-        "resume",
-        "--task",
-        taskId,
-        "--actor",
-        "preparation-actor",
-        "--semantic-input",
-        submissionFile,
-        "--json",
-      ]);
+      result = await run(
+        [
+          "task",
+          "resume",
+          "--task",
+          taskId,
+          "--actor",
+          "preparation-actor",
+          "--semantic-input",
+          submissionFile,
+          "--json",
+        ],
+        name,
+      );
       const collected = result.artifacts.findLast(
         (item) => item.kind === "file" && item.role === "authoring-patch-collect-report.json",
       );
@@ -349,15 +345,10 @@ export async function verifyManagedProcessPreparation(
       assert.deepEqual(repairedRows[0].semantic_context, selected.context);
       let fixedRow: Json | undefined;
       for (let i = 0; i < 10; i++) {
-        result = await run([
-          "task",
-          "resume",
-          "--task",
-          taskId,
-          "--actor",
-          "preparation-actor",
-          "--json",
-        ]);
+        result = await run(
+          ["task", "resume", "--task", taskId, "--actor", "preparation-actor", "--json"],
+          name,
+        );
         const artifact = result.artifacts.findLast(
           (item) => item.kind === "file" && path.basename(item.path) === "foundry-assessment.json",
         );
@@ -378,22 +369,25 @@ export async function verifyManagedProcessPreparation(
       assert.deepEqual(object(object(fixedRow.validation_layers).authoring_evidence).issues, []);
       if (typed) assert.equal(object(fixedRow.annual_volume).status, "passed");
       const fixedBytes = fs.readFileSync(String(repairedSet.file));
-      await run([
-        "task",
-        "resume",
-        "--task",
-        taskId,
-        "--actor",
-        "preparation-actor",
-        "--semantic-input",
-        submissionFile,
-        "--json",
-      ]);
+      await run(
+        [
+          "task",
+          "resume",
+          "--task",
+          taskId,
+          "--actor",
+          "preparation-actor",
+          "--semantic-input",
+          submissionFile,
+          "--json",
+        ],
+        name,
+      );
       assert.deepEqual(fs.readFileSync(String(repairedSet.file)), fixedBytes);
     }
     assert.deepEqual(fs.readFileSync(source), sourceBytes);
     assert.equal(result.permissions.state, "not_required");
-    receipts.push({
+    receipts[index] = {
       case: name,
       task_id: taskId,
       runtime_identity: result.runtime_identity,
@@ -410,8 +404,18 @@ export async function verifyManagedProcessPreparation(
       native_counts: object(JSON.parse(fs.readFileSync(String(set.schema_report), "utf8"))).counts,
       annual_repair_and_old_submission_immutability: name === "annual-invalid",
       remote_authority: "not_required",
-    });
-  }
+    };
+  };
+  const concurrency = Math.min(selectedCases.length, process.platform === "win32" ? 2 : 4);
+  let nextIndex = 0;
+  const worker = async () => {
+    while (nextIndex < selectedCases.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      await runCase(index, selectedCases[index]);
+    }
+  };
+  await Promise.all(Array.from({ length: concurrency }, () => worker()));
   fs.writeFileSync(
     path.join(root, "managed-process-preparation-receipt.json"),
     JSON.stringify(receipts, null, 2),
